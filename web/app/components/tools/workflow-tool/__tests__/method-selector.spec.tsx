@@ -94,7 +94,9 @@ describe('MethodSelector', () => {
 
       // Dropdown should now show both options with tips
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('tools.createTool.toolInput.methodParameterTip'),
+        )!.toBeInTheDocument()
         expect(screen.getByText('tools.createTool.toolInput.methodSettingTip'))!.toBeInTheDocument()
       })
     })
@@ -110,7 +112,9 @@ describe('MethodSelector', () => {
 
       // Wait for dropdown to open
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('tools.createTool.toolInput.methodParameterTip'),
+        )!.toBeInTheDocument()
       })
 
       // Click the llm option (by finding the method parameter option in dropdown)
@@ -155,7 +159,9 @@ describe('MethodSelector', () => {
       await user.click(screen.getByText('tools.createTool.toolInput.methodSettingTip'))
 
       await waitFor(() => {
-        expect(screen.queryByText('tools.createTool.toolInput.methodSettingTip')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('tools.createTool.toolInput.methodSettingTip'),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -168,13 +174,17 @@ describe('MethodSelector', () => {
       // First click - open
       await user.click(trigger)
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('tools.createTool.toolInput.methodParameterTip'),
+        )!.toBeInTheDocument()
       })
 
       // Second click - close
       await user.click(trigger)
       await waitFor(() => {
-        expect(screen.queryByText('tools.createTool.toolInput.methodParameterTip')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('tools.createTool.toolInput.methodParameterTip'),
+        ).not.toBeInTheDocument()
       })
     })
   })
@@ -243,7 +253,9 @@ describe('MethodSelector', () => {
       await waitFor(() => {
         // Should show both option titles and descriptions
         // Should show both option titles and descriptions
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('tools.createTool.toolInput.methodParameterTip'),
+        )!.toBeInTheDocument()
         expect(screen.getByText('tools.createTool.toolInput.methodSettingTip'))!.toBeInTheDocument()
       })
     })
@@ -270,7 +282,9 @@ describe('MethodSelector', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        const options = document.querySelectorAll('.hover\\:bg-components-panel-on-panel-item-bg-hover')
+        const options = document.querySelectorAll(
+          '.hover\\:bg-components-panel-on-panel-item-bg-hover',
+        )
         expect(options.length).toBeGreaterThanOrEqual(2)
       })
     })
@@ -303,11 +317,15 @@ describe('MethodSelector', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('tools.createTool.toolInput.methodParameterTip'),
+        )!.toBeInTheDocument()
       })
 
       // Click the llm option in the dropdown (the one with the tip text nearby)
-      const llmOptionContainer = screen.getByText('tools.createTool.toolInput.methodParameterTip').closest('.cursor-pointer')
+      const llmOptionContainer = screen
+        .getByText('tools.createTool.toolInput.methodParameterTip')
+        .closest('.cursor-pointer')
       expect(llmOptionContainer)!.toBeInTheDocument()
       await user.click(llmOptionContainer!)
 

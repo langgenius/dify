@@ -52,13 +52,13 @@ def enable_segment_to_index_task(segment_id: str):
                 },
             )
 
-            dataset = segment.dataset
+            dataset = segment.get_dataset(session=session)
 
             if not dataset:
                 logger.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
                 return
 
-            dataset_document = segment.document
+            dataset_document = segment.get_document(session=session)
 
             if not dataset_document:
                 logger.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
@@ -74,7 +74,7 @@ def enable_segment_to_index_task(segment_id: str):
 
             index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
             if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                child_chunks = segment.get_child_chunks()
+                child_chunks = segment.get_child_chunks(session=session)
                 if child_chunks:
                     child_documents = []
                     for child_chunk in child_chunks:
@@ -91,7 +91,7 @@ def enable_segment_to_index_task(segment_id: str):
                     document.children = child_documents
             multimodel_documents = []
             if dataset.is_multimodal:
-                for attachment in segment.attachments:
+                for attachment in segment.get_attachments(session=session):
                     multimodel_documents.append(
                         AttachmentDocument(
                             page_content=attachment["name"],
@@ -106,7 +106,8 @@ def enable_segment_to_index_task(segment_id: str):
                     )
 
             # save vector index
-            index_processor.load(dataset, [document], multimodal_documents=multimodel_documents)
+            index_processor.load(dataset, [document], multimodal_documents=multimodel_documents, session=session)
+            session.commit()
 
             # Enable summary index for this segment
             from services.summary_index_service import SummaryIndexService
@@ -123,6 +124,7 @@ def enable_segment_to_index_task(segment_id: str):
             logger.info(click.style(f"Segment enabled to index: {segment.id} latency: {end_at - start_at}", fg="green"))
         except Exception as e:
             logger.exception("enable segment to index failed")
+            session.rollback()
             segment.enabled = False
             segment.disabled_at = naive_utc_now()
             segment.status = SegmentStatus.ERROR

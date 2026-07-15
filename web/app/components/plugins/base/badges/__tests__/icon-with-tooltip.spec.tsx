@@ -4,11 +4,15 @@ import { Theme } from '@/types/app'
 import IconWithTooltip from '../icon-with-tooltip'
 
 const MockLightIcon = ({ className }: { className?: string }) => (
-  <div data-testid="light-icon" className={className}>Light Icon</div>
+  <div data-testid="light-icon" className={className}>
+    Light Icon
+  </div>
 )
 
 const MockDarkIcon = ({ className }: { className?: string }) => (
-  <div data-testid="dark-icon" className={className}>Dark Icon</div>
+  <div data-testid="dark-icon" className={className}>
+    Dark Icon
+  </div>
 )
 
 describe('IconWithTooltip', () => {

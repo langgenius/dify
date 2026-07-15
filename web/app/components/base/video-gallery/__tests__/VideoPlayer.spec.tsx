@@ -17,14 +17,15 @@ describe('VideoPlayer', () => {
       height: 10,
       x: 0,
       y: 0,
-      toJSON: () => { },
+      toJSON: () => {},
     } as DOMRect)
   }
 
   const getPlayButton = () => screen.getByRole('button', { name: 'common.operation.play' })
   const getPauseButton = () => screen.getByRole('button', { name: 'common.operation.pause' })
   const getMuteButton = () => screen.getByRole('button', { name: 'common.operation.toggleMute' })
-  const getFullscreenButton = () => screen.getByRole('button', { name: 'common.operation.toggleFullscreen' })
+  const getFullscreenButton = () =>
+    screen.getByRole('button', { name: 'common.operation.toggleFullscreen' })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,7 +49,9 @@ describe('VideoPlayer', () => {
     // Define properties on HTMLVideoElement prototype
     Object.defineProperty(window.HTMLVideoElement.prototype, 'duration', {
       configurable: true,
-      get() { return 100 },
+      get() {
+        return 100
+      },
     })
 
     type MockVideoElement = HTMLVideoElement & {
@@ -61,24 +64,36 @@ describe('VideoPlayer', () => {
     if (!Object.getOwnPropertyDescriptor(window.HTMLVideoElement.prototype, 'currentTime')) {
       Object.defineProperty(window.HTMLVideoElement.prototype, 'currentTime', {
         configurable: true,
-        get() { return (this as MockVideoElement)._currentTime || 0 },
-        set(v) { (this as MockVideoElement)._currentTime = v },
+        get() {
+          return (this as MockVideoElement)._currentTime || 0
+        },
+        set(v) {
+          ;(this as MockVideoElement)._currentTime = v
+        },
       })
     }
 
     if (!Object.getOwnPropertyDescriptor(window.HTMLVideoElement.prototype, 'volume')) {
       Object.defineProperty(window.HTMLVideoElement.prototype, 'volume', {
         configurable: true,
-        get() { return (this as MockVideoElement)._volume ?? 1 },
-        set(v) { (this as MockVideoElement)._volume = v },
+        get() {
+          return (this as MockVideoElement)._volume ?? 1
+        },
+        set(v) {
+          ;(this as MockVideoElement)._volume = v
+        },
       })
     }
 
     if (!Object.getOwnPropertyDescriptor(window.HTMLVideoElement.prototype, 'muted')) {
       Object.defineProperty(window.HTMLVideoElement.prototype, 'muted', {
         configurable: true,
-        get() { return (this as MockVideoElement)._muted || false },
-        set(v) { (this as MockVideoElement)._muted = v },
+        get() {
+          return (this as MockVideoElement)._muted || false
+        },
+        set(v) {
+          ;(this as MockVideoElement)._muted = v
+        },
       })
     }
   })
@@ -144,14 +159,18 @@ describe('VideoPlayer', () => {
 
       Object.defineProperty(document, 'fullscreenElement', {
         configurable: true,
-        get() { return {} },
+        get() {
+          return {}
+        },
       })
       await user.click(fullscreenBtn)
       expect(document.exitFullscreen).toHaveBeenCalled()
 
       Object.defineProperty(document, 'fullscreenElement', {
         configurable: true,
-        get() { return null },
+        get() {
+          return null
+        },
       })
     })
 
@@ -272,7 +291,7 @@ describe('VideoPlayer', () => {
     })
 
     it('should handle play() rejection error', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       window.HTMLVideoElement.prototype.play = vi.fn().mockRejectedValue(new Error('Play failed'))
       const user = userEvent.setup()
 
@@ -285,8 +304,7 @@ describe('VideoPlayer', () => {
         await waitFor(() => {
           expect(consoleSpy).toHaveBeenCalledWith('Error playing video:', expect.any(Error))
         })
-      }
-      finally {
+      } finally {
         consoleSpy.mockRestore()
       }
     })

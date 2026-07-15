@@ -7,26 +7,28 @@ import type { Collection } from '@/app/components/tools/types'
  * filtering, and label filtering work together correctly.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { CollectionType } from '@/app/components/tools/types'
 
 // ---- Mocks ----
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const map: Record<string, string> = {
-        'type.builtIn': 'Built-in',
-        'type.custom': 'Custom',
-        'type.workflow': 'Workflow',
-        'noTools': 'No tools found',
-      }
-      return map[key] ?? key
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => {
+        const map: Record<string, string> = {
+          'type.builtIn': 'Built-in',
+          'type.custom': 'Custom',
+          'type.workflow': 'Workflow',
+          noTools: 'No tools found',
+        }
+        return map[key] ?? key
+      }),
+    }),
+  }
+})
 
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
@@ -43,23 +45,16 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { id: 'user-1', timezone: 'UTC' },
-    workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
-    langGeniusVersionInfo: { current_version: '1.0.0' },
-  }),
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
-    selector({
-      workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
-    }),
-}))
-
 vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: () => ({ data: null }),
   useInvalidateInstalledPluginList: () => vi.fn(),
   useMutationPluginPermissionSettings: () => ({ mutate: vi.fn(), isPending: false }),
-  usePluginPermissionSettings: () => ({ data: undefined, isLoading: false, isFetching: false, error: null }),
+  usePluginPermissionSettings: () => ({
+    data: undefined,
+    isLoading: false,
+    isFetching: false,
+    error: null,
+  }),
 }))
 
 const mockCollections: Collection[] = [
@@ -127,9 +122,17 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('@/app/components/base/tab-slider-new', () => ({
-  default: ({ value, onChange, options }: { value: string, onChange: (v: string) => void, options: Array<{ value: string, text: string }> }) => (
+  default: ({
+    value,
+    onChange,
+    options,
+  }: {
+    value: string
+    onChange: (v: string) => void
+    options: Array<{ value: string; text: string }>
+  }) => (
     <div data-testid="tab-slider">
-      {options.map((opt: { value: string, text: string }) => (
+      {options.map((opt: { value: string; text: string }) => (
         <button
           key={opt.value}
           data-testid={`tab-${opt.value}`}
@@ -144,7 +147,13 @@ vi.mock('@/app/components/base/tab-slider-new', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ payload, className }: { payload: { brief: Record<string, string> | string, name: string }, className?: string }) => {
+  default: ({
+    payload,
+    className,
+  }: {
+    payload: { brief: Record<string, string> | string; name: string }
+    className?: string
+  }) => {
     const briefText = typeof payload.brief === 'object' ? payload.brief?.en_US || '' : payload.brief
     return (
       <div data-testid={`card-${payload.name}`} className={className}>
@@ -162,11 +171,17 @@ vi.mock('@/app/components/plugins/card/card-more-info', () => ({
 }))
 
 vi.mock('@/app/components/tools/labels/filter', () => ({
-  default: ({ value: _value, onChange }: { value: string[], onChange: (v: string[]) => void }) => (
+  default: ({ value: _value, onChange }: { value: string[]; onChange: (v: string[]) => void }) => (
     <div data-testid="label-filter">
-      <button data-testid="filter-search" onClick={() => onChange(['search'])}>Filter: search</button>
-      <button data-testid="filter-utility" onClick={() => onChange(['utility'])}>Filter: utility</button>
-      <button data-testid="filter-clear" onClick={() => onChange([])}>Clear filter</button>
+      <button data-testid="filter-search" onClick={() => onChange(['search'])}>
+        Filter: search
+      </button>
+      <button data-testid="filter-utility" onClick={() => onChange(['utility'])}>
+        Filter: utility
+      </button>
+      <button data-testid="filter-clear" onClick={() => onChange([])}>
+        Clear filter
+      </button>
     </div>
   ),
 }))
@@ -176,10 +191,12 @@ vi.mock('@/app/components/tools/provider/custom-create-card', () => ({
 }))
 
 vi.mock('@/app/components/tools/provider/detail', () => ({
-  default: ({ collection, onHide }: { collection: Collection, onHide: () => void }) => (
+  default: ({ collection, onHide }: { collection: Collection; onHide: () => void }) => (
     <div data-testid="provider-detail">
       <span data-testid="detail-name">{collection.name}</span>
-      <button data-testid="detail-close" onClick={onHide}>Close</button>
+      <button data-testid="detail-close" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -189,9 +206,12 @@ vi.mock('@/app/components/tools/provider/empty', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
-  default: ({ detail, onHide }: { detail: unknown, onHide: () => void }) => (
-    detail ? <div data-testid="plugin-detail-panel"><button onClick={onHide}>Close</button></div> : null
-  ),
+  default: ({ detail, onHide }: { detail: unknown; onHide: () => void }) =>
+    detail ? (
+      <div data-testid="plugin-detail-panel">
+        <button onClick={onHide}>Close</button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/plugins/marketplace/empty', () => ({

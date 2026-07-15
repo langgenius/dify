@@ -28,7 +28,10 @@ export const useAppAccessRules = (appId: string, language: AccessControlTemplate
   })
 }
 
-export const useAppUserAccessSettings = (appId: string, language: AccessControlTemplateLanguage) => {
+export const useAppUserAccessSettings = (
+  appId: string,
+  language: AccessControlTemplateLanguage,
+) => {
   return useQuery({
     ...appRbacContract.userAccessPolicies.get.queryOptions({
       input: {
@@ -49,15 +52,16 @@ export const useUpdateAppUserAccessSettings = (appId: string) => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-app-user-access-settings', appId],
-    mutationFn: (payload: UpdateAppUserAccessSettingsRequest) => appRbacClient.users.byTargetAccountId.accessPolicies.put({
-      params: {
-        app_id: appId,
-        target_account_id: payload.accountId,
-      },
-      body: {
-        access_policy_ids: payload.accessPolicyIds,
-      },
-    }),
+    mutationFn: (payload: UpdateAppUserAccessSettingsRequest) =>
+      appRbacClient.users.byTargetAccountId.accessPolicies.put({
+        params: {
+          app_id: appId,
+          target_account_id: payload.accountId,
+        },
+        body: {
+          access_policy_ids: payload.accessPolicyIds,
+        },
+      }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
@@ -76,15 +80,16 @@ export const useRemoveAppAccessPolicyMemberBindings = (appId: string) => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'remove-app-access-policy-member-bindings', appId],
-    mutationFn: (payload: RemoveAppAccessPolicyMemberBindingsRequest) => appRbacClient.accessPolicies.byPolicyId.memberBindings.delete({
-      params: {
-        app_id: appId,
-        policy_id: payload.accessPolicyId,
-      },
-      body: {
-        account_ids: payload.accountIds,
-      },
-    }),
+    mutationFn: (payload: RemoveAppAccessPolicyMemberBindingsRequest) =>
+      appRbacClient.accessPolicies.byPolicyId.memberBindings.delete({
+        params: {
+          app_id: appId,
+          policy_id: payload.accessPolicyId,
+        },
+        body: {
+          account_ids: payload.accountIds,
+        },
+      }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
@@ -103,14 +108,15 @@ export const useUpdateAppOpenScope = (appId: string) => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-app-open-scope', appId],
-    mutationFn: (openScope: ResourceOpenScope) => appRbacClient.whitelist.put({
-      params: {
-        app_id: appId,
-      },
-      body: {
-        scope: openScope,
-      },
-    }),
+    mutationFn: (openScope: ResourceOpenScope) =>
+      appRbacClient.whitelist.put({
+        params: {
+          app_id: appId,
+        },
+        body: {
+          scope: openScope,
+        },
+      }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({

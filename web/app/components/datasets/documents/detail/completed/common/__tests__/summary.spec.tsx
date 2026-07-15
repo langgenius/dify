@@ -153,7 +153,10 @@ describe('SummaryText', () => {
       render(<SummaryText />)
       const textarea = screen.getByRole('textbox')
       expect(textarea).toBeInTheDocument()
-      expect(textarea).toHaveAttribute('placeholder', expect.stringContaining('segment.summaryPlaceholder'))
+      expect(textarea).toHaveAttribute(
+        'placeholder',
+        expect.stringContaining('segment.summaryPlaceholder'),
+      )
     })
   })
 

@@ -1,27 +1,15 @@
-import type {
-  Node,
-  ValueSelector,
-  VarType,
-} from '../../../types'
+import type { Node, ValueSelector, VarType } from '../../../types'
 import type { VariableAssignerNodeType } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import {
-  VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { VariableLabelInNode } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useStore } from '../../../store'
 import { BlockEnum } from '../../../types'
-import {
-  useGetAvailableVars,
-  useVariableAssigner,
-} from '../hooks'
+import { useGetAvailableVars, useVariableAssigner } from '../hooks'
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
 
@@ -38,47 +26,66 @@ type GroupItem = {
 type NodeGroupItemProps = {
   item: GroupItem
 }
-const NodeGroupItem = ({
-  item,
-}: NodeGroupItemProps) => {
+const NodeGroupItem = ({ item }: NodeGroupItemProps) => {
   const { t } = useTranslation()
-  const enteringNodePayload = useStore(s => s.enteringNodePayload)
-  const hoveringAssignVariableGroupId = useStore(s => s.hoveringAssignVariableGroupId)
+  const enteringNodePayload = useStore((s) => s.enteringNodePayload)
+  const hoveringAssignVariableGroupId = useStore((s) => s.hoveringAssignVariableGroupId)
   const nodes: Node[] = useNodes()
-  const {
-    handleGroupItemMouseEnter,
-    handleGroupItemMouseLeave,
-  } = useVariableAssigner()
+  const { handleGroupItemMouseEnter, handleGroupItemMouseLeave } = useVariableAssigner()
   const getAvailableVars = useGetAvailableVars()
   const groupEnabled = item.groupEnabled
   const outputType = useMemo(() => {
-    if (!groupEnabled)
-      return item.variableAssignerNodeData.output_type
+    if (!groupEnabled) return item.variableAssignerNodeData.output_type
 
-    const group = item.variableAssignerNodeData.advanced_settings?.groups.find(group => group.groupId === item.targetHandleId)
+    const group = item.variableAssignerNodeData.advanced_settings?.groups.find(
+      (group) => group.groupId === item.targetHandleId,
+    )
     return group?.output_type || ''
   }, [item.variableAssignerNodeData, item.targetHandleId, groupEnabled])
-  const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId, filterVar(outputType as VarType), true)
+  const availableVars = getAvailableVars(
+    item.variableAssignerNodeId,
+    item.targetHandleId,
+    filterVar(outputType as VarType),
+    true,
+  )
   const showSelectionBorder = useMemo(() => {
     if (groupEnabled && enteringNodePayload?.nodeId === item.variableAssignerNodeId) {
       if (hoveringAssignVariableGroupId)
         return hoveringAssignVariableGroupId !== item.targetHandleId
       else
-        return enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId !== item.targetHandleId
+        return (
+          enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId !==
+          item.targetHandleId
+        )
     }
 
     return false
-  }, [enteringNodePayload, groupEnabled, hoveringAssignVariableGroupId, item.targetHandleId, item.variableAssignerNodeId])
+  }, [
+    enteringNodePayload,
+    groupEnabled,
+    hoveringAssignVariableGroupId,
+    item.targetHandleId,
+    item.variableAssignerNodeId,
+  ])
   const showSelectedBorder = useMemo(() => {
     if (groupEnabled && enteringNodePayload?.nodeId === item.variableAssignerNodeId) {
       if (hoveringAssignVariableGroupId)
         return hoveringAssignVariableGroupId === item.targetHandleId
       else
-        return enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId === item.targetHandleId
+        return (
+          enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId ===
+          item.targetHandleId
+        )
     }
 
     return false
-  }, [enteringNodePayload, groupEnabled, hoveringAssignVariableGroupId, item.targetHandleId, item.variableAssignerNodeId])
+  }, [
+    enteringNodePayload,
+    groupEnabled,
+    hoveringAssignVariableGroupId,
+    item.targetHandleId,
+    item.variableAssignerNodeId,
+  ])
 
   return (
     <div
@@ -92,10 +99,7 @@ const NodeGroupItem = ({
     >
       <div className="flex h-4 items-center justify-between text-[10px] font-medium text-text-tertiary">
         <span
-          className={cn(
-            'grow truncate uppercase',
-            showSelectedBorder && 'text-text-accent',
-          )}
+          className={cn('grow truncate uppercase', showSelectedBorder && 'text-text-accent')}
           title={item.title}
         >
           {item.title}
@@ -111,43 +115,41 @@ const NodeGroupItem = ({
           />
         </div>
       </div>
-      {
-        !item.variables.length && (
-          <div
-            className={cn(
-              'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-[10px] font-normal text-text-tertiary uppercase',
-              (showSelectedBorder || showSelectionBorder) && 'bg-black/2!',
-            )}
-          >
-            {t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}
-          </div>
-        )
-      }
-      {
-        !!item.variables.length && (
-          <div className="space-y-0.5">
-            {
-              item.variables.map((variable = [], index) => {
-                const isSystem = isSystemVar(variable)
+      {!item.variables.length && (
+        <div
+          className={cn(
+            'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-[10px] font-normal text-text-tertiary uppercase',
+            (showSelectedBorder || showSelectionBorder) && 'bg-black/2!',
+          )}
+        >
+          {t(($) => $[`${i18nPrefix}.varNotSet`], { ns: 'workflow' })}
+        </div>
+      )}
+      {!!item.variables.length && (
+        <div className="space-y-0.5">
+          {item.variables.map((variable = [], index) => {
+            const isSystem = isSystemVar(variable)
 
-                const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
-                const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
-                const isException = isExceptionVariable(varName, node?.data.type)
+            const node = isSystem
+              ? nodes.find((node) => node.data.type === BlockEnum.Start)
+              : nodes.find((node) => node.id === variable[0])
+            const varName = isSystem
+              ? `sys.${variable[variable.length - 1]}`
+              : variable.slice(1).join('.')
+            const isException = isExceptionVariable(varName, node?.data.type)
 
-                return (
-                  <VariableLabelInNode
-                    key={index}
-                    variables={variable}
-                    nodeType={node?.data.type}
-                    nodeTitle={node?.data.title}
-                    isExceptionVariable={isException}
-                  />
-                )
-              })
-            }
-          </div>
-        )
-      }
+            return (
+              <VariableLabelInNode
+                key={index}
+                variables={variable}
+                nodeType={node?.data.type}
+                nodeTitle={node?.data.title}
+                isExceptionVariable={isException}
+              />
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

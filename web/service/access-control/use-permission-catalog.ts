@@ -1,6 +1,4 @@
-import type {
-  PermissionGroups,
-} from '@/models/access-control'
+import type { PermissionGroups } from '@/models/access-control'
 import { useQuery } from '@tanstack/react-query'
 import { get } from '../base'
 
@@ -24,7 +22,8 @@ export const useAppPermissionCatalog = (enabled?: boolean) => {
 export const useDatasetPermissionCatalog = (enabled?: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'dataset'],
-    queryFn: () => get<PermissionGroups>('/workspaces/current/rbac/role-permissions/catalog/dataset'),
+    queryFn: () =>
+      get<PermissionGroups>('/workspaces/current/rbac/role-permissions/catalog/dataset'),
     enabled: enabled ?? true,
   })
 }

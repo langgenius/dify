@@ -4,28 +4,39 @@ import OperationDropdown from '../operation-dropdown'
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
-  const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    isOpen: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open?: boolean, onOpenChange?: (open: boolean) => void }) => {
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      open?: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => {
       const [internalOpen, setInternalOpen] = React.useState(open ?? false)
       const isOpen = open ?? internalOpen
       const setOpen = (nextOpen: boolean) => {
-        if (open === undefined)
-          setInternalOpen(nextOpen)
+        if (open === undefined) setInternalOpen(nextOpen)
         onOpenChange?.(nextOpen)
       }
 
       return (
         <DropdownMenuContext value={{ isOpen, setOpen }}>
-          <div data-testid="dropdown-menu" data-open={isOpen}>{children}</div>
+          <div data-testid="dropdown-menu" data-open={isOpen}>
+            {children}
+          </div>
         </DropdownMenuContext>
       )
     },
@@ -45,9 +56,17 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
       }
 
       if (render)
-        return React.cloneElement(render, { 'data-testid': 'dropdown-trigger', 'onClick': handleClick } as Record<string, unknown>, children)
+        return React.cloneElement(
+          render,
+          { 'data-testid': 'dropdown-trigger', onClick: handleClick } as Record<string, unknown>,
+          children,
+        )
 
-      return <button data-testid="dropdown-trigger" onClick={handleClick}>{children}</button>
+      return (
+        <button data-testid="dropdown-trigger" onClick={handleClick}>
+          {children}
+        </button>
+      )
     },
     DropdownMenuContent: ({
       children,
@@ -59,7 +78,14 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
       popupClassName?: string
     }) => {
       const { isOpen } = useDropdownMenuContext()
-      return isOpen ? <div data-testid="dropdown-content" className={[className, popupClassName].filter(Boolean).join(' ')}>{children}</div> : null
+      return isOpen ? (
+        <div
+          data-testid="dropdown-content"
+          className={[className, popupClassName].filter(Boolean).join(' ')}
+        >
+          {children}
+        </div>
+      ) : null
     },
     DropdownMenuItem: ({
       children,

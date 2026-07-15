@@ -4,9 +4,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
+import zstandard
 from pydantic import TypeAdapter
 from redis import RedisError
 
+from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStatus, PluginModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
@@ -69,6 +71,16 @@ def _build_install_task(*, task_id: str = "task-1", status: PluginInstallTaskSta
     )
 
 
+def _build_remote_model_plugin(
+    *, plugin_id: str = "langgenius/debug-model", plugin_unique_identifier: str = "langgenius/debug-model:1.0.0"
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        plugin_id=plugin_id,
+        plugin_unique_identifier=plugin_unique_identifier,
+        source=PluginInstallationSource.Remote,
+    )
+
+
 def _provider_cache_key(tenant_id: str, generation: int | None = None) -> str:
     if generation is None:
         return f"plugin_model_providers:tenant_id:{tenant_id}"
@@ -128,6 +140,61 @@ class TestFetchLatestPluginVersion:
 
 
 class TestPluginModelProviderCache:
+    def test_store_cached_plugin_model_providers_compresses_large_payload(self) -> None:
+        """Large provider metadata payloads are compressed before being stored in Redis."""
+        large_provider = _build_provider_entity()
+        large_provider.label = I18nObject(en_US="OpenAI " * 10000)
+        raw_payload = TypeAdapter(list[ProviderEntity]).dump_json([large_provider])
+        cache_key = _provider_cache_key("tenant-1", 0)
+
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.dify_config") as mock_config,
+        ):
+            mock_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL = 86400
+
+            from core.plugin.plugin_service import PluginService
+
+            PluginService._store_cached_plugin_model_providers("tenant-1", 0, [large_provider])
+
+        redis_client.setex.assert_called_once()
+        stored_key, ttl, stored_payload = redis_client.setex.call_args.args
+        assert stored_key == cache_key
+        assert ttl == 86400
+        assert isinstance(stored_payload, bytes)
+        prefix = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX
+        assert stored_payload.startswith(prefix)
+        assert len(stored_payload) < len(raw_payload)
+        assert zstandard.decompress(stored_payload[len(prefix) :]) == raw_payload
+
+    def test_fetch_plugin_model_providers_reads_compressed_cached_provider_without_calling_daemon(self) -> None:
+        """Compressed tenant cache entries are decoded before provider schema validation."""
+        cached_provider = _build_provider_entity()
+        cached_provider.label = I18nObject(en_US="OpenAI " * 10000)
+        cached_payload = TypeAdapter(list[ProviderEntity]).dump_json([cached_provider])
+        generation_key = _provider_generation_key("tenant-1")
+        cache_key = _provider_cache_key("tenant-1", 0)
+
+        from core.plugin.plugin_service import PluginService
+
+        compressed_payload = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zstandard.compress(
+            cached_payload, level=1
+        )
+
+        with patch(f"{MODULE}.redis_client") as redis_client:
+            redis_client.get.return_value = None
+            redis_client.mget.return_value = [compressed_payload]
+            client = Mock()
+
+            result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
+        assert result[0].label.en_us == "OpenAI " * 10000
+        client.fetch_model_providers.assert_not_called()
+        redis_client.setex.assert_not_called()
+        redis_client.get.assert_called_once_with(generation_key)
+        redis_client.mget.assert_called_once_with([cache_key])
+
     def test_fetch_plugin_model_providers_returns_cached_provider_without_calling_daemon(self) -> None:
         """A valid tenant cache entry is reused across runtime calls without plugin daemon access."""
         cached_provider = _build_provider_entity()
@@ -740,6 +807,144 @@ class TestPluginListEndpointCounts:
 
 
 class TestPluginModelProviderCacheInvalidation:
+    def test_get_debugging_key_does_not_invalidate_model_provider_cache(self) -> None:
+        """Reading a debug key does not mean a debug runtime has registered a model provider."""
+        with (
+            patch(f"{MODULE}.PluginDebuggingClient") as debugging_client_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            debugging_client_cls.return_value.get_debugging_key.return_value = "debug-key"
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.get_debugging_key("tenant-1")
+
+        assert result == "debug-key"
+        debugging_client_cls.return_value.get_debugging_key.assert_called_once_with("tenant-1")
+        invalidate_cache.assert_not_called()
+
+    def test_list_model_category_invalidates_when_remote_model_plugin_is_missing_from_provider_cache(self) -> None:
+        """Remote model plugins are daemon-registered, so category reads repair a stale provider cache."""
+        remote_plugin = _build_remote_model_plugin()
+        remote_plugin_marker = "langgenius/debug-model:langgenius/debug-model:1.0.0"
+        plugins = SimpleNamespace(list=[remote_plugin], has_more=False)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value=remote_plugin_marker,
+            ),
+            patch(
+                f"{MODULE}.PluginService._load_cached_plugin_model_provider_plugin_ids",
+                return_value={"langgenius/openai"},
+            ),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, 1, 100)
+
+        assert result is plugins
+        installer_cls.return_value.list_plugins_by_category.assert_called_once_with(
+            "tenant-1", PluginCategory.Model, 1, 100
+        )
+        invalidate_cache.assert_called_once_with("tenant-1")
+        store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
+
+    def test_list_model_category_invalidates_when_remote_model_plugin_identity_changes(self) -> None:
+        """A debug model plugin can share plugin_id with an installed plugin, so identity changes bust cache too."""
+        remote_plugin = _build_remote_model_plugin(
+            plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:debug",
+        )
+        remote_plugin_marker = "langgenius/openai:langgenius/openai:debug"
+        plugins = SimpleNamespace(list=[remote_plugin], has_more=False)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value="langgenius/openai:langgenius/openai:1.0.0",
+            ),
+            patch(
+                f"{MODULE}.PluginService._load_cached_plugin_model_provider_plugin_ids",
+                return_value={"langgenius/openai"},
+            ) as load_cached_provider_plugin_ids,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, 1, 100)
+
+        assert result is plugins
+        invalidate_cache.assert_called_once_with("tenant-1")
+        load_cached_provider_plugin_ids.assert_not_called()
+        store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
+
+    def test_list_model_category_keeps_provider_cache_when_remote_model_plugin_is_already_cached(self) -> None:
+        """A connected remote model plugin should not force provider cache churn once represented."""
+        remote_plugin = _build_remote_model_plugin()
+        remote_plugin_marker = "langgenius/debug-model:langgenius/debug-model:1.0.0"
+        plugins = SimpleNamespace(list=[remote_plugin], has_more=False)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value=remote_plugin_marker,
+            ),
+            patch(
+                f"{MODULE}.PluginService._load_cached_plugin_model_provider_plugin_ids",
+                return_value={"langgenius/debug-model"},
+            ),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, 1, 100)
+
+        assert result is plugins
+        invalidate_cache.assert_not_called()
+        store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
+
+    def test_list_model_category_invalidates_when_remote_model_plugin_disconnects(self) -> None:
+        """The current model category result clears provider cache when the previous debug model disappears."""
+        installed_plugin = SimpleNamespace(
+            plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0",
+            source=PluginInstallationSource.Marketplace,
+        )
+        plugins = SimpleNamespace(list=[installed_plugin], has_more=True)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value="langgenius/debug-model:langgenius/debug-model:1.0.0",
+            ),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, 1, 100)
+
+        assert result is plugins
+        invalidate_cache.assert_called_once_with("tenant-1")
+        store_marker.assert_called_once_with("tenant-1", None)
+
     def test_fetch_install_task_invalidates_model_provider_cache_when_finished(self) -> None:
         """Finished plugin install tasks invalidate tenant provider cache."""
         task = _build_install_task(status=PluginInstallTaskStatus.Success)
@@ -832,9 +1037,27 @@ class TestPluginModelProviderCacheInvalidation:
 
             from core.plugin.plugin_service import PluginService
 
-            result = PluginService.install_from_local_pkg("tenant-1", ["langgenius/openai:1.0.0"])
+            result = PluginService.install_from_local_pkg(
+                "tenant-1",
+                [
+                    "langgenius/openai:1.0.0",
+                    "langgenius/tavily:1.0.0",
+                ],
+            )
 
         assert result == "task-id"
+        installer.install_from_identifiers.assert_called_once_with(
+            "tenant-1",
+            [
+                "langgenius/openai:1.0.0",
+                "langgenius/tavily:1.0.0",
+            ],
+            PluginInstallationSource.Package,
+            [
+                {"plugin_unique_identifier": "langgenius/openai:1.0.0"},
+                {"plugin_unique_identifier": "langgenius/tavily:1.0.0"},
+            ],
+        )
         invalidate_cache.assert_called_once_with("tenant-1")
 
     def test_upgrade_plugin_with_github_invalidates_model_provider_cache_for_tenant(self) -> None:

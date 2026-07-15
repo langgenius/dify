@@ -1,7 +1,6 @@
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { useDocumentSort } from '../document-list/hooks'
 import DocumentList from '../list'
 
@@ -51,29 +50,41 @@ vi.mock('@/context/dataset-detail', () => ({
 
 // Mock child components that are complex
 vi.mock('../document-list/components', () => ({
-  DocumentTableRow: ({ doc, index }: { doc: SimpleDocumentDetail, index: number }) => (
+  DocumentTableRow: ({ doc, index }: { doc: SimpleDocumentDetail; index: number }) => (
     <tr data-testid={`doc-row-${doc.id}`}>
       <td>{index + 1}</td>
       <td>{doc.name}</td>
     </tr>
   ),
   renderTdValue: (val: string) => val || '-',
-  SortHeader: ({ field, label, onSort }: { field: string, label: string, onSort: (f: string) => void }) => (
-    <button data-testid={`sort-${field}`} onClick={() => onSort(field)}>{label}</button>
+  SortHeader: ({
+    field,
+    label,
+    onSort,
+  }: {
+    field: string
+    label: string
+    onSort: (f: string) => void
+  }) => (
+    <button data-testid={`sort-${field}`} onClick={() => onSort(field)}>
+      {label}
+    </button>
   ),
 }))
 
 vi.mock('../../detail/completed/common/batch-action', () => ({
-  default: ({ selectedIds, onCancel }: { selectedIds: string[], onCancel: () => void }) => (
+  default: ({ selectedIds, onCancel }: { selectedIds: string[]; onCancel: () => void }) => (
     <div data-testid="batch-action">
       <span data-testid="selected-count">{selectedIds.length}</span>
-      <button data-testid="cancel-selection" onClick={onCancel}>Cancel</button>
+      <button data-testid="cancel-selection" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../rename-modal', () => ({
-  default: ({ name, onClose }: { name: string, onClose: () => void }) => (
+  default: ({ name, onClose }: { name: string; onClose: () => void }) => (
     <div data-testid="rename-modal">
       <span>{name}</span>
       <button onClick={onClose}>Close</button>
@@ -140,7 +151,9 @@ describe('DocumentList', () => {
     it('should render select-all area when embeddingAvailable is true', () => {
       render(<DocumentList {...defaultProps} embeddingAvailable={true} />)
 
-      expect(screen.getByRole('checkbox', { name: 'common.operation.selectAll' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('checkbox', { name: 'common.operation.selectAll' }),
+      ).toBeInTheDocument()
     })
 
     it('should still render # column when embeddingAvailable is false', () => {
@@ -168,7 +181,9 @@ describe('DocumentList', () => {
       const docs = [createDoc({ id: 'a', name: 'Doc A' }), createDoc({ id: 'b', name: 'Doc B' })]
       const onSelectedIdChange = vi.fn()
 
-      render(<DocumentList {...defaultProps} documents={docs} onSelectedIdChange={onSelectedIdChange} />)
+      render(
+        <DocumentList {...defaultProps} documents={docs} onSelectedIdChange={onSelectedIdChange} />,
+      )
 
       fireEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
 

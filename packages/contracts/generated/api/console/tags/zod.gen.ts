@@ -13,6 +13,11 @@ export const zTagResponse = z.object({
 })
 
 /**
+ * TagListResponse
+ */
+export const zTagListResponse = z.array(zTagResponse)
+
+/**
  * TagUpdateRequestPayload
  */
 export const zTagUpdateRequestPayload = z.object({
@@ -42,7 +47,7 @@ export const zGetTagsQuery = z.object({
 /**
  * Success
  */
-export const zGetTagsResponse = z.array(zTagResponse)
+export const zGetTagsResponse = zTagListResponse
 
 export const zPostTagsBody = zTagBasePayload
 

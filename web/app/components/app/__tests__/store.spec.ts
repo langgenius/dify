@@ -18,20 +18,24 @@ describe('app store', () => {
   })
 
   it('should expose the default state', () => {
-    expect(useStore.getState()).toEqual(expect.objectContaining({
-      appDetail: undefined,
-      currentLogItem: undefined,
-      currentLogModalActiveTab: 'DETAIL',
-      showPromptLogModal: false,
-      showAgentLogModal: false,
-      showMessageLogModal: false,
-      showAppConfigureFeaturesModal: false,
-    }))
+    expect(useStore.getState()).toEqual(
+      expect.objectContaining({
+        appDetail: undefined,
+        currentLogItem: undefined,
+        currentLogModalActiveTab: 'DETAIL',
+        showPromptLogModal: false,
+        showAgentLogModal: false,
+        showMessageLogModal: false,
+        showAppConfigureFeaturesModal: false,
+      }),
+    )
   })
 
   it('should update every mutable field through its actions', () => {
     const appDetail = { id: 'app-1' } as ReturnType<typeof useStore.getState>['appDetail']
-    const currentLogItem = { id: 'message-1' } as ReturnType<typeof useStore.getState>['currentLogItem']
+    const currentLogItem = { id: 'message-1' } as ReturnType<
+      typeof useStore.getState
+    >['currentLogItem']
 
     useStore.getState().setAppDetail(appDetail)
     useStore.getState().setCurrentLogItem(currentLogItem)
@@ -40,14 +44,16 @@ describe('app store', () => {
     useStore.getState().setShowAgentLogModal(true)
     useStore.getState().setShowAppConfigureFeaturesModal(true)
 
-    expect(useStore.getState()).toEqual(expect.objectContaining({
-      appDetail,
-      currentLogItem,
-      currentLogModalActiveTab: 'MESSAGE',
-      showPromptLogModal: true,
-      showAgentLogModal: true,
-      showAppConfigureFeaturesModal: true,
-    }))
+    expect(useStore.getState()).toEqual(
+      expect.objectContaining({
+        appDetail,
+        currentLogItem,
+        currentLogModalActiveTab: 'MESSAGE',
+        showPromptLogModal: true,
+        showAgentLogModal: true,
+        showAppConfigureFeaturesModal: true,
+      }),
+    )
   })
 
   it('should reset the active tab when the message log modal closes', () => {

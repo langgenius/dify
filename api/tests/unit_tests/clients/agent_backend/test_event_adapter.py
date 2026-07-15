@@ -1,6 +1,7 @@
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import (
+    AgentRunUsage,
     DeferredToolCallPayload,
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
@@ -14,6 +15,7 @@ from dify_agent.protocol import (
 from pydantic_ai.messages import FinalResultEvent
 
 from clients.agent_backend import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
@@ -53,13 +55,36 @@ def test_event_adapter_maps_pydantic_ai_stream_event():
     assert event.data["event_kind"] == "final_result"
 
 
+def test_event_adapter_maps_pydantic_ai_stream_event_agent_message_delta_annotation():
+    adapted = AgentBackendRunEventAdapter().adapt(
+        PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id="run-1",
+            data=FinalResultEvent(tool_name=None, tool_call_id=None),
+            agent_message_delta="hello",
+        )
+    )
+
+    assert adapted == [
+        AgentBackendAgentMessageDeltaInternalEvent(
+            run_id="run-1",
+            source_event_id="2-0",
+            delta="hello",
+        )
+    ]
+
+
 def test_event_adapter_maps_run_succeeded_to_final_output():
     snapshot = CompositorSessionSnapshot(layers=[])
     adapted = AgentBackendRunEventAdapter().adapt(
         RunSucceededEvent(
             id="3-0",
             run_id="run-1",
-            data=RunSucceededEventData(output={"summary": "done"}, session_snapshot=snapshot),
+            data=RunSucceededEventData(
+                output={"summary": "done"},
+                session_snapshot=snapshot,
+                usage=AgentRunUsage(prompt_tokens=2, completion_tokens=3),
+            ),
         )
     )
 
@@ -69,6 +94,7 @@ def test_event_adapter_maps_run_succeeded_to_final_output():
             source_event_id="3-0",
             output={"summary": "done"},
             session_snapshot=snapshot,
+            usage={"prompt_tokens": 2, "completion_tokens": 3, "total_tokens": 5},
         )
     ]
 

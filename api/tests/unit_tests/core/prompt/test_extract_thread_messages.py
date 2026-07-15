@@ -1,6 +1,5 @@
+from unittest.mock import MagicMock
 from uuid import uuid4
-
-from pytest_mock import MockerFixture
 
 from constants import UUID_NIL
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
@@ -8,11 +7,10 @@ from core.prompt.utils.get_thread_messages_length import get_thread_messages_len
 
 
 class MockMessage:
-    def __init__(self, id, parent_message_id, answer="answer", answer_tokens=0):
+    def __init__(self, id, parent_message_id, answer="answer"):
         self.id = id
         self.parent_message_id = parent_message_id
         self.answer = answer
-        self.answer_tokens = answer_tokens
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -106,47 +104,33 @@ def test_extract_thread_messages_breaks_when_parent_is_none():
     assert result[0].id == id2
 
 
-def test_get_thread_messages_length_excludes_newly_created_empty_answer(mocker: MockerFixture):
+def test_get_thread_messages_length_excludes_newly_created_empty_answer():
     id1, id2 = str(uuid4()), str(uuid4())
     messages = [
         MockMessage(id2, id1, answer=""),  # newest generated message should be excluded
         MockMessage(id1, UUID_NIL, answer="ok"),
     ]
 
-    mock_scalars = mocker.patch("core.prompt.utils.get_thread_messages_length.db.session.scalars")
-    mock_scalars.return_value.all.return_value = messages
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = messages
 
-    length = get_thread_messages_length("conversation-1")
+    length = get_thread_messages_length("conversation-1", session=session)
 
     assert length == 1
-    mock_scalars.assert_called_once()
+    session.scalars.assert_called_once()
 
 
-def test_get_thread_messages_length_keeps_in_progress_empty_answer_with_tokens(mocker: MockerFixture):
-    id1, id2 = str(uuid4()), str(uuid4())
-    messages = [
-        MockMessage(id2, id1, answer="", answer_tokens=12),
-        MockMessage(id1, UUID_NIL, answer="ok"),
-    ]
-
-    mock_scalars = mocker.patch("core.prompt.utils.get_thread_messages_length.db.session.scalars")
-    mock_scalars.return_value.all.return_value = messages
-
-    length = get_thread_messages_length("conversation-3")
-
-    assert length == 2
-
-
-def test_get_thread_messages_length_keeps_non_empty_latest_answer(mocker: MockerFixture):
+def test_get_thread_messages_length_keeps_non_empty_latest_answer():
     id1, id2 = str(uuid4()), str(uuid4())
     messages = [
         MockMessage(id2, id1, answer="latest-answer"),
         MockMessage(id1, UUID_NIL, answer="older-answer"),
     ]
 
-    mock_scalars = mocker.patch("core.prompt.utils.get_thread_messages_length.db.session.scalars")
-    mock_scalars.return_value.all.return_value = messages
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = messages
 
-    length = get_thread_messages_length("conversation-2")
+    length = get_thread_messages_length("conversation-2", session=session)
 
     assert length == 2
+    session.scalars.assert_called_once()

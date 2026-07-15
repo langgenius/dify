@@ -4,13 +4,14 @@ import userEvent from '@testing-library/user-event'
 import Thought from '../index'
 
 describe('Thought', () => {
-  const createThought = (overrides?: Partial<ThoughtItem>): ThoughtItem => ({
-    id: 'test-id',
-    tool: 'test-tool',
-    tool_input: 'test input',
-    observation: 'test output',
-    ...overrides,
-  } as ThoughtItem)
+  const createThought = (overrides?: Partial<ThoughtItem>): ThoughtItem =>
+    ({
+      id: 'test-id',
+      tool: 'test-tool',
+      tool_input: 'test input',
+      observation: 'test output',
+      ...overrides,
+    }) as ThoughtItem
 
   beforeEach(() => {
     vi.clearAllMocks()

@@ -24,14 +24,48 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMocks,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: contextMocks.workspacePermissionKeys,
-  }),
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: contextMocks.workspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: contextMocks.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: contextMocks.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: contextMocks.workspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMocks,
@@ -49,13 +83,7 @@ vi.mock('@/service/use-snippets', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({
-    file,
-    updateFile,
-  }: {
-    file?: File
-    updateFile: (file?: File) => void
-  }) => (
+  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
     <button type="button" onClick={() => updateFile(new File(['name: snippet'], 'snippet.yml'))}>
       {file?.name || 'select-dsl-file'}
     </button>
@@ -81,7 +109,10 @@ describe('ImportSnippetDSLDialog', () => {
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
     await user.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
-    await user.type(screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'), 'https://example.com/snippet.yml')
+    await user.type(
+      screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'),
+      'https://example.com/snippet.yml',
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {
@@ -152,7 +183,10 @@ describe('ImportSnippetDSLDialog', () => {
     render(<ImportSnippetDSLDialog isOpen onClose={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
-    await user.type(screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'), 'https://example.com/snippet.yml')
+    await user.type(
+      screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'),
+      'https://example.com/snippet.yml',
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
