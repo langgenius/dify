@@ -7,7 +7,7 @@ improving performance by offloading storage operations to background workers.
 
 import json
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from celery import shared_task
 from sqlalchemy import select
@@ -16,9 +16,14 @@ from core.db.session_factory import session_factory
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from models import CreatorUserRole, WorkflowNodeExecutionModel
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from models import Account, CreatorUserRole, EndUser, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+
+if TYPE_CHECKING:
+    from core.repositories.sqlalchemy_workflow_node_execution_repository import (
+        SQLAlchemyWorkflowNodeExecutionRepository,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +39,7 @@ def save_workflow_node_execution_task(
     creator_user_role: str,
 ) -> bool:
     """
-    Asynchronously save or update a workflow node execution to the database.
+    Asynchronously save or update workflow node execution metadata to the database.
 
     Args:
         execution_data: Serialized WorkflowNodeExecution data
@@ -45,24 +50,30 @@ def save_workflow_node_execution_task(
         creator_user_role: Role of the user who created the execution
 
     Returns:
-        True if successful, False otherwise
+        True when the snapshot is persisted or safely ignored as stale.
     """
     try:
         with session_factory.create_session() as session:
-            # Deserialize execution data
             execution = WorkflowNodeExecution.model_validate(execution_data)
 
-            # Check if node execution already exists
             existing_execution = session.scalar(
-                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == execution.id)
+                select(WorkflowNodeExecutionModel)
+                .where(
+                    WorkflowNodeExecutionModel.id == execution.id,
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                )
+                .with_for_update()
             )
 
             if existing_execution:
-                # Update existing node execution
-                _update_node_execution_from_domain(existing_execution, execution)
-                logger.debug("Updated existing workflow node execution: %s", execution.id)
+                if existing_execution.finished_at is not None and (
+                    execution.finished_at is None or execution.finished_at < existing_execution.finished_at
+                ):
+                    logger.debug("Ignored stale workflow node execution metadata: %s", execution.id)
+                    return True
+                _update_node_execution_metadata(existing_execution, execution)
+                logger.debug("Updated existing workflow node execution metadata: %s", execution.id)
             else:
-                # Create new node execution
                 node_execution = _create_node_execution_from_domain(
                     execution=execution,
                     tenant_id=tenant_id,
@@ -79,8 +90,78 @@ def save_workflow_node_execution_task(
 
     except Exception as e:
         logger.exception("Failed to save workflow node execution %s", execution_data.get("id", "unknown"))
-        # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+
+
+@shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
+def save_workflow_node_execution_data_task(
+    self,
+    execution_data: dict[str, Any],
+    tenant_id: str,
+    app_id: str,
+    triggered_from: str,
+    creator_user_id: str,
+    creator_user_role: str,
+) -> bool:
+    """
+    Asynchronously save full workflow node execution data to the database.
+
+    This path preserves the SQLAlchemy repository's truncation and offload behavior while
+    moving the blocking database and storage work out of the workflow engine thread.
+    """
+    try:
+        execution = WorkflowNodeExecution.model_validate(execution_data)
+        repository = _create_sqlalchemy_repository(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            triggered_from=triggered_from,
+            creator_user_id=creator_user_id,
+            creator_user_role=creator_user_role,
+        )
+        repository.save_execution_data(execution)
+        return True
+    except Exception as e:
+        logger.exception("Failed to save workflow node execution data %s", execution_data.get("id", "unknown"))
+        raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+
+
+def _create_sqlalchemy_repository(
+    *,
+    tenant_id: str,
+    app_id: str,
+    triggered_from: str,
+    creator_user_id: str,
+    creator_user_role: str,
+) -> "SQLAlchemyWorkflowNodeExecutionRepository":
+    from core.repositories.sqlalchemy_workflow_node_execution_repository import (
+        SQLAlchemyWorkflowNodeExecutionRepository,
+    )
+
+    session_maker = session_factory.get_session_maker()
+    role = CreatorUserRole(creator_user_role)
+    user: Account | EndUser | None
+    with session_maker() as session:
+        if role == CreatorUserRole.ACCOUNT:
+            user = session.get(Account, creator_user_id)
+            if user is not None:
+                user.set_tenant_id(tenant_id)
+        else:
+            user = session.scalar(
+                select(EndUser).where(
+                    EndUser.id == creator_user_id,
+                    EndUser.tenant_id == tenant_id,
+                )
+            )
+
+    if user is None:
+        raise ValueError(f"Creator user {creator_user_id} not found for workflow node execution persistence")
+
+    return SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=session_maker,
+        user=user,
+        app_id=app_id or None,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom(triggered_from),
+    )
 
 
 def _create_node_execution_from_domain(
@@ -108,23 +189,11 @@ def _create_node_execution_from_domain(
     node_execution.title = execution.title
     node_execution.node_execution_id = execution.node_execution_id
 
-    # Serialize complex data as JSON
-    json_converter = WorkflowRuntimeTypeConverter()
-    node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
-    node_execution.process_data = (
-        json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
-    )
-    node_execution.outputs = (
-        json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
-    )
-    # Convert metadata enum keys to strings for JSON serialization
-    if execution.metadata:
-        metadata_for_json = {
-            key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
-        }
-        node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
-    else:
-        node_execution.execution_metadata = "{}"
+    node_execution.inputs = "{}"
+    node_execution.process_data = "{}"
+    node_execution.outputs = "{}"
+
+    node_execution.execution_metadata = json.dumps(jsonable_encoder(execution.metadata)) if execution.metadata else "{}"
 
     node_execution.status = execution.status
     node_execution.error = execution.error
@@ -137,29 +206,12 @@ def _create_node_execution_from_domain(
     return node_execution
 
 
-def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution):
+def _update_node_execution_metadata(node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution):
     """
-    Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
+    Update WorkflowNodeExecutionModel metadata without changing persisted data payload fields.
     """
-    # Update serialized data
-    json_converter = WorkflowRuntimeTypeConverter()
-    node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
-    node_execution.process_data = (
-        json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
-    )
-    node_execution.outputs = (
-        json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
-    )
-    # Convert metadata enum keys to strings for JSON serialization
-    if execution.metadata:
-        metadata_for_json = {
-            key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
-        }
-        node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
-    else:
-        node_execution.execution_metadata = "{}"
+    node_execution.execution_metadata = json.dumps(jsonable_encoder(execution.metadata)) if execution.metadata else "{}"
 
-    # Update other fields
     node_execution.status = execution.status
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
