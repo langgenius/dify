@@ -1,3 +1,5 @@
+"""Unit tests for Langfuse trace translation with real SQLite-backed lookups."""
+
 import collections
 import logging
 from datetime import UTC, datetime, timedelta
@@ -15,6 +17,7 @@ from dify_trace_langfuse.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
+from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -28,7 +31,7 @@ from core.ops.entities.trace_entity import (
 )
 from graphon.enums import BuiltinNodeTypes
 from models import EndUser
-from models.enums import MessageStatus
+from models.enums import EndUserType, MessageStatus
 
 
 def _dt() -> datetime:
@@ -187,7 +190,10 @@ def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
     mocks["generate_name_trace"].assert_called_once_with(info)
 
 
-def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_with_message_id(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     # Setup trace info
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
@@ -211,10 +217,10 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.Monk
         error="",
     )
 
-    # Mock DB and Repositories
-    mock_session = MagicMock()
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.sessionmaker", lambda bind: lambda: mock_session)
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_langfuse.langfuse_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
 
     # Mock node executions
     node_llm = MagicMock()
@@ -291,7 +297,10 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.Monk
     assert other_span.level == LevelEnum.ERROR
 
 
-def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_no_message_id(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
         tenant_id="tenant-1",
@@ -314,8 +323,10 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.Monkey
         error="",
     )
 
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.sessionmaker", lambda bind: lambda: MagicMock())
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_langfuse.langfuse_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
@@ -332,7 +343,10 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.Monkey
     assert trace_data.name == TraceTaskName.WORKFLOW_TRACE
 
 
-def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_missing_app_id(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
         tenant_id="tenant-1",
@@ -353,8 +367,10 @@ def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.Monke
         workflow_app_log_id="log-1",
         error="",
     )
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.sessionmaker", lambda bind: lambda: MagicMock())
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_langfuse.langfuse_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
 
     with pytest.raises(ValueError, match="No app_id found in trace_info metadata"):
         trace_instance.workflow_trace(trace_info)
@@ -404,7 +420,8 @@ def test_message_trace_basic(trace_instance, monkeypatch: pytest.MonkeyPatch):
     assert gen_data.usage.total == 30
 
 
-def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [(EndUser,)], indirect=True)
+def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session) -> None:
     message_data = MagicMock()
     message_data.id = "msg-1"
     message_data.from_account_id = "acc-1"
@@ -434,11 +451,19 @@ def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyP
         error=None,
     )
 
-    # Mock DB session for EndUser lookup
-    mock_end_user = MagicMock(spec=EndUser)
-    mock_end_user.session_id = "session-id-123"
-
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db.session.get", lambda model, pk: mock_end_user)
+    end_user = EndUser(
+        id="end-user-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.BROWSER,
+        session_id="session-id-123",
+    )
+    sqlite3_session.add(end_user)
+    sqlite3_session.commit()
+    monkeypatch.setattr(
+        "dify_trace_langfuse.langfuse_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
 
     trace_instance.add_trace = MagicMock()
     trace_instance.add_generation = MagicMock()
@@ -709,8 +734,12 @@ def test_langfuse_trace_entity_with_list_dict_input():
     assert data.input[0]["content"] == "hello"
 
 
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
 def test_workflow_trace_handles_usage_extraction_error(
-    trace_instance, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    trace_instance,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    sqlite3_session: Session,
 ):
     # Setup trace info to trigger LLM node usage extraction
     trace_info = WorkflowTraceInfo(
@@ -758,8 +787,10 @@ def test_workflow_trace_handles_usage_extraction_error(
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.sessionmaker", lambda bind: lambda: MagicMock())
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_langfuse.langfuse_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
     trace_instance.add_trace = MagicMock()
