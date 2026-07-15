@@ -1,10 +1,10 @@
 """
 Typed payloads for workflow generation.
 
-These TypedDicts describe the shape that the planner and builder LLM calls are
-required to return after ``json_repair`` parsing. They mirror the runtime
-``graph`` shape consumed by ``WorkflowService.sync_draft_workflow`` so the output
-can be written straight into a draft workflow without further translation.
+These TypedDicts describe the planner payload and the runtime graph assembled
+from builder LLM responses after ``json_repair`` parsing. The graph types mirror
+the shape consumed by ``WorkflowService.sync_draft_workflow`` so the output can
+be written straight into a draft workflow.
 """
 
 from enum import StrEnum
@@ -58,9 +58,21 @@ class WorkflowGenerateErrorDict(TypedDict):
 class PlannerNodeDict(TypedDict):
     """One node from the planner's high-level plan."""
 
+    id: NotRequired[str]
     label: str
     node_type: str
     purpose: str
+    parent: NotRequired[str]
+    action: NotRequired[Literal["keep", "update", "add"]]
+
+
+class PlannerEdgeDict(TypedDict):
+    """Compact topology emitted by the planner for parallel node building."""
+
+    source: str
+    target: str
+    source_handle: NotRequired[str]
+    target_handle: NotRequired[str]
 
 
 class PlannerStartInputDict(TypedDict):
@@ -86,6 +98,7 @@ class PlannerResultDict(TypedDict):
     icon: NotRequired[str]
     start_inputs: NotRequired[list[PlannerStartInputDict]]
     nodes: list[PlannerNodeDict]
+    edges: NotRequired[list[PlannerEdgeDict]]
 
 
 class GraphNodePositionDict(TypedDict):

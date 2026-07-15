@@ -1,13 +1,14 @@
 """
 Planner prompts.
 
-The planner is the lightweight first step in the slim planner→builder pipeline.
+The planner is the lightweight first step in the slim planner→node-builders pipeline.
 It receives the user's natural-language instruction and emits a high-level
-node plan in JSON. The builder later turns that plan into the final graph.
+node and edge plan in JSON. Node builders later produce configs that the runner
+assembles into the final graph.
 
 We keep the planner deliberately short — the heavy lifting (config schemas,
-edge wiring, default values) belongs in the builder. The planner only commits
-to the *which-node-types* decision so the builder gets a tight scaffold.
+default values) belongs in the builders. The planner commits to the minimum
+topology and node types so every builder gets a tight scaffold.
 """
 
 PLANNER_SYSTEM_PROMPT = """You are a Dify workflow planner.
@@ -39,6 +40,8 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
                           mutually-exclusive paths before "end" / "answer".
 - "list-operator"       — filter / sort / slice an array variable (e.g. the items
                           fed into or produced by an "iteration").
+- "assigner"            — update an existing conversation or loop variable.
+- "human-input"         — pause for a person to review, approve, or enter data.
 
 # Rules
 
@@ -97,7 +100,19 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
     variables are automatic — downstream nodes may reference them without
     a ``start_inputs`` entry. In Workflow mode there is NO automatic
     variable; everything the user supplies must be in ``start_inputs``.
-11. Output strictly the JSON object — no prose, no Markdown, no code fences.
+11. Give every node a unique runtime-safe ``id`` using only letters, digits,
+    and underscores. In create mode use ``node1``, ``node2``, ... in node-list
+    order. In refine mode preserve the existing id for every retained node.
+12. Emit the target graph's edges in ``edges``. Each edge is
+    ``{"source": "<id>", "target": "<id>"}``; add ``source_handle`` only
+    for branch nodes: if-else case id, question-classifier class id, or
+    human-input action id. Container children reference the container id in
+    their ``parent`` field; do not emit the synthetic iteration/loop start node.
+13. In refine mode add ``action`` to every retained target node:
+    ``"keep"`` when its data config is unchanged, ``"update"`` when the user
+    asked to change its config, and ``"add"`` for a new node. Removed nodes are
+    omitted. Edge-only rewiring does not require changing a node's action.
+14. Output strictly the JSON object — no prose, no Markdown, no code fences.
 
 # Output schema
 
@@ -110,9 +125,13 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
     {"variable": "url", "label": "URL", "type": "text-input"}
   ],
   "nodes": [
-    {"label": "Start",      "node_type": "start", "purpose": "..."},
-    {"label": "Summarize",  "node_type": "llm",   "purpose": "..."},
-    {"label": "End",        "node_type": "end",   "purpose": "..."}
+    {"id": "node1", "label": "Start",     "node_type": "start", "purpose": "..."},
+    {"id": "node2", "label": "Summarize", "node_type": "llm",   "purpose": "..."},
+    {"id": "node3", "label": "End",       "node_type": "end",   "purpose": "..."}
+  ],
+  "edges": [
+    {"source": "node1", "target": "node2"},
+    {"source": "node2", "target": "node3"}
   ]
 }
 """
@@ -140,7 +159,9 @@ def format_existing_graph_section(current_graph: dict | None) -> str:
 
     We pass only ids / node-types / titles + edge endpoints here — the planner
     decides *which nodes* exist, so it needs the shape, not the per-node config.
-    The builder gets the full graph JSON to preserve untouched node config.
+    Parallel builders receive only the config of a node marked ``update``;
+    configs marked ``keep`` are reused directly. The legacy full-graph builder
+    still receives the compacted complete graph.
     """
     if not current_graph:
         return ""

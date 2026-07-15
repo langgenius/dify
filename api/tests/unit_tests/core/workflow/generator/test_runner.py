@@ -8,6 +8,7 @@ readable error envelope.
 """
 
 import json
+import threading
 from copy import deepcopy
 from typing import Any, cast
 from unittest.mock import MagicMock
@@ -24,6 +25,306 @@ def _llm_result(text: str) -> MagicMock:
     result = MagicMock()
     result.message.get_text_content.return_value = text
     return result
+
+
+class _ParallelBuilderModel:
+    """Thread-safe fake that blocks the first two node builders together."""
+
+    def __init__(
+        self,
+        planner: dict[str, Any],
+        configs: dict[str, dict[str, Any]],
+        *,
+        invalid_node_id: str | None = None,
+    ) -> None:
+        self._planner = planner
+        self._configs = configs
+        self._invalid_node_id = invalid_node_id
+        self._barrier = threading.Barrier(2) if len(configs) >= 2 else None
+        self._lock = threading.Lock()
+        self._builder_calls = 0
+        self._calls_by_node: dict[str, int] = {}
+        self._active_builders = 0
+        self.max_active_builders = 0
+
+    @property
+    def builder_calls(self) -> int:
+        return self._builder_calls
+
+    def calls_for(self, node_id: str) -> int:
+        return self._calls_by_node.get(node_id, 0)
+
+    def invoke_llm(self, *, prompt_messages, model_parameters, stream):
+        system_prompt = str(prompt_messages[0].content)
+        if "workflow planner" in system_prompt.lower():
+            return _llm_result(json.dumps(self._planner))
+
+        user_prompt = "\n".join(str(message.content) for message in prompt_messages)
+        node_id = next(node_id for node_id in self._configs if f"id={node_id}" in user_prompt)
+        with self._lock:
+            call_index = self._builder_calls
+            self._builder_calls += 1
+            self._calls_by_node[node_id] = self._calls_by_node.get(node_id, 0) + 1
+            self._active_builders += 1
+            self.max_active_builders = max(self.max_active_builders, self._active_builders)
+        try:
+            if self._barrier is not None and call_index < 2:
+                self._barrier.wait(timeout=2)
+            if node_id == self._invalid_node_id:
+                return _llm_result("not a json object")
+            return _llm_result(json.dumps({"config": self._configs[node_id]}))
+        finally:
+            with self._lock:
+                self._active_builders -= 1
+
+
+class TestParallelNodeBuilder:
+    def test_builds_node_configs_with_two_concurrent_workers(self):
+        planner = {
+            "title": "URL Summarizer",
+            "description": "Summarize a URL.",
+            "nodes": [
+                {"id": "node1", "label": "Start", "node_type": "start", "purpose": "Receive URL."},
+                {"id": "node2", "label": "Summarize", "node_type": "llm", "purpose": "Summarize it."},
+                {"id": "node3", "label": "End", "node_type": "end", "purpose": "Return summary."},
+            ],
+            "edges": [
+                {"source": "node1", "target": "node2"},
+                {"source": "node2", "target": "node3"},
+            ],
+        }
+        model = _ParallelBuilderModel(
+            planner,
+            {
+                "node1": {
+                    "variables": [
+                        {
+                            "variable": "url",
+                            "label": "URL",
+                            "type": "text-input",
+                            "required": True,
+                            "max_length": 256,
+                            "options": [],
+                        }
+                    ]
+                },
+                "node2": {
+                    "model": {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [{"role": "user", "text": "Summarize {{#node1.url#}}"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                },
+                "node3": {"outputs": [{"variable": "summary", "value_selector": ["node2", "text"]}]},
+            },
+        )
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Summarize a URL",
+        )
+
+        assert result["error"] == ""
+        assert model.builder_calls == 3
+        assert model.max_active_builders == 2
+        assert [node["data"]["type"] for node in result["graph"]["nodes"]] == ["start", "llm", "end"]
+        assert [edge["source"] for edge in result["graph"]["edges"]] == ["node1", "node2"]
+
+    def test_refine_reuses_keep_nodes_and_only_builds_updated_nodes(self):
+        planner = {
+            "title": "Refined Summarizer",
+            "description": "Use a shorter summary prompt.",
+            "nodes": [
+                {
+                    "id": "start_existing",
+                    "label": "Start",
+                    "node_type": "start",
+                    "purpose": "Receive topic.",
+                    "action": "keep",
+                },
+                {
+                    "id": "llm_existing",
+                    "label": "Summarize",
+                    "node_type": "llm",
+                    "purpose": "Return one sentence.",
+                    "action": "update",
+                },
+                {
+                    "id": "end_existing",
+                    "label": "End",
+                    "node_type": "end",
+                    "purpose": "Return summary.",
+                    "action": "keep",
+                },
+            ],
+            "edges": [
+                {"source": "start_existing", "target": "llm_existing"},
+                {"source": "llm_existing", "target": "end_existing"},
+            ],
+        }
+        model = _ParallelBuilderModel(
+            planner,
+            {
+                "llm_existing": {
+                    "model": {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [
+                        {"role": "user", "text": "Summarize {{#start_existing.topic#}} in one sentence."}
+                    ],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                }
+            },
+        )
+        current_graph = {
+            "nodes": [
+                {
+                    "id": "start_existing",
+                    "type": "custom",
+                    "position": {"x": 10, "y": 10},
+                    "data": {
+                        "type": "start",
+                        "title": "Start",
+                        "variables": [
+                            {
+                                "variable": "topic",
+                                "label": "Topic",
+                                "type": "paragraph",
+                                "required": True,
+                                "max_length": 4096,
+                                "options": [],
+                            }
+                        ],
+                    },
+                },
+                {
+                    "id": "llm_existing",
+                    "type": "custom",
+                    "position": {"x": 330, "y": 10},
+                    "data": {"type": "llm", "title": "Summarize", "prompt_template": []},
+                },
+                {
+                    "id": "end_existing",
+                    "type": "custom",
+                    "position": {"x": 650, "y": 10},
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [{"variable": "summary", "value_selector": ["llm_existing", "text"]}],
+                    },
+                },
+            ],
+            "edges": [],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Make the summary one sentence",
+            current_graph=current_graph,
+        )
+
+        assert result["error"] == ""
+        assert model.builder_calls == 1
+        start = next(node for node in result["graph"]["nodes"] if node["id"] == "start_existing")
+        assert start["data"]["variables"][0]["variable"] == "topic"
+        assert current_graph["nodes"][0]["position"] == {"x": 10, "y": 10}
+
+    def test_human_input_outputs_and_action_handles_follow_main_contract(self):
+        planner = {
+            "title": "Approval Flow",
+            "description": "Ask a person to approve.",
+            "nodes": [
+                {"id": "node1", "label": "Start", "node_type": "start", "purpose": "Start."},
+                {
+                    "id": "node2",
+                    "label": "Review",
+                    "node_type": "human-input",
+                    "purpose": "Collect approval and a comment.",
+                },
+                {"id": "node3", "label": "End", "node_type": "end", "purpose": "Return comment."},
+            ],
+            "edges": [
+                {"source": "node1", "target": "node2"},
+                {"source": "node2", "target": "node3", "source_handle": "approve"},
+            ],
+        }
+        model = _ParallelBuilderModel(
+            planner,
+            {
+                "node1": {"variables": []},
+                "node2": {
+                    "delivery_methods": [{"id": "webapp", "type": "webapp", "enabled": True}],
+                    "form_content": "Approve this request.",
+                    "inputs": [
+                        {
+                            "type": "paragraph",
+                            "output_variable_name": "comment",
+                            "default": {"type": "constant", "selector": [], "value": ""},
+                        }
+                    ],
+                    "user_actions": [{"id": "approve", "title": "Approve", "button_style": "primary"}],
+                    "timeout": 3,
+                    "timeout_unit": "day",
+                },
+                "node3": {"outputs": [{"variable": "comment", "value_selector": ["node2", "comment"]}]},
+            },
+        )
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Ask for approval",
+        )
+
+        assert result["error"] == ""
+        review_edge = next(edge for edge in result["graph"]["edges"] if edge["source"] == "node2")
+        assert review_edge["sourceHandle"] == "approve"
+
+    def test_invalid_fragment_retries_once_then_fails_without_partial_graph(self):
+        planner = {
+            "title": "Minimal Flow",
+            "description": "Return a fixed value.",
+            "nodes": [
+                {"id": "node1", "label": "Start", "node_type": "start", "purpose": "Start."},
+                {"id": "node2", "label": "End", "node_type": "end", "purpose": "Return output."},
+            ],
+            "edges": [{"source": "node1", "target": "node2"}],
+        }
+        model = _ParallelBuilderModel(
+            planner,
+            {
+                "node1": {"variables": []},
+                "node2": {"outputs": []},
+            },
+            invalid_node_id="node2",
+        )
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Return a fixed value",
+        )
+
+        assert result["graph"]["nodes"] == []
+        assert {error["code"] for error in result["errors"]} == {"INVALID_JSON"}
+        assert model.calls_for("node2") == 2
 
 
 class TestWorkflowGeneratorWorkflowMode:

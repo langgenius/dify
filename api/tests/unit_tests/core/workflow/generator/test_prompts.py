@@ -16,6 +16,7 @@ from core.workflow.generator.prompts.builder_prompts import (
     format_plan_block,
     get_builder_system_prompt,
 )
+from core.workflow.generator.prompts.node_builder_prompts import get_node_builder_system_prompt
 from core.workflow.generator.prompts.planner_prompts import (
     format_ideal_output_section,
     format_tool_catalogue_section,
@@ -130,6 +131,33 @@ class TestGetBuilderSystemPrompt:
         assert 'value_selector: ["node3", "result"]' in prompt
         assert "edge from EACH retrieval node to the template" in prompt
         assert 'template\'s ``["<template-node-id>", "output"]``' in prompt
+
+
+class TestGetNodeBuilderSystemPrompt:
+    def test_only_includes_target_node_schema_and_compact_output_contract(self):
+        prompt = get_node_builder_system_prompt("llm")
+
+        assert '"config"' in prompt
+        assert "- llm:" in prompt
+        assert "- if-else:" not in prompt
+        assert '"viewport":' not in prompt
+        assert '"positionAbsolute":' not in prompt
+
+    def test_supports_main_human_input_and_assigner_contracts(self):
+        human_input = get_node_builder_system_prompt("human-input")
+        assigner = get_node_builder_system_prompt("assigner")
+
+        assert "delivery_methods" in human_input
+        assert "user_actions" in human_input
+        assert '"version": "2"' in assigner
+        assert "variable_selector" in assigner
+
+    def test_common_flow_critical_path_prompt_is_under_thirty_percent_of_legacy(self):
+        node_types = {"start", "llm", "end"}
+        legacy = get_builder_system_prompt("workflow", node_types)
+        parallel_critical_path = max(len(get_node_builder_system_prompt(node_type)) for node_type in node_types)
+
+        assert parallel_critical_path < len(legacy) * 0.3
 
 
 class TestBuildNodeConfigCheatsheet:

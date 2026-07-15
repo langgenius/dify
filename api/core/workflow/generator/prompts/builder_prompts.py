@@ -1,9 +1,9 @@
 """
-Builder prompts.
+Legacy full-graph builder prompts.
 
-The builder is the second step of the slim planner→builder pipeline. It takes
-the planner's high-level node list and emits the *full* graph JSON consumed by
-``WorkflowService.sync_draft_workflow``.
+This compatibility builder handles planner responses that do not contain the
+node ids and edges required by the parallel path. It emits the *full* graph JSON
+consumed by ``WorkflowService.sync_draft_workflow``.
 
 The builder owns: node configuration (prompts, code, headers, etc.), edge wiring,
 handle ids ("source"/"target"), positions, and the viewport. It is the only
@@ -248,7 +248,35 @@ _NODE_SNIPPETS: dict[str, str] = {
     Enable only the sub-features you need; ``conditions`` reuse the if-else
     condition shape (key / comparison_operator / value). Outputs: ``result``
     (the processed array), ``first_record``, ``last_record``.""",
+    "assigner": """\
+- assigner  (write to an existing conversation / loop variable):
+    {"version": "2",
+     "items": [{"variable_selector": ["<target-node>", "<target-var>"],
+                "input_type": "variable",
+                "operation": "over-write",
+                "value": ["<source-node>", "<source-var>"]}]}
+    ``input_type`` is "variable" (value is a selector) or "constant".
+    Operations: over-write | clear | append | extend | set | += | -= | *= |
+    /= | remove-first | remove-last.""",
+    "human-input": """\
+- human-input  (pause for a person; use webapp delivery by default):
+    {"delivery_methods": [{"id": "webapp", "type": "webapp", "enabled": true}],
+     "form_content": "<short review / approval instructions>",
+     "inputs": [{"type": "paragraph", "output_variable_name": "comment",
+                 "default": {"type": "constant", "selector": [], "value": ""}}],
+     "user_actions": [{"id": "approve", "title": "Approve",
+                       "button_style": "primary"}],
+     "timeout": 3, "timeout_unit": "day"}
+    Each ``inputs[].output_variable_name`` is an output variable. Outgoing
+    edges use the matching user-action id as ``sourceHandle``.""",
 }
+
+
+def get_node_config_snippet(node_type: str) -> str:
+    """Return the compact semantic config reference for one planned node."""
+    if node_type in _CONTAINER_NODE_TYPES:
+        return _CONTAINERS_SECTION
+    return _NODE_SNIPPETS.get(node_type, "")
 
 
 # Pulled into the cheatsheet only when an iteration / loop appears in the plan.

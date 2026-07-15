@@ -1,14 +1,15 @@
 """
 Workflow generator runner.
 
-Slim planner→builder pipeline. Pure domain logic; the model instance is
+Slim planner→parallel-node-builder pipeline. Pure domain logic; the model instance is
 injected by ``WorkflowGeneratorService`` so this module stays cleanly
 separated from the infrastructure layer.
 
 Pipeline:
 
     1. PLANNER  — short LLM call producing a high-level node list.
-    2. BUILDER  — structured-output LLM call producing the full graph JSON.
+    2. BUILDERS — up to two concurrent LLM calls producing compact node configs.
+                  Legacy planner responses fall back to the full-graph builder.
     3. POSTPROC — fill safe defaults, lay nodes out left-to-right, dedupe
                   edge ids, and run a final structural sanity check.
 
@@ -20,7 +21,8 @@ Intentionally NOT here (deferred to a future iteration):
     - Tool / model catalogue filtering
 
 If quality regresses below product threshold we add those back; for now the
-single planner+builder pair shipped behind cmd+k `/create` is enough.
+planner and bounded parallel node builders shipped behind cmd+k `/create` are
+enough.
 """
 
 import json
@@ -28,6 +30,8 @@ import logging
 import re
 import time
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from copy import deepcopy
 from typing import Any, ClassVar, cast
 
 import json_repair
@@ -39,6 +43,11 @@ from core.workflow.generator.prompts.builder_prompts import (
     format_plan_block,
     format_start_inputs_section,
     get_builder_system_prompt,
+)
+from core.workflow.generator.prompts.node_builder_prompts import (
+    NODE_BUILDER_USER_PROMPT,
+    format_parallel_plan,
+    get_node_builder_system_prompt,
 )
 from core.workflow.generator.prompts.planner_prompts import (
     PLANNER_SYSTEM_PROMPT,
@@ -96,9 +105,23 @@ _DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
 
 # Token ceiling for the planner call when the caller didn't pin one. The plan
 # is a short JSON node list (a handful of nodes with labels/purposes), so this
-# is generous headroom while still bounding a runaway response. The builder is
-# left on the caller's budget — it emits the full graph and genuinely needs it.
+# is generous headroom while still bounding a runaway response. Builder calls
+# keep the caller's budget so complex node configs and legacy full graphs are
+# not truncated.
 _PLANNER_DEFAULT_MAX_TOKENS = 4096
+
+# Per-node calls trade a larger request count for a shorter critical path.
+# Two workers is intentionally conservative: it still overlaps the dominant
+# decode time without causing a large provider-side request burst.
+_NODE_BUILDER_MAX_WORKERS = 2
+
+_MODEL_NODE_TYPES = frozenset(
+    {
+        BuiltinNodeTypes.LLM,
+        BuiltinNodeTypes.QUESTION_CLASSIFIER,
+        BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+    }
+)
 
 
 # Appended as a trailing user message on the SECOND (and only) attempt when
@@ -263,20 +286,22 @@ class WorkflowGenerator:
         current_graph: dict[str, Any] | None = None,
     ) -> WorkflowGenerateResultDict:
         """
-        Run planner → builder → postprocess and return a graph payload.
+        Run planner → node builders → postprocess and return a graph payload.
 
         ``current_graph`` switches the pipeline from create mode to REFINE
-        mode: the existing draft graph is injected into both the planner
-        (compact node/edge summary) and the builder (full JSON) so the LLM
-        amends the graph the user is editing instead of inventing a new one.
-        ``None`` (the default) is plain create-from-scratch behaviour.
+        mode: the existing draft graph is summarized for the planner. Parallel
+        builders receive only the config of the node they update, while configs
+        marked ``keep`` are reused without an LLM call. Legacy planner output
+        still uses the full-graph builder for compatibility. ``None`` (the
+        default) is plain create-from-scratch behaviour.
 
         ``tool_catalogue_text`` is the formatted list of installed tools for
         the calling tenant (see ``tool_catalogue.build_tool_catalogue`` /
         ``format_tool_catalogue``). It's injected into both the planner and
         builder prompts so the LLM can pick concrete ``provider/tool``
-        identifiers instead of inventing names; an empty string skips the
-        section entirely (useful for unit tests).
+        identifiers instead of inventing names; parallel builders receive it
+        only for tool nodes. An empty string skips the section entirely (useful
+        for unit tests).
 
         ``installed_tools`` is the structural sibling — a set of
         ``(provider_name, tool_name)`` pairs the validator consults to reject
@@ -376,7 +401,7 @@ class WorkflowGenerator:
         current_graph: dict[str, Any] | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
         """
-        Drive planner → builder → postprocess and yield generation events.
+        Drive planner → node builders → postprocess and yield generation events.
 
         Shared core for both ``generate_workflow_graph`` (keeps only the final
         ``result``) and ``generate_workflow_graph_stream`` (streams every
@@ -419,10 +444,15 @@ class WorkflowGenerator:
             yield "result", cast(dict[str, Any], empty_plan)
             return
 
-        # A single LLM cannot select multiple retrieval outputs as context.
-        # Make the required template fan-in explicit in the plan so the
-        # builder receives its schema and assigns stable sequential ids.
-        cls._insert_multi_retrieval_template_plan(plan_nodes)
+        plan_edges = [cast(dict[str, Any], edge) for edge in (plan.get("edges") or []) if isinstance(edge, dict)]
+        use_parallel_builder = cls._supports_parallel_node_build(plan_nodes=plan_nodes, plan_edges=plan_edges)
+
+        if not use_parallel_builder:
+            # Backward compatibility for terse planner responses produced by
+            # older / weaker models: keep the proven full-graph builder path.
+            # The parallel contract always carries ids + topology, so there is
+            # no ambiguity between the two formats.
+            cls._insert_multi_retrieval_template_plan(plan_nodes)
 
         # Planner-supplied user-input declarations. The builder uses these to
         # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
@@ -439,10 +469,25 @@ class WorkflowGenerator:
         yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=mode)
 
         # ── 2. BUILDER ────────────────────────────────────────────────────
-        graph, build_err = cls._run_stage(
-            stage="Builder",
-            failure_fallback_message="Failed to build workflow graph",
-            run=lambda: cls._run_builder(
+        builder_started_at = time.monotonic()
+
+        def build_graph() -> GraphDict:
+            if use_parallel_builder:
+                return cls._run_parallel_node_builders(
+                    model_instance=model_instance,
+                    model_parameters=model_parameters,
+                    provider=provider,
+                    model_name=model_name,
+                    model_mode=model_mode,
+                    instruction=instruction,
+                    ideal_output=ideal_output,
+                    plan_nodes=plan_nodes,
+                    plan_edges=plan_edges,
+                    tool_catalogue_text=tool_catalogue_text,
+                    start_inputs=start_inputs,
+                    current_graph=current_graph,
+                )
+            return cls._run_builder(
                 model_instance=model_instance,
                 model_parameters=model_parameters,
                 provider=provider,
@@ -455,7 +500,18 @@ class WorkflowGenerator:
                 tool_catalogue_text=tool_catalogue_text,
                 start_inputs=start_inputs,
                 current_graph=current_graph,
-            ),
+            )
+
+        graph, build_err = cls._run_stage(
+            stage="Builder",
+            failure_fallback_message="Failed to build workflow graph",
+            run=build_graph,
+        )
+        logger.info(
+            "Workflow generator: builder completed path=%s nodes=%s elapsed_ms=%.1f",
+            "parallel-node" if use_parallel_builder else "legacy-graph",
+            len(plan_nodes),
+            (time.monotonic() - builder_started_at) * 1000,
         )
         if build_err is not None:
             yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [build_err]), mode))
@@ -690,6 +746,255 @@ class WorkflowGenerator:
     # ------------------------------------------------------------------
     # Builder
     # ------------------------------------------------------------------
+    @staticmethod
+    def _supports_parallel_node_build(
+        *,
+        plan_nodes: list[dict[str, Any]],
+        plan_edges: list[dict[str, Any]],
+    ) -> bool:
+        """Return whether the planner emitted the new id + topology contract."""
+        if not plan_nodes or not plan_edges:
+            return False
+        node_ids = [node.get("id") for node in plan_nodes]
+        if any(not isinstance(node_id, str) or not node_id.strip() for node_id in node_ids):
+            return False
+        if len(set(node_ids)) != len(node_ids):
+            return False
+        return all(isinstance(edge.get("source"), str) and isinstance(edge.get("target"), str) for edge in plan_edges)
+
+    @classmethod
+    def _run_parallel_node_builders(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        instruction: str,
+        ideal_output: str,
+        plan_nodes: list[dict[str, Any]],
+        plan_edges: list[dict[str, Any]],
+        tool_catalogue_text: str,
+        start_inputs: list[dict[str, Any]],
+        current_graph: dict[str, Any] | None,
+    ) -> GraphDict:
+        """Build changed node configs concurrently and expand them into a graph.
+
+        Refine plans can mark existing nodes as ``keep``; those nodes bypass
+        the model entirely and retain their full data config. Every other node
+        gets one compact call, with at most ``_NODE_BUILDER_MAX_WORKERS`` calls
+        in flight. Any fragment failure aborts the graph, preserving the
+        generator's existing fail-closed contract.
+        """
+        existing_by_id = {
+            str(node.get("id")): node
+            for node in ((current_graph or {}).get("nodes") or [])
+            if isinstance(node, dict) and node.get("id")
+        }
+        nodes_to_build = [
+            node for node in plan_nodes if not (node.get("action") == "keep" and str(node.get("id")) in existing_by_id)
+        ]
+
+        configs_by_id: dict[str, dict[str, Any]] = {}
+        if nodes_to_build:
+            max_workers = min(_NODE_BUILDER_MAX_WORKERS, len(nodes_to_build))
+            with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="workflow-node-builder") as executor:
+                futures = {
+                    executor.submit(
+                        cls._run_node_builder,
+                        model_instance=model_instance,
+                        model_parameters=model_parameters,
+                        provider=provider,
+                        model_name=model_name,
+                        model_mode=model_mode,
+                        instruction=instruction,
+                        ideal_output=ideal_output,
+                        target_node=node,
+                        plan_nodes=plan_nodes,
+                        plan_edges=plan_edges,
+                        tool_catalogue_text=tool_catalogue_text,
+                        start_inputs=start_inputs,
+                        existing_node=existing_by_id.get(str(node.get("id"))),
+                    ): str(node.get("id"))
+                    for node in nodes_to_build
+                }
+                for future in as_completed(futures):
+                    node_id = futures[future]
+                    configs_by_id[node_id] = future.result()
+
+        return cls._assemble_parallel_graph(
+            plan_nodes=plan_nodes,
+            plan_edges=plan_edges,
+            configs_by_id=configs_by_id,
+            existing_by_id=existing_by_id,
+        )
+
+    @classmethod
+    def _run_node_builder(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        instruction: str,
+        ideal_output: str,
+        target_node: dict[str, Any],
+        plan_nodes: list[dict[str, Any]],
+        plan_edges: list[dict[str, Any]],
+        tool_catalogue_text: str,
+        start_inputs: list[dict[str, Any]],
+        existing_node: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Generate only the semantic config for one normalized plan node."""
+        node_id = str(target_node.get("id") or "")
+        node_type = str(target_node.get("node_type") or "")
+        model_section = ""
+        if node_type in _MODEL_NODE_TYPES:
+            model_section = (
+                f"# Selected model (copy verbatim)\n\nprovider={provider}, name={model_name}, mode={model_mode}\n\n"
+            )
+        existing_config_section = ""
+        if existing_node:
+            existing_data = existing_node.get("data") if isinstance(existing_node.get("data"), dict) else {}
+            existing_config_section = (
+                "# Existing config to preserve unless the instruction changes it\n\n"
+                f"{json.dumps(existing_data, ensure_ascii=False, separators=(',', ':'))}\n\n"
+            )
+        user_prompt = NODE_BUILDER_USER_PROMPT.format(
+            node_id=node_id,
+            node_type=node_type,
+            label=str(target_node.get("label") or ""),
+            purpose=str(target_node.get("purpose") or ""),
+            instruction=instruction.strip(),
+            ideal_output_section=format_ideal_output_section(ideal_output),
+            model_section=model_section,
+            tool_catalogue_section=(
+                format_builder_tool_catalogue_section(tool_catalogue_text) if node_type == BuiltinNodeTypes.TOOL else ""
+            ),
+            start_inputs_section=(
+                format_start_inputs_section(start_inputs) if node_type == BuiltinNodeTypes.START else ""
+            ),
+            existing_config_section=existing_config_section,
+            plan_json=format_parallel_plan(plan_nodes, plan_edges),
+        )
+        parsed = cls._invoke_and_parse_json(
+            model_instance=model_instance,
+            messages=[
+                SystemPromptMessage(content=get_node_builder_system_prompt(node_type)),
+                UserPromptMessage(content=user_prompt),
+            ],
+            model_parameters=model_parameters,
+            stage=f"Builder {node_id}",
+        )
+        config = parsed.get("config")
+        if not isinstance(config, dict):
+            raise _StageSchemaError(f"Builder {node_id}", "missing 'config' object")
+        return cast(dict[str, Any], config)
+
+    @classmethod
+    def _assemble_parallel_graph(
+        cls,
+        *,
+        plan_nodes: list[dict[str, Any]],
+        plan_edges: list[dict[str, Any]],
+        configs_by_id: dict[str, dict[str, Any]],
+        existing_by_id: dict[str, dict[str, Any]],
+    ) -> GraphDict:
+        """Expand compact node configs and planner topology into graph JSON."""
+        label_to_id = {
+            str(node.get("label")): str(node.get("id")) for node in plan_nodes if node.get("label") and node.get("id")
+        }
+        type_by_id = {str(node.get("id")): str(node.get("node_type") or "") for node in plan_nodes}
+        children_by_parent: dict[str, list[str]] = {}
+        nodes: list[dict[str, Any]] = []
+
+        for planned in plan_nodes:
+            node_id = str(planned.get("id") or "")
+            node_type = str(planned.get("node_type") or "")
+            existing = existing_by_id.get(node_id)
+            node: dict[str, Any]
+            if planned.get("action") == "keep" and existing is not None:
+                node = deepcopy(existing)
+            else:
+                config = dict(configs_by_id.get(node_id) or {})
+                for shared_key in ("type", "title", "desc", "selected"):
+                    config.pop(shared_key, None)
+                data: dict[str, Any] = {
+                    "type": node_type,
+                    "title": str(planned.get("label") or node_id),
+                    "desc": str(planned.get("purpose") or ""),
+                    **config,
+                }
+                node = deepcopy(existing) if existing is not None else {"id": node_id}
+                node["id"] = node_id
+                node["data"] = data
+
+            parent_ref = str(planned.get("parent") or "")
+            parent_id = label_to_id.get(parent_ref, parent_ref)
+            if parent_id:
+                node["parentId"] = parent_id
+                node.setdefault("data", {})
+                parent_type = type_by_id.get(parent_id)
+                if parent_type == BuiltinNodeTypes.ITERATION:
+                    node["data"].setdefault("isInIteration", True)
+                    node["data"].setdefault("iteration_id", parent_id)
+                elif parent_type == BuiltinNodeTypes.LOOP:
+                    node["data"].setdefault("isInLoop", True)
+                    node["data"].setdefault("loop_id", parent_id)
+                children_by_parent.setdefault(parent_id, []).append(node_id)
+
+            nodes.append(node)
+            if node_type in cls._CONTAINER_TYPES:
+                start_id = f"{node_id}start"
+                node.setdefault("data", {})["start_node_id"] = start_id
+                node.setdefault("width", 808)
+                node.setdefault("height", 204)
+                node.setdefault("zIndex", 1)
+                is_iteration = node_type == BuiltinNodeTypes.ITERATION
+                nodes.append(
+                    {
+                        "id": start_id,
+                        "type": "custom-iteration-start" if is_iteration else "custom-loop-start",
+                        "parentId": node_id,
+                        "extent": "parent",
+                        "draggable": False,
+                        "selectable": False,
+                        "zIndex": 1002,
+                        "position": {"x": 60, "y": 78},
+                        "data": {
+                            "type": "iteration-start" if is_iteration else "loop-start",
+                            "title": "",
+                            "desc": "",
+                            "selected": False,
+                            "isInIteration" if is_iteration else "isInLoop": True,
+                        },
+                    }
+                )
+
+        edges: list[dict[str, Any]] = []
+        for planned_edge in plan_edges:
+            edge: dict[str, Any] = {
+                "source": str(planned_edge.get("source") or ""),
+                "target": str(planned_edge.get("target") or ""),
+            }
+            source_handle = planned_edge.get("source_handle") or planned_edge.get("sourceHandle")
+            target_handle = planned_edge.get("target_handle") or planned_edge.get("targetHandle")
+            if source_handle:
+                edge["sourceHandle"] = str(source_handle)
+            if target_handle:
+                edge["targetHandle"] = str(target_handle)
+            edges.append(edge)
+
+        existing_pairs = {(edge.get("source"), edge.get("target")) for edge in edges}
+        for parent_id, child_ids in children_by_parent.items():
+            if child_ids and (f"{parent_id}start", child_ids[0]) not in existing_pairs:
+                edges.append({"source": f"{parent_id}start", "target": child_ids[0]})
+
+        return cast(GraphDict, {"nodes": nodes, "edges": edges, "viewport": _DEFAULT_VIEWPORT})
+
     @classmethod
     def _run_builder(
         cls,
@@ -1225,6 +1530,11 @@ class WorkflowGenerator:
             return var == "output"
         if node_type == BuiltinNodeTypes.LIST_OPERATOR:
             return var in {"result", "first_record", "last_record"}
+        if node_type == BuiltinNodeTypes.HUMAN_INPUT:
+            return any(
+                isinstance(item, dict) and item.get("output_variable_name") == var
+                for item in (data.get("inputs") or [])
+            )
         # Other node types (if-else, iteration-start, loop-start, ...) don't
         # produce outputs of their own.
         return False
@@ -1247,6 +1557,15 @@ class WorkflowGenerator:
                 if isinstance(parameter, dict) and isinstance(parameter.get("name"), str)
             ]
             return parameters[0] if len(parameters) == 1 else None
+        if node_type == BuiltinNodeTypes.HUMAN_INPUT:
+            human_outputs: list[str] = []
+            for item in data.get("inputs") or []:
+                if not isinstance(item, dict):
+                    continue
+                output_name = item.get("output_variable_name")
+                if isinstance(output_name, str):
+                    human_outputs.append(output_name)
+            return human_outputs[0] if len(human_outputs) == 1 else None
         if not isinstance(node_type, str):
             return None
         single_output_by_type: dict[str, str] = {
@@ -1532,6 +1851,12 @@ class WorkflowGenerator:
                     str(klass["id"])
                     for klass in (data.get("classes") or [])
                     if isinstance(klass, dict) and klass.get("id")
+                ]
+            elif node_type == BuiltinNodeTypes.HUMAN_INPUT:
+                branch_handles = [
+                    str(action["id"])
+                    for action in (data.get("user_actions") or [])
+                    if isinstance(action, dict) and action.get("id")
                 ]
             else:
                 continue
