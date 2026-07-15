@@ -164,6 +164,10 @@ const clientSchema = {
    */
   NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON: coercedBoolean.default(false),
   NEXT_PUBLIC_WEB_PREFIX: z.url().optional(),
+  /**
+   * The timeout for the cmd+k workflow generation in millisecond
+   */
+  NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS: coercedNumber.default(180000),
   NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL: z.string().optional(),
   NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT: z.string().optional(),
   NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN: z.string().optional(),
@@ -354,6 +358,9 @@ export const env = createEnv({
     NEXT_PUBLIC_WEB_PREFIX: isServer
       ? process.env.NEXT_PUBLIC_WEB_PREFIX
       : getRuntimeEnvFromBody('webPrefix'),
+    NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS: isServer
+      ? process.env.NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS
+      : getRuntimeEnvFromBody('workflowGenerationTimeoutMs'),
     NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL: isServer
       ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL
       : getRuntimeEnvFromBody('zendeskFieldIdEmail'),

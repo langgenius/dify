@@ -34,6 +34,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
+import { WORKFLOW_GENERATION_TIMEOUT_MS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -56,12 +57,14 @@ import {
 import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
-// Hard ceiling before we abort a hung request. Generous on purpose: the
-// backend runs two sequential LLM calls and may retry a transient provider
-// error (bounded backoff) or an unparseable response (one extra call), so a
-// slow-but-succeeding generation can legitimately pass the one-minute mark.
-// Aborting work that would have landed is the worse failure mode.
-const FE_TIMEOUT_MS = 180_000
+// Hard ceiling before we abort a hung request, configurable via
+// NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS (default 180s). Generous on
+// purpose: the backend runs a planner call plus parallel builder calls and may
+// retry a transient provider error (bounded backoff) or an unparseable
+// response (one extra call), so a slow-but-succeeding generation can
+// legitimately pass the one-minute mark. Aborting work that would have landed
+// is the worse failure mode.
+const FE_TIMEOUT_MS = WORKFLOW_GENERATION_TIMEOUT_MS
 // Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
 // keeping the limit client-side turns an opaque 400 into a visible input stop.
 const MAX_INSTRUCTION_LENGTH = 10_000
