@@ -59,6 +59,8 @@ type CollaborationManagerInternals = {
   pendingInitialSync: boolean
   pendingGraphImportEmit: boolean
   rejoinInProgress: boolean
+  graphViewActive: boolean | null
+  visibilityListenerAttached: boolean
   onlineUsers: OnlineUser[]
   nodePanelPresence: NodePanelPresenceMap
   cursors: Record<string, { x: number; y: number; userId: string; timestamp: number }>
@@ -1205,5 +1207,138 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(internals.isUndoRedoInProgress).toBe(false)
     vi.useRealTimers()
     rafSpy.mockRestore()
+  })
+
+  describe('graph view state reporting', () => {
+    const stubVisibilityState = (state: DocumentVisibilityState) => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => state,
+      })
+    }
+
+    afterEach(() => {
+      delete (document as { visibilityState?: DocumentVisibilityState }).visibilityState
+    })
+
+    it('emitGraphViewState sends the event and records the state when connected', () => {
+      const { manager, internals } = setupManagerWithDoc()
+      const socket = createMockSocket('socket-view-state')
+
+      internals.currentAppId = 'app-1'
+      vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+      vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+
+      manager.emitGraphViewState(false)
+
+      expect(internals.graphViewActive).toBe(false)
+      expect(socket.emit).toHaveBeenCalledTimes(1)
+      const [event, payload] = socket.emit.mock.calls[0] as [
+        string,
+        { type: string; data: Record<string, unknown> },
+      ]
+      expect(event).toBe('collaboration_event')
+      expect(payload.type).toBe('graph_view_state')
+      expect(payload.data).toMatchObject({ graphActive: false })
+    })
+
+    it('emitGraphViewState records the state without emitting when disconnected', () => {
+      const { manager, internals } = setupManagerWithDoc()
+      const socket = createMockSocket('socket-view-state-offline')
+
+      internals.currentAppId = 'app-1'
+      vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(false)
+      const getSocketSpy = vi
+        .spyOn(webSocketClient, 'getSocket')
+        .mockReturnValue(socket as unknown as Socket)
+
+      manager.emitGraphViewState(false)
+
+      expect(internals.graphViewActive).toBe(false)
+      expect(socket.emit).not.toHaveBeenCalled()
+      expect(getSocketSpy).not.toHaveBeenCalled()
+    })
+
+    it('reports visibility changes while connected and stops after force disconnect', async () => {
+      const { manager, internals } = setupManagerWithDoc()
+      const socket = createMockSocket('socket-visibility')
+      vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+      vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+      vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+      vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+      // Invoke the captured handler directly instead of dispatching on the shared jsdom
+      // document, which would also trigger listeners leaked by other tests' managers.
+      const addListenerSpy = vi.spyOn(document, 'addEventListener')
+      const removeListenerSpy = vi.spyOn(document, 'removeEventListener')
+
+      stubVisibilityState('visible')
+      const connectionId = await manager.connect('app-visibility', {
+        getState: () => ({
+          getNodes: () => [],
+          setNodes: vi.fn(),
+          getEdges: () => [],
+          setEdges: vi.fn(),
+        }),
+      })
+
+      expect(internals.visibilityListenerAttached).toBe(true)
+      expect(internals.graphViewActive).toBe(true)
+      const visibilityCall = addListenerSpy.mock.calls.find(
+        (call) => call[0] === 'visibilitychange',
+      )
+      expect(visibilityCall).toBeDefined()
+      const visibilityHandler = visibilityCall?.[1] as () => void
+
+      stubVisibilityState('hidden')
+      visibilityHandler()
+
+      expect(internals.graphViewActive).toBe(false)
+      const viewStateCalls = socket.emit.mock.calls.filter(
+        (call) => (call[1] as { type?: string } | undefined)?.type === 'graph_view_state',
+      )
+      expect(viewStateCalls).toHaveLength(1)
+      expect((viewStateCalls[0]?.[1] as { data: Record<string, unknown> }).data).toMatchObject({
+        graphActive: false,
+      })
+
+      manager.disconnect(connectionId)
+      expect(internals.visibilityListenerAttached).toBe(false)
+      expect(internals.graphViewActive).toBeNull()
+      expect(
+        removeListenerSpy.mock.calls.some(
+          (call) => call[0] === 'visibilitychange' && call[1] === visibilityHandler,
+        ),
+      ).toBe(true)
+    })
+
+    it('re-reports hidden state after the post-join status event, but not visible state', () => {
+      const { internals } = setupManagerWithDoc()
+      const socket = createMockSocket('socket-status-rereport')
+
+      internals.currentAppId = 'app-1'
+      vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+      vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+      internals.setupSocketEventListeners(socket as unknown as Socket)
+
+      internals.graphViewActive = false
+      socket.trigger('status', { isLeader: false })
+
+      const hiddenCalls = socket.emit.mock.calls.filter(
+        (call) => (call[1] as { type?: string } | undefined)?.type === 'graph_view_state',
+      )
+      expect(hiddenCalls).toHaveLength(1)
+      expect((hiddenCalls[0]?.[1] as { data: Record<string, unknown> }).data).toMatchObject({
+        graphActive: false,
+      })
+
+      socket.emit.mockClear()
+      internals.graphViewActive = true
+      socket.trigger('status', { isLeader: false })
+
+      const visibleCalls = socket.emit.mock.calls.filter(
+        (call) => (call[1] as { type?: string } | undefined)?.type === 'graph_view_state',
+      )
+      expect(visibleCalls).toHaveLength(0)
+    })
   })
 })

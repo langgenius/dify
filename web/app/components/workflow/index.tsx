@@ -394,7 +394,19 @@ export const Workflow: FC<WorkflowProps> = memo(
         // Avoid resetting UI state when user comes back while a run is active or listening for triggers
         if (isListening || status === WorkflowRunningStatus.Running) return
 
-        setTimeout(() => handleRefreshWorkflowDraft(), 500)
+        // While this tab was hidden the canvas was frozen (rAF paused), but the CRDT doc kept
+        // receiving remote edits. Restore from the CRDT instead of the DB draft — the DB may
+        // hold the stale snapshot this very tab saved while hidden, and re-importing it would
+        // broadcast a rollback to everyone. An empty CRDT means the doc was never seeded, so
+        // fall back to the DB refresh.
+        const collaborationActive =
+          collaborationManager.isConnected() && collaborationManager.getNodes().length > 0
+        if (collaborationActive) {
+          collaborationManager.refreshGraphSynchronously()
+          setTimeout(() => handleRefreshWorkflowDraft(true), 500)
+        } else {
+          setTimeout(() => handleRefreshWorkflowDraft(), 500)
+        }
       }
     }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
 

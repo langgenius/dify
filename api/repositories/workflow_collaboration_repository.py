@@ -156,6 +156,51 @@ class WorkflowCollaborationRepository:
 
         return users
 
+    def get_session_info(self, workflow_id: str, sid: str) -> WorkflowSessionInfo | None:
+        raw = self._redis.hget(self.workflow_key(workflow_id), sid)
+        value = self._decode(raw)
+        if not value:
+            return None
+        try:
+            session_info = json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            return None
+
+        if not isinstance(session_info, dict):
+            return None
+        if "user_id" not in session_info or "username" not in session_info or "sid" not in session_info:
+            return None
+
+        user: WorkflowSessionInfo = {
+            "user_id": str(session_info["user_id"]),
+            "username": str(session_info["username"]),
+            "avatar": session_info.get("avatar"),
+            "sid": str(session_info["sid"]),
+            "connected_at": int(session_info.get("connected_at") or 0),
+        }
+        if isinstance(session_info.get("server_id"), str):
+            user["server_id"] = session_info["server_id"]
+        if isinstance(session_info.get("graph_active"), bool):
+            user["graph_active"] = session_info["graph_active"]
+        return user
+
+    def update_session_graph_active(self, workflow_id: str, sid: str, active: bool) -> bool:
+        # Read-modify-write the raw session JSON so unrelated fields (e.g. server_id) are preserved.
+        workflow_key = self.workflow_key(workflow_id)
+        value = self._decode(self._redis.hget(workflow_key, sid))
+        if not value:
+            return False
+        try:
+            session_info = json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            return False
+        if not isinstance(session_info, dict):
+            return False
+
+        session_info["graph_active"] = active
+        self._redis.hset(workflow_key, sid, json.dumps(session_info))
+        return True
+
     def refresh_server_heartbeat(self, server_id: str) -> None:
         self._redis.set(self.server_key(server_id), "1", ex=SERVER_HEARTBEAT_TTL_SECONDS)
 

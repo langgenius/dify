@@ -151,6 +151,7 @@ export class CollaborationManager {
   private rejoinInProgress = false
   private pendingGraphImportEmit = false
   private graphViewActive: boolean | null = null
+  private visibilityListenerAttached = false
   private graphImportLogs: GraphImportLogEntry[] = []
   private setNodesAnomalyLogs: SetNodesAnomalyLogEntry[] = []
   private graphSyncDiagnostics: GraphSyncDiagnosticEvent[] = []
@@ -506,6 +507,7 @@ export class CollaborationManager {
 
     // Setup event listeners BEFORE any other operations
     this.setupSocketEventListeners(socket)
+    this.attachVisibilityListener()
 
     this.doc = new LoroDoc()
     this.nodesMap = this.doc.getMap('nodes') as LoroMap<Record<string, Value>>
@@ -596,6 +598,8 @@ export class CollaborationManager {
   private forceDisconnect = (): void => {
     if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
 
+    this.detachVisibilityListener()
+    this.graphViewActive = null
     this.provider?.destroy()
     this.undoManager = null
     this.doc = null
@@ -657,6 +661,38 @@ export class CollaborationManager {
       data: { timestamp: Date.now() },
       timestamp: Date.now(),
     })
+  }
+
+  emitGraphViewState(active: boolean): void {
+    // Record the state even while offline so the post-rejoin 'status' handler can re-report it.
+    this.graphViewActive = active
+
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+
+    this.sendCollaborationEvent({
+      type: 'graph_view_state',
+      data: { graphActive: active, timestamp: Date.now() },
+      timestamp: Date.now(),
+    })
+  }
+
+  private handleVisibilityChange = (): void => {
+    this.emitGraphViewState(document.visibilityState === 'visible')
+  }
+
+  private attachVisibilityListener(): void {
+    if (this.visibilityListenerAttached || typeof document === 'undefined') return
+
+    document.addEventListener('visibilitychange', this.handleVisibilityChange)
+    this.visibilityListenerAttached = true
+    this.graphViewActive = document.visibilityState === 'visible'
+  }
+
+  private detachVisibilityListener(): void {
+    if (!this.visibilityListenerAttached || typeof document === 'undefined') return
+
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
+    this.visibilityListenerAttached = false
   }
 
   emitWorkflowUpdate(appId: string): void {
@@ -1472,6 +1508,11 @@ export class CollaborationManager {
         }
 
         if (wasLeader !== this.isLeader) this.eventEmitter.emit('leaderChange', this.isLeader)
+
+        // The server recreates the session with graph_active=true on every (re)join, and
+        // 'status' is its join-completed signal — re-report a hidden tab so leader
+        // election keeps excluding it. Visible matches the server default; skip.
+        if (this.graphViewActive === false) this.emitGraphViewState(false)
       } catch (error) {
         console.error('Error processing status update:', error)
       }

@@ -128,6 +128,9 @@ class WorkflowCollaborationService:
             "sid": sid,
             "connected_at": int(time.time()),
             "server_id": self.server_id,
+            # Joins are assumed visible; hidden tabs re-report via a graph_view_state
+            # event right after receiving the post-join "status" emit.
+            "graph_active": True,
         }
 
         self._repository.set_session_info(workflow_id, session_info)
@@ -174,11 +177,35 @@ class WorkflowCollaborationService:
         if not event_type:
             return {"msg": "invalid event type"}, 400
 
+        if event_type == "graph_view_state":
+            graph_active = True
+            if isinstance(event_data, Mapping):
+                graph_active = bool(event_data.get("graphActive", True))
+            self._repository.update_session_graph_active(workflow_id, sid, graph_active)
+            # Write the flag before re-electing so tier-1 selection already excludes the
+            # session that just went hidden (including one _ensure_leader just promoted).
+            if not graph_active:
+                self._demote_leader_if_hidden(workflow_id, sid)
+            return {"msg": "graph_view_state_updated"}, 200
+
         if event_type == "sync_request":
             leader_sid = self._repository.get_current_leader(workflow_id)
             target_sid: str | None
             if leader_sid and self.is_session_active(workflow_id, leader_sid):
-                target_sid = leader_sid
+                if self._is_session_graph_active(workflow_id, leader_sid):
+                    target_sid = leader_sid
+                else:
+                    # The leader is connected but its tab is hidden: its canvas is frozen
+                    # (rAF paused), so saving through it would persist stale data. Hand
+                    # leadership to a visible session — or, if every tab is hidden, to the
+                    # requester, whose canvas at least contains its own edits.
+                    replacement = self._select_graph_leader(workflow_id, preferred_sid=sid)
+                    if replacement and replacement != leader_sid:
+                        self._repository.set_leader(workflow_id, replacement)
+                        self.broadcast_leader_change(workflow_id, replacement)
+                        target_sid = replacement
+                    else:
+                        target_sid = leader_sid
             else:
                 if leader_sid:
                     self._repository.delete_leader(workflow_id)
@@ -329,17 +356,56 @@ class WorkflowCollaborationService:
         self._repository.set_leader(workflow_id, sid)
         self.broadcast_leader_change(workflow_id, sid)
 
-    def _select_graph_leader(self, workflow_id: str, preferred_sid: str | None = None) -> str | None:
-        session_sids = [
-            session["sid"]
+    def _select_graph_leader(
+        self,
+        workflow_id: str,
+        preferred_sid: str | None = None,
+        *,
+        require_graph_active: bool = False,
+    ) -> str | None:
+        """Pick a leader, preferring sessions whose canvas tab is visible.
+
+        Hidden tabs freeze rAF-driven CRDT->canvas application, so a visible session is
+        always the freshest saver. When every tab is hidden the room must still keep a
+        leader (followers drop sync_requests unless they believe they are the leader),
+        so tier 2 falls back to any active session unless require_graph_active is set.
+        """
+        active_sessions = [
+            session
             for session in self._repository.list_sessions(workflow_id)
-            if session.get("graph_active", True) and self.is_session_active(workflow_id, session["sid"])
+            if self.is_session_active(workflow_id, session["sid"])
         ]
-        if not session_sids:
+        visible_sids = [session["sid"] for session in active_sessions if session.get("graph_active", True)]
+
+        candidate_sids = visible_sids
+        if not candidate_sids and not require_graph_active:
+            candidate_sids = [session["sid"] for session in active_sessions]
+
+        if not candidate_sids:
             return None
-        if preferred_sid and preferred_sid in session_sids:
+        if preferred_sid and preferred_sid in candidate_sids:
             return preferred_sid
-        return session_sids[0]
+        return candidate_sids[0]
+
+    def _is_session_graph_active(self, workflow_id: str, sid: str) -> bool:
+        """Default to True on missing/unreadable session data so read failures never churn leadership."""
+        session_info = self._repository.get_session_info(workflow_id, sid)
+        if session_info is None:
+            return True
+        return bool(session_info.get("graph_active", True))
+
+    def _demote_leader_if_hidden(self, workflow_id: str, hidden_sid: str) -> None:
+        current_leader = self._repository.get_current_leader(workflow_id)
+        if current_leader != hidden_sid:
+            return
+
+        new_leader = self._select_graph_leader(workflow_id, require_graph_active=True)
+        # No visible session: keep the hidden leader rather than leaving the room leaderless.
+        if not new_leader or new_leader == hidden_sid:
+            return
+
+        self._repository.set_leader(workflow_id, new_leader)
+        self.broadcast_leader_change(workflow_id, new_leader)
 
     def is_session_active(self, workflow_id: str, sid: str) -> bool:
         if not sid:
