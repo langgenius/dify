@@ -353,6 +353,21 @@ class TrialSimpleAccount(ResponseModel):
     email: str | None = None
 
 
+class TrialWorkflowConversationVariableResponse(ResponseModel):
+    id: str
+    name: str
+    value_type: str
+    value: Any
+    description: str
+
+    @field_validator("value_type", mode="before")
+    @classmethod
+    def _serialize_value_type(cls, value: Any) -> str:
+        if hasattr(value, "exposed_type"):
+            return str(value.exposed_type())
+        return str(value)
+
+
 class TrialWorkflowResponse(ResponseModel):
     id: str
     graph: JsonObject = Field(validation_alias=AliasChoices("graph_dict", "graph"))
@@ -373,7 +388,7 @@ class TrialWorkflowResponse(ResponseModel):
     updated_at: int | None = None
     tool_published: bool | None = None
     environment_variables: list[JsonObject] = Field(default_factory=list)
-    conversation_variables: list[JsonObject] = Field(default_factory=list)
+    conversation_variables: list[TrialWorkflowConversationVariableResponse] = Field(default_factory=list)
     rag_pipeline_variables: list[JsonObject] = Field(default_factory=list)
 
     @field_validator("created_at", "updated_at", mode="before")
