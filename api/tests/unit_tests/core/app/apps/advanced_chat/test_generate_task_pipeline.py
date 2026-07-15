@@ -170,7 +170,13 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
     user = EndUser()
     user.id = "user-1"
     user.session_id = "session-1"
-    workflow = pipeline_module.WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={})
+    workflow = pipeline_module.WorkflowSnapshot(
+        id="workflow-1",
+        tenant_id="tenant-1",
+        features_dict={},
+        environment_variables=(),
+        conversation_variables=(),
+    )
 
     pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline(
         application_generate_entity=application_generate_entity,

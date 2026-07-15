@@ -92,7 +92,13 @@ def _make_pipeline():
         answer="",
     )
     conversation = ConversationSnapshot(id="conv-id", mode=AppMode.ADVANCED_CHAT)
-    workflow = WorkflowSnapshot(id="workflow-id", tenant_id="tenant", features_dict={})
+    workflow = WorkflowSnapshot(
+        id="workflow-id",
+        tenant_id="tenant",
+        features_dict={},
+        environment_variables=(),
+        conversation_variables=(),
+    )
     user = EndUser(tenant_id="tenant", type="session", name="tester", session_id="session")
 
     pipeline = AdvancedChatAppGenerateTaskPipeline(
