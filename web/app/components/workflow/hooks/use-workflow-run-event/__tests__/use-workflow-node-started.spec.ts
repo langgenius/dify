@@ -89,9 +89,7 @@ describe('useWorkflowNodeStarted', () => {
     const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
       initialStoreState: {
         workflowRunningData: baseRunningData({
-          tracing: [
-            { node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
-          ],
+          tracing: [{ node_id: 'n1', status: NodeRunningStatus.Succeeded } as never],
         }),
       },
     })
