@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem } from '@/app/components/base/chat/types'
 import type { Locale } from '@/i18n-config'
@@ -28,7 +27,7 @@ type ToolActivity = {
   isFinished: boolean
 }
 
-type TimelinePart =
+type AgentActivityEntry =
   | {
       type: 'message'
       content: string
@@ -112,11 +111,11 @@ function hasVisibleActivity(thought: ThoughtItem) {
   return !!thought.tool || !!thought.message_files?.length
 }
 
-function getTimelineParts(item: ChatItem): TimelinePart[] {
+function getAgentActivityEntries(item: ChatItem): AgentActivityEntry[] {
   if (item.agent_response_parts?.length) {
     const keyOccurrences = new Map<string, number>()
 
-    return item.agent_response_parts.flatMap<TimelinePart>((part) => {
+    return item.agent_response_parts.flatMap<AgentActivityEntry>((part) => {
       const baseKey =
         part.type === 'message'
           ? `message-${part.content.length}-${hashString(part.content)}`
@@ -137,14 +136,13 @@ function getTimelineParts(item: ChatItem): TimelinePart[] {
   return [...(item.agent_thoughts ?? [])]
     .sort((left, right) => left.position - right.position)
     .flatMap((thought) => {
-      const parts: TimelinePart[] = []
+      const parts: AgentActivityEntry[] = []
       const key = getThoughtKey(thought)
       const answer = thought.answer?.trim()
-      if (answer) {
-        parts.push({ type: 'message', content: answer, key: `message-${key}` })
-      } else if (hasVisibleActivity(thought)) {
+      if (answer) parts.push({ type: 'message', content: answer, key: `message-${key}` })
+
+      if (hasVisibleActivity(thought))
         parts.push({ type: 'thought', thought, key: `thought-${key}` })
-      }
 
       return parts
     })
@@ -169,10 +167,13 @@ function useWorkingDuration(enabled?: boolean) {
   return Math.max(0, Math.floor((now - startedAtRef.current) / 1000))
 }
 
-function TimelineMessage({ children }: { children: ReactNode }) {
+function ResponseMessage({ content }: { content: string }) {
   return (
-    <div className="max-w-full min-w-0 overflow-hidden py-2 body-md-regular text-text-primary">
-      {children}
+    <div
+      className="max-w-full min-w-0 overflow-hidden px-1 body-md-regular text-text-primary"
+      data-testid="agent-content-markdown"
+    >
+      <Markdown content={content} />
     </div>
   )
 }
@@ -222,7 +223,7 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
           <CollapsiblePanel className="w-full max-w-full">
             <div className="w-full max-w-full min-w-0 space-y-1 pb-1">
               {!!tool.input && (
-                <div className="w-full max-w-full min-w-0 overflow-hidden rounded-lg bg-components-input-bg-normal px-3 py-2">
+                <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[10px] bg-components-input-bg-normal px-3 py-2">
                   <div className="system-xs-semibold-uppercase text-text-tertiary">
                     {t(($) => $['thought.requestTitle'], { ns: 'tools' })}
                   </div>
@@ -232,7 +233,7 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
                 </div>
               )}
               {!!tool.output && (
-                <div className="w-full max-w-full min-w-0 overflow-hidden rounded-lg bg-components-input-bg-normal px-3 py-2">
+                <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[10px] bg-components-input-bg-normal px-3 py-2">
                   <div className="system-xs-semibold-uppercase text-text-tertiary">
                     {t(($) => $['thought.responseTitle'], { ns: 'tools' })}
                   </div>
@@ -253,7 +254,7 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
   )
 }
 
-function ActivityTimelinePart({
+function AgentActivityItem({
   thought,
   responding,
 }: {
@@ -264,7 +265,7 @@ function ActivityTimelinePart({
   const tools = getToolActivities(thought, i18n.language, responding)
 
   return (
-    <div className="flex w-full max-w-full min-w-0 flex-col gap-1">
+    <div className="flex w-full max-w-full min-w-0 flex-col py-0.5">
       {tools.map((tool) => (
         <ToolActivityItem key={`${getThoughtKey(thought)}-${tool.key}`} tool={tool} />
       ))}
@@ -281,17 +282,18 @@ function ActivityTimelinePart({
   )
 }
 
-function ThinkingTimeline({
+function AgentActivityDisclosure({
   item,
-  parts,
+  entries,
   responding,
+  defaultOpen,
 }: {
   item: ChatItem
-  parts: TimelinePart[]
+  entries: AgentActivityEntry[]
   responding?: boolean
+  defaultOpen?: boolean
 }) {
   const { t } = useTranslation('agentV2')
-  const hasPublicMessage = parts.some((part) => part.type === 'message')
   const workingDuration = useWorkingDuration(responding)
   const latency = Number(item.more?.latency)
   const duration = responding
@@ -303,32 +305,32 @@ function ThinkingTimeline({
   const title = duration ? `${thinking} · ${duration}` : thinking
 
   return (
-    <Collapsible className="w-full max-w-full" defaultOpen={!!responding && !hasPublicMessage}>
-      <CollapsibleTrigger className="group/thinking h-9 min-h-0 w-full justify-start gap-1 rounded-md border-b border-divider-subtle px-0 text-left hover:not-data-disabled:bg-transparent">
-        <span className="system-md-regular text-text-tertiary">{title}</span>
+    <Collapsible className="w-full max-w-full items-start gap-1" defaultOpen={defaultOpen}>
+      <CollapsibleTrigger
+        aria-label={title}
+        className="group/thinking h-6 min-h-0 w-auto max-w-full justify-start gap-1 rounded-md p-1 text-left system-xs-medium text-text-tertiary hover:not-data-disabled:bg-state-base-hover focus-visible:bg-state-base-hover"
+      >
+        <span>{thinking}</span>
+        {duration && (
+          <>
+            <span className="system-xs-regular text-text-quaternary">·</span>
+            <span>{duration}</span>
+          </>
+        )}
         <span
           className="i-ri-arrow-right-s-line size-4 transition-transform duration-100 ease-out group-data-panel-open/thinking:rotate-90 motion-reduce:transition-none"
           aria-hidden
         />
       </CollapsibleTrigger>
       <CollapsiblePanel className="w-full max-w-full">
-        <div className="mt-1 flex w-full max-w-full min-w-0">
-          <div className="ml-2 w-5 shrink-0 border-l border-divider-subtle" />
-          <div className="max-w-full min-w-0 flex-1 overflow-hidden">
-            {parts.map((part) =>
-              part.type === 'message' ? (
-                <TimelineMessage key={part.key}>
-                  <Markdown content={part.content} />
-                </TimelineMessage>
-              ) : (
-                <ActivityTimelinePart
-                  key={part.key}
-                  thought={part.thought}
-                  responding={responding}
-                />
-              ),
-            )}
-          </div>
+        <div className="flex w-full max-w-full min-w-0 flex-col gap-1 overflow-hidden">
+          {entries.map((entry) =>
+            entry.type === 'message' ? (
+              <ResponseMessage key={entry.key} content={entry.content} />
+            ) : (
+              <AgentActivityItem key={entry.key} thought={entry.thought} responding={responding} />
+            ),
+          )}
         </div>
       </CollapsiblePanel>
     </Collapsible>
@@ -349,35 +351,36 @@ export function AgentRosterResponseContent({
     )
   }
 
-  const timelineParts = getTimelineParts(item)
-  const timelineState = !responding
-    ? 'complete'
-    : timelineParts.some((part) => part.type === 'message')
-      ? 'responding-message'
-      : 'responding-thinking'
-  const finalContent = item.agent_response_parts?.length ? undefined : content
+  const entries = getAgentActivityEntries(item)
+  const hasLiveResponseParts = !!item.agent_response_parts?.length
+  const hasActivity = hasLiveResponseParts
+    ? entries.some((entry) => entry.type === 'thought')
+    : entries.length > 0
+  const standaloneMessages = hasLiveResponseParts
+    ? hasActivity
+      ? []
+      : entries.flatMap((entry) => (entry.type === 'message' ? [entry] : []))
+    : content
+      ? [{ type: 'message' as const, content, key: 'final-answer' }]
+      : []
 
   return (
     <div
       className="flex w-full max-w-full min-w-0 flex-col gap-1 overflow-hidden"
       data-testid="agent-roster-response-content"
     >
-      {!!timelineParts.length && (
-        <ThinkingTimeline
-          key={timelineState}
+      {hasActivity && (
+        <AgentActivityDisclosure
+          key={hasLiveResponseParts ? 'live' : 'history'}
           item={item}
-          parts={timelineParts}
+          entries={entries}
           responding={responding}
+          defaultOpen={hasLiveResponseParts}
         />
       )}
-      {finalContent && (
-        <div
-          className="px-2 py-2 body-md-regular text-text-primary"
-          data-testid="agent-content-markdown"
-        >
-          <Markdown content={finalContent} />
-        </div>
-      )}
+      {standaloneMessages.map((message) => (
+        <ResponseMessage key={message.key} content={message.content} />
+      ))}
     </div>
   )
 }

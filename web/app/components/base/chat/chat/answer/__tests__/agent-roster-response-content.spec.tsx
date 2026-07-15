@@ -124,10 +124,6 @@ describe('AgentRosterResponseContent', () => {
     render(<AgentRosterResponseContent item={item} responding />)
 
     const processToggle = screen.getByRole('button', { name: /Thinking/ })
-    expect(processToggle).toHaveAttribute('aria-expanded', 'false')
-
-    await user.click(processToggle)
-
     expect(processToggle).toHaveAttribute('aria-expanded', 'true')
 
     await waitFor(() => {
@@ -179,26 +175,12 @@ describe('AgentRosterResponseContent', () => {
 
     const activityToggle = screen.getByRole('button', { name: 'Ran commands' })
     expect(activityToggle).toHaveAttribute('aria-expanded', 'false')
-    expect(activityToggle).toHaveClass('h-6', 'w-auto', 'p-1', 'system-xs-medium')
-    expect(activityToggle).not.toHaveClass('w-full')
 
     await user.click(activityToggle)
 
     expect(activityToggle).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: 'Ran commands' })).toBe(activityToggle)
     expect(screen.getByText('{"command":"ls"}')).toBeInTheDocument()
-
-    const detailsId = activityToggle.getAttribute('aria-controls')
-    const details = detailsId ? document.getElementById(detailsId) : null
-    expect(details).toHaveClass('w-full', 'max-w-full')
-    expect(details?.firstElementChild).toHaveClass('w-full', 'min-w-0', 'max-w-full')
-    expect(details?.firstElementChild).not.toHaveClass('pl-6')
-    expect(screen.getByText('{"command":"ls"}')).toHaveClass(
-      'min-w-0',
-      'max-w-full',
-      'whitespace-pre-wrap',
-      'wrap-break-word',
-    )
   })
 
   it('should use the shell activity fallback only when no descriptive label is available', async () => {
@@ -272,7 +254,23 @@ describe('AgentRosterResponseContent', () => {
     expect(screen.getByRole('button', { name: 'Running commands' })).toBeInTheDocument()
   })
 
-  it('should collapse the thinking timeline when a public message appears', () => {
+  it('should keep the live activity disclosure open when public messages arrive and completion starts', () => {
+    const thought = {
+      id: 'thought-transition',
+      thought: 'raw thinking',
+      tool: 'shell_run',
+      tool_input: '{"command":"ls"}',
+      tool_labels: {
+        shell_run: {
+          en_US: 'Ran commands',
+          zh_Hans: '运行了命令',
+        },
+      },
+      observation: 'README.md',
+      message_id: 'answer-transition',
+      conversation_id: 'conversation-transition',
+      position: 1,
+    }
     const item = {
       id: 'answer-transition',
       content: '',
@@ -280,22 +278,7 @@ describe('AgentRosterResponseContent', () => {
       agent_response_parts: [
         {
           type: 'thought',
-          thought: {
-            id: 'thought-transition',
-            thought: 'raw thinking',
-            tool: 'shell_run',
-            tool_input: '{"command":"ls"}',
-            tool_labels: {
-              shell_run: {
-                en_US: 'Ran commands',
-                zh_Hans: '运行了命令',
-              },
-            },
-            observation: 'README.md',
-            message_id: 'answer-transition',
-            conversation_id: 'conversation-transition',
-            position: 1,
-          },
+          thought,
         },
       ],
     } satisfies ChatItem
@@ -322,15 +305,143 @@ describe('AgentRosterResponseContent', () => {
 
     expect(screen.getByRole('button', { name: /Thinking/ })).toHaveAttribute(
       'aria-expanded',
-      'false',
+      'true',
     )
+    expect(screen.getByText('public answer')).toBeInTheDocument()
 
     rerender(<AgentRosterResponseContent item={itemWithMessage} responding={false} />)
+
+    expect(screen.getByRole('button', { name: /Thinking/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+
+    rerender(
+      <AgentRosterResponseContent
+        item={{
+          ...item,
+          content: 'final answer',
+          agent_response_parts: undefined,
+          agent_thoughts: [thought],
+        }}
+        content="final answer"
+        responding={false}
+      />,
+    )
 
     expect(screen.getByRole('button', { name: 'Thinking' })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
+    expect(screen.getByText('final answer')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ran commands' })).not.toBeInTheDocument()
+  })
+
+  it('should preserve a manual live activity collapse as new events arrive', async () => {
+    const user = userEvent.setup()
+    const item = {
+      id: 'answer-manual-collapse',
+      content: '',
+      isAnswer: true,
+      agent_response_parts: [
+        {
+          type: 'thought',
+          thought: {
+            id: 'thought-manual-collapse',
+            thought: '',
+            tool: 'shell_run',
+            tool_input: 'pwd',
+            observation: '/workspace',
+            message_id: 'answer-manual-collapse',
+            conversation_id: 'conversation-manual-collapse',
+            position: 1,
+          },
+        },
+      ],
+    } satisfies ChatItem
+
+    const { rerender } = render(<AgentRosterResponseContent item={item} responding />)
+    const processToggle = screen.getByRole('button', { name: /Thinking/ })
+
+    await user.click(processToggle)
+    expect(processToggle).toHaveAttribute('aria-expanded', 'false')
+
+    rerender(
+      <AgentRosterResponseContent
+        item={{
+          ...item,
+          agent_response_parts: [
+            ...item.agent_response_parts,
+            { type: 'message', content: 'new progress update' },
+          ],
+        }}
+        responding
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /Thinking/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.queryByText('new progress update')).not.toBeInTheDocument()
+  })
+
+  it('should keep a historical answer and its activity in the same process entry', async () => {
+    const user = userEvent.setup()
+    const item = {
+      id: 'answer-history-with-activity',
+      content: 'final answer',
+      isAnswer: true,
+      agent_thoughts: [
+        {
+          id: 'thought-history-with-activity',
+          thought: 'internal thought should not render',
+          answer: 'public progress update',
+          tool: 'shell_run',
+          tool_input: 'pwd',
+          observation: '/workspace',
+          message_id: 'answer-history-with-activity',
+          conversation_id: 'conversation-history-with-activity',
+          position: 1,
+        },
+      ],
+    } satisfies ChatItem
+
+    render(<AgentRosterResponseContent item={item} content={item.content} />)
+
+    await user.click(screen.getByRole('button', { name: 'Thinking' }))
+
+    expect(screen.getByText('public progress update')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ran commands' })).toBeInTheDocument()
+    expect(screen.getByText('final answer')).toBeInTheDocument()
+    expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
+  })
+
+  it('should render a live message directly when there is no activity', () => {
+    const item = {
+      id: 'answer-live-message-only',
+      content: '',
+      isAnswer: true,
+      agent_response_parts: [{ type: 'message', content: 'direct answer' }],
+    } satisfies ChatItem
+
+    render(<AgentRosterResponseContent item={item} responding />)
+
+    expect(screen.queryByRole('button', { name: /Thinking/ })).not.toBeInTheDocument()
+    expect(screen.getByText('direct answer')).toBeInTheDocument()
+  })
+
+  it('should omit the activity disclosure for a completed response without activity', () => {
+    const item = {
+      id: 'answer-without-activity',
+      content: 'final answer',
+      isAnswer: true,
+    } satisfies ChatItem
+
+    render(<AgentRosterResponseContent item={item} content={item.content} />)
+
+    expect(screen.queryByRole('button', { name: /Thinking/ })).not.toBeInTheDocument()
+    expect(screen.getByText('final answer')).toBeInTheDocument()
   })
 
   it('should keep the completed thinking label and render the final answer outside it', async () => {
