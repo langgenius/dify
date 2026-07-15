@@ -12,7 +12,7 @@ state.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Union, override
+from typing import Any, Union, cast, override
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
@@ -20,6 +20,7 @@ from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.secret_scrub import redact_secret_values
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
@@ -64,6 +65,7 @@ class PersistenceWorkflowInfo:
     workflow_type: WorkflowType
     version: str
     graph_data: Mapping[str, Any]
+    secret_values: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)
@@ -164,7 +166,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
         execution = self._get_workflow_execution()
-        execution.outputs = event.outputs
+        execution.outputs = cast(Mapping[str, Any], self._redact(event.outputs))
         execution.status = WorkflowExecutionStatus.SUCCEEDED
         self._populate_completion_statistics(execution)
 
@@ -174,7 +176,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_graph_run_partial_succeeded(self, event: GraphRunPartialSucceededEvent) -> None:
         execution = self._get_workflow_execution()
-        execution.outputs = event.outputs
+        execution.outputs = cast(Mapping[str, Any], self._redact(event.outputs))
         execution.status = WorkflowExecutionStatus.PARTIAL_SUCCEEDED
         execution.exceptions_count = event.exceptions_count
         self._populate_completion_statistics(execution)
@@ -209,7 +211,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _handle_graph_run_paused(self, event: GraphRunPausedEvent) -> None:
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.PAUSED
-        execution.outputs = event.outputs
+        execution.outputs = cast(Mapping[str, Any], self._redact(event.outputs))
         self._populate_completion_statistics(execution, update_finished=False)
 
         self._workflow_execution_repository.save(execution)
@@ -435,10 +437,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             )
             process_data = self._merge_retry_history(domain_execution.process_data, node_result.process_data)
             domain_execution.update_from_mapping(
-                inputs=node_result.inputs,
-                process_data=process_data,
-                outputs=projected_outputs,
-                metadata=node_result.metadata,
+                inputs=cast(Mapping[str, Any], self._redact(node_result.inputs)),
+                process_data=cast(Mapping[str, Any], self._redact(process_data)),
+                outputs=cast(Mapping[str, Any], self._redact(projected_outputs)),
+                metadata=cast(Mapping[Any, Any], self._redact(node_result.metadata)),
             )
 
         self._workflow_node_execution_repository.save(domain_execution)
@@ -480,6 +482,9 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             parent_trace_context=parent_trace_context,
         )
         self._trace_manager.add_trace_task(trace_task)
+
+    def _redact(self, value: object) -> object:
+        return redact_secret_values(value, self._workflow_info.secret_values)
 
     def _system_variables(self) -> Mapping[str, Any]:
         runtime_state = self.graph_runtime_state

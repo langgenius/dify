@@ -12,7 +12,7 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, Workflo
 from graphon.node_events import NodeRunResult
 
 
-def _build_layer() -> WorkflowPersistenceLayer:
+def _build_layer(secret_values: tuple[str, ...] = ()) -> WorkflowPersistenceLayer:
     application_generate_entity = Mock()
     application_generate_entity.inputs = {}
 
@@ -23,6 +23,7 @@ def _build_layer() -> WorkflowPersistenceLayer:
             workflow_type=WorkflowType.WORKFLOW,
             version="1",
             graph_data={},
+            secret_values=secret_values,
         ),
         workflow_execution_repository=Mock(),
         workflow_node_execution_repository=Mock(),
@@ -97,3 +98,37 @@ def test_update_node_execution_projects_start_outputs() -> None:
         outputs={"question": "hello"},
         metadata={},
     )
+
+
+def test_update_node_execution_redacts_secret_values() -> None:
+    from core.workflow.secret_scrub import SECRET_PLACEHOLDER
+
+    layer = _build_layer(secret_values=("supersecretvalue123",))
+    node_execution = Mock()
+    node_execution.id = "node-exec-secret"
+    node_execution.node_type = BuiltinNodeTypes.START
+    node_execution.created_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+    node_execution.update_from_mapping = Mock()
+
+    layer._node_snapshots[node_execution.id] = _NodeRuntimeSnapshot(
+        node_id="start",
+        title="Start",
+        predecessor_node_id=None,
+        iteration_id=None,
+        loop_id=None,
+        created_at=node_execution.created_at,
+    )
+
+    layer._update_node_execution(
+        node_execution,
+        NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"api_key": "Bearer supersecretvalue123"},
+            outputs={"question": "hello"},
+        ),
+        WorkflowNodeExecutionStatus.SUCCEEDED,
+    )
+
+    kwargs = node_execution.update_from_mapping.call_args.kwargs
+    assert kwargs["inputs"] == {"api_key": f"Bearer {SECRET_PLACEHOLDER}"}
+    assert "supersecretvalue123" not in str(kwargs)
