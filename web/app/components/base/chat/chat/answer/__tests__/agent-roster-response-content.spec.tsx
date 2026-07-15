@@ -177,13 +177,7 @@ describe('AgentRosterResponseContent', () => {
 
     const activityToggle = screen.getByRole('button', { name: 'Ran commands' })
     expect(activityToggle).toHaveAttribute('aria-expanded', 'false')
-    expect(activityToggle).toHaveClass(
-      'h-6',
-      'w-auto',
-      'p-1',
-      'system-xs-medium',
-      'hover:bg-state-base-hover',
-    )
+    expect(activityToggle).toHaveClass('h-6', 'w-auto', 'p-1', 'system-xs-medium')
     expect(activityToggle).not.toHaveClass('w-full')
 
     await user.click(activityToggle)

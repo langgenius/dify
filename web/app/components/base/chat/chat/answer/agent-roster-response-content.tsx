@@ -202,7 +202,7 @@ function ToolProcessItem({ tool }: { tool: ToolProcess }) {
     <div className="flex w-full max-w-full min-w-0 flex-col items-start">
       {hasDetails ? (
         <Collapsible className="w-full max-w-full items-start">
-          <CollapsibleTrigger className="group/tool h-6 min-h-0 w-auto max-w-full justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary hover:bg-state-base-hover focus-visible:bg-state-base-hover">
+          <CollapsibleTrigger className="group/tool h-6 min-h-0 w-auto max-w-full justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary hover:not-data-disabled:bg-state-base-hover focus-visible:bg-state-base-hover">
             {content}
           </CollapsibleTrigger>
           <CollapsiblePanel className="w-full max-w-full">
