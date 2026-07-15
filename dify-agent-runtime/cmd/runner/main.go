@@ -210,11 +210,14 @@ func buildExecArgv(scriptPath string) []string {
 func loadEnvJSON(path string) map[string]string {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		cmdutil.HandleError(err, 125, "read env json %s", path)
 	}
 	var m map[string]string
 	if err := json.Unmarshal(data, &m); err != nil {
-		return nil
+		cmdutil.HandleError(err, 125, "parse env json %s", path)
 	}
 	return m
 }
