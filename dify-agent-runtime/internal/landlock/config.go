@@ -17,7 +17,7 @@ type Config struct {
 
 var (
 	// DefaultRWPaths are directories granted read-write access besides HOME.
-	// Empty by default — the runner injects TMPDIR=$HOME/.tmp so /tmp is not needed.
+	// Empty by default — the runner injects TMPDIR=$CWD/.tmp so /tmp is not needed.
 	DefaultRWPaths = []string{}
 
 	// DefaultROPaths are directories granted read-only + execute access.
