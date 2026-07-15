@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Prześlij plik .zip lub .skill.",
   "agentDetail.configure.skills.upload.success": "Umiejętność przesłana.",
   "agentDetail.configure.skills.upload.title": "Prześlij umiejętność",
+  "agentDetail.configure.skills.upload.warning.files": "Jeśli chcesz używać tylko plików Markdown, prześlij je do sekcji Pliki i odwołaj się do nich w swoim prompcie.",
+  "agentDetail.configure.skills.upload.warning.specification": "Przesyłane umiejętności muszą być zgodne ze <specificationLink>specyfikacją Agent Skills</specificationLink>.",
   "agentDetail.configure.title": "Konfiguruj",
   "agentDetail.configure.tools.add": "Dodaj narzędzie",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Dla deweloperów",

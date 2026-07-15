@@ -1,4 +1,7 @@
-import type { DeclaredOutputConfig, DeclaredOutputType } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  DeclaredOutputConfig,
+  DeclaredOutputType,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
 import { defaultAgentV2DeclaredOutputs } from '../../output-variables'
 
@@ -6,13 +9,13 @@ export type DeclaredOutputChildConfig = NonNullable<DeclaredOutputConfig['childr
 
 export type EditableOutputConfig = DeclaredOutputConfig | DeclaredOutputChildConfig
 
-export type OutputTypeOptionValue
-  = DeclaredOutputType
-    | 'array[boolean]'
-    | 'array[file]'
-    | 'array[number]'
-    | 'array[object]'
-    | 'array[string]'
+export type OutputTypeOptionValue =
+  | DeclaredOutputType
+  | 'array[boolean]'
+  | 'array[file]'
+  | 'array[number]'
+  | 'array[object]'
+  | 'array[string]'
 
 export type OutputTypeOption = {
   label: string
@@ -61,14 +64,13 @@ export const OUTPUT_TYPE_OPTIONS: OutputTypeOption[] = [
 ]
 
 export function getOutputTypeOptionValue(output: EditableOutputConfig): OutputTypeOptionValue {
-  if (output.type !== 'array')
-    return output.type
+  if (output.type !== 'array') return output.type
 
   return `array[${output.array_item?.type || 'object'}]` as OutputTypeOptionValue
 }
 
 export function getOutputTypeOption(value: OutputTypeOptionValue) {
-  return OUTPUT_TYPE_OPTIONS.find(option => option.value === value) || OUTPUT_TYPE_OPTIONS[0]!
+  return OUTPUT_TYPE_OPTIONS.find((option) => option.value === value) || OUTPUT_TYPE_OPTIONS[0]!
 }
 
 export function createDraft(output?: EditableOutputConfig): OutputDraft {
@@ -104,8 +106,7 @@ export function createOutputFromDraft(
     required: draft.required,
   }
 
-  if (draft.description.trim())
-    output.description = draft.description.trim()
+  if (draft.description.trim()) output.description = draft.description.trim()
 
   if (option.type === 'array') {
     output.array_item = {
@@ -113,8 +114,7 @@ export function createOutputFromDraft(
     }
   }
 
-  if (draft.children.length && draft.type === 'object')
-    output.children = draft.children
+  if (draft.children.length && draft.type === 'object') output.children = draft.children
 
   if (draft.children.length && draft.type === 'array[object]') {
     output.array_item = {
@@ -156,8 +156,7 @@ export function getOutputChildren(output: EditableOutputConfig): DeclaredOutputC
   if (getOutputTypeOptionValue(output) === 'array[object]')
     return readOutputChildren(output.array_item?.children)
 
-  if (output.type === 'object')
-    return readOutputChildren(output.children)
+  if (output.type === 'object') return readOutputChildren(output.children)
 
   return []
 }
@@ -208,8 +207,7 @@ function getOutputChildAtPath(
   let children = getOutputChildren(output)
   for (const index of path) {
     current = children[index]
-    if (!current)
-      return undefined
+    if (!current) return undefined
     children = getOutputChildren(current)
   }
 
@@ -221,7 +219,7 @@ export function insertOutputChildAtPath(
   parentPath: number[],
   child: DeclaredOutputChildConfig,
 ) {
-  return updateOutputChildrenAtPath(output, parentPath, children => [...children, child])
+  return updateOutputChildrenAtPath(output, parentPath, (children) => [...children, child])
 }
 
 export function updateOutputChildAtPath(
@@ -230,27 +228,25 @@ export function updateOutputChildAtPath(
   child: DeclaredOutputChildConfig,
 ) {
   const childIndex = childPath.at(-1)
-  if (childIndex == null)
-    return output
+  if (childIndex == null) return output
 
-  return updateOutputChildrenAtPath(output, childPath.slice(0, -1), children => children.map((item, index) => index === childIndex ? child : item))
+  return updateOutputChildrenAtPath(output, childPath.slice(0, -1), (children) =>
+    children.map((item, index) => (index === childIndex ? child : item)),
+  )
 }
 
-export function deleteOutputChildAtPath(
-  output: DeclaredOutputConfig,
-  childPath: number[],
-) {
+export function deleteOutputChildAtPath(output: DeclaredOutputConfig, childPath: number[]) {
   const childIndex = childPath.at(-1)
-  if (childIndex == null)
-    return output
+  if (childIndex == null) return output
 
-  return updateOutputChildrenAtPath(output, childPath.slice(0, -1), children => children.filter((_, index) => index !== childIndex))
+  return updateOutputChildrenAtPath(output, childPath.slice(0, -1), (children) =>
+    children.filter((_, index) => index !== childIndex),
+  )
 }
 
 export function getDefaultValueErrorKey(draft: OutputDraft) {
   const trimmed = draft.defaultValue.trim()
-  if (!trimmed)
-    return null
+  if (!trimmed) return null
 
   const option = getOutputTypeOption(draft.type)
   if (option.type === 'file' || option.arrayItemType === 'file')
@@ -265,12 +261,14 @@ export function getDefaultValueErrorKey(draft: OutputDraft) {
   if (option.type === 'object' || option.type === 'array') {
     try {
       const parsed = JSON.parse(trimmed)
-      if (option.type === 'object' && (!parsed || Array.isArray(parsed) || typeof parsed !== 'object'))
+      if (
+        option.type === 'object' &&
+        (!parsed || Array.isArray(parsed) || typeof parsed !== 'object')
+      )
         return 'nodes.agent.outputVars.defaultValueObjectInvalid'
       if (option.type === 'array' && !Array.isArray(parsed))
         return 'nodes.agent.outputVars.defaultValueArrayInvalid'
-    }
-    catch {
+    } catch {
       return option.type === 'object'
         ? 'nodes.agent.outputVars.defaultValueObjectInvalid'
         : 'nodes.agent.outputVars.defaultValueArrayInvalid'
@@ -281,20 +279,19 @@ export function getDefaultValueErrorKey(draft: OutputDraft) {
 }
 
 export function isDefaultOutput(output: DeclaredOutputConfig) {
-  return defaultAgentV2DeclaredOutputs.some(defaultOutput =>
-    defaultOutput.name === output.name
-    && defaultOutput.type === output.type
-    && getOutputTypeOptionValue(defaultOutput) === getOutputTypeOptionValue(output),
+  return defaultAgentV2DeclaredOutputs.some(
+    (defaultOutput) =>
+      defaultOutput.name === output.name &&
+      defaultOutput.type === output.type &&
+      getOutputTypeOptionValue(defaultOutput) === getOutputTypeOptionValue(output),
   )
 }
 
 export function getOutputDescription(output: EditableOutputConfig, t: TFunction) {
-  if (output.name === 'text')
-    return t($ => $['nodes.agent.outputVars.text'], { ns: 'workflow' })
+  if (output.name === 'text') return t(($) => $['nodes.agent.outputVars.text'], { ns: 'workflow' })
   if (output.name === 'files')
-    return t($ => $['nodes.agent.outputVars.files.title'], { ns: 'workflow' })
-  if (output.name === 'json')
-    return t($ => $['nodes.agent.outputVars.json'], { ns: 'workflow' })
+    return t(($) => $['nodes.agent.outputVars.files.title'], { ns: 'workflow' })
+  if (output.name === 'json') return t(($) => $['nodes.agent.outputVars.json'], { ns: 'workflow' })
   return output.description || ''
 }
 
@@ -311,17 +308,15 @@ function updateOutputChildrenAtPath(
   parentPath: number[],
   updater: (children: DeclaredOutputChildConfig[]) => DeclaredOutputChildConfig[],
 ): DeclaredOutputConfig {
-  if (!parentPath.length)
-    return updateOutputChildren(output, updater(getOutputChildren(output)))
+  if (!parentPath.length) return updateOutputChildren(output, updater(getOutputChildren(output)))
 
   const [childIndex, ...restPath] = parentPath
-  if (childIndex == null)
-    return output
+  if (childIndex == null) return output
 
   const children = getOutputChildren(output)
-  const nextChildren = children.map((child, index) => (
-    index === childIndex ? updateChildChildrenAtPath(child, restPath, updater) : child
-  ))
+  const nextChildren = children.map((child, index) =>
+    index === childIndex ? updateChildChildrenAtPath(child, restPath, updater) : child,
+  )
 
   return updateOutputChildren(output, nextChildren)
 }
@@ -331,17 +326,15 @@ function updateChildChildrenAtPath(
   parentPath: number[],
   updater: (children: DeclaredOutputChildConfig[]) => DeclaredOutputChildConfig[],
 ): DeclaredOutputChildConfig {
-  if (!parentPath.length)
-    return updateChildChildren(child, updater(getOutputChildren(child)))
+  if (!parentPath.length) return updateChildChildren(child, updater(getOutputChildren(child)))
 
   const [childIndex, ...restPath] = parentPath
-  if (childIndex == null)
-    return child
+  if (childIndex == null) return child
 
   const children = getOutputChildren(child)
-  const nextChildren = children.map((nestedChild, index) => (
-    index === childIndex ? updateChildChildrenAtPath(nestedChild, restPath, updater) : nestedChild
-  ))
+  const nextChildren = children.map((nestedChild, index) =>
+    index === childIndex ? updateChildChildrenAtPath(nestedChild, restPath, updater) : nestedChild,
+  )
 
   return updateChildChildren(child, nextChildren)
 }
@@ -372,14 +365,11 @@ function updateChildChildren(
 }
 
 function getOutputDefaultValue(output: EditableOutputConfig) {
-  if (!('failure_strategy' in output))
-    return ''
+  if (!('failure_strategy' in output)) return ''
 
   const defaultValue = output.failure_strategy?.default_value
-  if (defaultValue == null)
-    return ''
-  if (typeof defaultValue === 'string')
-    return defaultValue
+  if (defaultValue == null) return ''
+  if (typeof defaultValue === 'string') return defaultValue
   return JSON.stringify(defaultValue)
 }
 
@@ -389,13 +379,11 @@ function coerceDefaultValue(value: string, option: OutputTypeOption): unknown {
     const parsed = Number(trimmed)
     return Number.isNaN(parsed) ? trimmed : parsed
   }
-  if (option.type === 'boolean')
-    return trimmed === 'true'
+  if (option.type === 'boolean') return trimmed === 'true'
   if (option.type === 'object' || option.type === 'array') {
     try {
       return JSON.parse(trimmed)
-    }
-    catch {
+    } catch {
       return trimmed
     }
   }

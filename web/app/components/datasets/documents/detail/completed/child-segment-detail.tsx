@@ -1,11 +1,7 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail, ChunkingMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiCloseLine,
-  RiCollapseDiagonalLine,
-  RiExpandDiagonalLine,
-} from '@remixicon/react'
+import { RiCloseLine, RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +9,7 @@ import Divider from '@/app/components/base/divider'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
 import { formatTime } from '@/utils/time'
-import ActionButtons from './common/action-buttons'
+import { ActionButtons } from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
 import Dot from './common/dot'
 import { SegmentIndexTag } from './common/segment-index-tag'
@@ -41,14 +37,12 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   const [content, setContent] = useState(childChunkInfo?.content || '')
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
-  const fullScreen = useSegmentListContext(s => s.fullScreen)
-  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
+  const fullScreen = useSegmentListContext((s) => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext((s) => s.toggleFullScreen)
 
   eventEmitter?.useSubscription((v) => {
-    if (v === 'update-child-segment')
-      setLoading(true)
-    if (v === 'update-child-segment-done')
-      setLoading(false)
+    if (v === 'update-child-segment') setLoading(true)
+    if (v === 'update-child-segment-done') setLoading(false)
   })
 
   const handleCancel = () => {
@@ -61,30 +55,38 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
 
   const wordCountText = useMemo(() => {
     const count = content.length
-    return `${formatNumber(count)} ${t($ => $['segment.characters'], { ns: 'datasetDocuments', count })}`
+    return `${formatNumber(count)} ${t(($) => $['segment.characters'], { ns: 'datasetDocuments', count })}`
   }, [content.length])
 
   const EditTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (childChunkInfo?.updated_at ?? 0) * 1000,
-      dateFormat: `${t($ => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
+      dateFormat: `${t(($) => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
     })
-    return `${t($ => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
+    return `${t(($) => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
   }, [childChunkInfo?.updated_at])
 
   return (
     <div className="flex h-full flex-col">
-      <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4')}>
+      <div
+        className={cn(
+          'flex items-center justify-between',
+          fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4',
+        )}
+      >
         <div className="flex flex-col">
-          <div className="system-xl-semibold text-text-primary">{t($ => $['segment.editChildChunk'], { ns: 'datasetDocuments' })}</div>
+          <div className="system-xl-semibold text-text-primary">
+            {t(($) => $['segment.editChildChunk'], { ns: 'datasetDocuments' })}
+          </div>
           <div className="flex items-center gap-x-2">
-            <SegmentIndexTag positionId={childChunkInfo?.position || ''} labelPrefix={t($ => $['segment.childChunk'], { ns: 'datasetDocuments' }) as string} />
+            <SegmentIndexTag
+              positionId={childChunkInfo?.position || ''}
+              labelPrefix={t(($) => $['segment.childChunk'], { ns: 'datasetDocuments' }) as string}
+            />
             <Dot />
             <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
             <Dot />
-            <span className="system-xs-medium text-text-tertiary">
-              {EditTimeText}
-            </span>
+            <span className="system-xs-medium text-text-tertiary">{EditTimeText}</span>
           </div>
         </div>
         <div className="flex items-center">
@@ -101,17 +103,21 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
           )}
           <button
             type="button"
-            aria-label={t($ => $[fullScreen ? 'operation.zoomOut' : 'operation.zoomIn'], { ns: 'common' })}
+            aria-label={t(($) => $[fullScreen ? 'operation.zoomOut' : 'operation.zoomIn'], {
+              ns: 'common',
+            })}
             className="mr-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={toggleFullScreen}
           >
-            {fullScreen
-              ? <RiCollapseDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />
-              : <RiExpandDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />}
+            {fullScreen ? (
+              <RiCollapseDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />
+            ) : (
+              <RiExpandDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />
+            )}
           </button>
           <button
             type="button"
-            aria-label={t($ => $['operation.close'], { ns: 'common' })}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={onCancel}
           >
@@ -119,12 +125,22 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
           </button>
         </div>
       </div>
-      <div className={cn('flex w-full grow', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'px-4 py-3')}>
-        <div className={cn('h-full overflow-hidden break-all whitespace-pre-line', fullScreen ? 'w-1/2' : 'w-full')}>
+      <div
+        className={cn(
+          'flex w-full grow',
+          fullScreen ? 'flex-row justify-center px-6 pt-6' : 'px-4 py-3',
+        )}
+      >
+        <div
+          className={cn(
+            'h-full overflow-hidden break-all whitespace-pre-line',
+            fullScreen ? 'w-1/2' : 'w-full',
+          )}
+        >
           <ChunkContent
             docForm={docForm}
             question={content}
-            onQuestionChange={content => setContent(content)}
+            onQuestionChange={(content) => setContent(content)}
             isEditMode={true}
           />
         </div>

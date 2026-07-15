@@ -15,11 +15,7 @@ export type InputFieldEditorProps = {
   initialData?: InputVar
 }
 
-const InputFieldEditorPanel = ({
-  onClose,
-  onSubmit,
-  initialData,
-}: InputFieldEditorProps) => {
+const InputFieldEditorPanel = ({ onClose, onSubmit, initialData }: InputFieldEditorProps) => {
   const { t } = useTranslation()
 
   const { floatingRight, floatingRightWidth } = useFloatingRight(400)
@@ -28,10 +24,13 @@ const InputFieldEditorPanel = ({
     return convertToInputFieldFormData(initialData)
   }, [initialData])
 
-  const handleSubmit = useCallback((value: FormData, moreInfo?: MoreInfo) => {
-    const inputFieldData = convertFormDataToINputField(value)
-    onSubmit(inputFieldData, moreInfo)
-  }, [onSubmit])
+  const handleSubmit = useCallback(
+    (value: FormData, moreInfo?: MoreInfo) => {
+      const inputFieldData = convertFormDataToINputField(value)
+      onSubmit(inputFieldData, moreInfo)
+    },
+    [onSubmit],
+  )
 
   return (
     <div
@@ -45,11 +44,13 @@ const InputFieldEditorPanel = ({
       }}
     >
       <div className="flex items-center pt-3.5 pr-11 pb-1 pl-4 system-xl-semibold text-text-primary">
-        {initialData ? t($ => $['inputFieldPanel.editInputField'], { ns: 'datasetPipeline' }) : t($ => $['inputFieldPanel.addInputField'], { ns: 'datasetPipeline' })}
+        {initialData
+          ? t(($) => $['inputFieldPanel.editInputField'], { ns: 'datasetPipeline' })
+          : t(($) => $['inputFieldPanel.addInputField'], { ns: 'datasetPipeline' })}
       </div>
       <button
         type="button"
-        aria-label={t($ => $['operation.close'], { ns: 'common' })}
+        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
         onClick={onClose}
       >

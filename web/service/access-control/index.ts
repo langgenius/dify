@@ -32,7 +32,10 @@ export const useAppWhiteListSubjects = (appId: string | undefined, enabled: bool
   return useAppWhiteListSubjectsBase(appId, enabled)
 }
 
-export const useSearchForWhiteListCandidates = (query: SearchForWhiteListCandidatesQuery, enabled: boolean) => {
+export const useSearchForWhiteListCandidates = (
+  query: SearchForWhiteListCandidatesQuery,
+  enabled: boolean,
+) => {
   return useSearchForWhiteListCandidatesBase(query, enabled)
 }
 

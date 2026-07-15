@@ -8,7 +8,6 @@ import * as React from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { getMarketplaceUrl } from '@/utils/var'
-
 import Marketplace from '../index'
 
 const { mockRouterPush } = vi.hoisted(() => ({
@@ -43,7 +42,8 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
 const mockUseMarketplacePlugins = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) => mockUseMarketplaceCollectionsAndPlugins(...args),
+  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) =>
+    mockUseMarketplaceCollectionsAndPlugins(...args),
   useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
 }))
 
@@ -159,11 +159,13 @@ describe('Marketplace', () => {
 
       // Assert
       expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
-      expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
-        cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3',
-        onCollectionMoreClick: expect.any(Function),
-        showInstallButton: true,
-      }))
+      expect(listRenderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3',
+          onCollectionMoreClick: expect.any(Function),
+          showInstallButton: true,
+        }),
+      )
     })
 
     it('should hide install actions when plugin install permission is missing', () => {
@@ -183,9 +185,11 @@ describe('Marketplace', () => {
         />,
       )
 
-      expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
-        showInstallButton: false,
-      }))
+      expect(listRenderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          showInstallButton: false,
+        }),
+      )
     })
   })
 
@@ -214,12 +218,14 @@ describe('Marketplace', () => {
       // Assert
       expect(showMarketplacePanel).toHaveBeenCalledTimes(1)
       expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('', {
-        language: 'en',
+        language: 'en-US',
         q: 'vector',
         tags: 'tag-a,tag-b',
         theme: undefined,
       })
-      const marketplaceLink = screen.getByRole('link', { name: /plugin.marketplace.difyMarketplace/i })
+      const marketplaceLink = screen.getByRole('link', {
+        name: /plugin.marketplace.difyMarketplace/i,
+      })
       expect(marketplaceLink).toHaveAttribute('href', 'https://marketplace.test/market')
     })
 
@@ -236,8 +242,9 @@ describe('Marketplace', () => {
         />,
       )
 
-      const contentFrames = Array.from(container.querySelectorAll('div'))
-        .filter(el => el.classList.contains('max-w-[1600px]'))
+      const contentFrames = Array.from(container.querySelectorAll('div')).filter((el) =>
+        el.classList.contains('max-w-[1600px]'),
+      )
       expect(contentFrames).toHaveLength(2)
       expect(contentFrames[0]).toHaveClass('px-6')
       expect(contentFrames[1]).toHaveClass('px-6')
@@ -264,7 +271,9 @@ describe('Marketplace', () => {
         sort_order: 'DESC',
       })
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC')
+      expect(mockRouterPush).toHaveBeenCalledWith(
+        '/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC',
+      )
     })
   })
 })

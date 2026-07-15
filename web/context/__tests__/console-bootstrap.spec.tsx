@@ -12,7 +12,10 @@ import { setZendeskConversationFields } from '@/app/components/base/zendesk/util
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
 import { initialWorkspaceInfo } from '../app-context-defaults'
-import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '../permission-state'
+import {
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '../permission-state'
 import { langGeniusVersionInfoAtom } from '../version-state'
 import {
   currentWorkspaceAtom,
@@ -91,16 +94,18 @@ const mockLangGeniusVersionState = vi.hoisted(() => ({
       model_load_balancing_enabled: false,
     },
     can_auto_update: false,
-  } as {
-    version: string
-    release_date: string
-    release_notes: string
-    features: {
-      can_replace_logo: boolean
-      model_load_balancing_enabled: boolean
-    }
-    can_auto_update: boolean
-  } | undefined,
+  } as
+    | {
+        version: string
+        release_date: string
+        release_notes: string
+        features: {
+          can_replace_logo: boolean
+          model_load_balancing_enabled: boolean
+        }
+        can_auto_update: boolean
+      }
+    | undefined,
 }))
 
 vi.mock('@/config', async (importOriginal) => {
@@ -141,8 +146,7 @@ vi.mock('@/service/client', () => ({
           }) => ({
             queryKey: ['current-workspace'],
             queryFn: async () => {
-              if (mockCurrentWorkspaceQueryState.isPending)
-                return new Promise(() => {})
+              if (mockCurrentWorkspaceQueryState.isPending) return new Promise(() => {})
 
               return mockCurrentWorkspaceQueryState.data
             },
@@ -250,14 +254,15 @@ function ConsoleBootstrapProbe() {
       </span>
       <span>
         version:
-        {langGeniusVersionInfo.current_version}
-        /
-        {langGeniusVersionInfo.latest_version}
-        /
+        {langGeniusVersionInfo.current_version}/{langGeniusVersionInfo.latest_version}/
         {langGeniusVersionInfo.current_env}
       </span>
-      <button type="button" onClick={refreshUserProfile}>refresh user</button>
-      <button type="button" onClick={refreshCurrentWorkspace}>refresh workspace</button>
+      <button type="button" onClick={refreshUserProfile}>
+        refresh user
+      </button>
+      <button type="button" onClick={refreshCurrentWorkspace}>
+        refresh workspace
+      </button>
     </>
   )
 }
@@ -347,8 +352,7 @@ describe('Console bootstrap', () => {
     }
     mockGetRequest.mockImplementation((url: string) => {
       if (url === '/workspaces/current/rbac/my-permissions') {
-        if (mockPermissionKeysState.isPending)
-          return new Promise(() => {})
+        if (mockPermissionKeysState.isPending) return new Promise(() => {})
 
         return Promise.resolve({
           workspace: {
@@ -365,8 +369,7 @@ describe('Console bootstrap', () => {
         })
       }
 
-      if (url === '/version')
-        return Promise.resolve(mockLangGeniusVersionState.data)
+      if (url === '/version') return Promise.resolve(mockLangGeniusVersionState.data)
 
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
@@ -452,32 +455,42 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith([{
-          id: ZENDESK_FIELD_IDS.ENVIRONMENT,
-          value: 'cloud',
-        }])
+        expect(setZendeskConversationFields).toHaveBeenCalledWith([
+          {
+            id: ZENDESK_FIELD_IDS.ENVIRONMENT,
+            value: 'cloud',
+          },
+        ])
       })
-      expect(setZendeskConversationFields).toHaveBeenCalledWith([{
-        id: ZENDESK_FIELD_IDS.VERSION,
-        value: '1.0.1',
-      }])
-      expect(setZendeskConversationFields).toHaveBeenCalledWith([{
-        id: ZENDESK_FIELD_IDS.EMAIL,
-        value: 'user@example.com',
-      }])
+      expect(setZendeskConversationFields).toHaveBeenCalledWith([
+        {
+          id: ZENDESK_FIELD_IDS.VERSION,
+          value: '1.0.1',
+        },
+      ])
+      expect(setZendeskConversationFields).toHaveBeenCalledWith([
+        {
+          id: ZENDESK_FIELD_IDS.EMAIL,
+          value: 'user@example.com',
+        },
+      ])
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith([{
-          id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
-          value: 'workspace-1',
-        }])
+        expect(setZendeskConversationFields).toHaveBeenCalledWith([
+          {
+            id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
+            value: 'workspace-1',
+          },
+        ])
       })
       await waitFor(() => {
         expect(setUserId).toHaveBeenCalledWith('user@example.com')
-        expect(setUserProperties).toHaveBeenCalledWith(expect.objectContaining({
-          email: 'user@example.com',
-          workspace_id: 'workspace-1',
-          workspace_role: 'editor',
-        }))
+        expect(setUserProperties).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'user@example.com',
+            workspace_id: 'workspace-1',
+            workspace_role: 'editor',
+          }),
+        )
         expect(flushRegistrationSuccess).toHaveBeenCalled()
       })
     })

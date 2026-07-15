@@ -40,10 +40,15 @@ const StatusIndicator: FC<StatusIndicatorProps> = ({ serverActivated }) => {
   return (
     <div className="flex items-center gap-1">
       <StatusDot status={serverActivated ? 'success' : 'warning'} />
-      <div className={cn('system-xs-semibold-uppercase', serverActivated ? 'text-text-success' : 'text-text-warning')}>
+      <div
+        className={cn(
+          'system-xs-semibold-uppercase',
+          serverActivated ? 'text-text-success' : 'text-text-warning',
+        )}
+      >
         {serverActivated
-          ? t($ => $['overview.status.running'], { ns: 'appOverview' })
-          : t($ => $['overview.status.disable'], { ns: 'appOverview' })}
+          ? t(($) => $['overview.status.running'], { ns: 'appOverview' })
+          : t(($) => $['overview.status.disable'], { ns: 'appOverview' })}
       </div>
     </div>
   )
@@ -68,13 +73,11 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
   return (
     <div className="flex flex-col items-start justify-center self-stretch">
       <div className="pb-1 system-xs-medium text-text-tertiary">
-        {t($ => $['mcp.server.url'], { ns: 'tools' })}
+        {t(($) => $['mcp.server.url'], { ns: 'tools' })}
       </div>
       <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
         <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-          <div className="truncate text-xs font-medium text-text-secondary">
-            {serverURL}
-          </div>
+          <div className="truncate text-xs font-medium text-text-secondary">{serverURL}</div>
         </div>
         {serverPublished && (
           <>
@@ -82,7 +85,7 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
             <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />
             <Tooltip>
               <TooltipTrigger
-                render={(
+                render={
                   <button
                     type="button"
                     className={cn(
@@ -91,16 +94,24 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
                         ? 'cursor-pointer hover:bg-state-base-hover'
                         : 'cursor-not-allowed',
                     )}
-                    aria-label={t($ => $['overview.appInfo.regenerate'], { ns: 'appOverview' }) || ''}
+                    aria-label={
+                      t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' }) || ''
+                    }
                     disabled={!canManageMCP}
                     onClick={onRegenerate}
                   >
-                    <span className={cn('i-ri-loop-left-line', 'size-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
+                    <span
+                      className={cn(
+                        'i-ri-loop-left-line',
+                        'size-4 text-text-tertiary hover:text-text-secondary',
+                        genLoading && 'animate-spin',
+                      )}
+                    />
                   </button>
-                )}
+                }
               />
               <TooltipContent>
-                {t($ => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
+                {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
               </TooltipContent>
             </Tooltip>
           </>
@@ -121,7 +132,12 @@ const TriggerModeOverlay: FC<TriggerModeOverlayProps> = ({ triggerModeMessage })
         <PopoverTrigger
           openOnHover
           aria-label={typeof triggerModeMessage === 'string' ? triggerModeMessage : 'Disabled'}
-          render={<button type="button" className="absolute inset-0 z-10 cursor-not-allowed rounded-xl outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover" />}
+          render={
+            <button
+              type="button"
+              className="absolute inset-0 z-10 cursor-not-allowed rounded-xl outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+            />
+          }
         />
         <PopoverContent
           placement="right"
@@ -132,7 +148,9 @@ const TriggerModeOverlay: FC<TriggerModeOverlayProps> = ({ triggerModeMessage })
       </Popover>
     )
   }
-  return <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
+  return (
+    <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
+  )
 }
 
 // Helper function for tooltip content
@@ -153,24 +171,22 @@ function getTooltipContent({
   t,
   docLink,
 }: TooltipContentParams): ReactNode {
-  if (!toggleDisabled)
-    return ''
+  if (!toggleDisabled) return ''
 
-  if (appUnpublished)
-    return t($ => $['mcp.server.publishTip'], { ns: 'tools' })
+  if (appUnpublished) return t(($) => $['mcp.server.publishTip'], { ns: 'tools' })
 
   if (missingStartNode) {
     return (
       <>
         <div className="mb-1 text-xs font-normal text-text-secondary">
-          {t($ => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
+          {t(($) => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
         </div>
         <button
           type="button"
           className="cursor-pointer rounded-sm text-xs font-normal text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
           onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
         >
-          {t($ => $['overview.appInfo.enableTooltip.learnMore'], { ns: 'appOverview' })}
+          {t(($) => $['overview.appInfo.enableTooltip.learnMore'], { ns: 'appOverview' })}
         </button>
       </>
     )
@@ -230,10 +246,10 @@ const MCPServiceCard: FC<IAppCardProps> = ({
 
   const emitMcpServerUpdate = async (data: Record<string, unknown>) => {
     try {
-      const { webSocketClient } = await import('@/app/components/workflow/collaboration/core/websocket-manager')
+      const { webSocketClient } =
+        await import('@/app/components/workflow/collaboration/core/websocket-manager')
       const socket = webSocketClient.getSocket(appId)
-      if (!socket)
-        return
+      if (!socket) return
 
       const timestamp = Date.now()
       socket.emit('collaboration_event', {
@@ -244,8 +260,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
         },
         timestamp,
       })
-    }
-    catch (error) {
+    } catch (error) {
       console.error('MCP collaboration event emit failed:', error)
     }
   }
@@ -258,8 +273,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
       setPendingStatus(null)
     }
 
-    if (result.activated !== state)
-      return
+    if (result.activated !== state) return
 
     // Emit collaboration event to notify other clients of MCP server status change
     void emitMcpServerUpdate({
@@ -289,14 +303,12 @@ const MCPServiceCard: FC<IAppCardProps> = ({
 
   // Listen for collaborative MCP server updates from other clients
   useEffect(() => {
-    if (!appId)
-      return
+    if (!appId) return
 
     const unsubscribe = collaborationManager.onMcpServerUpdate((_update: CollaborationUpdate) => {
       try {
         invalidateMCPServerDetailRef.current(appId)
-      }
-      catch (error) {
+      } catch (error) {
         console.error('MCP server update failed:', error)
       }
     })
@@ -304,8 +316,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
     return unsubscribe
   }, [appId])
 
-  if (isLoading)
-    return null
+  if (isLoading) return null
 
   const tooltipContent = getTooltipContent({
     toggleDisabled,
@@ -318,12 +329,25 @@ const MCPServiceCard: FC<IAppCardProps> = ({
 
   return (
     <>
-      <div className={cn('w-full max-w-full rounded-xl border-t border-l-[0.5px] border-effects-highlight', isMinimalState && 'h-12')}>
-        <div className={cn('relative rounded-xl bg-background-default', triggerModeDisabled && 'opacity-60')}>
-          {triggerModeDisabled && (
-            <TriggerModeOverlay triggerModeMessage={triggerModeMessage} />
+      <div
+        className={cn(
+          'w-full max-w-full rounded-xl border-t border-l-[0.5px] border-effects-highlight',
+          isMinimalState && 'h-12',
+        )}
+      >
+        <div
+          className={cn(
+            'relative rounded-xl bg-background-default',
+            triggerModeDisabled && 'opacity-60',
           )}
-          <div className={cn('flex w-full flex-col items-start justify-center gap-3 self-stretch p-3', isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle')}>
+        >
+          {triggerModeDisabled && <TriggerModeOverlay triggerModeMessage={triggerModeMessage} />}
+          <div
+            className={cn(
+              'flex w-full flex-col items-start justify-center gap-3 self-stretch p-3',
+              isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle',
+            )}
+          >
             <div className="flex w-full items-center gap-3 self-stretch">
               <div className="flex grow items-center">
                 <div className="mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
@@ -331,36 +355,48 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                 </div>
                 <div className="group w-full">
                   <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
-                    {t($ => $['mcp.server.title'], { ns: 'tools' })}
+                    {t(($) => $['mcp.server.title'], { ns: 'tools' })}
                   </div>
                 </div>
               </div>
               <StatusIndicator serverActivated={serverActivated} />
-              {toggleDisabled && tooltipContent
-                ? (
-                    <Popover>
-                      <PopoverTrigger
-                        openOnHover
-                        nativeButton={false}
-                        aria-label={typeof tooltipContent === 'string' ? tooltipContent : t($ => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
-                        render={(
-                          <div>
-                            <Switch checked={activated} onCheckedChange={onChangeStatus} disabled={toggleDisabled} />
-                          </div>
-                        )}
-                      />
-                      <PopoverContent
-                        placement="right"
-                        sideOffset={24}
-                        popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
-                      >
-                        {tooltipContent}
-                      </PopoverContent>
-                    </Popover>
-                  )
-                : (
-                    <Switch checked={activated} onCheckedChange={onChangeStatus} disabled={toggleDisabled} />
-                  )}
+              {toggleDisabled && tooltipContent ? (
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    nativeButton={false}
+                    aria-label={
+                      typeof tooltipContent === 'string'
+                        ? tooltipContent
+                        : t(($) => $['overview.appInfo.enableTooltip.description'], {
+                            ns: 'appOverview',
+                          })
+                    }
+                    render={
+                      <div>
+                        <Switch
+                          checked={activated}
+                          onCheckedChange={onChangeStatus}
+                          disabled={toggleDisabled}
+                        />
+                      </div>
+                    }
+                  />
+                  <PopoverContent
+                    placement="right"
+                    sideOffset={24}
+                    popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
+                  >
+                    {tooltipContent}
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Switch
+                  checked={activated}
+                  onCheckedChange={onChangeStatus}
+                  disabled={toggleDisabled}
+                />
+              )}
             </div>
             {!isMinimalState && (
               <ServerURLSection
@@ -383,7 +419,9 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                 <div className="flex items-center justify-center gap-px">
                   <span className="i-ri-edit-line size-3.5" />
                   <div className="px-[3px] system-xs-medium text-text-tertiary">
-                    {serverPublished ? t($ => $['mcp.server.edit'], { ns: 'tools' }) : t($ => $['mcp.server.addDescription'], { ns: 'tools' })}
+                    {serverPublished
+                      ? t(($) => $['mcp.server.edit'], { ns: 'tools' })
+                      : t(($) => $['mcp.server.addDescription'], { ns: 'tools' })}
                   </div>
                 </div>
               </Button>
@@ -403,20 +441,22 @@ const MCPServiceCard: FC<IAppCardProps> = ({
         />
       )}
 
-      <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && closeConfirmDelete()}>
+      <AlertDialog open={showConfirmDelete} onOpenChange={(open) => !open && closeConfirmDelete()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t($ => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
+              {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t($ => $['mcp.server.reGen'], { ns: 'tools' })}
+              {t(($) => $['mcp.server.reGen'], { ns: 'tools' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmRegenerate}>
-              {t($ => $['operation.confirm'], { ns: 'common' })}
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

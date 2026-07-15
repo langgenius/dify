@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
+
+import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -37,7 +40,8 @@ def _build_plugin_tool(*, has_runtime_parameters: bool) -> PluginTool:
     )
 
 
-def test_plugin_tool_invoke_and_fork_runtime():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_plugin_tool_invoke_and_fork_runtime(sqlite_session: Session):
     tool = _build_plugin_tool(has_runtime_parameters=False)
     manager = Mock()
     manager.invoke.return_value = iter([tool.create_text_message("ok")])
@@ -47,7 +51,7 @@ def test_plugin_tool_invoke_and_fork_runtime():
             "core.tools.plugin_tool.tool.convert_parameters_to_plugin_format",
             return_value={"converted": 1},
         ):
-            messages = list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"raw": 1}))
+            messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"raw": 1}))
 
     assert [m.message.text for m in messages] == ["ok"]
     manager.invoke.assert_called_once()

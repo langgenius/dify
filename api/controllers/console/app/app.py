@@ -55,7 +55,7 @@ from services.app_dsl_service import AppDslService
 from services.app_service import AppListParams, AppListSortBy, AppService, CreateAppParams, StarredAppListParams
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.dsl_entities import ImportMode, ImportStatus
+from services.entities.dsl_entities import DslImportWarning, ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
@@ -461,6 +461,7 @@ class AppImportResponse(ResponseModel):
     current_dsl_version: str
     imported_dsl_version: str = ""
     error: str = ""
+    warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
 def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: str) -> None:
@@ -654,7 +655,7 @@ class AppListApi(Resource):
                 app_id=str(app.id),
                 payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
             )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app.id)
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,

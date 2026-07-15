@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Sube un archivo .zip o .skill.",
   "agentDetail.configure.skills.upload.success": "Habilidad subida.",
   "agentDetail.configure.skills.upload.title": "Subir habilidad",
+  "agentDetail.configure.skills.upload.warning.files": "Si solo necesitas usar archivos Markdown, súbelos a Archivos y haz referencia a ellos en tu prompt.",
+  "agentDetail.configure.skills.upload.warning.specification": "Las habilidades subidas deben cumplir la <specificationLink>especificación de Agent Skills</specificationLink>.",
   "agentDetail.configure.title": "Configurar",
   "agentDetail.configure.tools.add": "Agregar herramienta",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Para desarrolladores",

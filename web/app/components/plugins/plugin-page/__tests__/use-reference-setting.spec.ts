@@ -5,8 +5,13 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
-
-import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
+import {
+  useInvalidateReferenceSettings,
+  useMutationPluginPermissionSettings,
+  useMutationReferenceSettings,
+  usePluginAutoUpgradeSettings,
+  usePluginPermissionSettings,
+} from '@/service/use-plugins'
 import { PermissionType, PluginCategoryEnum } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
@@ -62,7 +67,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -353,8 +359,7 @@ describe('useReferenceSetting Hook', () => {
       renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       // Trigger the onSuccess callback
-      if (onSuccessCallback)
-        onSuccessCallback()
+      if (onSuccessCallback) onSuccessCallback()
 
       await waitFor(() => {
         expect(mockInvalidate).toHaveBeenCalled()

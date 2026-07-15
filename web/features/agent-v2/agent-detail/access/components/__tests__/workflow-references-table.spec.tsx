@@ -5,7 +5,7 @@ import { WorkflowReferencesTable } from '../workflow-references-table'
 
 const mocks = vi.hoisted(() => ({
   queryFn: vi.fn(),
-  queryOptions: vi.fn(({ enabled = true, input }: { enabled?: boolean, input: unknown }) => ({
+  queryOptions: vi.fn(({ enabled = true, input }: { enabled?: boolean; input: unknown }) => ({
     queryKey: ['agent-referencing-workflows', input],
     queryFn: () => mocks.queryFn(input),
     enabled,
@@ -87,7 +87,9 @@ describe('WorkflowReferencesTable', () => {
         })
       })
       expect(mocks.queryFn).not.toHaveBeenCalled()
-      expect(screen.queryByText('agentV2.agentDetail.access.workflow.loading')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('agentV2.agentDetail.access.workflow.loading'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -114,9 +116,13 @@ describe('WorkflowReferencesTable', () => {
 
       expect(await screen.findByText('Support Workflow')).toBeInTheDocument()
       expect(screen.getByText('v3')).toBeInTheDocument()
-      expect(screen.getByText('agentV2.agentDetail.access.workflow.nodeCount:{"count":2}')).toBeInTheDocument()
+      expect(
+        screen.getByText('agentV2.agentDetail.access.workflow.nodeCount:{"count":2}'),
+      ).toBeInTheDocument()
       expect(screen.getByText('formatted-1781660000')).toBeInTheDocument()
-      const studioLink = screen.getByRole('link', { name: 'agentV2.agentDetail.access.workflow.openInStudioFor:{"name":"Support Workflow"}' })
+      const studioLink = screen.getByRole('link', {
+        name: 'agentV2.agentDetail.access.workflow.openInStudioFor:{"name":"Support Workflow"}',
+      })
       expect(studioLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
       expect(studioLink).toHaveAttribute('target', '_blank')
       expect(studioLink).toHaveAttribute('rel', 'noopener noreferrer')
@@ -127,7 +133,9 @@ describe('WorkflowReferencesTable', () => {
 
       renderTable()
 
-      expect(await screen.findByText('agentV2.agentDetail.access.workflow.empty')).toBeInTheDocument()
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.workflow.empty'),
+      ).toBeInTheDocument()
     })
 
     it('should render a loading row while workflow references are pending', () => {
@@ -142,13 +150,13 @@ describe('WorkflowReferencesTable', () => {
   describe('Error state', () => {
     it('should render a retry action when loading workflow references fails', async () => {
       const user = userEvent.setup()
-      mocks.queryFn
-        .mockRejectedValueOnce(new Error('failed'))
-        .mockResolvedValueOnce({ data: [] })
+      mocks.queryFn.mockRejectedValueOnce(new Error('failed')).mockResolvedValueOnce({ data: [] })
 
       renderTable()
 
-      expect(await screen.findByText('agentV2.agentDetail.access.workflow.loadFailed')).toBeInTheDocument()
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.workflow.loadFailed'),
+      ).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
       await waitFor(() => {

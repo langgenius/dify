@@ -14,23 +14,28 @@ vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
   return {
     ...actual,
-    memo: vi.fn(fn => fn),
+    memo: vi.fn((fn) => fn),
   }
 })
 
 // Mock config
 vi.mock('@/config', () => ({
-  get IS_CE_EDITION() { return mockIsCeEdition },
-  get ZENDESK_WIDGET_KEY() { return mockZendeskWidgetKey },
-  get IS_PROD() { return mockIsProd },
+  get IS_CE_EDITION() {
+    return mockIsCeEdition
+  },
+  get ZENDESK_WIDGET_KEY() {
+    return mockZendeskWidgetKey
+  },
+  get IS_PROD() {
+    return mockIsProd
+  },
 }))
 
 // Mock next/headers
 vi.mock('@/next/headers', () => ({
   headers: vi.fn(() => ({
     get: vi.fn((name: string) => {
-      if (name === 'x-nonce')
-        return mockNonce
+      if (name === 'x-nonce') return mockNonce
       return null
     }),
   })),
@@ -38,10 +43,10 @@ vi.mock('@/next/headers', () => ({
 
 // Mock next/script
 type ScriptProps = {
-  'children'?: ReactNode
-  'id'?: string
-  'src'?: string
-  'nonce'?: string
+  children?: ReactNode
+  id?: string
+  src?: string
+  nonce?: string
   'data-testid'?: string
 }
 vi.mock('@/next/script', () => ({
@@ -88,13 +93,16 @@ describe('Zendesk', () => {
     const snippet = screen.getByTestId('ze-snippet')
     expect(snippet).toBeInTheDocument()
     expect(snippet).toHaveAttribute('id', 'ze-snippet')
-    expect(snippet).toHaveAttribute('data-src', 'https://static.zdassets.com/ekr/snippet.js?key=test-key')
+    expect(snippet).toHaveAttribute(
+      'data-src',
+      'https://static.zdassets.com/ekr/snippet.js?key=test-key',
+    )
     expect(snippet).toHaveAttribute('data-nonce', '')
 
     const init = screen.getByTestId('ze-init')
     expect(init).toBeInTheDocument()
     expect(init).toHaveAttribute('id', 'ze-init')
-    expect(init).toHaveTextContent('window.zE(\'messenger\', \'hide\')')
+    expect(init).toHaveTextContent("window.zE('messenger', 'hide')")
     expect(init).toHaveAttribute('data-nonce', '')
   })
 

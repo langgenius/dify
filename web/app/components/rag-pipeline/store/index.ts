@@ -1,9 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { InputFieldEditorProps } from '../components/panel/input-field/editor'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
-import type {
-  ToolWithProvider,
-} from '@/app/components/workflow/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { IconInfo } from '@/models/datasets'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
@@ -28,24 +26,27 @@ export type RagPipelineSliceShape = {
   setIsPreparingDataSource: (isPreparingDataSource: boolean) => void
 }
 
-export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = set => ({
+export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = (set) => ({
   pipelineId: '',
   knowledgeName: '',
   showInputFieldPanel: false,
-  setShowInputFieldPanel: showInputFieldPanel => set(() => ({ showInputFieldPanel })),
+  setShowInputFieldPanel: (showInputFieldPanel) => set(() => ({ showInputFieldPanel })),
   showInputFieldPreviewPanel: false,
-  setShowInputFieldPreviewPanel: showInputFieldPreviewPanel => set(() => ({ showInputFieldPreviewPanel })),
+  setShowInputFieldPreviewPanel: (showInputFieldPreviewPanel) =>
+    set(() => ({ showInputFieldPreviewPanel })),
   inputFieldEditPanelProps: null,
-  setInputFieldEditPanelProps: inputFieldEditPanelProps => set(() => ({ inputFieldEditPanelProps })),
+  setInputFieldEditPanelProps: (inputFieldEditPanelProps) =>
+    set(() => ({ inputFieldEditPanelProps })),
   nodesDefaultConfigs: {},
-  setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
+  setNodesDefaultConfigs: (nodesDefaultConfigs) => set(() => ({ nodesDefaultConfigs })),
   ragPipelineVariables: [],
-  setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) => set(() => ({ ragPipelineVariables })),
+  setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) =>
+    set(() => ({ ragPipelineVariables })),
   dataSourceList: [],
   setDataSourceList: (dataSourceList: DataSourceItem[]) => {
-    const formattedDataSourceList = dataSourceList.map(item => transformDataSourceToTool(item))
+    const formattedDataSourceList = dataSourceList.map((item) => transformDataSourceToTool(item))
     set(() => ({ dataSourceList: formattedDataSourceList }))
   },
   isPreparingDataSource: false,
-  setIsPreparingDataSource: isPreparingDataSource => set(() => ({ isPreparingDataSource })),
+  setIsPreparingDataSource: (isPreparingDataSource) => set(() => ({ isPreparingDataSource })),
 })

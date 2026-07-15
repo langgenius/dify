@@ -2,13 +2,17 @@ import type { CreateAppModalProps } from '../index'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
-import { createMockPlan, createMockPlanTotal, createMockPlanUsage } from '@/__mocks__/provider-context'
+import {
+  createMockPlan,
+  createMockPlanTotal,
+  createMockPlanUsage,
+} from '@/__mocks__/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import { AppModeEnum } from '@/types/app'
 import CreateAppModal from '../index'
 
 const hotkeyMocks = vi.hoisted(() => ({
-  handlers: new Map<string, { handler: () => void, options?: { enabled?: boolean } }>(),
+  handlers: new Map<string, { handler: () => void; options?: { enabled?: boolean } }>(),
 }))
 
 vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
@@ -23,8 +27,7 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
 
 const triggerHotkey = (hotkey: string) => {
   const registration = hotkeyMocks.handlers.get(hotkey)
-  if (registration?.options?.enabled === false)
-    return
+  if (registration?.options?.enabled === false) return
   registration?.handler()
 }
 
@@ -34,9 +37,7 @@ vi.mock('emoji-mart', () => ({
 }))
 vi.mock('@emoji-mart/data', () => ({
   default: {
-    categories: [
-      { id: 'people', emojis: ['😀'] },
-    ],
+    categories: [{ id: 'people', emojis: ['😀'] }],
   },
 }))
 
@@ -102,8 +103,7 @@ const getAppIconTrigger = (): HTMLElement => {
   const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
   const iconRow = nameInput.parentElement
   const iconTrigger = iconRow?.firstElementChild
-  if (!(iconTrigger instanceof HTMLElement))
-    throw new Error('Failed to locate app icon trigger')
+  if (!(iconTrigger instanceof HTMLElement)) throw new Error('Failed to locate app icon trigger')
   return iconTrigger
 }
 
@@ -148,11 +148,14 @@ describe('CreateAppModal', () => {
       expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('5')
     })
 
-    it.each([AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT])('should render answer icon switch when editing %s app', async (mode) => {
-      await setup({ isEditModal: true, appMode: mode })
+    it.each([AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT])(
+      'should render answer icon switch when editing %s app',
+      async (mode) => {
+        await setup({ isEditModal: true, appMode: mode })
 
-      expect(screen.getByRole('switch'))!.toBeInTheDocument()
-    })
+        expect(screen.getByRole('switch'))!.toBeInTheDocument()
+      },
+    )
 
     it('should not render answer icon switch when editing a non-chat app', async () => {
       await setup({ isEditModal: true, appMode: AppModeEnum.COMPLETION })
@@ -163,7 +166,9 @@ describe('CreateAppModal', () => {
     it('should not render modal content when hidden', async () => {
       await setup({ show: false })
 
-      expect(screen.queryByRole('button', { name: /common\.operation\.create/ })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /common\.operation\.create/ }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -185,14 +190,21 @@ describe('CreateAppModal', () => {
     it('should default description to empty string when appDescription is empty', async () => {
       await setup({ appDescription: '' })
 
-      expect((screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder') as HTMLTextAreaElement).value).toBe('')
+      expect(
+        (screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder') as HTMLTextAreaElement)
+          .value,
+      ).toBe('')
     })
 
     it('should render i18n key placeholders when translations are available', async () => {
       await setup()
 
-      expect((screen.getByDisplayValue('Test App') as HTMLInputElement).placeholder).toBe('app.newApp.appNamePlaceholder')
-      expect((screen.getByDisplayValue('Test description') as HTMLTextAreaElement).placeholder).toBe('app.newApp.appDescriptionPlaceholder')
+      expect((screen.getByDisplayValue('Test App') as HTMLInputElement).placeholder).toBe(
+        'app.newApp.appNamePlaceholder',
+      )
+      expect(
+        (screen.getByDisplayValue('Test description') as HTMLTextAreaElement).placeholder,
+      ).toBe('app.newApp.appDescriptionPlaceholder')
     })
   })
 
@@ -323,12 +335,16 @@ describe('CreateAppModal', () => {
 
       const pickerDialog = openAppIconPicker()
 
-      expect(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }))!.toBeInTheDocument()
+      expect(
+        within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }),
+      )!.toBeInTheDocument()
 
       fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }))
 
       await waitFor(() => {
-        expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('button', { name: 'app.iconPicker.cancel' }),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -359,8 +375,7 @@ describe('CreateAppModal', () => {
           icon: '😀',
           icon_background: '#FFEAD5',
         })
-      }
-      finally {
+      } finally {
         vi.useRealTimers()
       }
     })
@@ -391,8 +406,7 @@ describe('CreateAppModal', () => {
           icon: '🤖',
           icon_background: '#E4FBCC',
         })
-      }
-      finally {
+      } finally {
         vi.useRealTimers()
       }
     })
@@ -439,7 +453,9 @@ describe('CreateAppModal', () => {
     it('should include updated description when textarea is changed before submitting', async () => {
       const { onConfirm } = await setup({ appDescription: 'Old description' })
 
-      fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), { target: { value: 'Updated description' } })
+      fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), {
+        target: { value: 'Updated description' },
+      })
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
       await act(async () => {
         vi.advanceTimersByTime(300)
@@ -522,7 +538,9 @@ describe('CreateAppModal', () => {
       const { onConfirm, onHide } = await setup({ appName: 'My App' })
 
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
-      fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), { target: { value: '   ' } })
+      fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
+        target: { value: '   ' },
+      })
 
       await act(async () => {
         vi.advanceTimersByTime(300)

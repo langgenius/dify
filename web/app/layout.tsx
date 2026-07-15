@@ -24,14 +24,10 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-const LocaleLayout = async ({
-  children,
-}: {
-  children: React.ReactNode
-}) => {
+const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
   const locale = await getLocaleOnServer()
   const datasetMap = getDatasetMap()
-  const nonce = IS_PROD ? (await headers()).get('x-nonce') ?? undefined : undefined
+  const nonce = IS_PROD ? ((await headers()).get('x-nonce') ?? undefined) : undefined
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
@@ -50,10 +46,7 @@ const LocaleLayout = async ({
 
         <ReactScanLoader />
       </head>
-      <body
-        className="h-full bg-background-body"
-        {...datasetMap}
-      >
+      <body className="h-full bg-background-body" {...datasetMap}>
         <div className="isolate h-full">
           <JotaiProvider>
             <ThemeProvider

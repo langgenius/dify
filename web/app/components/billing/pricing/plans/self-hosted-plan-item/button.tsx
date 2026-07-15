@@ -3,15 +3,21 @@ import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AwsMarketplaceDark, AwsMarketplaceLight } from '@/app/components/base/icons/src/public/billing'
+import {
+  AwsMarketplaceDark,
+  AwsMarketplaceLight,
+} from '@/app/components/base/icons/src/public/billing'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { SelfHostedPlan } from '../../../type'
 
 const BUTTON_CLASSNAME = {
-  [SelfHostedPlan.community]: 'text-text-primary bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover',
-  [SelfHostedPlan.premium]: 'text-background-default bg-saas-background-inverted hover:bg-saas-background-inverted-hover',
-  [SelfHostedPlan.enterprise]: 'text-text-primary-on-surface bg-saas-dify-blue-static hover:bg-saas-dify-blue-static-hover',
+  [SelfHostedPlan.community]:
+    'text-text-primary bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover',
+  [SelfHostedPlan.premium]:
+    'text-background-default bg-saas-background-inverted hover:bg-saas-background-inverted-hover',
+  [SelfHostedPlan.enterprise]:
+    'text-text-primary-on-surface bg-saas-dify-blue-static hover:bg-saas-dify-blue-static-hover',
 }
 
 type ButtonProps = {
@@ -19,10 +25,7 @@ type ButtonProps = {
   handleGetPayUrl: () => void
 }
 
-const Button = ({
-  plan,
-  handleGetPayUrl,
-}: ButtonProps) => {
+const Button = ({ plan, handleGetPayUrl }: ButtonProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const i18nPrefix = `plans.${plan}` as const
@@ -42,7 +45,7 @@ const Button = ({
       onClick={handleGetPayUrl}
     >
       <div className="flex grow items-center gap-x-2">
-        <span>{t($ => $[`${i18nPrefix}.btnText`], { ns: 'billing' })}</span>
+        <span>{t(($) => $[`${i18nPrefix}.btnText`], { ns: 'billing' })}</span>
         {isPremiumPlan && (
           <span className="pt-[7px] pb-px">
             <AwsMarketplace className="h-6" />

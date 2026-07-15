@@ -120,8 +120,16 @@ describe('SideBar', () => {
 
     it('should render divider between pinned and unpinned apps', () => {
       mockInstalledApps = [
-        createInstalledApp({ id: 'app-1', is_pinned: true, app: { ...createInstalledApp().app, name: 'Pinned' } }),
-        createInstalledApp({ id: 'app-2', is_pinned: false, app: { ...createInstalledApp().app, name: 'Unpinned' } }),
+        createInstalledApp({
+          id: 'app-1',
+          is_pinned: true,
+          app: { ...createInstalledApp().app, name: 'Pinned' },
+        }),
+        createInstalledApp({
+          id: 'app-2',
+          is_pinned: false,
+          app: { ...createInstalledApp().app, name: 'Unpinned' },
+        }),
       ]
       const { container } = renderSideBar()
 
@@ -135,7 +143,9 @@ describe('SideBar', () => {
       const toggleButton = screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' })
       fireEvent.click(toggleButton)
 
-      expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
+      ).toBeInTheDocument()
     })
 
     it('should render icon-only content when folded', () => {
@@ -146,7 +156,9 @@ describe('SideBar', () => {
 
       expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'My App' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
+      ).toBeInTheDocument()
     })
   })
 

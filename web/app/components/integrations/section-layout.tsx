@@ -23,9 +23,7 @@ export function IntegrationSectionLayout({
         content: 'min-h-full',
       }}
     >
-      <div className={bodyClassName}>
-        {children}
-      </div>
+      <div className={bodyClassName}>{children}</div>
     </ScrollArea>
   )
 }

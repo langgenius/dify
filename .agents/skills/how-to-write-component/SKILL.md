@@ -18,6 +18,7 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 | Should URL state enter Jotai? | Let Next.js route params and `nuqs` own URL state and updates. | Query atoms or shared derived atoms need a read-only bridge hydrated at the route/surface boundary. |
 | Should this query/mutation become an atom? | Use TanStack Query hooks at the lowest owner. | It reads atom state, feeds derived atoms, or participates in shared Jotai workflow orchestration. |
 | Should this be a helper/wrapper? | Prefer direct readable code at the use site. | The name captures a stable domain rule or the wrapper owns real behavior, validation, state, error handling, or semantics. |
+| Where should a hotkey live? | Keep a single-owner hotkey constant in its component. | Multiple production files share one command, or the feature owns a real command registry with shared metadata and behavior. |
 | Is an Effect needed? | No. Derive during render or handle the user action in the event handler. | It synchronizes with an external system such as browser APIs, subscriptions, timers, analytics, or imperative DOM/non-React widgets. |
 
 ## Core Defaults
@@ -76,6 +77,19 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 - Do not create type aliases that only rename another type. Use aliases only for real UI concepts, refinements, or reusable local contracts.
 - Name values by their domain role and backend API contract, especially persistent IDs and route params. Normalize framework or route params at the boundary.
 - Put fallback and invariant checks in the lowest component that already handles that state. Do not extract helpers whose only behavior is hiding missing display data.
+
+## Keyboard Shortcuts
+
+- Distinguish application commands from local keyboard semantics before choosing an API. Use `@tanstack/react-hotkeys` for application commands. Keep menu navigation, dialog Escape handling owned by a primitive, editor commands, and other widget-scoped ARIA interactions in their local component or primitive.
+- Use `useHotkey` or `useHotkeys` for registered commands. For a command intentionally owned by an existing `onKeyDown`, use `matchesKeyboardEvent` instead of hand-written `metaKey` / `ctrlKey` parsing or a second global listener.
+- Define a reusable string command with `satisfies Hotkey` and an object-form command with `satisfies RawHotkey`. Reserve `RegisterableHotkey` for API boundaries that intentionally accept either form. A one-time inline literal passed directly to TanStack is already type-checked; extract it when registration, display, metadata, or another production consumer needs the same source.
+- Keep registered hotkeys distinct from held keys and display-only accelerators. Use `IndividualKey` with `useKeyHold` for held-key interactions, and use an explicitly named `displayKey` for local widget accelerators that are not registered `Hotkey` values.
+- Keep registration and keycap/menu display derived from one canonical command. Do not maintain a hotkey string beside a separate `['Mod', ...]` display array.
+- Keep a single-owner command constant in its owning component. Create a feature-local `hotkeys.ts` only when multiple production files consume the same command. Keep a dedicated definitions/registry module when a feature owns a real command system with IDs, metadata, alternate bindings, and centralized registration. Tests do not count as another production owner, and file-name uniformity alone is not a reason to extract.
+- Make scope and availability explicit. Use `enabled` for business or surface lifecycle, `ignoreInputs` for whether input-like elements may trigger the command, and `target` when the command belongs to a concrete DOM subtree. Global application commands may use the document target; inline editors and composed overlays should prefer the actual editor or Base UI Popup ref when that owner is exposed.
+- Put a scoped ref on the real behavior owner. Do not add a wrapper DOM element solely to obtain a hotkey target. If a shared overlay convenience component hides the Popup ref, either rely on its modal lifecycle/focus boundary when that is sufficient or design the primitive API separately; do not create a fake owner at the call site.
+- Set `preventDefault` and `stopPropagation` according to the existing product behavior and browser interaction. Do not silently accept TanStack defaults when migrating from another listener if that changes typing, submission, or propagation semantics.
+- Test observable command behavior, disabled/input/target scope, and the shared registration/display contract at the owning feature boundary. Prefer partial mocks that retain TanStack formatting and matching behavior when a registration boundary must be isolated.
 
 ## Generated API And Nullable Data
 

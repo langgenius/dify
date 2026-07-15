@@ -37,15 +37,15 @@ export const deployReleaseMenuEnvironmentDeploymentsQueryAtom = atomWithQuery((g
 
 export const deployReleaseMenuEnvironmentDeploymentsAtom = selectAtom(
   deployReleaseMenuEnvironmentDeploymentsQueryAtom,
-  query => query.data,
+  (query) => query.data,
 )
 export const deployReleaseMenuEnvironmentDeploymentsIsLoadingAtom = selectAtom(
   deployReleaseMenuEnvironmentDeploymentsQueryAtom,
-  query => query.isLoading,
+  (query) => query.isLoading,
 )
 export const deployReleaseMenuEnvironmentDeploymentsIsErrorAtom = selectAtom(
   deployReleaseMenuEnvironmentDeploymentsQueryAtom,
-  query => query.isError,
+  (query) => query.isError,
 )
 
 export const deployReleaseMenuAppInstanceQueryAtom = atomWithQuery((get) => {
@@ -64,7 +64,7 @@ export const deployReleaseMenuAppInstanceQueryAtom = atomWithQuery((get) => {
 
 export const deployReleaseMenuAppInstanceNameAtom = selectAtom(
   deployReleaseMenuAppInstanceQueryAtom,
-  query => query.data?.appInstance.displayName,
+  (query) => query.data?.appInstance.displayName,
 )
 
 export const openEditReleaseDialogAtom = atom(null, (_get, set) => {

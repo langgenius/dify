@@ -14,10 +14,7 @@ type AdvancedOptionsProps = {
   onChange: (options: AdvancedOptionsType) => void
 }
 
-const AdvancedOptions: FC<AdvancedOptionsProps> = ({
-  onChange,
-  options,
-}) => {
+const AdvancedOptions: FC<AdvancedOptionsProps> = ({ onChange, options }) => {
   const { t } = useTranslation()
   // const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [enumValue, setEnumValue] = useState(options.enum)
@@ -26,9 +23,12 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
     setEnumValue(value)
   }, [])
 
-  const handleEnumBlur = useCallback((e: React.FocusEvent<HTMLTextAreaElement>) => {
-    onChange({ enum: e.target.value })
-  }, [onChange])
+  const handleEnumBlur = useCallback(
+    (e: React.FocusEvent<HTMLTextAreaElement>) => {
+      onChange({ enum: e.target.value })
+    },
+    [onChange],
+  )
 
   // const handleToggleAdvancedOptions = useCallback(() => {
   //   setShowAdvancedOptions(prev => !prev)
@@ -40,7 +40,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
       <div className="flex flex-col gap-y-1 px-2 py-1.5">
         <div className="flex w-full items-center gap-x-2">
           <span className="system-2xs-medium-uppercase text-text-tertiary">
-            {t($ => $['nodes.llm.jsonSchema.stringValidations'], { ns: 'workflow' })}
+            {t(($) => $['nodes.llm.jsonSchema.stringValidations'], { ns: 'workflow' })}
           </span>
           <div className="grow">
             <Divider type="horizontal" className="my-0 h-px bg-line-divider-bg" />
@@ -48,10 +48,10 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
         </div>
         <div className="flex flex-col">
           <div className="flex h-6 items-center system-xs-medium text-text-secondary">
-            {t($ => $['nodes.llm.jsonSchema.enum'], { ns: 'workflow' })}
+            {t(($) => $['nodes.llm.jsonSchema.enum'], { ns: 'workflow' })}
           </div>
           <Textarea
-            aria-label={t($ => $['nodes.llm.jsonSchema.enum'], { ns: 'workflow' })}
+            aria-label={t(($) => $['nodes.llm.jsonSchema.enum'], { ns: 'workflow' })}
             size="small"
             className="min-h-6"
             value={enumValue}

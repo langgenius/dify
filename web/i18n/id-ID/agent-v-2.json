@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Unggah file .zip atau .skill.",
   "agentDetail.configure.skills.upload.success": "Keterampilan diunggah.",
   "agentDetail.configure.skills.upload.title": "Unggah keterampilan",
+  "agentDetail.configure.skills.upload.warning.files": "Jika Anda hanya perlu menggunakan file Markdown, unggah ke File dan rujuk file tersebut dalam prompt Anda.",
+  "agentDetail.configure.skills.upload.warning.specification": "Keterampilan yang diunggah harus mengikuti <specificationLink>spesifikasi Agent Skills</specificationLink>.",
   "agentDetail.configure.title": "Konfigurasi",
   "agentDetail.configure.tools.add": "Tambahkan alat",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Untuk pengembang",

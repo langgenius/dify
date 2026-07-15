@@ -73,6 +73,7 @@ export type Import = {
   imported_dsl_version?: string
   permission_keys?: Array<string>
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type CheckDependenciesResult = {
@@ -545,6 +546,7 @@ export type AppImportResponse = {
   id: string
   imported_dsl_version?: string
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type AppExportResponse = {
@@ -640,8 +642,8 @@ export type AppMcpServerResponse = {
   name: string
   parameters:
     | {
-      [key: string]: unknown
-    }
+        [key: string]: unknown
+      }
     | Array<unknown>
     | string
   server_code: string
@@ -1223,8 +1225,8 @@ export type WorkflowDraftVariable = {
     | number
     | boolean
     | {
-      [key: string]: unknown
-    }
+        [key: string]: unknown
+      }
     | Array<unknown>
     | null
   value_type?: string
@@ -1371,6 +1373,15 @@ export type WorkflowPartial = {
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
 
+export type DslImportWarning = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  path: string
+}
+
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
@@ -1398,16 +1409,16 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
+export type JsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
       [key: string]: unknown
     }
-    | Array<unknown>
-    | null
+  | Array<unknown>
+  | null
 
 export type AgentConfigVersionResponse = {
   id: string
@@ -2059,12 +2070,12 @@ export type WorkflowNodeJobConfig = {
   workflow_prompt?: string
 }
 
-export type ComposerSaveStrategy
-  = | 'node_job_only'
-    | 'save_as_new_agent'
-    | 'save_as_new_version'
-    | 'save_to_current_version'
-    | 'save_to_roster'
+export type ComposerSaveStrategy =
+  | 'node_job_only'
+  | 'save_as_new_agent'
+  | 'save_as_new_version'
+  | 'save_to_current_version'
+  | 'save_to_roster'
 
 export type AgentComposerSoulLockResponse = {
   can_unlock?: boolean
@@ -2128,14 +2139,14 @@ export type ComposerValidationWarningResponse = {
   surface?: string | null
 }
 
-export type WorkflowExecutionStatus
-  = | 'failed'
-    | 'partial-succeeded'
-    | 'paused'
-    | 'running'
-    | 'scheduled'
-    | 'stopped'
-    | 'succeeded'
+export type WorkflowExecutionStatus =
+  | 'failed'
+  | 'partial-succeeded'
+  | 'paused'
+  | 'running'
+  | 'scheduled'
+  | 'stopped'
+  | 'succeeded'
 
 export type NodeStatus = 'failed' | 'idle' | 'ready' | 'running'
 
@@ -2149,14 +2160,14 @@ export type NodeOutputView = {
   value_preview?: unknown
 }
 
-export type NodeOutputStatus
-  = | 'failed'
-    | 'not_produced'
-    | 'output_check_failed'
-    | 'pending'
-    | 'ready'
-    | 'running'
-    | 'type_check_failed'
+export type NodeOutputStatus =
+  | 'failed'
+  | 'not_produced'
+  | 'output_check_failed'
+  | 'pending'
+  | 'ready'
+  | 'running'
+  | 'type_check_failed'
 
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
@@ -2589,19 +2600,19 @@ export type UserActionConfig = {
   title: string
 }
 
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
+export type FormInputConfig =
   | ({
-    type: 'select'
-  } & SelectInputConfig)
+      type: 'paragraph'
+    } & ParagraphInputConfig)
   | ({
-    type: 'file'
-  } & FileInputConfig)
+      type: 'select'
+    } & SelectInputConfig)
   | ({
-    type: 'file-list'
-  } & FileListInputConfig)
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
 
 export type JsonValue2 = unknown
 
@@ -2820,15 +2831,15 @@ export type DeclaredOutputRetryConfig = {
   retry_interval_ms?: number
 }
 
-export type AgentCliToolAuthorizationStatus
-  = | 'allowed'
-    | 'authorized'
-    | 'denied'
-    | 'forbidden'
-    | 'not_required'
-    | 'pending'
-    | 'pre_authorized'
-    | 'unauthorized'
+export type AgentCliToolAuthorizationStatus =
+  | 'allowed'
+  | 'authorized'
+  | 'denied'
+  | 'forbidden'
+  | 'not_required'
+  | 'pending'
+  | 'pre_authorized'
+  | 'unauthorized'
 
 export type AgentCliToolEnvConfig = {
   secret_refs?: Array<AgentSecretRefConfig>
@@ -3277,8 +3288,8 @@ export type GetAppsImportsByAppIdCheckDependenciesResponses = {
   200: CheckDependenciesResult
 }
 
-export type GetAppsImportsByAppIdCheckDependenciesResponse
-  = GetAppsImportsByAppIdCheckDependenciesResponses[keyof GetAppsImportsByAppIdCheckDependenciesResponses]
+export type GetAppsImportsByAppIdCheckDependenciesResponse =
+  GetAppsImportsByAppIdCheckDependenciesResponses[keyof GetAppsImportsByAppIdCheckDependenciesResponses]
 
 export type PostAppsImportsByImportIdConfirmData = {
   body?: never
@@ -3293,15 +3304,15 @@ export type PostAppsImportsByImportIdConfirmErrors = {
   400: Import
 }
 
-export type PostAppsImportsByImportIdConfirmError
-  = PostAppsImportsByImportIdConfirmErrors[keyof PostAppsImportsByImportIdConfirmErrors]
+export type PostAppsImportsByImportIdConfirmError =
+  PostAppsImportsByImportIdConfirmErrors[keyof PostAppsImportsByImportIdConfirmErrors]
 
 export type PostAppsImportsByImportIdConfirmResponses = {
   200: Import
 }
 
-export type PostAppsImportsByImportIdConfirmResponse
-  = PostAppsImportsByImportIdConfirmResponses[keyof PostAppsImportsByImportIdConfirmResponses]
+export type PostAppsImportsByImportIdConfirmResponse =
+  PostAppsImportsByImportIdConfirmResponses[keyof PostAppsImportsByImportIdConfirmResponses]
 
 export type GetAppsStarredData = {
   body?: never
@@ -3344,8 +3355,8 @@ export type PostAppsWorkflowsOnlineUsersResponses = {
   200: WorkflowOnlineUsersResponse
 }
 
-export type PostAppsWorkflowsOnlineUsersResponse
-  = PostAppsWorkflowsOnlineUsersResponses[keyof PostAppsWorkflowsOnlineUsersResponses]
+export type PostAppsWorkflowsOnlineUsersResponse =
+  PostAppsWorkflowsOnlineUsersResponses[keyof PostAppsWorkflowsOnlineUsersResponses]
 
 export type DeleteAppsByAppIdData = {
   body?: never
@@ -3419,8 +3430,8 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsResponses = {
   200: AdvancedChatWorkflowRunPaginationResponse
 }
 
-export type GetAppsByAppIdAdvancedChatWorkflowRunsResponse
-  = GetAppsByAppIdAdvancedChatWorkflowRunsResponses[keyof GetAppsByAppIdAdvancedChatWorkflowRunsResponses]
+export type GetAppsByAppIdAdvancedChatWorkflowRunsResponse =
+  GetAppsByAppIdAdvancedChatWorkflowRunsResponses[keyof GetAppsByAppIdAdvancedChatWorkflowRunsResponses]
 
 export type GetAppsByAppIdAdvancedChatWorkflowRunsCountData = {
   body?: never
@@ -3439,8 +3450,8 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses = {
   200: WorkflowRunCountResponse
 }
 
-export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponse
-  = GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses[keyof GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses]
+export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponse =
+  GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses[keyof GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewData = {
   body: HumanInputFormPreviewPayload
@@ -3456,8 +3467,8 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
   200: HumanInputFormPreviewResponse
 }
 
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse
-  = PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
   body: HumanInputFormSubmitPayload
@@ -3473,8 +3484,8 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
   200: HumanInputFormSubmitResponse
 }
 
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse
-  = PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses]
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunData = {
   body: IterationNodeRunPayload
@@ -3495,8 +3506,8 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunRe
   200: GeneratedAppResponse
 }
 
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse
-  = PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses]
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunData = {
   body: LoopNodeRunPayload
@@ -3517,8 +3528,8 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunRespons
   200: GeneratedAppResponse
 }
 
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse
-  = PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses]
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunData = {
   body: AdvancedChatWorkflowRunPayload
@@ -3538,8 +3549,8 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse
-  = PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses]
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses]
 
 export type GetAppsByAppIdAgentConfigFilesData = {
   body?: never
@@ -3558,8 +3569,8 @@ export type GetAppsByAppIdAgentConfigFilesResponses = {
   200: AgentConfigFileListResponse
 }
 
-export type GetAppsByAppIdAgentConfigFilesResponse
-  = GetAppsByAppIdAgentConfigFilesResponses[keyof GetAppsByAppIdAgentConfigFilesResponses]
+export type GetAppsByAppIdAgentConfigFilesResponse =
+  GetAppsByAppIdAgentConfigFilesResponses[keyof GetAppsByAppIdAgentConfigFilesResponses]
 
 export type PostAppsByAppIdAgentConfigFilesData = {
   body: AgentConfigFileUploadPayload
@@ -3578,8 +3589,8 @@ export type PostAppsByAppIdAgentConfigFilesResponses = {
   201: AgentConfigFileUploadResponse
 }
 
-export type PostAppsByAppIdAgentConfigFilesResponse
-  = PostAppsByAppIdAgentConfigFilesResponses[keyof PostAppsByAppIdAgentConfigFilesResponses]
+export type PostAppsByAppIdAgentConfigFilesResponse =
+  PostAppsByAppIdAgentConfigFilesResponses[keyof PostAppsByAppIdAgentConfigFilesResponses]
 
 export type DeleteAppsByAppIdAgentConfigFilesByNameData = {
   body?: never
@@ -3599,8 +3610,8 @@ export type DeleteAppsByAppIdAgentConfigFilesByNameResponses = {
   200: AgentConfigDeleteResponse
 }
 
-export type DeleteAppsByAppIdAgentConfigFilesByNameResponse
-  = DeleteAppsByAppIdAgentConfigFilesByNameResponses[keyof DeleteAppsByAppIdAgentConfigFilesByNameResponses]
+export type DeleteAppsByAppIdAgentConfigFilesByNameResponse =
+  DeleteAppsByAppIdAgentConfigFilesByNameResponses[keyof DeleteAppsByAppIdAgentConfigFilesByNameResponses]
 
 export type GetAppsByAppIdAgentConfigFilesByNameDownloadData = {
   body?: never
@@ -3620,8 +3631,8 @@ export type GetAppsByAppIdAgentConfigFilesByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
 
-export type GetAppsByAppIdAgentConfigFilesByNameDownloadResponse
-  = GetAppsByAppIdAgentConfigFilesByNameDownloadResponses[keyof GetAppsByAppIdAgentConfigFilesByNameDownloadResponses]
+export type GetAppsByAppIdAgentConfigFilesByNameDownloadResponse =
+  GetAppsByAppIdAgentConfigFilesByNameDownloadResponses[keyof GetAppsByAppIdAgentConfigFilesByNameDownloadResponses]
 
 export type GetAppsByAppIdAgentConfigFilesByNamePreviewData = {
   body?: never
@@ -3641,8 +3652,8 @@ export type GetAppsByAppIdAgentConfigFilesByNamePreviewResponses = {
   200: AgentConfigFilePreviewResponse
 }
 
-export type GetAppsByAppIdAgentConfigFilesByNamePreviewResponse
-  = GetAppsByAppIdAgentConfigFilesByNamePreviewResponses[keyof GetAppsByAppIdAgentConfigFilesByNamePreviewResponses]
+export type GetAppsByAppIdAgentConfigFilesByNamePreviewResponse =
+  GetAppsByAppIdAgentConfigFilesByNamePreviewResponses[keyof GetAppsByAppIdAgentConfigFilesByNamePreviewResponses]
 
 export type GetAppsByAppIdAgentConfigManifestData = {
   body?: never
@@ -3661,8 +3672,8 @@ export type GetAppsByAppIdAgentConfigManifestResponses = {
   200: AgentConfigManifestResponse
 }
 
-export type GetAppsByAppIdAgentConfigManifestResponse
-  = GetAppsByAppIdAgentConfigManifestResponses[keyof GetAppsByAppIdAgentConfigManifestResponses]
+export type GetAppsByAppIdAgentConfigManifestResponse =
+  GetAppsByAppIdAgentConfigManifestResponses[keyof GetAppsByAppIdAgentConfigManifestResponses]
 
 export type GetAppsByAppIdAgentConfigSkillsData = {
   body?: never
@@ -3681,8 +3692,8 @@ export type GetAppsByAppIdAgentConfigSkillsResponses = {
   200: AgentConfigSkillListResponse
 }
 
-export type GetAppsByAppIdAgentConfigSkillsResponse
-  = GetAppsByAppIdAgentConfigSkillsResponses[keyof GetAppsByAppIdAgentConfigSkillsResponses]
+export type GetAppsByAppIdAgentConfigSkillsResponse =
+  GetAppsByAppIdAgentConfigSkillsResponses[keyof GetAppsByAppIdAgentConfigSkillsResponses]
 
 export type PostAppsByAppIdAgentConfigSkillsUploadData = {
   body: {
@@ -3703,8 +3714,8 @@ export type PostAppsByAppIdAgentConfigSkillsUploadResponses = {
   201: AgentConfigSkillUploadResponse
 }
 
-export type PostAppsByAppIdAgentConfigSkillsUploadResponse
-  = PostAppsByAppIdAgentConfigSkillsUploadResponses[keyof PostAppsByAppIdAgentConfigSkillsUploadResponses]
+export type PostAppsByAppIdAgentConfigSkillsUploadResponse =
+  PostAppsByAppIdAgentConfigSkillsUploadResponses[keyof PostAppsByAppIdAgentConfigSkillsUploadResponses]
 
 export type DeleteAppsByAppIdAgentConfigSkillsByNameData = {
   body?: never
@@ -3724,8 +3735,8 @@ export type DeleteAppsByAppIdAgentConfigSkillsByNameResponses = {
   200: AgentConfigDeleteResponse
 }
 
-export type DeleteAppsByAppIdAgentConfigSkillsByNameResponse
-  = DeleteAppsByAppIdAgentConfigSkillsByNameResponses[keyof DeleteAppsByAppIdAgentConfigSkillsByNameResponses]
+export type DeleteAppsByAppIdAgentConfigSkillsByNameResponse =
+  DeleteAppsByAppIdAgentConfigSkillsByNameResponses[keyof DeleteAppsByAppIdAgentConfigSkillsByNameResponses]
 
 export type GetAppsByAppIdAgentConfigSkillsByNameDownloadData = {
   body?: never
@@ -3745,8 +3756,8 @@ export type GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
 
-export type GetAppsByAppIdAgentConfigSkillsByNameDownloadResponse
-  = GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses]
+export type GetAppsByAppIdAgentConfigSkillsByNameDownloadResponse =
+  GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses]
 
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
   body?: never
@@ -3764,8 +3775,8 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses = {
   }
 }
 
-export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponse
-  = GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses]
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponse =
+  GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses]
 
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
   body?: never
@@ -3786,8 +3797,8 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
 
-export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse
-  = GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses]
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse =
+  GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses]
 
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
   body?: never
@@ -3808,8 +3819,8 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses = {
   200: AgentConfigSkillFilePreviewResponse
 }
 
-export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse
-  = GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses]
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse =
+  GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses]
 
 export type GetAppsByAppIdAgentConfigSkillsByNameInspectData = {
   body?: never
@@ -3829,8 +3840,8 @@ export type GetAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
   200: AgentConfigSkillInspectResponse
 }
 
-export type GetAppsByAppIdAgentConfigSkillsByNameInspectResponse
-  = GetAppsByAppIdAgentConfigSkillsByNameInspectResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameInspectResponses]
+export type GetAppsByAppIdAgentConfigSkillsByNameInspectResponse =
+  GetAppsByAppIdAgentConfigSkillsByNameInspectResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameInspectResponses]
 
 export type GetAppsByAppIdAgentDriveFilesData = {
   body?: never
@@ -3848,8 +3859,8 @@ export type GetAppsByAppIdAgentDriveFilesResponses = {
   200: AgentDriveListResponse
 }
 
-export type GetAppsByAppIdAgentDriveFilesResponse
-  = GetAppsByAppIdAgentDriveFilesResponses[keyof GetAppsByAppIdAgentDriveFilesResponses]
+export type GetAppsByAppIdAgentDriveFilesResponse =
+  GetAppsByAppIdAgentDriveFilesResponses[keyof GetAppsByAppIdAgentDriveFilesResponses]
 
 export type GetAppsByAppIdAgentDriveFilesDownloadData = {
   body?: never
@@ -3867,8 +3878,8 @@ export type GetAppsByAppIdAgentDriveFilesDownloadResponses = {
   200: AgentDriveDownloadResponse
 }
 
-export type GetAppsByAppIdAgentDriveFilesDownloadResponse
-  = GetAppsByAppIdAgentDriveFilesDownloadResponses[keyof GetAppsByAppIdAgentDriveFilesDownloadResponses]
+export type GetAppsByAppIdAgentDriveFilesDownloadResponse =
+  GetAppsByAppIdAgentDriveFilesDownloadResponses[keyof GetAppsByAppIdAgentDriveFilesDownloadResponses]
 
 export type GetAppsByAppIdAgentDriveFilesPreviewData = {
   body?: never
@@ -3886,8 +3897,8 @@ export type GetAppsByAppIdAgentDriveFilesPreviewResponses = {
   200: AgentDrivePreviewResponse
 }
 
-export type GetAppsByAppIdAgentDriveFilesPreviewResponse
-  = GetAppsByAppIdAgentDriveFilesPreviewResponses[keyof GetAppsByAppIdAgentDriveFilesPreviewResponses]
+export type GetAppsByAppIdAgentDriveFilesPreviewResponse =
+  GetAppsByAppIdAgentDriveFilesPreviewResponses[keyof GetAppsByAppIdAgentDriveFilesPreviewResponses]
 
 export type GetAppsByAppIdAgentDriveSkillsData = {
   body?: never
@@ -3905,8 +3916,8 @@ export type GetAppsByAppIdAgentDriveSkillsResponses = {
   200: AgentDriveSkillListResponse
 }
 
-export type GetAppsByAppIdAgentDriveSkillsResponse
-  = GetAppsByAppIdAgentDriveSkillsResponses[keyof GetAppsByAppIdAgentDriveSkillsResponses]
+export type GetAppsByAppIdAgentDriveSkillsResponse =
+  GetAppsByAppIdAgentDriveSkillsResponses[keyof GetAppsByAppIdAgentDriveSkillsResponses]
 
 export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectData = {
   body?: never
@@ -3924,8 +3935,8 @@ export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses = {
   200: AgentDriveSkillInspectResponse
 }
 
-export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponse
-  = GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses[keyof GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses]
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponse =
+  GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses[keyof GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses]
 
 export type DeleteAppsByAppIdAgentFilesData = {
   body?: never
@@ -3943,8 +3954,8 @@ export type DeleteAppsByAppIdAgentFilesResponses = {
   200: AgentDriveDeleteResponse
 }
 
-export type DeleteAppsByAppIdAgentFilesResponse
-  = DeleteAppsByAppIdAgentFilesResponses[keyof DeleteAppsByAppIdAgentFilesResponses]
+export type DeleteAppsByAppIdAgentFilesResponse =
+  DeleteAppsByAppIdAgentFilesResponses[keyof DeleteAppsByAppIdAgentFilesResponses]
 
 export type PostAppsByAppIdAgentFilesData = {
   body: AgentDriveFilePayload
@@ -3961,8 +3972,8 @@ export type PostAppsByAppIdAgentFilesResponses = {
   201: AgentDriveFileCommitResponse
 }
 
-export type PostAppsByAppIdAgentFilesResponse
-  = PostAppsByAppIdAgentFilesResponses[keyof PostAppsByAppIdAgentFilesResponses]
+export type PostAppsByAppIdAgentFilesResponse =
+  PostAppsByAppIdAgentFilesResponses[keyof PostAppsByAppIdAgentFilesResponses]
 
 export type GetAppsByAppIdAgentLogsData = {
   body?: never
@@ -3984,8 +3995,8 @@ export type GetAppsByAppIdAgentLogsResponses = {
   200: AgentLogResponse
 }
 
-export type GetAppsByAppIdAgentLogsResponse
-  = GetAppsByAppIdAgentLogsResponses[keyof GetAppsByAppIdAgentLogsResponses]
+export type GetAppsByAppIdAgentLogsResponse =
+  GetAppsByAppIdAgentLogsResponses[keyof GetAppsByAppIdAgentLogsResponses]
 
 export type PostAppsByAppIdAgentSkillsUploadData = {
   body: {
@@ -4008,8 +4019,8 @@ export type PostAppsByAppIdAgentSkillsUploadResponses = {
   201: AgentSkillUploadResponse
 }
 
-export type PostAppsByAppIdAgentSkillsUploadResponse
-  = PostAppsByAppIdAgentSkillsUploadResponses[keyof PostAppsByAppIdAgentSkillsUploadResponses]
+export type PostAppsByAppIdAgentSkillsUploadResponse =
+  PostAppsByAppIdAgentSkillsUploadResponses[keyof PostAppsByAppIdAgentSkillsUploadResponses]
 
 export type DeleteAppsByAppIdAgentSkillsBySlugData = {
   body?: never
@@ -4027,8 +4038,8 @@ export type DeleteAppsByAppIdAgentSkillsBySlugResponses = {
   200: AgentDriveDeleteResponse
 }
 
-export type DeleteAppsByAppIdAgentSkillsBySlugResponse
-  = DeleteAppsByAppIdAgentSkillsBySlugResponses[keyof DeleteAppsByAppIdAgentSkillsBySlugResponses]
+export type DeleteAppsByAppIdAgentSkillsBySlugResponse =
+  DeleteAppsByAppIdAgentSkillsBySlugResponses[keyof DeleteAppsByAppIdAgentSkillsBySlugResponses]
 
 export type PostAppsByAppIdAgentSkillsBySlugInferToolsData = {
   body?: never
@@ -4046,8 +4057,8 @@ export type PostAppsByAppIdAgentSkillsBySlugInferToolsResponses = {
   200: SkillToolInferenceResult
 }
 
-export type PostAppsByAppIdAgentSkillsBySlugInferToolsResponse
-  = PostAppsByAppIdAgentSkillsBySlugInferToolsResponses[keyof PostAppsByAppIdAgentSkillsBySlugInferToolsResponses]
+export type PostAppsByAppIdAgentSkillsBySlugInferToolsResponse =
+  PostAppsByAppIdAgentSkillsBySlugInferToolsResponses[keyof PostAppsByAppIdAgentSkillsBySlugInferToolsResponses]
 
 export type PostAppsByAppIdAnnotationReplyByActionData = {
   body: AnnotationReplyPayload
@@ -4067,8 +4078,8 @@ export type PostAppsByAppIdAnnotationReplyByActionResponses = {
   200: AnnotationJobStatusResponse
 }
 
-export type PostAppsByAppIdAnnotationReplyByActionResponse
-  = PostAppsByAppIdAnnotationReplyByActionResponses[keyof PostAppsByAppIdAnnotationReplyByActionResponses]
+export type PostAppsByAppIdAnnotationReplyByActionResponse =
+  PostAppsByAppIdAnnotationReplyByActionResponses[keyof PostAppsByAppIdAnnotationReplyByActionResponses]
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdData = {
   body?: never
@@ -4089,8 +4100,8 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses = {
   200: AnnotationJobStatusDetailResponse
 }
 
-export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse
-  = GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses[keyof GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses]
+export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse =
+  GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses[keyof GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses]
 
 export type GetAppsByAppIdAnnotationSettingData = {
   body?: never
@@ -4109,8 +4120,8 @@ export type GetAppsByAppIdAnnotationSettingResponses = {
   200: AnnotationSettingResponse
 }
 
-export type GetAppsByAppIdAnnotationSettingResponse
-  = GetAppsByAppIdAnnotationSettingResponses[keyof GetAppsByAppIdAnnotationSettingResponses]
+export type GetAppsByAppIdAnnotationSettingResponse =
+  GetAppsByAppIdAnnotationSettingResponses[keyof GetAppsByAppIdAnnotationSettingResponses]
 
 export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdData = {
   body: AnnotationSettingUpdatePayload
@@ -4130,8 +4141,8 @@ export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponses = {
   200: AnnotationSettingResponse
 }
 
-export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponse
-  = PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponses[keyof PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponses]
+export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponse =
+  PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponses[keyof PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponses]
 
 export type DeleteAppsByAppIdAnnotationsData = {
   body?: never
@@ -4146,8 +4157,8 @@ export type DeleteAppsByAppIdAnnotationsResponses = {
   204: void
 }
 
-export type DeleteAppsByAppIdAnnotationsResponse
-  = DeleteAppsByAppIdAnnotationsResponses[keyof DeleteAppsByAppIdAnnotationsResponses]
+export type DeleteAppsByAppIdAnnotationsResponse =
+  DeleteAppsByAppIdAnnotationsResponses[keyof DeleteAppsByAppIdAnnotationsResponses]
 
 export type GetAppsByAppIdAnnotationsData = {
   body?: never
@@ -4170,8 +4181,8 @@ export type GetAppsByAppIdAnnotationsResponses = {
   200: AnnotationList
 }
 
-export type GetAppsByAppIdAnnotationsResponse
-  = GetAppsByAppIdAnnotationsResponses[keyof GetAppsByAppIdAnnotationsResponses]
+export type GetAppsByAppIdAnnotationsResponse =
+  GetAppsByAppIdAnnotationsResponses[keyof GetAppsByAppIdAnnotationsResponses]
 
 export type PostAppsByAppIdAnnotationsData = {
   body: CreateAnnotationPayload
@@ -4190,8 +4201,8 @@ export type PostAppsByAppIdAnnotationsResponses = {
   201: Annotation
 }
 
-export type PostAppsByAppIdAnnotationsResponse
-  = PostAppsByAppIdAnnotationsResponses[keyof PostAppsByAppIdAnnotationsResponses]
+export type PostAppsByAppIdAnnotationsResponse =
+  PostAppsByAppIdAnnotationsResponses[keyof PostAppsByAppIdAnnotationsResponses]
 
 export type PostAppsByAppIdAnnotationsBatchImportData = {
   body?: never
@@ -4213,8 +4224,8 @@ export type PostAppsByAppIdAnnotationsBatchImportResponses = {
   200: AnnotationBatchImportResponse
 }
 
-export type PostAppsByAppIdAnnotationsBatchImportResponse
-  = PostAppsByAppIdAnnotationsBatchImportResponses[keyof PostAppsByAppIdAnnotationsBatchImportResponses]
+export type PostAppsByAppIdAnnotationsBatchImportResponse =
+  PostAppsByAppIdAnnotationsBatchImportResponses[keyof PostAppsByAppIdAnnotationsBatchImportResponses]
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdData = {
   body?: never
@@ -4234,8 +4245,8 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses = {
   200: AnnotationJobStatusDetailResponse
 }
 
-export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponse
-  = GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses[keyof GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses]
+export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponse =
+  GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses[keyof GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses]
 
 export type GetAppsByAppIdAnnotationsCountData = {
   body?: never
@@ -4250,8 +4261,8 @@ export type GetAppsByAppIdAnnotationsCountResponses = {
   200: AnnotationCountResponse
 }
 
-export type GetAppsByAppIdAnnotationsCountResponse
-  = GetAppsByAppIdAnnotationsCountResponses[keyof GetAppsByAppIdAnnotationsCountResponses]
+export type GetAppsByAppIdAnnotationsCountResponse =
+  GetAppsByAppIdAnnotationsCountResponses[keyof GetAppsByAppIdAnnotationsCountResponses]
 
 export type GetAppsByAppIdAnnotationsExportData = {
   body?: never
@@ -4270,8 +4281,8 @@ export type GetAppsByAppIdAnnotationsExportResponses = {
   200: AnnotationExportList
 }
 
-export type GetAppsByAppIdAnnotationsExportResponse
-  = GetAppsByAppIdAnnotationsExportResponses[keyof GetAppsByAppIdAnnotationsExportResponses]
+export type GetAppsByAppIdAnnotationsExportResponse =
+  GetAppsByAppIdAnnotationsExportResponses[keyof GetAppsByAppIdAnnotationsExportResponses]
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
   body?: never
@@ -4287,8 +4298,8 @@ export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponses = {
   204: void
 }
 
-export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponse
-  = DeleteAppsByAppIdAnnotationsByAnnotationIdResponses[keyof DeleteAppsByAppIdAnnotationsByAnnotationIdResponses]
+export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponse =
+  DeleteAppsByAppIdAnnotationsByAnnotationIdResponses[keyof DeleteAppsByAppIdAnnotationsByAnnotationIdResponses]
 
 export type PostAppsByAppIdAnnotationsByAnnotationIdData = {
   body: UpdateAnnotationPayload
@@ -4309,8 +4320,8 @@ export type PostAppsByAppIdAnnotationsByAnnotationIdResponses = {
   204: void
 }
 
-export type PostAppsByAppIdAnnotationsByAnnotationIdResponse
-  = PostAppsByAppIdAnnotationsByAnnotationIdResponses[keyof PostAppsByAppIdAnnotationsByAnnotationIdResponses]
+export type PostAppsByAppIdAnnotationsByAnnotationIdResponse =
+  PostAppsByAppIdAnnotationsByAnnotationIdResponses[keyof PostAppsByAppIdAnnotationsByAnnotationIdResponses]
 
 export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesData = {
   body?: never
@@ -4333,8 +4344,8 @@ export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponses = {
   200: AnnotationHitHistoryList
 }
 
-export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponse
-  = GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponses[keyof GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponses]
+export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponse =
+  GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponses[keyof GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponses]
 
 export type PostAppsByAppIdApiEnableData = {
   body: AppApiStatusPayload
@@ -4353,11 +4364,13 @@ export type PostAppsByAppIdApiEnableResponses = {
   200: AppDetail
 }
 
-export type PostAppsByAppIdApiEnableResponse
-  = PostAppsByAppIdApiEnableResponses[keyof PostAppsByAppIdApiEnableResponses]
+export type PostAppsByAppIdApiEnableResponse =
+  PostAppsByAppIdApiEnableResponses[keyof PostAppsByAppIdApiEnableResponses]
 
 export type PostAppsByAppIdAudioToTextData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }
@@ -4374,8 +4387,8 @@ export type PostAppsByAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
 }
 
-export type PostAppsByAppIdAudioToTextResponse
-  = PostAppsByAppIdAudioToTextResponses[keyof PostAppsByAppIdAudioToTextResponses]
+export type PostAppsByAppIdAudioToTextResponse =
+  PostAppsByAppIdAudioToTextResponses[keyof PostAppsByAppIdAudioToTextResponses]
 
 export type GetAppsByAppIdChatConversationsData = {
   body?: never
@@ -4402,8 +4415,8 @@ export type GetAppsByAppIdChatConversationsResponses = {
   200: ConversationWithSummaryPagination
 }
 
-export type GetAppsByAppIdChatConversationsResponse
-  = GetAppsByAppIdChatConversationsResponses[keyof GetAppsByAppIdChatConversationsResponses]
+export type GetAppsByAppIdChatConversationsResponse =
+  GetAppsByAppIdChatConversationsResponses[keyof GetAppsByAppIdChatConversationsResponses]
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
   body?: never
@@ -4424,8 +4437,8 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdResponses = {
   204: void
 }
 
-export type DeleteAppsByAppIdChatConversationsByConversationIdResponse
-  = DeleteAppsByAppIdChatConversationsByConversationIdResponses[keyof DeleteAppsByAppIdChatConversationsByConversationIdResponses]
+export type DeleteAppsByAppIdChatConversationsByConversationIdResponse =
+  DeleteAppsByAppIdChatConversationsByConversationIdResponses[keyof DeleteAppsByAppIdChatConversationsByConversationIdResponses]
 
 export type GetAppsByAppIdChatConversationsByConversationIdData = {
   body?: never
@@ -4446,8 +4459,8 @@ export type GetAppsByAppIdChatConversationsByConversationIdResponses = {
   200: ConversationDetail
 }
 
-export type GetAppsByAppIdChatConversationsByConversationIdResponse
-  = GetAppsByAppIdChatConversationsByConversationIdResponses[keyof GetAppsByAppIdChatConversationsByConversationIdResponses]
+export type GetAppsByAppIdChatConversationsByConversationIdResponse =
+  GetAppsByAppIdChatConversationsByConversationIdResponses[keyof GetAppsByAppIdChatConversationsByConversationIdResponses]
 
 export type GetAppsByAppIdChatMessagesData = {
   body?: never
@@ -4470,8 +4483,8 @@ export type GetAppsByAppIdChatMessagesResponses = {
   200: MessageInfiniteScrollPaginationResponse
 }
 
-export type GetAppsByAppIdChatMessagesResponse
-  = GetAppsByAppIdChatMessagesResponses[keyof GetAppsByAppIdChatMessagesResponses]
+export type GetAppsByAppIdChatMessagesResponse =
+  GetAppsByAppIdChatMessagesResponses[keyof GetAppsByAppIdChatMessagesResponses]
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
@@ -4491,8 +4504,8 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
 }
 
-export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponse
-  = GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses[keyof GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses]
+export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponse =
+  GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses[keyof GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses]
 
 export type PostAppsByAppIdChatMessagesByTaskIdStopData = {
   body?: never
@@ -4508,8 +4521,8 @@ export type PostAppsByAppIdChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdChatMessagesByTaskIdStopResponse
-  = PostAppsByAppIdChatMessagesByTaskIdStopResponses[keyof PostAppsByAppIdChatMessagesByTaskIdStopResponses]
+export type PostAppsByAppIdChatMessagesByTaskIdStopResponse =
+  PostAppsByAppIdChatMessagesByTaskIdStopResponses[keyof PostAppsByAppIdChatMessagesByTaskIdStopResponses]
 
 export type GetAppsByAppIdCompletionConversationsData = {
   body?: never
@@ -4535,8 +4548,8 @@ export type GetAppsByAppIdCompletionConversationsResponses = {
   200: ConversationPagination
 }
 
-export type GetAppsByAppIdCompletionConversationsResponse
-  = GetAppsByAppIdCompletionConversationsResponses[keyof GetAppsByAppIdCompletionConversationsResponses]
+export type GetAppsByAppIdCompletionConversationsResponse =
+  GetAppsByAppIdCompletionConversationsResponses[keyof GetAppsByAppIdCompletionConversationsResponses]
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdData = {
   body?: never
@@ -4557,8 +4570,8 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdResponses = 
   204: void
 }
 
-export type DeleteAppsByAppIdCompletionConversationsByConversationIdResponse
-  = DeleteAppsByAppIdCompletionConversationsByConversationIdResponses[keyof DeleteAppsByAppIdCompletionConversationsByConversationIdResponses]
+export type DeleteAppsByAppIdCompletionConversationsByConversationIdResponse =
+  DeleteAppsByAppIdCompletionConversationsByConversationIdResponses[keyof DeleteAppsByAppIdCompletionConversationsByConversationIdResponses]
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdData = {
   body?: never
@@ -4579,8 +4592,8 @@ export type GetAppsByAppIdCompletionConversationsByConversationIdResponses = {
   200: ConversationMessageDetail
 }
 
-export type GetAppsByAppIdCompletionConversationsByConversationIdResponse
-  = GetAppsByAppIdCompletionConversationsByConversationIdResponses[keyof GetAppsByAppIdCompletionConversationsByConversationIdResponses]
+export type GetAppsByAppIdCompletionConversationsByConversationIdResponse =
+  GetAppsByAppIdCompletionConversationsByConversationIdResponses[keyof GetAppsByAppIdCompletionConversationsByConversationIdResponses]
 
 export type PostAppsByAppIdCompletionMessagesData = {
   body: CompletionMessagePayload
@@ -4602,8 +4615,8 @@ export type PostAppsByAppIdCompletionMessagesResponses = {
   }
 }
 
-export type PostAppsByAppIdCompletionMessagesResponse
-  = PostAppsByAppIdCompletionMessagesResponses[keyof PostAppsByAppIdCompletionMessagesResponses]
+export type PostAppsByAppIdCompletionMessagesResponse =
+  PostAppsByAppIdCompletionMessagesResponses[keyof PostAppsByAppIdCompletionMessagesResponses]
 
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -4619,8 +4632,8 @@ export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponse
-  = PostAppsByAppIdCompletionMessagesByTaskIdStopResponses[keyof PostAppsByAppIdCompletionMessagesByTaskIdStopResponses]
+export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponse =
+  PostAppsByAppIdCompletionMessagesByTaskIdStopResponses[keyof PostAppsByAppIdCompletionMessagesByTaskIdStopResponses]
 
 export type GetAppsByAppIdConversationVariablesData = {
   body?: never
@@ -4637,8 +4650,8 @@ export type GetAppsByAppIdConversationVariablesResponses = {
   200: PaginatedConversationVariableResponse
 }
 
-export type GetAppsByAppIdConversationVariablesResponse
-  = GetAppsByAppIdConversationVariablesResponses[keyof GetAppsByAppIdConversationVariablesResponses]
+export type GetAppsByAppIdConversationVariablesResponse =
+  GetAppsByAppIdConversationVariablesResponses[keyof GetAppsByAppIdConversationVariablesResponses]
 
 export type PostAppsByAppIdConvertToWorkflowData = {
   body: ConvertToWorkflowPayload
@@ -4658,8 +4671,8 @@ export type PostAppsByAppIdConvertToWorkflowResponses = {
   200: NewAppResponse
 }
 
-export type PostAppsByAppIdConvertToWorkflowResponse
-  = PostAppsByAppIdConvertToWorkflowResponses[keyof PostAppsByAppIdConvertToWorkflowResponses]
+export type PostAppsByAppIdConvertToWorkflowResponse =
+  PostAppsByAppIdConvertToWorkflowResponses[keyof PostAppsByAppIdConvertToWorkflowResponses]
 
 export type PostAppsByAppIdCopyData = {
   body: CopyAppPayload
@@ -4679,8 +4692,8 @@ export type PostAppsByAppIdCopyResponses = {
   202: AppImportResponse
 }
 
-export type PostAppsByAppIdCopyResponse
-  = PostAppsByAppIdCopyResponses[keyof PostAppsByAppIdCopyResponses]
+export type PostAppsByAppIdCopyResponse =
+  PostAppsByAppIdCopyResponses[keyof PostAppsByAppIdCopyResponses]
 
 export type GetAppsByAppIdExportData = {
   body?: never
@@ -4702,8 +4715,8 @@ export type GetAppsByAppIdExportResponses = {
   200: AppExportResponse
 }
 
-export type GetAppsByAppIdExportResponse
-  = GetAppsByAppIdExportResponses[keyof GetAppsByAppIdExportResponses]
+export type GetAppsByAppIdExportResponse =
+  GetAppsByAppIdExportResponses[keyof GetAppsByAppIdExportResponses]
 
 export type PostAppsByAppIdFeedbacksData = {
   body: MessageFeedbackPayload
@@ -4723,8 +4736,8 @@ export type PostAppsByAppIdFeedbacksResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdFeedbacksResponse
-  = PostAppsByAppIdFeedbacksResponses[keyof PostAppsByAppIdFeedbacksResponses]
+export type PostAppsByAppIdFeedbacksResponse =
+  PostAppsByAppIdFeedbacksResponses[keyof PostAppsByAppIdFeedbacksResponses]
 
 export type GetAppsByAppIdFeedbacksExportData = {
   body?: never
@@ -4751,8 +4764,8 @@ export type GetAppsByAppIdFeedbacksExportResponses = {
   200: TextFileResponse
 }
 
-export type GetAppsByAppIdFeedbacksExportResponse
-  = GetAppsByAppIdFeedbacksExportResponses[keyof GetAppsByAppIdFeedbacksExportResponses]
+export type GetAppsByAppIdFeedbacksExportResponse =
+  GetAppsByAppIdFeedbacksExportResponses[keyof GetAppsByAppIdFeedbacksExportResponses]
 
 export type PostAppsByAppIdIconData = {
   body: AppIconPayload
@@ -4771,8 +4784,8 @@ export type PostAppsByAppIdIconResponses = {
   200: AppDetail
 }
 
-export type PostAppsByAppIdIconResponse
-  = PostAppsByAppIdIconResponses[keyof PostAppsByAppIdIconResponses]
+export type PostAppsByAppIdIconResponse =
+  PostAppsByAppIdIconResponses[keyof PostAppsByAppIdIconResponses]
 
 export type GetAppsByAppIdMessagesByMessageIdData = {
   body?: never
@@ -4792,8 +4805,8 @@ export type GetAppsByAppIdMessagesByMessageIdResponses = {
   200: MessageDetailResponse
 }
 
-export type GetAppsByAppIdMessagesByMessageIdResponse
-  = GetAppsByAppIdMessagesByMessageIdResponses[keyof GetAppsByAppIdMessagesByMessageIdResponses]
+export type GetAppsByAppIdMessagesByMessageIdResponse =
+  GetAppsByAppIdMessagesByMessageIdResponses[keyof GetAppsByAppIdMessagesByMessageIdResponses]
 
 export type PostAppsByAppIdModelConfigData = {
   body: ModelConfigRequest
@@ -4813,8 +4826,8 @@ export type PostAppsByAppIdModelConfigResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdModelConfigResponse
-  = PostAppsByAppIdModelConfigResponses[keyof PostAppsByAppIdModelConfigResponses]
+export type PostAppsByAppIdModelConfigResponse =
+  PostAppsByAppIdModelConfigResponses[keyof PostAppsByAppIdModelConfigResponses]
 
 export type PostAppsByAppIdNameData = {
   body: AppNamePayload
@@ -4829,8 +4842,8 @@ export type PostAppsByAppIdNameResponses = {
   200: AppDetail
 }
 
-export type PostAppsByAppIdNameResponse
-  = PostAppsByAppIdNameResponses[keyof PostAppsByAppIdNameResponses]
+export type PostAppsByAppIdNameResponse =
+  PostAppsByAppIdNameResponses[keyof PostAppsByAppIdNameResponses]
 
 export type PostAppsByAppIdPublishToCreatorsPlatformData = {
   body?: never
@@ -4845,8 +4858,8 @@ export type PostAppsByAppIdPublishToCreatorsPlatformResponses = {
   200: RedirectUrlResponse
 }
 
-export type PostAppsByAppIdPublishToCreatorsPlatformResponse
-  = PostAppsByAppIdPublishToCreatorsPlatformResponses[keyof PostAppsByAppIdPublishToCreatorsPlatformResponses]
+export type PostAppsByAppIdPublishToCreatorsPlatformResponse =
+  PostAppsByAppIdPublishToCreatorsPlatformResponses[keyof PostAppsByAppIdPublishToCreatorsPlatformResponses]
 
 export type GetAppsByAppIdServerData = {
   body?: never
@@ -4861,8 +4874,8 @@ export type GetAppsByAppIdServerResponses = {
   200: AppMcpServerResponse
 }
 
-export type GetAppsByAppIdServerResponse
-  = GetAppsByAppIdServerResponses[keyof GetAppsByAppIdServerResponses]
+export type GetAppsByAppIdServerResponse =
+  GetAppsByAppIdServerResponses[keyof GetAppsByAppIdServerResponses]
 
 export type PostAppsByAppIdServerData = {
   body: McpServerCreatePayload
@@ -4881,8 +4894,8 @@ export type PostAppsByAppIdServerResponses = {
   201: AppMcpServerResponse
 }
 
-export type PostAppsByAppIdServerResponse
-  = PostAppsByAppIdServerResponses[keyof PostAppsByAppIdServerResponses]
+export type PostAppsByAppIdServerResponse =
+  PostAppsByAppIdServerResponses[keyof PostAppsByAppIdServerResponses]
 
 export type PutAppsByAppIdServerData = {
   body: McpServerUpdatePayload
@@ -4902,8 +4915,8 @@ export type PutAppsByAppIdServerResponses = {
   200: AppMcpServerResponse
 }
 
-export type PutAppsByAppIdServerResponse
-  = PutAppsByAppIdServerResponses[keyof PutAppsByAppIdServerResponses]
+export type PutAppsByAppIdServerResponse =
+  PutAppsByAppIdServerResponses[keyof PutAppsByAppIdServerResponses]
 
 export type PostAppsByAppIdSiteData = {
   body: AppSiteUpdatePayload
@@ -4923,8 +4936,8 @@ export type PostAppsByAppIdSiteResponses = {
   200: AppSiteResponse
 }
 
-export type PostAppsByAppIdSiteResponse
-  = PostAppsByAppIdSiteResponses[keyof PostAppsByAppIdSiteResponses]
+export type PostAppsByAppIdSiteResponse =
+  PostAppsByAppIdSiteResponses[keyof PostAppsByAppIdSiteResponses]
 
 export type PostAppsByAppIdSiteEnableData = {
   body: AppSiteStatusPayload
@@ -4943,8 +4956,8 @@ export type PostAppsByAppIdSiteEnableResponses = {
   200: AppDetail
 }
 
-export type PostAppsByAppIdSiteEnableResponse
-  = PostAppsByAppIdSiteEnableResponses[keyof PostAppsByAppIdSiteEnableResponses]
+export type PostAppsByAppIdSiteEnableResponse =
+  PostAppsByAppIdSiteEnableResponses[keyof PostAppsByAppIdSiteEnableResponses]
 
 export type PostAppsByAppIdSiteAccessTokenResetData = {
   body?: never
@@ -4964,8 +4977,8 @@ export type PostAppsByAppIdSiteAccessTokenResetResponses = {
   200: AppSiteResponse
 }
 
-export type PostAppsByAppIdSiteAccessTokenResetResponse
-  = PostAppsByAppIdSiteAccessTokenResetResponses[keyof PostAppsByAppIdSiteAccessTokenResetResponses]
+export type PostAppsByAppIdSiteAccessTokenResetResponse =
+  PostAppsByAppIdSiteAccessTokenResetResponses[keyof PostAppsByAppIdSiteAccessTokenResetResponses]
 
 export type DeleteAppsByAppIdStarData = {
   body?: never
@@ -4984,8 +4997,8 @@ export type DeleteAppsByAppIdStarResponses = {
   200: SimpleResultResponse
 }
 
-export type DeleteAppsByAppIdStarResponse
-  = DeleteAppsByAppIdStarResponses[keyof DeleteAppsByAppIdStarResponses]
+export type DeleteAppsByAppIdStarResponse =
+  DeleteAppsByAppIdStarResponses[keyof DeleteAppsByAppIdStarResponses]
 
 export type PostAppsByAppIdStarData = {
   body?: never
@@ -5004,8 +5017,8 @@ export type PostAppsByAppIdStarResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdStarResponse
-  = PostAppsByAppIdStarResponses[keyof PostAppsByAppIdStarResponses]
+export type PostAppsByAppIdStarResponse =
+  PostAppsByAppIdStarResponses[keyof PostAppsByAppIdStarResponses]
 
 export type GetAppsByAppIdStatisticsAverageResponseTimeData = {
   body?: never
@@ -5023,8 +5036,8 @@ export type GetAppsByAppIdStatisticsAverageResponseTimeResponses = {
   200: AverageResponseTimeStatisticResponse
 }
 
-export type GetAppsByAppIdStatisticsAverageResponseTimeResponse
-  = GetAppsByAppIdStatisticsAverageResponseTimeResponses[keyof GetAppsByAppIdStatisticsAverageResponseTimeResponses]
+export type GetAppsByAppIdStatisticsAverageResponseTimeResponse =
+  GetAppsByAppIdStatisticsAverageResponseTimeResponses[keyof GetAppsByAppIdStatisticsAverageResponseTimeResponses]
 
 export type GetAppsByAppIdStatisticsAverageSessionInteractionsData = {
   body?: never
@@ -5042,8 +5055,8 @@ export type GetAppsByAppIdStatisticsAverageSessionInteractionsResponses = {
   200: AverageSessionInteractionStatisticResponse
 }
 
-export type GetAppsByAppIdStatisticsAverageSessionInteractionsResponse
-  = GetAppsByAppIdStatisticsAverageSessionInteractionsResponses[keyof GetAppsByAppIdStatisticsAverageSessionInteractionsResponses]
+export type GetAppsByAppIdStatisticsAverageSessionInteractionsResponse =
+  GetAppsByAppIdStatisticsAverageSessionInteractionsResponses[keyof GetAppsByAppIdStatisticsAverageSessionInteractionsResponses]
 
 export type GetAppsByAppIdStatisticsDailyConversationsData = {
   body?: never
@@ -5061,8 +5074,8 @@ export type GetAppsByAppIdStatisticsDailyConversationsResponses = {
   200: DailyConversationStatisticResponse
 }
 
-export type GetAppsByAppIdStatisticsDailyConversationsResponse
-  = GetAppsByAppIdStatisticsDailyConversationsResponses[keyof GetAppsByAppIdStatisticsDailyConversationsResponses]
+export type GetAppsByAppIdStatisticsDailyConversationsResponse =
+  GetAppsByAppIdStatisticsDailyConversationsResponses[keyof GetAppsByAppIdStatisticsDailyConversationsResponses]
 
 export type GetAppsByAppIdStatisticsDailyEndUsersData = {
   body?: never
@@ -5080,8 +5093,8 @@ export type GetAppsByAppIdStatisticsDailyEndUsersResponses = {
   200: DailyTerminalStatisticResponse
 }
 
-export type GetAppsByAppIdStatisticsDailyEndUsersResponse
-  = GetAppsByAppIdStatisticsDailyEndUsersResponses[keyof GetAppsByAppIdStatisticsDailyEndUsersResponses]
+export type GetAppsByAppIdStatisticsDailyEndUsersResponse =
+  GetAppsByAppIdStatisticsDailyEndUsersResponses[keyof GetAppsByAppIdStatisticsDailyEndUsersResponses]
 
 export type GetAppsByAppIdStatisticsDailyMessagesData = {
   body?: never
@@ -5099,8 +5112,8 @@ export type GetAppsByAppIdStatisticsDailyMessagesResponses = {
   200: DailyMessageStatisticResponse
 }
 
-export type GetAppsByAppIdStatisticsDailyMessagesResponse
-  = GetAppsByAppIdStatisticsDailyMessagesResponses[keyof GetAppsByAppIdStatisticsDailyMessagesResponses]
+export type GetAppsByAppIdStatisticsDailyMessagesResponse =
+  GetAppsByAppIdStatisticsDailyMessagesResponses[keyof GetAppsByAppIdStatisticsDailyMessagesResponses]
 
 export type GetAppsByAppIdStatisticsTokenCostsData = {
   body?: never
@@ -5118,8 +5131,8 @@ export type GetAppsByAppIdStatisticsTokenCostsResponses = {
   200: DailyTokenCostStatisticResponse
 }
 
-export type GetAppsByAppIdStatisticsTokenCostsResponse
-  = GetAppsByAppIdStatisticsTokenCostsResponses[keyof GetAppsByAppIdStatisticsTokenCostsResponses]
+export type GetAppsByAppIdStatisticsTokenCostsResponse =
+  GetAppsByAppIdStatisticsTokenCostsResponses[keyof GetAppsByAppIdStatisticsTokenCostsResponses]
 
 export type GetAppsByAppIdStatisticsTokensPerSecondData = {
   body?: never
@@ -5137,8 +5150,8 @@ export type GetAppsByAppIdStatisticsTokensPerSecondResponses = {
   200: TokensPerSecondStatisticResponse
 }
 
-export type GetAppsByAppIdStatisticsTokensPerSecondResponse
-  = GetAppsByAppIdStatisticsTokensPerSecondResponses[keyof GetAppsByAppIdStatisticsTokensPerSecondResponses]
+export type GetAppsByAppIdStatisticsTokensPerSecondResponse =
+  GetAppsByAppIdStatisticsTokensPerSecondResponses[keyof GetAppsByAppIdStatisticsTokensPerSecondResponses]
 
 export type GetAppsByAppIdStatisticsUserSatisfactionRateData = {
   body?: never
@@ -5156,8 +5169,8 @@ export type GetAppsByAppIdStatisticsUserSatisfactionRateResponses = {
   200: UserSatisfactionRateStatisticResponse
 }
 
-export type GetAppsByAppIdStatisticsUserSatisfactionRateResponse
-  = GetAppsByAppIdStatisticsUserSatisfactionRateResponses[keyof GetAppsByAppIdStatisticsUserSatisfactionRateResponses]
+export type GetAppsByAppIdStatisticsUserSatisfactionRateResponse =
+  GetAppsByAppIdStatisticsUserSatisfactionRateResponses[keyof GetAppsByAppIdStatisticsUserSatisfactionRateResponses]
 
 export type PostAppsByAppIdTextToAudioData = {
   body: TextToSpeechPayload
@@ -5178,8 +5191,8 @@ export type PostAppsByAppIdTextToAudioResponses = {
   }
 }
 
-export type PostAppsByAppIdTextToAudioResponse
-  = PostAppsByAppIdTextToAudioResponses[keyof PostAppsByAppIdTextToAudioResponses]
+export type PostAppsByAppIdTextToAudioResponse =
+  PostAppsByAppIdTextToAudioResponses[keyof PostAppsByAppIdTextToAudioResponses]
 
 export type GetAppsByAppIdTextToAudioVoicesData = {
   body?: never
@@ -5200,8 +5213,8 @@ export type GetAppsByAppIdTextToAudioVoicesResponses = {
   200: TextToSpeechVoiceListResponse
 }
 
-export type GetAppsByAppIdTextToAudioVoicesResponse
-  = GetAppsByAppIdTextToAudioVoicesResponses[keyof GetAppsByAppIdTextToAudioVoicesResponses]
+export type GetAppsByAppIdTextToAudioVoicesResponse =
+  GetAppsByAppIdTextToAudioVoicesResponses[keyof GetAppsByAppIdTextToAudioVoicesResponses]
 
 export type GetAppsByAppIdTraceData = {
   body?: never
@@ -5216,8 +5229,8 @@ export type GetAppsByAppIdTraceResponses = {
   200: AppTraceResponse
 }
 
-export type GetAppsByAppIdTraceResponse
-  = GetAppsByAppIdTraceResponses[keyof GetAppsByAppIdTraceResponses]
+export type GetAppsByAppIdTraceResponse =
+  GetAppsByAppIdTraceResponses[keyof GetAppsByAppIdTraceResponses]
 
 export type PostAppsByAppIdTraceData = {
   body: AppTracePayload
@@ -5236,8 +5249,8 @@ export type PostAppsByAppIdTraceResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdTraceResponse
-  = PostAppsByAppIdTraceResponses[keyof PostAppsByAppIdTraceResponses]
+export type PostAppsByAppIdTraceResponse =
+  PostAppsByAppIdTraceResponses[keyof PostAppsByAppIdTraceResponses]
 
 export type DeleteAppsByAppIdTraceConfigData = {
   body?: never
@@ -5259,8 +5272,8 @@ export type DeleteAppsByAppIdTraceConfigResponses = {
   204: void
 }
 
-export type DeleteAppsByAppIdTraceConfigResponse
-  = DeleteAppsByAppIdTraceConfigResponses[keyof DeleteAppsByAppIdTraceConfigResponses]
+export type DeleteAppsByAppIdTraceConfigResponse =
+  DeleteAppsByAppIdTraceConfigResponses[keyof DeleteAppsByAppIdTraceConfigResponses]
 
 export type GetAppsByAppIdTraceConfigData = {
   body?: never
@@ -5281,8 +5294,8 @@ export type GetAppsByAppIdTraceConfigResponses = {
   200: TraceAppConfigResponse
 }
 
-export type GetAppsByAppIdTraceConfigResponse
-  = GetAppsByAppIdTraceConfigResponses[keyof GetAppsByAppIdTraceConfigResponses]
+export type GetAppsByAppIdTraceConfigResponse =
+  GetAppsByAppIdTraceConfigResponses[keyof GetAppsByAppIdTraceConfigResponses]
 
 export type PatchAppsByAppIdTraceConfigData = {
   body: TraceConfigPayload
@@ -5302,8 +5315,8 @@ export type PatchAppsByAppIdTraceConfigResponses = {
   200: TraceAppConfigResponse
 }
 
-export type PatchAppsByAppIdTraceConfigResponse
-  = PatchAppsByAppIdTraceConfigResponses[keyof PatchAppsByAppIdTraceConfigResponses]
+export type PatchAppsByAppIdTraceConfigResponse =
+  PatchAppsByAppIdTraceConfigResponses[keyof PatchAppsByAppIdTraceConfigResponses]
 
 export type PostAppsByAppIdTraceConfigData = {
   body: TraceConfigPayload
@@ -5323,8 +5336,8 @@ export type PostAppsByAppIdTraceConfigResponses = {
   201: TraceAppConfigResponse
 }
 
-export type PostAppsByAppIdTraceConfigResponse
-  = PostAppsByAppIdTraceConfigResponses[keyof PostAppsByAppIdTraceConfigResponses]
+export type PostAppsByAppIdTraceConfigResponse =
+  PostAppsByAppIdTraceConfigResponses[keyof PostAppsByAppIdTraceConfigResponses]
 
 export type PostAppsByAppIdTriggerEnableData = {
   body: ParserEnable
@@ -5339,8 +5352,8 @@ export type PostAppsByAppIdTriggerEnableResponses = {
   200: WorkflowTriggerResponse
 }
 
-export type PostAppsByAppIdTriggerEnableResponse
-  = PostAppsByAppIdTriggerEnableResponses[keyof PostAppsByAppIdTriggerEnableResponses]
+export type PostAppsByAppIdTriggerEnableResponse =
+  PostAppsByAppIdTriggerEnableResponses[keyof PostAppsByAppIdTriggerEnableResponses]
 
 export type GetAppsByAppIdTriggersData = {
   body?: never
@@ -5355,8 +5368,8 @@ export type GetAppsByAppIdTriggersResponses = {
   200: WorkflowTriggerListResponse
 }
 
-export type GetAppsByAppIdTriggersResponse
-  = GetAppsByAppIdTriggersResponses[keyof GetAppsByAppIdTriggersResponses]
+export type GetAppsByAppIdTriggersResponse =
+  GetAppsByAppIdTriggersResponses[keyof GetAppsByAppIdTriggersResponses]
 
 export type GetAppsByAppIdWorkflowAppLogsData = {
   body?: never
@@ -5388,8 +5401,8 @@ export type GetAppsByAppIdWorkflowAppLogsResponses = {
   200: WorkflowAppLogPaginationResponse
 }
 
-export type GetAppsByAppIdWorkflowAppLogsResponse
-  = GetAppsByAppIdWorkflowAppLogsResponses[keyof GetAppsByAppIdWorkflowAppLogsResponses]
+export type GetAppsByAppIdWorkflowAppLogsResponse =
+  GetAppsByAppIdWorkflowAppLogsResponses[keyof GetAppsByAppIdWorkflowAppLogsResponses]
 
 export type GetAppsByAppIdWorkflowArchivedLogsData = {
   body?: never
@@ -5421,8 +5434,8 @@ export type GetAppsByAppIdWorkflowArchivedLogsResponses = {
   200: WorkflowArchivedLogPaginationResponse
 }
 
-export type GetAppsByAppIdWorkflowArchivedLogsResponse
-  = GetAppsByAppIdWorkflowArchivedLogsResponses[keyof GetAppsByAppIdWorkflowArchivedLogsResponses]
+export type GetAppsByAppIdWorkflowArchivedLogsResponse =
+  GetAppsByAppIdWorkflowArchivedLogsResponses[keyof GetAppsByAppIdWorkflowArchivedLogsResponses]
 
 export type GetAppsByAppIdWorkflowRunsData = {
   body?: never
@@ -5442,8 +5455,8 @@ export type GetAppsByAppIdWorkflowRunsResponses = {
   200: WorkflowRunPaginationResponse
 }
 
-export type GetAppsByAppIdWorkflowRunsResponse
-  = GetAppsByAppIdWorkflowRunsResponses[keyof GetAppsByAppIdWorkflowRunsResponses]
+export type GetAppsByAppIdWorkflowRunsResponse =
+  GetAppsByAppIdWorkflowRunsResponses[keyof GetAppsByAppIdWorkflowRunsResponses]
 
 export type GetAppsByAppIdWorkflowRunsCountData = {
   body?: never
@@ -5462,8 +5475,8 @@ export type GetAppsByAppIdWorkflowRunsCountResponses = {
   200: WorkflowRunCountResponse
 }
 
-export type GetAppsByAppIdWorkflowRunsCountResponse
-  = GetAppsByAppIdWorkflowRunsCountResponses[keyof GetAppsByAppIdWorkflowRunsCountResponses]
+export type GetAppsByAppIdWorkflowRunsCountResponse =
+  GetAppsByAppIdWorkflowRunsCountResponses[keyof GetAppsByAppIdWorkflowRunsCountResponses]
 
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopData = {
   body?: never
@@ -5484,8 +5497,8 @@ export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse
-  = PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponses[keyof PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponses]
+export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse =
+  PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponses[keyof PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponses]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdData = {
   body?: never
@@ -5505,8 +5518,8 @@ export type GetAppsByAppIdWorkflowRunsByRunIdResponses = {
   200: WorkflowRunDetailResponse
 }
 
-export type GetAppsByAppIdWorkflowRunsByRunIdResponse
-  = GetAppsByAppIdWorkflowRunsByRunIdResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdResponses]
+export type GetAppsByAppIdWorkflowRunsByRunIdResponse =
+  GetAppsByAppIdWorkflowRunsByRunIdResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdResponses]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdExportData = {
   body?: never
@@ -5522,8 +5535,8 @@ export type GetAppsByAppIdWorkflowRunsByRunIdExportResponses = {
   200: WorkflowRunExportResponse
 }
 
-export type GetAppsByAppIdWorkflowRunsByRunIdExportResponse
-  = GetAppsByAppIdWorkflowRunsByRunIdExportResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdExportResponses]
+export type GetAppsByAppIdWorkflowRunsByRunIdExportResponse =
+  GetAppsByAppIdWorkflowRunsByRunIdExportResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdExportResponses]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsData = {
   body?: never
@@ -5543,8 +5556,8 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
   200: WorkflowRunNodeExecutionListResponse
 }
 
-export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse
-  = GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesData = {
   body?: never
@@ -5564,8 +5577,8 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
   200: SandboxListResponse
 }
 
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse
-  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses]
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse =
+  GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses]
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadData = {
   body?: never
@@ -5585,8 +5598,8 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
   200: SandboxReadResponse
 }
 
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse
-  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses]
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse =
+  GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses]
 
 export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadData = {
   body: WorkflowAgentSandboxUploadPayload
@@ -5599,13 +5612,13 @@ export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxF
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload'
 }
 
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses
-  = {
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses =
+  {
     200: SandboxUploadResponse
   }
 
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse
-  = PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses]
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse =
+  PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses]
 
 export type GetAppsByAppIdWorkflowCommentsData = {
   body?: never
@@ -5620,8 +5633,8 @@ export type GetAppsByAppIdWorkflowCommentsResponses = {
   200: WorkflowCommentBasicList
 }
 
-export type GetAppsByAppIdWorkflowCommentsResponse
-  = GetAppsByAppIdWorkflowCommentsResponses[keyof GetAppsByAppIdWorkflowCommentsResponses]
+export type GetAppsByAppIdWorkflowCommentsResponse =
+  GetAppsByAppIdWorkflowCommentsResponses[keyof GetAppsByAppIdWorkflowCommentsResponses]
 
 export type PostAppsByAppIdWorkflowCommentsData = {
   body: WorkflowCommentCreatePayload
@@ -5636,8 +5649,8 @@ export type PostAppsByAppIdWorkflowCommentsResponses = {
   201: WorkflowCommentCreate
 }
 
-export type PostAppsByAppIdWorkflowCommentsResponse
-  = PostAppsByAppIdWorkflowCommentsResponses[keyof PostAppsByAppIdWorkflowCommentsResponses]
+export type PostAppsByAppIdWorkflowCommentsResponse =
+  PostAppsByAppIdWorkflowCommentsResponses[keyof PostAppsByAppIdWorkflowCommentsResponses]
 
 export type GetAppsByAppIdWorkflowCommentsMentionUsersData = {
   body?: never
@@ -5652,8 +5665,8 @@ export type GetAppsByAppIdWorkflowCommentsMentionUsersResponses = {
   200: WorkflowCommentMentionUsersPayload
 }
 
-export type GetAppsByAppIdWorkflowCommentsMentionUsersResponse
-  = GetAppsByAppIdWorkflowCommentsMentionUsersResponses[keyof GetAppsByAppIdWorkflowCommentsMentionUsersResponses]
+export type GetAppsByAppIdWorkflowCommentsMentionUsersResponse =
+  GetAppsByAppIdWorkflowCommentsMentionUsersResponses[keyof GetAppsByAppIdWorkflowCommentsMentionUsersResponses]
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdData = {
   body?: never
@@ -5669,8 +5682,8 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   204: void
 }
 
-export type DeleteAppsByAppIdWorkflowCommentsByCommentIdResponse
-  = DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses[keyof DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses]
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdResponse =
+  DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses[keyof DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses]
 
 export type GetAppsByAppIdWorkflowCommentsByCommentIdData = {
   body?: never
@@ -5686,8 +5699,8 @@ export type GetAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   200: WorkflowCommentDetail
 }
 
-export type GetAppsByAppIdWorkflowCommentsByCommentIdResponse
-  = GetAppsByAppIdWorkflowCommentsByCommentIdResponses[keyof GetAppsByAppIdWorkflowCommentsByCommentIdResponses]
+export type GetAppsByAppIdWorkflowCommentsByCommentIdResponse =
+  GetAppsByAppIdWorkflowCommentsByCommentIdResponses[keyof GetAppsByAppIdWorkflowCommentsByCommentIdResponses]
 
 export type PutAppsByAppIdWorkflowCommentsByCommentIdData = {
   body: WorkflowCommentUpdatePayload
@@ -5703,8 +5716,8 @@ export type PutAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   200: WorkflowCommentUpdate
 }
 
-export type PutAppsByAppIdWorkflowCommentsByCommentIdResponse
-  = PutAppsByAppIdWorkflowCommentsByCommentIdResponses[keyof PutAppsByAppIdWorkflowCommentsByCommentIdResponses]
+export type PutAppsByAppIdWorkflowCommentsByCommentIdResponse =
+  PutAppsByAppIdWorkflowCommentsByCommentIdResponses[keyof PutAppsByAppIdWorkflowCommentsByCommentIdResponses]
 
 export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesData = {
   body: WorkflowCommentReplyPayload
@@ -5720,8 +5733,8 @@ export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponses = {
   201: WorkflowCommentReplyCreate
 }
 
-export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponse
-  = PostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponses[keyof PostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponses]
+export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponse =
+  PostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponses[keyof PostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponses]
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
   body?: never
@@ -5738,8 +5751,8 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse
   204: void
 }
 
-export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse
-  = DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses[keyof DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses]
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse =
+  DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses[keyof DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses]
 
 export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
   body: WorkflowCommentReplyPayload
@@ -5756,8 +5769,8 @@ export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses =
   200: WorkflowCommentReplyUpdate
 }
 
-export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse
-  = PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses[keyof PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses]
+export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse =
+  PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses[keyof PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses]
 
 export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveData = {
   body?: never
@@ -5773,8 +5786,8 @@ export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveResponses = {
   200: WorkflowCommentResolve
 }
 
-export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveResponse
-  = PostAppsByAppIdWorkflowCommentsByCommentIdResolveResponses[keyof PostAppsByAppIdWorkflowCommentsByCommentIdResolveResponses]
+export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveResponse =
+  PostAppsByAppIdWorkflowCommentsByCommentIdResolveResponses[keyof PostAppsByAppIdWorkflowCommentsByCommentIdResolveResponses]
 
 export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsData = {
   body?: never
@@ -5792,8 +5805,8 @@ export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponses = {
   200: WorkflowAverageAppInteractionStatisticResponse
 }
 
-export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponse
-  = GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponses[keyof GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponses]
+export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponse =
+  GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponses[keyof GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponses]
 
 export type GetAppsByAppIdWorkflowStatisticsDailyConversationsData = {
   body?: never
@@ -5811,8 +5824,8 @@ export type GetAppsByAppIdWorkflowStatisticsDailyConversationsResponses = {
   200: WorkflowDailyRunsStatisticResponse
 }
 
-export type GetAppsByAppIdWorkflowStatisticsDailyConversationsResponse
-  = GetAppsByAppIdWorkflowStatisticsDailyConversationsResponses[keyof GetAppsByAppIdWorkflowStatisticsDailyConversationsResponses]
+export type GetAppsByAppIdWorkflowStatisticsDailyConversationsResponse =
+  GetAppsByAppIdWorkflowStatisticsDailyConversationsResponses[keyof GetAppsByAppIdWorkflowStatisticsDailyConversationsResponses]
 
 export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsData = {
   body?: never
@@ -5830,8 +5843,8 @@ export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsResponses = {
   200: WorkflowDailyTerminalsStatisticResponse
 }
 
-export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsResponse
-  = GetAppsByAppIdWorkflowStatisticsDailyTerminalsResponses[keyof GetAppsByAppIdWorkflowStatisticsDailyTerminalsResponses]
+export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsResponse =
+  GetAppsByAppIdWorkflowStatisticsDailyTerminalsResponses[keyof GetAppsByAppIdWorkflowStatisticsDailyTerminalsResponses]
 
 export type GetAppsByAppIdWorkflowStatisticsTokenCostsData = {
   body?: never
@@ -5849,8 +5862,8 @@ export type GetAppsByAppIdWorkflowStatisticsTokenCostsResponses = {
   200: WorkflowDailyTokenCostStatisticResponse
 }
 
-export type GetAppsByAppIdWorkflowStatisticsTokenCostsResponse
-  = GetAppsByAppIdWorkflowStatisticsTokenCostsResponses[keyof GetAppsByAppIdWorkflowStatisticsTokenCostsResponses]
+export type GetAppsByAppIdWorkflowStatisticsTokenCostsResponse =
+  GetAppsByAppIdWorkflowStatisticsTokenCostsResponses[keyof GetAppsByAppIdWorkflowStatisticsTokenCostsResponses]
 
 export type GetAppsByAppIdWorkflowsData = {
   body?: never
@@ -5870,8 +5883,8 @@ export type GetAppsByAppIdWorkflowsResponses = {
   200: WorkflowPaginationResponse
 }
 
-export type GetAppsByAppIdWorkflowsResponse
-  = GetAppsByAppIdWorkflowsResponses[keyof GetAppsByAppIdWorkflowsResponses]
+export type GetAppsByAppIdWorkflowsResponse =
+  GetAppsByAppIdWorkflowsResponses[keyof GetAppsByAppIdWorkflowsResponses]
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsData = {
   body?: never
@@ -5886,8 +5899,8 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
   200: DefaultBlockConfigsResponse
 }
 
-export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse
-  = GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses]
+export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse =
+  GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses]
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeData = {
   body?: never
@@ -5909,8 +5922,8 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeRespons
   200: DefaultBlockConfigResponse
 }
 
-export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse
-  = GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses]
+export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse =
+  GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses]
 
 export type GetAppsByAppIdWorkflowsDraftData = {
   body?: never
@@ -5929,8 +5942,8 @@ export type GetAppsByAppIdWorkflowsDraftResponses = {
   200: WorkflowResponse
 }
 
-export type GetAppsByAppIdWorkflowsDraftResponse
-  = GetAppsByAppIdWorkflowsDraftResponses[keyof GetAppsByAppIdWorkflowsDraftResponses]
+export type GetAppsByAppIdWorkflowsDraftResponse =
+  GetAppsByAppIdWorkflowsDraftResponses[keyof GetAppsByAppIdWorkflowsDraftResponses]
 
 export type PostAppsByAppIdWorkflowsDraftData = {
   body: SyncDraftWorkflowPayload
@@ -5950,8 +5963,8 @@ export type PostAppsByAppIdWorkflowsDraftResponses = {
   200: SyncDraftWorkflowResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftResponse
-  = PostAppsByAppIdWorkflowsDraftResponses[keyof PostAppsByAppIdWorkflowsDraftResponses]
+export type PostAppsByAppIdWorkflowsDraftResponse =
+  PostAppsByAppIdWorkflowsDraftResponses[keyof PostAppsByAppIdWorkflowsDraftResponses]
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesData = {
   body?: never
@@ -5970,8 +5983,8 @@ export type GetAppsByAppIdWorkflowsDraftConversationVariablesResponses = {
   200: WorkflowDraftVariableList
 }
 
-export type GetAppsByAppIdWorkflowsDraftConversationVariablesResponse
-  = GetAppsByAppIdWorkflowsDraftConversationVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftConversationVariablesResponses]
+export type GetAppsByAppIdWorkflowsDraftConversationVariablesResponse =
+  GetAppsByAppIdWorkflowsDraftConversationVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftConversationVariablesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftConversationVariablesData = {
   body: ConversationVariableUpdatePayload
@@ -5986,8 +5999,8 @@ export type PostAppsByAppIdWorkflowsDraftConversationVariablesResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftConversationVariablesResponse
-  = PostAppsByAppIdWorkflowsDraftConversationVariablesResponses[keyof PostAppsByAppIdWorkflowsDraftConversationVariablesResponses]
+export type PostAppsByAppIdWorkflowsDraftConversationVariablesResponse =
+  PostAppsByAppIdWorkflowsDraftConversationVariablesResponses[keyof PostAppsByAppIdWorkflowsDraftConversationVariablesResponses]
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesData = {
   body?: never
@@ -6006,8 +6019,8 @@ export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses = {
   200: EnvironmentVariableListResponse
 }
 
-export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse
-  = GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses]
+export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse =
+  GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesData = {
   body: EnvironmentVariableUpdatePayload
@@ -6022,8 +6035,8 @@ export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse
-  = PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses[keyof PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses]
+export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse =
+  PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses[keyof PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftFeaturesData = {
   body: WorkflowFeaturesPayload
@@ -6038,8 +6051,8 @@ export type PostAppsByAppIdWorkflowsDraftFeaturesResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftFeaturesResponse
-  = PostAppsByAppIdWorkflowsDraftFeaturesResponses[keyof PostAppsByAppIdWorkflowsDraftFeaturesResponses]
+export type PostAppsByAppIdWorkflowsDraftFeaturesResponse =
+  PostAppsByAppIdWorkflowsDraftFeaturesResponses[keyof PostAppsByAppIdWorkflowsDraftFeaturesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestData = {
   body: HumanInputDeliveryTestPayload
@@ -6055,8 +6068,8 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResp
   200: EmptyObjectResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse
-  = PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponses]
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponses]
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewData = {
   body: HumanInputFormPreviewPayload
@@ -6072,8 +6085,8 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewRespo
   200: HumanInputFormPreviewResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse
-  = PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
   body: HumanInputFormSubmitPayload
@@ -6089,8 +6102,8 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses
   200: HumanInputFormSubmitResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse
-  = PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses]
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses]
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunData = {
   body: IterationNodeRunPayload
@@ -6111,8 +6124,8 @@ export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse
-  = PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses]
+export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse =
+  PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses]
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunData = {
   body: LoopNodeRunPayload
@@ -6133,8 +6146,8 @@ export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse
-  = PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses]
+export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse =
+  PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
   body?: never
@@ -6152,8 +6165,8 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
   200: WorkflowAgentComposerResponse
 }
 
-export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
-  = GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
 
 export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
   body: ComposerSavePayload
@@ -6169,8 +6182,8 @@ export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
   200: WorkflowAgentComposerResponse
 }
 
-export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
-  = PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
+export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse =
+  PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesData = {
   body?: never
@@ -6186,8 +6199,8 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResp
   200: AgentComposerCandidatesResponse
 }
 
-export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse
-  = GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses]
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterData = {
   body: WorkflowComposerCopyFromRosterPayload
@@ -6203,8 +6216,8 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRoste
   200: WorkflowAgentComposerResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse
-  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses]
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = {
   body: ComposerSavePayload
@@ -6220,8 +6233,8 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactRespons
   200: AgentComposerImpactResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse
-  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses]
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterData = {
   body: ComposerSavePayload
@@ -6237,8 +6250,8 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterR
   200: WorkflowAgentComposerResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse
-  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses]
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateData = {
   body: ComposerSavePayload
@@ -6254,8 +6267,8 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateRespo
   200: AgentComposerValidateResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse
-  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses]
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunData = {
   body?: never
@@ -6276,8 +6289,8 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponses = {
   200: WorkflowRunNodeExecutionResponse
 }
 
-export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse
-  = GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponses]
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunData = {
   body: DraftWorkflowNodeRunPayload
@@ -6298,8 +6311,8 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponses = {
   200: WorkflowRunNodeExecutionResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse
-  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponses]
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunData = {
   body?: never
@@ -6320,8 +6333,8 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse
-  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses]
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses]
 
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
@@ -6337,8 +6350,8 @@ export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   204: void
 }
 
-export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse
-  = DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses]
+export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse =
+  DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
@@ -6354,8 +6367,8 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   200: WorkflowDraftVariableList
 }
 
-export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse
-  = GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses]
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftRunData = {
   body: DraftWorkflowRunPayload
@@ -6374,8 +6387,8 @@ export type PostAppsByAppIdWorkflowsDraftRunResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftRunResponse
-  = PostAppsByAppIdWorkflowsDraftRunResponses[keyof PostAppsByAppIdWorkflowsDraftRunResponses]
+export type PostAppsByAppIdWorkflowsDraftRunResponse =
+  PostAppsByAppIdWorkflowsDraftRunResponses[keyof PostAppsByAppIdWorkflowsDraftRunResponses]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsData = {
   body?: never
@@ -6395,8 +6408,8 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses = {
   200: WorkflowRunSnapshotView
 }
 
-export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse
-  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses]
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsData = {
   body?: never
@@ -6416,8 +6429,8 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses = 
   200: EventStreamResponse
 }
 
-export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse
-  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses]
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdData = {
   body?: never
@@ -6438,8 +6451,8 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses 
   200: NodeOutputsView
 }
 
-export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse
-  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses]
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewData = {
   body?: never
@@ -6457,13 +6470,13 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNa
   404: unknown
 }
 
-export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses
-  = {
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses =
+  {
     200: OutputPreviewView
   }
 
-export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
-  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses]
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses]
 
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesData = {
   body?: never
@@ -6478,8 +6491,8 @@ export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponses = {
   200: WorkflowDraftVariableList
 }
 
-export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponse
-  = GetAppsByAppIdWorkflowsDraftSystemVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftSystemVariablesResponses]
+export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponse =
+  GetAppsByAppIdWorkflowsDraftSystemVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftSystemVariablesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
   body: DraftWorkflowTriggerRunRequest
@@ -6499,8 +6512,8 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftTriggerRunResponse
-  = PostAppsByAppIdWorkflowsDraftTriggerRunResponses[keyof PostAppsByAppIdWorkflowsDraftTriggerRunResponses]
+export type PostAppsByAppIdWorkflowsDraftTriggerRunResponse =
+  PostAppsByAppIdWorkflowsDraftTriggerRunResponses[keyof PostAppsByAppIdWorkflowsDraftTriggerRunResponses]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllData = {
   body: DraftWorkflowTriggerRunAllPayload
@@ -6520,8 +6533,8 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponse
-  = PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses[keyof PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses]
+export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponse =
+  PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses[keyof PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses]
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesData = {
   body?: never
@@ -6536,8 +6549,8 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesResponses = {
   204: void
 }
 
-export type DeleteAppsByAppIdWorkflowsDraftVariablesResponse
-  = DeleteAppsByAppIdWorkflowsDraftVariablesResponses[keyof DeleteAppsByAppIdWorkflowsDraftVariablesResponses]
+export type DeleteAppsByAppIdWorkflowsDraftVariablesResponse =
+  DeleteAppsByAppIdWorkflowsDraftVariablesResponses[keyof DeleteAppsByAppIdWorkflowsDraftVariablesResponses]
 
 export type GetAppsByAppIdWorkflowsDraftVariablesData = {
   body?: never
@@ -6555,8 +6568,8 @@ export type GetAppsByAppIdWorkflowsDraftVariablesResponses = {
   200: WorkflowDraftVariableListWithoutValue
 }
 
-export type GetAppsByAppIdWorkflowsDraftVariablesResponse
-  = GetAppsByAppIdWorkflowsDraftVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftVariablesResponses]
+export type GetAppsByAppIdWorkflowsDraftVariablesResponse =
+  GetAppsByAppIdWorkflowsDraftVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftVariablesResponses]
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never
@@ -6576,8 +6589,8 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   204: void
 }
 
-export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse
-  = DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses[keyof DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses]
+export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse =
+  DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses[keyof DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never
@@ -6597,8 +6610,8 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariable
 }
 
-export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse
-  = GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses]
+export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse =
+  GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
   body: WorkflowDraftVariableUpdatePayload
@@ -6618,8 +6631,8 @@ export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariable
 }
 
-export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse
-  = PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses[keyof PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses]
+export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse =
+  PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses[keyof PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetData = {
   body?: never
@@ -6640,8 +6653,8 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses = {
   204: void
 }
 
-export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse
-  = PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses[keyof PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses]
+export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse =
+  PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses[keyof PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses]
 
 export type GetAppsByAppIdWorkflowsPublishData = {
   body?: never
@@ -6656,8 +6669,8 @@ export type GetAppsByAppIdWorkflowsPublishResponses = {
   200: WorkflowResponse
 }
 
-export type GetAppsByAppIdWorkflowsPublishResponse
-  = GetAppsByAppIdWorkflowsPublishResponses[keyof GetAppsByAppIdWorkflowsPublishResponses]
+export type GetAppsByAppIdWorkflowsPublishResponse =
+  GetAppsByAppIdWorkflowsPublishResponses[keyof GetAppsByAppIdWorkflowsPublishResponses]
 
 export type PostAppsByAppIdWorkflowsPublishData = {
   body: PublishWorkflowPayload
@@ -6672,8 +6685,8 @@ export type PostAppsByAppIdWorkflowsPublishResponses = {
   200: WorkflowPublishResponse
 }
 
-export type PostAppsByAppIdWorkflowsPublishResponse
-  = PostAppsByAppIdWorkflowsPublishResponses[keyof PostAppsByAppIdWorkflowsPublishResponses]
+export type PostAppsByAppIdWorkflowsPublishResponse =
+  PostAppsByAppIdWorkflowsPublishResponses[keyof PostAppsByAppIdWorkflowsPublishResponses]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsData = {
   body?: never
@@ -6693,8 +6706,8 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses = {
   200: WorkflowRunSnapshotView
 }
 
-export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse
-  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses]
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsData = {
   body?: never
@@ -6714,8 +6727,8 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse
   200: EventStreamResponse
 }
 
-export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse
-  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses]
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdData = {
   body?: never
@@ -6736,11 +6749,11 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdRespon
   200: NodeOutputsView
 }
 
-export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse
-  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses]
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses]
 
-export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewData
-  = {
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewData =
+  {
     body?: never
     path: {
       app_id: string
@@ -6752,18 +6765,18 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutp
     url: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview'
   }
 
-export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors
-  = {
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors =
+  {
     404: unknown
   }
 
-export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses
-  = {
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses =
+  {
     200: OutputPreviewView
   }
 
-export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
-  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses]
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses]
 
 export type GetAppsByAppIdWorkflowsTriggersWebhookData = {
   body?: never
@@ -6780,8 +6793,8 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookResponses = {
   200: WebhookTriggerResponse
 }
 
-export type GetAppsByAppIdWorkflowsTriggersWebhookResponse
-  = GetAppsByAppIdWorkflowsTriggersWebhookResponses[keyof GetAppsByAppIdWorkflowsTriggersWebhookResponses]
+export type GetAppsByAppIdWorkflowsTriggersWebhookResponse =
+  GetAppsByAppIdWorkflowsTriggersWebhookResponses[keyof GetAppsByAppIdWorkflowsTriggersWebhookResponses]
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
   body?: never
@@ -6797,8 +6810,8 @@ export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponses = {
   204: void
 }
 
-export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponse
-  = DeleteAppsByAppIdWorkflowsByWorkflowIdResponses[keyof DeleteAppsByAppIdWorkflowsByWorkflowIdResponses]
+export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponse =
+  DeleteAppsByAppIdWorkflowsByWorkflowIdResponses[keyof DeleteAppsByAppIdWorkflowsByWorkflowIdResponses]
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdData = {
   body: WorkflowUpdatePayload
@@ -6819,8 +6832,8 @@ export type PatchAppsByAppIdWorkflowsByWorkflowIdResponses = {
   200: WorkflowResponse
 }
 
-export type PatchAppsByAppIdWorkflowsByWorkflowIdResponse
-  = PatchAppsByAppIdWorkflowsByWorkflowIdResponses[keyof PatchAppsByAppIdWorkflowsByWorkflowIdResponses]
+export type PatchAppsByAppIdWorkflowsByWorkflowIdResponse =
+  PatchAppsByAppIdWorkflowsByWorkflowIdResponses[keyof PatchAppsByAppIdWorkflowsByWorkflowIdResponses]
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreData = {
   body?: never
@@ -6841,8 +6854,8 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses = {
   200: WorkflowRestoreResponse
 }
 
-export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse
-  = PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses[keyof PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses]
+export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse =
+  PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses[keyof PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses]
 
 export type GetAppsByResourceIdApiKeysData = {
   body?: never
@@ -6857,8 +6870,8 @@ export type GetAppsByResourceIdApiKeysResponses = {
   200: ApiKeyList
 }
 
-export type GetAppsByResourceIdApiKeysResponse
-  = GetAppsByResourceIdApiKeysResponses[keyof GetAppsByResourceIdApiKeysResponses]
+export type GetAppsByResourceIdApiKeysResponse =
+  GetAppsByResourceIdApiKeysResponses[keyof GetAppsByResourceIdApiKeysResponses]
 
 export type PostAppsByResourceIdApiKeysData = {
   body?: never
@@ -6877,8 +6890,8 @@ export type PostAppsByResourceIdApiKeysResponses = {
   201: ApiKeyItem
 }
 
-export type PostAppsByResourceIdApiKeysResponse
-  = PostAppsByResourceIdApiKeysResponses[keyof PostAppsByResourceIdApiKeysResponses]
+export type PostAppsByResourceIdApiKeysResponse =
+  PostAppsByResourceIdApiKeysResponses[keyof PostAppsByResourceIdApiKeysResponses]
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdData = {
   body?: never
@@ -6894,8 +6907,8 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
   204: void
 }
 
-export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponse
-  = DeleteAppsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteAppsByResourceIdApiKeysByApiKeyIdResponses]
+export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponse =
+  DeleteAppsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteAppsByResourceIdApiKeysByApiKeyIdResponses]
 
 export type GetAppsByServerIdServerRefreshData = {
   body?: never
@@ -6915,5 +6928,5 @@ export type GetAppsByServerIdServerRefreshResponses = {
   200: AppMcpServerResponse
 }
 
-export type GetAppsByServerIdServerRefreshResponse
-  = GetAppsByServerIdServerRefreshResponses[keyof GetAppsByServerIdServerRefreshResponses]
+export type GetAppsByServerIdServerRefreshResponse =
+  GetAppsByServerIdServerRefreshResponses[keyof GetAppsByServerIdServerRefreshResponses]

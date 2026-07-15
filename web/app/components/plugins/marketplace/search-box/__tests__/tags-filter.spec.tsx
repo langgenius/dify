@@ -1,23 +1,20 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TagsFilter from '../tags-filter'
 
 const { mockTranslate } = vi.hoisted(() => ({
-  mockTranslate: vi.fn((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
+  mockTranslate: vi.fn((key: string, options?: { ns?: string }) =>
+    options?.ns ? `${options.ns}.${key}` : key,
+  ),
 }))
 
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => ({
       t: withSelectorKey(mockTranslate),
     }),
-  })
+  }
 })
 
 vi.mock('@/app/components/plugins/hooks', () => ({
@@ -49,7 +46,7 @@ vi.mock('@/app/components/base/input', () => ({
       aria-label="tags-search"
       value={value}
       placeholder={placeholder}
-      onChange={event => onChange({ target: { value: event.target.value } })}
+      onChange={(event) => onChange({ target: { value: event.target.value } })}
     />
   ),
 }))
@@ -84,7 +81,9 @@ describe('TagsFilter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockTranslate.mockImplementation((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key)
+    mockTranslate.mockImplementation((key: string, options?: { ns?: string }) =>
+      options?.ns ? `${options.ns}.${key}` : key,
+    )
   })
 
   it('renders marketplace trigger when used in marketplace', () => {

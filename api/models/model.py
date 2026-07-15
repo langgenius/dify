@@ -483,7 +483,7 @@ class App(Base):
         """
         if self.mode != AppMode.AGENT:
             return None
-        from .agent import Agent, AgentScope, AgentSource, AgentStatus
+        from .agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
 
         agent = db.session.scalar(
             select(Agent).where(
@@ -492,7 +492,7 @@ class App(Base):
                     sa.and_(
                         Agent.app_id == self.id,
                         Agent.scope == AgentScope.ROSTER,
-                        Agent.source == AgentSource.AGENT_APP,
+                        Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                     ),
                     Agent.backing_app_id == self.id,
                 ),

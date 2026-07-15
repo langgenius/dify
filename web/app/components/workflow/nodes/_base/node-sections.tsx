@@ -18,35 +18,34 @@ export type WorkflowTranslator = (
   options: { ns: 'workflow' } & Record<string, unknown>,
 ) => string
 
-export const NodeHeaderMeta = ({
-  data,
-  hasVarValue,
-  isLoading,
-  loopIndex,
-  t,
-}: HeaderMetaProps) => {
+export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: HeaderMetaProps) => {
   return (
     <>
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
         <Tooltip>
           <TooltipTrigger>
             <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
-              {t($ => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
+              {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
             </div>
           </TooltipTrigger>
           <TooltipContent className="w-[180px]">
             <div className="font-extrabold">
-              {t($ => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
+              {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
             </div>
-            {t($ => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
+            {t(($) => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
           </TooltipContent>
         </Tooltip>
       )}
-      {!!(data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running) && (
+      {!!(
+        data._iterationLength &&
+        data._iterationIndex &&
+        data._runningStatus === NodeRunningStatus.Running
+      ) && (
         <div className="mr-1.5 text-xs font-medium text-text-accent">
-          {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}
-          /
-          {data._iterationLength}
+          {data._iterationIndex > data._iterationLength
+            ? data._iterationLength
+            : data._iterationIndex}
+          /{data._iterationLength}
         </div>
       )}
       {!!(data.type === BlockEnum.Loop && data._loopIndex) && loopIndex}
@@ -57,9 +56,11 @@ export const NodeHeaderMeta = ({
       {!isLoading && data._runningStatus === NodeRunningStatus.Exception && (
         <span className="i-ri-alert-fill size-3.5 text-text-warning-secondary" />
       )}
-      {!isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || (!data._runningStatus && hasVarValue)) && (
-        <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
-      )}
+      {!isLoading &&
+        (data._runningStatus === NodeRunningStatus.Succeeded ||
+          (!data._runningStatus && hasVarValue)) && (
+          <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
+        )}
       {!isLoading && data._runningStatus === NodeRunningStatus.Paused && (
         <span className="i-ri-pause-circle-fill size-3.5 text-text-warning-secondary" />
       )}
@@ -72,23 +73,21 @@ type NodeBodyProps = {
   child: ReactElement
 }
 
-export const NodeBody = ({
-  data,
-  child,
-}: NodeBodyProps) => {
+export const NodeBody = ({ data, child }: NodeBodyProps) => {
   if (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) {
-    return (
-      <div className="grow px-1 pb-1">
-        {child}
-      </div>
-    )
+    return <div className="grow px-1 pb-1">{child}</div>
   }
 
   return child
 }
 
 export const NodeDescription = ({ data }: { data: NodeProps['data'] }) => {
-  if (!data.desc || data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop || data.type === BlockEnum.StartPlaceholder)
+  if (
+    !data.desc ||
+    data.type === BlockEnum.Iteration ||
+    data.type === BlockEnum.Loop ||
+    data.type === BlockEnum.StartPlaceholder
+  )
     return null
 
   return (

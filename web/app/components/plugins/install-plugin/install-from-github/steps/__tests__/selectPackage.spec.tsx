@@ -29,7 +29,11 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   }>({})
 
   return {
-    Select: ({ children, readOnly, onValueChange }: {
+    Select: ({
+      children,
+      readOnly,
+      onValueChange,
+    }: {
       children: React.ReactNode
       readOnly?: boolean
       onValueChange?: (value: string) => void
@@ -43,20 +47,31 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       const context = React.useContext(SelectContext)
       return (
         <div>
-          <div data-testid="select-trigger" className={context.readOnly ? 'cursor-not-allowed' : 'cursor-pointer'}>
+          <div
+            data-testid="select-trigger"
+            className={context.readOnly ? 'cursor-not-allowed' : 'cursor-pointer'}
+          >
             {children}
           </div>
-          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
+          <button
+            data-testid="select-empty"
+            type="button"
+            onClick={() => context.onValueChange?.('')}
+          >
             empty select value
           </button>
-          <button data-testid="select-invalid" type="button" onClick={() => context.onValueChange?.('__missing__')}>
+          <button
+            data-testid="select-invalid"
+            type="button"
+            onClick={() => context.onValueChange?.('__missing__')}
+          >
             invalid select value
           </button>
         </div>
       )
     },
     SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
       const context = React.useContext(SelectContext)
       return (
         <button type="button" onClick={() => context.onValueChange?.(value)}>
@@ -121,7 +136,7 @@ type TestProps = {
   selectedPackage?: string
   packages?: SelectOption[]
   onSelectPackage?: (item: SelectOption) => void
-  onUploaded?: (result: { uniqueIdentifier: string, manifest: PluginDeclaration }) => void
+  onUploaded?: (result: { uniqueIdentifier: string; manifest: PluginDeclaration }) => void
   onFailed?: (errorMsg: string) => void
   onBack?: () => void
 }
@@ -136,7 +151,10 @@ describe('SelectPackage', () => {
     selectedPackage: '',
     packages: createPackages(),
     onSelectPackage: vi.fn() as (item: SelectOption) => void,
-    onUploaded: vi.fn() as (result: { uniqueIdentifier: string, manifest: PluginDeclaration }) => void,
+    onUploaded: vi.fn() as (result: {
+      uniqueIdentifier: string
+      manifest: PluginDeclaration
+    }) => void,
     onFailed: vi.fn() as (errorMsg: string) => void,
     onBack: vi.fn() as () => void,
   })
@@ -152,8 +170,7 @@ describe('SelectPackage', () => {
     const labelElement = screen.getByText(label)
     const labelContainer = labelElement.closest('label') ?? labelElement.parentElement
     const section = labelContainer?.parentElement
-    if (!(section instanceof HTMLElement))
-      throw new Error(`Missing section for ${label}`)
+    if (!(section instanceof HTMLElement)) throw new Error(`Missing section for ${label}`)
     return section
   }
 
@@ -187,7 +204,9 @@ describe('SelectPackage', () => {
     it('should not render back button when in edit mode', () => {
       renderSelectPackage({ updatePayload: createUpdatePayload() })
 
-      expect(screen.queryByRole('button', { name: 'plugin.installModal.back' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.installModal.back' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render next button', () => {
@@ -338,7 +357,10 @@ describe('SelectPackage', () => {
       const section = getSection('plugin.installFromGitHub.selectPackage')
       fireEvent.click(within(section).getByRole('button', { name: 'plugin.tar.gz' }))
 
-      expect(onSelectPackage).toHaveBeenCalledWith({ value: 'plugin.tar.gz', name: 'plugin.tar.gz' })
+      expect(onSelectPackage).toHaveBeenCalledWith({
+        value: 'plugin.tar.gz',
+        name: 'plugin.tar.gz',
+      })
     })
   })
 
@@ -405,9 +427,12 @@ describe('SelectPackage', () => {
 
     it('should not call upload twice when already uploading', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       renderSelectPackage({
         selectedVersion: 'v1.0.0',
@@ -431,9 +456,12 @@ describe('SelectPackage', () => {
 
     it('should disable back button while uploading', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       renderSelectPackage({
         selectedVersion: 'v1.0.0',
@@ -491,7 +519,9 @@ describe('SelectPackage', () => {
       renderSelectPackage({ updatePayload: createUpdatePayload() })
 
       // Should not show back button in edit mode
-      expect(screen.queryByRole('button', { name: 'plugin.installModal.back' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.installModal.back' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should re-enable buttons after upload completes', async () => {
@@ -609,9 +639,12 @@ describe('SelectPackage', () => {
 
     it('should disable next button when uploading even with valid selections', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       renderSelectPackage({
         selectedVersion: 'v1.0.0',
@@ -705,7 +738,9 @@ describe('SelectPackage', () => {
       renderSelectPackage({ updatePayload })
 
       // Back button should not be rendered in edit mode
-      expect(screen.queryByRole('button', { name: 'plugin.installModal.back' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.installModal.back' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should set isEdit to false when updatePayload is undefined', () => {
@@ -854,9 +889,12 @@ describe('SelectPackage', () => {
   describe('Upload State Management', () => {
     it('should set isUploading to true when upload starts', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       renderSelectPackage({
         selectedVersion: 'v1.0.0',
@@ -910,9 +948,12 @@ describe('SelectPackage', () => {
 
     it('should not allow back button click while uploading', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       const onBack = vi.fn()
       renderSelectPackage({

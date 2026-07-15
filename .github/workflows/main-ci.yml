@@ -45,6 +45,7 @@ jobs:
       web-changed: ${{ steps.changes.outputs.web }}
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
+      sandbox-runtime-changed: ${{ steps.changes.outputs.sandbox-runtime }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
@@ -75,7 +76,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - 'eslint.config.mjs'
+              - 'lint.config.ts'
               - '.npmrc'
               - '.nvmrc'
               - '.github/workflows/cli-tests.yml'
@@ -130,6 +131,9 @@ jobs:
               - 'docker/volumes/**'
               - 'api/uv.lock'
               - 'api/pyproject.toml'
+            sandbox-runtime:
+              - 'dify-agent-runtime/**'
+              - '.github/workflows/sandbox-runtime-tests.yml'
             migration:
               - 'api/migrations/**'
               - 'api/.env.example'
@@ -507,4 +511,64 @@ jobs:
           fi
 
           echo "DB migration tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  sandbox-runtime-tests-run:
+    name: Run Sandbox Runtime Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.sandbox-runtime-changed == 'true'
+    uses: ./.github/workflows/sandbox-runtime-tests.yml
+    secrets: inherit
+
+  sandbox-runtime-tests-skip:
+    name: Skip Sandbox Runtime Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.sandbox-runtime-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped sandbox runtime tests
+        run: echo "No sandbox-runtime-related changes detected; skipping sandbox runtime tests."
+
+  sandbox-runtime-tests:
+    name: Sandbox Runtime Tests
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - sandbox-runtime-tests-run
+      - sandbox-runtime-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize Sandbox Runtime Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.sandbox-runtime-changed }}
+          RUN_RESULT: ${{ needs.sandbox-runtime-tests-run.result }}
+          SKIP_RESULT: ${{ needs.sandbox-runtime-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "Sandbox runtime tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "Sandbox runtime tests ran successfully."
+              exit 0
+            fi
+
+            echo "Sandbox runtime tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "Sandbox runtime tests were skipped because no sandbox-runtime-related files changed."
+            exit 0
+          fi
+
+          echo "Sandbox runtime tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
           exit 1

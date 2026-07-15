@@ -9,17 +9,18 @@ import {
   ReasoningChunkRenderer,
 } from './reasoning'
 
-function capture(): { err: PassThrough, errBuf: () => string } {
+function capture(): { err: PassThrough; errBuf: () => string } {
   const err = new PassThrough()
   const ec: Buffer[] = []
-  err.on('data', d => ec.push(d as Buffer))
+  err.on('data', (d) => ec.push(d as Buffer))
   return { err, errBuf: () => Buffer.concat(ec).toString('utf-8') }
 }
 
 describe('parseReasoningChunk', () => {
   it('reads the payload nested under data', () => {
-    expect(parseReasoningChunk({ data: { reasoning: 'hi', node_id: 'llm-1', is_final: true } }))
-      .toEqual({ reasoning: 'hi', nodeId: 'llm-1', isFinal: true })
+    expect(
+      parseReasoningChunk({ data: { reasoning: 'hi', node_id: 'llm-1', is_final: true } }),
+    ).toEqual({ reasoning: 'hi', nodeId: 'llm-1', isFinal: true })
   })
 
   it('defaults missing/wrong-typed fields', () => {
@@ -104,8 +105,9 @@ describe('accumulateReasoning', () => {
 
 describe('formatReasoningBlocks', () => {
   it('frames and trims each node, joined by a separator', () => {
-    expect(formatReasoningBlocks({ n1: '  one  ', n2: 'two' }))
-      .toBe('<think>\none\n</think>\n---\n<think>\ntwo\n</think>')
+    expect(formatReasoningBlocks({ n1: '  one  ', n2: 'two' })).toBe(
+      '<think>\none\n</think>\n---\n<think>\ntwo\n</think>',
+    )
   })
 
   it('skips empty entries and returns empty for no reasoning', () => {
@@ -116,8 +118,7 @@ describe('formatReasoningBlocks', () => {
 
 describe('reasoningBlocksFromMetadata', () => {
   it('extracts reasoning from a metadata object', () => {
-    expect(reasoningBlocksFromMetadata({ reasoning: { n1: 'why' } }))
-      .toBe('<think>\nwhy\n</think>')
+    expect(reasoningBlocksFromMetadata({ reasoning: { n1: 'why' } })).toBe('<think>\nwhy\n</think>')
   })
 
   it('returns empty for tagged mode (empty reasoning) and malformed input', () => {

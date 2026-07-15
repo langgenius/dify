@@ -19,7 +19,7 @@ import {
   CompletionClient,
   WorkflowClient,
   KnowledgeBaseClient,
-  WorkspaceClient
+  WorkspaceClient,
 } from 'dify-client'
 
 const API_KEY = 'your-app-api-key'
@@ -42,7 +42,7 @@ await client.messageFeedback('message-id', 'like', user)
 await completionClient.createCompletionMessage({
   inputs: { query },
   user,
-  response_mode: 'blocking'
+  response_mode: 'blocking',
 })
 
 // Chat (streaming)
@@ -50,7 +50,7 @@ const stream = await chatClient.createChatMessage({
   inputs: {},
   query,
   user,
-  response_mode: 'streaming'
+  response_mode: 'streaming',
 })
 for await (const event of stream) {
   console.log(event.event, event.data)
@@ -62,14 +62,14 @@ await chatClient.createChatMessage({
   query,
   user,
   workflow_id: 'workflow-id',
-  response_mode: 'blocking'
+  response_mode: 'blocking',
 })
 
 // Workflow run (blocking or streaming)
 await workflowClient.run({
   inputs: { query },
   user,
-  response_mode: 'blocking'
+  response_mode: 'blocking',
 })
 
 // Knowledge base (dataset token required)
@@ -83,7 +83,7 @@ const pipelineStream = await kbClient.runPipeline('dataset-id', {
   datasource_info_list: [],
   start_node_id: 'start-node-id',
   is_published: true,
-  response_mode: 'streaming'
+  response_mode: 'streaming',
 })
 for await (const event of pipelineStream) {
   console.log(event.data)
@@ -91,7 +91,6 @@ for await (const event of pipelineStream) {
 
 // Workspace models (dataset token required)
 await workspaceClient.getModelsByType('text-embedding')
-
 ```
 
 Notes:

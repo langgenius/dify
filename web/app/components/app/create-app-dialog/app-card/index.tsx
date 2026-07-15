@@ -19,15 +19,11 @@ type AppCardProps = {
   onCreate: () => void
 }
 
-const AppCard = ({
-  app,
-  canCreate,
-  onCreate,
-}: AppCardProps) => {
+const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
   const canViewApp = IS_CLOUD_EDITION
-  const setShowTryAppPanel = useContextSelector(AppListContext, ctx => ctx.setShowTryAppPanel)
+  const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
   const handleShowTryAppPanel = useCallback(() => {
     trackEvent('preview_template', {
       template_id: app.app_id,
@@ -39,7 +35,11 @@ const AppCard = ({
     setShowTryAppPanel?.(true, { appId: app.app_id, app })
   }, [setShowTryAppPanel, app, appBasicInfo])
   return (
-    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg')}>
+    <div
+      className={cn(
+        'group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg',
+      )}
+    >
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">
         <div className="relative shrink-0">
           <AppIcon
@@ -57,29 +57,41 @@ const AppCard = ({
         </div>
         <div className="flex grow flex-col gap-1">
           <div className="line-clamp-1">
-            <span className="system-md-semibold text-text-secondary" title={appBasicInfo.name}>{appBasicInfo.name}</span>
+            <span className="system-md-semibold text-text-secondary" title={appBasicInfo.name}>
+              {appBasicInfo.name}
+            </span>
           </div>
-          <AppTypeLabel className="system-2xs-medium-uppercase text-text-tertiary" type={app.app.mode} />
+          <AppTypeLabel
+            className="system-2xs-medium-uppercase text-text-tertiary"
+            type={app.app.mode}
+          />
         </div>
       </div>
       <div className="py-1 system-xs-regular text-text-tertiary">
-        <div className="line-clamp-3">
-          {app.description}
-        </div>
+        <div className="line-clamp-3">{app.description}</div>
       </div>
       {(canCreate || canViewApp) && (
-        <div className={cn('absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-          <div className={cn('grid h-8 w-full grid-cols-1 items-center space-x-2', canCreate && canViewApp && 'grid-cols-2')}>
+        <div
+          className={cn(
+            'absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex',
+          )}
+        >
+          <div
+            className={cn(
+              'grid h-8 w-full grid-cols-1 items-center space-x-2',
+              canCreate && canViewApp && 'grid-cols-2',
+            )}
+          >
             {canCreate && (
               <Button variant="primary" onClick={() => onCreate()}>
                 <PlusIcon className="mr-1 size-4" />
-                <span className="text-xs">{t($ => $['newApp.useTemplate'], { ns: 'app' })}</span>
+                <span className="text-xs">{t(($) => $['newApp.useTemplate'], { ns: 'app' })}</span>
               </Button>
             )}
             {canViewApp && (
               <Button onClick={handleShowTryAppPanel}>
                 <RiInformation2Line className="mr-1 size-4" />
-                <span>{t($ => $['appCard.try'], { ns: 'explore' })}</span>
+                <span>{t(($) => $['appCard.try'], { ns: 'explore' })}</span>
               </Button>
             )}
           </div>

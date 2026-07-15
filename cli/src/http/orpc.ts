@@ -22,8 +22,7 @@ export function createOpenApiClient(http: HttpClient): OpenApiClient {
     url: http.baseURL,
     fetch: async (req, init) => {
       const res = await http.request(req, init)
-      if (!res.ok)
-        throw await classifyResponse(req, res)
+      if (!res.ok) throw await classifyResponse(req, res)
       return res
     },
   })
@@ -35,7 +34,6 @@ export function createOpenApiClient(http: HttpClient): OpenApiClient {
 // Non-2xx and transport failures already arrive as BaseError (from the fetch wrapper / transport)
 // and re-throw unchanged; the only residual is a 2xx body oRPC failed to decode.
 function mapOrpcError(err: unknown): never {
-  if (isBaseError(err))
-    throw err
+  if (isBaseError(err)) throw err
   throw unknownError(err instanceof Error ? err.message : String(err), err)
 }

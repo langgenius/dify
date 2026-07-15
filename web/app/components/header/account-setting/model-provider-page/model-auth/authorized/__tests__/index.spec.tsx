@@ -45,7 +45,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -62,7 +63,16 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../authorized-item', () => ({
-  default: ({ credentials, model, disabled, disableEdit, disableDelete, onEdit, onDelete, onItemClick }: {
+  default: ({
+    credentials,
+    model,
+    disabled,
+    disableEdit,
+    disableDelete,
+    onEdit,
+    onDelete,
+    onItemClick,
+  }: {
     credentials: Credential[]
     model?: CustomModel
     disabled?: boolean
@@ -76,9 +86,15 @@ vi.mock('../authorized-item', () => ({
       {credentials.map((cred: Credential) => (
         <div key={cred.credential_id}>
           <span>{cred.credential_name}</span>
-          <button disabled={disabled || disableEdit} onClick={() => onEdit?.(cred, model)}>Edit</button>
-          <button disabled={disabled || disableDelete} onClick={() => onDelete?.(cred, model)}>Delete</button>
-          <button disabled={disabled} onClick={() => onItemClick?.(cred, model)}>Select</button>
+          <button disabled={disabled || disableEdit} onClick={() => onEdit?.(cred, model)}>
+            Edit
+          </button>
+          <button disabled={disabled || disableDelete} onClick={() => onDelete?.(cred, model)}>
+            Delete
+          </button>
+          <button disabled={disabled} onClick={() => onItemClick?.(cred, model)}>
+            Select
+          </button>
         </div>
       ))}
     </div>
@@ -346,6 +362,8 @@ describe('Authorized', () => {
     )
 
     const dialog = screen.getByRole('alertdialog')
-    expect(within(dialog).getByRole('button', { name: /common.operation.confirm/i }))!.toBeDisabled()
+    expect(
+      within(dialog).getByRole('button', { name: /common.operation.confirm/i }),
+    )!.toBeDisabled()
   })
 })

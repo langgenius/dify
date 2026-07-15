@@ -13,19 +13,16 @@ type IConfigSelectProps = {
   onChange: (options: Options) => void
 }
 
-const ConfigSelect: FC<IConfigSelectProps> = ({
-  options,
-  onChange,
-}) => {
+const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
   const { t } = useTranslation()
   const [focusID, setFocusID] = useState<number | null>(null)
   const [deletingID, setDeletingID] = useState<number | null>(null)
 
   const optionList = options.map((content, index) => {
-    return ({
+    return {
       id: index,
       name: content,
-    })
+    }
   })
 
   return (
@@ -35,7 +32,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
           <ReactSortable
             className="space-y-1"
             list={optionList}
-            setList={list => onChange(list.map(item => item.name))}
+            setList={(list) => onChange(list.map((item) => item.name))}
             handle=".handle"
             ghostClass="opacity-50"
             animation={150}
@@ -44,8 +41,10 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
               <div
                 className={cn(
                   'group relative flex items-center rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2.5 hover:bg-components-panel-on-panel-item-bg-hover',
-                  focusID === index && 'border-components-input-border-active bg-components-input-bg-active hover:border-components-input-border-active hover:bg-components-input-bg-active',
-                  deletingID === index && 'border-components-input-border-destructive bg-state-destructive-hover hover:border-components-input-border-destructive hover:bg-state-destructive-hover',
+                  focusID === index &&
+                    'border-components-input-border-active bg-components-input-bg-active hover:border-components-input-border-active hover:bg-components-input-bg-active',
+                  deletingID === index &&
+                    'border-components-input-border-destructive bg-state-destructive-hover hover:border-components-input-border-destructive hover:bg-state-destructive-hover',
                 )}
                 key={index}
               >
@@ -56,12 +55,13 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                   value={o || ''}
                   onChange={(e) => {
                     const value = e.target.value
-                    onChange(options.map((item, i) => {
-                      if (index === i)
-                        return value
+                    onChange(
+                      options.map((item, i) => {
+                        if (index === i) return value
 
-                      return item
-                    }))
+                        return item
+                      }),
+                    )
                   }}
                   className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pr-8 pl-1.5 text-sm/9 text-text-secondary focus:outline-hidden"
                   onFocus={() => setFocusID(index)}
@@ -69,7 +69,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                 />
                 <button
                   type="button"
-                  aria-label={t($ => $['operation.delete'], { ns: 'common' })}
+                  aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
                   className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
                   onClick={() => {
                     onChange(options.filter((_, i) => index !== i))
@@ -87,11 +87,15 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
       )}
 
       <div
-        onClick={() => { onChange([...options, '']) }}
+        onClick={() => {
+          onChange([...options, ''])
+        }}
         className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
       >
         <RiAddLine className="size-4" />
-        <div className="system-sm-medium text-[13px]">{t($ => $['variableConfig.addOption'], { ns: 'appDebug' })}</div>
+        <div className="system-sm-medium text-[13px]">
+          {t(($) => $['variableConfig.addOption'], { ns: 'appDebug' })}
+        </div>
       </div>
     </div>
   )

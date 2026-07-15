@@ -7,12 +7,7 @@ describe('FormattingChanged WarningMask', () => {
     const onConfirm = vi.fn()
     const onCancel = vi.fn()
 
-    render(
-      <FormattingChanged
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-      />,
-    )
+    render(<FormattingChanged onConfirm={onConfirm} onCancel={onCancel} />)
 
     expect(screen.getByText('appDebug.formattingChangedTitle')).toBeInTheDocument()
     expect(screen.getByText('appDebug.formattingChangedText')).toBeInTheDocument()
@@ -23,12 +18,7 @@ describe('FormattingChanged WarningMask', () => {
   it('should call callbacks when buttons are clicked', () => {
     const onConfirm = vi.fn()
     const onCancel = vi.fn()
-    render(
-      <FormattingChanged
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-      />,
-    )
+    render(<FormattingChanged onConfirm={onConfirm} onCancel={onCancel} />)
 
     fireEvent.click(screen.getByRole('button', { name: /common\.operation\.refresh/ }))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))

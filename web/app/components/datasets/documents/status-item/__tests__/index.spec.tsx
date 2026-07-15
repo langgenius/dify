@@ -5,14 +5,24 @@ import StatusItem from '../index'
 
 const toastMocks = vi.hoisted(() => {
   const record = vi.fn()
-  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
+  const api = vi.fn((message: unknown, options?: Record<string, unknown>) =>
+    record({ message, ...options }),
+  )
   return {
     record,
     api: Object.assign(api, {
-      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'success', message, ...options }),
+      ),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'error', message, ...options }),
+      ),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'warning', message, ...options }),
+      ),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'info', message, ...options }),
+      ),
       dismiss: vi.fn(),
       update: vi.fn(),
       promise: vi.fn(),
@@ -495,7 +505,9 @@ describe('StatusItem', () => {
 
   describe('memoization', () => {
     it('should be wrapped with React.memo', () => {
-      expect((StatusItem as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((StatusItem as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
   })
 

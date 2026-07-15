@@ -36,8 +36,7 @@ const PROVIDER_PLUGIN_ALIASES: Record<ProviderType, Record<string, string>> = {
 
 const parseProviderId = (providerId: string): ProviderInfo | null => {
   const segments = providerId.split('/').filter(Boolean)
-  if (!segments.length)
-    return null
+  if (!segments.length) return null
 
   if (segments.length === 1) {
     return {
@@ -58,8 +57,7 @@ const getPluginName = (providerName: string, type: ProviderType) => {
 
 const getIconUrl = (providerId: string, type: ProviderType) => {
   const parsed = parseProviderId(providerId)
-  if (!parsed)
-    return ''
+  if (!parsed) return ''
 
   const organization = encodeURIComponent(parsed.organization)
   const pluginName = encodeURIComponent(getPluginName(parsed.providerName, type))
@@ -71,31 +69,33 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
 }
 
 const getGraphNodes = (graph: unknown): unknown[] => {
-  if (!isRecord(graph) || !Array.isArray(graph.nodes))
-    return []
+  if (!isRecord(graph) || !Array.isArray(graph.nodes)) return []
 
   return graph.nodes
 }
 
 const isAgentTool = (value: unknown): value is AgentTool => {
-  if (!isRecord(value))
-    return false
+  if (!isRecord(value)) return false
 
-  return typeof value.provider_id === 'string'
-    && typeof value.tool_label === 'string'
-    && value.enabled === true
+  return (
+    typeof value.provider_id === 'string' &&
+    typeof value.tool_label === 'string' &&
+    value.enabled === true
+  )
 }
 
-const hasLLMRequirementData = (value: unknown): value is { model: { name: string, provider: string } } => {
-  if (!isRecord(value) || !isRecord(value.model))
-    return false
+const hasLLMRequirementData = (
+  value: unknown,
+): value is { model: { name: string; provider: string } } => {
+  if (!isRecord(value) || !isRecord(value.model)) return false
 
   return typeof value.model.name === 'string' && typeof value.model.provider === 'string'
 }
 
-const hasToolRequirementData = (value: unknown): value is { provider_id: string, tool_label: string } => {
-  if (!isRecord(value))
-    return false
+const hasToolRequirementData = (
+  value: unknown,
+): value is { provider_id: string; tool_label: string } => {
+  if (!isRecord(value)) return false
 
   return typeof value.provider_id === 'string' && typeof value.tool_label === 'string'
 }
@@ -118,34 +118,42 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
     })
   }
   if (isAgent && modelConfig?.agent_mode?.tools) {
-    requirements.push(...modelConfig.agent_mode.tools.filter(isAgentTool).map(tool => ({
-      name: tool.tool_label,
-      iconUrl: getIconUrl(tool.provider_id, 'tool'),
-    })))
+    requirements.push(
+      ...modelConfig.agent_mode.tools.filter(isAgentTool).map((tool) => ({
+        name: tool.tool_label,
+        iconUrl: getIconUrl(tool.provider_id, 'tool'),
+      })),
+    )
   }
   const nodes = getGraphNodes(flowData?.graph)
   if (isAdvanced && nodes.length > 0) {
-    requirements.push(...nodes.flatMap((node) => {
-      const data = isRecord(node) && isRecord(node.data) ? node.data : null
-      if (data?.type !== BlockEnum.LLM || !hasLLMRequirementData(data))
-        return []
+    requirements.push(
+      ...nodes.flatMap((node) => {
+        const data = isRecord(node) && isRecord(node.data) ? node.data : null
+        if (data?.type !== BlockEnum.LLM || !hasLLMRequirementData(data)) return []
 
-      return [{
-        name: data.model.name,
-        iconUrl: getIconUrl(data.model.provider, 'model'),
-      }]
-    }))
+        return [
+          {
+            name: data.model.name,
+            iconUrl: getIconUrl(data.model.provider, 'model'),
+          },
+        ]
+      }),
+    )
 
-    requirements.push(...nodes.flatMap((node) => {
-      const data = isRecord(node) && isRecord(node.data) ? node.data : null
-      if (data?.type !== BlockEnum.Tool || !hasToolRequirementData(data))
-        return []
+    requirements.push(
+      ...nodes.flatMap((node) => {
+        const data = isRecord(node) && isRecord(node.data) ? node.data : null
+        if (data?.type !== BlockEnum.Tool || !hasToolRequirementData(data)) return []
 
-      return [{
-        name: data.tool_label,
-        iconUrl: getIconUrl(data.provider_id, 'tool'),
-      }]
-    }))
+        return [
+          {
+            name: data.tool_label,
+            iconUrl: getIconUrl(data.provider_id, 'tool'),
+          },
+        ]
+      }),
+    )
   }
 
   const uniqueRequirements = uniqBy(requirements, 'name')

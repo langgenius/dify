@@ -16,18 +16,8 @@ import type { MetadataItemWithValueLength } from '@/app/components/datasets/meta
 import { renderHook } from '@testing-library/react'
 import { DataType } from '@/app/components/datasets/metadata/types'
 
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
-const { default: useCheckMetadataName } = await import(
-  '@/app/components/datasets/metadata/hooks/use-check-metadata-name',
-)
+const { default: useCheckMetadataName } =
+  await import('@/app/components/datasets/metadata/hooks/use-check-metadata-name')
 
 // --- Factory functions ---
 
@@ -104,9 +94,9 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
     it('should use consistent types in metadata items', () => {
       const metadataList = createMetadataList()
 
-      const stringItems = metadataList.filter(m => m.type === DataType.string)
-      const numberItems = metadataList.filter(m => m.type === DataType.number)
-      const timeItems = metadataList.filter(m => m.type === DataType.time)
+      const stringItems = metadataList.filter((m) => m.type === DataType.string)
+      const numberItems = metadataList.filter((m) => m.type === DataType.number)
+      const timeItems = metadataList.filter((m) => m.type === DataType.time)
 
       expect(stringItems).toHaveLength(2)
       expect(numberItems).toHaveLength(2)
@@ -130,9 +120,8 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
 
       const checkDuplicate = (newName: string): boolean => {
         const formatCheck = result.current.checkName(newName)
-        if (formatCheck.errorMsg)
-          return false
-        return existingMetadata.some(m => m.name === newName)
+        if (formatCheck.errorMsg) return false
+        return existingMetadata.some((m) => m.name === newName)
       }
 
       expect(checkDuplicate('author')).toBe(true)
@@ -146,9 +135,8 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
 
       const isNameAvailable = (newName: string): boolean => {
         const formatCheck = result.current.checkName(newName)
-        if (formatCheck.errorMsg)
-          return false
-        return !existingMetadata.some(m => m.name === newName)
+        if (formatCheck.errorMsg) return false
+        return !existingMetadata.some((m) => m.name === newName)
       }
 
       expect(isNameAvailable('category')).toBe(true)
@@ -159,10 +147,9 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
     it('should reject names that fail format validation before duplicate check', () => {
       const { result } = renderHook(() => useCheckMetadataName())
 
-      const validateAndCheckDuplicate = (newName: string): { valid: boolean, reason: string } => {
+      const validateAndCheckDuplicate = (newName: string): { valid: boolean; reason: string } => {
         const formatCheck = result.current.checkName(newName)
-        if (formatCheck.errorMsg)
-          return { valid: false, reason: 'format' }
+        if (formatCheck.errorMsg) return { valid: false, reason: 'format' }
         return { valid: true, reason: '' }
       }
 
@@ -179,10 +166,9 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
 
       const isRenameValid = (itemId: string, newName: string): boolean => {
         const formatCheck = result.current.checkName(newName)
-        if (formatCheck.errorMsg)
-          return false
+        if (formatCheck.errorMsg) return false
         // Allow keeping the same name (skip self in duplicate check)
-        return !existingMetadata.some(m => m.name === newName && m.id !== itemId)
+        return !existingMetadata.some((m) => m.name === newName && m.id !== itemId)
       }
 
       // Author keeping its own name should be valid
@@ -197,9 +183,8 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
 
       const isRenameValid = (itemId: string, newName: string): boolean => {
         const formatCheck = result.current.checkName(newName)
-        if (formatCheck.errorMsg)
-          return false
-        return !existingMetadata.some(m => m.name === newName && m.id !== itemId)
+        if (formatCheck.errorMsg) return false
+        return !existingMetadata.some((m) => m.name === newName && m.id !== itemId)
       }
 
       // Author trying to rename to "page_count" (taken by meta-3)
@@ -214,9 +199,8 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
 
       const isRenameValid = (itemId: string, newName: string): boolean => {
         const formatCheck = result.current.checkName(newName)
-        if (formatCheck.errorMsg)
-          return false
-        return !existingMetadata.some(m => m.name === newName && m.id !== itemId)
+        if (formatCheck.errorMsg) return false
+        return !existingMetadata.some((m) => m.name === newName && m.id !== itemId)
       }
 
       expect(isRenameValid('meta-1', 'document_author')).toBe(true)
@@ -230,9 +214,8 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
 
       const isRenameValid = (itemId: string, newName: string): boolean => {
         const formatCheck = result.current.checkName(newName)
-        if (formatCheck.errorMsg)
-          return false
-        return !existingMetadata.some(m => m.name === newName && m.id !== itemId)
+        if (formatCheck.errorMsg) return false
+        return !existingMetadata.some((m) => m.name === newName && m.id !== itemId)
       }
 
       expect(isRenameValid('meta-1', 'New Author')).toBe(false)
@@ -249,12 +232,11 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
       const addMetadataField = (
         name: string,
         type: DataType,
-      ): { success: boolean, error?: string } => {
+      ): { success: boolean; error?: string } => {
         const formatCheck = result.current.checkName(name)
-        if (formatCheck.errorMsg)
-          return { success: false, error: 'invalid_format' }
+        if (formatCheck.errorMsg) return { success: false, error: 'invalid_format' }
 
-        if (existingMetadata.some(m => m.name === name))
+        if (existingMetadata.some((m) => m.name === name))
           return { success: false, error: 'duplicate_name' }
 
         existingMetadata.push(createMetadataItem(`meta-${existingMetadata.length + 1}`, name, type))
@@ -291,17 +273,15 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
       const renameMetadataField = (
         itemId: string,
         newName: string,
-      ): { success: boolean, error?: string } => {
+      ): { success: boolean; error?: string } => {
         const formatCheck = result.current.checkName(newName)
-        if (formatCheck.errorMsg)
-          return { success: false, error: 'invalid_format' }
+        if (formatCheck.errorMsg) return { success: false, error: 'invalid_format' }
 
-        if (existingMetadata.some(m => m.name === newName && m.id !== itemId))
+        if (existingMetadata.some((m) => m.name === newName && m.id !== itemId))
           return { success: false, error: 'duplicate_name' }
 
-        const item = existingMetadata.find(m => m.id === itemId)
-        if (!item)
-          return { success: false, error: 'not_found' }
+        const item = existingMetadata.find((m) => m.id === itemId)
+        if (!item) return { success: false, error: 'not_found' }
 
         // Simulate the rename in-place
         const index = existingMetadata.indexOf(item)
@@ -311,7 +291,7 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
 
       // Rename author to document_author
       expect(renameMetadataField('meta-1', 'document_author').success).toBe(true)
-      expect(existingMetadata.find(m => m.id === 'meta-1')?.name).toBe('document_author')
+      expect(existingMetadata.find((m) => m.id === 'meta-1')?.name).toBe('document_author')
 
       // Try renaming created_date to page_count (already taken)
       expect(renameMetadataField('meta-2', 'page_count').error).toBe('duplicate_name')
@@ -330,11 +310,11 @@ describe('Metadata Management Flow - Cross-Module Validation Composition', () =>
       const name = 'consistent_field'
       const results = Array.from({ length: 5 }, () => result.current.checkName(name))
 
-      expect(results.every(r => r.errorMsg === '')).toBe(true)
+      expect(results.every((r) => r.errorMsg === '')).toBe(true)
 
       // Validate an invalid name multiple times
       const invalidResults = Array.from({ length: 5 }, () => result.current.checkName('Invalid'))
-      expect(invalidResults.every(r => r.errorMsg !== '')).toBe(true)
+      expect(invalidResults.every((r) => r.errorMsg !== '')).toBe(true)
     })
   })
 })

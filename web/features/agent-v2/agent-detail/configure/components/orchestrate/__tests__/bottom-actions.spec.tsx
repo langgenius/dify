@@ -9,7 +9,9 @@ describe('AgentOrchestrateBottomActions', () => {
       </AgentOrchestrateBottomActions>,
     )
 
-    expect(screen.getByTestId('bottom-action').parentElement).toHaveClass('has-[[data-open]]:max-w-96')
+    expect(screen.getByTestId('bottom-action').parentElement).toHaveClass(
+      'has-[[data-open]]:max-w-96',
+    )
 
     rerender(
       <AgentOrchestrateBottomActions shrinkOnOpen={false}>
@@ -17,6 +19,8 @@ describe('AgentOrchestrateBottomActions', () => {
       </AgentOrchestrateBottomActions>,
     )
 
-    expect(screen.getByTestId('bottom-action').parentElement).not.toHaveClass('has-[[data-open]]:max-w-96')
+    expect(screen.getByTestId('bottom-action').parentElement).not.toHaveClass(
+      'has-[[data-open]]:max-w-96',
+    )
   })
 })

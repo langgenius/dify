@@ -1,7 +1,11 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import {
+  SegmentedControl,
+  SegmentedControlDivider,
+  SegmentedControlItem,
+} from '@langgenius/dify-ui/segmented-control'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { AgentConfigureClearSessionConfirmDialog } from '../confirm-clear-session-dialog'
@@ -28,13 +32,7 @@ function AgentModeTipSection({
   )
 }
 
-function ModeInfoTip({
-  children,
-  ariaLabel,
-}: {
-  children: ReactNode
-  ariaLabel: string
-}) {
+function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: string }) {
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
   }
@@ -49,7 +47,10 @@ function ModeInfoTip({
         onClick={handleClick}
         className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       >
-        <span aria-hidden className="i-ri-question-line size-4 text-text-tertiary hover:text-text-secondary" />
+        <span
+          aria-hidden
+          className="i-ri-question-line size-4 text-text-tertiary hover:text-text-secondary"
+        />
       </PopoverTrigger>
       <PopoverContent
         placement="bottom"
@@ -81,8 +82,7 @@ function PreviewModeItem({
     </SegmentedControlItem>
   )
 
-  if (previewEnabled)
-    return item
+  if (previewEnabled) return item
 
   return (
     <Popover>
@@ -132,12 +132,12 @@ export function AgentPreviewHeader({
 }) {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
-  const buildLabel = t($ => $['agentDetail.configure.rightPanel.build'])
-  const buildTipBody = t($ => $['agentDetail.configure.rightPanel.buildTipBody'])
-  const previewLabel = t($ => $['agentDetail.configure.rightPanel.preview'])
-  const previewTipBody = t($ => $['agentDetail.configure.rightPanel.previewTipBody'])
-  const previewDisabledTip = t($ => $['agentDetail.configure.rightPanel.previewDisabledTip'])
-  const learnMoreLabel = t($ => $['agentDetail.configure.rightPanel.learnMore'])
+  const buildLabel = t(($) => $['agentDetail.configure.rightPanel.build'])
+  const buildTipBody = t(($) => $['agentDetail.configure.rightPanel.buildTipBody'])
+  const previewLabel = t(($) => $['agentDetail.configure.rightPanel.preview'])
+  const previewTipBody = t(($) => $['agentDetail.configure.rightPanel.previewTipBody'])
+  const previewDisabledTip = t(($) => $['agentDetail.configure.rightPanel.previewDisabledTip'])
+  const learnMoreLabel = t(($) => $['agentDetail.configure.rightPanel.learnMore'])
   const modeTip = `${buildLabel}. ${buildTipBody} ${learnMoreLabel} ${previewLabel}. ${previewTipBody}`
 
   return (
@@ -147,27 +147,28 @@ export function AgentPreviewHeader({
           value={[mode]}
           onValueChange={(value) => {
             const nextMode = value[0]
-            if (nextMode && (nextMode !== 'preview' || previewEnabled))
-              onModeChange(nextMode)
+            if (nextMode && (nextMode !== 'preview' || previewEnabled)) onModeChange(nextMode)
           }}
-          aria-label={t($ => $['agentDetail.configure.rightPanel.modeLabel'])}
+          aria-label={t(($) => $['agentDetail.configure.rightPanel.modeLabel'])}
         >
           <SegmentedControlItem<AgentConfigureRightPanelMode> value="build" className="uppercase">
             <span aria-hidden className="i-custom-vender-agent-v2-configure-build size-4" />
-            {t($ => $['agentDetail.configure.rightPanel.build'])}
+            {t(($) => $['agentDetail.configure.rightPanel.build'])}
           </SegmentedControlItem>
           <PreviewModeItem previewEnabled={previewEnabled} disabledTip={previewDisabledTip}>
             <span aria-hidden className="i-custom-vender-agent-v2-configure-preview size-4" />
-            {t($ => $['agentDetail.configure.rightPanel.preview'])}
+            {t(($) => $['agentDetail.configure.rightPanel.preview'])}
           </PreviewModeItem>
         </SegmentedControl>
         <ModeInfoTip ariaLabel={modeTip}>
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-3">
-              <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-build" title={buildLabel}>
+              <AgentModeTipSection
+                iconClassName="i-custom-vender-agent-v2-configure-build"
+                title={buildLabel}
+              >
                 <>
-                  {buildTipBody}
-                  {' '}
+                  {buildTipBody}{' '}
                   <a
                     href={docLink('/use-dify/build/new-agent/build#build-by-chatting')}
                     target="_blank"
@@ -178,7 +179,10 @@ export function AgentPreviewHeader({
                   </a>
                 </>
               </AgentModeTipSection>
-              <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-preview" title={previewLabel}>
+              <AgentModeTipSection
+                iconClassName="i-custom-vender-agent-v2-configure-preview"
+                title={previewLabel}
+              >
                 {previewTipBody}
               </AgentModeTipSection>
             </div>
@@ -192,7 +196,7 @@ export function AgentPreviewHeader({
               type="button"
               disabled={refreshDisabled}
               className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={t($ => $['agentDetail.configure.preview.restart'])}
+              aria-label={t(($) => $['agentDetail.configure.preview.restart'])}
             >
               <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
             </button>
@@ -202,10 +206,12 @@ export function AgentPreviewHeader({
               type="button"
               onClick={onOpenWorkingDirectory}
               className="flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              aria-label={t($ => $['agentDetail.configure.workingDirectory.open'])}
+              aria-label={t(($) => $['agentDetail.configure.workingDirectory.open'])}
             >
               <span aria-hidden className="i-ri-folder-3-line size-4" />
-              <span className="px-0.5 system-sm-medium">{t($ => $['agentDetail.configure.workingDirectory.fileSystem'])}</span>
+              <span className="px-0.5 system-sm-medium">
+                {t(($) => $['agentDetail.configure.workingDirectory.fileSystem'])}
+              </span>
             </button>
           )}
         </div>
@@ -220,10 +226,12 @@ export function AgentPreviewHeader({
                 'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
               )}
-              aria-label={t($ => $['agentDetail.configure.preview.chatFeatures'])}
+              aria-label={t(($) => $['agentDetail.configure.preview.chatFeatures'])}
             >
               <span aria-hidden className="i-ri-chat-settings-line size-4" />
-              <span className="px-0.5 system-sm-medium">{t($ => $['agentDetail.configure.preview.chatFeatures'])}</span>
+              <span className="px-0.5 system-sm-medium">
+                {t(($) => $['agentDetail.configure.preview.chatFeatures'])}
+              </span>
             </button>
           </>
         )}
