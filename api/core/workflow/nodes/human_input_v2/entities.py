@@ -53,6 +53,7 @@ class DebugChannel(enum.StrEnum):
     DING_TALK = enum.auto()
     MS_TEAMS = enum.auto()
     WE_COM = enum.auto()
+    LARK = enum.auto()
 
 
 class DebugModeConfig(BaseModel):
