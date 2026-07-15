@@ -14,7 +14,7 @@ from models.model import (
 from models.workflow import WorkflowRun
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService, CreateAppParams
-from services.workflow_run_service import WorkflowRunService
+from services.workflow_run_service import WorkflowRunService, WorkflowRunListArgs
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -347,7 +347,7 @@ class TestWorkflowRunService:
 
         # Act: Execute the method under test
         workflow_run_service = WorkflowRunService()
-        args = {"limit": 2, "last_id": None}
+        args: WorkflowRunListArgs = {"limit": 2, "last_id": None}
         result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(
             app, args, session=db_session_with_containers
         )
