@@ -129,8 +129,12 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
     assert package.soul.tools.dify_tools[0].credential_ref is None
     assert package.soul.tools.dify_tools[0].runtime_parameters["upload_file_id"] is None
     assert package.soul.tools.dify_tools[0].runtime_parameters["api_key"] is None
-    assert package.soul.config_skills == []
-    assert package.soul.config_files == []
+    assert package.soul.config_skills[0].name == "research"
+    assert package.soul.config_skills[0].file_id is None
+    assert package.soul.config_skills[0].is_missing is True
+    assert package.soul.config_files[0].name == "guide.md"
+    assert package.soul.config_files[0].file_id is None
+    assert package.soul.config_files[0].is_missing is True
     assert [asset.kind for asset in package.omitted_assets] == ["skill", "file"]
     assert "plain-secret" not in str(serialized)
     assert "model-secret" not in str(serialized)
@@ -627,6 +631,25 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(mon
     assert datasets[0].id == "existing"
     assert datasets[1].id is not None
     assert datasets[1].id.startswith("missing-dataset-")
+    assert resolved.config_skills[0].model_dump(mode="json") == {
+        "name": "skill",
+        "description": "",
+        "file_kind": "tool_file",
+        "file_id": None,
+        "is_missing": True,
+        "size": None,
+        "hash": None,
+        "mime_type": "application/zip",
+    }
+    assert resolved.config_files[0].model_dump(mode="json") == {
+        "name": "Guide",
+        "file_kind": "upload_file",
+        "file_id": None,
+        "is_missing": True,
+        "size": None,
+        "hash": None,
+        "mime_type": None,
+    }
     assert {warning.code for warning in warnings} == {
         "agent_skill_omitted",
         "agent_file_omitted",

@@ -241,6 +241,7 @@ class AgentAppPartial(GenericAppPartial):
     debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
+    reference_count: int = 0
     published_reference_count: int = 0
     published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
 
@@ -427,6 +428,10 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
         tenant_id=tenant_id,
         agent_ids=[agent.id for agent in agents_by_app_id.values()],
     )
+    reference_counts_by_agent_id = roster_service.load_reference_counts_by_agent_id(
+        tenant_id=tenant_id,
+        agent_ids=[agent.id for agent in agents_by_app_id.values()],
+    )
     debug_conversation_ids_by_agent_id = roster_service.load_or_create_agent_app_debug_conversation_ids_by_agent_id(
         tenant_id=tenant_id,
         agents=list(agents_by_app_id.values()),
@@ -449,6 +454,7 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
+            item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)
             published_references = published_references_by_agent_id.get(agent.id, [])
             item["published_reference_count"] = len(published_references)
             item["published_references"] = [

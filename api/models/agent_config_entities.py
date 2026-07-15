@@ -195,7 +195,8 @@ class AgentConfigFileRefConfig(BaseModel):
 
     name: str = Field(min_length=1, max_length=255)
     file_kind: Literal["upload_file", "tool_file"]
-    file_id: str = Field(min_length=1, max_length=255)
+    file_id: str | None = Field(default=None, max_length=255)
+    is_missing: bool = False
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = None
@@ -204,6 +205,16 @@ class AgentConfigFileRefConfig(BaseModel):
     @classmethod
     def _validate_name(cls, value: str) -> str:
         return validate_config_name(value)
+
+    @model_validator(mode="after")
+    def _validate_file_reference(self) -> Self:
+        if self.is_missing:
+            if self.file_id is not None:
+                raise ValueError("missing config files must not retain a workspace-local file_id")
+            return self
+        if not self.file_id or not self.file_id.strip():
+            raise ValueError("config file file_id is required unless is_missing is true")
+        return self
 
 
 class AgentConfigSkillRefConfig(BaseModel):
@@ -214,7 +225,8 @@ class AgentConfigSkillRefConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = ""
     file_kind: Literal["tool_file"] = "tool_file"
-    file_id: str = Field(min_length=1, max_length=255)
+    file_id: str | None = Field(default=None, max_length=255)
+    is_missing: bool = False
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = "application/zip"
@@ -223,6 +235,16 @@ class AgentConfigSkillRefConfig(BaseModel):
     @classmethod
     def _validate_name(cls, value: str) -> str:
         return validate_config_skill_name(value)
+
+    @model_validator(mode="after")
+    def _validate_file_reference(self) -> Self:
+        if self.is_missing:
+            if self.file_id is not None:
+                raise ValueError("missing config skills must not retain a workspace-local file_id")
+            return self
+        if not self.file_id or not self.file_id.strip():
+            raise ValueError("config skill file_id is required unless is_missing is true")
+        return self
 
 
 class AgentPermissionConfig(BaseModel):
