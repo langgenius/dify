@@ -67,23 +67,23 @@ make test
 
 Each agent job runs inside a Landlock sandbox that restricts filesystem access:
 
-| Access | Paths (defaults) |
-|--------|------------------|
-| **Read-Write** | `$HOME` (always, includes `$CWD/.tmp` as `TMPDIR`) |
-| **Read-Write (dev)** | `/dev/null`, `/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/tty` |
+| Access               | Paths (defaults)                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Read-Write**       | `$HOME` (always, includes `$CWD/.tmp` as `TMPDIR`)                                                            |
+| **Read-Write (dev)** | `/dev/null`, `/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/tty`                                           |
 | **Read-Only + Exec** | `/usr`, `/bin`, `/sbin`, `/lib`, `/lib64`, `/etc`, `/proc`, `/opt/dify-agent-tools`, `/opt/homebrew`, `/snap` |
-| **Denied** | Everything else (`/tmp`, other agents' homes, `/var`, `/srv`, etc.) |
+| **Denied**           | Everything else (`/tmp`, other agents' homes, `/var`, `/srv`, etc.)                                           |
 
 The runner automatically creates `$CWD/.tmp` and sets `TMPDIR`, `TMP`, `TEMP` to it, so temp files stay isolated per workspace.
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ENABLE_PATH_ISOLATION` | `true` | Set to `false` to disable Landlock entirely |
-| `LANDLOCK_RW_PATHS` | *(empty)* | Comma-separated RW directories (besides `$HOME`) |
-| `LANDLOCK_RO_PATHS` | `/usr,/bin,...` | Comma-separated RO+exec directories |
-| `LANDLOCK_RW_DEV_PATHS` | `/dev/null,...` | Comma-separated device files with RW access |
+| Variable                | Default         | Description                                      |
+| ----------------------- | --------------- | ------------------------------------------------ |
+| `ENABLE_PATH_ISOLATION` | `true`          | Set to `false` to disable Landlock entirely      |
+| `LANDLOCK_RW_PATHS`     | _(empty)_       | Comma-separated RW directories (besides `$HOME`) |
+| `LANDLOCK_RO_PATHS`     | `/usr,/bin,...` | Comma-separated RO+exec directories              |
+| `LANDLOCK_RW_DEV_PATHS` | `/dev/null,...` | Comma-separated device files with RW access      |
 
 Requires Linux ≥ 5.13. On unsupported kernels, a warning is printed to stderr.
 
