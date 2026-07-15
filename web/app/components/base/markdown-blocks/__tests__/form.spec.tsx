@@ -746,7 +746,7 @@ describe('MarkdownForm', () => {
       const node = createRootNode([
         createElementNode(
           'button',
-          { dataVariant: 'ghost', dataSize: 'small', dataTone: 'default' },
+          { dataVariant: 'ghost', dataSize: 'small', dataTone: 'destructive' },
           [createTextNode('Delete')],
         ),
       ])
@@ -755,9 +755,8 @@ describe('MarkdownForm', () => {
 
       const button = screen.getByRole('button', { name: 'Delete' })
 
-      expect(button.className).toContain('bg-components-button-destructive-primary-bg')
-
-      expect(button.className).toContain('text-components-button-destructive-primary-text')
+      expect(button.className).toContain('bg-components-button-destructive-ghost-bg-hover')
+      expect(button.className).toContain('text-components-button-destructive-ghost-text')
     })
 
     it('should ignore invalid tone value', () => {
