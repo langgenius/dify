@@ -1,16 +1,20 @@
-"""Testcontainers integration tests for OAuthServerService."""
+"""Unit tests for OAuthServerService with SQLite-backed database access."""
 
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
+import services.oauth_server as oauth_server_module
 from models.model import OAuthProviderApp
 from services.oauth_server import (
     OAUTH_ACCESS_TOKEN_EXPIRES_IN,
@@ -23,10 +27,20 @@ from services.oauth_server import (
 )
 
 
-class TestOAuthServerServiceGetProviderApp:
-    """DB-backed tests for get_oauth_provider_app."""
+@pytest.fixture
+def oauth_db(sqlite_engine: Engine, sqlite_session: Session, mocker: MockerFixture) -> Session:
+    """Route service-owned sessions to the same SQLite engine used for seeding."""
 
-    def _create_oauth_provider_app(self, db_session_with_containers: Session, *, client_id: str) -> OAuthProviderApp:
+    mocker.patch.object(oauth_server_module, "db", SimpleNamespace(engine=sqlite_engine))
+    return sqlite_session
+
+
+@pytest.mark.parametrize("sqlite_session", [(OAuthProviderApp,)], indirect=True)
+class TestOAuthServerServiceGetProviderApp:
+    """Verify provider lookup against a real SQLAlchemy database."""
+
+    def test_get_oauth_provider_app_returns_app_when_exists(self, oauth_db: Session) -> None:
+        client_id = f"client-{uuid4()}"
         app = OAuthProviderApp(
             app_icon="icon.png",
             client_id=client_id,
@@ -35,35 +49,30 @@ class TestOAuthServerServiceGetProviderApp:
             redirect_uris=["https://example.com/callback"],
             scope="read",
         )
-        db_session_with_containers.add(app)
-        db_session_with_containers.commit()
-        return app
-
-    def test_get_oauth_provider_app_returns_app_when_exists(self, db_session_with_containers: Session):
-        client_id = f"client-{uuid4()}"
-        created = self._create_oauth_provider_app(db_session_with_containers, client_id=client_id)
+        oauth_db.add(app)
+        oauth_db.commit()
 
         result = OAuthServerService.get_oauth_provider_app(client_id)
 
         assert result is not None
         assert result.client_id == client_id
-        assert result.id == created.id
+        assert result.id == app.id
 
-    def test_get_oauth_provider_app_returns_none_when_not_exists(self, db_session_with_containers: Session):
+    def test_get_oauth_provider_app_returns_none_when_not_exists(self, oauth_db: Session) -> None:
         result = OAuthServerService.get_oauth_provider_app(f"nonexistent-{uuid4()}")
 
         assert result is None
 
 
 class TestOAuthServerServiceTokenOperations:
-    """Redis-backed tests for token sign/validate operations."""
+    """Verify Redis-backed token signing and validation branches."""
 
     @pytest.fixture
     def mock_redis(self):
         with patch("services.oauth_server.redis_client") as mock:
             yield mock
 
-    def test_sign_authorization_code_stores_and_returns_code(self, mock_redis):
+    def test_sign_authorization_code_stores_and_returns_code(self, mock_redis) -> None:
         deterministic_uuid = uuid.UUID("00000000-0000-0000-0000-000000000111")
         with patch("services.oauth_server.uuid.uuid4", return_value=deterministic_uuid):
             code = OAuthServerService.sign_oauth_authorization_code("client-1", "user-1")
@@ -75,7 +84,7 @@ class TestOAuthServerServiceTokenOperations:
             ex=600,
         )
 
-    def test_sign_access_token_raises_bad_request_for_invalid_code(self, mock_redis):
+    def test_sign_access_token_raises_bad_request_for_invalid_code(self, mock_redis) -> None:
         mock_redis.get.return_value = None
 
         with pytest.raises(BadRequest, match="invalid code"):
@@ -85,14 +94,13 @@ class TestOAuthServerServiceTokenOperations:
                 client_id="client-1",
             )
 
-    def test_sign_access_token_issues_tokens_for_valid_code(self, mock_redis):
+    def test_sign_access_token_issues_tokens_for_valid_code(self, mock_redis) -> None:
         token_uuids = [
             uuid.UUID("00000000-0000-0000-0000-000000000201"),
             uuid.UUID("00000000-0000-0000-0000-000000000202"),
         ]
         with patch("services.oauth_server.uuid.uuid4", side_effect=token_uuids):
             mock_redis.get.return_value = b"user-1"
-
             access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
                 grant_type=OAuthGrantType.AUTHORIZATION_CODE,
                 code="code-1",
@@ -114,7 +122,7 @@ class TestOAuthServerServiceTokenOperations:
             ex=OAUTH_REFRESH_TOKEN_EXPIRES_IN,
         )
 
-    def test_sign_access_token_raises_bad_request_for_invalid_refresh_token(self, mock_redis):
+    def test_sign_access_token_raises_bad_request_for_invalid_refresh_token(self, mock_redis) -> None:
         mock_redis.get.return_value = None
 
         with pytest.raises(BadRequest, match="invalid refresh token"):
@@ -124,11 +132,10 @@ class TestOAuthServerServiceTokenOperations:
                 client_id="client-1",
             )
 
-    def test_sign_access_token_issues_new_token_for_valid_refresh(self, mock_redis):
+    def test_sign_access_token_issues_new_token_for_valid_refresh(self, mock_redis) -> None:
         deterministic_uuid = uuid.UUID("00000000-0000-0000-0000-000000000301")
         with patch("services.oauth_server.uuid.uuid4", return_value=deterministic_uuid):
             mock_redis.get.return_value = b"user-1"
-
             access_token, returned_refresh = OAuthServerService.sign_oauth_access_token(
                 grant_type=OAuthGrantType.REFRESH_TOKEN,
                 refresh_token="refresh-1",
@@ -138,14 +145,14 @@ class TestOAuthServerServiceTokenOperations:
         assert access_token == str(deterministic_uuid)
         assert returned_refresh == "refresh-1"
 
-    def test_sign_access_token_returns_none_for_unknown_grant_type(self, mock_redis):
+    def test_sign_access_token_returns_none_for_unknown_grant_type(self, mock_redis) -> None:
         grant_type = cast(OAuthGrantType, "invalid-grant-type")
 
         result = OAuthServerService.sign_oauth_access_token(grant_type=grant_type, client_id="client-1")
 
         assert result is None
 
-    def test_sign_refresh_token_stores_with_expected_expiry(self, mock_redis):
+    def test_sign_refresh_token_stores_with_expected_expiry(self, mock_redis) -> None:
         deterministic_uuid = uuid.UUID("00000000-0000-0000-0000-000000000401")
         with patch("services.oauth_server.uuid.uuid4", return_value=deterministic_uuid):
             refresh_token = OAuthServerService._sign_oauth_refresh_token("client-2", "user-2")
@@ -157,22 +164,23 @@ class TestOAuthServerServiceTokenOperations:
             ex=OAUTH_REFRESH_TOKEN_EXPIRES_IN,
         )
 
-    def test_validate_access_token_returns_none_when_not_found(self, mock_redis, db_session_with_containers: Session):
+    def test_validate_access_token_returns_none_when_not_found(
+        self, mock_redis, sqlite_engine: Engine
+    ) -> None:
         mock_redis.get.return_value = None
-        session = MagicMock()
 
-        result = OAuthServerService.validate_oauth_access_token("client-1", "missing-token", db_session_with_containers)
+        with Session(sqlite_engine) as session:
+            result = OAuthServerService.validate_oauth_access_token("client-1", "missing-token", session)
 
         assert result is None
 
-    def test_validate_access_token_loads_user_when_exists(self, mock_redis, db_session_with_containers: Session):
+    def test_validate_access_token_loads_user_when_exists(self, mock_redis, sqlite_engine: Engine) -> None:
         mock_redis.get.return_value = b"user-88"
         expected_user = MagicMock()
 
-        with patch("services.oauth_server.AccountService.load_user", return_value=expected_user) as mock_load:
-            result = OAuthServerService.validate_oauth_access_token(
-                "client-1", "access-token", db_session_with_containers
-            )
+        with Session(sqlite_engine) as session:
+            with patch("services.oauth_server.AccountService.load_user", return_value=expected_user) as mock_load:
+                result = OAuthServerService.validate_oauth_access_token("client-1", "access-token", session)
+                mock_load.assert_called_once_with("user-88", session)
 
         assert result is expected_user
-        mock_load.assert_called_once_with("user-88", db_session_with_containers)
