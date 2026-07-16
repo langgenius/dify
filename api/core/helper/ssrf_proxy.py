@@ -254,30 +254,7 @@ def make_request(
                 response = client.request(method=method, url=url, **kwargs)
             else:
                 with client.stream(method=method, url=url, **kwargs) as streaming_response:
-                    content_encoding = streaming_response.headers.get("content-encoding", "identity").strip().lower()
-                    if content_encoding not in {"", "identity"}:
-                        raise UnsupportedResponseEncodingError(
-                            f"content encoding {content_encoding} cannot be safely bounded"
-                        )
-                    content = bytearray()
-                    for chunk in streaming_response.iter_bytes():
-                        if len(content) + len(chunk) > max_response_bytes:
-                            raise ResponseTooLargeError(f"response exceeded {max_response_bytes} bytes")
-                        content.extend(chunk)
-                    decoded_headers = {
-                        name: value
-                        for name, value in streaming_response.headers.items()
-                        if name.lower() not in {"content-encoding", "content-length", "transfer-encoding"}
-                    }
-                    response = httpx.Response(
-                        streaming_response.status_code,
-                        headers=decoded_headers,
-                        content=bytes(content),
-                        request=streaming_response.request,
-                        extensions=streaming_response.extensions,
-                        history=streaming_response.history,
-                        default_encoding=streaming_response.default_encoding,
-                    )
+                    response = buffer_response(streaming_response, max_response_bytes=max_response_bytes)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
@@ -312,6 +289,42 @@ def make_request(
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
     raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
+
+
+def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> httpx.Response:
+    """Consume one open identity response under a decoded byte limit and close its stream."""
+    if max_response_bytes <= 0:
+        raise ValueError("max_response_bytes must be positive")
+
+    try:
+        content_encoding = response.headers.get("content-encoding", "identity").strip().lower()
+        if content_encoding not in {"", "identity"}:
+            raise UnsupportedResponseEncodingError(f"content encoding {content_encoding} cannot be safely bounded")
+        content = bytearray()
+        for chunk in response.iter_bytes():
+            if len(content) + len(chunk) > max_response_bytes:
+                raise ResponseTooLargeError(f"response exceeded {max_response_bytes} bytes")
+            content.extend(chunk)
+        decoded_headers = {
+            name: value
+            for name, value in response.headers.items()
+            if name.lower() not in {"content-encoding", "content-length", "transfer-encoding"}
+        }
+        try:
+            request = response.request
+        except RuntimeError:
+            request = None
+        return httpx.Response(
+            response.status_code,
+            headers=decoded_headers,
+            content=bytes(content),
+            request=request,
+            extensions=response.extensions,
+            history=response.history,
+            default_encoding=response.default_encoding,
+        )
+    finally:
+        response.close()
 
 
 def get(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:

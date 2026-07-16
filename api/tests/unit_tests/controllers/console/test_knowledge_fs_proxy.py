@@ -202,6 +202,7 @@ def test_generic_get_forwards_path_query_and_raw_response(
         content_type=None,
         query=b"limit=20&cursor=first&cursor=second",
         body=None,
+        request_headers={},
     )
     assert isinstance(response, Response)
     assert response.status_code == 200
@@ -263,10 +264,43 @@ def test_generic_write_forwards_path_raw_body_and_current_tenant(
         content_type="application/json",
         query=None,
         body=body,
+        request_headers={},
     )
     assert isinstance(response, Response)
     assert response.status_code == 201
     assert response.get_json()["tenantId"] == "tenant-1"
+
+
+def test_generic_write_forwards_contract_declared_request_headers(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    forward = MagicMock(
+        return_value=_upstream(
+            httpx.Response(202, content=b'{"status":"accepted"}', headers={"Content-Type": "application/json"})
+        )
+    )
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        forward,
+    )
+    _set_current_workspace(monkeypatch)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
+    body = b'{"challenge":"delete-space","expectedRevision":1}'
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces/space-1",
+        method="DELETE",
+        data=body,
+        content_type="application/json",
+        headers={"Idempotency-Key": "delete-space-1"},
+    ):
+        response = route("knowledge-spaces/space-1")
+
+    assert isinstance(response, Response)
+    assert response.status_code == 202
+    assert forward.call_args.kwargs["request_headers"] == {"idempotency-key": "delete-space-1"}
 
 
 def test_generic_post_rejects_non_editor(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -298,7 +332,12 @@ def test_read_post_allows_non_editor_and_streams_sse(
     upstream = httpx.Response(
         200,
         stream=_EventStream(b"event: delta\ndata: first\n\nevent: done\ndata: {}\n\n"),
-        headers={"Cache-Control": "no-store", "Content-Type": "text/event-stream"},
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Type": "text/event-stream",
+            "X-Query-Run-Id": "query-run-1",
+            "X-Session-Id": "session-1",
+        },
     )
     forward = MagicMock(return_value=_upstream(upstream, "stream"))
     monkeypatch.setattr(
@@ -322,6 +361,8 @@ def test_read_post_allows_non_editor_and_streams_sse(
     assert response.status_code == 200
     assert response.headers["Content-Type"].startswith("text/event-stream")
     assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["X-Query-Run-Id"] == "query-run-1"
+    assert response.headers["X-Session-Id"] == "session-1"
     assert upstream.is_closed
     forward.assert_called_once()
 

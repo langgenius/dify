@@ -28,11 +28,13 @@ def _set_config(
     *,
     base_url: str | None = "http://knowledge-fs.test",
     timeout_seconds: float = 7.5,
+    stream_idle_timeout_seconds: float = 45.0,
     jwt_secret: str | None = _JWT_SECRET,
 ) -> None:
     values = {
         "KNOWLEDGE_FS_BASE_URL": base_url,
         "KNOWLEDGE_FS_TIMEOUT_SECONDS": timeout_seconds,
+        "KNOWLEDGE_FS_STREAM_IDLE_TIMEOUT_SECONDS": stream_idle_timeout_seconds,
         "KNOWLEDGE_FS_JWT_SECRET": SecretStr(jwt_secret) if jwt_secret is not None else None,
     }
     for name, value in values.items():
@@ -63,7 +65,7 @@ def test_partial_configuration_is_rejected_before_external_io(monkeypatch: pytes
 
 def test_get_forwards_raw_query(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch, base_url="http://knowledge-fs.test/gateway")
-    response = httpx.Response(200, content=b'{"items":[]}')
+    response = httpx.Response(200, content=b'{"items":[]}', headers={"Content-Type": "application/json"})
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
@@ -74,7 +76,7 @@ def test_get_forwards_raw_query(monkeypatch: pytest.MonkeyPatch) -> None:
         query=b"limit=20&cursor=first&cursor=second",
     )
 
-    assert result.response is response
+    assert result.response.content == response.content
     assert result.response_kind == "buffered"
     request.assert_called_once()
     assert request.call_args.kwargs["method"] == "GET"
@@ -87,13 +89,13 @@ def test_get_forwards_raw_query(monkeypatch: pytest.MonkeyPatch) -> None:
     assert request.call_args.kwargs["timeout"] == 7.5
     assert request.call_args.kwargs["follow_redirects"] is False
     assert request.call_args.kwargs["max_retries"] == 0
-    assert request.call_args.kwargs["max_response_bytes"] == 1024 * 1024
-    assert request.call_args.kwargs["stream_response"] is False
+    assert "max_response_bytes" not in request.call_args.kwargs
+    assert request.call_args.kwargs["stream_response"] is True
 
 
 def test_post_forwards_raw_json_without_parsing(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
-    response = httpx.Response(201, content=b'{"id":"space-1"}')
+    response = httpx.Response(201, content=b'{"id":"space-1"}', headers={"Content-Type": "application/json"})
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
     body = b'{"idempotencyKey":"create-product-docs","name":"Product docs"}'
@@ -105,7 +107,7 @@ def test_post_forwards_raw_json_without_parsing(monkeypatch: pytest.MonkeyPatch)
         body=body,
     )
 
-    assert result.response is response
+    assert result.response.content == response.content
     assert result.response_kind == "buffered"
     request.assert_called_once()
     assert request.call_args.kwargs["method"] == "POST"
@@ -119,13 +121,17 @@ def test_post_forwards_raw_json_without_parsing(monkeypatch: pytest.MonkeyPatch)
     assert request.call_args.kwargs["timeout"] == 7.5
     assert request.call_args.kwargs["follow_redirects"] is False
     assert request.call_args.kwargs["max_retries"] == 0
-    assert request.call_args.kwargs["max_response_bytes"] == 1024 * 1024
-    assert request.call_args.kwargs["stream_response"] is False
+    assert "max_response_bytes" not in request.call_args.kwargs
+    assert request.call_args.kwargs["stream_response"] is True
 
 
 def test_multipart_upload_preserves_content_negotiation(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
-    response = httpx.Response(202, content=b'{"status":"accepted"}')
+    response = httpx.Response(
+        202,
+        content=b'{"status":"accepted"}',
+        headers={"Content-Type": "application/json"},
+    )
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
     content_type = "multipart/form-data; boundary=knowledge-fs-upload"
@@ -139,7 +145,7 @@ def test_multipart_upload_preserves_content_negotiation(monkeypatch: pytest.Monk
         body=b"multipart-body",
     )
 
-    assert result.response is response
+    assert result.response.content == response.content
     assert request.call_args.kwargs["headers"]["Accept"] == "application/json"
     assert request.call_args.kwargs["headers"]["Content-Type"] == content_type
 
@@ -160,13 +166,13 @@ def test_generated_contract_routes_are_forwarded(
     path: str,
 ) -> None:
     _set_config(monkeypatch)
-    response = httpx.Response(200, content=b"{}")
+    response = httpx.Response(200, content=b"{}", headers={"Content-Type": "application/json"})
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
     result = forward_knowledge_fs_request(method=method, path=path, tenant_id="tenant-dev")
 
-    assert result.response is response
+    assert result.response.content == response.content
     assert request.call_args.kwargs["method"] == method
     assert request.call_args.kwargs["url"] == f"http://knowledge-fs.test/{path}"
 
@@ -175,9 +181,23 @@ def test_generated_proxy_allowlist_contains_every_contract_operation() -> None:
     assert len(KNOWLEDGE_FS_CONTRACT_OPERATIONS) == 176
 
 
+def test_generated_proxy_operations_preserve_transport_metadata() -> None:
+    delete_space = get_knowledge_fs_operation("DELETE", "knowledge-spaces/space-1")
+    query = get_knowledge_fs_operation("POST", "queries")
+    parse_artifact = get_knowledge_fs_operation(
+        "GET",
+        "knowledge-spaces/space-1/documents/document-1/parse-artifacts/1",
+    )
+
+    assert delete_space.request_headers == ("idempotency-key",)
+    assert query.response_headers == ("x-query-run-id", "x-session-id", "x-trace-id")
+    assert query.max_response_bytes == 64 * 1024 * 1024
+    assert parse_artifact.max_response_bytes == 64 * 1024 * 1024
+
+
 def test_binary_response_uses_the_runtime_asset_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
-    response = httpx.Response(200, content=b"binary asset")
+    response = httpx.Response(200, content=b"binary asset", headers={"Content-Type": "application/octet-stream"})
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
@@ -187,16 +207,23 @@ def test_binary_response_uses_the_runtime_asset_limit(monkeypatch: pytest.Monkey
         tenant_id="tenant-dev",
     )
 
-    assert result.response is response
+    assert result.response.content == response.content
     assert result.response_kind == "binary"
-    assert request.call_args.kwargs["max_response_bytes"] == 25 * 1024 * 1024
-    assert request.call_args.kwargs["stream_response"] is False
+    assert "max_response_bytes" not in request.call_args.kwargs
+    assert request.call_args.kwargs["stream_response"] is True
 
 
 def test_binary_response_larger_than_json_limit_remains_callable(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
     payload = b"x" * (2 * 1024 * 1024)
-    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=payload, request=request))
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            content=payload,
+            headers={"Content-Type": "application/octet-stream"},
+            request=request,
+        )
+    )
 
     with httpx.Client(transport=transport) as client:
         monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda _verify: client)
@@ -210,9 +237,18 @@ def test_binary_response_larger_than_json_limit_remains_callable(monkeypatch: py
     assert result.response.content == payload
 
 
-def test_sse_response_stays_streaming_without_a_read_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sse_response_uses_a_bounded_idle_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
-    response = httpx.Response(200, headers={"Content-Type": "text/event-stream"})
+    upstream_request = httpx.Request(
+        "POST",
+        "http://knowledge-fs.test/queries",
+        extensions={"timeout": {"read": 7.5}},
+    )
+    response = httpx.Response(
+        200,
+        headers={"Content-Type": "text/event-stream"},
+        request=upstream_request,
+    )
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
@@ -225,16 +261,63 @@ def test_sse_response_stays_streaming_without_a_read_timeout(monkeypatch: pytest
 
     assert result.response is response
     assert result.response_kind == "stream"
-    timeout = request.call_args.kwargs["timeout"]
-    assert isinstance(timeout, httpx.Timeout)
-    assert timeout.read is None
-    assert request.call_args.kwargs["max_response_bytes"] is None
+    assert request.call_args.kwargs["timeout"] == 7.5
+    assert result.response.request.extensions["timeout"]["read"] == 45.0
     assert request.call_args.kwargs["stream_response"] is True
+
+
+def test_sse_operation_buffers_json_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_config(monkeypatch)
+    response = httpx.Response(
+        400,
+        content=b'{"error":"Invalid query request"}',
+        headers={"Content-Type": "application/json"},
+    )
+    request = MagicMock(return_value=response)
+    monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
+
+    result = forward_knowledge_fs_request(
+        method="POST",
+        path="queries",
+        tenant_id="tenant-dev",
+        body=b"{}",
+    )
+
+    assert result.response_kind == "buffered"
+    assert result.response.content == b'{"error":"Invalid query request"}'
+    assert result.response.is_closed
+
+
+def test_parse_artifact_uses_its_contract_response_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_config(monkeypatch)
+    payload = b'{"text":"' + b"x" * (2 * 1024 * 1024) + b'"}'
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            content=payload,
+            headers={"Content-Type": "application/json"},
+            request=request,
+        )
+    )
+
+    with httpx.Client(transport=transport) as client:
+        monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda _verify: client)
+        result = forward_knowledge_fs_request(
+            method="GET",
+            path="knowledge-spaces/space-1/documents/document-1/parse-artifacts/1",
+            tenant_id="tenant-dev",
+        )
+
+    assert result.response_kind == "buffered"
+    assert result.response.content == payload
 
 
 def test_sse_response_rejects_compression_and_closes_the_stream(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
-    response = httpx.Response(200, headers={"Content-Encoding": "gzip"})
+    response = httpx.Response(
+        200,
+        headers={"Content-Encoding": "gzip", "Content-Type": "text/event-stream"},
+    )
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
@@ -269,7 +352,10 @@ def test_auth_signs_current_workspace_principal(
     expected_scope: str,
 ) -> None:
     _set_config(monkeypatch)
-    response = httpx.Response(200, content=b'{"items":[]}')
+    if path == "queries":
+        response = httpx.Response(200, headers={"Content-Type": "text/event-stream"})
+    else:
+        response = httpx.Response(200, content=b'{"items":[]}', headers={"Content-Type": "application/json"})
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
@@ -279,7 +365,7 @@ def test_auth_signs_current_workspace_principal(
         tenant_id="tenant-1",
     )
 
-    assert result.response is response
+    assert result.response.status_code == response.status_code
     authorization = request.call_args.kwargs["headers"]["Authorization"]
     claims = jwt.decode(
         authorization.removeprefix("Bearer "),

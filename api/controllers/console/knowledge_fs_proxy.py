@@ -63,6 +63,17 @@ _RESPONSE_HEADER_ALLOWLIST = (
     "Retry-After",
     "X-Trace-Id",
 )
+_RESPONSE_HEADER_DENYLIST = frozenset(
+    {
+        "authorization",
+        "connection",
+        "cookie",
+        "proxy-authenticate",
+        "set-cookie",
+        "transfer-encoding",
+        "upgrade",
+    }
+)
 
 
 def _console_api_errors[**P](
@@ -119,7 +130,12 @@ def _stream_response_body(upstream: httpx.Response, *, tenant_id: str) -> Iterat
         upstream.close()
 
 
-def _proxy_response(upstream_result: KnowledgeFSUpstreamResponse, *, tenant_id: str) -> Response:
+def _proxy_response(
+    upstream_result: KnowledgeFSUpstreamResponse,
+    *,
+    tenant_id: str,
+    contract_response_headers: tuple[str, ...],
+) -> Response:
     """Expose raw content, status, and allowlisted headers from KnowledgeFS.
 
     Raises:
@@ -135,10 +151,18 @@ def _proxy_response(upstream_result: KnowledgeFSUpstreamResponse, *, tenant_id: 
         )
         raise BadGateway("KnowledgeFS authentication failed")
 
-    headers = {name: value for name in _RESPONSE_HEADER_ALLOWLIST if (value := upstream.headers.get(name)) is not None}
+    allowed_header_names = dict.fromkeys((*_RESPONSE_HEADER_ALLOWLIST, *contract_response_headers))
+    headers = {
+        name: value
+        for name in allowed_header_names
+        if name.lower() not in _RESPONSE_HEADER_DENYLIST
+        if (value := upstream.headers.get(name)) is not None
+    }
     if upstream_result.response_kind == "stream":
         response = Response(
-            stream_with_context(_stream_response_body(upstream, tenant_id=tenant_id)),
+            stream_with_context(  # pyrefly: ignore[no-matching-overload]
+                _stream_response_body(upstream, tenant_id=tenant_id)
+            ),
             status=upstream.status_code,
             headers=headers,
         )
@@ -171,6 +195,9 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
             content_type=request.content_type,
             query=request.query_string or None,
             body=_request_body() if method != "GET" else None,
+            request_headers={
+                name: value for name in operation.request_headers if (value := request.headers.get(name)) is not None
+            },
         )
     except (
         KnowledgeFSConfigurationError,
@@ -179,7 +206,11 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
         KnowledgeFSTransportError,
     ) as exc:
         _translate_proxy_error(exc, tenant_id=tenant_id)
-    return _proxy_response(upstream, tenant_id=tenant_id)
+    return _proxy_response(
+        upstream,
+        tenant_id=tenant_id,
+        contract_response_headers=operation.response_headers,
+    )
 
 
 @rbac_permission_required(
