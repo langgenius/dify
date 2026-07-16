@@ -97,7 +97,6 @@ export async function syncMinimalWorkflowDraft(appId: string): Promise<void> {
           viewport: { x: 0, y: 0, zoom: 1 },
         },
         features: {},
-        environment_variables: [],
         conversation_variables: [],
       },
     })
@@ -141,7 +140,6 @@ export async function syncAgentV2WorkflowDraft(appId: string, agentId: string): 
           viewport: { x: 0, y: 0, zoom: 1 },
         },
         features: {},
-        environment_variables: [],
         conversation_variables: [],
       },
     })
@@ -199,7 +197,6 @@ export async function syncRunnableWorkflowDraft(appId: string): Promise<void> {
           viewport: { x: 0, y: 0, zoom: 1 },
         },
         features: {},
-        environment_variables: [],
         conversation_variables: [],
       },
     })

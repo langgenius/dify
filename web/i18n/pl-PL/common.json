@@ -471,6 +471,7 @@
   "operation.log": "Dziennik",
   "operation.more": "Więcej",
   "operation.moreActions": "Więcej akcji",
+  "operation.moreActionsFor": "Więcej akcji dla {{name}}",
   "operation.no": "Nie",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Nie znaleziono {{content}}",

@@ -471,6 +471,7 @@
   "operation.log": "Jurnal",
   "operation.more": "Mai mult",
   "operation.moreActions": "Mai multe acțiuni",
+  "operation.moreActionsFor": "Mai multe acțiuni pentru {{name}}",
   "operation.no": "Nu",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Nu au fost găsite {{content}}",

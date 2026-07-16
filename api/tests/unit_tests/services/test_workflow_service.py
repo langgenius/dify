@@ -505,22 +505,23 @@ class TestWorkflowService:
         next_graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         next_graph["viewport"] = {"x": 10, "y": 20, "zoom": 1}
 
-        result = workflow_service.sync_draft_workflow(
-            app_model=app,
-            graph=next_graph,
-            features={},
-            unique_hash=unique_hash,
-            account=account,
-            environment_variables=[
-                remote_variable.model_copy(update={"value": "stale-a"}),
-                replaced_variable,
-            ],
-            conversation_variables=[],
-            session=sqlite_session,
-            environment_variable_upserts=[replaced_variable.model_copy(update={"value": "new-b"})],
-            deleted_environment_variable_ids=[],
-            preserve_environment_variables=True,
-        )
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            result = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=next_graph,
+                features={},
+                unique_hash=unique_hash,
+                account=account,
+                environment_variables=[
+                    remote_variable.model_copy(update={"value": "stale-a"}),
+                    replaced_variable,
+                ],
+                conversation_variables=[],
+                session=sqlite_session,
+                environment_variable_upserts=[replaced_variable.model_copy(update={"value": "new-b"})],
+                deleted_environment_variable_ids=[],
+                preserve_environment_variables=True,
+            )
 
         assert result.graph_dict == next_graph
         assert [(variable.id, variable.value) for variable in result.environment_variables] == [
@@ -542,16 +543,17 @@ class TestWorkflowService:
         sqlite_session.commit()
         replacement = StringVariable(id="env-new", name="new", value="new", selector=["env", "new"])
 
-        result = workflow_service.sync_draft_workflow(
-            app_model=app,
-            graph=TestWorkflowAssociatedDataFactory.create_valid_workflow_graph(),
-            features={},
-            unique_hash=workflow.unique_hash,
-            account=account,
-            environment_variables=[replacement],
-            conversation_variables=[],
-            session=sqlite_session,
-        )
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            result = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=TestWorkflowAssociatedDataFactory.create_valid_workflow_graph(),
+                features={},
+                unique_hash=workflow.unique_hash,
+                account=account,
+                environment_variables=[replacement],
+                conversation_variables=[],
+                session=sqlite_session,
+            )
 
         assert result.environment_variables == [replacement]
 

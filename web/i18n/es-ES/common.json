@@ -471,6 +471,7 @@
   "operation.log": "Registro",
   "operation.more": "Más",
   "operation.moreActions": "Más acciones",
+  "operation.moreActionsFor": "Más acciones para {{name}}",
   "operation.no": "No",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "No se encontraron {{content}}",

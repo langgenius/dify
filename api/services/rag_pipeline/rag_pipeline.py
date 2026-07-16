@@ -597,6 +597,7 @@ class RagPipelineService:
 
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
+            tenant_id=pipeline.tenant_id,
             user=account,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -1388,6 +1389,7 @@ class RagPipelineService:
         # Create repository and save the node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=db.engine,
+            tenant_id=pipeline.tenant_id,
             user=current_user,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,

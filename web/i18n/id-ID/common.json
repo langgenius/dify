@@ -471,6 +471,7 @@
   "operation.log": "Batang",
   "operation.more": "Lebih",
   "operation.moreActions": "Tindakan lainnya",
+  "operation.moreActionsFor": "Tindakan lainnya untuk {{name}}",
   "operation.no": "Tidak",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Tidak ada {{content}} yang ditemukan",

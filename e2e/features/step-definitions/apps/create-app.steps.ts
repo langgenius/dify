@@ -16,8 +16,8 @@ When('I enter a unique E2E app name', async function (this: DifyWorld) {
 
 When('I confirm app creation', async function (this: DifyWorld) {
   const createButton = this.getPage()
+    .getByRole('dialog')
     .getByRole('button', { name: /^Create(?:\s|$)/ })
-    .last()
 
   await expect(createButton).toBeEnabled()
   await createButton.click()
@@ -25,12 +25,9 @@ When('I confirm app creation', async function (this: DifyWorld) {
 
 When('I select the {string} app type', async function (this: DifyWorld, appType: string) {
   const dialog = this.getPage().getByRole('dialog')
-  // The modal defaults to ADVANCED_CHAT, so the preview panel immediately renders
-  // <h4>Chatflow</h4> alongside the card's <div>Chatflow</div>.
-  // locator('div').getByText(...) would still match the <h4> because getByText
-  // searches inside each div for any descendant. Use :text-is() instead, which
-  // targets only <div> elements whose own normalised text equals appType exactly.
-  const appTypeCard = dialog.locator(`div:text-is("${appType}")`)
+  const appTypeCard = dialog.getByRole('button', {
+    name: new RegExp(`^${appType.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`),
+  })
 
   await expect(appTypeCard).toBeVisible()
   await appTypeCard.click()
