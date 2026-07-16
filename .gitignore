@@ -262,3 +262,8 @@ scripts/stress-test/reports/
 
 # Vitest local reports
 web/.vitest-reports/
+
+# 本地 Qdrant 二进制和数据
+qdrant.exe
+storage/
+.qdrant-data/
