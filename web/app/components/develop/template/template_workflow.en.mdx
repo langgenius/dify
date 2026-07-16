@@ -1,6 +1,6 @@
 import { CodeGroup } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
-import WorkflowVersionApiUpgradeNotice from '../workflow-version-api-upgrade-notice.tsx'
+import { WorkflowVersionApiContent, WorkflowVersionApiUpgradeNotice } from '../workflow-version-api-upgrade-notice.tsx'
 
 # Workflow App API
 
@@ -645,6 +645,7 @@ Workflow applications offers non-session support and is ideal for translation, a
   name='#Execute-Specific-Workflow'
   titleAction={<WorkflowVersionApiUpgradeNotice />}
 />
+<WorkflowVersionApiContent>
 <Row>
   <Col>
     Execute a specific version of workflow by specifying the workflow ID in the path parameter.
@@ -895,6 +896,7 @@ Workflow applications offers non-session support and is ideal for translation, a
     </CodeGroup>
   </Col>
 </Row>
+</WorkflowVersionApiContent>
 
 ---
 

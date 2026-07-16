@@ -143,15 +143,11 @@ describe('resolveLoginRedirectTarget', () => {
 })
 
 describe('login redirect fallbacks', () => {
-  it('should use the Cloud console home for the client Cloud fallback', () => {
-    expect(getClientLoginFallback(true)).toEqual({
-      kind: 'absolute',
-      href: 'https://cloud.dify.ai/',
+  it('should keep the client fallback on the current deployment', () => {
+    expect(getClientLoginFallback()).toEqual({
+      kind: 'internal',
+      href: '/',
     })
-  })
-
-  it('should use an internal root for the client self-hosted fallback', () => {
-    expect(getClientLoginFallback(false)).toEqual({ kind: 'internal', href: '/' })
   })
 
   it.each([
@@ -159,14 +155,7 @@ describe('login redirect fallbacks', () => {
     ['/', '/'],
     ['/console', '/console/'],
     ['/console/', '/console/'],
-  ])('should include basePath %s in the server self-hosted fallback', (basePath, href) => {
-    expect(getServerLoginFallback(false, basePath)).toEqual({ kind: 'internal', href })
-  })
-
-  it('should use the Cloud console home for the server Cloud fallback', () => {
-    expect(getServerLoginFallback(true, '/console')).toEqual({
-      kind: 'absolute',
-      href: 'https://cloud.dify.ai/',
-    })
+  ])('should include basePath %s in the server deployment fallback', (basePath, href) => {
+    expect(getServerLoginFallback(basePath)).toEqual({ kind: 'internal', href })
   })
 })

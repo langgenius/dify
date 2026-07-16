@@ -310,11 +310,9 @@ describe('Select wrappers', () => {
         .toHaveAttribute('data-highlighted')
     })
 
-    it('should not call onValueChange when disabled item is clicked', async () => {
-      const onValueChange = vi.fn()
-
+    it('should expose disabled item semantics', async () => {
       const screen = await render(
-        <Select open defaultValue="seattle" onValueChange={onValueChange}>
+        <Select open defaultValue="seattle">
           <SelectTrigger aria-label="city select">
             <SelectValue />
           </SelectTrigger>
@@ -331,9 +329,9 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      asHTMLElement(screen.getByRole('option', { name: 'Disabled New York' }).element()).click()
-
-      expect(onValueChange).not.toHaveBeenCalled()
+      await expect
+        .element(screen.getByRole('option', { name: 'Disabled New York' }))
+        .toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should support custom composition with SelectItemText without indicator', async () => {

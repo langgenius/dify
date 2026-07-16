@@ -117,7 +117,7 @@ class TestUpdateTaskSummaryGeneration:
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
 
         session3 = MagicMock()
-        session3.scalar.side_effect = [dataset, doc_s3]
+        session3.scalar.side_effect = [doc_s3, dataset]
 
         runner = MagicMock()
         processor = MagicMock()
@@ -151,7 +151,7 @@ class TestUpdateTaskSummaryGeneration:
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
 
         session3 = MagicMock()
-        session3.scalar.return_value = dataset  # dataset.indexing_technique == "economy"
+        session3.scalar.side_effect = [doc_s1, dataset]  # dataset.indexing_technique == "economy"
 
         runner = MagicMock()
         processor = MagicMock()
@@ -184,7 +184,7 @@ class TestUpdateTaskSummaryGeneration:
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
 
         session3 = MagicMock()
-        session3.scalar.return_value = dataset
+        session3.scalar.side_effect = [doc_s1, dataset]
 
         runner = MagicMock()
         processor = MagicMock()
@@ -217,7 +217,7 @@ class TestUpdateTaskSummaryGeneration:
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
 
         session3 = MagicMock()
-        session3.scalar.return_value = dataset
+        session3.scalar.side_effect = [doc_s1, dataset]
 
         runner = MagicMock()
         processor = MagicMock()
@@ -251,7 +251,7 @@ class TestUpdateTaskSummaryGeneration:
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
 
         session3 = MagicMock()
-        session3.scalar.side_effect = [dataset, doc_s3]
+        session3.scalar.side_effect = [doc_s3, dataset]
 
         runner = MagicMock()
         processor = MagicMock()
@@ -285,7 +285,7 @@ class TestUpdateTaskSummaryGeneration:
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
 
         session3 = MagicMock()
-        session3.scalar.side_effect = [dataset, doc_s3]
+        session3.scalar.side_effect = [doc_s3, dataset]
 
         runner = MagicMock()
         processor = MagicMock()
@@ -384,7 +384,7 @@ class TestUpdateTaskSummaryGeneration:
 
         # Session 3: dataset is None
         session3 = MagicMock()
-        session3.scalar.return_value = None
+        session3.scalar.side_effect = [doc_s1, None]
 
         runner = MagicMock()
         processor = MagicMock()
@@ -425,7 +425,7 @@ class TestUpdateTaskSummaryGeneration:
             need_summary=True,
         )
         session3 = MagicMock()
-        session3.scalar.side_effect = [dataset, doc_s3_error]
+        session3.scalar.side_effect = [doc_s3_error, dataset]
 
         runner = MagicMock()
         processor = MagicMock()
@@ -458,7 +458,7 @@ class TestUpdateTaskSummaryGeneration:
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
 
         session3 = MagicMock()
-        session3.scalar.side_effect = [dataset, doc_s3]
+        session3.scalar.side_effect = [doc_s3, dataset]
 
         runner = MagicMock()
         processor = MagicMock()
@@ -493,11 +493,8 @@ class TestUpdateTaskSummaryGeneration:
         seg = SimpleNamespace(index_node_id="node-1")
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[seg]))
 
-        # Session 2: segment deletion
-        session2 = _session_with_begin()
-
         session3 = MagicMock()
-        session3.scalar.side_effect = [dataset, doc_s3]
+        session3.scalar.side_effect = [doc_s3, dataset]
 
         runner = MagicMock()
         processor = MagicMock()
@@ -506,7 +503,6 @@ class TestUpdateTaskSummaryGeneration:
             monkeypatch,
             sessions=[
                 _SessionContext(session1),
-                _SessionContext(session2),
                 _SessionContext(session3),
             ],
             runner=runner,

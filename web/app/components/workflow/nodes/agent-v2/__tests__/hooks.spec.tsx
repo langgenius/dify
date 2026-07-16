@@ -10,7 +10,7 @@ import {
 import { FlowType } from '@/types/common'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
-import { useCreateInlineAgentBinding } from '../hooks'
+import { useCreateInlineAgentBinding, useWorkflowInlineAgentDetail } from '../hooks'
 
 const mockDefaultModel = vi.hoisted(() => ({
   value: {
@@ -47,6 +47,68 @@ const mockComposerMutationOptions = vi.hoisted(() =>
     mutationFn: mockComposerMutationFn,
   })),
 )
+const mockSnippetComposerMutationFn = vi.hoisted(() =>
+  vi.fn(async (variables: unknown) => ({
+    agent_soul: (
+      variables as {
+        body?: {
+          agent_soul?: unknown
+        }
+      }
+    ).body?.agent_soul,
+    binding: {
+      binding_type: 'inline_agent',
+      agent_id: 'snippet-inline-agent-1',
+      current_snapshot_id: 'snippet-inline-snapshot-1',
+    },
+    variables,
+  })),
+)
+const mockSnippetComposerMutationOptions = vi.hoisted(() =>
+  vi.fn(() => ({
+    mutationFn: mockSnippetComposerMutationFn,
+  })),
+)
+const mockAppComposerQueryFn = vi.hoisted(() =>
+  vi.fn(async (): Promise<{ agent?: { id: string } }> => ({ agent: { id: 'app-agent' } })),
+)
+const mockSnippetComposerQueryFn = vi.hoisted(() =>
+  vi.fn(async () => ({ agent: { id: 'snippet-agent' } })),
+)
+const mockAppComposerQueryOptions = vi.hoisted(() =>
+  vi.fn(
+    (options: {
+      input: symbol | { params: { app_id: string; node_id: string } }
+      refetchInterval?: (query: {
+        state: {
+          data?: {
+            agent?: unknown
+          }
+        }
+      }) => number | false
+    }) => {
+      const { input } = options
+
+      return {
+        queryKey:
+          typeof input === 'symbol'
+            ? ['workflow-agent-composer-disabled']
+            : ['workflow-agent-composer', input.params.app_id, input.params.node_id],
+        queryFn: typeof input === 'symbol' ? input : mockAppComposerQueryFn,
+        refetchInterval: options.refetchInterval,
+      }
+    },
+  ),
+)
+const mockSnippetComposerQueryOptions = vi.hoisted(() =>
+  vi.fn(({ input }: { input: symbol | { params: { snippet_id: string; node_id: string } } }) => ({
+    queryKey:
+      typeof input === 'symbol'
+        ? ['snippet-agent-composer-disabled']
+        : ['snippet-agent-composer', input.params.snippet_id, input.params.node_id],
+    queryFn: typeof input === 'symbol' ? input : mockSnippetComposerQueryFn,
+  })),
+)
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -77,6 +139,7 @@ vi.mock('@/service/client', () => ({
               byNodeId: {
                 agentComposer: {
                   get: {
+                    queryOptions: mockAppComposerQueryOptions,
                     queryKey: ({
                       input,
                     }: {
@@ -93,8 +156,106 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
+    snippets: {
+      bySnippetId: {
+        workflows: {
+          draft: {
+            nodes: {
+              byNodeId: {
+                agentComposer: {
+                  get: {
+                    queryOptions: mockSnippetComposerQueryOptions,
+                    queryKey: ({
+                      input,
+                    }: {
+                      input: { params: { snippet_id: string; node_id: string } }
+                    }) => ['snippet-agent-composer', input.params.snippet_id, input.params.node_id],
+                  },
+                  put: {
+                    mutationOptions: mockSnippetComposerMutationOptions,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
 }))
+
+describe('useWorkflowInlineAgentDetail', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('loads inline agent detail through the snippet composer API', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(
+      () => useWorkflowInlineAgentDetail('node-1', 'snippet-agent'),
+      {
+        queryClient,
+        hooksStoreProps: {
+          configsMap: {
+            flowId: 'snippet-1',
+            flowType: FlowType.snippet,
+            fileSettings: {} as never,
+          },
+        },
+      },
+    )
+
+    await waitFor(() => expect(result.current.data).toEqual({ agent: { id: 'snippet-agent' } }))
+    expect(mockSnippetComposerQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'node-1',
+        },
+      },
+    })
+    expect(mockSnippetComposerQueryFn).toHaveBeenCalled()
+    expect(mockAppComposerQueryFn).not.toHaveBeenCalled()
+  })
+
+  it('polls until a copied inline agent composer is created for the new node', async () => {
+    mockAppComposerQueryFn.mockResolvedValueOnce({ agent: undefined })
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(
+      () =>
+        useWorkflowInlineAgentDetail('copied-node', 'source-inline-agent', {
+          pollUntilReady: true,
+        }),
+      {
+        queryClient,
+        hooksStoreProps: {
+          configsMap: {
+            flowId: 'app-1',
+            flowType: FlowType.appFlow,
+            fileSettings: {} as never,
+          },
+        },
+      },
+    )
+
+    await waitFor(() => expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(2), {
+      timeout: 1500,
+    })
+    expect(result.current.data).toEqual({ agent: { id: 'app-agent' } })
+  })
+})
 
 describe('useCreateInlineAgentBinding', () => {
   beforeEach(() => {
@@ -186,6 +347,64 @@ describe('useCreateInlineAgentBinding', () => {
         }),
       }),
     )
+  })
+
+  it('creates inline agent through the snippet composer API', async () => {
+    const onSuccess = vi.fn()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: {
+          retry: false,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
+      queryClient,
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'snippet-1',
+          flowType: FlowType.snippet,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    act(() => {
+      result.current.createInlineAgentBinding('node-1', { onSuccess })
+    })
+
+    await waitFor(() => expect(mockSnippetComposerMutationFn).toHaveBeenCalled())
+    expect(mockSnippetComposerMutationFn).toHaveBeenCalledWith(
+      {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'node-1',
+        },
+        body: expect.objectContaining({
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+          binding: {
+            binding_type: 'inline_agent',
+          },
+        }),
+      },
+      expect.any(Object),
+    )
+    await waitFor(() =>
+      expect(onSuccess).toHaveBeenCalledWith({
+        binding_type: 'inline_agent',
+        agent_id: 'snippet-inline-agent-1',
+        current_snapshot_id: 'snippet-inline-snapshot-1',
+      }),
+    )
+    expect(queryClient.getQueryData(['snippet-agent-composer', 'snippet-1', 'node-1'])).toEqual(
+      expect.objectContaining({
+        binding: expect.objectContaining({
+          agent_id: 'snippet-inline-agent-1',
+        }),
+      }),
+    )
+    expect(mockComposerMutationFn).not.toHaveBeenCalled()
   })
 
   it('creates inline agent with a model-less initial soul before the default model loads', async () => {
@@ -397,6 +616,77 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
         }),
       }),
     )
+  })
+
+  it('saves inline agent composer changes through the snippet composer API', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+        mutations: {
+          retry: false,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(
+      () =>
+        useWorkflowInlineAgentConfigureSync({
+          nodeId: 'node-1',
+          baseConfig: {
+            schema_version: 1,
+          },
+          enabled: true,
+        }),
+      {
+        queryClient,
+        hooksStoreProps: {
+          configsMap: {
+            flowId: 'snippet-1',
+            flowType: FlowType.snippet,
+            fileSettings: {} as never,
+          },
+        },
+      },
+    )
+
+    act(() => {
+      getDefaultStore().set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Snippet inline prompt',
+      })
+    })
+
+    await act(async () => {
+      await result.current.saveDraft()
+    })
+
+    expect(mockSnippetComposerMutationFn).toHaveBeenCalledWith(
+      {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'node-1',
+        },
+        body: expect.objectContaining({
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Snippet inline prompt',
+            }),
+          }),
+        }),
+      },
+      expect.any(Object),
+    )
+    expect(queryClient.getQueryData(['snippet-agent-composer', 'snippet-1', 'node-1'])).toEqual(
+      expect.objectContaining({
+        agent_soul: expect.objectContaining({
+          schema_version: 1,
+        }),
+      }),
+    )
+    expect(mockComposerMutationFn).not.toHaveBeenCalled()
   })
 
   it('still saves manually when inline agent autosave is disabled', async () => {

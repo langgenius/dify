@@ -90,6 +90,7 @@ export type SnippetImportResponse = {
   imported_dsl_version: string
   snippet_id: string | null
   status: ImportStatus
+  warnings: Array<DslImportWarning>
 }
 
 export type UpdateSnippetPayload = {
@@ -1092,6 +1093,15 @@ export type SnippetTagResponse = {
 export type SnippetType = 'group' | 'node'
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type DslImportWarning = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  path: string
+}
 
 export type PluginDependency = {
   current_identifier?: string | null

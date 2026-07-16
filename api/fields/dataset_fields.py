@@ -1,6 +1,9 @@
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from pydantic import Field, field_validator
+from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
@@ -170,3 +173,62 @@ class DatasetDetailResponse(ResponseModel):
     @classmethod
     def _expand_null_nested(cls, value: object) -> object:
         return {} if value is None else value
+
+
+@dataclass(frozen=True)
+class DatasetDetailResponseSource:
+    """Expose session-backed dataset fields during response validation."""
+
+    dataset: Any
+    session: Session
+
+    @property
+    def app_count(self) -> int:
+        return self.dataset.get_app_count(session=self.session)
+
+    @property
+    def document_count(self) -> int:
+        return self.dataset.get_document_count(session=self.session)
+
+    @property
+    def word_count(self) -> int:
+        return self.dataset.get_word_count(session=self.session)
+
+    @property
+    def author_name(self) -> str | None:
+        return self.dataset.get_author_name(session=self.session)
+
+    @property
+    def tags(self) -> Any:
+        return self.dataset.get_tags(session=self.session)
+
+    @property
+    def doc_form(self) -> str | None:
+        return self.dataset.get_doc_form(session=self.session)
+
+    @property
+    def external_knowledge_info(self) -> Any:
+        return self.dataset.get_external_knowledge_info(session=self.session)
+
+    @property
+    def doc_metadata(self) -> Any:
+        return self.dataset.get_doc_metadata(session=self.session)
+
+    @property
+    def is_published(self) -> bool:
+        return self.dataset.get_is_published(session=self.session)
+
+    @property
+    def total_documents(self) -> int:
+        return self.dataset.get_total_documents(session=self.session)
+
+    @property
+    def total_available_documents(self) -> int:
+        return self.dataset.get_total_available_documents(session=self.session)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.dataset, name)  # noqa: no-new-getattr response adapter delegates model fields
+
+
+def dataset_detail_response_source(dataset: Any, *, session: Session) -> DatasetDetailResponseSource:
+    return DatasetDetailResponseSource(dataset=dataset, session=session)

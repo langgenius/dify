@@ -8,10 +8,10 @@ import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { formLabelClassName, textControlCompoundFocusClassName } from '../form-control-shared'
 import {
-  overlayIndicatorClassName,
-  overlayLabelClassName,
-  overlayPopupAnimationClassName,
-  overlaySeparatorClassName,
+  floatingGroupLabelClassName,
+  floatingItemIndicatorClassName,
+  floatingPopupAnimationClassName,
+  floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
@@ -320,7 +320,7 @@ export function ComboboxContent({
         {...positionerProps}
       >
         <BaseCombobox.Popup
-          className={cn(comboboxPopupClassName, overlayPopupAnimationClassName, popupClassName)}
+          className={cn(comboboxPopupClassName, floatingPopupAnimationClassName, popupClassName)}
           {...popupProps}
         >
           {children}
@@ -352,7 +352,10 @@ export function ComboboxItemIndicator({
   ...props
 }: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: React.ReactNode }) {
   return (
-    <BaseCombobox.ItemIndicator className={cn(overlayIndicatorClassName, className)} {...props}>
+    <BaseCombobox.ItemIndicator
+      className={cn(floatingItemIndicatorClassName, className)}
+      {...props}
+    >
       {children ?? <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />}
     </BaseCombobox.ItemIndicator>
   )
@@ -363,11 +366,13 @@ export function ComboboxLabel({ className, ...props }: BaseCombobox.Label.Props)
 }
 
 export function ComboboxGroupLabel({ className, ...props }: BaseCombobox.GroupLabel.Props) {
-  return <BaseCombobox.GroupLabel className={cn(overlayLabelClassName, className)} {...props} />
+  return (
+    <BaseCombobox.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
+  )
 }
 
 export function ComboboxSeparator({ className, ...props }: BaseCombobox.Separator.Props) {
-  return <BaseCombobox.Separator className={cn(overlaySeparatorClassName, className)} {...props} />
+  return <BaseCombobox.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
 }
 
 export function ComboboxEmpty({ className, ...props }: BaseCombobox.Empty.Props) {

@@ -33,6 +33,14 @@ const ChangePasswordForm = () => {
       params.set('token', searchParams.get('invite_token') as string)
       return `/activate?${params.toString()}`
     }
+
+    const redirectUrl = searchParams.get('redirect_url')
+    if (redirectUrl) {
+      const params = new URLSearchParams()
+      params.set('redirect_url', redirectUrl)
+      return `/signin?${params.toString()}`
+    }
+
     return '/signin'
   }
 

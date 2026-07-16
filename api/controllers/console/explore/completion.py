@@ -90,7 +90,7 @@ class CompletionApi(InstalledAppResource):
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
@@ -146,8 +146,9 @@ class CompletionApi(InstalledAppResource):
 class CompletionStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user_id
-    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
-        app_model = installed_app.app
+    @with_session(write=False)
+    def post(self, session: Session, current_user_id: str, installed_app: InstalledApp, task_id: str):
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
@@ -173,7 +174,7 @@ class ChatApi(InstalledAppResource):
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
@@ -195,7 +196,7 @@ class ChatApi(InstalledAppResource):
                     app_model=app_model,
                     conversation_id=payload.conversation_id,
                     user=current_user,
-                    session=db.session(),
+                    session=session,
                 )
 
             response = AppGenerateService.generate(
@@ -240,8 +241,9 @@ class ChatApi(InstalledAppResource):
 class ChatStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user_id
-    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
-        app_model = installed_app.app
+    @with_session(write=False)
+    def post(self, session: Session, current_user_id: str, installed_app: InstalledApp, task_id: str):
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)

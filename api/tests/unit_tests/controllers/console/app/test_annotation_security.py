@@ -193,6 +193,7 @@ class TestAnnotationImportServiceValidation:
 
     @pytest.fixture
     def mock_db_session(self):
+        """Mock database session."""
         return MagicMock()
 
     def test_max_records_limit_enforced(self, mock_app, mock_db_session):
@@ -212,7 +213,7 @@ class TestAnnotationImportServiceValidation:
             with patch("services.annotation_service.FeatureService") as mock_features:
                 mock_features.get_features.return_value.billing.enabled = False
 
-                result = AppAnnotationService.batch_import_app_annotations("app_id", file, session=mock_db_session)
+                result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
 
                 # Should return error about too many records
                 assert "error_msg" in result
@@ -229,7 +230,7 @@ class TestAnnotationImportServiceValidation:
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
-            result = AppAnnotationService.batch_import_app_annotations("app_id", file, session=mock_db_session)
+            result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
 
             # Should return error about insufficient records
             assert "error_msg" in result
@@ -248,7 +249,7 @@ class TestAnnotationImportServiceValidation:
         ):
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
-            result = AppAnnotationService.batch_import_app_annotations("app_id", file, session=mock_db_session)
+            result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
 
             assert "error_msg" in result
             assert "malformed" in result["error_msg"].lower()
@@ -269,9 +270,7 @@ class TestAnnotationImportServiceValidation:
 
                 with patch("services.annotation_service.batch_import_annotations_task") as mock_task:
                     with patch("services.annotation_service.redis_client"):
-                        result = AppAnnotationService.batch_import_app_annotations(
-                            "app_id", file, session=mock_db_session
-                        )
+                        result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
 
                         # Should return success response
                         assert "job_id" in result

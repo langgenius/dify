@@ -127,6 +127,7 @@ This removes:
 - `docker/volumes/plugin_daemon`
 - `e2e/.auth`
 - `e2e/.logs`
+- `e2e/.logs-non-external`
 - `e2e/cucumber-report`
 
 Start the full middleware stack:
@@ -171,6 +172,7 @@ Artifacts and diagnostics:
 - `cucumber-report/artifacts/`: failure screenshots and HTML captures
 - `.logs/cucumber-api.log`: backend startup log
 - `.logs/cucumber-web.log`: frontend startup log
+- `.logs-non-external/`: non-external logs preserved before an external CI run
 
 Open the HTML report locally with:
 
