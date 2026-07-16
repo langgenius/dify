@@ -1,4 +1,4 @@
-import type { AddOAuthButtonProps } from '@/app/components/plugins/plugin-auth/types'
+import type { AddOAuthButtonProps, Credential } from '@/app/components/plugins/plugin-auth/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -6,6 +6,7 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -20,6 +21,13 @@ import { AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
   builtInTools: [] as ToolWithProvider[],
+}))
+const pluginAuthState = vi.hoisted(() => ({
+  canOAuth: true as boolean | undefined,
+  canApiKey: false as boolean | undefined,
+  credentials: [] as Credential[],
+  notAllowCustomCredential: false,
+  invalidPluginCredentialInfo: vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
@@ -49,6 +57,21 @@ vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () =>
       </button>
     )
   },
+}))
+
+vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
+  usePluginAuth: () => ({
+    ...pluginAuthState,
+    isAuthorized: pluginAuthState.credentials.length > 0,
+  }),
+}))
+
+vi.mock('@/hooks/use-credential-permissions', () => ({
+  useCredentialPermissions: () => ({
+    canUseCredential: true,
+    canCreateCredential: true,
+    canManageCredential: true,
+  }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
@@ -333,6 +356,10 @@ describe('AgentTools', () => {
     cleanup()
     vi.clearAllMocks()
     toolProviderState.builtInTools = []
+    pluginAuthState.canOAuth = true
+    pluginAuthState.canApiKey = false
+    pluginAuthState.credentials = []
+    pluginAuthState.notAllowCustomCredential = false
   })
 
   describe('User Interactions', () => {
@@ -521,7 +548,8 @@ describe('AgentTools', () => {
       expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
     })
 
-    it('should show authorization action for reflected OAuth provider tools with unauthorized credential type', () => {
+    it('should open authorization actions for reflected OAuth provider tools', async () => {
+      const user = userEvent.setup()
       toolProviderState.builtInTools = [
         {
           ...googleProvider,
@@ -537,7 +565,54 @@ describe('AgentTools', () => {
           name: 'tools.notAuthorized',
         }),
       ).toBeInTheDocument()
-      expect(screen.queryByText('plugin.auth.setupOAuth')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.useOAuthAuth' }),
+      ).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'tools.notAuthorized' }))
+
+      expect(
+        screen.getByRole('button', {
+          name: 'plugin.auth.useOAuthAuth',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('should bind an existing credential selected from the unauthorized status', async () => {
+      const user = userEvent.setup()
+      toolProviderState.builtInTools = [
+        {
+          ...googleProvider,
+          allow_delete: true,
+          is_team_authorization: false,
+          team_credentials: {},
+        },
+      ]
+      pluginAuthState.credentials = [
+        {
+          id: 'workspace-oauth',
+          name: 'Workspace OAuth',
+          provider: 'google',
+          credential_type: CredentialTypeEnum.OAUTH2,
+          is_default: true,
+        },
+      ]
+      const { store } = renderAgentToolsWithStore(reflectedUnauthorizedOAuthCredentialTypeDraft)
+
+      await user.click(screen.getByRole('button', { name: 'tools.notAuthorized' }))
+
+      expect(store.get(agentComposerDraftAtom).tools[0]).toMatchObject({
+        credentialType: 'unauthorized',
+        credentialVariant: 'none',
+      })
+
+      await user.click(screen.getByText('Workspace OAuth'))
+
+      expect(store.get(agentComposerDraftAtom).tools[0]).toMatchObject({
+        credentialId: 'workspace-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      })
     })
 
     it('should open provider tool settings with catalog icon and parameters', async () => {
