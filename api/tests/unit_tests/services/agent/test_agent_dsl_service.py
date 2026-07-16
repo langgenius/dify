@@ -153,6 +153,43 @@ def test_agent_package_round_trips_as_strict_dsl_dto() -> None:
     assert restored == package
 
 
+def test_agent_package_normalizes_legacy_null_missing_asset_file_ids() -> None:
+    package = make_portable_agent_package(
+        _agent(),
+        AgentSoulConfig.model_validate(
+            {
+                "config_skills": [{"name": "research", "file_id": "skill-file"}],
+                "config_files": [{"name": "guide.md", "file_kind": "tool_file", "file_id": "config-file"}],
+            }
+        ),
+    ).model_dump(mode="json")
+    package["soul"]["config_skills"][0]["file_id"] = None
+    package["soul"]["config_files"][0]["file_id"] = None
+
+    restored = AgentPackage.model_validate(package)
+
+    assert restored.soul.config_skills[0].file_id == ""
+    assert restored.soul.config_files[0].file_id == ""
+    assert restored.model_dump(mode="json")["soul"]["config_skills"][0]["file_id"] == ""
+    assert restored.model_dump(mode="json")["soul"]["config_files"][0]["file_id"] == ""
+
+
+@pytest.mark.parametrize(
+    "asset",
+    [
+        {"name": "research", "file_id": None, "is_missing": False},
+        {"name": "guide.md", "file_kind": "tool_file", "file_id": None, "is_missing": False},
+    ],
+)
+def test_agent_package_rejects_null_file_id_for_available_assets(asset: dict) -> None:
+    package = make_portable_agent_package(_agent(), AgentSoulConfig()).model_dump(mode="json")
+    target = "config_files" if "file_kind" in asset else "config_skills"
+    package["soul"][target] = [asset]
+
+    with pytest.raises(ValidationError):
+        AgentPackage.model_validate(package)
+
+
 def test_import_warnings_cover_runtime_setup_removed_from_package(monkeypatch) -> None:
     soul = AgentSoulConfig.model_validate(
         {
