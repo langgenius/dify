@@ -177,6 +177,42 @@ describe('UpdateDSLModal', () => {
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it('should show Agent package warnings returned by a completed import', async () => {
+    mockImportDSL.mockResolvedValue({
+      id: 'import-with-agent-warnings',
+      status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
+      app_id: 'app-1',
+      warnings: [
+        {
+          code: 'agent_file_omitted',
+          path: 'agent_packages.agent_1.omitted_assets',
+          message: "Agent file 'brief.pdf' was not included in the portable package.",
+          details: { kind: 'file', name: 'brief.pdf' },
+        },
+        {
+          code: 'agent_tool_authorization_required',
+          path: 'agent_packages.agent_1.soul.tools.dify_tools.0',
+          message: "Agent tool 'web_search' requires authorization.",
+          details: { tool_name: 'web_search' },
+        },
+      ],
+    })
+
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => {
+      expect(toast.warning).toHaveBeenCalledWith('workflow.common.importWarning', {
+        description:
+          "Agent file 'brief.pdf' was not included in the portable package. · Agent tool 'web_search' requires authorization.",
+      })
+    })
+  })
+
   it('should show an error notification when import fails', async () => {
     mockImportDSL.mockResolvedValue({
       id: 'import-1',
@@ -223,6 +259,43 @@ describe('UpdateDSLModal', () => {
       expect(mockImportDSLConfirm).toHaveBeenCalledWith({ import_id: 'import-2' })
     })
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
+  })
+
+  it('should show Agent package warnings returned after confirming a pending import', async () => {
+    mockImportDSL.mockResolvedValue({
+      id: 'import-pending-agent',
+      status: DSLImportStatus.PENDING,
+      imported_dsl_version: '0.8.0',
+      current_dsl_version: '0.7.0',
+    })
+    mockImportDSLConfirm.mockResolvedValue({
+      status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
+      app_id: 'app-1',
+      warnings: [
+        {
+          code: 'agent_secret_required',
+          path: 'agent_packages.agent_1.soul.env.secret_refs',
+          message: "Agent secret 'SEARCH_TOKEN' must be configured.",
+          details: { name: 'SEARCH_TOKEN' },
+        },
+      ],
+    })
+
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    const confirmButton = await screen.findByRole('button', { name: 'app.newApp.Confirm' })
+    fireEvent.click(confirmButton)
+
+    await waitFor(() => {
+      expect(toast.warning).toHaveBeenCalledWith('workflow.common.importWarning', {
+        description: "Agent secret 'SEARCH_TOKEN' must be configured.",
+      })
+    })
   })
 
   it('should open the pending modal after the timeout and allow dismissing it', async () => {

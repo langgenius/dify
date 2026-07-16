@@ -32,19 +32,6 @@ import {
 
 const concurrentAgentPrompts = [concurrentFirstAgentPrompt, concurrentSecondAgentPrompt]
 
-function attachPageDiagnostics(world: DifyWorld, page: Page) {
-  page.setDefaultTimeout(30_000)
-  page.on('console', (message) => {
-    if (message.type() === 'error') world.consoleErrors.push(message.text())
-  })
-  page.on('pageerror', (error) => {
-    world.pageErrors.push(error.message)
-  })
-  page.on('download', (dl) => {
-    world.capturedDownloads.push(dl)
-  })
-}
-
 const getPromptEditor = (page: Page) =>
   page.getByRole('region', { name: 'Prompt' }).getByRole('textbox', { name: 'Prompt' })
 
@@ -242,7 +229,6 @@ When('I open the same Agent v2 configure page in another tab', async function (t
 
   const agentId = getCurrentAgentId(this)
   const concurrentPage = await this.context.newPage()
-  attachPageDiagnostics(this, concurrentPage)
   this.agentBuilder.configure.concurrentPage = concurrentPage
 
   await concurrentPage.goto(getAgentConfigurePath(agentId))

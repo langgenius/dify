@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -35,13 +34,13 @@ export default function CheckCode() {
 
   useEffect(() => {
     if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
   }, [redirectUrl, router])
 
   const verify = async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
     try {
@@ -89,7 +88,7 @@ export default function CheckCode() {
   const resendCode = async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
     try {

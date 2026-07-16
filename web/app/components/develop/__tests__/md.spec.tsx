@@ -346,6 +346,20 @@ describe('md.tsx components', () => {
       expect(screen.getByText('User identifier')).toBeInTheDocument()
     })
 
+    it('should render a name action next to the property name', () => {
+      render(
+        <Property {...defaultProps} nameAction={<button type="button">Upgrade</button>}>
+          User identifier
+        </Property>,
+      )
+
+      const nameContainer = screen.getByText('user_id').parentElement!
+      const actionContainer = screen.getByRole('button', { name: 'Upgrade' }).parentElement!
+      expect(nameContainer).not.toHaveClass('flex')
+      expect(actionContainer).toHaveClass('ml-2', 'inline-flex', 'align-middle')
+      expect(nameContainer.children[1]).toBe(actionContainer)
+    })
+
     it('should render as li element', () => {
       const { container } = render(<Property {...defaultProps}>Description</Property>)
       expect(container.querySelector('li')).toBeInTheDocument()

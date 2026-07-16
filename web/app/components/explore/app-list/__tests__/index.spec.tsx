@@ -257,7 +257,7 @@ vi.mock('../../try-app', () => ({
 }))
 
 vi.mock('../../banner/banner', () => ({
-  default: ({ banners }: { banners: BannerType[] }) => (
+  Banner: ({ banners }: { banners: BannerType[] }) => (
     <div data-testid="explore-banner" data-banner-count={banners.length}>
       banner
     </div>

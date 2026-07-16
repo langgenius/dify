@@ -122,22 +122,6 @@
       "count": 1
     }
   },
-  "web/__tests__/goto-anything/command-selector.test.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/__tests__/goto-anything/search-error-handling.test.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/__tests__/i18n-upload-features.test.ts": {
     "no-console": {
       "count": 3
@@ -773,34 +757,8 @@
       "count": 1
     }
   },
-  "web/app/components/app/create-app-modal/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/create-from-dsl-modal/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react/only-export-components": {
       "count": 1
     }
   },
@@ -3194,22 +3152,6 @@
       "count": 2
     }
   },
-  "web/app/components/explore/banner/__tests__/indicator-button.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/explore/banner/banner-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/item-operation/__tests__/index.spec.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -3236,60 +3178,9 @@
       "count": 2
     }
   },
-  "web/app/components/goto-anything/actions/commands/registry.ts": {
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/app/components/goto-anything/actions/commands/types.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/goto-anything/actions/plugin.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/goto-anything/actions/recent-store.ts": {
     "no-restricted-globals": {
       "count": 2
-    }
-  },
-  "web/app/components/goto-anything/actions/types.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/goto-anything/components/__tests__/search-input.spec.tsx": {
-    "jsx_a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/goto-anything/components/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 4
-    }
-  },
-  "web/app/components/goto-anything/components/search-input.tsx": {
-    "jsx_a11y/no-autofocus": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/goto-anything/context.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 4
-    },
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/app/components/goto-anything/hooks/use-goto-anything-results.ts": {
-    "@tanstack/query/exhaustive-deps": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/data-source-page-new/__tests__/item.spec.tsx": {
@@ -3495,14 +3386,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/utils.ts": {
@@ -6331,14 +6214,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/run/retry-log/retry-result-panel.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/run/special-result-panel.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -6862,7 +6737,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 7
+      "count": 6
     }
   },
   "web/service/base.ts": {

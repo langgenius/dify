@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, waitFor } from 'storybook/test'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '.'
 import { cn } from '../cn'
 
@@ -76,6 +77,22 @@ export const DefaultClosed: Story = {
       <RecoveryKeys />
     </Collapsible>
   ),
+  play: async ({ canvas, userEvent }) => {
+    const trigger = canvas.getByRole('button', { name: 'Recovery keys' })
+
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await expect(canvas.queryByText('alien-bean-pasta')).not.toBeInTheDocument()
+
+    await userEvent.click(trigger)
+
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    await expect(canvas.getByText('alien-bean-pasta')).toBeVisible()
+
+    await userEvent.click(trigger)
+    await waitFor(async () => {
+      await expect(canvas.queryByText('alien-bean-pasta')).not.toBeInTheDocument()
+    })
+  },
 }
 
 export const DefaultOpen: Story = {

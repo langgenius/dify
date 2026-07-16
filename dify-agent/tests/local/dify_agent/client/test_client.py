@@ -28,6 +28,8 @@ from dify_agent.protocol import (
     RunCancelledEvent,
     RunEvent,
     RunEventsResponse,
+    RunFailedEvent,
+    RunFailedEventData,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -61,6 +63,14 @@ def _run_succeeded_event(*, event_id: str = "2-0", run_id: str = "run-1") -> Run
         id=event_id,
         run_id=run_id,
         data=RunSucceededEventData(output="done", session_snapshot=CompositorSessionSnapshot(layers=[])),
+    )
+
+
+def _run_failed_event(error: str, *, event_id: str = "2-0", run_id: str = "run-1") -> RunFailedEvent:
+    return RunFailedEvent(
+        id=event_id,
+        run_id=run_id,
+        data=RunFailedEventData(error=error),
     )
 
 
@@ -448,6 +458,26 @@ def test_sync_sse_parser_supports_comments_multiline_data_and_id_fill() -> None:
     assert [event.type for event in events] == ["run_started"]
 
 
+@pytest.mark.parametrize("separator", ["\x85", "\u2028", "\u2029"])
+def test_sync_sse_parser_preserves_unicode_line_separators(separator: str) -> None:
+    error = f"before{separator}after"
+    body = _event_frame(_run_failed_event(error))
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=body)
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", reconnect=False))
+
+    assert len(events) == 1
+    assert isinstance(events[0], RunFailedEvent)
+    assert events[0].data.error == error
+
+
 def test_stream_events_stops_after_terminal_event() -> None:
     calls = 0
     body = "".join(
@@ -590,6 +620,27 @@ def test_async_stream_events_yields_terminal_event() -> None:
         events = [event async for event in client.stream_events("run-1")]
 
         assert [event.type for event in events] == ["run_succeeded"]
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_sse_parser_preserves_unicode_line_separators() -> None:
+    error = "next-line:\x85line-separator:\u2028paragraph-separator:\u2029done"
+    body = _event_frame(_run_failed_event(error))
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=body)
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1")]
+
+        assert len(events) == 1
+        assert isinstance(events[0], RunFailedEvent)
+        assert events[0].data.error == error
         await http_client.aclose()
 
     asyncio.run(scenario())

@@ -33,6 +33,26 @@ def test_fetch_latest_package_identifier_calls_marketplace_when_enabled(mocker: 
     assert result == "langgenius/openai:1.0.0@abc"
 
 
+def test_extract_app_tables_checks_agent_mode_with_its_session(mocker: MockerFixture) -> None:
+    app = mocker.MagicMock(app_model_config_id=None, mode="chat")
+    app.is_agent_with_session.return_value = False
+    apps_result = mocker.MagicMock()
+    apps_result.all.return_value = [app]
+    configs_result = mocker.MagicMock()
+    configs_result.all.return_value = []
+    session = mocker.MagicMock()
+    session.scalars.side_effect = [apps_result, configs_result]
+    session_context = mocker.MagicMock()
+    session_context.__enter__.return_value = session
+    mocker.patch(f"{MIGRATION_MODULE}.Session", return_value=session_context)
+    mocker.patch(f"{MIGRATION_MODULE}.db")
+
+    result = PluginMigration.extract_app_tables("tenant-1")
+
+    assert result == []
+    app.is_agent_with_session.assert_called_once_with(session=session)
+
+
 class TestHandlePluginInstanceInstall:
     def test_raises_when_disabled_and_map_nonempty(self) -> None:
         with patch(f"{MIGRATION_MODULE}.dify_config") as mock_cfg:

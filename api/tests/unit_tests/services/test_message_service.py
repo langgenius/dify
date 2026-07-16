@@ -70,6 +70,8 @@ class TestMessageServiceFactory:
         message.query = query
         message.answer = answer
         message.created_at = created_at or datetime.now()
+        message.user_feedback_with_session.return_value = None
+        message.admin_feedback_with_session.return_value = None
         return message
 
 
@@ -754,6 +756,7 @@ class TestMessageServiceFeedback:
         user = factory.create_end_user_mock()
         message = factory.create_message_mock()
         message.user_feedback = None
+        message.user_feedback_with_session.return_value = None
         mock_get_message.return_value = message
 
         # Act
@@ -787,6 +790,7 @@ class TestMessageServiceFeedback:
         message = factory.create_message_mock()
         feedback = MagicMock(spec=MessageFeedback)
         message.admin_feedback = feedback
+        message.admin_feedback_with_session.return_value = feedback
         mock_get_message.return_value = message
 
         # Act
@@ -816,6 +820,7 @@ class TestMessageServiceFeedback:
         message = factory.create_message_mock()
         feedback = MagicMock()
         message.user_feedback = feedback
+        message.user_feedback_with_session.return_value = feedback
         mock_get_message.return_value = message
 
         # Act
@@ -1197,6 +1202,7 @@ class TestMessageServiceSuggestedQuestions:
             "model_id": None,
             "provider": None,
         }
+        conversation.model_config_with_session.return_value = conversation.model_config
         mock_conversation_service.get_conversation.return_value = conversation
 
         mock_memory.return_value.get_history_prompt_text.return_value = "histories"

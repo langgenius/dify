@@ -8,7 +8,6 @@ import {
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FlowType } from '@/types/common'
-import { TEST_RUN_MENU_HOTKEY } from './header/shortcuts'
 import {
   useDSL,
   useIsChatMode,
@@ -17,6 +16,7 @@ import {
   useWorkflowStartRun,
 } from './hooks'
 import { useHooksStore } from './hooks-store'
+import { TEST_RUN_MENU_HOTKEY } from './hotkeys'
 import { isSnippetCanvas } from './nodes/_base/hooks/snippet-input-field-vars'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
@@ -50,7 +50,6 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
     isRestoring
   )
   const canEditWorkflow = accessControl.canEdit && !workflowOperationReadOnly
-  const canCommentWorkflow = accessControl.canComment && !workflowOperationReadOnly
   const shouldHideImportApp = flowType === FlowType.snippet || isSnippetCanvas()
 
   const renderAddBlockTrigger = useCallback(() => {
@@ -105,7 +104,7 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
             {t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}
           </ContextMenuItem>
         )}
-        {canCommentWorkflow && isCommentModeAvailable && (
+        {!workflowOperationReadOnly && isCommentModeAvailable && (
           <ContextMenuItem
             disabled={!!pendingComment}
             className={cn(

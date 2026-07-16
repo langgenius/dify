@@ -152,7 +152,7 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
         "multiple_retrieve",
         lambda **kwargs: [RagDocument(page_content="segment content", provider="dify")],
     )
-    monkeypatch.setattr(RetrievalService, "format_retrieval_documents", lambda documents: [record])
+    monkeypatch.setattr(RetrievalService, "format_retrieval_documents", lambda _session, documents: [record])
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr(dataset_retrieval_module.session_factory, "create_session", factory)
     scope = FileAccessScope(

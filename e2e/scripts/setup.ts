@@ -6,6 +6,7 @@ import {
   apiDir,
   apiEnvExampleFile,
   difyAgentDir,
+  difyAgentRuntimeDir,
   dockerDir,
   e2eDir,
   e2eWebEnvOverrides,
@@ -55,6 +56,7 @@ const e2eStatePaths = [
   path.join(e2eDir, '.auth'),
   path.join(e2eDir, 'cucumber-report'),
   path.join(e2eDir, '.logs'),
+  path.join(e2eDir, '.logs-non-external'),
   path.join(e2eDir, 'playwright-report'),
   path.join(e2eDir, 'test-results'),
 ]
@@ -375,12 +377,12 @@ const ensureShellctlSandboxImage = async () => {
     args: [
       'build',
       '-f',
-      path.join(difyAgentDir, 'docker', 'local-sandbox', 'Dockerfile'),
+      path.join(difyAgentRuntimeDir, 'docker', 'Dockerfile'),
       '-t',
       shellctlImage,
       '.',
     ],
-    cwd: difyAgentDir,
+    cwd: difyAgentRuntimeDir,
   })
 }
 

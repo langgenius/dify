@@ -184,7 +184,7 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
 }))
 
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  default: () => null,
+  CreateSnippetDialog: () => null,
 }))
 
 vi.mock('@/features/tag-management/components/tag-selector', () => ({

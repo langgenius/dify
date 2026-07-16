@@ -36,6 +36,7 @@ export type AgentSkill = {
   fileId?: string
   hash?: string
   id: string
+  isMissing?: boolean
   mimeType?: string
   name: string
   size?: number
@@ -47,6 +48,7 @@ export type AgentFileNode = {
   hash?: string
   id: string
   icon: FileTreeIconType
+  isMissing?: boolean
   fileId?: string
   configName?: string
   children?: AgentFileNode[]

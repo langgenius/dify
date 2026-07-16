@@ -1,159 +1,80 @@
-import type { App } from '@/types/app'
-import { appAction } from '../app'
+import { appAction, appSearchQueryOptions } from '../app'
 
-vi.mock('@/service/apps', () => ({
-  fetchAppList: vi.fn(),
+const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: { apps: { get: { queryOptions: serviceMocks.queryOptions } } },
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
   getRedirectionPath: vi.fn((app: { id: string }) => `/app/${app.id}`),
 }))
 
-vi.mock('../../../app/type-selector', () => ({
-  AppTypeIcon: () => null,
-}))
+vi.mock('../../../app/type-selector', () => ({ AppTypeIcon: () => null }))
 
-describe('appAction', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+type AppQueryResponse = Parameters<
+  NonNullable<ReturnType<typeof appSearchQueryOptions>['select']>
+>[0]
+type AppQueryItem = AppQueryResponse['data'][number]
+
+function app(overrides: Partial<AppQueryItem> = {}): AppQueryItem {
+  return {
+    id: 'app-1',
+    name: 'My App',
+    description: 'A great app',
+    mode: 'chat',
+    icon: '',
+    icon_type: 'emoji',
+    icon_background: '',
+    icon_url: '',
+    ...overrides,
+  } as AppQueryItem
+}
+
+function response(data: AppQueryItem[]): AppQueryResponse {
+  return { data, has_more: false, limit: 10, page: 1, total: data.length }
+}
+
+describe('app search query', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('exposes remote action metadata', () => {
+    expect(appAction).toMatchObject({ key: '@app', shortcut: '@app', source: 'remote' })
   })
 
-  it('has correct metadata', () => {
-    expect(appAction.key).toBe('@app')
-    expect(appAction.shortcut).toBe('@app')
+  it('builds generated query options from the search term', () => {
+    appSearchQueryOptions('assistant', false)
+
+    expect(serviceMocks.queryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: { query: { page: 1, name: 'assistant' } },
+        retry: false,
+        select: expect.any(Function),
+      }),
+    )
   })
 
-  it('returns parsed app results on success', async () => {
-    const { fetchAppList } = await import('@/service/apps')
-    vi.mocked(fetchAppList).mockResolvedValue({
-      data: [
-        {
-          id: 'app-1',
-          name: 'My App',
-          description: 'A great app',
-          mode: 'chat',
-          icon: '',
-          icon_type: 'emoji',
-          icon_background: '',
-          icon_url: '',
-        } as unknown as App,
-      ],
-      has_more: false,
-      limit: 10,
-      page: 1,
-      total: 1,
-    })
+  it('selects plain app results for general search', () => {
+    const options = appSearchQueryOptions('my app', false)
 
-    const results = await appAction.search('@app test', 'test', 'en')
+    expect(options.select!(response([app(), app({ id: 'app-2', name: 'Other' })]))).toHaveLength(2)
+  })
 
-    expect(fetchAppList).toHaveBeenCalledWith({
-      url: 'apps',
-      params: { page: 1, name: 'test' },
-    })
-    expect(results).toHaveLength(5)
-    expect(results[0]).toMatchObject({
-      id: 'app-1',
-      title: 'My App',
-      type: 'app',
-    })
-    expect(results.slice(1).map((r) => r.id)).toEqual([
+  it('selects app sections only for scoped search', () => {
+    const chatOptions = appSearchQueryOptions('', true)
+    const workflowOptions = appSearchQueryOptions('', true)
+
+    expect(chatOptions.select!(response([app()])).map((result) => result.id)).toEqual([
+      'app-1',
       'app-1:configuration',
       'app-1:overview',
       'app-1:logs',
       'app-1:develop',
     ])
-  })
-
-  it('returns workflow sub-sections for workflow-mode apps', async () => {
-    const { fetchAppList } = await import('@/service/apps')
-    vi.mocked(fetchAppList).mockResolvedValue({
-      data: [
-        {
-          id: 'wf-1',
-          name: 'Flow',
-          description: '',
-          mode: 'workflow',
-          icon: '',
-          icon_type: 'emoji',
-          icon_background: '',
-          icon_url: '',
-        } as unknown as App,
-      ],
-      has_more: false,
-      limit: 10,
-      page: 1,
-      total: 1,
-    })
-
-    const results = await appAction.search('@app', '', 'en')
-
-    expect(results).toHaveLength(4)
-    expect(results.slice(1).map((r) => r.id)).toEqual([
-      'wf-1:workflow',
-      'wf-1:overview',
-      'wf-1:logs',
-    ])
-  })
-
-  it('returns apps without sub-sections for unscoped queries', async () => {
-    const { fetchAppList } = await import('@/service/apps')
-    vi.mocked(fetchAppList).mockResolvedValue({
-      data: [
-        {
-          id: 'app-1',
-          name: 'My App',
-          description: '',
-          mode: 'chat',
-          icon: '',
-          icon_type: 'emoji',
-          icon_background: '',
-          icon_url: '',
-        } as unknown as App,
-        {
-          id: 'app-2',
-          name: 'Other',
-          description: '',
-          mode: 'chat',
-          icon: '',
-          icon_type: 'emoji',
-          icon_background: '',
-          icon_url: '',
-        } as unknown as App,
-      ],
-      has_more: false,
-      limit: 10,
-      page: 1,
-      total: 2,
-    })
-
-    const results = await appAction.search('my app', 'my app', 'en')
-
-    expect(results).toHaveLength(2)
-    expect(results.map((r) => r.id)).toEqual(['app-1', 'app-2'])
-  })
-
-  it('returns empty array when response has no data', async () => {
-    const { fetchAppList } = await import('@/service/apps')
-    vi.mocked(fetchAppList).mockResolvedValue({
-      data: [],
-      has_more: false,
-      limit: 10,
-      page: 1,
-      total: 0,
-    })
-
-    const results = await appAction.search('@app', '', 'en')
-    expect(results).toEqual([])
-  })
-
-  it('returns empty array on API failure', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const { fetchAppList } = await import('@/service/apps')
-    vi.mocked(fetchAppList).mockRejectedValue(new Error('network error'))
-
-    const results = await appAction.search('@app fail', 'fail', 'en')
-    expect(results).toEqual([])
-    expect(warnSpy).toHaveBeenCalledWith('App search failed:', expect.any(Error))
-    warnSpy.mockRestore()
+    expect(
+      workflowOptions.select!(response([app({ id: 'wf-1', mode: 'workflow' })])).map(
+        (result) => result.id,
+      ),
+    ).toEqual(['wf-1', 'wf-1:workflow', 'wf-1:overview', 'wf-1:logs'])
   })
 })

@@ -9,6 +9,16 @@ import { AgentRosterList } from '../agent-roster-list'
 const { duplicateAgentMutationFn } = vi.hoisted(() => ({
   duplicateAgentMutationFn: vi.fn(),
 }))
+const exportAppConfigMock = vi.hoisted(() => vi.fn())
+const downloadBlobMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/apps', () => ({
+  exportAppConfig: exportAppConfigMock,
+}))
+
+vi.mock('@/utils/download', () => ({
+  downloadBlob: downloadBlobMock,
+}))
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
@@ -50,6 +60,7 @@ vi.mock('@/service/client', () => ({
 
 const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
   active_config_is_published: false,
+  app_id: 'app-1',
   description: 'Find and summarize market materials.',
   id: 'agent-1',
   icon: '🧸',
@@ -104,6 +115,7 @@ describe('AgentRosterList', () => {
         name: 'Research Agent copy',
       }),
     )
+    exportAppConfigMock.mockResolvedValue({ data: 'kind: app\napp:\n  mode: agent\n' })
   })
 
   afterEach(() => {
@@ -252,6 +264,27 @@ describe('AgentRosterList', () => {
     expect(descriptionInput).toHaveValue('Find and summarize market materials.')
     expect(descriptionInput).not.toBeRequired()
     expect(duplicateAgentMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('exports the Agent App DSL with the backing App id', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+
+    await waitFor(() => {
+      expect(exportAppConfigMock).toHaveBeenCalledWith({
+        appID: 'app-1',
+        include: false,
+      })
+    })
+    expect(downloadBlobMock).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'Research Agent.yml',
+    })
+    const [{ data }] = downloadBlobMock.mock.calls[0] as [{ data: Blob }]
+    expect(await data.text()).toBe('kind: app\napp:\n  mode: agent\n')
   })
 
   it('uses the latest cached agent detail when opening the duplicate dialog', async () => {

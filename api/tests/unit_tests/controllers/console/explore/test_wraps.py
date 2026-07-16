@@ -24,8 +24,10 @@ from models import AccountTrialAppRecord, App, AppMode, InstalledApp, TrialApp
 
 
 def _bind_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
-    monkeypatch.setattr(model_module.db, "session", sqlite_session)
+    session_proxy = MagicMock(wraps=sqlite_session)
+    session_proxy.return_value = sqlite_session
+    monkeypatch.setattr(wraps_module.db, "session", session_proxy)
+    monkeypatch.setattr(model_module.db, "session", session_proxy)
 
 
 def _app() -> App:

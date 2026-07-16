@@ -69,6 +69,7 @@ from services.errors.account import (
     RefreshTokenAccountNotFoundError,
     RefreshTokenNotFoundError,
     RoleAlreadyAssignedError,
+    SeatsLimitExceededError,
     TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
@@ -329,7 +330,7 @@ class AccountService:
             .limit(1)
         )
         if current_tenant:
-            account.set_tenant_id(current_tenant.tenant_id)
+            account.set_tenant_id_with_session(current_tenant.tenant_id, session=session)
         else:
             available_ta = session.scalar(
                 select(TenantAccountJoin)
@@ -340,7 +341,7 @@ class AccountService:
             if not available_ta:
                 return None
 
-            account.set_tenant_id(available_ta.tenant_id)
+            account.set_tenant_id_with_session(available_ta.tenant_id, session=session)
             available_ta.current = True
             available_ta.last_opened_at = naive_utc_now()
             session.commit()
@@ -349,6 +350,8 @@ class AccountService:
         # NOTE: make sure account is accessible outside of a db session
         # This ensures that it will work correctly after upgrading to Flask version 3.1.2
         session.refresh(account)
+        if session.expire_on_commit and account.current_tenant is not None:
+            session.refresh(account.current_tenant)
         session.close()
         return account
 
@@ -436,6 +439,13 @@ class AccountService:
             from controllers.console.error import AccountNotFound
 
             raise AccountNotFound()
+
+        # A licensed seat is one Account row, deployment-wide; joining an existing
+        # account into another workspace does not pass through here and costs no seat.
+        # is_authenticated=True: server-side enforcement needs the full license payload,
+        # which the enterprise fill withholds from unauthenticated (browser-facing) calls.
+        if not FeatureService.get_system_features(is_authenticated=True).license.seats.is_available():
+            raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
@@ -1287,7 +1297,7 @@ class TenantService:
     def create_owner_tenant_if_not_exist(
         account: Account, name: str | None = None, is_setup: bool | None = False, *, session: Session
     ):
-        """Check if user have a workspace or not"""
+        """Create an owner workspace only when the account has no membership."""
         available_ta = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.account_id == account.id)
@@ -1298,8 +1308,28 @@ class TenantService:
         if available_ta:
             return
 
-        """Create owner tenant if not exist"""
-        if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
+        TenantService.create_owner_tenant(account, name=name, is_setup=is_setup, session=session)
+
+    @staticmethod
+    def create_owner_tenant(
+        account: Account,
+        name: str | None = None,
+        is_setup: bool | None = False,
+        is_from_dashboard: bool | None = False,
+        *,
+        session: Session,
+    ) -> Tenant:
+        """Create an owner workspace and bind its owner RBAC role when enabled.
+
+        This is the single write path for a newly created workspace with an
+        owner. It persists the legacy membership before creating the matching
+        RBAC role binding, then makes the workspace current for the account.
+        """
+        if (
+            not FeatureService.get_system_features().is_allow_create_workspace
+            and not is_setup
+            and not is_from_dashboard
+        ):
             raise WorkSpaceNotAllowedCreateError()
 
         workspaces = FeatureService.get_system_features().license.workspaces
@@ -1307,9 +1337,19 @@ class TenantService:
             raise WorkspacesLimitExceededError()
 
         if name:
-            tenant = TenantService.create_tenant(name=name, is_setup=is_setup, session=session)
+            tenant = TenantService.create_tenant(
+                name=name,
+                is_setup=is_setup,
+                is_from_dashboard=is_from_dashboard,
+                session=session,
+            )
         else:
-            tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup, session=session)
+            tenant = TenantService.create_tenant(
+                name=f"{account.name}'s Workspace",
+                is_setup=is_setup,
+                is_from_dashboard=is_from_dashboard,
+                session=session,
+            )
         TenantService.create_tenant_member(tenant, account, session, role="owner")
         if dify_config.RBAC_ENABLED:
             owner_role_id = AccountService._resolve_legacy_role_id(str(tenant.id), account.id, TenantAccountRole.OWNER)
@@ -1320,9 +1360,10 @@ class TenantService:
                 role_ids=[owner_role_id],
                 session=session,
             )
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=session)
         session.commit()
         tenant_was_created.send(tenant)
+        return tenant
 
     @staticmethod
     def create_tenant_member(
@@ -1542,7 +1583,7 @@ class TenantService:
             tenant_account_join.current = True
             tenant_account_join.last_opened_at = naive_utc_now()
             # Set the current tenant for the account
-            account.set_tenant_id(tenant_account_join.tenant_id)
+            account.set_tenant_id_with_session(tenant_account_join.tenant_id, session=session)
             session.commit()
 
     @staticmethod
@@ -1974,10 +2015,7 @@ class RegisterService:
                 and FeatureService.get_system_features().license.workspaces.is_available()
             ):
                 try:
-                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=session)
-                    TenantService.create_tenant_member(tenant, account, session, role="owner")
-                    account.current_tenant = tenant
-                    tenant_was_created.send(tenant)
+                    TenantService.create_owner_tenant(account, session=session)
                 except Exception:
                     _try_join_enterprise_default_workspace(str(account.id))
                     raise
@@ -1989,6 +2027,10 @@ class RegisterService:
             session.rollback()
             logger.exception("Register failed")
             raise AccountRegisterError("Workspace is not allowed to create.")
+        except SeatsLimitExceededError:
+            session.rollback()
+            logger.exception("Register failed")
+            raise
         except AccountRegisterError as are:
             session.rollback()
             logger.exception("Register failed")
