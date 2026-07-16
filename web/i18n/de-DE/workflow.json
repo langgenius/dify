@@ -1274,6 +1274,7 @@
   "tabs.utilities": "Dienstprogramme",
   "tabs.workflowTool": "Workflow",
   "tracing.stopBy": "Gestoppt von {{user}}",
+  "tracing.terminatedByNodeFailure": "Dieser Knoten selbst ist nicht fehlgeschlagen. Er wurde beendet, weil „{{node}}“ fehlgeschlagen ist: {{error}}",
   "triggerStatus.disabled": "AUSLÖSER • DEAKTIVIERT",
   "triggerStatus.enabled": "AUSLÖSER",
   "variableReference.assignedVarsDescription": "Zugewiesene Variablen müssen beschreibbare Variablen sein, z. B. Konversationsvariablen.",

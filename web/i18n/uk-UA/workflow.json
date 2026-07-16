@@ -1274,6 +1274,7 @@
   "tabs.utilities": "Утиліти",
   "tabs.workflowTool": "Робочий процес",
   "tracing.stopBy": "Зупинено користувачем {{user}}",
+  "tracing.terminatedByNodeFailure": "Сам цей вузол не завершився з помилкою. Його було зупинено, оскільки вузол «{{node}}» завершився з помилкою: {{error}}",
   "triggerStatus.disabled": "ТРІГЕР • ВІДСУТНІЙ",
   "triggerStatus.enabled": "СПУСКОВИЙ МЕХАНІЗМ",
   "variableReference.assignedVarsDescription": "Призначені змінні мають бути доступними для запису, такими як змінні розмови.",

@@ -1274,6 +1274,7 @@
   "tabs.utilities": "Tiện ích",
   "tabs.workflowTool": "Quy trình làm việc",
   "tracing.stopBy": "Dừng bởi {{user}}",
+  "tracing.terminatedByNodeFailure": "Bản thân nút này không gặp lỗi. Nút đã bị kết thúc vì “{{node}}” gặp lỗi: {{error}}",
   "triggerStatus.disabled": "KÍCH HOẠT • VÔ HIỆU HÓA",
   "triggerStatus.enabled": "KÍCH HOẠT",
   "variableReference.assignedVarsDescription": "Các biến được gán phải là các biến có thể ghi, chẳng hạn như các biến hội thoại.",

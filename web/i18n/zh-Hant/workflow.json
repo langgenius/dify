@@ -1274,6 +1274,7 @@
   "tabs.utilities": "工具",
   "tabs.workflowTool": "工作流",
   "tracing.stopBy": "由{{user}}終止",
+  "tracing.terminatedByNodeFailure": "此節點本身未發生錯誤。由於「{{node}}」節點失敗，此節點已終止：{{error}}",
   "triggerStatus.disabled": "觸發器 • 已停用",
   "triggerStatus.enabled": "觸發",
   "variableReference.assignedVarsDescription": "分配的變數必須是可寫變數，例如對話變數。",

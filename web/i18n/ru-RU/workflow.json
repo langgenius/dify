@@ -1274,6 +1274,7 @@
   "tabs.utilities": "Утилиты",
   "tabs.workflowTool": "Рабочий процесс",
   "tracing.stopBy": "Остановлено {{user}}",
+  "tracing.terminatedByNodeFailure": "Сам этот узел не завершился с ошибкой. Он был остановлен, потому что узел «{{node}}» завершился с ошибкой: {{error}}",
   "triggerStatus.disabled": "ТРЕВОГА • ОТКЛЮЧЕНО",
   "triggerStatus.enabled": "СПУСКОВОЙ МЕХАНИЗМ",
   "variableReference.assignedVarsDescription": "Назначаемые переменные должны быть доступными для записи, например переменными беседы.",

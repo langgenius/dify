@@ -1274,6 +1274,7 @@
   "tabs.utilities": "Utilitas",
   "tabs.workflowTool": "Alur kerja",
   "tracing.stopBy": "Singgah di {{user}}",
+  "tracing.terminatedByNodeFailure": "Node ini tidak gagal dengan sendirinya. Node ini dihentikan karena “{{node}}” gagal: {{error}}",
   "triggerStatus.disabled": "PEICU • DINONAKTIFKAN",
   "triggerStatus.enabled": "PEICU",
   "variableReference.assignedVarsDescription": "Variabel yang ditetapkan harus berupa variabel yang dapat ditulis, seperti variabel percakapan.",

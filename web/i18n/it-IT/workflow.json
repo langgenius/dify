@@ -1274,6 +1274,7 @@
   "tabs.utilities": "Utility",
   "tabs.workflowTool": "Workflow",
   "tracing.stopBy": "Interrotto da {{user}}",
+  "tracing.terminatedByNodeFailure": "Questo nodo non ha generato direttamente un errore. È stato terminato perché “{{node}}” non è riuscito: {{error}}",
   "triggerStatus.disabled": "ATTIVATORE • DISABILITATO",
   "triggerStatus.enabled": "GRILLETTO",
   "variableReference.assignedVarsDescription": "Le variabili assegnate devono essere variabili scrivibili, ad esempio variabili di conversazione.",

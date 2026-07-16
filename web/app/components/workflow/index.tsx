@@ -71,6 +71,7 @@ import {
 } from './hooks'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useFailedWorkflowRunReconciliation } from './hooks/use-workflow-run-event/use-workflow-finished'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
 import CustomNode from './nodes'
@@ -777,10 +778,16 @@ type WorkflowWithInnerContextProps = WorkflowProps & {
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
 }
+const FailedWorkflowRunReconciliation = () => {
+  useFailedWorkflowRunReconciliation()
+  return null
+}
+
 export const WorkflowWithInnerContext = memo(
   ({ hooksStore, cursors, myUserId, onlineUsers, ...restProps }: WorkflowWithInnerContextProps) => {
     return (
       <HooksStoreContextProvider {...hooksStore}>
+        <FailedWorkflowRunReconciliation />
         <Workflow {...restProps} cursors={cursors} myUserId={myUserId} onlineUsers={onlineUsers} />
       </HooksStoreContextProvider>
     )

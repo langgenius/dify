@@ -1274,6 +1274,7 @@
   "tabs.utilities": "유틸리티",
   "tabs.workflowTool": "워크플로",
   "tracing.stopBy": "{{user}}에 의해 중지됨",
+  "tracing.terminatedByNodeFailure": "이 노드 자체에서는 오류가 발생하지 않았습니다. “{{node}}” 노드가 실패하여 이 노드가 종료되었습니다: {{error}}",
   "triggerStatus.disabled": "트리거 • 비활성화",
   "triggerStatus.enabled": "트리거",
   "variableReference.assignedVarsDescription": "할당된 변수는 대화 변수와 같은 쓰기 가능한 변수여야 합니다.",

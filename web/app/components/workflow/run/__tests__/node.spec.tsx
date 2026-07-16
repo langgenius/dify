@@ -67,6 +67,50 @@ describe('Run NodePanel', () => {
     })
   })
 
+  it('explains when another node caused the failure', () => {
+    render(
+      <NodePanel
+        nodeInfo={createNodeInfo({
+          expand: true,
+          status: NodeRunningStatus.Failed,
+          error: 'upstream exploded',
+          execution_metadata: {
+            total_tokens: 0,
+            total_price: 0,
+            currency: 'USD',
+            failure_source: {
+              node_execution_id: 'source-execution',
+              node_id: 'source-node',
+              node_title: 'HTTP Request',
+            },
+          },
+        })}
+      />,
+    )
+
+    expect(screen.getByText(/workflow\.tracing\.terminatedByNodeFailure/)).toHaveTextContent(
+      'HTTP Request',
+    )
+    expect(screen.getByText(/workflow\.tracing\.terminatedByNodeFailure/)).toHaveTextContent(
+      'upstream exploded',
+    )
+  })
+
+  it('keeps the original error for a failure without a source', () => {
+    render(
+      <NodePanel
+        nodeInfo={createNodeInfo({
+          expand: true,
+          status: NodeRunningStatus.Failed,
+          error: 'own failure',
+        })}
+      />,
+    )
+
+    expect(screen.getByText('own failure')).toBeInTheDocument()
+    expect(screen.queryByText(/workflow\.tracing\.terminatedByNodeFailure/)).not.toBeInTheDocument()
+  })
+
   it('forwards iteration details through the real iteration trigger', async () => {
     const handleShowIterationDetail = vi.fn()
     const details = [
