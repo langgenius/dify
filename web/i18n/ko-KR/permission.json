@@ -28,6 +28,8 @@
   "accessRule.noDescription": "설명 없음",
   "accessRule.noRules": "접근 규칙 없음",
   "accessRule.noUserAccessSettings": "개별 권한 설정 없음",
+  "accessRule.onlyMe": "나만",
+  "accessRule.onlyMeDescription": "이 리소스에는 본인만 접근할 수 있습니다.",
   "accessRule.permission": "권한",
   "accessRule.resourceOpenScope": "리소스 공개 범위",
   "accessRule.resourceOpenScopeDescription": "이 리소스를 누구에게 공개할지 선택합니다. 각 멤버가 할 수 있는 작업은 여전히 역할 권한이 결정합니다.",

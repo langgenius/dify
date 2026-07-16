@@ -15,7 +15,10 @@ type PopoverProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
-type PopoverTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode, asChild?: boolean }
+type PopoverTriggerProps = React.HTMLAttributes<HTMLElement> & {
+  children?: React.ReactNode
+  asChild?: boolean
+}
 type PopoverContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
 
 vi.mock('@langgenius/dify-ui/popover', () => {
@@ -34,8 +37,7 @@ vi.mock('@langgenius/dify-ui/popover', () => {
 
   const PopoverContent = ({ children, ...props }: PopoverContentProps) => {
     const { open } = React.useContext(PopoverContext)
-    if (!open)
-      return null
+    if (!open) return null
     return (
       <div data-testid="popover-content" {...props}>
         {children}
@@ -43,19 +45,23 @@ vi.mock('@langgenius/dify-ui/popover', () => {
     )
   }
 
-  const PopoverTrigger = ({ children, asChild, render, ...props }: PopoverTriggerProps & { render?: React.ReactNode }) => {
+  const PopoverTrigger = ({
+    children,
+    asChild,
+    render,
+    ...props
+  }: PopoverTriggerProps & { render?: React.ReactNode }) => {
     const { open, onOpenChange } = React.useContext(PopoverContext)
     const content = render ?? children
     const handleClick = (e: React.MouseEvent<HTMLElement>) => {
       props.onClick?.(e)
-      if (!props.onClick)
-        onOpenChange?.(!open)
+      if (!props.onClick) onOpenChange?.(!open)
     }
 
     if (React.isValidElement(content)) {
       return React.cloneElement(content, {
         ...props,
-        'onClick': handleClick,
+        onClick: handleClick,
         'data-testid': 'popover-trigger',
       } as React.HTMLAttributes<HTMLElement>)
     }
@@ -63,7 +69,7 @@ vi.mock('@langgenius/dify-ui/popover', () => {
     if (asChild && React.isValidElement(children)) {
       return React.cloneElement(children, {
         ...props,
-        'onClick': handleClick,
+        onClick: handleClick,
         'data-testid': 'popover-trigger',
       } as React.HTMLAttributes<HTMLElement>)
     }
@@ -173,7 +179,9 @@ describe('VarPicker', () => {
       // Assert
       // Assert
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should display custom tip message when notSelectedVarTip is provided', () => {
@@ -242,9 +250,7 @@ describe('VarPicker', () => {
       const props = {
         ...defaultProps,
         value: 'customVar',
-        options: [
-          { name: 'Custom Variable', value: 'customVar', type: 'string' },
-        ],
+        options: [{ name: 'Custom Variable', value: 'customVar', type: 'string' }],
       }
 
       // Act
@@ -415,7 +421,9 @@ describe('VarPicker', () => {
 
       // Assert
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'),
+      )!.toBeInTheDocument()
       expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
 
@@ -433,7 +441,9 @@ describe('VarPicker', () => {
       // Assert
       // Assert
       expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should handle null value without crashing', () => {
@@ -448,7 +458,9 @@ describe('VarPicker', () => {
 
       // Assert
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should handle variable names with special characters safely', () => {
@@ -474,7 +486,11 @@ describe('VarPicker', () => {
       const props = {
         ...defaultProps,
         options: [
-          { name: 'A very long variable name that should be truncated', value: 'longVar', type: 'string' },
+          {
+            name: 'A very long variable name that should be truncated',
+            value: 'longVar',
+            type: 'string',
+          },
         ],
         value: 'longVar',
       }

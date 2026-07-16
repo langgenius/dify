@@ -1,5 +1,14 @@
-import type { DefaultModel, Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ConfigurationMethodEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  DefaultModel,
+  Model,
+  ModelItem,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ConfigurationMethodEnum,
+  ModelFeatureEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { IndexingType } from '../../../create/step-two'
 import { checkShowMultiModalTip } from '../index'
 
@@ -42,11 +51,7 @@ describe('checkShowMultiModalTip', () => {
         createModelItem('text-embedding-ada-002', [ModelFeatureEnum.vision]),
       ]),
     ],
-    rerankModelList: [
-      createModelProvider('cohere', [
-        createModelItem('rerank-english-v2.0', []),
-      ]),
-    ],
+    rerankModelList: [createModelProvider('cohere', [createModelItem('rerank-english-v2.0', [])])],
   }
 
   describe('Return false conditions', () => {
@@ -194,11 +199,7 @@ describe('checkShowMultiModalTip', () => {
             createModelItem('azure-embedding', [ModelFeatureEnum.vision]),
           ]),
         ],
-        rerankModelList: [
-          createModelProvider('jina', [
-            createModelItem('jina-reranker', []),
-          ]),
-        ],
+        rerankModelList: [createModelProvider('jina', [createModelItem('jina-reranker', [])])],
       })
       expect(result).toBe(true)
     })
@@ -236,9 +237,7 @@ describe('checkShowMultiModalTip', () => {
 
       const result = checkShowMultiModalTip({
         ...defaultProps,
-        embeddingModelList: [
-          createModelProvider('openai', [modelItem]),
-        ],
+        embeddingModelList: [createModelProvider('openai', [modelItem])],
       })
       expect(result).toBe(false)
     })
@@ -258,9 +257,7 @@ describe('checkShowMultiModalTip', () => {
 
       const result = checkShowMultiModalTip({
         ...defaultProps,
-        embeddingModelList: [
-          createModelProvider('openai', [modelItem]),
-        ],
+        embeddingModelList: [createModelProvider('openai', [modelItem])],
       })
       expect(result).toBe(false)
     })
@@ -283,9 +280,7 @@ describe('checkShowMultiModalTip', () => {
       const result = checkShowMultiModalTip({
         ...defaultProps,
         embeddingModelList: [
-          createModelProvider('azure', [
-            createModelItem('azure-model', []),
-          ]),
+          createModelProvider('azure', [createModelItem('azure-model', [])]),
           createModelProvider('openai', [
             createModelItem('text-embedding-ada-002', [ModelFeatureEnum.vision]),
           ]),

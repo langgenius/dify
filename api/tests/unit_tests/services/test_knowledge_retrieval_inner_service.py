@@ -98,6 +98,8 @@ class TestInnerKnowledgeRetrievalService:
             "total_price": "0",
             "currency": "USD",
             "latency": 0,
+            "time_to_first_token": None,
+            "time_to_generate": None,
         }
         mock_rag_cls.return_value = rag
 

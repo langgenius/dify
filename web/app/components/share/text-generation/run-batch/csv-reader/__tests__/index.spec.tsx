@@ -14,7 +14,15 @@ let capturedHandlers: CSVReaderHandlers = {}
 
 vi.mock('react-papaparse', () => ({
   useCSVReader: () => ({
-    CSVReader: ({ children, ...handlers }: { children: (ctx: { getRootProps: () => Record<string, string>, acceptedFile: { name: string } | null }) => React.ReactNode } & CSVReaderHandlers) => {
+    CSVReader: ({
+      children,
+      ...handlers
+    }: {
+      children: (ctx: {
+        getRootProps: () => Record<string, string>
+        acceptedFile: { name: string } | null
+      }) => React.ReactNode
+    } & CSVReaderHandlers) => {
       capturedHandlers = handlers
       return (
         <div data-testid="csv-reader-wrapper">
@@ -64,14 +72,18 @@ describe('CSVReader', () => {
       capturedHandlers.onDragOver?.(dragEvent)
     })
     await waitFor(() => {
-      expect(screen.getByTestId('drop-zone')).toHaveClass('border-components-dropzone-border-accent')
+      expect(screen.getByTestId('drop-zone')).toHaveClass(
+        'border-components-dropzone-border-accent',
+      )
     })
 
     await act(async () => {
       capturedHandlers.onDragLeave?.(dragEvent)
     })
     await waitFor(() => {
-      expect(screen.getByTestId('drop-zone')).not.toHaveClass('border-components-dropzone-border-accent')
+      expect(screen.getByTestId('drop-zone')).not.toHaveClass(
+        'border-components-dropzone-border-accent',
+      )
     })
   })
 })

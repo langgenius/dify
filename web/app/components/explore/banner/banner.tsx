@@ -1,154 +1,217 @@
+import type { ComponentProps, FocusEvent } from 'react'
 import type { Banner as BannerType } from '@/models/app'
-import * as React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
-import { useSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
 import { BannerItem } from './banner-item'
+import { IndicatorButton } from './indicator-button'
 
 const AUTOPLAY_DELAY = 5000
-const RESIZE_DEBOUNCE_DELAY = 50
+const CAROUSEL_OPTIONS = {
+  loop: true,
+  watchDrag: (_api, event) =>
+    !(event.target instanceof Element && event.target.closest('[data-carousel-control]')),
+} satisfies NonNullable<ComponentProps<typeof Carousel>['opts']>
 
-type BannerImpressionTrackerProps = {
+type BannerCarouselContentProps = {
   banners: BannerType[]
   accountId?: string
   language: string
-  trackedBannerIdsRef: React.MutableRefObject<Set<string>>
 }
 
-function BannerImpressionTracker({
-  banners,
-  accountId,
-  language,
-  trackedBannerIdsRef,
-}: BannerImpressionTrackerProps) {
-  const { selectedIndex } = useCarousel()
+function BannerCarouselContent({ banners, accountId, language }: BannerCarouselContentProps) {
+  const { t } = useTranslation()
+  const { api, selectedIndex } = useCarousel()
+  const [isPlaying, setIsPlaying] = useState(false)
+  const trackedBannerKeysRef = useRef(new Set<string>())
+  const shouldResumeAfterFocusRef = useRef(false)
+  const nextIndex = (selectedIndex + 1) % banners.length
+  const activeBanner = banners[selectedIndex]
+  const trackingKey = accountId && activeBanner ? `${accountId}:${activeBanner.id}` : null
+
+  const pauseRotationForFocus = () => {
+    const autoplay = api?.plugins().autoplay
+    if (!autoplay?.isPlaying()) return
+
+    shouldResumeAfterFocusRef.current = true
+    autoplay.stop()
+  }
+
+  const resumeRotationAfterFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget)) return
+    if (!shouldResumeAfterFocusRef.current) return
+
+    shouldResumeAfterFocusRef.current = false
+    api?.plugins().autoplay?.play()
+  }
+
+  const selectBanner = (index: number) => {
+    if (!api || index === selectedIndex) return
+    api.scrollTo(index)
+  }
 
   useEffect(() => {
-    if (!accountId)
-      return
-
-    const currentBanner = banners[selectedIndex]
-    if (!currentBanner || trackedBannerIdsRef.current.has(currentBanner.id))
-      return
+    if (!accountId || !activeBanner || !trackingKey) return
+    if (trackedBannerKeysRef.current.has(trackingKey)) return
 
     trackEvent('explore_banner_impression', {
-      banner_id: currentBanner.id,
-      title: currentBanner.content.title,
+      banner_id: activeBanner.id,
+      title: activeBanner.content.title,
       sort: selectedIndex + 1,
-      link: currentBanner.link,
+      link: activeBanner.link,
       page: 'explore',
       language,
       account_id: accountId,
       event_time: Date.now(),
     })
-    trackedBannerIdsRef.current.add(currentBanner.id)
-  }, [accountId, banners, language, selectedIndex, trackedBannerIdsRef])
+    trackedBannerKeysRef.current.add(trackingKey)
+  }, [accountId, activeBanner, language, selectedIndex, trackingKey])
 
-  return null
+  useEffect(() => {
+    if (!api) return
+
+    const handleAutoplayPlay = () => setIsPlaying(true)
+    const handleAutoplayStop = () => setIsPlaying(false)
+
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Embla owns this external playback state.
+    setIsPlaying(api.plugins().autoplay?.isPlaying() ?? false)
+    api.on('autoplay:play', handleAutoplayPlay)
+    api.on('autoplay:stop', handleAutoplayStop)
+
+    return () => {
+      api.off('autoplay:play', handleAutoplayPlay)
+      api.off('autoplay:stop', handleAutoplayStop)
+    }
+  }, [api])
+
+  const controls =
+    banners.length > 1 ? (
+      <div
+        data-carousel-control
+        role="group"
+        aria-label={t(($) => $['pagination.pageNumber'], { ns: 'common' })}
+        className="pointer-events-auto flex h-7 min-w-0 shrink-0 items-center gap-2 @min-[996px]/banner:max-w-150 @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:pr-10"
+        onFocusCapture={pauseRotationForFocus}
+        onBlurCapture={resumeRotationAfterFocus}
+      >
+        <div className="flex items-center gap-0.5">
+          {banners.map((banner, index) => (
+            <IndicatorButton
+              key={banner.id}
+              index={index}
+              label={`${String(index + 1).padStart(2, '0')} ${banner.content.title}`}
+              isCurrent={index === selectedIndex}
+              isNextSlide={index === nextIndex}
+              autoplayDelay={AUTOPLAY_DELAY}
+              isPaused={!isPlaying}
+              onClick={() => selectBanner(index)}
+            />
+          ))}
+        </div>
+        <div className="hidden h-px flex-1 bg-divider-regular @min-[1068px]/banner:block" />
+      </div>
+    ) : null
+  const hasFooter = Boolean(activeBanner?.link || controls)
+
+  return (
+    <>
+      <Carousel.Content aria-live={isPlaying ? 'off' : 'polite'}>
+        {banners.map((banner, index) => {
+          const isActive = index === selectedIndex
+
+          return (
+            <Carousel.Item
+              key={banner.id}
+              data-banner-id={banner.id}
+              aria-label={banner.content.title}
+              aria-hidden={!isActive}
+              inert={!isActive}
+            >
+              <BannerItem
+                banner={banner}
+                sort={index + 1}
+                language={language}
+                accountId={accountId}
+              />
+            </Carousel.Item>
+          )
+        })}
+      </Carousel.Content>
+
+      {hasFooter ? (
+        <div className="pointer-events-none absolute right-4 bottom-6 left-8 z-40 flex min-w-0 items-center justify-between gap-4 @min-[720px]/banner:right-64 @min-[996px]/banner:right-60 @min-[996px]/banner:flex-wrap @min-[996px]/banner:justify-start @min-[996px]/banner:gap-1">
+          {activeBanner?.link ? (
+            <div className="flex min-w-0 items-center gap-1.5 py-1 @min-[996px]/banner:max-w-170 @min-[996px]/banner:min-w-120 @min-[996px]/banner:flex-[1_0_0]">
+              <span className="flex size-4 items-center justify-center rounded-full bg-text-accent p-0.5">
+                <span
+                  className="i-ri-arrow-right-line size-3 text-text-primary-on-surface"
+                  aria-hidden="true"
+                />
+              </span>
+              <span className="truncate system-sm-semibold-uppercase text-text-accent">
+                {t(($) => $['banner.viewMore'], { ns: 'explore' })}
+              </span>
+            </div>
+          ) : null}
+          {controls}
+        </div>
+      ) : null}
+    </>
+  )
 }
 
 type BannerProps = {
   banners: BannerType[]
 }
 
-function Banner({
-  banners,
-}: BannerProps) {
+export function Banner({ banners }: BannerProps) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const accountId = useSelector(s => s.userProfile.id)
-  const userName = useSelector(s => s.userProfile.name)
-  const [isHovered, setIsHovered] = useState(false)
-  const [isResizing, setIsResizing] = useState(false)
-  const resizeTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const trackedBannerIdsRef = useRef<Set<string>>(new Set())
-
-  const enabledBanners = useMemo(
-    () => banners?.filter(banner => banner.status === 'enabled') ?? [],
-    [banners],
-  )
-
-  const isPaused = isHovered || isResizing
-  const notShowSlider = enabledBanners.length === 0
-
-  // Handle window resize to pause animation
-  useEffect(() => {
-    const handleResize = () => {
-      setIsResizing(true)
-
-      if (resizeTimerRef.current)
-        clearTimeout(resizeTimerRef.current)
-
-      resizeTimerRef.current = setTimeout(() => {
-        setIsResizing(false)
-      }, RESIZE_DEBOUNCE_DELAY)
-    }
-
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      if (resizeTimerRef.current)
-        clearTimeout(resizeTimerRef.current)
-    }
-  }, [])
+  const userProfile = useAtomValue(userProfileAtom)
+  const enabledBanners = banners.filter((banner) => banner.status === 'enabled')
+  const carouselLabel = enabledBanners[0]?.content.category || enabledBanners[0]?.content.title
+  const [carouselPlugins] = useState(() => [
+    Carousel.Plugin.Fade(),
+    Carousel.Plugin.Autoplay({
+      delay: AUTOPLAY_DELAY,
+      stopOnFocusIn: true,
+      stopOnInteraction: false,
+      stopOnMouseEnter: true,
+      breakpoints: {
+        '(prefers-reduced-motion: reduce)': { active: false },
+      },
+    }),
+  ])
 
   return (
-    <div
-      className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4">
       <div className="flex w-full flex-col gap-1">
         <p className="truncate title-3xl-semi-bold text-text-primary">
-          {t('banner.greeting', { name: userName, ns: 'explore' })}
+          {t(($) => $['banner.greeting'], { name: userProfile.name, ns: 'explore' })}
         </p>
         <p className="truncate body-sm-regular text-text-secondary">
-          {t('banner.tagline', { ns: 'explore' })}
+          {t(($) => $['banner.tagline'], { ns: 'explore' })}
         </p>
       </div>
 
-      {!notShowSlider
-        && (
-          <Carousel
-            opts={{ loop: true }}
-            plugins={[
-              Carousel.Plugin.Fade(),
-              Carousel.Plugin.Autoplay({
-                delay: AUTOPLAY_DELAY,
-                stopOnInteraction: false,
-                stopOnMouseEnter: true,
-              }),
-            ]}
-            className="w-full rounded-2xl"
-          >
-            <BannerImpressionTracker
-              banners={enabledBanners}
-              accountId={accountId}
-              language={locale}
-              trackedBannerIdsRef={trackedBannerIdsRef}
-            />
-            <Carousel.Content>
-              {enabledBanners.map((banner, index) => (
-                <Carousel.Item key={banner.id} data-banner-id={banner.id}>
-                  <BannerItem
-                    banner={banner}
-                    autoplayDelay={AUTOPLAY_DELAY}
-                    isPaused={isPaused}
-                    sort={index + 1}
-                    language={locale}
-                    accountId={accountId}
-                  />
-                </Carousel.Item>
-              ))}
-            </Carousel.Content>
-          </Carousel>
-        )}
+      {enabledBanners.length > 0 ? (
+        <Carousel
+          opts={CAROUSEL_OPTIONS}
+          plugins={carouselPlugins}
+          aria-label={carouselLabel}
+          className="@container/banner w-full rounded-2xl"
+        >
+          <BannerCarouselContent
+            banners={enabledBanners}
+            accountId={userProfile.id}
+            language={locale}
+          />
+        </Carousel>
+      ) : null}
     </div>
   )
 }
-
-export default React.memo(Banner)

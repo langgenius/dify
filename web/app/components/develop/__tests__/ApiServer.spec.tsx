@@ -4,15 +4,14 @@ import { act } from 'react'
 import ApiServer from '../ApiServer'
 
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
-    isShow
-      ? (
-          <div role="dialog" aria-label="Secret key">
-            <button type="button" onClick={onClose}>Close Modal</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({ isShow, onClose }: { isShow: boolean; onClose: () => void }) =>
+    isShow ? (
+      <div role="dialog" aria-label="Secret key">
+        <button type="button" onClick={onClose}>
+          Close Modal
+        </button>
+      </div>
+    ) : null,
 }))
 
 describe('ApiServer', () => {

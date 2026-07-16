@@ -2,6 +2,7 @@ import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { Flags } from '@/framework/flags'
 import { realStreams } from '@/sys/io/streams'
+import { enforceDifyVersion } from '@/version/enforce'
 import { agentGuide } from './guide'
 import { runLogin } from './login'
 
@@ -17,7 +18,7 @@ export default class Login extends DifyCommand {
   ]
 
   static override flags = {
-    'host': Flags.string({
+    host: Flags.string({
       description: 'Dify host URL',
       default: '',
     }),
@@ -25,8 +26,8 @@ export default class Login extends DifyCommand {
       description: 'do not auto-open the browser',
       default: false,
     }),
-    'insecure': Flags.boolean({
-      description: 'allow http:// hosts (local-dev only)',
+    insecure: Flags.boolean({
+      description: 'allow http:// hosts and skip TLS certificate verification (local-dev only)',
       default: false,
     }),
   }
@@ -38,6 +39,9 @@ export default class Login extends DifyCommand {
       host: flags.host,
       noBrowser: flags['no-browser'],
       insecure: flags.insecure,
+      verifyServer: async (host) => {
+        await enforceDifyVersion(host, { forceFresh: true, insecure: flags.insecure })
+      },
     })
   }
 

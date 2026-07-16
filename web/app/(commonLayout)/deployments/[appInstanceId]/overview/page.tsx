@@ -1,8 +1,5 @@
-import { OverviewTab } from '@/features/deployments/detail/overview-tab'
+import { DeploymentOverview } from '@/features/deployments/detail/overview'
 
-export default async function InstanceDetailOverviewPage({ params }: {
-  params: Promise<{ appInstanceId: string }>
-}) {
-  const { appInstanceId } = await params
-  return <OverviewTab appInstanceId={appInstanceId} />
+export default function InstanceDetailOverviewPage() {
+  return <DeploymentOverview />
 }

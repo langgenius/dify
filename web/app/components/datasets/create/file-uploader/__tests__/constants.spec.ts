@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  PROGRESS_COMPLETE,
-  PROGRESS_ERROR,
-  PROGRESS_NOT_STARTED,
-} from '../constants'
+import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../constants'
 
 describe('file-uploader constants', () => {
   // Verify progress sentinel values

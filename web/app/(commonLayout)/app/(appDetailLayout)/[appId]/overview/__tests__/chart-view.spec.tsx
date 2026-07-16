@@ -15,16 +15,10 @@ const testState = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T => selector({
-    appDetail: testState.appDetail,
-  }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: testState.currentUserId },
-    workspacePermissionKeys: testState.workspacePermissionKeys,
-  })),
+  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
+    selector({
+      appDetail: testState.appDetail,
+    }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -108,7 +102,9 @@ describe('ChartView monitor permission', () => {
     it('should not render monitoring charts when app monitor permission is missing', () => {
       render(<ChartView appId="app-1" headerRight={<button type="button">header action</button>} />)
 
-      expect(screen.queryByRole('heading', { name: 'common.appMenus.overview' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'common.appMenus.overview' }),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('header action')).not.toBeInTheDocument()
       expect(testState.chartRenderSpy).not.toHaveBeenCalled()
     })

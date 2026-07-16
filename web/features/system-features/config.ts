@@ -24,6 +24,11 @@ export const defaultSystemFeatures = {
       size: 0,
       limit: 0,
     },
+    seats: {
+      enabled: false,
+      size: 0,
+      limit: 0,
+    },
   },
   branding: {
     enabled: false,

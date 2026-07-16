@@ -40,6 +40,7 @@ export type BrandingModel = {
 
 export type LicenseModel = {
   expired_at: string
+  seats: LicenseLimitationModel
   status: LicenseStatus
   workspaces: LicenseLimitationModel
 }
@@ -61,19 +62,19 @@ export type WebAppAuthModel = {
   sso_config: WebAppAuthSsoModel
 }
 
-export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
-
 export type LicenseLimitationModel = {
   enabled: boolean
   limit: number
   size: number
 }
 
-export type PluginInstallationScope
-  = | 'all'
-    | 'none'
-    | 'official_and_specific_partners'
-    | 'official_only'
+export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
+
+export type PluginInstallationScope =
+  | 'all'
+  | 'none'
+  | 'official_and_specific_partners'
+  | 'official_only'
 
 export type WebAppAuthSsoModel = {
   protocol: string

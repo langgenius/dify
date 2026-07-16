@@ -1,4 +1,12 @@
-import type { Dependency, GitHubItemAndMarketPlaceDependency, InstallStatus, PackageDependency, Plugin, PluginDeclaration, VersionProps } from '../../../types'
+import type {
+  Dependency,
+  GitHubItemAndMarketPlaceDependency,
+  InstallStatus,
+  PackageDependency,
+  Plugin,
+  PluginDeclaration,
+  VersionProps,
+} from '../../../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
@@ -86,13 +94,14 @@ const createMockPackageDependency = (): PackageDependency => ({
   },
 })
 
-const createMockDependency = (overrides: Partial<Dependency> = {}): Dependency => ({
-  type: 'marketplace',
-  value: {
-    plugin_unique_identifier: 'test-plugin-uid',
-  },
-  ...overrides,
-} as Dependency)
+const createMockDependency = (overrides: Partial<Dependency> = {}): Dependency =>
+  ({
+    type: 'marketplace',
+    value: {
+      plugin_unique_identifier: 'test-plugin-uid',
+    },
+    ...overrides,
+  }) as Dependency
 
 const createMockDependencies = (): Dependency[] => [
   {
@@ -164,7 +173,8 @@ vi.mock('../../hooks/use-install-plugin-limit', () => ({
 // Mock useUploadGitHub hook
 const mockUseUploadGitHub = vi.fn()
 vi.mock('@/service/use-plugins', () => ({
-  useUploadGitHub: (params: { repo: string, version: string, package: string }) => mockUseUploadGitHub(params),
+  useUploadGitHub: (params: { repo: string; version: string; package: string }) =>
+    mockUseUploadGitHub(params),
   useInstallOrUpdate: () => ({ mutate: vi.fn(), isPending: false }),
   usePluginTaskList: () => ({ handleRefetch: vi.fn() }),
   useFetchPluginsInMarketPlaceByInfo: () => ({ isLoading: false, data: null, error: null }),
@@ -224,13 +234,33 @@ vi.mock('../ready-to-install', () => ({
     <div data-testid="ready-to-install">
       <span data-testid="current-step">{step}</span>
       <span data-testid="plugins-count">{allPlugins?.length || 0}</span>
-      <button data-testid="start-install-btn" onClick={onStartToInstall}>Start Install</button>
-      <button data-testid="set-installing-true" onClick={() => setIsInstalling(true)}>Set Installing True</button>
-      <button data-testid="set-installing-false" onClick={() => setIsInstalling(false)}>Set Installing False</button>
-      <button data-testid="change-to-installed" onClick={() => onStepChange(InstallStep.installed)}>Change to Installed</button>
-      <button data-testid="change-to-upload-failed" onClick={() => onStepChange(InstallStep.uploadFailed)}>Change to Upload Failed</button>
-      <button data-testid="change-to-ready" onClick={() => onStepChange(InstallStep.readyToInstall)}>Change to Ready</button>
-      <button data-testid="close-btn" onClick={onClose}>Close</button>
+      <button data-testid="start-install-btn" onClick={onStartToInstall}>
+        Start Install
+      </button>
+      <button data-testid="set-installing-true" onClick={() => setIsInstalling(true)}>
+        Set Installing True
+      </button>
+      <button data-testid="set-installing-false" onClick={() => setIsInstalling(false)}>
+        Set Installing False
+      </button>
+      <button data-testid="change-to-installed" onClick={() => onStepChange(InstallStep.installed)}>
+        Change to Installed
+      </button>
+      <button
+        data-testid="change-to-upload-failed"
+        onClick={() => onStepChange(InstallStep.uploadFailed)}
+      >
+        Change to Upload Failed
+      </button>
+      <button
+        data-testid="change-to-ready"
+        onClick={() => onStepChange(InstallStep.readyToInstall)}
+      >
+        Change to Ready
+      </button>
+      <button data-testid="close-btn" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -264,7 +294,9 @@ describe('InstallBundle', () => {
     it('should constrain modal height to the viewport', () => {
       render(<InstallBundle {...defaultProps} />)
 
-      expect(screen.getByText('plugin.installModal.installPlugin').parentElement?.parentElement).toHaveClass('max-h-[calc(100dvh-48px)]')
+      expect(
+        screen.getByText('plugin.installModal.installPlugin').parentElement?.parentElement,
+      ).toHaveClass('max-h-[calc(100dvh-48px)]')
     })
 
     it('should render ReadyToInstall component', () => {
@@ -497,9 +529,7 @@ describe('InstallBundle', () => {
       const onClose = vi.fn()
       const payload = createMockDependencies()
 
-      const { rerender } = render(
-        <InstallBundle fromDSLPayload={payload} onClose={onClose} />,
-      )
+      const { rerender } = render(<InstallBundle fromDSLPayload={payload} onClose={onClose} />)
 
       // Re-render with same props reference
       rerender(<InstallBundle fromDSLPayload={payload} onClose={onClose} />)
@@ -650,9 +680,7 @@ describe('InstallBundle', () => {
       const types = [InstallType.fromLocal, InstallType.fromMarketplace, InstallType.fromDSL]
 
       types.forEach((type) => {
-        const { unmount } = render(
-          <InstallBundle {...defaultProps} installType={type} />,
-        )
+        const { unmount } = render(<InstallBundle {...defaultProps} installType={type} />)
         expect(screen.getByTestId('ready-to-install')).toBeInTheDocument()
         unmount()
       })
@@ -709,7 +737,12 @@ describe('InstallBundle', () => {
     })
 
     it('should use default installType when not provided', () => {
-      render(<InstallBundle fromDSLPayload={defaultProps.fromDSLPayload} onClose={defaultProps.onClose} />)
+      render(
+        <InstallBundle
+          fromDSLPayload={defaultProps.fromDSLPayload}
+          onClose={defaultProps.onClose}
+        />,
+      )
 
       // Default is fromMarketplace which results in readyToInstall
       expect(screen.getByTestId('current-step')).toHaveTextContent(InstallStep.readyToInstall)
@@ -983,7 +1016,9 @@ describe('Installed', () => {
     it('should not render close button when isHideButton is true', () => {
       render(<Installed {...defaultInstalledProps} isHideButton={true} />)
 
-      expect(screen.queryByRole('button', { name: 'common.operation.close' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.close' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -1053,7 +1088,8 @@ describe('LoadedItem', () => {
     vi.clearAllMocks()
   })
 
-  const getCheckbox = () => screen.getByRole('checkbox', { name: defaultLoadedItemProps.payload.name })
+  const getCheckbox = () =>
+    screen.getByRole('checkbox', { name: defaultLoadedItemProps.payload.name })
 
   // ================================
   // Rendering Tests
@@ -1139,7 +1175,8 @@ describe('MarketplaceItem', () => {
     vi.clearAllMocks()
   })
 
-  const getCheckbox = () => screen.getByRole('checkbox', { name: defaultMarketplaceItemProps.payload.name })
+  const getCheckbox = () =>
+    screen.getByRole('checkbox', { name: defaultMarketplaceItemProps.payload.name })
 
   // ================================
   // Rendering Tests

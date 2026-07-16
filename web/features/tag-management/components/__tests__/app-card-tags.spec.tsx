@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AppCardTags } from '../app-card-tags'
@@ -19,17 +19,21 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
 
     return (
       <div role="group" aria-label="Tag selector mock">
-        <span>{props.value.map(tag => tag.name).join(',')}</span>
-        <button type="button" onClick={props.onOpenTagManagement}>Manage Tags</button>
-        <button type="button" onClick={props.onTagsChange}>Tags Changed</button>
+        <span>{props.value.map((tag) => tag.name).join(',')}</span>
+        <button type="button" onClick={props.onOpenTagManagement}>
+          Manage Tags
+        </button>
+        <button type="button" onClick={props.onTagsChange}>
+          Tags Changed
+        </button>
       </div>
     )
   },
 }))
 
 const tags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 1 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 2 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
 ]
 
 describe('AppCardTags', () => {
@@ -43,13 +47,15 @@ describe('AppCardTags', () => {
 
       expect(screen.getByRole('group', { name: 'Tag selector mock' })).toBeInTheDocument()
       expect(screen.getByText('Frontend,Backend')).toBeInTheDocument()
-      expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
-        placement: 'bottom-start',
-        targetId: 'app-1',
-        type: 'app',
-        value: tags,
-        canBindOrUnbindTags: undefined,
-      }))
+      expect(renderTagSelector).toHaveBeenCalledWith(
+        expect.objectContaining({
+          placement: 'bottom-start',
+          targetId: 'app-1',
+          type: 'app',
+          value: tags,
+          canBindOrUnbindTags: undefined,
+        }),
+      )
     })
 
     it('should keep the overflow mask independent from app card hover', () => {
@@ -89,17 +95,21 @@ describe('AppCardTags', () => {
     it('should pass an empty selection when the app has no tags', () => {
       render(<AppCardTags appId="app-1" tags={[]} />)
 
-      expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
-        value: [],
-      }))
+      expect(renderTagSelector).toHaveBeenCalledWith(
+        expect.objectContaining({
+          value: [],
+        }),
+      )
     })
 
     it('should forward app ACL tag binding capability', () => {
       render(<AppCardTags appId="app-1" tags={tags} canBindOrUnbindTags={false} />)
 
-      expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
-        canBindOrUnbindTags: false,
-      }))
+      expect(renderTagSelector).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canBindOrUnbindTags: false,
+        }),
+      )
     })
   })
 })

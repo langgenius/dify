@@ -37,6 +37,11 @@ describe('InputTypeSelect Trigger', () => {
       />,
     )
 
-    expect(screen.getByText('Text Input').parentElement).toHaveClass('flex', 'min-w-0', 'items-center', 'gap-x-0.5')
+    expect(screen.getByText('Text Input').parentElement).toHaveClass(
+      'flex',
+      'min-w-0',
+      'items-center',
+      'gap-x-0.5',
+    )
   })
 })

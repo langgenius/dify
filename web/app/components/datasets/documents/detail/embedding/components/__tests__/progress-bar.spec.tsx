@@ -28,7 +28,14 @@ describe('ProgressBar', () => {
     it('should render progress bar container with correct classes', () => {
       const { container } = render(<ProgressBar {...defaultProps} />)
       const { wrapper } = getProgressElements(container)
-      expect(wrapper).toHaveClass('flex', 'h-2', 'w-full', 'items-center', 'overflow-hidden', 'rounded-md')
+      expect(wrapper).toHaveClass(
+        'flex',
+        'h-2',
+        'w-full',
+        'items-center',
+        'overflow-hidden',
+        'rounded-md',
+      )
     })
 
     it('should render inner progress bar with transition classes', () => {

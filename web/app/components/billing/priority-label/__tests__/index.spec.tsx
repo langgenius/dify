@@ -100,7 +100,9 @@ describe('PriorityLabel', () => {
       renderPriorityLabel()
 
       expect(screen.getByText('billing.plansCommon.priority.standard')).toBeInTheDocument()
-      expect(screen.queryByText('billing.plansCommon.documentProcessingPriority')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('billing.plansCommon.documentProcessingPriority'),
+      ).not.toBeInTheDocument()
     })
 
     it('should render a top priority trigger without mounting upgrade tip by default', () => {
@@ -109,7 +111,9 @@ describe('PriorityLabel', () => {
       renderPriorityLabel()
 
       expect(screen.getByText('billing.plansCommon.priority.top-priority')).toBeInTheDocument()
-      expect(screen.queryByText('billing.plansCommon.documentProcessingPriorityTip')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('billing.plansCommon.documentProcessingPriorityTip'),
+      ).not.toBeInTheDocument()
     })
   })
 })

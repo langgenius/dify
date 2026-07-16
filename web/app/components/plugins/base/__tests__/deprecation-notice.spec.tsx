@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DeprecationNotice from '../deprecation-notice'
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
-    <a data-testid="link" href={href}>{children}</a>
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a data-testid="link" href={href}>
+      {children}
+    </a>
   ),
 }))
 
@@ -50,7 +52,7 @@ describe('DeprecationNotice', () => {
         alternativePluginURL="/plugins/better-plugin"
       />,
     )
-    expect(screen.getByText('detailPanel.deprecation.fullMessage')).toBeInTheDocument()
+    expect(screen.getByText('plugin.detailPanel.deprecation.fullMessage')).toBeInTheDocument()
   })
 
   it('renders only reason without alternative plugin', () => {

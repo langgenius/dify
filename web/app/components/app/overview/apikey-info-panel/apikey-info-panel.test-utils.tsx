@@ -4,8 +4,10 @@ import type { ModalContextState } from '@/context/modal-context'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
-import { useModalContext as actualUseModalContext, useModalContextSelector as actualUseModalContextSelector } from '@/context/modal-context'
-
+import {
+  useModalContext as actualUseModalContext,
+  useModalContextSelector as actualUseModalContextSelector,
+} from '@/context/modal-context'
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
 import APIKeyInfoPanel from './index'
 
@@ -30,9 +32,13 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 // Type casting for mocks
-const mockUseProviderContext = actualUseProviderContext as MockedFunction<typeof actualUseProviderContext>
+const mockUseProviderContext = actualUseProviderContext as MockedFunction<
+  typeof actualUseProviderContext
+>
 const mockUseModalContext = actualUseModalContext as MockedFunction<typeof actualUseModalContext>
-const mockUseModalContextSelector = actualUseModalContextSelector as MockedFunction<typeof actualUseModalContextSelector>
+const mockUseModalContextSelector = actualUseModalContextSelector as MockedFunction<
+  typeof actualUseModalContextSelector
+>
 
 // Default mock data
 const defaultProviderContext = {
@@ -108,7 +114,7 @@ function setupMocks(overrides: MockOverrides = {}) {
     ...overrides.modalContext,
   })
 
-  mockUseModalContextSelector.mockImplementation(selector =>
+  mockUseModalContextSelector.mockImplementation((selector) =>
     selector({
       ...defaultModalContext,
       ...overrides.modalContext,
@@ -204,8 +210,7 @@ export const interactions = {
   // Click the close button
   clickCloseButton: (container: HTMLElement) => {
     const closeButton = container.querySelector('.absolute.right-4.top-4')
-    if (closeButton)
-      fireEvent.click(closeButton)
+    if (closeButton) fireEvent.click(closeButton)
     return closeButton
   },
 }

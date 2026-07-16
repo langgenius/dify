@@ -92,20 +92,22 @@ describe('CollaborationManager logs and event helpers', () => {
 
     internals.reactFlowStore = {
       getState: () => ({
-        getNodes: () => [{
-          ...node,
-          data: {
-            ...node.data,
-            selected: true,
+        getNodes: () => [
+          {
+            ...node,
+            data: {
+              ...node.data,
+              selected: true,
+            },
           },
-        }],
+        ],
         setNodes: vi.fn(),
         getEdges: () => [edge],
         setEdges: vi.fn(),
       }),
     }
 
-    const graphPayloads: Array<{ nodes: Node[], edges: Edge[] }> = []
+    const graphPayloads: Array<{ nodes: Node[]; edges: Edge[] }> = []
     manager.onGraphImport((graph) => {
       graphPayloads.push(graph)
     })
@@ -114,8 +116,7 @@ describe('CollaborationManager logs and event helpers', () => {
 
     expect(graphPayloads).toHaveLength(1)
     const payload = graphPayloads[0]
-    if (!payload)
-      throw new Error('graph import payload should exist')
+    if (!payload) throw new Error('graph import payload should exist')
     expect(payload.nodes).toHaveLength(1)
     expect(payload.edges).toHaveLength(1)
     expect(payload.nodes[0]?.data.selected).toBe(true)
@@ -163,8 +164,13 @@ describe('CollaborationManager logs and event helpers', () => {
 
     manager.setNodes(oldNodes, nextNodes, 'test:partial-note-update')
 
-    expect(manager.getNodes().map(node => node.id).sort()).toEqual(['n-note', 'n-start'])
-    expect(manager.getEdges().map(currentEdge => currentEdge.id)).toEqual(['e-start-note'])
+    expect(
+      manager
+        .getNodes()
+        .map((node) => node.id)
+        .sort(),
+    ).toEqual(['n-note', 'n-start'])
+    expect(manager.getEdges().map((currentEdge) => currentEdge.id)).toEqual(['e-start-note'])
   })
 
   it('clearGraphImportLog clears logs and pending import snapshot', () => {
@@ -213,11 +219,12 @@ describe('CollaborationManager logs and event helpers', () => {
     const anchor = document.createElement('a')
     const clickSpy = vi.spyOn(anchor, 'click').mockImplementation(() => {})
     const originalCreateElement = document.createElement.bind(document)
-    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string): HTMLElement => {
-      if (tagName === 'a')
-        return anchor
-      return originalCreateElement(tagName)
-    })
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string): HTMLElement => {
+        if (tagName === 'a') return anchor
+        return originalCreateElement(tagName)
+      })
 
     manager.downloadGraphImportLog()
 
@@ -236,8 +243,8 @@ describe('CollaborationManager logs and event helpers', () => {
         setNodesAnomalyCount: number
         syncDiagnosticCount: number
         onlineUsersCount: number
-        crdtCounts: { nodes: number, edges: number }
-        reactFlowCounts: { nodes: number, edges: number }
+        crdtCounts: { nodes: number; edges: number }
+        reactFlowCounts: { nodes: number; edges: number }
       }
     }
 
@@ -255,10 +262,12 @@ describe('CollaborationManager logs and event helpers', () => {
 
   it('emits collaboration events only when current app is connected', () => {
     const { manager, internals } = setupManagerWithDoc()
-    const sendSpy = vi.spyOn(
-      manager as unknown as { sendCollaborationEvent: (payload: unknown) => void },
-      'sendCollaborationEvent',
-    ).mockImplementation(() => {})
+    const sendSpy = vi
+      .spyOn(
+        manager as unknown as { sendCollaborationEvent: (payload: unknown) => void },
+        'sendCollaborationEvent',
+      )
+      .mockImplementation(() => {})
     const isConnectedSpy = vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(false)
 
     manager.emitCommentsUpdate('app-1')
@@ -288,9 +297,7 @@ describe('CollaborationManager logs and event helpers', () => {
     })
     manager.emitRestoreComplete({ versionId: 'version-2', success: false, error: 'failed' })
 
-    const eventTypes = sendSpy.mock.calls.map(call => (
-      (call[0] as { type: string }).type
-    ))
+    const eventTypes = sendSpy.mock.calls.map((call) => (call[0] as { type: string }).type)
     expect(eventTypes).toEqual([
       'comments_update',
       'workflow_history_action',
@@ -335,12 +342,14 @@ describe('CollaborationManager logs and event helpers', () => {
     }
     internals.undoManager = undoManager
 
-    const rafSpy = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
-      callback(0)
-      return 1
-    })
+    const rafSpy = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockImplementation((callback: FrameRequestCallback) => {
+        callback(0)
+        return 1
+      })
 
-    const historyStates: Array<{ canUndo: boolean, canRedo: boolean }> = []
+    const historyStates: Array<{ canUndo: boolean; canRedo: boolean }> = []
     manager.onUndoRedoStateChange((state) => {
       historyStates.push(state)
     })

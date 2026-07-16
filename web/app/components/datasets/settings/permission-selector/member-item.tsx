@@ -33,13 +33,15 @@ const MemberItem = ({
           {name}
           {isMe && (
             <span className="system-xs-regular text-text-tertiary">
-              {t('form.me', { ns: 'datasetSettings' })}
+              {t(($) => $['form.me'], { ns: 'datasetSettings' })}
             </span>
           )}
         </div>
         <div className="truncate system-xs-regular text-text-tertiary">{email}</div>
       </div>
-      {isSelected && <RiCheckLine className={cn('size-4 shrink-0 text-text-accent', isMe && 'opacity-30')} />}
+      {isSelected && (
+        <RiCheckLine className={cn('size-4 shrink-0 text-text-accent', isMe && 'opacity-30')} />
+      )}
     </div>
   )
 }

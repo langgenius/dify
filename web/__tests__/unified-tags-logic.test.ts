@@ -12,10 +12,10 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       const newSelectedTagIDs = ['tag1', 'tag3']
 
       // This is the valueNotChanged logic from TagSelector component
-      const valueNotChanged
-        = currentValue.length === newSelectedTagIDs.length
-          && currentValue.every(v => newSelectedTagIDs.includes(v))
-          && newSelectedTagIDs.every(v => currentValue.includes(v))
+      const valueNotChanged =
+        currentValue.length === newSelectedTagIDs.length &&
+        currentValue.every((v) => newSelectedTagIDs.includes(v)) &&
+        newSelectedTagIDs.every((v) => currentValue.includes(v))
 
       expect(valueNotChanged).toBe(false)
     })
@@ -24,10 +24,10 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       const currentValue = ['tag1', 'tag2']
       const newSelectedTagIDs = ['tag2', 'tag1'] // Same tags, different order
 
-      const valueNotChanged
-        = currentValue.length === newSelectedTagIDs.length
-          && currentValue.every(v => newSelectedTagIDs.includes(v))
-          && newSelectedTagIDs.every(v => currentValue.includes(v))
+      const valueNotChanged =
+        currentValue.length === newSelectedTagIDs.length &&
+        currentValue.every((v) => newSelectedTagIDs.includes(v)) &&
+        newSelectedTagIDs.every((v) => currentValue.includes(v))
 
       expect(valueNotChanged).toBe(true)
     })
@@ -37,8 +37,8 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       const selectedTagIDs = ['tag2', 'tag3']
 
       // This is the handleValueChange logic from TagSelector
-      const addTagIDs = selectedTagIDs.filter(v => !currentValue.includes(v))
-      const removeTagIDs = currentValue.filter(v => !selectedTagIDs.includes(v))
+      const addTagIDs = selectedTagIDs.filter((v) => !currentValue.includes(v))
+      const removeTagIDs = currentValue.filter((v) => !selectedTagIDs.includes(v))
 
       expect(addTagIDs).toEqual(['tag3'])
       expect(removeTagIDs).toEqual(['tag1'])
@@ -48,8 +48,8 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       const currentValue: string[] = []
       const selectedTagIDs = ['tag1']
 
-      const addTagIDs = selectedTagIDs.filter(v => !currentValue.includes(v))
-      const removeTagIDs = currentValue.filter(v => !selectedTagIDs.includes(v))
+      const addTagIDs = selectedTagIDs.filter((v) => !currentValue.includes(v))
+      const removeTagIDs = currentValue.filter((v) => !selectedTagIDs.includes(v))
 
       expect(addTagIDs).toEqual(['tag1'])
       expect(removeTagIDs).toEqual([])
@@ -60,8 +60,8 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       const currentValue = ['tag1', 'tag2']
       const selectedTagIDs: string[] = []
 
-      const addTagIDs = selectedTagIDs.filter(v => !currentValue.includes(v))
-      const removeTagIDs = currentValue.filter(v => !selectedTagIDs.includes(v))
+      const addTagIDs = selectedTagIDs.filter((v) => !currentValue.includes(v))
+      const removeTagIDs = currentValue.filter((v) => !selectedTagIDs.includes(v))
 
       expect(addTagIDs).toEqual([])
       expect(removeTagIDs).toEqual(['tag1', 'tag2'])
@@ -70,7 +70,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
   })
 
   describe('Fallback Logic (from layout-main.tsx)', () => {
-    type Tag = { id: string, name: string }
+    type Tag = { id: string; name: string }
     type AppDetail = { tags: Tag[] }
     type FallbackResult = { tags?: Tag[] } | null
     // no-op
@@ -82,7 +82,8 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       // This simulates the condition in layout-main.tsx
       const shouldFallback1 = appDetailWithoutTags.tags.length === 0
       const shouldFallback2 = appDetailWithTags.tags.length === 0
-      const shouldFallback3 = !appDetailWithUndefinedTags.tags || appDetailWithUndefinedTags.tags.length === 0
+      const shouldFallback3 =
+        !appDetailWithUndefinedTags.tags || appDetailWithUndefinedTags.tags.length === 0
 
       expect(shouldFallback1).toBe(true) // Empty array should trigger fallback
       expect(shouldFallback2).toBe(false) // Has tags, no fallback needed
@@ -95,8 +96,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
 
       // This simulates the successful fallback in layout-main.tsx
       const tags = fallbackResult.tags
-      if (tags)
-        originalAppDetail.tags = tags
+      if (tags) originalAppDetail.tags = tags
 
       expect(originalAppDetail.tags).toEqual(fallbackResult.tags)
       expect(originalAppDetail.tags.length).toBe(1)
@@ -107,9 +107,9 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       const fallbackResult = null as FallbackResult
 
       // This simulates fallback failure in layout-main.tsx
-      const tags: Tag[] | undefined = fallbackResult && 'tags' in fallbackResult ? fallbackResult.tags : undefined
-      if (tags)
-        originalAppDetail.tags = tags
+      const tags: Tag[] | undefined =
+        fallbackResult && 'tags' in fallbackResult ? fallbackResult.tags : undefined
+      if (tags) originalAppDetail.tags = tags
 
       expect(originalAppDetail.tags).toEqual([])
     })
@@ -124,8 +124,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       }
 
       // This simulates the useEffect in TagSelector
-      if (tagList.length === 0)
-        getTagList()
+      if (tagList.length === 0) getTagList()
 
       expect(getTagListCalled).toBe(true)
     })
@@ -138,8 +137,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       }
 
       // This simulates the useEffect in TagSelector
-      if (tagList.length === 0)
-        getTagList()
+      if (tagList.length === 0) getTagList()
 
       expect(getTagListCalled).toBe(false)
     })
@@ -215,7 +213,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       const targetAppId = 'test-app-id'
 
       // This simulates the logic in fetchAppWithTags
-      const foundApp = appList.find(app => app.id === targetAppId)
+      const foundApp = appList.find((app) => app.id === targetAppId)
 
       expect(foundApp).toBeDefined()
       expect(foundApp?.id).toBe('test-app-id')
@@ -229,7 +227,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       ]
       const targetAppId = 'nonexistent-app'
 
-      const foundApp = appList.find(app => app.id === targetAppId) || null
+      const foundApp = appList.find((app) => app.id === targetAppId) || null
 
       expect(foundApp).toBeNull()
     })
@@ -238,7 +236,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       const appList: any[] = []
       const targetAppId = 'any-app'
 
-      const foundApp = appList.find(app => app.id === targetAppId) || null
+      const foundApp = appList.find((app) => app.id === targetAppId) || null
 
       expect(foundApp).toBeNull()
       expect(appList.length).toBe(0) // Verify empty array usage
@@ -251,7 +249,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
         id: 'tag1',
         name: 'test-tag',
         type: 'app',
-        binding_count: 1,
+        binding_count: '',
       }
 
       expect(tag).toHaveProperty('id')
@@ -259,27 +257,25 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       expect(tag).toHaveProperty('type')
       expect(tag).toHaveProperty('binding_count')
       expect(tag.type).toBe('app')
-      expect(typeof tag.binding_count).toBe('number')
+      expect(typeof tag.binding_count).toBe('string')
     })
 
     it('should handle tag arrays correctly', () => {
       const tags = [
-        { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 1 },
-        { id: 'tag2', name: 'Tag 2', type: 'app', binding_count: 0 },
+        { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: '' },
+        { id: 'tag2', name: 'Tag 2', type: 'app', binding_count: '' },
       ]
 
       expect(Array.isArray(tags)).toBe(true)
       expect(tags.length).toBe(2)
-      expect(tags.every(tag => tag.type === 'app')).toBe(true)
+      expect(tags.every((tag) => tag.type === 'app')).toBe(true)
     })
 
     it('should validate app data structure with tags', () => {
       const app = {
         id: 'test-app',
         name: 'Test App',
-        tags: [
-          { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 1 },
-        ],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app', binding_count: '' }],
       }
 
       expect(app).toHaveProperty('id')
@@ -297,8 +293,8 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
 
       // Performance test: filtering should be efficient
       const startTime = Date.now()
-      const addTags = selectedTags.filter(tag => !largeTags.includes(tag))
-      const removeTags = largeTags.filter(tag => !selectedTags.includes(tag))
+      const addTags = selectedTags.filter((tag) => !largeTags.includes(tag))
+      const removeTags = largeTags.filter((tag) => !selectedTags.includes(tag))
       const endTime = Date.now()
 
       expect(endTime - startTime).toBeLessThan(10) // Should be very fast
@@ -308,26 +304,27 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
 
     it('should handle malformed tag data gracefully', () => {
       const mixedData = [
-        { id: 'valid1', name: 'Valid Tag', type: 'app', binding_count: 1 },
+        { id: 'valid1', name: 'Valid Tag', type: 'app', binding_count: '' },
         { id: 'invalid1' }, // Missing required properties
         null,
         undefined,
-        { id: 'valid2', name: 'Another Valid', type: 'app', binding_count: 0 },
+        { id: 'valid2', name: 'Another Valid', type: 'app', binding_count: '' },
       ]
 
       // Filter out invalid entries
-      const validTags = mixedData.filter((tag): tag is { id: string, name: string, type: string, binding_count: number } =>
-        tag != null
-        && typeof tag === 'object'
-        && 'id' in tag
-        && 'name' in tag
-        && 'type' in tag
-        && 'binding_count' in tag
-        && typeof tag.binding_count === 'number',
+      const validTags = mixedData.filter(
+        (tag): tag is { id: string; name: string; type: string; binding_count: string } =>
+          tag != null &&
+          typeof tag === 'object' &&
+          'id' in tag &&
+          'name' in tag &&
+          'type' in tag &&
+          'binding_count' in tag &&
+          typeof tag.binding_count === 'string',
       )
 
       expect(validTags.length).toBe(2)
-      expect(validTags.every(tag => tag.id && tag.name)).toBe(true)
+      expect(validTags.every((tag) => tag.id && tag.name)).toBe(true)
     })
 
     it('should handle concurrent tag operations correctly', () => {
@@ -338,14 +335,14 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       ]
 
       // Simulate processing operations
-      const results = operations.map(op => ({
+      const results = operations.map((op) => ({
         ...op,
         processed: true,
         timestamp: Date.now(),
       }))
 
       expect(results.length).toBe(3)
-      expect(results.every(result => result.processed)).toBe(true)
+      expect(results.every((result) => result.processed)).toBe(true)
     })
   })
 

@@ -4,12 +4,14 @@ import { createReactI18nextMock } from '@/test/i18n-mock'
 import InlineDeleteConfirm from '../index'
 
 // Mock react-i18next with custom translations for test assertions
-vi.mock('react-i18next', () => createReactI18nextMock({
-  'operation.deleteConfirmTitle': 'Delete?',
-  'operation.yes': 'Yes',
-  'operation.no': 'No',
-  'operation.confirmAction': 'Please confirm your action.',
-}))
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    'operation.deleteConfirmTitle': 'Delete?',
+    'operation.yes': 'Yes',
+    'operation.no': 'No',
+    'operation.confirmAction': 'Please confirm your action.',
+  }),
+)
 
 afterEach(cleanup)
 
@@ -89,11 +91,7 @@ describe('InlineDeleteConfirm', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { container } = render(
-        <InlineDeleteConfirm
-          className="custom-class"
-          onConfirm={onConfirm}
-          onCancel={onCancel}
-        />,
+        <InlineDeleteConfirm className="custom-class" onConfirm={onConfirm} onCancel={onCancel} />,
       )
 
       const wrapper = container.firstChild as HTMLElement

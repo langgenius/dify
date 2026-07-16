@@ -137,7 +137,9 @@ describe('Service Utils', () => {
       }
 
       expect(determineEndpoint(FlowType.appFlow, 'app-1')).toBe('/apps/app-1')
-      expect(determineEndpoint(FlowType.ragPipeline, 'pipeline-1')).toBe('/rag/pipelines/pipeline-1')
+      expect(determineEndpoint(FlowType.ragPipeline, 'pipeline-1')).toBe(
+        '/rag/pipelines/pipeline-1',
+      )
       expect(determineEndpoint(FlowType.snippet, 'snippet-1')).toBe('/snippets/snippet-1')
       expect(determineEndpoint(undefined, 'fallback')).toBe('/apps/fallback')
     })

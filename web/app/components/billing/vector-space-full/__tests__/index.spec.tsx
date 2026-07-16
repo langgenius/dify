@@ -18,7 +18,11 @@ vi.mock('@/context/provider-context', () => {
 })
 
 vi.mock('../../upgrade-btn', () => ({
-  default: () => <button data-testid="vector-upgrade-btn" type="button">Upgrade</button>,
+  default: () => (
+    <button data-testid="vector-upgrade-btn" type="button">
+      Upgrade
+    </button>
+  ),
 }))
 
 vi.mock('@/service/use-billing', () => ({
@@ -31,10 +35,8 @@ vi.mock('@/service/use-billing', () => ({
 vi.mock('../../utils', () => ({
   getPlanVectorSpaceLimitMB: (planType: string) => {
     // Return 5 for sandbox (threshold) and 100 for team
-    if (planType === 'sandbox')
-      return 5
-    if (planType === 'team')
-      return 100
+    if (planType === 'sandbox') return 5
+    if (planType === 'team') return 100
     return 0
   },
 }))

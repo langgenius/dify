@@ -5,14 +5,34 @@ import Item from '../item'
 
 // Mock Operation to verify its usage
 vi.mock('@/app/components/base/chat/chat-with-history/sidebar/operation', () => ({
-  default: ({ togglePin, onRenameConversation, onDelete, isItemHovering, isActive, isPinned }: { togglePin: () => void, onRenameConversation: () => void, onDelete: () => void, isItemHovering: boolean, isActive: boolean, isPinned: boolean }) => (
+  default: ({
+    togglePin,
+    onRenameConversation,
+    onDelete,
+    isItemHovering,
+    isActive,
+    isPinned,
+  }: {
+    togglePin: () => void
+    onRenameConversation: () => void
+    onDelete: () => void
+    isItemHovering: boolean
+    isActive: boolean
+    isPinned: boolean
+  }) => (
     <div data-testid="mock-operation">
       <button onClick={togglePin}>Pin</button>
       <button onClick={onRenameConversation}>Rename</button>
       <button onClick={onDelete}>Delete</button>
-      <span data-hovering={isItemHovering} data-testid="hover-indicator">Hovering</span>
-      <span data-active={isActive} data-testid="active-indicator">Active</span>
-      <span data-pinned={isPinned} data-testid="pinned-indicator">Pinned</span>
+      <span data-hovering={isItemHovering} data-testid="hover-indicator">
+        Hovering
+      </span>
+      <span data-active={isActive} data-testid="active-indicator">
+        Active
+      </span>
+      <span data-pinned={isPinned} data-testid="pinned-indicator">
+        Pinned
+      </span>
     </div>
   ),
 }))
@@ -310,9 +330,7 @@ describe('Item', () => {
       const user = userEvent.setup()
       const onOperate = vi.fn()
 
-      const { rerender } = render(
-        <Item {...defaultProps} onOperate={onOperate} isPin={false} />,
-      )
+      const { rerender } = render(<Item {...defaultProps} onOperate={onOperate} isPin={false} />)
 
       await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('pin', mockItem)
@@ -380,9 +398,7 @@ describe('Item', () => {
     })
 
     it('should update when currentConversationId changes', () => {
-      const { container, rerender } = render(
-        <Item {...defaultProps} currentConversationId="0" />,
-      )
+      const { container, rerender } = render(<Item {...defaultProps} currentConversationId="0" />)
 
       expect(container.firstChild).not.toHaveClass('bg-state-accent-active')
 
@@ -420,23 +436,11 @@ describe('Item', () => {
 
     it('should update when multiple props change together', () => {
       const { rerender } = render(
-        <Item
-          {...defaultProps}
-          item={mockItem}
-          currentConversationId="0"
-          isPin={false}
-        />,
+        <Item {...defaultProps} item={mockItem} currentConversationId="0" isPin={false} />,
       )
 
       const newItem = { ...mockItem, name: 'New Name', id: '2' }
-      rerender(
-        <Item
-          {...defaultProps}
-          item={newItem}
-          currentConversationId="2"
-          isPin={true}
-        />,
-      )
+      rerender(<Item {...defaultProps} item={newItem} currentConversationId="2" isPin={true} />)
 
       expect(screen.getByText('New Name')).toBeInTheDocument()
 

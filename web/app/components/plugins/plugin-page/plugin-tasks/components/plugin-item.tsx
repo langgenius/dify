@@ -29,26 +29,23 @@ const PluginItem: FC<PluginItemProps> = ({
   const pluginName = plugin.labels[language] || plugin.plugin_unique_identifier
 
   return (
-    <div className="group/item flex gap-1 rounded-lg p-2 hover:bg-state-base-hover">
+    <div className="group/item flex w-full max-w-full min-w-0 gap-1 overflow-hidden rounded-lg p-2 hover:bg-state-base-hover">
       <div className="relative shrink-0 self-start">
-        {hasPluginIcon
-          ? (
-              <CardIcon
-                size="small"
-                src={getIconUrl(plugin.icon)}
-              />
-            )
-          // eslint-disable-next-line hyoban/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
-          : <MagicBox className="size-8 text-text-tertiary" />}
-        <div className="absolute -right-0.5 -bottom-0.5 z-10">
-          {statusIcon}
-        </div>
+        {hasPluginIcon ? (
+          <CardIcon size="small" src={getIconUrl(plugin.icon)} />
+        ) : (
+          // oxlint-disable-next-line hyoban/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
+          <MagicBox className="size-8 text-text-tertiary" />
+        )}
+        <div className="absolute -right-0.5 -bottom-0.5 z-10">{statusIcon}</div>
       </div>
-      <div className="flex min-w-0 grow flex-col gap-0.5 px-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1 [overflow-wrap:anywhere]">
         <div className="truncate system-sm-medium text-text-secondary">
           {plugin.labels[language]}
         </div>
-        <div className={`min-w-0 system-xs-regular wrap-break-word ${statusClassName || 'text-text-tertiary'}`}>
+        <div
+          className={`max-w-full min-w-0 system-xs-regular [overflow-wrap:anywhere] wrap-break-word ${statusClassName || 'text-text-tertiary'}`}
+        >
           {statusText}
         </div>
         {action}

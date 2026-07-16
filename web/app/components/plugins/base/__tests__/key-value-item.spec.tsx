@@ -7,12 +7,10 @@ vi.mock('../../../base/icons/src/vender/line/files', () => ({
 }))
 
 vi.mock('@/app/components/base/action-button', () => ({
-  default: ({
-    children,
-    onClick,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button data-testid="action-button" onClick={onClick} {...props}>{children}</button>
+  default: ({ children, onClick, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button data-testid="action-button" onClick={onClick} {...props}>
+      {children}
+    </button>
   ),
 }))
 

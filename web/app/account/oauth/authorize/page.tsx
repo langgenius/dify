@@ -25,8 +25,7 @@ function buildReturnUrl(pathname: string, search: string) {
   try {
     const base = `${globalThis.location.origin}${pathname}${search}`
     return base
-  }
-  catch {
+  } catch {
     return pathname + search
   }
 }
@@ -34,26 +33,29 @@ function buildReturnUrl(pathname: string, search: string) {
 export default function OAuthAuthorize() {
   const { t } = useTranslation()
 
-  const SCOPE_INFO_MAP: Record<string, { icon: React.ComponentType<{ className?: string }>, label: string }> = {
+  const SCOPE_INFO_MAP: Record<
+    string,
+    { icon: React.ComponentType<{ className?: string }>; label: string }
+  > = {
     'read:name': {
       icon: RiInfoCardLine,
-      label: t('scopes.name', { ns: 'oauth' }),
+      label: t(($) => $['scopes.name'], { ns: 'oauth' }),
     },
     'read:email': {
       icon: RiMailLine,
-      label: t('scopes.email', { ns: 'oauth' }),
+      label: t(($) => $['scopes.email'], { ns: 'oauth' }),
     },
     'read:avatar': {
       icon: RiAccountCircleLine,
-      label: t('scopes.avatar', { ns: 'oauth' }),
+      label: t(($) => $['scopes.avatar'], { ns: 'oauth' }),
     },
     'read:interface_language': {
       icon: RiTranslate2,
-      label: t('scopes.languagePreference', { ns: 'oauth' }),
+      label: t(($) => $['scopes.languagePreference'], { ns: 'oauth' }),
     },
     'read:timezone': {
       icon: RiGlobalLine,
-      label: t('scopes.timezone', { ns: 'oauth' }),
+      label: t(($) => $['scopes.timezone'], { ns: 'oauth' }),
     },
   }
 
@@ -65,13 +67,21 @@ export default function OAuthAuthorize() {
   // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
   // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
   // service/base.ts prevents a redirect loop here.
-  const { data: userProfileResp, isPending: isProfileLoading, error: profileError } = useQuery({
+  const {
+    data: userProfileResp,
+    isPending: isProfileLoading,
+    error: profileError,
+  } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: err => !isLegacyBase401(err),
+    throwOnError: (err) => !isLegacyBase401(err),
   })
   const isLoggedIn = !!userProfileResp && !profileError
   const userProfile = userProfileResp?.profile
-  const { data: authAppInfo, isLoading: isOAuthLoading, isError } = useOAuthAppInfo(client_id, redirect_uri)
+  const {
+    data: authAppInfo,
+    isLoading: isOAuthLoading,
+    isError,
+  } = useOAuthAppInfo(client_id, redirect_uri)
   const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
   const { mutateAsync: logout } = useLogout()
   const hasNotifiedRef = useRef(false)
@@ -80,26 +90,22 @@ export default function OAuthAuthorize() {
   const onLoginSwitchClick = async () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
-      if (isLoggedIn)
-        await logout()
+      if (isLoggedIn) await logout()
       router.push(`/signin?redirect_url=${encodeURIComponent(returnUrl)}`)
-    }
-    catch {
+    } catch {
       router.push('/signin')
     }
   }
 
   const onAuthorize = async () => {
-    if (!client_id || !redirect_uri)
-      return
+    if (!client_id || !redirect_uri) return
     try {
       const { code } = await authorize({ client_id })
       const url = new URL(redirect_uri)
       url.searchParams.set('code', code)
       globalThis.location.href = url.toString()
-    }
-    catch (err: any) {
-      toast.error(`${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`)
+    } catch (err: any) {
+      toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${err.message}`)
     }
   }
 
@@ -108,7 +114,9 @@ export default function OAuthAuthorize() {
     if ((invalidParams || isError) && !hasNotifiedRef.current) {
       hasNotifiedRef.current = true
       toast.error(
-        invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
+        invalidParams
+          ? t(($) => $['error.invalidParams'], { ns: 'oauth' })
+          : t(($) => $['error.authAppInfoFetchFailed'], { ns: 'oauth' }),
         { timeout: 0 },
       )
     }
@@ -132,11 +140,25 @@ export default function OAuthAuthorize() {
 
       <div className={`mt-5 mb-4 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
         <div className="title-4xl-semi-bold">
-          {isLoggedIn && <div className="text-text-primary">{t('connect', { ns: 'oauth' })}</div>}
-          <div className="text-saas-dify-blue-inverted">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
-          {!isLoggedIn && <div className="text-text-primary">{t('tips.notLoggedIn', { ns: 'oauth' })}</div>}
+          {isLoggedIn && (
+            <div className="text-text-primary">{t(($) => $.connect, { ns: 'oauth' })}</div>
+          )}
+          <div className="text-saas-dify-blue-inverted">
+            {authAppInfo?.app_label[language] ||
+              authAppInfo?.app_label?.en_US ||
+              t(($) => $.unknownApp, { ns: 'oauth' })}
+          </div>
+          {!isLoggedIn && (
+            <div className="text-text-primary">
+              {t(($) => $['tips.notLoggedIn'], { ns: 'oauth' })}
+            </div>
+          )}
         </div>
-        <div className="body-md-regular text-text-secondary">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>
+        <div className="body-md-regular text-text-secondary">
+          {isLoggedIn
+            ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t(($) => $.unknownApp, { ns: 'oauth' })} ${t(($) => $['tips.loggedIn'], { ns: 'oauth' })}`
+            : t(($) => $['tips.needLogin'], { ns: 'oauth' })}
+        </div>
       </div>
 
       {isLoggedIn && userProfile && (
@@ -148,41 +170,77 @@ export default function OAuthAuthorize() {
               <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>
             </div>
           </div>
-          <Button variant="tertiary" size="small" onClick={onLoginSwitchClick}>{t('switchAccount', { ns: 'oauth' })}</Button>
+          <Button variant="tertiary" size="small" onClick={onLoginSwitchClick}>
+            {t(($) => $.switchAccount, { ns: 'oauth' })}
+          </Button>
         </div>
       )}
 
       {isLoggedIn && Boolean(authAppInfo?.scope) && (
         <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-[22px] py-5 text-text-secondary">
-          {authAppInfo!.scope.split(/\s+/).filter(Boolean).map((scope: string) => {
-            const Icon = SCOPE_INFO_MAP[scope]
-            return (
-              <div key={scope} className="flex items-center gap-2 body-sm-medium text-text-secondary">
-                {Icon ? <Icon.icon className="size-4" /> : <RiAccountCircleLine className="size-4" />}
-                {Icon!.label}
-              </div>
-            )
-          })}
+          {authAppInfo!.scope
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((scope: string) => {
+              const Icon = SCOPE_INFO_MAP[scope]
+              return (
+                <div
+                  key={scope}
+                  className="flex items-center gap-2 body-sm-medium text-text-secondary"
+                >
+                  {Icon ? (
+                    <Icon.icon className="size-4" />
+                  ) : (
+                    <RiAccountCircleLine className="size-4" />
+                  )}
+                  {Icon!.label}
+                </div>
+              )
+            })}
         </div>
       )}
 
       <div className="flex flex-col items-center gap-2 pt-4">
-        {!isLoggedIn
-          ? (
-              <Button variant="primary" size="large" className="w-full" onClick={onLoginSwitchClick}>{t('login', { ns: 'oauth' })}</Button>
-            )
-          : (
-              <>
-                <Button variant="primary" size="large" className="w-full" onClick={onAuthorize} disabled={!client_id || !redirect_uri || isError || authorizing} loading={authorizing}>{t('continue', { ns: 'oauth' })}</Button>
-                <Button size="large" className="w-full" onClick={() => router.push('/apps')}>{t('operation.cancel', { ns: 'common' })}</Button>
-              </>
-            )}
+        {!isLoggedIn ? (
+          <Button variant="primary" size="large" className="w-full" onClick={onLoginSwitchClick}>
+            {t(($) => $.login, { ns: 'oauth' })}
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="primary"
+              size="large"
+              className="w-full"
+              onClick={onAuthorize}
+              disabled={!client_id || !redirect_uri || isError || authorizing}
+              loading={authorizing}
+            >
+              {t(($) => $.continue, { ns: 'oauth' })}
+            </Button>
+            <Button size="large" className="w-full" onClick={() => router.push('/apps')}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+          </>
+        )}
       </div>
       <div className="mt-4 py-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="400" height="1" viewBox="0 0 400 1" fill="none">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="400"
+          height="1"
+          viewBox="0 0 400 1"
+          fill="none"
+        >
           <path d="M0 0.5H400" stroke="url(#paint0_linear_2_5904)" />
           <defs>
-            <linearGradient id="paint0_linear_2_5904" x1="400" y1="9.49584" x2="0.000228929" y2="9.17666" gradientUnits="userSpaceOnUse">
+            <linearGradient
+              id="paint0_linear_2_5904"
+              x1="400"
+              y1="9.49584"
+              x2="0.000228929"
+              y2="9.17666"
+              gradientUnits="userSpaceOnUse"
+            >
               <stop stop-color="white" stop-opacity="0.01" />
               <stop offset="0.505" stop-color="#101828" stop-opacity="0.08" />
               <stop offset="1" stop-color="white" stop-opacity="0.01" />
@@ -190,7 +248,9 @@ export default function OAuthAuthorize() {
           </defs>
         </svg>
       </div>
-      <div className="mt-3 system-xs-regular text-text-tertiary">{t('tips.common', { ns: 'oauth' })}</div>
+      <div className="mt-3 system-xs-regular text-text-tertiary">
+        {t(($) => $['tips.common'], { ns: 'oauth' })}
+      </div>
     </div>
   )
 }

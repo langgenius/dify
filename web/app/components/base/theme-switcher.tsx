@@ -17,7 +17,8 @@ export default function ThemeSwitcher() {
         type="button"
         className={cn(
           'rounded-lg px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          theme === 'system' && 'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
+          theme === 'system' &&
+            'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
         )}
         onClick={() => handleThemeChange('system')}
         aria-label="System theme"
@@ -27,12 +28,16 @@ export default function ThemeSwitcher() {
           <span className="i-ri-computer-line size-4" />
         </div>
       </button>
-      <div className={cn('h-[14px] w-px bg-transparent', theme === 'dark' && 'bg-divider-regular')} data-testid="divider"></div>
+      <div
+        className={cn('h-[14px] w-px bg-transparent', theme === 'dark' && 'bg-divider-regular')}
+        data-testid="divider"
+      ></div>
       <button
         type="button"
         className={cn(
           'rounded-lg px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          theme === 'light' && 'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
+          theme === 'light' &&
+            'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
         )}
         onClick={() => handleThemeChange('light')}
         aria-label="Light theme"
@@ -42,12 +47,16 @@ export default function ThemeSwitcher() {
           <span className="i-ri-sun-line size-4" />
         </div>
       </button>
-      <div className={cn('h-[14px] w-px bg-transparent', theme === 'system' && 'bg-divider-regular')} data-testid="divider"></div>
+      <div
+        className={cn('h-[14px] w-px bg-transparent', theme === 'system' && 'bg-divider-regular')}
+        data-testid="divider"
+      ></div>
       <button
         type="button"
         className={cn(
           'rounded-lg px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          theme === 'dark' && 'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
+          theme === 'dark' &&
+            'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
         )}
         onClick={() => handleThemeChange('dark')}
         aria-label="Dark theme"

@@ -6,7 +6,6 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
-
 import MarkdownButton from '../button'
 
 // Only mock the URL utility so behavior is deterministic

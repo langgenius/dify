@@ -19,7 +19,7 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
-  default: ({ onClick, className }: { onClick?: () => void, className?: string }) => (
+  default: ({ onClick, className }: { onClick?: () => void; className?: string }) => (
     <button type="button" className={className} onClick={onClick} data-testid="upgrade-btn">
       upgrade
     </button>

@@ -6,11 +6,9 @@ import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import DocumentList from '../document-list'
 
 vi.mock('../../document-file-icon', () => ({
-  default: ({ name, extension }: { name?: string, extension?: string }) => (
+  default: ({ name, extension }: { name?: string; extension?: string }) => (
     <span data-testid="file-icon">
-      {name}
-      .
-      {extension}
+      {name}.{extension}
     </span>
   ),
 }))
@@ -63,8 +61,8 @@ const renderDocumentList = (list: SimpleDocumentDetail[], onValueChange = vi.fn(
     <Combobox
       open
       items={list}
-      itemToStringLabel={document => document.name}
-      itemToStringValue={document => document.id}
+      itemToStringLabel={(document) => document.name}
+      itemToStringValue={(document) => document.id}
       onValueChange={onValueChange}
     >
       <DocumentList />

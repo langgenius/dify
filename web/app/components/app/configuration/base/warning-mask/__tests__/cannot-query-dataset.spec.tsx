@@ -7,16 +7,24 @@ describe('CannotQueryDataset WarningMask', () => {
     const onConfirm = vi.fn()
     render(<CannotQueryDataset onConfirm={onConfirm} />)
 
-    expect(screen.getByText('appDebug.feature.dataSet.queryVariable.unableToQueryDataSet')).toBeInTheDocument()
-    expect(screen.getByText('appDebug.feature.dataSet.queryVariable.unableToQueryDataSetTip')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'appDebug.feature.dataSet.queryVariable.ok' })).toBeInTheDocument()
+    expect(
+      screen.getByText('appDebug.feature.dataSet.queryVariable.unableToQueryDataSet'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('appDebug.feature.dataSet.queryVariable.unableToQueryDataSetTip'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'appDebug.feature.dataSet.queryVariable.ok' }),
+    ).toBeInTheDocument()
   })
 
   it('should invoke onConfirm when OK button clicked', () => {
     const onConfirm = vi.fn()
     render(<CannotQueryDataset onConfirm={onConfirm} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.dataSet.queryVariable.ok' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'appDebug.feature.dataSet.queryVariable.ok' }),
+    )
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 })

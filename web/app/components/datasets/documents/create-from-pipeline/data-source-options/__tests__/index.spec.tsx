@@ -33,7 +33,9 @@ vi.mock('@/utils/var', () => ({
   basePath: '/mock-base-path',
 }))
 
-const createMockDataSourceNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType => ({
+const createMockDataSourceNodeData = (
+  overrides?: Partial<DataSourceNodeType>,
+): DataSourceNodeType => ({
   title: 'Test Data Source',
   desc: 'Test description',
   type: BlockEnum.DataSource,
@@ -47,7 +49,9 @@ const createMockDataSourceNodeData = (overrides?: Partial<DataSourceNodeType>): 
   ...overrides,
 })
 
-const createMockPipelineNode = (overrides?: Partial<Node<DataSourceNodeType>>): Node<DataSourceNodeType> => {
+const createMockPipelineNode = (
+  overrides?: Partial<Node<DataSourceNodeType>>,
+): Node<DataSourceNodeType> => {
   const nodeData = createMockDataSourceNodeData(overrides?.data)
   return {
     id: `node-${Math.random().toString(36).slice(2, 9)}`,
@@ -67,12 +71,11 @@ const createMockPipelineNodes = (count = 3): Node<DataSourceNodeType>[] => {
         plugin_id: `plugin-${i + 1}`,
         datasource_name: `datasource-${i + 1}`,
       }),
-    }))
+    }),
+  )
 }
 
-const createMockDatasourceOption = (
-  node: Node<DataSourceNodeType>,
-) => ({
+const createMockDatasourceOption = (node: Node<DataSourceNodeType>) => ({
   label: node.data.title,
   value: node.id,
   data: node.data,
@@ -91,31 +94,23 @@ const createMockDataSourceListItem = (overrides?: Record<string, unknown>) => ({
   ...overrides,
 })
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-})
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
 
-const renderWithProviders = (
-  ui: React.ReactElement,
-  queryClient?: QueryClient,
-) => {
+const renderWithProviders = (ui: React.ReactElement, queryClient?: QueryClient) => {
   const client = queryClient || createQueryClient()
-  return render(
-    <QueryClientProvider client={client}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
 }
 
 const createHookWrapper = () => {
   const queryClient = createQueryClient()
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
 
@@ -195,7 +190,11 @@ describe('DatasourceIcon', () => {
 
       it('should merge custom className with default classes', () => {
         const { container } = render(
-          <DatasourceIcon iconUrl="https://example.com/icon.png" className="custom-class" size="sm" />,
+          <DatasourceIcon
+            iconUrl="https://example.com/icon.png"
+            className="custom-class"
+            size="sm"
+          />,
         )
 
         expect(container.firstChild)!.toHaveClass('custom-class')
@@ -222,7 +221,8 @@ describe('DatasourceIcon', () => {
       })
 
       it('should handle data URL as iconUrl', () => {
-        const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        const dataUrl =
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
 
         const { container } = render(<DatasourceIcon iconUrl={dataUrl} />)
 
@@ -268,7 +268,7 @@ describe('useDatasourceIcon', () => {
       data: [],
       isSuccess: false,
     })
-    mockTransformDataSourceToTool.mockImplementation(item => ({
+    mockTransformDataSourceToTool.mockImplementation((item) => ({
       plugin_id: item.plugin_id,
       icon: item.declaration?.identity?.icon,
     }))
@@ -318,7 +318,7 @@ describe('useDatasourceIcon', () => {
         data: mockDataSourceList,
         isSuccess: true,
       })
-      mockTransformDataSourceToTool.mockImplementation(item => ({
+      mockTransformDataSourceToTool.mockImplementation((item) => ({
         plugin_id: item.plugin_id,
         icon: item.declaration?.identity?.icon,
       }))
@@ -368,7 +368,7 @@ describe('useDatasourceIcon', () => {
         data: mockDataSourceList,
         isSuccess: true,
       })
-      mockTransformDataSourceToTool.mockImplementation(item => ({
+      mockTransformDataSourceToTool.mockImplementation((item) => ({
         plugin_id: item.plugin_id,
         icon: item.declaration?.identity?.icon,
       }))
@@ -399,7 +399,7 @@ describe('useDatasourceIcon', () => {
         data: mockDataSourceList,
         isSuccess: true,
       })
-      mockTransformDataSourceToTool.mockImplementation(item => ({
+      mockTransformDataSourceToTool.mockImplementation((item) => ({
         plugin_id: item.plugin_id,
         icon: item.declaration?.identity?.icon,
       }))
@@ -460,7 +460,7 @@ describe('useDatasourceIcon', () => {
         data: mockDataSourceList,
         isSuccess: true,
       })
-      mockTransformDataSourceToTool.mockImplementation(item => ({
+      mockTransformDataSourceToTool.mockImplementation((item) => ({
         plugin_id: item.plugin_id,
         icon: item.declaration?.identity?.icon,
       }))
@@ -551,9 +551,7 @@ describe('OptionCard', () => {
   describe('Props', () => {
     describe('selected', () => {
       it('should apply selected styles when selected is true', () => {
-        const { container } = renderWithProviders(
-          <OptionCard {...defaultProps} selected={true} />,
-        )
+        const { container } = renderWithProviders(<OptionCard {...defaultProps} selected={true} />)
 
         const card = container.firstChild
         expect(card)!.toHaveClass('border-components-option-card-option-selected-border')
@@ -561,9 +559,7 @@ describe('OptionCard', () => {
       })
 
       it('should apply unselected styles when selected is false', () => {
-        const { container } = renderWithProviders(
-          <OptionCard {...defaultProps} selected={false} />,
-        )
+        const { container } = renderWithProviders(<OptionCard {...defaultProps} selected={false} />)
 
         const card = container.firstChild
         expect(card)!.toHaveClass('border-components-option-card-option-border')
@@ -588,9 +584,7 @@ describe('OptionCard', () => {
     describe('onClick', () => {
       it('should call onClick when card is clicked', () => {
         const mockOnClick = vi.fn()
-        renderWithProviders(
-          <OptionCard {...defaultProps} onClick={mockOnClick} />,
-        )
+        renderWithProviders(<OptionCard {...defaultProps} onClick={mockOnClick} />)
 
         // Act - Click on the label text's parent card
         const labelElement = screen.getByText('Test Option')
@@ -602,9 +596,7 @@ describe('OptionCard', () => {
       })
 
       it('should not crash when onClick is not provided', () => {
-        renderWithProviders(
-          <OptionCard {...defaultProps} onClick={undefined} />,
-        )
+        renderWithProviders(<OptionCard {...defaultProps} onClick={undefined} />)
 
         // Act - Click on the label text's parent card should not throw
         const labelElement = screen.getByText('Test Option')
@@ -753,9 +745,7 @@ describe('DataSourceOptions', () => {
         const customNodes = createMockPipelineNodes(2)
         mockUseDatasourceOptions.mockReturnValue(customNodes.map(createMockDatasourceOption))
 
-        renderWithProviders(
-          <DataSourceOptions {...defaultProps} pipelineNodes={customNodes} />,
-        )
+        renderWithProviders(<DataSourceOptions {...defaultProps} pipelineNodes={customNodes} />)
 
         expect(mockUseDatasourceOptions).toHaveBeenCalledWith(customNodes)
       })
@@ -763,9 +753,7 @@ describe('DataSourceOptions', () => {
       it('should handle empty pipelineNodes array', () => {
         mockUseDatasourceOptions.mockReturnValue([])
 
-        renderWithProviders(
-          <DataSourceOptions {...defaultProps} pipelineNodes={[]} />,
-        )
+        renderWithProviders(<DataSourceOptions {...defaultProps} pipelineNodes={[]} />)
 
         expect(mockUseDatasourceOptions).toHaveBeenCalledWith([])
       })
@@ -774,10 +762,7 @@ describe('DataSourceOptions', () => {
     describe('datasourceNodeId', () => {
       it('should mark corresponding option as selected', () => {
         const { container } = renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-2"
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-2" />,
         )
 
         // Assert - Check for selected styling on second card
@@ -787,35 +772,30 @@ describe('DataSourceOptions', () => {
 
       it('should show no selection when datasourceNodeId is empty', () => {
         const { container } = renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId=""
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="" />,
         )
 
         // Assert - No card should have selected styling
-        const selectedCards = container.querySelectorAll('.border-components-option-card-option-selected-border')
+        const selectedCards = container.querySelectorAll(
+          '.border-components-option-card-option-selected-border',
+        )
         expect(selectedCards).toHaveLength(0)
       })
 
       it('should show no selection when datasourceNodeId does not match any option', () => {
         const { container } = renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="non-existent-node"
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="non-existent-node" />,
         )
 
-        const selectedCards = container.querySelectorAll('.border-components-option-card-option-selected-border')
+        const selectedCards = container.querySelectorAll(
+          '.border-components-option-card-option-selected-border',
+        )
         expect(selectedCards).toHaveLength(0)
       })
 
       it('should update selection when datasourceNodeId changes', () => {
         const { container, rerender } = renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-1"
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" />,
         )
 
         // Assert initial selection
@@ -825,10 +805,7 @@ describe('DataSourceOptions', () => {
         // Act - Change selection
         rerender(
           <QueryClientProvider client={createQueryClient()}>
-            <DataSourceOptions
-              {...defaultProps}
-              datasourceNodeId="node-2"
-            />
+            <DataSourceOptions {...defaultProps} datasourceNodeId="node-2" />
           </QueryClientProvider>,
         )
 
@@ -843,12 +820,7 @@ describe('DataSourceOptions', () => {
       it('should receive onSelect callback', () => {
         const mockOnSelect = vi.fn()
 
-        renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            onSelect={mockOnSelect}
-          />,
-        )
+        renderWithProviders(<DataSourceOptions {...defaultProps} onSelect={mockOnSelect} />)
 
         // Assert - Component renders without error
         // Assert - Component renders without error
@@ -864,11 +836,7 @@ describe('DataSourceOptions', () => {
         const mockOnSelect = vi.fn()
 
         renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId=""
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="" onSelect={mockOnSelect} />,
         )
 
         // Assert - Should auto-select first option on mount
@@ -883,11 +851,7 @@ describe('DataSourceOptions', () => {
         const mockOnSelect = vi.fn()
 
         renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-2"
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-2" onSelect={mockOnSelect} />,
         )
 
         // Assert - Should not auto-select because datasourceNodeId is provided
@@ -913,11 +877,7 @@ describe('DataSourceOptions', () => {
       it('should only run useEffect once on initial mount', () => {
         const mockOnSelect = vi.fn()
         const { rerender } = renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId=""
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="" onSelect={mockOnSelect} />,
         )
 
         // Assert - Called once on mount
@@ -926,11 +886,7 @@ describe('DataSourceOptions', () => {
         // Act - Rerender with same props
         rerender(
           <QueryClientProvider client={createQueryClient()}>
-            <DataSourceOptions
-              {...defaultProps}
-              datasourceNodeId=""
-              onSelect={mockOnSelect}
-            />
+            <DataSourceOptions {...defaultProps} datasourceNodeId="" onSelect={mockOnSelect} />
           </QueryClientProvider>,
         )
 
@@ -946,10 +902,7 @@ describe('DataSourceOptions', () => {
       const mockOnSelect = vi.fn()
 
       const { rerender } = renderWithProviders(
-        <DataSourceOptions
-          {...defaultProps}
-          onSelect={mockOnSelect}
-        />,
+        <DataSourceOptions {...defaultProps} onSelect={mockOnSelect} />,
       )
 
       // Get initial click handlers
@@ -963,10 +916,7 @@ describe('DataSourceOptions', () => {
       // Act - Rerender with same onSelect reference
       rerender(
         <QueryClientProvider client={createQueryClient()}>
-          <DataSourceOptions
-            {...defaultProps}
-            onSelect={mockOnSelect}
-          />
+          <DataSourceOptions {...defaultProps} onSelect={mockOnSelect} />
         </QueryClientProvider>,
       )
 
@@ -980,11 +930,7 @@ describe('DataSourceOptions', () => {
       const mockOnSelect2 = vi.fn()
 
       const { rerender } = renderWithProviders(
-        <DataSourceOptions
-          {...defaultProps}
-          datasourceNodeId="node-1"
-          onSelect={mockOnSelect1}
-        />,
+        <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" onSelect={mockOnSelect1} />,
       )
 
       // Act - Click with first callback
@@ -994,11 +940,7 @@ describe('DataSourceOptions', () => {
       // Act - Change callback
       rerender(
         <QueryClientProvider client={createQueryClient()}>
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-1"
-            onSelect={mockOnSelect2}
-          />
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" onSelect={mockOnSelect2} />
         </QueryClientProvider>,
       )
 
@@ -1017,11 +959,7 @@ describe('DataSourceOptions', () => {
       const mockOnSelect = vi.fn()
 
       const { rerender } = renderWithProviders(
-        <DataSourceOptions
-          {...defaultProps}
-          datasourceNodeId="node-1"
-          onSelect={mockOnSelect}
-        />,
+        <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" onSelect={mockOnSelect} />,
       )
 
       // Act - Click first option
@@ -1033,7 +971,7 @@ describe('DataSourceOptions', () => {
 
       // Act - Change options
       const newNodes = createMockPipelineNodes(2)
-      const newOptions = newNodes.map(node => createMockDatasourceOption(node))
+      const newOptions = newNodes.map((node) => createMockDatasourceOption(node))
       mockUseDatasourceOptions.mockReturnValue(newOptions)
 
       rerender(
@@ -1063,11 +1001,7 @@ describe('DataSourceOptions', () => {
       it('should call onSelect with correct datasource when clicking an option', () => {
         const mockOnSelect = vi.fn()
         renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-1"
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" onSelect={mockOnSelect} />,
         )
 
         // Act - Click second option
@@ -1083,11 +1017,7 @@ describe('DataSourceOptions', () => {
       it('should allow selecting already selected option', () => {
         const mockOnSelect = vi.fn()
         renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-1"
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" onSelect={mockOnSelect} />,
         )
 
         // Act - Click already selected option
@@ -1103,11 +1033,7 @@ describe('DataSourceOptions', () => {
       it('should allow multiple sequential selections', () => {
         const mockOnSelect = vi.fn()
         renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-1"
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" onSelect={mockOnSelect} />,
         )
 
         // Act - Click options sequentially
@@ -1135,11 +1061,7 @@ describe('DataSourceOptions', () => {
       it('should handle rapid successive clicks', async () => {
         const mockOnSelect = vi.fn()
         renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-1"
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" onSelect={mockOnSelect} />,
         )
 
         // Act - Rapid clicks
@@ -1164,10 +1086,7 @@ describe('DataSourceOptions', () => {
         mockUseDatasourceOptions.mockReturnValue([])
 
         const { container } = renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            pipelineNodes={[]}
-          />,
+          <DataSourceOptions {...defaultProps} pipelineNodes={[]} />,
         )
 
         expect(container.firstChild)!.toBeInTheDocument()
@@ -1188,22 +1107,24 @@ describe('DataSourceOptions', () => {
 
     describe('Null/Undefined Values', () => {
       it('should handle option with missing data properties', () => {
-        const optionWithMinimalData = [{
-          label: 'Minimal Option',
-          value: 'minimal-1',
-          data: {
-            title: 'Minimal',
-            desc: '',
-            type: BlockEnum.DataSource,
-            plugin_id: '',
-            provider_type: '',
-            provider_name: '',
-            datasource_name: '',
-            datasource_label: '',
-            datasource_parameters: {},
-            datasource_configurations: {},
-          } as DataSourceNodeType,
-        }]
+        const optionWithMinimalData = [
+          {
+            label: 'Minimal Option',
+            value: 'minimal-1',
+            data: {
+              title: 'Minimal',
+              desc: '',
+              type: BlockEnum.DataSource,
+              plugin_id: '',
+              provider_type: '',
+              provider_name: '',
+              datasource_name: '',
+              datasource_label: '',
+              datasource_parameters: {},
+              datasource_configurations: {},
+            } as DataSourceNodeType,
+          },
+        ]
         mockUseDatasourceOptions.mockReturnValue(optionWithMinimalData)
 
         renderWithProviders(<DataSourceOptions {...defaultProps} />)
@@ -1218,12 +1139,7 @@ describe('DataSourceOptions', () => {
         const manyOptions = manyNodes.map(createMockDatasourceOption)
         mockUseDatasourceOptions.mockReturnValue(manyOptions)
 
-        renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            pipelineNodes={manyNodes}
-          />,
-        )
+        renderWithProviders(<DataSourceOptions {...defaultProps} pipelineNodes={manyNodes} />)
 
         expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
         expect(screen.getByText('Data Source 50'))!.toBeInTheDocument()
@@ -1241,12 +1157,7 @@ describe('DataSourceOptions', () => {
         const specialOptions = [createMockDatasourceOption(specialNode)]
         mockUseDatasourceOptions.mockReturnValue(specialOptions)
 
-        renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            pipelineNodes={[specialNode]}
-          />,
-        )
+        renderWithProviders(<DataSourceOptions {...defaultProps} pipelineNodes={[specialNode]} />)
 
         // Assert - Special characters should be escaped/rendered safely
         // Assert - Special characters should be escaped/rendered safely
@@ -1263,22 +1174,19 @@ describe('DataSourceOptions', () => {
         const unicodeOptions = [createMockDatasourceOption(unicodeNode)]
         mockUseDatasourceOptions.mockReturnValue(unicodeOptions)
 
-        renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            pipelineNodes={[unicodeNode]}
-          />,
-        )
+        renderWithProviders(<DataSourceOptions {...defaultProps} pipelineNodes={[unicodeNode]} />)
 
         expect(screen.getByText('数据源 📁 Source émoji'))!.toBeInTheDocument()
       })
 
       it('should handle empty string as option value', () => {
-        const emptyValueOption = [{
-          label: 'Empty Value Option',
-          value: '',
-          data: createMockDataSourceNodeData(),
-        }]
+        const emptyValueOption = [
+          {
+            label: 'Empty Value Option',
+            value: '',
+            data: createMockDataSourceNodeData(),
+          },
+        ]
         mockUseDatasourceOptions.mockReturnValue(emptyValueOption)
 
         renderWithProviders(<DataSourceOptions {...defaultProps} />)
@@ -1294,11 +1202,7 @@ describe('DataSourceOptions', () => {
         const mockOnSelect = vi.fn()
 
         renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-1"
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" onSelect={mockOnSelect} />,
         )
 
         // Assert - Click should still work
@@ -1323,11 +1227,7 @@ describe('DataSourceOptions', () => {
         const mockOnSelect = vi.fn()
 
         renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-a"
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-a" onSelect={mockOnSelect} />,
         )
 
         // Assert - Both should render
@@ -1346,10 +1246,7 @@ describe('DataSourceOptions', () => {
       it('should handle unmounting without errors', () => {
         const mockOnSelect = vi.fn()
         const { unmount } = renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} onSelect={mockOnSelect} />,
         )
 
         unmount()
@@ -1392,11 +1289,7 @@ describe('DataSourceOptions', () => {
       it('should handle unmounting during rapid interactions', async () => {
         const mockOnSelect = vi.fn()
         const { unmount } = renderWithProviders(
-          <DataSourceOptions
-            {...defaultProps}
-            datasourceNodeId="node-1"
-            onSelect={mockOnSelect}
-          />,
+          <DataSourceOptions {...defaultProps} datasourceNodeId="node-1" onSelect={mockOnSelect} />,
         )
 
         // Act - Start interactions then unmount
@@ -1453,10 +1346,7 @@ describe('DataSourceOptions', () => {
 
     it('should correctly pass selected state to OptionCard', () => {
       const { container } = renderWithProviders(
-        <DataSourceOptions
-          {...defaultProps}
-          datasourceNodeId="node-2"
-        />,
+        <DataSourceOptions {...defaultProps} datasourceNodeId="node-2" />,
       )
 
       const cards = container.querySelectorAll('.rounded-xl.border')
@@ -1474,9 +1364,7 @@ describe('DataSourceOptions', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn())
       renderWithProviders(<DataSourceOptions {...defaultProps} />)
 
-      expect(consoleSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining('key'),
-      )
+      expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('key'))
       consoleSpy.mockRestore()
     })
   })
@@ -1490,10 +1378,7 @@ describe('DataSourceOptions', () => {
       { datasourceNodeId: 'non-existent', description: 'non-existent node' },
     ])('should handle datasourceNodeId as $description', ({ datasourceNodeId }) => {
       renderWithProviders(
-        <DataSourceOptions
-          {...defaultProps}
-          datasourceNodeId={datasourceNodeId}
-        />,
+        <DataSourceOptions {...defaultProps} datasourceNodeId={datasourceNodeId} />,
       )
 
       expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
@@ -1510,17 +1395,11 @@ describe('DataSourceOptions', () => {
       mockUseDatasourceOptions.mockReturnValue(options)
 
       renderWithProviders(
-        <DataSourceOptions
-          pipelineNodes={nodes}
-          datasourceNodeId=""
-          onSelect={vi.fn()}
-        />,
+        <DataSourceOptions pipelineNodes={nodes} datasourceNodeId="" onSelect={vi.fn()} />,
       )
 
-      if (count > 0)
-        expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
-      else
-        expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
+      if (count > 0) expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
+      else expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
     })
   })
 })

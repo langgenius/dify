@@ -1,5 +1,5 @@
-import { load as yamlLoad } from 'js-yaml'
 import { AppModeEnum } from '@/types/app'
+import { loadYaml } from '@/utils/yaml'
 
 export type DslEnvVarSlot = {
   key: string
@@ -38,9 +38,8 @@ export function encodeDslContent(value: string) {
 
 function parseDsl(content: string) {
   try {
-    return yamlLoad(content) as DslMetadata | undefined
-  }
-  catch {
+    return loadYaml(content) as DslMetadata | undefined
+  } catch {
     return undefined
   }
 }
@@ -54,29 +53,23 @@ function stringValue(value: unknown) {
 }
 
 function normalizeEnvVarDefaultValue(value: unknown) {
-  if (value === undefined || value === null)
-    return undefined
+  if (value === undefined || value === null) return undefined
 
   let normalizedValue: string | undefined
   if (typeof value === 'string') {
     normalizedValue = value
-  }
-  else if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+  } else if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
     normalizedValue = String(value)
-  }
-  else {
+  } else {
     try {
       normalizedValue = JSON.stringify(value)
-    }
-    catch {
+    } catch {
       normalizedValue = undefined
     }
   }
 
-  if (!normalizedValue?.trim())
-    return undefined
-  if (MASKED_SECRET_PLACEHOLDERS.has(normalizedValue))
-    return undefined
+  if (!normalizedValue?.trim()) return undefined
+  if (MASKED_SECRET_PLACEHOLDERS.has(normalizedValue)) return undefined
 
   return normalizedValue
 }
@@ -93,8 +86,7 @@ function envVarDefaultValue(record: DslEnvVarRecord) {
 function envVarValueType(record: DslEnvVarRecord) {
   for (const field of ENV_VAR_VALUE_TYPE_FIELDS) {
     const valueType = stringValue(record[field])
-    if (valueType)
-      return valueType
+    if (valueType) return valueType
   }
 
   return undefined
@@ -116,26 +108,23 @@ export function isWorkflowDsl(content: string) {
 
 export function dslEnvVarSlots(content: string): DslEnvVarSlot[] {
   const environmentVariables = parseDsl(content)?.workflow?.environment_variables
-  if (!Array.isArray(environmentVariables))
-    return []
+  if (!Array.isArray(environmentVariables)) return []
 
   const seenKeys = new Set<string>()
 
-  return environmentVariables
-    .flatMap((envVar): DslEnvVarSlot[] => {
-      if (!isRecord(envVar))
-        return []
+  return environmentVariables.flatMap((envVar): DslEnvVarSlot[] => {
+    if (!isRecord(envVar)) return []
 
-      const key = stringValue(envVar.name ?? envVar.key ?? envVar.variable)
-      if (!key || seenKeys.has(key))
-        return []
+    const key = stringValue(envVar.name ?? envVar.key ?? envVar.variable)
+    if (!key || seenKeys.has(key)) return []
 
-      seenKeys.add(key)
-      const description = stringValue(envVar.description)
-      const defaultValue = envVarDefaultValue(envVar)
-      const valueType = envVarValueType(envVar)
+    seenKeys.add(key)
+    const description = stringValue(envVar.description)
+    const defaultValue = envVarDefaultValue(envVar)
+    const valueType = envVarValueType(envVar)
 
-      return [{
+    return [
+      {
         key,
         ...(description ? { description } : {}),
         ...(valueType ? { valueType } : {}),
@@ -145,6 +134,7 @@ export function dslEnvVarSlots(content: string): DslEnvVarSlot[] {
               hasDefaultValue: true,
             }
           : {}),
-      }]
-    })
+      },
+    ]
+  })
 }

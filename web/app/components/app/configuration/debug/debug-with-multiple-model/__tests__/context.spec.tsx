@@ -4,7 +4,9 @@ import { render, screen } from '@testing-library/react'
 import { useDebugWithMultipleModelContext } from '../context'
 import { DebugWithMultipleModelContextProvider } from '../context-provider'
 
-const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
+const createModelAndParameter = (
+  overrides: Partial<ModelAndParameter> = {},
+): ModelAndParameter => ({
   id: 'model-1',
   model: 'gpt-3.5-turbo',
   provider: 'openai',
@@ -176,7 +178,10 @@ describe('DebugWithMultipleModelContext', () => {
 
       rerender(
         <DebugWithMultipleModelContextProvider
-          multipleModelConfigs={[createModelAndParameter(), createModelAndParameter({ id: 'model-2' })]}
+          multipleModelConfigs={[
+            createModelAndParameter(),
+            createModelAndParameter({ id: 'model-2' }),
+          ]}
           onMultipleModelConfigsChange={vi.fn()}
           onDebugWithMultipleModelChange={vi.fn()}
         >
@@ -201,7 +206,9 @@ describe('DebugWithMultipleModelContext', () => {
           <div>
             <span data-testid="configs">{JSON.stringify(context.multipleModelConfigs)}</span>
             <span data-testid="has-on-change">{typeof context.onMultipleModelConfigsChange}</span>
-            <span data-testid="has-on-debug-change">{typeof context.onDebugWithMultipleModelChange}</span>
+            <span data-testid="has-on-debug-change">
+              {typeof context.onDebugWithMultipleModelChange}
+            </span>
             <span data-testid="has-check">{typeof context.checkCanSend}</span>
           </div>
         )

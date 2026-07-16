@@ -5,13 +5,6 @@ import TextGeneration from '@/app/components/share/text-generation'
 const useSearchParamsMock = vi.fn(() => new URLSearchParams())
 const mockUseTextGenerationAppState = vi.fn()
 const mockUseTextGenerationBatch = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useSearchParams: () => useSearchParamsMock(),
 }))
@@ -40,8 +33,12 @@ vi.mock('@/app/components/share/text-generation/text-generation-sidebar', () => 
   }) => (
     <div data-testid="text-generation-sidebar">
       <span data-testid="current-tab">{currentTab}</span>
-      <button type="button" onClick={() => onTabChange('batch')}>switch-to-batch</button>
-      <button type="button" onClick={() => onTabChange('create')}>switch-to-create</button>
+      <button type="button" onClick={() => onTabChange('batch')}>
+        switch-to-batch
+      </button>
+      <button type="button" onClick={() => onTabChange('create')}>
+        switch-to-create
+      </button>
     </div>
   ),
 }))
@@ -150,6 +147,9 @@ describe('Text Generation Mode Flow', () => {
     render(<TextGeneration />)
 
     expect(screen.getByTestId('current-tab')).toHaveTextContent('create')
-    expect(screen.getByTestId('text-generation-result-panel')).toHaveAttribute('data-batch', 'false')
+    expect(screen.getByTestId('text-generation-result-panel')).toHaveAttribute(
+      'data-batch',
+      'false',
+    )
   })
 })

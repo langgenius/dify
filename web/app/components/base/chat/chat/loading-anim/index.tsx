@@ -8,11 +8,7 @@ type ILoadingAnimProps = {
   type: 'text' | 'avatar'
 }
 
-const LoadingAnim: FC<ILoadingAnimProps> = ({
-  type,
-}) => {
-  return (
-    <div className={cn(s['dot-flashing'], s[type])} />
-  )
+const LoadingAnim: FC<ILoadingAnimProps> = ({ type }) => {
+  return <div className={cn(s['dot-flashing'], s[type])} />
 }
 export default React.memo(LoadingAnim)

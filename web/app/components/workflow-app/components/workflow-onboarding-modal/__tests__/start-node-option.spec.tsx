@@ -126,7 +126,8 @@ describe('StartNodeOption', () => {
 
     it('should render long description correctly', () => {
       // Arrange
-      const longDescription = 'This is a very long description that explains the option in great detail and should still render correctly within the component layout'
+      const longDescription =
+        'This is a very long description that explains the option in great detail and should still render correctly within the component layout'
 
       // Act
       renderComponent({ description: longDescription })
@@ -233,7 +234,8 @@ describe('StartNodeOption', () => {
       renderComponent({ title: '' })
 
       // Assert
-      const titleContainer = screen.getByText('Test description for the option').parentElement?.parentElement
+      const titleContainer = screen.getByText('Test description for the option').parentElement
+        ?.parentElement
       expect(titleContainer).toBeInTheDocument()
     })
 

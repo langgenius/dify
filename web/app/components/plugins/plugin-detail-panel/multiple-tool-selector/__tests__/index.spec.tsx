@@ -4,9 +4,7 @@ import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 // ==================== Imports (after mocks) ====================
-
 import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import MultipleToolSelector from '../index'
 
@@ -65,19 +63,18 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
               >
                 Configure
               </button>
-              <button
-                data-testid={`delete-btn-${currentIndex}`}
-                onClick={() => onDelete?.()}
-              >
+              <button data-testid={`delete-btn-${currentIndex}`} onClick={() => onDelete?.()}>
                 Delete
               </button>
               {onSelectMultiple && (
                 <button
                   data-testid={`add-multiple-btn-${currentIndex}`}
-                  onClick={() => onSelectMultiple([
-                    { ...value, tool_name: 'batch-tool-1', provider_name: 'batch-provider' },
-                    { ...value, tool_name: 'batch-tool-2', provider_name: 'batch-provider' },
-                  ])}
+                  onClick={() =>
+                    onSelectMultiple([
+                      { ...value, tool_name: 'batch-tool-1', provider_name: 'batch-provider' },
+                      { ...value, tool_name: 'batch-tool-2', provider_name: 'batch-provider' },
+                    ])
+                  }
                 >
                   Add Multiple
                 </button>
@@ -86,8 +83,7 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
           )}
         </div>
       )
-    }
-    else {
+    } else {
       return (
         <div
           data-testid="tool-selector-add"
@@ -96,22 +92,36 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
         >
           <button
             data-testid="add-tool-btn"
-            onClick={() => onSelect({
-              provider_name: 'new-provider',
-              tool_name: 'new-tool',
-              tool_label: 'New Tool',
-              enabled: true,
-            })}
+            onClick={() =>
+              onSelect({
+                provider_name: 'new-provider',
+                tool_name: 'new-tool',
+                tool_label: 'New Tool',
+                enabled: true,
+              })
+            }
           >
             Add Tool
           </button>
           {onSelectMultiple && (
             <button
               data-testid="add-multiple-tools-btn"
-              onClick={() => onSelectMultiple([
-                { provider_name: 'batch-p', tool_name: 'batch-t1', tool_label: 'Batch T1', enabled: true },
-                { provider_name: 'batch-p', tool_name: 'batch-t2', tool_label: 'Batch T2', enabled: true },
-              ])}
+              onClick={() =>
+                onSelectMultiple([
+                  {
+                    provider_name: 'batch-p',
+                    tool_name: 'batch-t1',
+                    tool_label: 'Batch T1',
+                    enabled: true,
+                  },
+                  {
+                    provider_name: 'batch-p',
+                    tool_name: 'batch-t2',
+                    tool_label: 'Batch T2',
+                    enabled: true,
+                  },
+                ])
+              }
             >
               Add Multiple Tools
             </button>
@@ -124,12 +134,13 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
 
 // ==================== Test Utilities ====================
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-})
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
 
 const createToolValue = (overrides: Partial<ToolValue> = {}): ToolValue => ({
   provider_name: 'test-provider',
@@ -144,26 +155,33 @@ const createToolValue = (overrides: Partial<ToolValue> = {}): ToolValue => ({
   ...overrides,
 })
 
-const createMCPTool = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
-  id: 'mcp-provider-1',
-  name: 'mcp-provider',
-  author: 'test-author',
-  type: 'mcp',
-  icon: 'test-icon.png',
-  label: { en_US: 'MCP Provider' } as unknown as ToolWithProvider['label'],
-  description: { en_US: 'MCP Provider description' } as unknown as ToolWithProvider['description'],
-  is_team_authorization: true,
-  allow_delete: false,
-  labels: [],
-  tools: [{
-    name: 'mcp-tool-1',
-    label: { en_US: 'MCP Tool 1' } as unknown as ToolWithProvider['label'],
-    description: { en_US: 'MCP Tool 1 description' } as unknown as ToolWithProvider['description'],
-    parameters: [],
-    output_schema: {},
-  }],
-  ...overrides,
-} as ToolWithProvider)
+const createMCPTool = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
+  ({
+    id: 'mcp-provider-1',
+    name: 'mcp-provider',
+    author: 'test-author',
+    type: 'mcp',
+    icon: 'test-icon.png',
+    label: { en_US: 'MCP Provider' } as unknown as ToolWithProvider['label'],
+    description: {
+      en_US: 'MCP Provider description',
+    } as unknown as ToolWithProvider['description'],
+    is_team_authorization: true,
+    allow_delete: false,
+    labels: [],
+    tools: [
+      {
+        name: 'mcp-tool-1',
+        label: { en_US: 'MCP Tool 1' } as unknown as ToolWithProvider['label'],
+        description: {
+          en_US: 'MCP Tool 1 description',
+        } as unknown as ToolWithProvider['description'],
+        parameters: [],
+        output_schema: {},
+      },
+    ],
+    ...overrides,
+  }) as ToolWithProvider
 
 const createNodeOutputVar = (overrides: Partial<NodeOutPutVar> = {}): NodeOutPutVar => ({
   nodeId: 'node-1',
@@ -460,7 +478,10 @@ describe('MultipleToolSelector', () => {
       fireEvent.click(actionButton!)
 
       // Assert - Open state should change to true
-      expect(screen.getByTestId('tool-selector-add')).toHaveAttribute('data-controlled-state', 'true')
+      expect(screen.getByTestId('tool-selector-add')).toHaveAttribute(
+        'data-controlled-state',
+        'true',
+      )
     })
   })
 
@@ -661,9 +682,7 @@ describe('MultipleToolSelector', () => {
 
     it('should handle tools with missing enabled property', () => {
       // Arrange
-      const tools = [
-        { ...createToolValue(), enabled: undefined } as ToolValue,
-      ]
+      const tools = [{ ...createToolValue(), enabled: undefined } as ToolValue]
 
       // Act
       renderComponent({ value: tools })
@@ -739,7 +758,8 @@ describe('MultipleToolSelector', () => {
     it('should handle multiple tools correctly', () => {
       // Arrange
       const tools = Array.from({ length: 5 }, (_, i) =>
-        createToolValue({ tool_name: `tool-${i}`, tool_label: `Tool ${i}` }))
+        createToolValue({ tool_name: `tool-${i}`, tool_label: `Tool ${i}` }),
+      )
 
       // Act
       renderComponent({ value: tools })
@@ -828,9 +848,7 @@ describe('MultipleToolSelector', () => {
     it('should deduplicate multiple tools in batch add', () => {
       // Arrange
       const onChange = vi.fn()
-      const existingTools = [
-        createToolValue({ provider_name: 'batch-p', tool_name: 'batch-t1' }),
-      ]
+      const existingTools = [createToolValue({ provider_name: 'batch-p', tool_name: 'batch-t1' })]
       renderComponent({ value: existingTools, onChange })
 
       // Act - Add multiple tools (batch-t1 is duplicate)
@@ -879,9 +897,7 @@ describe('MultipleToolSelector', () => {
       fireEvent.click(screen.getByTestId('delete-btn-1'))
 
       // Assert
-      expect(onChange).toHaveBeenCalledWith([
-        expect.objectContaining({ tool_name: 'tool-0' }),
-      ])
+      expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ tool_name: 'tool-0' })])
     })
 
     it('should result in empty array when deleting last remaining tool', () => {
@@ -902,9 +918,7 @@ describe('MultipleToolSelector', () => {
   describe('Configure Functionality', () => {
     it('should update tool at specific index when configured', () => {
       // Arrange
-      const tools = [
-        createToolValue({ tool_name: 'tool-1', enabled: true }),
-      ]
+      const tools = [createToolValue({ tool_name: 'tool-1', enabled: true })]
       const onChange = vi.fn()
       renderComponent({ value: tools, onChange })
 

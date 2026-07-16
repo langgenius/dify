@@ -3,8 +3,13 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
 vi.mock('reactflow', () => ({
-  Handle: (props: { id: string, type: string, className?: string }) => (
-    <div data-testid="handle" data-handleid={props.id} data-type={props.type} className={props.className} />
+  Handle: (props: { id: string; type: string; className?: string }) => (
+    <div
+      data-testid="handle"
+      data-handleid={props.id}
+      data-type={props.type}
+      className={props.className}
+    />
   ),
   Position: {
     Right: 'right',
@@ -46,9 +51,7 @@ describe('workflow preview if-else node', () => {
       } as never,
     }
 
-    const { container, getByText } = render(
-      <Node {...props} />,
-    )
+    const { container, getByText } = render(<Node {...props} />)
 
     expect(getByText('workflow.nodes.ifElse.conditionNotSetup')).toBeInTheDocument()
     expect(container.querySelector('[data-handleid="case-1"]')).toBeInTheDocument()

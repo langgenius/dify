@@ -34,11 +34,6 @@ vi.mock('@/app/components/app/store', () => ({
     return selector({ appDetail: storeAppDetail })
   },
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: Theme.light }),
 }))
@@ -49,16 +44,6 @@ vi.mock('@/i18n-config/language', async (importOriginal) => {
     ...actual,
   }
 })
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    currentWorkspace: { id: 'ws-1', name: 'Workspace' },
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
-  }),
-  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) =>
-    selector({ userProfile: { id: 'user-1' }, workspacePermissionKeys: ['app.create_and_management'] }),
-}))
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({

@@ -19,16 +19,78 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-// Mock app-context
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => ({
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
     id: 'user-1',
     name: 'Current User',
     email: 'current@example.com',
     avatar_url: '',
     role: 'owner',
-  }),
+  },
 }))
+
+// Mock app-context
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
 
 // Mock image uploader hooks for AppIconPicker
 vi.mock('@/app/components/base/image-uploader/hooks', () => ({
@@ -46,6 +108,13 @@ vi.mock('@/app/components/base/image-uploader/hooks', () => ({
     onClear: vi.fn(),
   }),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 describe('BasicInfoSection', () => {
   const mockDataset: DataSet = {
@@ -117,8 +186,30 @@ describe('BasicInfoSection', () => {
   }
 
   const mockMemberList: Member[] = [
-    { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', roles: [], avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', roles: [], avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+    {
+      id: 'user-1',
+      name: 'User 1',
+      email: 'user1@example.com',
+      role: 'owner',
+      roles: [],
+      avatar: '',
+      avatar_url: '',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    },
+    {
+      id: 'user-2',
+      name: 'User 2',
+      email: 'user2@example.com',
+      role: 'admin',
+      roles: [],
+      avatar: '',
+      avatar_url: '',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    },
   ]
 
   const mockIconInfo: IconInfo = {
@@ -258,7 +349,9 @@ describe('BasicInfoSection', () => {
   describe('App Icon', () => {
     it('should call handleOpenAppIconPicker when icon is clicked', () => {
       const handleOpenAppIconPicker = vi.fn()
-      const { container } = render(<BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />)
+      const { container } = render(
+        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
+      )
 
       // Find the clickable icon element - it's inside a wrapper that handles the click
       const iconWrapper = container.querySelector('[class*="cursor-pointer"]')
@@ -269,7 +362,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should render AppIconPicker when showAppIconPicker is true', () => {
-      const { baseElement } = render(<BasicInfoSection {...defaultProps} showAppIconPicker={true} />)
+      const { baseElement } = render(
+        <BasicInfoSection {...defaultProps} showAppIconPicker={true} />,
+      )
 
       // AppIconPicker renders a modal with emoji tabs and options via portal
       // We just verify the component renders without crashing when picker is shown
@@ -358,9 +453,7 @@ describe('BasicInfoSection', () => {
     })
 
     it('should be disabled when form is readonly from dataset ACL editability', () => {
-      const { container } = render(
-        <BasicInfoSection {...defaultProps} readonly />,
-      )
+      const { container } = render(<BasicInfoSection {...defaultProps} readonly />)
 
       const disabledElement = container.querySelector('[class*="cursor-not-allowed"]')
       expect(disabledElement)!.toBeInTheDocument()
@@ -423,7 +516,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should update when description prop changes', () => {
-      const { rerender } = render(<BasicInfoSection {...defaultProps} description="Initial Description" />)
+      const { rerender } = render(
+        <BasicInfoSection {...defaultProps} description="Initial Description" />,
+      )
 
       expect(screen.getByDisplayValue('Initial Description'))!.toBeInTheDocument()
 
@@ -433,7 +528,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should update when permission prop changes', () => {
-      const { rerender } = render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />)
+      const { rerender } = render(
+        <BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />,
+      )
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
 
@@ -461,12 +558,7 @@ describe('BasicInfoSection', () => {
     })
 
     it('should handle empty member list', () => {
-      render(
-        <BasicInfoSection
-          {...defaultProps}
-          memberList={[]}
-        />,
-      )
+      render(<BasicInfoSection {...defaultProps} memberList={[]} />)
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
     })

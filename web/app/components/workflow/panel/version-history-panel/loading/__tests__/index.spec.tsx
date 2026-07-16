@@ -11,12 +11,7 @@ describe('VersionHistory Loading', () => {
   describe('Item', () => {
     it('should hide the release note placeholder for the first row', () => {
       const { container } = render(
-        <Item
-          titleWidth="w-1/3"
-          releaseNotesWidth="w-3/4"
-          isFirst
-          isLast={false}
-        />,
+        <Item titleWidth="w-1/3" releaseNotesWidth="w-3/4" isFirst isLast={false} />,
       )
 
       expect(container.querySelectorAll('.opacity-20')).toHaveLength(1)
@@ -25,12 +20,7 @@ describe('VersionHistory Loading', () => {
 
     it('should hide the timeline connector for the last row', () => {
       const { container } = render(
-        <Item
-          titleWidth="w-2/5"
-          releaseNotesWidth="w-4/6"
-          isFirst={false}
-          isLast
-        />,
+        <Item titleWidth="w-2/5" releaseNotesWidth="w-4/6" isFirst={false} isLast />,
       )
 
       expect(container.querySelectorAll('.opacity-20')).toHaveLength(2)

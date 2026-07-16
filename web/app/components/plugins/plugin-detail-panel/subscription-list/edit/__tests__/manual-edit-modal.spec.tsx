@@ -31,7 +31,7 @@ vi.mock('@/service/use-triggers', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign((args: { type: string, message: string }) => mockToast(args), {
+  toast: Object.assign((args: { type: string; message: string }) => mockToast(args), {
     success: (message: string) => mockToast({ type: 'success', message }),
     error: (message: string) => mockToast({ type: 'error', message }),
     warning: (message: string) => mockToast({ type: 'warning', message }),
@@ -68,7 +68,9 @@ describe('ManualEditModal', () => {
 
     render(<ManualEditModal subscription={createSubscription()} onClose={onClose} />)
 
-    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.edit\.title/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.edit\.title/),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 

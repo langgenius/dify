@@ -450,6 +450,7 @@ class TestPipelineRunApis:
 
         pipeline = make_pipeline()
         user = make_account()
+        session = MagicMock(spec=Session)
 
         payload = {
             "inputs": empty_mapping(),
@@ -462,15 +463,22 @@ class TestPipelineRunApis:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.load_rag_pipeline",
+                return_value=pipeline,
+            ) as load_pipeline,
+            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate",
                 return_value=MagicMock(),
-            ),
+            ) as generate,
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.helper.compact_generate_response",
                 return_value={"ok": True},
             ),
         ):
-            assert method(api, user, pipeline) == {"ok": True}
+            assert method(api, session, user, pipeline.id) == {"ok": True}
+
+        load_pipeline.assert_called_once_with(session, pipeline.id)
+        assert generate.call_args.kwargs["session"] is session
 
     def test_draft_run_rate_limit(self, app: Flask) -> None:
         api = DraftRagPipelineRunApi()
@@ -478,6 +486,7 @@ class TestPipelineRunApis:
 
         pipeline = make_pipeline()
         user = make_account()
+        session = MagicMock(spec=Session)
         payload: dict[str, object] = {
             "inputs": empty_mapping(),
             "datasource_type": "x",
@@ -493,12 +502,16 @@ class TestPipelineRunApis:
                 payload,
             ),
             patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.load_rag_pipeline",
+                return_value=pipeline,
+            ),
+            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate",
                 side_effect=InvokeRateLimitError("limit"),
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, user, pipeline)
+                method(api, session, user, pipeline.id)
 
 
 class TestDraftNodeRun:
@@ -600,14 +613,18 @@ class TestMiscApis:
             app.test_request_context("/"),
         ):
             with pytest.raises(Forbidden):
-                method(api, user, "ds1")
+                method(api, MagicMock(spec=Session), user, "ds1")
 
     def test_recommended_plugins(self, app: Flask) -> None:
         api = RagPipelineRecommendedPluginApi()
         method = unwrap(api.get)
 
         service = MagicMock()
-        service.get_recommended_plugins.return_value = [{"id": "p1"}]
+        recommended_plugins = {
+            "installed_recommended_plugins": [{"id": "p1"}],
+            "uninstalled_recommended_plugins": [{"id": "p2"}],
+        }
+        service.get_recommended_plugins.return_value = recommended_plugins
         user = make_account()
         tenant_id = "tenant-1"
 
@@ -619,7 +636,7 @@ class TestMiscApis:
             ),
         ):
             result = method(api, tenant_id, user)
-            assert result == [{"id": "p1"}]
+            assert result == recommended_plugins
             service.get_recommended_plugins.assert_called_once_with("all", user, tenant_id)
 
 
@@ -634,6 +651,7 @@ class TestPublishedRagPipelineRunApi:
 
         pipeline = make_pipeline()
         user = make_account()
+        session = MagicMock(spec=Session)
 
         payload = {
             "inputs": empty_mapping(),
@@ -647,16 +665,23 @@ class TestPublishedRagPipelineRunApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.load_rag_pipeline",
+                return_value=pipeline,
+            ) as load_pipeline,
+            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate",
                 return_value=MagicMock(),
-            ),
+            ) as generate,
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.helper.compact_generate_response",
                 return_value={"ok": True},
             ),
         ):
-            result = method(api, user, pipeline)
+            result = method(api, session, user, pipeline.id)
             assert result == {"ok": True}
+
+        load_pipeline.assert_called_once_with(session, pipeline.id)
+        assert generate.call_args.kwargs["session"] is session
 
     def test_published_run_rate_limit(self, app: Flask) -> None:
         api = PublishedRagPipelineRunApi()
@@ -664,6 +689,7 @@ class TestPublishedRagPipelineRunApi:
 
         pipeline = make_pipeline()
         user = make_account()
+        session = MagicMock(spec=Session)
 
         payload = {
             "inputs": empty_mapping(),
@@ -676,12 +702,16 @@ class TestPublishedRagPipelineRunApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.load_rag_pipeline",
+                return_value=pipeline,
+            ),
+            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate",
                 side_effect=InvokeRateLimitError("limit"),
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, user, pipeline)
+                method(api, session, user, pipeline.id)
 
 
 class TestDefaultBlockConfigApi:

@@ -132,9 +132,7 @@ describe('OptionCard', () => {
     })
 
     it('should not render effect color when effectColor is not provided', () => {
-      const { container } = render(
-        <OptionCard {...defaultProps} showEffectColor={true} />,
-      )
+      const { container } = render(<OptionCard {...defaultProps} showEffectColor={true} />)
       const effectElement = container.querySelector('.blur-\\[80px\\]')
       expect(effectElement).not.toBeInTheDocument()
     })
@@ -192,9 +190,7 @@ describe('OptionCard', () => {
     })
 
     it('should not render children container when children is not provided', () => {
-      const { container } = render(
-        <OptionCard {...defaultProps} showChildren={true} />,
-      )
+      const { container } = render(<OptionCard {...defaultProps} showChildren={true} />)
       const childContainer = container.querySelector('.bg-components-panel-bg')
       expect(childContainer).not.toBeInTheDocument()
     })

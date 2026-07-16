@@ -19,13 +19,13 @@ vi.mock('@/context/dataset-detail', () => ({
   }),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
 // Mock EmbeddingProcess component as it has complex dependencies
 vi.mock('../../processing/embedding-process', () => ({
-  default: ({ datasetId, batchId, documents }: {
+  default: ({
+    datasetId,
+    batchId,
+    documents,
+  }: {
     datasetId: string
     batchId: string
     documents: InitialDocumentDetail[]

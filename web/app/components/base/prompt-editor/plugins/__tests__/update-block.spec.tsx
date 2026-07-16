@@ -41,19 +41,17 @@ const selectRootEnd = (editor: LexicalEditor) => {
   })
 }
 
-const setup = (props?: {
-  instanceId?: string
-  withEventEmitter?: boolean
-}) => {
+const setup = (props?: { instanceId?: string; withEventEmitter?: boolean }) => {
   const callbacks: Array<(event: TestEvent) => void> = []
 
-  const eventEmitter = props?.withEventEmitter === false
-    ? null
-    : {
-        useSubscription: vi.fn((callback: (event: TestEvent) => void) => {
-          callbacks.push(callback)
-        }),
-      }
+  const eventEmitter =
+    props?.withEventEmitter === false
+      ? null
+      : {
+          useSubscription: vi.fn((callback: (event: TestEvent) => void) => {
+            callbacks.push(callback)
+          }),
+        }
 
   mockUseEventEmitterContextContext.mockReturnValue({ eventEmitter })
 
@@ -79,7 +77,7 @@ const setup = (props?: {
 
   const emit = (event: TestEvent) => {
     act(() => {
-      callbacks.forEach(callback => callback(event))
+      callbacks.forEach((callback) => callback(event))
     })
   }
 

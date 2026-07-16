@@ -18,9 +18,7 @@ const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsWrapper>
-        {children}
-      </NuqsWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
     </JotaiProvider>
   )
   return { wrapper }
@@ -185,11 +183,14 @@ describe('useMarketplaceMoreClick', () => {
 
   it('should do nothing when called with no params', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => ({
-      handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
-      searchText: useSearchPluginText()[0],
-    }), { wrapper })
+    const { result } = renderHook(
+      () => ({
+        handleMoreClick: useMarketplaceMoreClick(),
+        sort: useMarketplaceSortValue(),
+        searchText: useSearchPluginText()[0],
+      }),
+      { wrapper },
+    )
 
     const sortBefore = result.current.sort
     const searchTextBefore = result.current.searchText
@@ -205,10 +206,13 @@ describe('useMarketplaceMoreClick', () => {
   it('should update search state when called with search params', () => {
     const { wrapper } = createWrapper()
 
-    const { result } = renderHook(() => ({
-      handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
-    }), { wrapper })
+    const { result } = renderHook(
+      () => ({
+        handleMoreClick: useMarketplaceMoreClick(),
+        sort: useMarketplaceSortValue(),
+      }),
+      { wrapper },
+    )
 
     act(() => {
       result.current.handleMoreClick({
@@ -223,10 +227,13 @@ describe('useMarketplaceMoreClick', () => {
 
   it('should use defaults when search params fields are missing', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => ({
-      handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
-    }), { wrapper })
+    const { result } = renderHook(
+      () => ({
+        handleMoreClick: useMarketplaceMoreClick(),
+        sort: useMarketplaceSortValue(),
+      }),
+      { wrapper },
+    )
 
     act(() => {
       result.current.handleMoreClick({})

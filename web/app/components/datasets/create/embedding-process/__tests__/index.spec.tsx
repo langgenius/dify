@@ -1,4 +1,8 @@
-import type { FullDocumentDetail, IndexingStatusResponse, ProcessRuleResponse } from '@/models/datasets'
+import type {
+  FullDocumentDetail,
+  IndexingStatusResponse,
+  ProcessRuleResponse,
+} from '@/models/datasets'
 import { act, render, renderHook, screen } from '@testing-library/react'
 import { DataSourceType, ProcessMode } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -23,7 +27,7 @@ vi.mock('@/next/navigation', () => ({
 // Mock API service
 const mockFetchIndexingStatusBatch = vi.fn()
 vi.mock('@/service/datasets', () => ({
-  fetchIndexingStatusBatch: (params: { datasetId: string, batchId: string }) =>
+  fetchIndexingStatusBatch: (params: { datasetId: string; batchId: string }) =>
     mockFetchIndexingStatusBatch(params),
 }))
 
@@ -99,60 +103,58 @@ const createMockIndexingStatus = (
 /**
  * Create a mock FullDocumentDetail
  */
-const createMockDocument = (
-  overrides: Partial<FullDocumentDetail> = {},
-): FullDocumentDetail => ({
-  id: 'doc-1',
-  name: 'test-document.txt',
-  data_source_type: DataSourceType.FILE,
-  data_source_info: {
-    upload_file: {
-      id: 'file-1',
-      name: 'test-document.txt',
-      extension: 'txt',
-      mime_type: 'text/plain',
-      size: 1024,
-      created_by: 'user-1',
-      created_at: Date.now(),
+const createMockDocument = (overrides: Partial<FullDocumentDetail> = {}): FullDocumentDetail =>
+  ({
+    id: 'doc-1',
+    name: 'test-document.txt',
+    data_source_type: DataSourceType.FILE,
+    data_source_info: {
+      upload_file: {
+        id: 'file-1',
+        name: 'test-document.txt',
+        extension: 'txt',
+        mime_type: 'text/plain',
+        size: 1024,
+        created_by: 'user-1',
+        created_at: Date.now(),
+      },
     },
-  },
-  batch: 'batch-1',
-  created_api_request_id: 'req-1',
-  processing_started_at: Date.now(),
-  parsing_completed_at: Date.now(),
-  cleaning_completed_at: Date.now(),
-  splitting_completed_at: Date.now(),
-  tokens: 100,
-  indexing_latency: 5000,
-  completed_at: Date.now(),
-  paused_by: '',
-  paused_at: 0,
-  stopped_at: 0,
-  indexing_status: 'completed',
-  disabled_at: 0,
-  ...overrides,
-} as FullDocumentDetail)
+    batch: 'batch-1',
+    created_api_request_id: 'req-1',
+    processing_started_at: Date.now(),
+    parsing_completed_at: Date.now(),
+    cleaning_completed_at: Date.now(),
+    splitting_completed_at: Date.now(),
+    tokens: 100,
+    indexing_latency: 5000,
+    completed_at: Date.now(),
+    paused_by: '',
+    paused_at: 0,
+    stopped_at: 0,
+    indexing_status: 'completed',
+    disabled_at: 0,
+    ...overrides,
+  }) as FullDocumentDetail
 
 /**
  * Create a mock ProcessRuleResponse
  */
-const createMockProcessRule = (
-  overrides: Partial<ProcessRuleResponse> = {},
-): ProcessRuleResponse => ({
-  mode: ProcessMode.general,
-  rules: {
-    segmentation: {
-      separator: '\n',
-      max_tokens: 500,
-      chunk_overlap: 50,
+const createMockProcessRule = (overrides: Partial<ProcessRuleResponse> = {}): ProcessRuleResponse =>
+  ({
+    mode: ProcessMode.general,
+    rules: {
+      segmentation: {
+        separator: '\n',
+        max_tokens: 500,
+        chunk_overlap: 50,
+      },
+      pre_processing_rules: [
+        { id: 'remove_extra_spaces', enabled: true },
+        { id: 'remove_urls_emails', enabled: false },
+      ],
     },
-    pre_processing_rules: [
-      { id: 'remove_extra_spaces', enabled: true },
-      { id: 'remove_urls_emails', enabled: false },
-    ],
-  },
-  ...overrides,
-} as ProcessRuleResponse)
+    ...overrides,
+  }) as ProcessRuleResponse
 
 // Utils Tests
 
@@ -165,21 +167,31 @@ describe('utils', () => {
         upload_file: { id: 'file-1', name: 'test.txt' },
       }
 
-      expect(isLegacyDataSourceInfo(info as Parameters<typeof isLegacyDataSourceInfo>[0])).toBe(true)
+      expect(isLegacyDataSourceInfo(info as Parameters<typeof isLegacyDataSourceInfo>[0])).toBe(
+        true,
+      )
     })
 
     it('should return false for null', () => {
-      expect(isLegacyDataSourceInfo(null as unknown as Parameters<typeof isLegacyDataSourceInfo>[0])).toBe(false)
+      expect(
+        isLegacyDataSourceInfo(null as unknown as Parameters<typeof isLegacyDataSourceInfo>[0]),
+      ).toBe(false)
     })
 
     it('should return false for undefined', () => {
-      expect(isLegacyDataSourceInfo(undefined as unknown as Parameters<typeof isLegacyDataSourceInfo>[0])).toBe(false)
+      expect(
+        isLegacyDataSourceInfo(
+          undefined as unknown as Parameters<typeof isLegacyDataSourceInfo>[0],
+        ),
+      ).toBe(false)
     })
 
     it('should return false when upload_file is not an object', () => {
       const info = { upload_file: 'string-value' }
 
-      expect(isLegacyDataSourceInfo(info as unknown as Parameters<typeof isLegacyDataSourceInfo>[0])).toBe(false)
+      expect(
+        isLegacyDataSourceInfo(info as unknown as Parameters<typeof isLegacyDataSourceInfo>[0]),
+      ).toBe(false)
     })
   })
 
@@ -194,7 +206,9 @@ describe('utils', () => {
       ['error', false],
       ['paused', false],
     ])('should return %s for status "%s"', (status, expected) => {
-      const detail = createMockIndexingStatus({ indexing_status: status as IndexingStatusResponse['indexing_status'] })
+      const detail = createMockIndexingStatus({
+        indexing_status: status as IndexingStatusResponse['indexing_status'],
+      })
 
       expect(isSourceEmbedding(detail)).toBe(expected)
     })
@@ -264,7 +278,11 @@ describe('utils', () => {
     it('should create lookup functions for documents', () => {
       const documents = [
         createMockDocument({ id: 'doc-1', name: 'file1.txt' }),
-        createMockDocument({ id: 'doc-2', name: 'file2.pdf', data_source_type: DataSourceType.NOTION }),
+        createMockDocument({
+          id: 'doc-2',
+          name: 'file2.pdf',
+          data_source_type: DataSourceType.NOTION,
+        }),
       ]
 
       const lookup = createDocumentLookup(documents)
@@ -304,7 +322,9 @@ describe('utils', () => {
       const documents = [
         createMockDocument({
           id: 'doc-1',
-          data_source_info: { some_other_field: 'value' } as unknown as FullDocumentDetail['data_source_info'],
+          data_source_info: {
+            some_other_field: 'value',
+          } as unknown as FullDocumentDetail['data_source_info'],
         }),
       ]
       const lookup = createDocumentLookup(documents)
@@ -314,12 +334,12 @@ describe('utils', () => {
 
     it('should memoize lookups with Map for performance', () => {
       const documents = Array.from({ length: 1000 }, (_, i) =>
-        createMockDocument({ id: `doc-${i}`, name: `file${i}.txt` }))
+        createMockDocument({ id: `doc-${i}`, name: `file${i}.txt` }),
+      )
 
       const lookup = createDocumentLookup(documents)
       const startTime = performance.now()
-      for (let i = 0; i < 1000; i++)
-        lookup.getName(`doc-${i}`)
+      for (let i = 0; i < 1000; i++) lookup.getName(`doc-${i}`)
 
       const duration = performance.now() - startTime
 
@@ -366,9 +386,7 @@ describe('useIndexingStatusPolling', () => {
     const mockStatus = [createMockIndexingStatus({ indexing_status: 'completed' })]
     mockFetchIndexingStatusBatch.mockResolvedValue({ data: mockStatus })
 
-    renderHook(() =>
-      useIndexingStatusPolling({ datasetId: 'ds-1', batchId: 'batch-1' }),
-    )
+    renderHook(() => useIndexingStatusPolling({ datasetId: 'ds-1', batchId: 'batch-1' }))
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync()
@@ -386,9 +404,7 @@ describe('useIndexingStatusPolling', () => {
       .mockResolvedValueOnce({ data: indexingStatus })
       .mockResolvedValueOnce({ data: completedStatus })
 
-    renderHook(() =>
-      useIndexingStatusPolling({ datasetId: 'ds-1', batchId: 'batch-1' }),
-    )
+    renderHook(() => useIndexingStatusPolling({ datasetId: 'ds-1', batchId: 'batch-1' }))
 
     // First poll
     await act(async () => {
@@ -439,9 +455,7 @@ describe('useIndexingStatusPolling', () => {
       .mockRejectedValueOnce(new Error('Network error'))
       .mockResolvedValueOnce({ data: [createMockIndexingStatus({ indexing_status: 'completed' })] })
 
-    renderHook(() =>
-      useIndexingStatusPolling({ datasetId: 'ds-1', batchId: 'batch-1' }),
-    )
+    renderHook(() => useIndexingStatusPolling({ datasetId: 'ds-1', batchId: 'batch-1' }))
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync()
@@ -539,7 +553,9 @@ describe('UpgradeBanner', () => {
   it('should render upgrade message', () => {
     render(<UpgradeBanner />)
 
-    expect(screen.getByText(/billing\.plansCommon\.documentProcessingPriorityUpgrade/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/billing\.plansCommon\.documentProcessingPriorityUpgrade/i),
+    ).toBeInTheDocument()
   })
 
   it('should render ZapFast icon', () => {
@@ -552,7 +568,9 @@ describe('UpgradeBanner', () => {
     render(<UpgradeBanner />)
 
     // Assert - UpgradeBtn should be rendered
-    const upgradeContainer = screen.getByText(/billing\.plansCommon\.documentProcessingPriorityUpgrade/i).parentElement
+    const upgradeContainer = screen.getByText(
+      /billing\.plansCommon\.documentProcessingPriorityUpgrade/i,
+    ).parentElement
     expect(upgradeContainer).toBeInTheDocument()
   })
 })
@@ -660,11 +678,7 @@ describe('IndexingProgressItem', () => {
         const detail = createMockIndexingStatus()
 
         render(
-          <IndexingProgressItem
-            detail={detail}
-            name={filename}
-            sourceType={DataSourceType.FILE}
-          />,
+          <IndexingProgressItem detail={detail} name={filename} sourceType={DataSourceType.FILE} />,
         )
 
         expect(screen.getByText(filename)).toBeInTheDocument()
@@ -856,7 +870,9 @@ describe('RuleDetail', () => {
       expect(screen.getByText(/datasetDocuments\.embedding\.segmentLength/i)).toBeInTheDocument()
       expect(screen.getByText(/datasetDocuments\.embedding\.textCleaning/i)).toBeInTheDocument()
       expect(screen.getByText(/datasetCreation\.stepTwo\.indexMode/i)).toBeInTheDocument()
-      expect(screen.getByText(/datasetSettings\.form\.retrievalSetting\.title/i)).toBeInTheDocument()
+      expect(
+        screen.getByText(/datasetSettings\.form\.retrievalSetting\.title/i),
+      ).toBeInTheDocument()
     })
   })
 
@@ -943,9 +959,7 @@ describe('RuleDetail', () => {
       const sourceData = createMockProcessRule({
         mode: ProcessMode.general,
         rules: {
-          pre_processing_rules: [
-            { id: 'remove_extra_spaces', enabled: false },
-          ],
+          pre_processing_rules: [{ id: 'remove_extra_spaces', enabled: false }],
         },
       } as Partial<ProcessRuleResponse>)
 
@@ -998,7 +1012,9 @@ describe('RuleDetail', () => {
     ])('should show correct label for %s retrieval method', (method, expectedKey) => {
       render(<RuleDetail retrievalMethod={method} />)
 
-      expect(screen.getByText(new RegExp(`dataset\\.retrieval\\.${expectedKey}\\.title`, 'i'))).toBeInTheDocument()
+      expect(
+        screen.getByText(new RegExp(`dataset\\.retrieval\\.${expectedKey}\\.title`, 'i')),
+      ).toBeInTheDocument()
     })
   })
 })
@@ -1078,13 +1094,7 @@ describe('EmbeddingProcess', () => {
       ]
       mockFetchIndexingStatusBatch.mockResolvedValue({ data: mockStatus })
 
-      render(
-        <EmbeddingProcess
-          datasetId="ds-1"
-          batchId="batch-1"
-          documents={documents}
-        />,
-      )
+      render(<EmbeddingProcess datasetId="ds-1" batchId="batch-1" documents={documents} />)
 
       await act(async () => {
         await vi.runOnlyPendingTimersAsync()
@@ -1111,7 +1121,9 @@ describe('EmbeddingProcess', () => {
         await vi.runOnlyPendingTimersAsync()
       })
 
-      expect(screen.getByText(/billing\.plansCommon\.documentProcessingPriorityUpgrade/i)).toBeInTheDocument()
+      expect(
+        screen.getByText(/billing\.plansCommon\.documentProcessingPriorityUpgrade/i),
+      ).toBeInTheDocument()
     })
 
     it('should not show upgrade banner when billing is disabled', async () => {
@@ -1124,7 +1136,9 @@ describe('EmbeddingProcess', () => {
         await vi.runOnlyPendingTimersAsync()
       })
 
-      expect(screen.queryByText(/billing\.plansCommon\.documentProcessingPriorityUpgrade/i)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(/billing\.plansCommon\.documentProcessingPriorityUpgrade/i),
+      ).not.toBeInTheDocument()
     })
 
     it('should not show upgrade banner for team plan', async () => {
@@ -1142,7 +1156,9 @@ describe('EmbeddingProcess', () => {
         await vi.runOnlyPendingTimersAsync()
       })
 
-      expect(screen.queryByText(/billing\.plansCommon\.documentProcessingPriorityUpgrade/i)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(/billing\.plansCommon\.documentProcessingPriorityUpgrade/i),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -1216,13 +1232,7 @@ describe('EmbeddingProcess', () => {
     it('should pass indexingType to RuleDetail', async () => {
       mockFetchIndexingStatusBatch.mockResolvedValue({ data: [] })
 
-      render(
-        <EmbeddingProcess
-          datasetId="ds-1"
-          batchId="batch-1"
-          indexingType="economy"
-        />,
-      )
+      render(<EmbeddingProcess datasetId="ds-1" batchId="batch-1" indexingType="economy" />)
 
       await act(async () => {
         await vi.runOnlyPendingTimersAsync()
@@ -1240,11 +1250,7 @@ describe('EmbeddingProcess', () => {
       })
 
       const { rerender } = render(
-        <EmbeddingProcess
-          datasetId="ds-1"
-          batchId="batch-1"
-          documents={documents}
-        />,
+        <EmbeddingProcess datasetId="ds-1" batchId="batch-1" documents={documents} />,
       )
 
       await act(async () => {
@@ -1252,13 +1258,7 @@ describe('EmbeddingProcess', () => {
       })
 
       // Rerender with same documents reference
-      rerender(
-        <EmbeddingProcess
-          datasetId="ds-1"
-          batchId="batch-1"
-          documents={documents}
-        />,
-      )
+      rerender(<EmbeddingProcess datasetId="ds-1" batchId="batch-1" documents={documents} />)
 
       // Assert - component should render without issues
       expect(screen.getByText('test.txt')).toBeInTheDocument()
@@ -1301,13 +1301,7 @@ describe('EmbeddingProcess', () => {
         ],
       })
 
-      render(
-        <EmbeddingProcess
-          datasetId="ds-1"
-          batchId="batch-1"
-          documents={documents}
-        />,
-      )
+      render(<EmbeddingProcess datasetId="ds-1" batchId="batch-1" documents={documents} />)
 
       await act(async () => {
         await vi.runOnlyPendingTimersAsync()
@@ -1320,13 +1314,7 @@ describe('EmbeddingProcess', () => {
     it('should handle undefined retrievalMethod', async () => {
       mockFetchIndexingStatusBatch.mockResolvedValue({ data: [] })
 
-      render(
-        <EmbeddingProcess
-          datasetId="ds-1"
-          batchId="batch-1"
-          indexingType="high_quality"
-        />,
-      )
+      render(<EmbeddingProcess datasetId="ds-1" batchId="batch-1" indexingType="high_quality" />)
 
       await act(async () => {
         await vi.runOnlyPendingTimersAsync()

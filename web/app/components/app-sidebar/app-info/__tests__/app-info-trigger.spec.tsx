@@ -6,29 +6,32 @@ import { AppModeEnum } from '@/types/app'
 import AppInfoTrigger from '../app-info-trigger'
 
 vi.mock('../../../base/app-icon', () => ({
-  default: ({ size, icon, background }: {
+  default: ({
+    size,
+    icon,
+    background,
+  }: {
     size: string
     icon: string
     background: string
     iconType?: string
     imageUrl?: string
-  }) => (
-    <div data-testid="app-icon" data-size={size} data-icon={icon} data-bg={background} />
-  ),
+  }) => <div data-testid="app-icon" data-size={size} data-icon={icon} data-bg={background} />,
 }))
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> => ({
-  id: 'app-1',
-  name: 'Test App',
-  mode: AppModeEnum.CHAT,
-  icon: '🤖',
-  icon_type: 'emoji',
-  icon_background: '#FFEAD5',
-  icon_url: '',
-  description: 'A test app',
-  use_icon_as_answer_icon: false,
-  ...overrides,
-} as App & Partial<AppSSO>)
+const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
+  ({
+    id: 'app-1',
+    name: 'Test App',
+    mode: AppModeEnum.CHAT,
+    icon: '🤖',
+    icon_type: 'emoji',
+    icon_background: '#FFEAD5',
+    icon_url: '',
+    description: 'A test app',
+    use_icon_as_answer_icon: false,
+    ...overrides,
+  }) as App & Partial<AppSSO>
 
 describe('AppInfoTrigger', () => {
   it('should render app icon with correct size when expanded', () => {
@@ -44,17 +47,35 @@ describe('AppInfoTrigger', () => {
   })
 
   it('should show app name when expanded', () => {
-    render(<AppInfoTrigger appDetail={createAppDetail({ name: 'My Chatbot' })} expand onClick={vi.fn()} />)
+    render(
+      <AppInfoTrigger
+        appDetail={createAppDetail({ name: 'My Chatbot' })}
+        expand
+        onClick={vi.fn()}
+      />,
+    )
     expect(screen.getByText('My Chatbot')).toBeInTheDocument()
   })
 
   it('should not show app name when collapsed', () => {
-    render(<AppInfoTrigger appDetail={createAppDetail({ name: 'My Chatbot' })} expand={false} onClick={vi.fn()} />)
+    render(
+      <AppInfoTrigger
+        appDetail={createAppDetail({ name: 'My Chatbot' })}
+        expand={false}
+        onClick={vi.fn()}
+      />,
+    )
     expect(screen.queryByText('My Chatbot')).not.toBeInTheDocument()
   })
 
   it('should show app mode label when expanded', () => {
-    render(<AppInfoTrigger appDetail={createAppDetail({ mode: AppModeEnum.ADVANCED_CHAT })} expand onClick={vi.fn()} />)
+    render(
+      <AppInfoTrigger
+        appDetail={createAppDetail({ mode: AppModeEnum.ADVANCED_CHAT })}
+        expand
+        onClick={vi.fn()}
+      />,
+    )
     expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
   })
 
@@ -84,9 +105,7 @@ describe('AppInfoTrigger', () => {
   })
 
   it('should center the icon wrapper when collapsed', () => {
-    render(
-      <AppInfoTrigger appDetail={createAppDetail()} expand={false} onClick={vi.fn()} />,
-    )
+    render(<AppInfoTrigger appDetail={createAppDetail()} expand={false} onClick={vi.fn()} />)
     const iconWrapper = screen.getByTestId('app-icon').parentElement
     expect(iconWrapper?.parentElement).toHaveClass('items-center')
   })

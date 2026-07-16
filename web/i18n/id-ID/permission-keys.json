@@ -50,5 +50,5 @@
   "snippets.management": "Kelola snippet",
   "tool.manage": "Kelola alat",
   "workspace.member.manage": "Kelola anggota",
-  "workspace.role.manage": "Kelola izin peran dan aturan akses sumber daya"
+  "workspace.role.manage": "Kelola peran dan set izin"
 }

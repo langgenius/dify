@@ -14,9 +14,11 @@ describe('App access config route', () => {
   // Route rendering resolves the async app id params for the client page.
   describe('Rendering', () => {
     it('should pass app id from route params', async () => {
-      render(await AccessConfig({
-        params: Promise.resolve({ locale: 'en-US', appId: 'app-route-id' }),
-      }))
+      render(
+        await AccessConfig({
+          params: Promise.resolve({ locale: 'en-US', appId: 'app-route-id' }),
+        }),
+      )
 
       expect(screen.getByTestId('app-access-config')).toHaveAttribute('data-app-id', 'app-route-id')
     })

@@ -4,9 +4,13 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, NamedTuple
 
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType
-from graphon.nodes.human_input.entities import FormInputConfig, SelectInputConfig
-from graphon.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.entities import FormInputConfig, SelectInputConfig
+from core.workflow.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import (
+    DifyHITLEventType,
+    HumanInputRequired,
+    PauseReason,
+)
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables import ArrayStringSegment
 from models.human_input import ApprovalChannel, RecipientType
@@ -97,7 +101,7 @@ def enrich_human_input_pause_reasons(
     enriched: list[dict[str, Any]] = []
     for reason in reasons:
         updated = dict(reason)
-        if updated.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED:
+        if updated.get("TYPE") == DifyHITLEventType.HUMAN_INPUT_REQUIRED:
             form_id = updated.get("form_id")
             if isinstance(form_id, str):
                 disposition = dispositions_by_form_id.get(form_id)

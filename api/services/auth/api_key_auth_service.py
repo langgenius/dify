@@ -11,7 +11,7 @@ from services.auth.api_key_auth_factory import ApiKeyAuthFactory
 
 class ApiKeyAuthService:
     @staticmethod
-    def get_provider_auth_list(session: Session, tenant_id: str):
+    def get_provider_auth_list(tenant_id: str, *, session: Session):
         data_source_api_key_bindings = session.scalars(
             select(DataSourceApiKeyAuthBinding).where(
                 DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.disabled.is_(False)
@@ -20,7 +20,7 @@ class ApiKeyAuthService:
         return data_source_api_key_bindings
 
     @staticmethod
-    def create_provider_auth(session: Session, tenant_id: str, args: dict[str, Any]):
+    def create_provider_auth(tenant_id: str, args: dict[str, Any], *, session: Session):
         auth_result = ApiKeyAuthFactory(args["provider"], args["credentials"]).validate_credentials()
         if auth_result:
             # Encrypt the api key
@@ -35,7 +35,7 @@ class ApiKeyAuthService:
             session.commit()
 
     @staticmethod
-    def get_auth_credentials(session: Session, tenant_id: str, category: str, provider: str):
+    def get_auth_credentials(tenant_id: str, category: str, provider: str, *, session: Session):
         data_source_api_key_bindings = session.scalar(
             select(DataSourceApiKeyAuthBinding).where(
                 DataSourceApiKeyAuthBinding.tenant_id == tenant_id,
@@ -52,7 +52,7 @@ class ApiKeyAuthService:
         return credentials
 
     @staticmethod
-    def delete_provider_auth(session: Session, tenant_id: str, binding_id: str):
+    def delete_provider_auth(tenant_id: str, binding_id: str, *, session: Session):
         data_source_api_key_binding = session.scalar(
             select(DataSourceApiKeyAuthBinding).where(
                 DataSourceApiKeyAuthBinding.tenant_id == tenant_id,

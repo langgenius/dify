@@ -1,9 +1,6 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiAddLine,
-  RiArrowRightUpLine,
-} from '@remixicon/react'
+import { RiAddLine, RiArrowRightUpLine } from '@remixicon/react'
 
 type CreateEntryCardProps = {
   className?: string
@@ -21,7 +18,12 @@ const CreateEntryCard = ({
   title,
 }: CreateEntryCardProps) => {
   return (
-    <div className={cn('col-span-1 flex h-[120px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-md', className)}>
+    <div
+      className={cn(
+        'col-span-1 flex h-[120px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-md',
+        className,
+      )}
+    >
       <button
         type="button"
         aria-label={title}
@@ -35,7 +37,10 @@ const CreateEntryCard = ({
           </div>
         </div>
         <div className="min-w-0 flex-1 py-px">
-          <div className="truncate system-md-semibold text-text-primary group-hover:text-text-accent" title={title}>
+          <div
+            className="truncate system-md-semibold text-text-primary group-hover:text-text-accent"
+            title={title}
+          >
             {title}
           </div>
         </div>
@@ -49,7 +54,9 @@ const CreateEntryCard = ({
         className="flex h-8 items-center gap-0.5 border-t border-divider-subtle px-3 py-2 text-components-button-secondary-text outline-hidden hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
       >
         <div className="min-w-0 flex-1 px-0.5">
-          <div className="truncate system-sm-medium" title={linkText}>{linkText}</div>
+          <div className="truncate system-sm-medium" title={linkText}>
+            {linkText}
+          </div>
         </div>
         <RiArrowRightUpLine className="size-4 shrink-0" />
       </a>

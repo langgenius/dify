@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
@@ -83,7 +83,7 @@ describe('InputsFormNode', () => {
   })
 
   it('should handle start chat button click', async () => {
-    const handleStartChat = vi.fn(cb => cb())
+    const handleStartChat = vi.fn((cb) => cb())
 
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
@@ -138,7 +138,9 @@ describe('InputsFormNode', () => {
     expect(screen.getByTestId('mock-inputs-form-content').parentElement).toHaveClass('p-4')
 
     // Start chat button container
-    expect(screen.getByRole('button', { name: 'share.chat.startChat' }).parentElement).toHaveClass('p-4')
+    expect(screen.getByRole('button', { name: 'share.chat.startChat' }).parentElement).toHaveClass(
+      'p-4',
+    )
 
     // Collapsed state mobile styles
     rerender(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)

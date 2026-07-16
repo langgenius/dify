@@ -20,6 +20,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,8 +28,9 @@ import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
 import {
@@ -57,31 +59,47 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const isMobile = media === MediaType.mobile
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>()
-  const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
+  const [externalHitResult, setExternalHitResult] = useState<
+    ExternalKnowledgeBaseHitTestingResponse | undefined
+  >()
   const [queries, setQueries] = useState<Query[]>([])
   const [queryInputKey, setQueryInputKey] = useState(Date.now())
 
   const [currPage, setCurrPage] = useState<number>(0)
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canRunRetrievalRecall = React.useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canRunRetrievalRecall = getDatasetACLCapabilities(currentDataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: currentDataset?.maintainer,
     workspacePermissionKeys,
-  }).canRetrievalRecall, [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys])
-  const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 }, { enabled: canRunRetrievalRecall })
+  }).canRetrievalRecall
+  const {
+    data: recordsRes,
+    refetch: recordsRefetch,
+    isLoading: isRecordsLoading,
+  } = useDatasetTestingRecords(
+    datasetId,
+    { limit, page: currPage + 1 },
+    { enabled: canRunRetrievalRecall },
+  )
 
   const total = recordsRes?.total || 0
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
   const isExternal = currentDataset?.provider === 'external'
 
-  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
+  const [retrievalConfig, setRetrievalConfig] = useState(
+    currentDataset?.retrieval_model_dict as RetrievalConfig,
+  )
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
-  const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
+  const [
+    isShowRightPanel,
+    { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel },
+  ] = useBoolean(!isMobile)
 
-  const { mutateAsync: hitTestingMutation, isPending: isHitTestingPending } = useHitTesting(datasetId)
+  const { mutateAsync: hitTestingMutation, isPending: isHitTestingPending } =
+    useHitTesting(datasetId)
   const {
     mutateAsync: externalKnowledgeBaseHitTestingMutation,
     isPending: isExternalKnowledgeBaseHitTestingPending,
@@ -92,21 +110,19 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
     <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
       <div className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
-        {t('hit.title', { ns: 'datasetHitTesting', num: results.length })}
+        {t(($) => $['hit.title'], { ns: 'datasetHitTesting', num: results.length })}
       </div>
       <div className="grow space-y-2 overflow-y-auto">
         {results.map((record, idx) =>
-          isExternal
-            ? (
-                <ResultItemExternal
-                  key={idx}
-                  positionId={idx + 1}
-                  payload={record as ExternalKnowledgeBaseHitTesting}
-                />
-              )
-            : (
-                <ResultItem key={idx} payload={record as HitTesting} />
-              ),
+          isExternal ? (
+            <ResultItemExternal
+              key={idx}
+              positionId={idx + 1}
+              payload={record as ExternalKnowledgeBaseHitTesting}
+            />
+          ) : (
+            <ResultItem key={idx} payload={record as HitTesting} />
+          ),
         )}
       </div>
     </div>
@@ -114,9 +130,11 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const renderEmptyState = () => (
     <div className="flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, 'size-14! bg-text-quaternary!')} />
+      <div
+        className={cn(docStyle.commonIcon, docStyle.targetIcon, 'size-14! bg-text-quaternary!')}
+      />
       <div className="mt-3 text-[13px] text-text-quaternary">
-        {t('hit.emptyTip', { ns: 'datasetHitTesting' })}
+        {t(($) => $['hit.emptyTip'], { ns: 'datasetHitTesting' })}
       </div>
     </div>
   )
@@ -130,15 +148,18 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     setShowRightPanel(!isMobile)
   }, [isMobile, setShowRightPanel])
 
-  if (!canRunRetrievalRecall)
-    return <Loading type="app" />
+  if (!canRunRetrievalRecall) return <Loading type="app" />
 
   return (
     <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
       <div className="flex min-w-0 flex-1 flex-col py-3">
         <div className="mb-4 flex flex-col justify-center">
-          <h1 className="text-base font-semibold text-text-primary">{t('title', { ns: 'datasetHitTesting' })}</h1>
-          <p className="mt-0.5 text-[13px] leading-4 font-normal text-text-tertiary">{t('desc', { ns: 'datasetHitTesting' })}</p>
+          <h1 className="text-base font-semibold text-text-primary">
+            {t(($) => $.title, { ns: 'datasetHitTesting' })}
+          </h1>
+          <p className="mt-0.5 text-[13px] leading-4 font-normal text-text-tertiary">
+            {t(($) => $.desc, { ns: 'datasetHitTesting' })}
+          </p>
         </div>
         <QueryInput
           key={queryInputKey}
@@ -157,33 +178,34 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
           canRunRetrievalRecall={canRunRetrievalRecall}
         />
-        <div className="mt-6 mb-3 text-base font-semibold text-text-primary">{t('records', { ns: 'datasetHitTesting' })}</div>
+        <div className="mt-6 mb-3 text-base font-semibold text-text-primary">
+          {t(($) => $.records, { ns: 'datasetHitTesting' })}
+        </div>
         {isRecordsLoading && (
-          <div className="flex-1"><Loading type="app" /></div>
+          <div className="flex-1">
+            <Loading type="app" />
+          </div>
         )}
         {!isRecordsLoading && recordsRes?.data && recordsRes.data.length > 0 && (
           <>
             <Records records={recordsRes?.data} onClickRecord={handleClickRecord} />
-            {(total && total > limit)
-              ? (
-                  <Pagination
-                    page={currPage + 1}
-                    totalPages={totalPages}
-                    onPageChange={page => setCurrPage(page - 1)}
-                    labels={{
-                      previous: t('pagination.previous', { ns: 'common' }),
-                      next: t('pagination.next', { ns: 'common' }),
-                      editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
-                      pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
-                    }}
-                  />
-                )
-              : null}
+            {total && total > limit ? (
+              <Pagination
+                page={currPage + 1}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrPage(page - 1)}
+                labels={{
+                  previous: t(($) => $['pagination.previous'], { ns: 'common' }),
+                  next: t(($) => $['pagination.next'], { ns: 'common' }),
+                  editPageNumber: (page, totalPages) =>
+                    t(($) => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+                  pageNumberInput: t(($) => $['pagination.pageNumber'], { ns: 'common' }),
+                }}
+              />
+            ) : null}
           </>
         )}
-        {!isRecordsLoading && !recordsRes?.data?.length && (
-          <EmptyRecords />
-        )}
+        {!isRecordsLoading && !recordsRes?.data?.length && <EmptyRecords />}
       </div>
       <FloatRightContainer
         panelClassName="justify-start! overflow-y-auto!"
@@ -193,23 +215,20 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         onClose={hideRightPanel}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
-          {isRetrievalLoading
-            ? (
-                <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
-                  <CardSkelton />
-                </div>
-              )
-            : (
-                (() => {
-                  if (!hitResult?.records.length && !externalHitResult?.records.length)
-                    return renderEmptyState()
+          {isRetrievalLoading ? (
+            <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
+              <CardSkelton />
+            </div>
+          ) : (
+            (() => {
+              if (!hitResult?.records.length && !externalHitResult?.records.length)
+                return renderEmptyState()
 
-                  if (hitResult?.records.length)
-                    return renderHitResults(hitResult.records)
+              if (hitResult?.records.length) return renderHitResults(hitResult.records)
 
-                  return renderHitResults(externalHitResult?.records || [])
-                })()
-              )}
+              return renderHitResults(externalHitResult?.records || [])
+            })()
+          )}
         </div>
       </FloatRightContainer>
       <Drawer
@@ -217,8 +236,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         modal
         swipeDirection="right"
         onOpenChange={(open) => {
-          if (!open)
-            setIsShowModifyRetrievalModal(false)
+          if (!open) setIsShowModifyRetrievalModal(false)
         }}
       >
         <DrawerPortal>

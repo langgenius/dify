@@ -2,8 +2,13 @@ import { render } from '@testing-library/react'
 import IterationStartNode from '..'
 
 vi.mock('reactflow', () => ({
-  Handle: (props: { id: string, type: string, className?: string }) => (
-    <div data-testid="handle" data-handleid={props.id} data-type={props.type} className={props.className} />
+  Handle: (props: { id: string; type: string; className?: string }) => (
+    <div
+      data-testid="handle"
+      data-handleid={props.id}
+      data-type={props.type}
+      className={props.className}
+    />
   ),
   Position: {
     Right: 'right',
@@ -25,9 +30,7 @@ describe('workflow preview iteration-start node', () => {
       data: {},
     }
 
-    const { container } = render(
-      <IterationStartNode {...props} />,
-    )
+    const { container } = render(<IterationStartNode {...props} />)
 
     expect(container.querySelector('[data-handleid="source"]')).toBeInTheDocument()
     expect(container.firstChild).toHaveClass('rounded-2xl')

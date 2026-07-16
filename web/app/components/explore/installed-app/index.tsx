@@ -8,19 +8,25 @@ import TextGenerationApp from '@/app/components/share/text-generation'
 import { useWebAppStore } from '@/context/web-app-context'
 import dynamic from '@/next/dynamic'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
+import {
+  useGetInstalledAppAccessModeByAppId,
+  useGetInstalledAppMeta,
+  useGetInstalledAppParams,
+  useGetInstalledApps,
+} from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import AppUnavailable from '../../base/app-unavailable'
 
-const ChatWithHistory = dynamic(() => import('@/app/components/base/chat/chat-with-history'), { ssr: false })
+const ChatWithHistory = dynamic(() => import('@/app/components/base/chat/chat-with-history'), {
+  ssr: false,
+})
 
 const InstalledAppFrame = ({ children }: { children: React.ReactNode }) => (
-  <div className="h-full bg-background-body pt-2 pl-2">
-    {children}
-  </div>
+  <div className="h-full bg-background-body pt-2 pl-2">{children}</div>
 )
 
-const installedAppSurfaceClassName = 'rounded-tr-none rounded-bl-none border-t-4 border-l-4 border-components-chat-input-border'
+const installedAppSurfaceClassName =
+  'rounded-tr-none rounded-bl-none border-t-4 border-l-4 border-components-chat-input-border'
 
 const InstalledTextGenerationSurface = ({ children }: { children: React.ReactNode }) => (
   <div className={`h-full overflow-hidden rounded-2xl shadow-md ${installedAppSurfaceClassName}`}>
@@ -28,33 +34,48 @@ const InstalledTextGenerationSurface = ({ children }: { children: React.ReactNod
   </div>
 )
 
-const InstalledApp = ({
-  id,
-}: {
-  id: string
-}) => {
-  const { data, isPending: isPendingInstalledApps, isFetching: isFetchingInstalledApps } = useGetInstalledApps()
-  const installedApp = data?.installed_apps?.find(item => item.id === id)
-  const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
-  const updateWebAppAccessMode = useWebAppStore(s => s.updateWebAppAccessMode)
-  const updateAppParams = useWebAppStore(s => s.updateAppParams)
-  const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
-  const updateUserCanAccessApp = useWebAppStore(s => s.updateUserCanAccessApp)
-  const { isPending: isPendingWebAppAccessMode, data: webAppAccessMode, error: webAppAccessModeError } = useGetInstalledAppAccessModeByAppId(installedApp?.id ?? null)
-  const { isPending: isPendingAppParams, data: appParams, error: appParamsError } = useGetInstalledAppParams(installedApp?.id ?? null)
-  const { isPending: isPendingAppMeta, data: appMeta, error: appMetaError } = useGetInstalledAppMeta(installedApp?.id ?? null)
-  const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: installedApp?.app.id, isInstalledApp: true })
+const InstalledApp = ({ id }: { id: string }) => {
+  const {
+    data,
+    isPending: isPendingInstalledApps,
+    isFetching: isFetchingInstalledApps,
+  } = useGetInstalledApps()
+  const installedApp = data?.installed_apps?.find((item) => item.id === id)
+  const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
+  const updateWebAppAccessMode = useWebAppStore((s) => s.updateWebAppAccessMode)
+  const updateAppParams = useWebAppStore((s) => s.updateAppParams)
+  const updateWebAppMeta = useWebAppStore((s) => s.updateWebAppMeta)
+  const updateUserCanAccessApp = useWebAppStore((s) => s.updateUserCanAccessApp)
+  const {
+    isPending: isPendingWebAppAccessMode,
+    data: webAppAccessMode,
+    error: webAppAccessModeError,
+  } = useGetInstalledAppAccessModeByAppId(installedApp?.id ?? null)
+  const {
+    isPending: isPendingAppParams,
+    data: appParams,
+    error: appParamsError,
+  } = useGetInstalledAppParams(installedApp?.id ?? null)
+  const {
+    isPending: isPendingAppMeta,
+    data: appMeta,
+    error: appMetaError,
+  } = useGetInstalledAppMeta(installedApp?.id ?? null)
+  const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({
+    appId: installedApp?.app.id,
+    isInstalledApp: true,
+  })
 
   useEffect(() => {
     if (!installedApp) {
       updateAppInfo(null)
-    }
-    else {
+    } else {
       const { id, app } = installedApp
       updateAppInfo({
         app_id: id,
         site: {
           title: app.name,
+          description: app.description,
           icon_type: app.icon_type,
           icon: app.icon,
           icon_background: app.icon_background,
@@ -69,14 +90,25 @@ const InstalledApp = ({
       } as AppData)
     }
 
-    if (appParams)
-      updateAppParams(appParams)
-    if (appMeta)
-      updateWebAppMeta(appMeta)
+    if (appParams) updateAppParams(appParams)
+    if (appMeta) updateWebAppMeta(appMeta)
     if (webAppAccessMode)
       updateWebAppAccessMode((webAppAccessMode as { accessMode: AccessMode }).accessMode)
-    updateUserCanAccessApp(Boolean(userCanAccessApp && (userCanAccessApp as { result: boolean })?.result))
-  }, [installedApp, appMeta, appParams, updateAppInfo, updateAppParams, updateUserCanAccessApp, updateWebAppMeta, userCanAccessApp, webAppAccessMode, updateWebAppAccessMode])
+    updateUserCanAccessApp(
+      Boolean(userCanAccessApp && (userCanAccessApp as { result: boolean })?.result),
+    )
+  }, [
+    installedApp,
+    appMeta,
+    appParams,
+    updateAppInfo,
+    updateAppParams,
+    updateUserCanAccessApp,
+    updateWebAppMeta,
+    userCanAccessApp,
+    webAppAccessMode,
+    updateWebAppAccessMode,
+  ])
 
   if (appParamsError) {
     return (
@@ -124,9 +156,9 @@ const InstalledApp = ({
     )
   }
   if (
-    isPendingInstalledApps
-    || (!installedApp && isFetchingInstalledApps)
-    || (installedApp && (isPendingAppParams || isPendingAppMeta || isPendingWebAppAccessMode))
+    isPendingInstalledApps ||
+    (!installedApp && isFetchingInstalledApps) ||
+    (installedApp && (isPendingAppParams || isPendingAppMeta || isPendingWebAppAccessMode))
   ) {
     return (
       <InstalledAppFrame>
@@ -147,9 +179,13 @@ const InstalledApp = ({
   }
   return (
     <InstalledAppFrame>
-      {installedApp?.app.mode !== AppModeEnum.COMPLETION && installedApp?.app.mode !== AppModeEnum.WORKFLOW && (
-        <ChatWithHistory installedAppInfo={installedApp} className={`overflow-hidden rounded-2xl shadow-md ${installedAppSurfaceClassName}`} />
-      )}
+      {installedApp?.app.mode !== AppModeEnum.COMPLETION &&
+        installedApp?.app.mode !== AppModeEnum.WORKFLOW && (
+          <ChatWithHistory
+            installedAppInfo={installedApp}
+            className={`overflow-hidden rounded-2xl shadow-md ${installedAppSurfaceClassName}`}
+          />
+        )}
       {installedApp?.app.mode === AppModeEnum.COMPLETION && (
         <InstalledTextGenerationSurface>
           <TextGenerationApp isInstalledApp installedAppInfo={installedApp} />

@@ -30,15 +30,9 @@ function TestCollapse({
           <CollapseTitle>{title}</CollapseTitle>
           <CollapseIndicator />
         </CollapseTrigger>
-        {actions != null && (
-          <CollapseActions>
-            {actions}
-          </CollapseActions>
-        )}
+        {actions != null && <CollapseActions>{actions}</CollapseActions>}
       </CollapseHeader>
-      <CollapseContent>
-        {children}
-      </CollapseContent>
+      <CollapseContent>{children}</CollapseContent>
     </Collapse>
   )
 }
@@ -55,10 +49,7 @@ describe('Collapse', () => {
       const onCollapse = vi.fn()
 
       render(
-        <TestCollapse
-          title="Advanced"
-          onCollapse={onCollapse}
-        >
+        <TestCollapse title="Advanced" onCollapse={onCollapse}>
           <div>Collapse content</div>
         </TestCollapse>,
       )
@@ -76,11 +67,7 @@ describe('Collapse', () => {
       const onCollapse = vi.fn()
 
       render(
-        <TestCollapse
-          disabled
-          title="Disabled section"
-          onCollapse={onCollapse}
-        >
+        <TestCollapse disabled title="Disabled section" onCollapse={onCollapse}>
           <div>Hidden content</div>
         </TestCollapse>,
       )

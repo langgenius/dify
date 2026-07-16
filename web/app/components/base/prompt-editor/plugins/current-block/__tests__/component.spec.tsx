@@ -84,7 +84,10 @@ describe('CurrentBlockComponent', () => {
     it('should wire useSelectOrDelete with node key and delete command', () => {
       renderComponent({ generatorType: GeneratorType.prompt })
 
-      expect(mockUseSelectOrDelete).toHaveBeenCalledWith('current-node', DELETE_CURRENT_BLOCK_COMMAND)
+      expect(mockUseSelectOrDelete).toHaveBeenCalledWith(
+        'current-node',
+        DELETE_CURRENT_BLOCK_COMMAND,
+      )
     })
   })
 

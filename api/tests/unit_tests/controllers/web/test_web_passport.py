@@ -33,6 +33,7 @@ class TestDecodeEnterpriseWebappUserId:
             "user_id": "u1",
         }
         result = decode_enterprise_webapp_user_id("valid-jwt")
+        assert result is not None
         assert result["user_id"] == "u1"
 
     @patch("controllers.web.passport.PassportService")
@@ -143,7 +144,7 @@ class TestPassportResource:
         with app.test_request_context("/passport", headers={"X-App-Code": "code1"}):
             response = PassportResource().get()
 
-        assert response.get_json()["access_token"] == "issued-token"
+        assert response["access_token"] == "issued-token"
         mock_db.session.add.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
@@ -167,7 +168,7 @@ class TestPassportResource:
         with app.test_request_context("/passport?user_id=sess-existing", headers={"X-App-Code": "code1"}):
             response = PassportResource().get()
 
-        assert response.get_json()["access_token"] == "reused-token"
+        assert response["access_token"] == "reused-token"
         # Should not create a new end user
         mock_db.session.add.assert_not_called()
 

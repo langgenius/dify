@@ -3,7 +3,13 @@ import type { DevProxyCliOptions, DevProxyConfig } from './types'
 import process from 'node:process'
 import { serve } from '@hono/node-server'
 import { watch } from 'chokidar'
-import { assertDevProxyConfig, loadDevProxyConfig, parseDevProxyCliArgs, resolveDevProxyServerOptions, watchDevProxyConfig } from './config'
+import {
+  assertDevProxyConfig,
+  loadDevProxyConfig,
+  parseDevProxyCliArgs,
+  resolveDevProxyServerOptions,
+  watchDevProxyConfig,
+} from './config'
 import { createDevProxyApp } from './server'
 
 function printUsage() {
@@ -22,19 +28,18 @@ Options:
 
 async function flushStandardStreams() {
   await Promise.all([
-    new Promise<void>(resolve => process.stdout.write('', () => resolve())),
-    new Promise<void>(resolve => process.stderr.write('', () => resolve())),
+    new Promise<void>((resolve) => process.stdout.write('', () => resolve())),
+    new Promise<void>((resolve) => process.stderr.write('', () => resolve())),
   ])
 }
 
-const closeServer = (server: ServerType) => new Promise<void>((resolve, reject) => {
-  server.close((error) => {
-    if (error)
-      reject(error)
-    else
-      resolve()
+const closeServer = (server: ServerType) =>
+  new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error)
+      else resolve()
+    })
   })
-})
 
 const startDevProxyServer = (config: DevProxyConfig, cliOptions: DevProxyCliOptions) => {
   let app = createDevProxyApp(config)
@@ -80,8 +85,7 @@ const createDevProxyRuntime = (initialConfig: DevProxyConfig, cliOptions: DevPro
     reloadTask = reloadTask.then(async () => {
       try {
         await reload(await loadConfig(), reason)
-      }
-      catch (error) {
+      } catch (error) {
         console.error(`[dev-proxy] failed to reload ${reason}`)
         console.error(error instanceof Error ? error.message : error)
       }
@@ -112,8 +116,7 @@ async function main() {
   })
   const runtime = createDevProxyRuntime(config, cliOptions)
 
-  if (cliOptions.watch === false)
-    return
+  if (cliOptions.watch === false) return
 
   const configWatcher = await watchDevProxyConfig(cliOptions.config, process.cwd(), {
     envFile: cliOptions.envFile,
@@ -129,9 +132,10 @@ async function main() {
 
   envWatcher?.on('all', () => {
     void runtime.enqueueReload(
-      () => loadDevProxyConfig(cliOptions.config, process.cwd(), {
-        envFile: cliOptions.envFile,
-      }),
+      () =>
+        loadDevProxyConfig(cliOptions.config, process.cwd(), {
+          envFile: cliOptions.envFile,
+        }),
       'env file changes',
     )
   })
@@ -153,8 +157,7 @@ async function main() {
 try {
   await main()
   await flushStandardStreams()
-}
-catch (error) {
+} catch (error) {
   console.error(error instanceof Error ? error.message : error)
   await flushStandardStreams()
   process.exit(1)

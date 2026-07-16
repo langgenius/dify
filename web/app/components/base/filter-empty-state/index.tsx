@@ -8,12 +8,14 @@ type FilterEmptyStateProps = {
 
 const CARD_COUNT = 16
 
-const FilterEmptyState = ({
-  title,
-  className,
-}: FilterEmptyStateProps) => {
+const FilterEmptyState = ({ title, className }: FilterEmptyStateProps) => {
   return (
-    <div className={cn('pointer-events-none absolute inset-0 z-20 grid grid-cols-4 grid-rows-4 gap-3 px-8 pt-2', className)}>
+    <div
+      className={cn(
+        'pointer-events-none absolute inset-0 z-20 grid grid-cols-4 grid-rows-4 gap-3 px-8 pt-2',
+        className,
+      )}
+    >
       {Array.from({ length: CARD_COUNT }).map((_, index) => (
         <div key={index} className="rounded-xl bg-background-default-lighter opacity-75" />
       ))}
@@ -25,9 +27,7 @@ const FilterEmptyState = ({
               <span aria-hidden className="i-ri-robot-2-line size-6 text-text-tertiary" />
             </div>
           </div>
-          <p className="system-sm-regular whitespace-nowrap text-text-tertiary">
-            {title}
-          </p>
+          <p className="system-sm-regular whitespace-nowrap text-text-tertiary">{title}</p>
         </div>
       </div>
     </div>

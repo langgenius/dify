@@ -4,12 +4,16 @@ Unlike the removed workspace inspector, this service never talks to shellctl
 directly and never reads sandbox files outside the shell layer. It rebuilds a
 minimal compositor from ``SandboxLocator``, enters the saved
 ``execution_context`` + ``shell`` layers, and executes fixed scripts through
-``DifyShellLayer.run_remote_script()``.
+``DifyShellLayer.run_remote_script_complete()``.
 
 The scripts still frame their structured payloads with a PTY-safe
 base64-between-sentinels envelope. shellctl jobs are tmux-backed, so raw JSON can
 be wrapped or surrounded by prompt noise; the framing keeps list/read/upload
-responses parseable without falling back to direct shellctl file access.
+responses parseable without falling back to direct shellctl file access. Path
+arguments resolve from the saved shell workspace cwd, and ``~`` resolves through
+the shell layer's injected sandbox ``HOME``. The scripts do not re-impose a
+workspace-root boundary, so callers can use ``../`` or ``~/...`` when the sandbox
+filesystem layout expects it.
 """
 
 from __future__ import annotations
@@ -22,7 +26,8 @@ import textwrap
 from dataclasses import dataclass
 from typing import TypeVar, cast
 
-from dify_agent.layers.shell.layer import DifyShellLayer, RemoteCommandResult
+from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
+from dify_agent.layers.shell.output_text import utf8_suffix
 from dify_agent.protocol import (
     SandboxListRequest,
     SandboxListResponse,
@@ -42,6 +47,7 @@ _READ_TIMEOUT_SECONDS = 15.0
 _UPLOAD_TIMEOUT_SECONDS = 30.0
 _OUTPUT_BEGIN = "<<<DIFY_SANDBOX_BEGIN>>>"
 _OUTPUT_END = "<<<DIFY_SANDBOX_END>>>"
+_SHELL_RESULT_OUTPUT_TAIL_BYTES = 8 * 1024
 ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
 
 _LIST_SCRIPT = """
@@ -61,21 +67,9 @@ def emit(payload):
     print(BEGIN + blob + END)
 
 
-def resolve_target(root: Path, raw_path: str) -> tuple[Path | None, str]:
-    target = (root / raw_path).resolve()
-    if target != root and root not in target.parents:
-        emit({"error": "invalid_sandbox_path", "message": "path escapes the sandbox workspace"})
-        return None, raw_path
-    return target, raw_path
-
-
-root = Path.cwd().resolve()
 raw_path = sys.argv[1]
 limit = int(sys.argv[2])
-target_info = resolve_target(root, raw_path)
-if target_info[0] is None:
-    sys.exit(0)
-target, normalized_path = target_info
+target = Path(raw_path).expanduser().resolve()
 
 if not target.exists():
     emit({"error": "sandbox_path_not_found", "message": "path not found in sandbox"})
@@ -107,7 +101,7 @@ for child in sorted(target.iterdir(), key=lambda item: item.name)[:limit]:
 
 emit(
     {
-        "path": normalized_path,
+        "path": raw_path,
         "entries": entries,
         "truncated": len(list(target.iterdir())) > limit,
     }
@@ -130,13 +124,9 @@ def emit(payload):
     print(BEGIN + blob + END)
 
 
-root = Path.cwd().resolve()
 raw_path = sys.argv[1]
 max_bytes = int(sys.argv[2])
-target = (root / raw_path).resolve()
-if target != root and root not in target.parents:
-    emit({"error": "invalid_sandbox_path", "message": "path escapes the sandbox workspace"})
-    sys.exit(0)
+target = Path(raw_path).expanduser().resolve()
 if not target.exists():
     emit({"error": "sandbox_path_not_found", "message": "path not found in sandbox"})
     sys.exit(0)
@@ -192,12 +182,8 @@ def emit(payload):
     print(BEGIN + blob + END)
 
 
-root = Path.cwd().resolve()
 raw_path = sys.argv[1]
-target = (root / raw_path).resolve()
-if target != root and root not in target.parents:
-    emit({"error": "invalid_sandbox_path", "message": "path escapes the sandbox workspace"})
-    sys.exit(0)
+target = Path(raw_path).expanduser().resolve()
 if not target.exists():
     emit({"error": "sandbox_path_not_found", "message": "path not found in sandbox"})
     sys.exit(0)
@@ -294,7 +280,7 @@ class SandboxFileService:
             async with compositor.enter(configs=layer_configs, session_snapshot=locator.session_snapshot) as run:
                 run.suspend_on_exit()
                 shell_layer = run.get_layer("shell", DifyShellLayer)
-                result = await shell_layer.run_remote_script(
+                result = await shell_layer.run_remote_script_complete(
                     _build_python_script_command(script_source=script_source, args=args),
                     timeout=timeout,
                     inject_agent_stub_env=inject_agent_stub_env,
@@ -308,15 +294,25 @@ class SandboxFileService:
 
 
 def _normalize_sandbox_path(path: str, *, allow_current_directory: bool) -> str:
+    """Reject only syntactically unsafe paths and preserve relative traversal.
+
+    The remote scripts run with the saved workspace cwd, so ``../`` remains a
+    valid sandbox-relative path when callers need to reach sibling directories.
+    ``~`` and ``~/...`` are also accepted and resolved by the embedded scripts
+    against the shell layer's sandbox ``HOME``.
+    """
+
     normalized = (path or "").strip()
     if normalized in {"", ".", "./"}:
         if allow_current_directory:
             return "."
         raise SandboxFileError("invalid_sandbox_path", "path must not be blank", status_code=400)
-    if normalized.startswith("/") or normalized.startswith("~"):
+    if normalized.startswith("/"):
         raise SandboxFileError(
             "invalid_sandbox_path", "path must be relative to the sandbox workspace", status_code=400
         )
+    if normalized.startswith("~") and normalized != "~" and not normalized.startswith("~/"):
+        raise SandboxFileError("invalid_sandbox_path", "path must use ~ or ~/ for the sandbox home", status_code=400)
     if "\x00" in normalized or any(ord(ch) < 0x20 for ch in normalized):
         raise SandboxFileError("invalid_sandbox_path", "path contains unsupported control characters", status_code=400)
     return normalized
@@ -328,16 +324,23 @@ def _build_python_script_command(*, script_source: str, args: list[str]) -> str:
     return f"python3 - {quoted_args} <<'PY'\n{script}\nPY"
 
 
-def _decode_sandbox_payload(result: RemoteCommandResult) -> dict[str, object]:
+def _decode_sandbox_payload(result: CompleteRemoteCommandResult) -> dict[str, object]:
     if result.exit_code not in (0, None):
         raise SandboxFileError(
             "sandbox_command_failed",
-            f"sandbox command exited with code {result.exit_code}: {_output_tail(result.output)!r}",
+            "sandbox command exited with code " + f"{result.exit_code}: {_shell_result_details(result)}",
             status_code=502,
         )
     begin = result.output.find(_OUTPUT_BEGIN)
     end = result.output.find(_OUTPUT_END, begin + len(_OUTPUT_BEGIN)) if begin != -1 else -1
     if begin == -1 or end == -1:
+        if not result.output_complete:
+            raise SandboxFileError(
+                "sandbox_command_failed",
+                "sandbox command output incomplete before framed payload was captured: "
+                + _shell_result_details(result),
+                status_code=502,
+            )
         raise SandboxFileError(
             "sandbox_command_failed",
             "sandbox command returned no framed payload",
@@ -349,12 +352,25 @@ def _decode_sandbox_payload(result: RemoteCommandResult) -> dict[str, object]:
         decoded = base64.b64decode(compact, validate=True)
         loaded = cast(object, json.loads(decoded.decode("utf-8")))
     except (binascii.Error, ValueError) as exc:
+        if not result.output_complete:
+            raise SandboxFileError(
+                "sandbox_command_failed",
+                "sandbox command output incomplete while decoding framed payload: " + _shell_result_details(result),
+                status_code=502,
+            ) from exc
         raise SandboxFileError(
             "sandbox_command_failed",
             f"sandbox command returned invalid framed payload: {exc}",
             status_code=502,
         ) from exc
     if not isinstance(loaded, dict):
+        if not result.output_complete:
+            raise SandboxFileError(
+                "sandbox_command_failed",
+                "sandbox command output incomplete while validating framed payload object: "
+                + _shell_result_details(result),
+                status_code=502,
+            )
         raise SandboxFileError(
             "sandbox_command_failed", "sandbox command returned a non-object payload", status_code=502
         )
@@ -379,9 +395,22 @@ def _decode_sandbox_payload(result: RemoteCommandResult) -> dict[str, object]:
     return payload
 
 
-def _output_tail(output: str) -> str:
-    stripped = output.strip()
-    return stripped[-200:]
+def _shell_result_details(result: CompleteRemoteCommandResult) -> str:
+    details = (
+        f"output_complete={result.output_complete} "
+        + f"incomplete_reason={result.incomplete_reason} "
+        + f"output_path={result.output_path}"
+    )
+    if not result.output:
+        return details
+    return details + "\n" + _bounded_output_tail(result.output)
+
+
+def _bounded_output_tail(output: str) -> str:
+    tail = utf8_suffix(output, _SHELL_RESULT_OUTPUT_TAIL_BYTES)
+    if tail == output:
+        return output
+    return f"... (showing last {_SHELL_RESULT_OUTPUT_TAIL_BYTES} bytes of raw output) ...\n{tail}"
 
 
 def _validate_response_model(

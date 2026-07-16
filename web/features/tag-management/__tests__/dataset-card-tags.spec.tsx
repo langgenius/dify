@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DatasetCardTags } from '../components/dataset-card-tags'
@@ -14,15 +14,9 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
     renderTagSelector(props)
     return (
       <div role="group" aria-label="Tag selector mock">
-        <div>{props.value.map(tag => tag.id).join(',')}</div>
-        <div>
-          {props.value.length}
-          {' '}
-          tags
-        </div>
-        <button onClick={props.onOpenTagManagement}>
-          Open Management
-        </button>
+        <div>{props.value.map((tag) => tag.id).join(',')}</div>
+        <div>{props.value.length} tags</div>
+        <button onClick={props.onOpenTagManagement}>Open Management</button>
       </div>
     )
   },
@@ -30,8 +24,8 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
 
 describe('DatasetCardTags', () => {
   const mockTags: Tag[] = [
-    { id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: 0 },
-    { id: 'tag-2', name: 'Tag 2', type: 'knowledge', binding_count: 0 },
+    { id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: '' },
+    { id: 'tag-2', name: 'Tag 2', type: 'knowledge', binding_count: '' },
   ]
 
   const defaultProps = {
@@ -71,9 +65,11 @@ describe('DatasetCardTags', () => {
     it('should pass tag binding permission to TagSelector', () => {
       render(<DatasetCardTags {...defaultProps} canBindOrUnbindTags={true} />)
 
-      expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
-        canBindOrUnbindTags: true,
-      }))
+      expect(renderTagSelector).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canBindOrUnbindTags: true,
+        }),
+      )
     })
 
     it('should render with empty tags', () => {
@@ -88,8 +84,7 @@ describe('DatasetCardTags', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} onClick={onClick} />)
 
       const wrapper = container.firstElementChild
-      if (!wrapper)
-        throw new Error('Expected dataset card tag wrapper')
+      if (!wrapper) throw new Error('Expected dataset card tag wrapper')
       fireEvent.click(wrapper)
 
       expect(onClick).toHaveBeenCalledTimes(1)
@@ -109,16 +104,14 @@ describe('DatasetCardTags', () => {
     it('should have opacity class when embedding is not available', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} embeddingAvailable={false} />)
       const wrapper = container.firstElementChild
-      if (!wrapper)
-        throw new Error('Expected dataset card tag wrapper')
+      if (!wrapper) throw new Error('Expected dataset card tag wrapper')
       expect(wrapper).toHaveClass('opacity-30')
     })
 
     it('should not have opacity class when embedding is available', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} embeddingAvailable={true} />)
       const wrapper = container.firstElementChild
-      if (!wrapper)
-        throw new Error('Expected dataset card tag wrapper')
+      if (!wrapper) throw new Error('Expected dataset card tag wrapper')
       expect(wrapper).not.toHaveClass('opacity-30')
     })
 
@@ -134,7 +127,9 @@ describe('DatasetCardTags', () => {
 
     it('should keep TagSelector visible when tags are empty', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} tags={[]} />)
-      const tagSelectorWrapper = screen.getByRole('group', { name: 'Tag selector mock' }).parentElement
+      const tagSelectorWrapper = screen.getByRole('group', {
+        name: 'Tag selector mock',
+      }).parentElement
 
       expect(tagSelectorWrapper).toBeInTheDocument()
       expect(tagSelectorWrapper).toHaveClass('w-full')
@@ -144,7 +139,9 @@ describe('DatasetCardTags', () => {
 
     it('should keep TagSelector visible when tags exist', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} />)
-      const tagSelectorWrapper = screen.getByRole('group', { name: 'Tag selector mock' }).parentElement
+      const tagSelectorWrapper = screen.getByRole('group', {
+        name: 'Tag selector mock',
+      }).parentElement
 
       expect(tagSelectorWrapper).toBeInTheDocument()
       expect(tagSelectorWrapper).toHaveClass('w-full')
@@ -159,12 +156,15 @@ describe('DatasetCardTags', () => {
     })
 
     it('should handle many tags', () => {
-      const manyTags: Tag[] = Array.from({ length: 20 }, (_, i): Tag => ({
-        id: `tag-${i}`,
-        name: `Tag ${i}`,
-        type: 'knowledge',
-        binding_count: 0,
-      }))
+      const manyTags: Tag[] = Array.from(
+        { length: 20 },
+        (_, i): Tag => ({
+          id: `tag-${i}`,
+          name: `Tag ${i}`,
+          type: 'knowledge',
+          binding_count: '',
+        }),
+      )
       render(<DatasetCardTags {...defaultProps} tags={manyTags} />)
       expect(screen.getByText('20 tags')).toBeInTheDocument()
     })

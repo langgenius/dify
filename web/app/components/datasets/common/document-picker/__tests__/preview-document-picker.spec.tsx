@@ -20,11 +20,14 @@ const createMockDocumentList = (count: number): DocumentItem[] => {
       id: `doc-${index + 1}`,
       name: `Document ${index + 1}`,
       extension: index % 2 === 0 ? 'pdf' : 'txt',
-    }))
+    }),
+  )
 }
 
 // Factory function to create default props
-const createDefaultProps = (overrides: Partial<React.ComponentProps<typeof PreviewDocumentPicker>> = {}) => ({
+const createDefaultProps = (
+  overrides: Partial<React.ComponentProps<typeof PreviewDocumentPicker>> = {},
+) => ({
   value: createMockDocumentItem({ id: 'selected-doc', name: 'Selected Document' }),
   files: createMockDocumentList(3),
   onChange: vi.fn(),
@@ -32,7 +35,9 @@ const createDefaultProps = (overrides: Partial<React.ComponentProps<typeof Previ
 })
 
 // Helper to render component with default props
-const renderComponent = (props: Partial<React.ComponentProps<typeof PreviewDocumentPicker>> = {}) => {
+const renderComponent = (
+  props: Partial<React.ComponentProps<typeof PreviewDocumentPicker>> = {},
+) => {
   const defaultProps = createDefaultProps(props)
   return {
     ...render(<PreviewDocumentPicker {...defaultProps} />),
@@ -215,9 +220,7 @@ describe('PreviewDocumentPicker', () => {
         <PreviewDocumentPicker value={value} files={files} onChange={onChange1} />,
       )
 
-      rerender(
-        <PreviewDocumentPicker value={value} files={files} onChange={onChange2} />,
-      )
+      rerender(<PreviewDocumentPicker value={value} files={files} onChange={onChange2} />)
 
       expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
@@ -238,9 +241,7 @@ describe('PreviewDocumentPicker', () => {
         <PreviewDocumentPicker value={value} files={files} onChange={onChange} />,
       )
 
-      rerender(
-        <PreviewDocumentPicker value={value} files={files} onChange={onChange} />,
-      )
+      rerender(<PreviewDocumentPicker value={value} files={files} onChange={onChange} />)
 
       expect(screen.getByTestId('popover')).toBeInTheDocument()
     })

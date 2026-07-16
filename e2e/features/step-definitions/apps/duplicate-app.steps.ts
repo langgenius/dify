@@ -2,9 +2,10 @@ import type { DifyWorld } from '../../support/world'
 import { Given, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createTestApp } from '../../../support/api'
+import { createE2EResourceName } from '../../../support/naming'
 
 Given('there is an existing E2E app available for testing', async function (this: DifyWorld) {
-  const name = `E2E Test App ${Date.now()}`
+  const name = createE2EResourceName('App', 'Test')
   const app = await createTestApp(name, 'completion')
   this.lastCreatedAppName = app.name
   this.createdAppIds.push(app.id)
@@ -12,8 +13,7 @@ Given('there is an existing E2E app available for testing', async function (this
 
 When('I open the options menu for the last created E2E app', async function (this: DifyWorld) {
   const appName = this.lastCreatedAppName
-  if (!appName)
-    throw new Error('No app name stored. Run "I enter a unique E2E app name" first.')
+  if (!appName) throw new Error('No app name stored. Run "I enter a unique E2E app name" first.')
 
   const page = this.getPage()
   const appLink = page.getByRole('link', { name: appName, exact: true })

@@ -3,10 +3,12 @@ from unittest.mock import Mock
 
 import pytest
 
+from clients.agent_backend.errors import AgentBackendRunFailedError
+from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.errors.error import QuotaExceededError
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
 from models.enums import MessageStatus
 
 
@@ -40,6 +42,22 @@ class TestBasedGenerateTaskPipeline:
         err = pipeline.handle_error(event=event)
         assert err is event.error
 
+    def test_handle_error_preserves_agent_backend_run_failed_error(self, pipeline):
+        event = QueueErrorEvent(
+            error=AgentBackendRunFailedError(
+                "run-1",
+                {"reason": "knowledge_retrieve_failed"},
+                message="Knowledge retrieval failed",
+                reason="knowledge_retrieve_failed",
+            )
+        )
+
+        err = pipeline.handle_error(event=event)
+
+        assert err is event.error
+        assert "Knowledge retrieval failed" in str(err)
+        assert "agent_run_id=run-1" in str(err)
+
     def test_handle_error_updates_message_when_found(self, pipeline):
         event = QueueErrorEvent(error=ValueError("oops"))
         message = SimpleNamespace(status=MessageStatus.NORMAL, error=None)
@@ -67,6 +85,27 @@ class TestBasedGenerateTaskPipeline:
 
         assert error_response.task_id == "task-1"
         assert ping_response.task_id == "task-1"
+
+    def test_stream_converter_maps_invoke_rate_limit_error(self):
+        data = AppGenerateResponseConverter._error_to_stream_response(InvokeRateLimitError("quota exceeded"))
+
+        assert data == {"code": "rate_limit_error", "status": 429, "message": "quota exceeded"}
+
+    def test_stream_converter_maps_agent_backend_run_failed_error(self):
+        data = AppGenerateResponseConverter._error_to_stream_response(
+            AgentBackendRunFailedError(
+                "run-1",
+                {"reason": "knowledge_retrieve_failed"},
+                message="Knowledge retrieval failed",
+                reason="knowledge_retrieve_failed",
+            )
+        )
+
+        assert data == {
+            "code": "completion_request_error",
+            "status": 400,
+            "message": "Knowledge retrieval failed (agent_run_id=run-1)",
+        }
 
     def test_handle_output_moderation_when_flagged(self, pipeline):
         handler = Mock()

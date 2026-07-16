@@ -30,8 +30,8 @@ describe('SVG Attribute Error Reproduction', () => {
       const { unmount } = render(<OpikIconBig />)
 
       // Check for specific inkscape attribute errors
-      const inkscapeErrors = errorMessages.filter(msg =>
-        typeof msg === 'string' && msg.includes('inkscape'),
+      const inkscapeErrors = errorMessages.filter(
+        (msg) => typeof msg === 'string' && msg.includes('inkscape'),
       )
 
       if (inkscapeErrors.length > 0) {
@@ -39,8 +39,7 @@ describe('SVG Attribute Error Reproduction', () => {
         inkscapeErrors.forEach((error, index) => {
           console.log(`  ${index + 1}. ${error.substring(0, 100)}...`)
         })
-      }
-      else {
+      } else {
         console.log('No inkscape errors found in this render')
       }
 
@@ -72,8 +71,8 @@ describe('SVG Attribute Error Reproduction', () => {
 
       // Check attributes for inkscape/sodipodi properties
       if (node.attributes) {
-        const problematicAttrs = Object.keys(node.attributes).filter(attr =>
-          attr.startsWith('inkscape:') || attr.startsWith('sodipodi:'),
+        const problematicAttrs = Object.keys(node.attributes).filter(
+          (attr) => attr.startsWith('inkscape:') || attr.startsWith('sodipodi:'),
         )
 
         if (problematicAttrs.length > 0) {
@@ -121,7 +120,7 @@ describe('SVG Attribute Error Reproduction', () => {
       'xmlns:svg': 'https://www.w3.org/2000/svg',
       'data-name': 'Layer 1',
       'normal-attr': 'value',
-      'class': 'test-class',
+      class: 'test-class',
     }
 
     console.log('Input attributes:', Object.keys(testAttributes))
@@ -132,13 +131,12 @@ describe('SVG Attribute Error Reproduction', () => {
     console.log('Normalized values:', normalized)
 
     // Check if problematic attributes are still present
-    const problematicKeys = Object.keys(normalized).filter(key =>
-      key.toLowerCase().includes('inkscape') || key.toLowerCase().includes('sodipodi'),
+    const problematicKeys = Object.keys(normalized).filter(
+      (key) => key.toLowerCase().includes('inkscape') || key.toLowerCase().includes('sodipodi'),
     )
 
     if (problematicKeys.length > 0)
       console.log(`🚨 PROBLEM: Still found problematic attributes: ${problematicKeys.join(', ')}`)
-    else
-      console.log('✅ No problematic attributes found after normalization')
+    else console.log('✅ No problematic attributes found after normalization')
   })
 })

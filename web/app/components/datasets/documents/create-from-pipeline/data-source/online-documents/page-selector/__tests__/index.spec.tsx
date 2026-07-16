@@ -1,4 +1,7 @@
-import type { NotionPageTreeItem, NotionPageTreeMap } from '@/app/components/base/notion-page-selector/page-selector/types'
+import type {
+  NotionPageTreeItem,
+  NotionPageTreeMap,
+} from '@/app/components/base/notion-page-selector/page-selector/types'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
@@ -19,7 +22,8 @@ const getAllRadios = () => document.querySelectorAll('.size-4.rounded-full')
 
 const isCheckboxChecked = (checkbox: Element) => checkbox.getAttribute('aria-checked') === 'true'
 
-const isCheckboxDisabled = (checkbox: Element) => checkbox.hasAttribute('data-disabled') || checkbox.getAttribute('aria-disabled') === 'true'
+const isCheckboxDisabled = (checkbox: Element) =>
+  checkbox.hasAttribute('data-disabled') || checkbox.getAttribute('aria-disabled') === 'true'
 
 const createMockPage = (overrides?: Partial<DataSourceNotionPage>): DataSourceNotionPage => ({
   page_id: 'page-1',
@@ -58,10 +62,26 @@ const createDefaultProps = (overrides?: Partial<PageSelectorProps>): PageSelecto
 
 // Helper to create hierarchical page structure
 const createHierarchicalPages = () => {
-  const rootPage = createMockPage({ page_id: 'root-page', page_name: 'Root Page', parent_id: 'root' })
-  const childPage1 = createMockPage({ page_id: 'child-1', page_name: 'Child 1', parent_id: 'root-page' })
-  const childPage2 = createMockPage({ page_id: 'child-2', page_name: 'Child 2', parent_id: 'root-page' })
-  const grandChild = createMockPage({ page_id: 'grandchild-1', page_name: 'Grandchild 1', parent_id: 'child-1' })
+  const rootPage = createMockPage({
+    page_id: 'root-page',
+    page_name: 'Root Page',
+    parent_id: 'root',
+  })
+  const childPage1 = createMockPage({
+    page_id: 'child-1',
+    page_name: 'Child 1',
+    parent_id: 'root-page',
+  })
+  const childPage2 = createMockPage({
+    page_id: 'child-2',
+    page_name: 'Child 2',
+    parent_id: 'root-page',
+  })
+  const grandChild = createMockPage({
+    page_id: 'grandchild-1',
+    page_name: 'Grandchild 1',
+    parent_id: 'child-1',
+  })
 
   const list = [rootPage, childPage1, childPage2, grandChild]
   const pagesMap = createMockPagesMap(list)
@@ -91,7 +111,9 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('common.dataSource.notion.selector.noSearchResult'),
+      )!.toBeInTheDocument()
       expect(screen.queryByTestId('virtual-list')).not.toBeInTheDocument()
     })
 
@@ -140,7 +162,9 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.queryByText('common.dataSource.notion.selector.preview')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('common.dataSource.notion.selector.preview'),
+      ).not.toBeInTheDocument()
     })
 
     it('should render NotionIcon for each page', () => {
@@ -342,7 +366,9 @@ describe('PageSelector', () => {
 
         render(<PageSelector {...props} />)
 
-        expect(screen.getByText('common.dataSource.notion.selector.noSearchResult'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('common.dataSource.notion.selector.noSearchResult'),
+        )!.toBeInTheDocument()
       })
 
       it('should show all pages when searchValue is empty', () => {
@@ -411,7 +437,9 @@ describe('PageSelector', () => {
 
         render(<PageSelector {...props} />)
 
-        expect(screen.queryByText('common.dataSource.notion.selector.preview')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('common.dataSource.notion.selector.preview'),
+        ).not.toBeInTheDocument()
       })
 
       it('should use default value true when canPreview is not provided', () => {
@@ -515,9 +543,7 @@ describe('PageSelector', () => {
 
     describe('currentCredentialId prop', () => {
       it('should reset dataList when currentCredentialId changes', () => {
-        const pages = [
-          createMockPage({ page_id: 'page-1', page_name: 'Page 1' }),
-        ]
+        const pages = [createMockPage({ page_id: 'page-1', page_name: 'Page 1' })]
         const props = createDefaultProps({
           list: pages,
           pagesMap: createMockPagesMap(pages),
@@ -599,9 +625,10 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Find and click the expand arrow (uses hover:bg-components-button-ghost-bg-hover class)
-      const arrowButton = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
-      if (arrowButton)
-        fireEvent.click(arrowButton)
+      const arrowButton = document.querySelector(
+        '[class*="hover:bg-components-button-ghost-bg-hover"]',
+      )
+      if (arrowButton) fireEvent.click(arrowButton)
 
       expect(screen.getByText(rootPage.page_name))!.toBeInTheDocument()
       expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
@@ -715,9 +742,10 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Find expand arrow for root page (has RiArrowRightSLine icon)
-      const expandArrow = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
-      if (expandArrow)
-        fireEvent.click(expandArrow)
+      const expandArrow = document.querySelector(
+        '[class*="hover:bg-components-button-ghost-bg-hover"]',
+      )
+      if (expandArrow) fireEvent.click(expandArrow)
 
       // Assert - Children should be visible
       // Assert - Children should be visible
@@ -735,7 +763,9 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // First expand
-      const expandArrow = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
+      const expandArrow = document.querySelector(
+        '[class*="hover:bg-components-button-ghost-bg-hover"]',
+      )
       if (expandArrow) {
         fireEvent.click(expandArrow)
         // Then collapse
@@ -849,7 +879,9 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - Tree structure should be built (verified by expand functionality)
-      const expandArrow = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
+      const expandArrow = document.querySelector(
+        '[class*="hover:bg-components-button-ghost-bg-hover"]',
+      )
       expect(expandArrow)!.toBeInTheDocument() // Root page has children
     })
 
@@ -903,7 +935,9 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('common.dataSource.notion.selector.noSearchResult'),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -952,9 +986,10 @@ describe('PageSelector', () => {
       // Initially children are hidden
       expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
 
-      const expandArrow = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
-      if (expandArrow)
-        fireEvent.click(expandArrow)
+      const expandArrow = document.querySelector(
+        '[class*="hover:bg-components-button-ghost-bg-hover"]',
+      )
+      if (expandArrow) fireEvent.click(expandArrow)
 
       // Children become visible
       // Children become visible
@@ -1058,7 +1093,9 @@ describe('PageSelector', () => {
 
       render(<PageSelector {...props} />)
 
-      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('common.dataSource.notion.selector.noSearchResult'),
+      )!.toBeInTheDocument()
     })
 
     it('should handle null page_icon', () => {
@@ -1229,7 +1266,9 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - No expand arrow for leaf pages
-      const arrowButton = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
+      const arrowButton = document.querySelector(
+        '[class*="hover:bg-components-button-ghost-bg-hover"]',
+      )
       expect(arrowButton).not.toBeInTheDocument()
     })
   })
@@ -1250,12 +1289,12 @@ describe('PageSelector', () => {
       if (propVariation.canPreview)
         expect(screen.getByText('common.dataSource.notion.selector.preview'))!.toBeInTheDocument()
       else
-        expect(screen.queryByText('common.dataSource.notion.selector.preview')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('common.dataSource.notion.selector.preview'),
+        ).not.toBeInTheDocument()
 
-      if (propVariation.isMultipleChoice)
-        expect(getCheckbox())!.toBeInTheDocument()
-      else
-        expect(getRadio())!.toBeInTheDocument()
+      if (propVariation.isMultipleChoice) expect(getCheckbox())!.toBeInTheDocument()
+      else expect(getRadio())!.toBeInTheDocument()
     })
 
     it('should handle all default prop values', () => {
@@ -1477,7 +1516,9 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - Root page should have expand arrow
-      const arrowContainer = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
+      const arrowContainer = document.querySelector(
+        '[class*="hover:bg-components-button-ghost-bg-hover"]',
+      )
       expect(arrowContainer)!.toBeInTheDocument()
     })
 
@@ -1491,7 +1532,9 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - No expand arrow for leaf pages
-      const arrowContainer = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
+      const arrowContainer = document.querySelector(
+        '[class*="hover:bg-components-button-ghost-bg-hover"]',
+      )
       expect(arrowContainer).not.toBeInTheDocument()
     })
 
@@ -1507,7 +1550,9 @@ describe('PageSelector', () => {
 
       // Assert - No expand arrows in search mode (renderArrow returns null when searchValue)
       // The arrows are only shown when !searchValue
-      const arrowContainer = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
+      const arrowContainer = document.querySelector(
+        '[class*="hover:bg-components-button-ghost-bg-hover"]',
+      )
       expect(arrowContainer).not.toBeInTheDocument()
     })
   })

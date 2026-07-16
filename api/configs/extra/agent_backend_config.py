@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, NonNegativeFloat
 from pydantic_settings import BaseSettings
 
 
@@ -25,19 +25,16 @@ class AgentBackendConfig(BaseSettings):
     AGENT_SHELL_ENABLED: bool = Field(
         description=(
             "Inject the dify.shell layer (sandboxed bash workspace) into Agent runs. "
-            "Requires the agent backend to be wired with a shellctl entrypoint; keep it "
-            "off until shellctl is deployed, otherwise every agent run that includes the "
-            "shell layer will fail."
+            "Requires the agent backend to be wired with a shellctl entrypoint before "
+            "shell-using Agent runs are executed."
         ),
-        default=False,
+        default=True,
     )
 
-    AGENT_DRIVE_MANIFEST_ENABLED: bool = Field(
+    AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS: NonNegativeFloat = Field(
         description=(
-            "Inject the dify.drive layer (Skills & Files drive manifest declaration) "
-            "into Agent runs. The declaration is an index only — the agent backend "
-            "pulls the actual SKILL.md / files through the back proxy. Keep it off "
-            "until the agent backend registers the dify.drive layer type."
+            "Buffer Agent App assistant text deltas for up to this many seconds before "
+            "publishing SSE chunks. Set to 0 to publish each delta immediately."
         ),
-        default=False,
+        default=0.5,
     )

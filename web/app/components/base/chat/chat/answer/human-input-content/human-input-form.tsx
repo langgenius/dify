@@ -7,12 +7,16 @@ import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import ContentItem from './content-item'
-import { getButtonStyle, getProcessedHumanInputFormInputs, getRenderedFormInputs, hasInvalidSelectOrFileInput, initializeInputs, splitByOutputVar } from './utils'
+import {
+  getButtonStyle,
+  getProcessedHumanInputFormInputs,
+  getRenderedFormInputs,
+  hasInvalidSelectOrFileInput,
+  initializeInputs,
+  splitByOutputVar,
+} from './utils'
 
-const HumanInputForm = ({
-  formData,
-  onSubmit,
-}: HumanInputFormProps) => {
+const HumanInputForm = ({ formData, onSubmit }: HumanInputFormProps) => {
   const formToken = formData.form_token
   const contentList = splitByOutputVar(formData.form_content)
   const renderedFormInputs = getRenderedFormInputs(formData.inputs, formData.form_content)
@@ -21,13 +25,17 @@ const HumanInputForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleInputsChange = useCallback((name: string, value: HumanInputFieldValue) => {
-    setInputs(prev => ({
+    setInputs((prev) => ({
       ...prev,
       [name]: value,
     }))
   }, [])
 
-  const submit = async (formToken: string, actionID: string, inputs: Record<string, HumanInputFieldValue>) => {
+  const submit = async (
+    formToken: string,
+    actionID: string,
+    inputs: Record<string, HumanInputFieldValue>,
+  ) => {
     setIsSubmitting(true)
     await onSubmit?.(formToken, {
       inputs: getProcessedHumanInputFormInputs(renderedFormInputs, inputs) || {},
@@ -36,7 +44,8 @@ const HumanInputForm = ({
     setIsSubmitting(false)
   }
 
-  const isActionDisabled = isSubmitting || hasInvalidSelectOrFileInput(renderedFormInputs, inputs)
+  const isActionDisabled =
+    isSubmitting || !formToken || hasInvalidSelectOrFileInput(renderedFormInputs, inputs)
 
   return (
     <>
@@ -55,7 +64,7 @@ const HumanInputForm = ({
             key={action.id}
             disabled={isActionDisabled}
             variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
-            onClick={() => submit(formToken, action.id, inputs)}
+            onClick={() => formToken && submit(formToken, action.id, inputs)}
           >
             {action.title}
           </Button>

@@ -8,11 +8,21 @@ import MCPDetailPanel from '../provider-detail'
 
 // Mock the content component to expose onUpdate callback
 vi.mock('../content', () => ({
-  default: ({ detail, onUpdate }: { detail: ToolWithProvider, onUpdate: (isDelete?: boolean) => void }) => (
+  default: ({
+    detail,
+    onUpdate,
+  }: {
+    detail: ToolWithProvider
+    onUpdate: (isDelete?: boolean) => void
+  }) => (
     <div data-testid="mcp-detail-content">
       {detail.name}
-      <button data-testid="update-btn" onClick={() => onUpdate()}>Update</button>
-      <button data-testid="delete-btn" onClick={() => onUpdate(true)}>Delete</button>
+      <button data-testid="update-btn" onClick={() => onUpdate()}>
+        Update
+      </button>
+      <button data-testid="delete-btn" onClick={() => onUpdate(true)}>
+        Delete
+      </button>
     </div>
   ),
 }))
@@ -30,15 +40,16 @@ describe('MCPDetailPanel', () => {
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
 
-  const createMockDetail = (): ToolWithProvider => ({
-    id: 'mcp-1',
-    name: 'Test MCP',
-    server_identifier: 'test-mcp',
-    server_url: 'https://example.com/mcp',
-    icon: { content: '🔧', background: '#FF0000' },
-    tools: [],
-    is_team_authorization: true,
-  } as unknown as ToolWithProvider)
+  const createMockDetail = (): ToolWithProvider =>
+    ({
+      id: 'mcp-1',
+      name: 'Test MCP',
+      server_identifier: 'test-mcp',
+      server_url: 'https://example.com/mcp',
+      icon: { content: '🔧', background: '#FF0000' },
+      tools: [],
+      is_team_authorization: true,
+    }) as unknown as ToolWithProvider
 
   const defaultProps = {
     onUpdate: vi.fn(),
@@ -49,19 +60,15 @@ describe('MCPDetailPanel', () => {
 
   describe('Rendering', () => {
     it('should render nothing when detail is undefined', () => {
-      const { container } = render(
-        <MCPDetailPanel {...defaultProps} detail={undefined} />,
-        { wrapper: createWrapper() },
-      )
+      const { container } = render(<MCPDetailPanel {...defaultProps} detail={undefined} />, {
+        wrapper: createWrapper(),
+      })
       expect(container.innerHTML).toBe('')
     })
 
     it('should render drawer when detail is provided', () => {
       const detail = createMockDetail()
-      render(
-        <MCPDetailPanel {...defaultProps} detail={detail} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPDetailPanel {...defaultProps} detail={detail} />, { wrapper: createWrapper() })
       const dialog = screen.getByRole('dialog')
 
       expect(dialog).toBeInTheDocument()
@@ -76,19 +83,13 @@ describe('MCPDetailPanel', () => {
 
     it('should render content when detail is provided', () => {
       const detail = createMockDetail()
-      render(
-        <MCPDetailPanel {...defaultProps} detail={detail} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPDetailPanel {...defaultProps} detail={detail} />, { wrapper: createWrapper() })
       expect(screen.getByTestId('mcp-detail-content')).toBeInTheDocument()
     })
 
     it('should pass detail to content component', () => {
       const detail = createMockDetail()
-      render(
-        <MCPDetailPanel {...defaultProps} detail={detail} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPDetailPanel {...defaultProps} detail={detail} />, { wrapper: createWrapper() })
       expect(screen.getByText('Test MCP')).toBeInTheDocument()
     })
   })
@@ -97,20 +98,18 @@ describe('MCPDetailPanel', () => {
     it('should call onUpdate when update is triggered', () => {
       const onUpdate = vi.fn()
       const detail = createMockDetail()
-      render(
-        <MCPDetailPanel {...defaultProps} detail={detail} onUpdate={onUpdate} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPDetailPanel {...defaultProps} detail={detail} onUpdate={onUpdate} />, {
+        wrapper: createWrapper(),
+      })
       // The update callback is passed to content component
       expect(screen.getByTestId('mcp-detail-content')).toBeInTheDocument()
     })
 
     it('should accept isTriggerAuthorize prop', () => {
       const detail = createMockDetail()
-      render(
-        <MCPDetailPanel {...defaultProps} detail={detail} isTriggerAuthorize={true} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPDetailPanel {...defaultProps} detail={detail} isTriggerAuthorize={true} />, {
+        wrapper: createWrapper(),
+      })
       expect(screen.getByTestId('mcp-detail-content')).toBeInTheDocument()
     })
   })

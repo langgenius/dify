@@ -118,7 +118,7 @@ def test_rename_document_success(db_session_with_containers, mock_env):
     )
 
     # Act
-    result = DocumentService.rename_document(dataset.id, document_id, new_name)
+    result = DocumentService.rename_document(dataset.id, document_id, new_name, session=db_session_with_containers)
 
     # Assert
     db_session_with_containers.refresh(document)
@@ -147,7 +147,7 @@ def test_rename_document_with_built_in_fields(db_session_with_containers, mock_e
     )
 
     # Act
-    DocumentService.rename_document(dataset.id, document.id, new_name)
+    DocumentService.rename_document(dataset.id, document.id, new_name, session=db_session_with_containers)
 
     # Assert
     db_session_with_containers.refresh(document)
@@ -179,7 +179,7 @@ def test_rename_document_updates_upload_file_when_present(db_session_with_contai
     )
 
     # Act
-    DocumentService.rename_document(dataset.id, document.id, new_name)
+    DocumentService.rename_document(dataset.id, document.id, new_name, session=db_session_with_containers)
 
     # Assert
     db_session_with_containers.refresh(document)
@@ -210,7 +210,7 @@ def test_rename_document_does_not_update_upload_file_when_missing_id(db_session_
     )
 
     # Act
-    DocumentService.rename_document(dataset.id, document.id, new_name)
+    DocumentService.rename_document(dataset.id, document.id, new_name, session=db_session_with_containers)
 
     # Assert
     db_session_with_containers.refresh(document)
@@ -226,7 +226,7 @@ def test_rename_document_dataset_not_found(db_session_with_containers, mock_env)
 
     # Act / Assert
     with pytest.raises(ValueError, match="Dataset not found"):
-        DocumentService.rename_document(missing_dataset_id, str(uuid4()), "x")
+        DocumentService.rename_document(missing_dataset_id, str(uuid4()), "x", session=db_session_with_containers)
 
 
 def test_rename_document_not_found(db_session_with_containers, mock_env):
@@ -236,7 +236,7 @@ def test_rename_document_not_found(db_session_with_containers, mock_env):
 
     # Act / Assert
     with pytest.raises(ValueError, match="Document not found"):
-        DocumentService.rename_document(dataset.id, str(uuid4()), "x")
+        DocumentService.rename_document(dataset.id, str(uuid4()), "x", session=db_session_with_containers)
 
 
 def test_rename_document_permission_denied_when_tenant_mismatch(db_session_with_containers, mock_env):
@@ -251,4 +251,4 @@ def test_rename_document_permission_denied_when_tenant_mismatch(db_session_with_
 
     # Act / Assert
     with pytest.raises(ValueError, match="No permission"):
-        DocumentService.rename_document(dataset.id, document.id, "x")
+        DocumentService.rename_document(dataset.id, document.id, "x", session=db_session_with_containers)

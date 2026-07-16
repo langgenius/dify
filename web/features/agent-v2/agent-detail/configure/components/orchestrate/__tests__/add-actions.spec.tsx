@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentOrchestrateAddActionsProvider } from '../add-actions'
-import { useAgentOrchestrateAddActions, useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
+import {
+  useAgentOrchestrateAddActions,
+  useRegisterAgentOrchestrateAddAction,
+} from '../add-actions-context'
 
 function InlineActionRegisterer({
   label,

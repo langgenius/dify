@@ -15,7 +15,7 @@ let capturedOnClick: ((file: FileEntity) => void) | null = null
 
 // Mock FileThumb to capture click handler
 vi.mock('@/app/components/base/file-thumb', () => ({
-  default: ({ file, onClick }: { file: FileEntity, onClick?: (file: FileEntity) => void }) => {
+  default: ({ file, onClick }: { file: FileEntity; onClick?: (file: FileEntity) => void }) => {
     // Capture the onClick for testing
     capturedOnClick = onClick ?? null
     return (
@@ -48,7 +48,9 @@ vi.mock('../../image-previewer', () => ({
     <div data-testid="image-previewer">
       <span data-testid="preview-count">{images.length}</span>
       <span data-testid="preview-index">{initialIndex}</span>
-      <button data-testid="close-preview" onClick={onClose}>Close</button>
+      <button data-testid="close-preview" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -95,9 +97,7 @@ describe('ImageList', () => {
   describe('Props', () => {
     it('should apply custom className', () => {
       const images = createMockImages(3)
-      const { container } = render(
-        <ImageList images={images} size="md" className="custom-class" />,
-      )
+      const { container } = render(<ImageList images={images} size="md" className="custom-class" />)
       expect(container.firstChild)!.toHaveClass('custom-class')
     })
 

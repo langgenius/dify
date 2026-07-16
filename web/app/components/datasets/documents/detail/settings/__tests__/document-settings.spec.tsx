@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import DocumentSettings from '../document-settings'
 
 const mockPush = vi.fn()
@@ -15,7 +14,7 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock use-context-selector
 vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
+  const actual = (await importOriginal()) as Record<string, unknown>
   return {
     ...actual,
     useContext: () => ({
@@ -53,7 +52,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/base/app-unavailable', () => ({
-  default: ({ code, unknownReason }: { code?: number, unknownReason?: string }) => (
+  default: ({ code, unknownReason }: { code?: number; unknownReason?: string }) => (
     <div data-testid="app-unavailable">
       <span data-testid="error-code">{code}</span>
       <span data-testid="error-reason">{unknownReason}</span>
@@ -63,7 +62,9 @@ vi.mock('@/app/components/base/app-unavailable', () => ({
 
 vi.mock('@/app/components/base/loading', () => ({
   default: ({ type }: { type?: string }) => (
-    <div data-testid="loading" data-type={type}>Loading...</div>
+    <div data-testid="loading" data-type={type}>
+      Loading...
+    </div>
   ),
 }))
 
@@ -93,9 +94,15 @@ vi.mock('@/app/components/datasets/create/step-two', () => ({
       <span data-testid="data-source-type">{dataSourceType}</span>
       <span data-testid="is-setting">{isSetting ? 'true' : 'false'}</span>
       <span data-testid="files-count">{files?.length || 0}</span>
-      <button onClick={onSetting} data-testid="setting-btn">Setting</button>
-      <button onClick={onSave} data-testid="save-btn">Save</button>
-      <button onClick={onCancel} data-testid="cancel-btn">Cancel</button>
+      <button onClick={onSetting} data-testid="setting-btn">
+        Setting
+      </button>
+      <button onClick={onSave} data-testid="save-btn">
+        Save
+      </button>
+      <button onClick={onCancel} data-testid="cancel-btn">
+        Cancel
+      </button>
     </div>
   ),
 }))
@@ -320,9 +327,7 @@ describe('DocumentSettings', () => {
     })
 
     it('should maintain structure when rerendered', () => {
-      const { rerender } = render(
-        <DocumentSettings datasetId="dataset-1" documentId="doc-1" />,
-      )
+      const { rerender } = render(<DocumentSettings datasetId="dataset-1" documentId="doc-1" />)
 
       rerender(<DocumentSettings datasetId="dataset-2" documentId="doc-2" />)
 

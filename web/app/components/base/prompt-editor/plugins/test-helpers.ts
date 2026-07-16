@@ -1,17 +1,8 @@
-import type {
-  Klass,
-  LexicalEditor,
-  LexicalNode,
-} from 'lexical'
+import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
 import type { ReactNode } from 'react'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
-import {
-  $createParagraphNode,
-  $getRoot,
-  $nodesOfType,
-  createEditor,
-} from 'lexical'
+import { $createParagraphNode, $getRoot, $nodesOfType, createEditor } from 'lexical'
 import { createElement } from 'react'
 import { expect } from 'vitest'
 import { CaptureEditorPlugin } from './test-utils'
@@ -33,24 +24,26 @@ export const renderLexicalEditor = ({
 }: RenderLexicalEditorProps): RenderLexicalEditorResult => {
   let editor: LexicalEditor | null = null
 
-  const utils = render(createElement(
-    LexicalComposer,
-    {
-      initialConfig: {
-        namespace,
-        onError: (error: Error) => {
-          throw error
+  const utils = render(
+    createElement(
+      LexicalComposer,
+      {
+        initialConfig: {
+          namespace,
+          onError: (error: Error) => {
+            throw error
+          },
+          nodes,
         },
-        nodes,
       },
-    },
-    children,
-    createElement(CaptureEditorPlugin, {
-      onReady: (value) => {
-        editor = value
-      },
-    }),
-  ))
+      children,
+      createElement(CaptureEditorPlugin, {
+        onReady: (value) => {
+          editor = value
+        },
+      }),
+    ),
+  )
 
   return {
     ...utils,
@@ -58,15 +51,15 @@ export const renderLexicalEditor = ({
   }
 }
 
-export const waitForEditorReady = async (getEditor: () => LexicalEditor | null): Promise<LexicalEditor> => {
+export const waitForEditorReady = async (
+  getEditor: () => LexicalEditor | null,
+): Promise<LexicalEditor> => {
   await waitFor(() => {
-    if (!getEditor())
-      throw new Error('Editor is not ready yet')
+    if (!getEditor()) throw new Error('Editor is not ready yet')
   })
 
   const editor = getEditor()
-  if (!editor)
-    throw new Error('Editor is not available')
+  if (!editor) throw new Error('Editor is not available')
 
   return editor
 }
@@ -89,7 +82,10 @@ export const readRootTextContent = (editor: LexicalEditor): string => {
   return content
 }
 
-export const getNodeCount = <T extends LexicalNode>(editor: LexicalEditor, nodeType: Klass<T>): number => {
+export const getNodeCount = <T extends LexicalNode>(
+  editor: LexicalEditor,
+  nodeType: Klass<T>,
+): number => {
   let count = 0
 
   editor.getEditorState().read(() => {
@@ -99,7 +95,10 @@ export const getNodeCount = <T extends LexicalNode>(editor: LexicalEditor, nodeT
   return count
 }
 
-export const getNodesByType = <T extends LexicalNode>(editor: LexicalEditor, nodeType: Klass<T>): T[] => {
+export const getNodesByType = <T extends LexicalNode>(
+  editor: LexicalEditor,
+  nodeType: Klass<T>,
+): T[] => {
   let nodes: T[] = []
 
   editor.getEditorState().read(() => {
@@ -116,8 +115,7 @@ export const readEditorStateValue = <T>(editor: LexicalEditor, reader: () => T):
     value = reader()
   })
 
-  if (value === undefined)
-    throw new Error('Failed to read editor state value')
+  if (value === undefined) throw new Error('Failed to read editor state value')
 
   return value
 }

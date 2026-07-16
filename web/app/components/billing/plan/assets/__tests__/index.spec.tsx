@@ -1,6 +1,5 @@
 import { render } from '@testing-library/react'
 import EnterpriseDirect from '../enterprise'
-
 import { Enterprise, Professional, Sandbox, Team } from '../index'
 import ProfessionalDirect from '../professional'
 // Import real components for comparison
@@ -130,8 +129,12 @@ describe('Billing Plan Assets - Integration Tests', () => {
 
       components.forEach((Component) => {
         const { container } = render(<Component />)
-        const elementsWithBlue = container.querySelectorAll('[fill="var(--color-saas-dify-blue-inverted)"]')
-        const elementsWithQuaternary = container.querySelectorAll('[fill="var(--color-text-quaternary)"]')
+        const elementsWithBlue = container.querySelectorAll(
+          '[fill="var(--color-saas-dify-blue-inverted)"]',
+        )
+        const elementsWithQuaternary = container.querySelectorAll(
+          '[fill="var(--color-text-quaternary)"]',
+        )
 
         expect(elementsWithBlue.length).toBeGreaterThan(0)
         expect(elementsWithQuaternary.length).toBeGreaterThan(0)
@@ -220,10 +223,18 @@ describe('Billing Plan Assets - Integration Tests', () => {
         <table>
           <thead>
             <tr>
-              <th><Sandbox /></th>
-              <th><Professional /></th>
-              <th><Team /></th>
-              <th><Enterprise /></th>
+              <th>
+                <Sandbox />
+              </th>
+              <th>
+                <Professional />
+              </th>
+              <th>
+                <Team />
+              </th>
+              <th>
+                <Enterprise />
+              </th>
             </tr>
           </thead>
         </table>,

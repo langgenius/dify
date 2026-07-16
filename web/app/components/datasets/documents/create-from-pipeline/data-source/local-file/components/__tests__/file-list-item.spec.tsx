@@ -19,12 +19,22 @@ vi.mock('@/types/app', () => ({
 // Mock SimplePieChart with dynamic import handling
 vi.mock('@/next/dynamic', () => ({
   default: () => {
-    const DynamicComponent = ({ percentage, stroke, fill }: { percentage: number, stroke: string, fill: string }) => (
-      <div data-testid="pie-chart" data-percentage={percentage} data-stroke={stroke} data-fill={fill}>
-        Pie Chart:
-        {' '}
-        {percentage}
-        %
+    const DynamicComponent = ({
+      percentage,
+      stroke,
+      fill,
+    }: {
+      percentage: number
+      stroke: string
+      fill: string
+    }) => (
+      <div
+        data-testid="pie-chart"
+        data-percentage={percentage}
+        data-stroke={stroke}
+        data-fill={fill}
+      >
+        Pie Chart: {percentage}%
       </div>
     )
     DynamicComponent.displayName = 'SimplePieChart'
@@ -34,7 +44,7 @@ vi.mock('@/next/dynamic', () => ({
 
 // Mock DocumentFileIcon
 vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
-  default: ({ name, extension, size }: { name: string, extension: string, size: string }) => (
+  default: ({ name, extension, size }: { name: string; extension: string; size: string }) => (
     <div data-testid="document-icon" data-name={name} data-extension={extension} data-size={size}>
       Document Icon
     </div>
@@ -42,13 +52,14 @@ vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
 }))
 
 describe('FileListItem', () => {
-  const createMockFile = (overrides: Partial<File> = {}): File => ({
-    name: 'test-document.pdf',
-    size: 1024 * 100, // 100KB
-    type: 'application/pdf',
-    lastModified: Date.now(),
-    ...overrides,
-  } as File)
+  const createMockFile = (overrides: Partial<File> = {}): File =>
+    ({
+      name: 'test-document.pdf',
+      size: 1024 * 100, // 100KB
+      type: 'application/pdf',
+      lastModified: Date.now(),
+      ...overrides,
+    }) as File
 
   const createMockFileItem = (overrides: Partial<FileItem> = {}): FileItem => ({
     fileID: 'file-123',
@@ -204,7 +215,9 @@ describe('FileListItem', () => {
     it('should call onRemove when delete button is clicked', () => {
       const onRemove = vi.fn()
       const fileItem = createMockFileItem()
-      const { container } = render(<FileListItem {...defaultProps} fileItem={fileItem} onRemove={onRemove} />)
+      const { container } = render(
+        <FileListItem {...defaultProps} fileItem={fileItem} onRemove={onRemove} />,
+      )
 
       const deleteButton = container.querySelector('.cursor-pointer')!
       fireEvent.click(deleteButton)
@@ -216,7 +229,9 @@ describe('FileListItem', () => {
     it('should stop propagation when delete button is clicked', () => {
       const onPreview = vi.fn()
       const onRemove = vi.fn()
-      const { container } = render(<FileListItem {...defaultProps} onPreview={onPreview} onRemove={onRemove} />)
+      const { container } = render(
+        <FileListItem {...defaultProps} onPreview={onPreview} onRemove={onRemove} />,
+      )
 
       const deleteButton = container.querySelector('.cursor-pointer')!
       fireEvent.click(deleteButton)

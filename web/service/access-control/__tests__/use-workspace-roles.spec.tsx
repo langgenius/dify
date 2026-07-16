@@ -73,7 +73,9 @@ describe('use-workspace-roles', () => {
   // Role list pagination starts from the provided page and passes query params through.
   describe('Queries', () => {
     it('should fetch workspace roles with pagination params', async () => {
-      renderHook(() => useWorkspaceRoleList({ page: 2, limit: 20, language: 'zh' }), { wrapper: createWrapper() })
+      renderHook(() => useWorkspaceRoleList({ page: 2, limit: 20, language: 'zh' }), {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(mockServiceBase.get).toHaveBeenCalledWith('/workspaces/current/rbac/roles', {
@@ -87,15 +89,20 @@ describe('use-workspace-roles', () => {
     })
 
     it('should fetch members assigned to a workspace role with pagination params', async () => {
-      renderHook(() => useGetMembersOfRole({ roleId: 'role-1', page: 2, limit: 1 }), { wrapper: createWrapper() })
+      renderHook(() => useGetMembersOfRole({ roleId: 'role-1', page: 2, limit: 1 }), {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
-        expect(mockServiceBase.get).toHaveBeenCalledWith('/workspaces/current/rbac/roles/role-1/members', {
-          params: {
-            page: 2,
-            limit: 1,
+        expect(mockServiceBase.get).toHaveBeenCalledWith(
+          '/workspaces/current/rbac/roles/role-1/members',
+          {
+            params: {
+              page: 2,
+              limit: 1,
+            },
           },
-        })
+        )
       })
     })
   })
@@ -157,9 +164,12 @@ describe('use-workspace-roles', () => {
       })
 
       expect(mockServiceBase.del).toHaveBeenCalledWith('/workspaces/current/rbac/roles/role-1')
-      expect(mockServiceBase.post).toHaveBeenCalledWith('/workspaces/current/rbac/roles/role-2/copy', {
-        body: { copy_member: false },
-      })
+      expect(mockServiceBase.post).toHaveBeenCalledWith(
+        '/workspaces/current/rbac/roles/role-2/copy',
+        {
+          body: { copy_member: false },
+        },
+      )
     })
 
     it('should invalidate members after deleting a workspace role', async () => {

@@ -29,7 +29,11 @@ describe('code.tsx components', () => {
     })
 
     it('should pass through additional props', () => {
-      render(<Embed value="content" data-testid="embed-test" className="embed-class">children</Embed>)
+      render(
+        <Embed value="content" data-testid="embed-test" className="embed-class">
+          children
+        </Embed>,
+      )
       const embed = screen.getByTestId('embed-test')
       expect(embed).toHaveClass('embed-class')
     })
@@ -46,10 +50,12 @@ describe('code.tsx components', () => {
       it('should render code from targetCode string', () => {
         render(
           <CodeGroup targetCode="const hello = 'world'">
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
-        expect(screen.getByText('const hello = \'world\'')).toBeInTheDocument()
+        expect(screen.getByText("const hello = 'world'")).toBeInTheDocument()
       })
     })
 
@@ -58,7 +64,9 @@ describe('code.tsx components', () => {
         const examples = [{ code: 'single example' }]
         render(
           <CodeGroup targetCode={examples}>
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         expect(screen.getByText('single example')).toBeInTheDocument()
@@ -71,7 +79,9 @@ describe('code.tsx components', () => {
         ]
         render(
           <CodeGroup targetCode={examples}>
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         expect(screen.getByRole('tab', { name: 'JavaScript' })).toBeInTheDocument()
@@ -85,7 +95,9 @@ describe('code.tsx components', () => {
         ]
         render(
           <CodeGroup targetCode={examples}>
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         expect(screen.getByText('first content')).toBeInTheDocument()
@@ -99,7 +111,9 @@ describe('code.tsx components', () => {
         ]
         render(
           <CodeGroup targetCode={examples}>
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         await act(async () => {
@@ -118,13 +132,12 @@ describe('code.tsx components', () => {
       })
 
       it('should use "Code" as default title when title not provided', () => {
-        const examples = [
-          { code: 'example 1' },
-          { code: 'example 2' },
-        ]
+        const examples = [{ code: 'example 1' }, { code: 'example 2' }]
         render(
           <CodeGroup targetCode={examples}>
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         const codeTabs = screen.getAllByRole('tab', { name: 'Code' })
@@ -136,7 +149,9 @@ describe('code.tsx components', () => {
       it('should render title in an h3 heading', () => {
         render(
           <CodeGroup title="API Example" targetCode="code">
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         const h3 = screen.getByRole('heading', { level: 3 })
@@ -148,7 +163,9 @@ describe('code.tsx components', () => {
       it('should render tag in code panel header', () => {
         render(
           <CodeGroup tag="GET" targetCode="code">
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         expect(screen.getByText('GET')).toBeInTheDocument()
@@ -157,7 +174,9 @@ describe('code.tsx components', () => {
       it('should render label in code panel header', () => {
         render(
           <CodeGroup label="/api/users" targetCode="code">
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         expect(screen.getByText('/api/users')).toBeInTheDocument()
@@ -166,7 +185,9 @@ describe('code.tsx components', () => {
       it('should render both tag and label together', () => {
         render(
           <CodeGroup tag="POST" label="/api/create" targetCode="code">
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         expect(screen.getByText('POST')).toBeInTheDocument()
@@ -178,7 +199,9 @@ describe('code.tsx components', () => {
       it('should show "Copy" text initially', () => {
         render(
           <CodeGroup targetCode="code">
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         expect(screen.getByText('Copy')).toBeInTheDocument()
@@ -190,7 +213,9 @@ describe('code.tsx components', () => {
 
         render(
           <CodeGroup targetCode="code to copy">
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         await act(async () => {
@@ -214,7 +239,9 @@ describe('code.tsx components', () => {
 
         render(
           <CodeGroup targetCode="code">
-            <pre><code>fallback</code></pre>
+            <pre>
+              <code>fallback</code>
+            </pre>
           </CodeGroup>,
         )
         await act(async () => {
@@ -244,7 +271,9 @@ describe('code.tsx components', () => {
       it('should render children when no targetCode provided', () => {
         render(
           <CodeGroup>
-            <pre><code>child code content</code></pre>
+            <pre>
+              <code>child code content</code>
+            </pre>
           </CodeGroup>,
         )
         expect(screen.getByText('child code content')).toBeInTheDocument()
@@ -256,7 +285,9 @@ describe('code.tsx components', () => {
     it('should render when tag is provided', () => {
       render(
         <CodeGroup tag="GET" targetCode="code">
-          <pre><code>fallback</code></pre>
+          <pre>
+            <code>fallback</code>
+          </pre>
         </CodeGroup>,
       )
       expect(screen.getByText('GET')).toBeInTheDocument()
@@ -265,7 +296,9 @@ describe('code.tsx components', () => {
     it('should render when label is provided', () => {
       render(
         <CodeGroup label="/api/endpoint" targetCode="code">
-          <pre><code>fallback</code></pre>
+          <pre>
+            <code>fallback</code>
+          </pre>
         </CodeGroup>,
       )
       expect(screen.getByText('/api/endpoint')).toBeInTheDocument()
@@ -280,7 +313,9 @@ describe('code.tsx components', () => {
       ]
       render(
         <CodeGroup targetCode={examples}>
-          <pre><code>fallback</code></pre>
+          <pre>
+            <code>fallback</code>
+          </pre>
         </CodeGroup>,
       )
       expect(screen.getByRole('tablist')).toHaveClass('-mb-px', 'gap-4', 'bg-transparent')
@@ -292,7 +327,9 @@ describe('code.tsx components', () => {
     it('should render code in a pre element', () => {
       render(
         <CodeGroup targetCode="pre content">
-          <pre><code>fallback</code></pre>
+          <pre>
+            <code>fallback</code>
+          </pre>
         </CodeGroup>,
       )
       const preElement = screen.getByText('pre content').closest('pre')
@@ -304,7 +341,9 @@ describe('code.tsx components', () => {
     it('should render clipboard SVG icon in copy button', () => {
       render(
         <CodeGroup targetCode="code">
-          <pre><code>fallback</code></pre>
+          <pre>
+            <code>fallback</code>
+          </pre>
         </CodeGroup>,
       )
       const copyButton = screen.getByRole('button')
@@ -318,7 +357,9 @@ describe('code.tsx components', () => {
     it('should handle empty string targetCode', () => {
       render(
         <CodeGroup targetCode="">
-          <pre><code>fallback</code></pre>
+          <pre>
+            <code>fallback</code>
+          </pre>
         </CodeGroup>,
       )
       expect(screen.getByRole('button')).toBeInTheDocument()
@@ -328,7 +369,9 @@ describe('code.tsx components', () => {
       const specialCode = '<div class="test">&amp;</div>'
       render(
         <CodeGroup targetCode={specialCode}>
-          <pre><code>fallback</code></pre>
+          <pre>
+            <code>fallback</code>
+          </pre>
         </CodeGroup>,
       )
       expect(screen.getByText(specialCode)).toBeInTheDocument()
@@ -340,7 +383,9 @@ line2
 line3`
       render(
         <CodeGroup targetCode={multilineCode}>
-          <pre><code>fallback</code></pre>
+          <pre>
+            <code>fallback</code>
+          </pre>
         </CodeGroup>,
       )
       expect(screen.getByText(/line1/)).toBeInTheDocument()
@@ -349,12 +394,12 @@ line3`
     })
 
     it('should handle examples with tag property', () => {
-      const examples = [
-        { title: 'Example', tag: 'v1', code: 'versioned code' },
-      ]
+      const examples = [{ title: 'Example', tag: 'v1', code: 'versioned code' }]
       render(
         <CodeGroup targetCode={examples}>
-          <pre><code>fallback</code></pre>
+          <pre>
+            <code>fallback</code>
+          </pre>
         </CodeGroup>,
       )
       expect(screen.getByText('versioned code')).toBeInTheDocument()

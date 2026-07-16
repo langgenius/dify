@@ -126,9 +126,7 @@ describe('TocPanel', () => {
     })
 
     it('should apply active indicator dot to active item', () => {
-      render(
-        <TocPanel {...defaultProps} isTocExpanded toc={sampleToc} activeSection="endpoints" />,
-      )
+      render(<TocPanel {...defaultProps} isTocExpanded toc={sampleToc} activeSection="endpoints" />)
 
       const activeLink = screen.getByText('Endpoints').closest('a')
       const activeDot = activeLink?.querySelector('span:first-child')
@@ -140,24 +138,20 @@ describe('TocPanel', () => {
   describe('item click handling', () => {
     it('should call onItemClick with the event and item when a link is clicked', () => {
       const onItemClick = vi.fn()
-      render(
-        <TocPanel {...defaultProps} isTocExpanded toc={sampleToc} onItemClick={onItemClick} />,
-      )
+      render(<TocPanel {...defaultProps} isTocExpanded toc={sampleToc} onItemClick={onItemClick} />)
 
       fireEvent.click(screen.getByText('Authentication'))
 
       expect(onItemClick).toHaveBeenCalledTimes(1)
-      expect(onItemClick).toHaveBeenCalledWith(
-        expect.any(Object),
-        { href: '#authentication', text: 'Authentication' },
-      )
+      expect(onItemClick).toHaveBeenCalledWith(expect.any(Object), {
+        href: '#authentication',
+        text: 'Authentication',
+      })
     })
 
     it('should call onItemClick for each clicked item independently', () => {
       const onItemClick = vi.fn()
-      render(
-        <TocPanel {...defaultProps} isTocExpanded toc={sampleToc} onItemClick={onItemClick} />,
-      )
+      render(<TocPanel {...defaultProps} isTocExpanded toc={sampleToc} onItemClick={onItemClick} />)
 
       fireEvent.click(screen.getByText('Introduction'))
       fireEvent.click(screen.getByText('Endpoints'))

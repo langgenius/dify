@@ -52,7 +52,9 @@ def _pipeline() -> Pipeline:
 def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow()
     monkeypatch.setattr(
-        module, "RagPipelineService", lambda: SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow)
+        module,
+        "RagPipelineService",
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow),
     )
 
     api = module.DraftRagPipelineApi()
@@ -97,12 +99,12 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
             assert session_state["open"] is True
             return getattr(base_workflow, name)
 
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object(), session=lambda: object()))
     monkeypatch.setattr(module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda: SimpleNamespace(get_all_published_workflow=lambda **_kwargs: ([_Workflow()], False)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_all_published_workflow=lambda **_kwargs: ([_Workflow()], False)),
     )
 
     with app.test_request_context(
@@ -132,12 +134,12 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(app: Flask, monke
         def begin(self):
             return _SessionContext()
 
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object(), session=lambda: object()))
     monkeypatch.setattr(module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda: SimpleNamespace(update_workflow=lambda **_kwargs: workflow),
+        lambda *_args, **_kwargs: SimpleNamespace(update_workflow=lambda **_kwargs: workflow),
     )
     payload: dict[str, object] = {"marked_name": "Updated release"}
 
@@ -158,3 +160,65 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(app: Flask, monke
     assert response["id"] == "workflow-1"
     assert response["marked_name"] == "Updated release"
     assert response["hash"] == "hash-1"
+
+
+def test_default_rag_pipeline_block_configs_serializes_root_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    block_configs = [{"type": "start", "config": {"title": "Start"}}]
+    monkeypatch.setattr(
+        module,
+        "RagPipelineService",
+        lambda *_args, **_kwargs: SimpleNamespace(get_default_block_configs=lambda: block_configs),
+    )
+
+    api = module.DefaultRagPipelineBlockConfigsApi()
+    handler = unwrap_all(api.get)
+
+    response = handler(api, _pipeline())
+
+    assert response == block_configs
+
+
+def test_draft_rag_pipeline_second_step_parameters_serializes_variables(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    variables = [
+        {
+            "belong_to_node_id": "shared",
+            "type": "number",
+            "label": "Chunk size",
+            "variable": "chunk_size",
+            "default_value": 1024,
+            "required": True,
+        }
+    ]
+    monkeypatch.setattr(
+        module,
+        "RagPipelineService",
+        lambda *_args, **_kwargs: SimpleNamespace(get_second_step_parameters=lambda **_kwargs: variables),
+    )
+
+    api = module.DraftRagPipelineSecondStepApi()
+    handler = unwrap_all(api.get)
+
+    with app.test_request_context("/?node_id=node-1"):
+        response = handler(api, _pipeline())
+
+    assert response["variables"] == variables
+
+
+def test_rag_pipeline_recommended_plugins_serializes_known_envelope(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    recommended_plugins = {
+        "installed_recommended_plugins": [{"name": "Dify Extractor", "meta": {"version": "1.0.0"}}],
+        "uninstalled_recommended_plugins": [{"plugin_id": "langgenius/notion_datasource"}],
+    }
+    monkeypatch.setattr(
+        module,
+        "RagPipelineService",
+        lambda *_args, **_kwargs: SimpleNamespace(get_recommended_plugins=lambda *_args: recommended_plugins),
+    )
+
+    api = module.RagPipelineRecommendedPluginApi()
+    handler = unwrap_all(api.get)
+
+    with app.test_request_context("/?type=tool"):
+        response = handler(api, "tenant-1", _account())
+
+    assert response == recommended_plugins

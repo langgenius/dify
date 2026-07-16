@@ -5,6 +5,7 @@ from core.entities.provider_entities import (
     BasicProviderConfig,
     ModelSettings,
     ProviderConfig,
+    ProviderConfigType,
     ProviderQuotaType,
 )
 from core.tools.entities.common_entities import I18nObject
@@ -27,22 +28,22 @@ def test_provider_quota_type_value_of_rejects_unknown_values() -> None:
 
 def test_basic_provider_config_type_value_of_handles_known_values() -> None:
     # Arrange / Act
-    parameter_type = BasicProviderConfig.Type.value_of("text-input")
+    parameter_type = ProviderConfigType.value_of("text-input")
 
     # Assert
-    assert parameter_type == BasicProviderConfig.Type.TEXT_INPUT
+    assert parameter_type == ProviderConfigType.TEXT_INPUT
 
 
 def test_basic_provider_config_type_value_of_rejects_invalid_values() -> None:
     # Arrange / Act / Assert
     with pytest.raises(ValueError, match="invalid mode value"):
-        BasicProviderConfig.Type.value_of("unknown")
+        ProviderConfigType.value_of("unknown")
 
 
 def test_provider_config_to_basic_provider_config_keeps_type_and_name() -> None:
     # Arrange
     provider_config = ProviderConfig(
-        type=BasicProviderConfig.Type.SELECT,
+        type=ProviderConfigType.SELECT,
         name="workspace",
         scope=AppSelectorScope.ALL,
         options=[ProviderConfig.Option(value="all", label=I18nObject(en_US="All"))],
@@ -53,7 +54,7 @@ def test_provider_config_to_basic_provider_config_keeps_type_and_name() -> None:
 
     # Assert
     assert isinstance(basic_config, BasicProviderConfig)
-    assert basic_config.type == BasicProviderConfig.Type.SELECT
+    assert basic_config.type == ProviderConfigType.SELECT
     assert basic_config.name == "workspace"
 
 

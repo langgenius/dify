@@ -50,20 +50,14 @@ vi.mock('@/app/components/share/text-generation/run-once', () => ({
 
 vi.mock('@/app/components/share/text-generation/run-batch', () => ({
   default: ({ onSend }: { onSend: (data: string[][]) => void }) => (
-    <button
-      onClick={() => onSend([
-        ['Name'],
-        ['Alpha'],
-        ['Beta'],
-      ])}
-    >
-      run-batch
-    </button>
+    <button onClick={() => onSend([['Name'], ['Alpha'], ['Beta']])}>run-batch</button>
   ),
 }))
 
 vi.mock('@/app/components/app/text-generate/saved-items', () => ({
-  default: ({ list }: { list: { id: string }[] }) => <div data-testid="saved-items-mock">{list.length}</div>,
+  default: ({ list }: { list: { id: string }[] }) => (
+    <div data-testid="saved-items-mock">{list.length}</div>
+  ),
 }))
 
 vi.mock('@/app/components/share/text-generation/menu-dropdown', () => ({
@@ -78,7 +72,7 @@ vi.mock('@/app/components/share/text-generation/result', () => {
     taskId,
   }: {
     isCallBatchAPI: boolean
-    onRunControlChange?: (control: { onStop: () => void, isStopping: boolean } | null) => void
+    onRunControlChange?: (control: { onStop: () => void; isStopping: boolean } | null) => void
     onRunStart: () => void
     taskId?: number
   }) => {
@@ -109,7 +103,8 @@ vi.mock('@/service/share', async () => {
   const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
   return {
     ...actual,
-    fetchSavedMessage: (...args: Parameters<typeof actual.fetchSavedMessage>) => fetchSavedMessageMock(...args),
+    fetchSavedMessage: (...args: Parameters<typeof actual.fetchSavedMessage>) =>
+      fetchSavedMessageMock(...args),
     removeMessage: vi.fn(),
     saveMessage: vi.fn(),
   }
@@ -172,7 +167,8 @@ const mockWebAppState = {
 }
 
 vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) => selector(mockWebAppState),
+  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) =>
+    selector(mockWebAppState),
 }))
 
 describe('TextGeneration', () => {

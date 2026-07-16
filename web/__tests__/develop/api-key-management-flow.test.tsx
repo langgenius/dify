@@ -31,14 +31,6 @@ async function flushUI() {
 
 // ---------- mocks ----------
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    currentWorkspace: { id: 'ws-1', name: 'Workspace' },
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
-  }),
-}))
-
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: vi.fn((val: number) => `Time:${val}`),

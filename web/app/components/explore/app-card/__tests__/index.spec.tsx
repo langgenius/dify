@@ -128,7 +128,6 @@ describe('AppCard', () => {
       const cardButton = screen.getByRole('button', { name: 'Sample App' })
 
       expect(cardButton).toHaveAttribute('type', 'button')
-      expect(cardButton).toHaveClass('cursor-pointer', 'focus-visible:ring-2', 'focus-visible:ring-inset')
     })
 
     it('should not render hover action buttons in explore mode', () => {

@@ -6,7 +6,15 @@ import Datasource from '../datasource'
 import GlobalInputs from '../global-inputs'
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: ({ type, toolIcon, className }: { type: BlockEnum, toolIcon?: string, className?: string }) => (
+  default: ({
+    type,
+    toolIcon,
+    className,
+  }: {
+    type: BlockEnum
+    toolIcon?: string
+    className?: string
+  }) => (
     <div
       data-testid="block-icon"
       data-type={type}
@@ -26,19 +34,20 @@ afterEach(() => {
 })
 
 describe('Datasource', () => {
-  const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType => ({
-    title: 'Test Data Source',
-    desc: 'Test description',
-    type: BlockEnum.DataSource,
-    provider_name: 'test-provider',
-    provider_type: 'api',
-    datasource_name: 'test-datasource',
-    datasource_label: 'Test Datasource',
-    plugin_id: 'test-plugin',
-    datasource_parameters: {},
-    datasource_configurations: {},
-    ...overrides,
-  } as DataSourceNodeType)
+  const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType =>
+    ({
+      title: 'Test Data Source',
+      desc: 'Test description',
+      type: BlockEnum.DataSource,
+      provider_name: 'test-provider',
+      provider_type: 'api',
+      datasource_name: 'test-datasource',
+      datasource_label: 'Test Datasource',
+      plugin_id: 'test-plugin',
+      datasource_parameters: {},
+      datasource_configurations: {},
+      ...overrides,
+    }) as DataSourceNodeType
 
   describe('rendering', () => {
     it('should render without crashing', () => {
@@ -106,7 +115,9 @@ describe('Datasource', () => {
 
   describe('memoization', () => {
     it('should be wrapped with React.memo', () => {
-      expect((Datasource as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((Datasource as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
   })
 
@@ -143,31 +154,41 @@ describe('GlobalInputs', () => {
     it('should render without crashing', () => {
       render(<GlobalInputs />)
 
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.globalInputs.title')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.inputFieldPanel.globalInputs.title'),
+      ).toBeInTheDocument()
     })
 
     it('should render title with correct translation key', () => {
       render(<GlobalInputs />)
 
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.globalInputs.title')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.inputFieldPanel.globalInputs.title'),
+      ).toBeInTheDocument()
     })
 
     it('should render tooltip component', () => {
       render(<GlobalInputs />)
 
-      expect(screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip')).toBeInTheDocument()
+      expect(
+        screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip'),
+      ).toBeInTheDocument()
     })
 
     it('should pass correct tooltip content', () => {
       render(<GlobalInputs />)
 
-      expect(screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip')).toBeInTheDocument()
+      expect(
+        screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip'),
+      ).toBeInTheDocument()
     })
 
     it('should render the tooltip trigger as an icon-sized button', () => {
       render(<GlobalInputs />)
 
-      expect(screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip')).toHaveClass('size-4')
+      expect(
+        screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip'),
+      ).toHaveClass('size-4')
     })
 
     it('should have correct container layout', () => {
@@ -187,7 +208,9 @@ describe('GlobalInputs', () => {
 
   describe('memoization', () => {
     it('should be wrapped with React.memo', () => {
-      expect((GlobalInputs as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((GlobalInputs as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
   })
 })

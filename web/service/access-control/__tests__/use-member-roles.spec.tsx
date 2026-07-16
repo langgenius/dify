@@ -10,12 +10,13 @@ vi.mock('@/service/base', () => ({
   put: vi.fn(),
 }))
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-})
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
 
 const createWrapper = (queryClient = createQueryClient()) => {
   return ({ children }: { children: ReactNode }) => (
@@ -64,7 +65,9 @@ describe('use-member-roles', () => {
       const queryClient = createQueryClient()
       const membersQueryKey = [...commonQueryKeys.members, 'en-US']
       queryClient.setQueryData(membersQueryKey, { accounts: [] })
-      const { result } = renderHook(() => useUpdateRolesOfMember(), { wrapper: createWrapper(queryClient) })
+      const { result } = renderHook(() => useUpdateRolesOfMember(), {
+        wrapper: createWrapper(queryClient),
+      })
 
       await act(async () => {
         await result.current.mutateAsync({

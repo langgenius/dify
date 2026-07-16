@@ -15,7 +15,7 @@ Pipeline:
 Intentionally NOT here (deferred to a future iteration):
 
     - Mermaid rendering
-    - Heuristic node/edge auto-repair beyond default fill
+    - Broad semantic auto-repair when multiple valid graph interpretations exist
     - Multi-step validation engine with classification of fixable vs. user-required errors
     - Tool / model catalogue filtering
 
@@ -27,6 +27,7 @@ import json
 import logging
 import re
 import time
+from collections.abc import Iterator
 from typing import Any, ClassVar, cast
 
 import json_repair
@@ -185,6 +186,48 @@ def _result_with_errors(
     return base
 
 
+def _with_mode(result: WorkflowGenerateResultDict, mode: WorkflowGenerationMode) -> WorkflowGenerateResultDict:
+    """Stamp the resolved concrete ``mode`` onto a result envelope.
+
+    ``mode="auto"`` requests are resolved to a concrete mode before planning;
+    echoing it back lets the frontend pick the right app type to create. It's
+    present for explicit modes too so the response shape stays uniform.
+    """
+    result["mode"] = mode
+    return result
+
+
+def _build_plan_event(
+    *,
+    plan: PlannerResultDict,
+    plan_nodes: list[dict[str, Any]],
+    start_inputs: list[dict[str, Any]],
+    mode: WorkflowGenerationMode,
+) -> dict[str, Any]:
+    """Shape the ``plan`` event emitted before the (slower) builder runs.
+
+    Node fields are pulled defensively: the planner schema only guarantees
+    ``node_type`` is present, so ``label`` / ``purpose`` may be missing on a
+    terse plan and default to empty strings.
+    """
+    return {
+        "title": str(plan.get("title") or ""),
+        "description": str(plan.get("description") or ""),
+        "app_name": str(plan.get("app_name") or "").strip(),
+        "icon": str(plan.get("icon") or "").strip(),
+        "mode": mode,
+        "nodes": [
+            {
+                "label": str(node.get("label") or ""),
+                "node_type": str(node.get("node_type") or ""),
+                "purpose": str(node.get("purpose") or ""),
+            }
+            for node in plan_nodes
+        ],
+        "start_inputs": start_inputs,
+    }
+
+
 def _stage_error_to_envelope_code(exc: Exception) -> str:
     """Map a stage-typed exception to the result envelope's error code."""
     if isinstance(exc, _StageJSONError):
@@ -250,6 +293,100 @@ class WorkflowGenerator:
         ``errors`` and keep the previous version visible.
         """
 
+        # Consume the shared event generator and keep only the final result
+        # envelope — ``generate_workflow_graph_stream`` shares the exact same
+        # pipeline so the two stay behaviourally identical. The plan event is
+        # ignored here.
+        result: WorkflowGenerateResultDict | None = None
+        for event_name, payload in cls._iter_generation_events(
+            model_instance=model_instance,
+            model_parameters=model_parameters,
+            provider=provider,
+            model_name=model_name,
+            model_mode=model_mode,
+            mode=mode,
+            instruction=instruction,
+            ideal_output=ideal_output,
+            tool_catalogue_text=tool_catalogue_text,
+            installed_tools=installed_tools,
+            current_graph=current_graph,
+        ):
+            if event_name == "result":
+                result = cast(WorkflowGenerateResultDict, payload)
+        # The event generator always emits exactly one result envelope; this
+        # fallback only guards against a future refactor that forgets to.
+        if result is None:
+            result = _with_mode(_empty_result(), mode)
+        return result
+
+    @classmethod
+    def generate_workflow_graph_stream(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        mode: WorkflowGenerationMode,
+        instruction: str,
+        ideal_output: str = "",
+        tool_catalogue_text: str = "",
+        installed_tools: set[tuple[str, str]] | None = None,
+        current_graph: dict[str, Any] | None = None,
+    ) -> Iterator[tuple[str, dict[str, Any]]]:
+        """
+        Streaming sibling of ``generate_workflow_graph``.
+
+        Yields a ``plan`` event (title / description / app_name / icon / mode /
+        high-level nodes / start_inputs) as soon as the planner returns, then a
+        final ``result`` event carrying the SAME envelope dict the non-streaming
+        method returns (graph / message / app_name / icon / error / errors /
+        mode, plus structural errors when any). On a planner / empty-plan /
+        builder failure only the ``result`` event is emitted — no ``plan``.
+        """
+        yield from cls._iter_generation_events(
+            model_instance=model_instance,
+            model_parameters=model_parameters,
+            provider=provider,
+            model_name=model_name,
+            model_mode=model_mode,
+            mode=mode,
+            instruction=instruction,
+            ideal_output=ideal_output,
+            tool_catalogue_text=tool_catalogue_text,
+            installed_tools=installed_tools,
+            current_graph=current_graph,
+        )
+
+    @classmethod
+    def _iter_generation_events(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        mode: WorkflowGenerationMode,
+        instruction: str,
+        ideal_output: str = "",
+        tool_catalogue_text: str = "",
+        installed_tools: set[tuple[str, str]] | None = None,
+        current_graph: dict[str, Any] | None = None,
+    ) -> Iterator[tuple[str, dict[str, Any]]]:
+        """
+        Drive planner → builder → postprocess and yield generation events.
+
+        Shared core for both ``generate_workflow_graph`` (keeps only the final
+        ``result``) and ``generate_workflow_graph_stream`` (streams every
+        event). Emits at most one ``plan`` event — only once the planner
+        produced a non-empty plan — followed by exactly one ``result`` event.
+        On a planner / empty-plan / builder failure it emits only the
+        ``result`` event carrying the error envelope. Every result envelope is
+        stamped with the resolved concrete ``mode``.
+        """
+
         # ── 1. PLANNER ────────────────────────────────────────────────────
         plan, plan_err = cls._run_stage(
             stage="Planner",
@@ -265,16 +402,27 @@ class WorkflowGenerator:
             ),
         )
         if plan_err is not None:
-            return _result_with_errors(_empty_result(), [plan_err])
+            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [plan_err]), mode))
+            return
 
         # The lambda return is non-None when no error fired — narrow it for type-checkers.
         plan = cast(PlannerResultDict, plan)
         plan_nodes: list[dict[str, Any]] = cast(list[dict[str, Any]], plan.get("nodes", []))
         if not plan_nodes:
-            return _result_with_errors(
-                _empty_result(),
-                [_err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes")],
+            empty_plan = _with_mode(
+                _result_with_errors(
+                    _empty_result(),
+                    [_err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes")],
+                ),
+                mode,
             )
+            yield "result", cast(dict[str, Any], empty_plan)
+            return
+
+        # A single LLM cannot select multiple retrieval outputs as context.
+        # Make the required template fan-in explicit in the plan so the
+        # builder receives its schema and assigns stable sequential ids.
+        cls._insert_multi_retrieval_template_plan(plan_nodes)
 
         # Planner-supplied user-input declarations. The builder uses these to
         # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
@@ -285,6 +433,10 @@ class WorkflowGenerator:
             for item in (plan.get("start_inputs") or [])
             if isinstance(item, dict) and (item.get("variable") or "").strip()
         ]
+
+        # First event the stream sees: the high-level plan, before the slower
+        # builder call. Non-streaming callers ignore it.
+        yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=mode)
 
         # ── 2. BUILDER ────────────────────────────────────────────────────
         graph, build_err = cls._run_stage(
@@ -306,7 +458,8 @@ class WorkflowGenerator:
             ),
         )
         if build_err is not None:
-            return _result_with_errors(_empty_result(), [build_err])
+            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [build_err]), mode))
+            return
         graph = cast(GraphDict, graph)
 
         # ── 3. POSTPROC + VALIDATE ────────────────────────────────────────
@@ -322,6 +475,7 @@ class WorkflowGenerator:
             "error": "",
             "errors": [],
         }
+        _with_mode(result, mode)
 
         # Final structural sanity check — fail closed if start/end shape is
         # wrong, container topology is broken, a tool was hallucinated, or a
@@ -330,8 +484,9 @@ class WorkflowGenerator:
         structural_errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
         if structural_errors:
             logger.warning("Workflow generator: structural validation failed: %s", structural_errors)
-            return _result_with_errors(result, structural_errors)
-        return result
+            yield "result", cast(dict[str, Any], _result_with_errors(result, structural_errors))
+            return
+        yield "result", cast(dict[str, Any], result)
 
     @classmethod
     def _run_stage(
@@ -501,6 +656,38 @@ class WorkflowGenerator:
         return cast(PlannerResultDict, parsed)
 
     # ------------------------------------------------------------------
+    # Plan normalization
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _insert_multi_retrieval_template_plan(plan_nodes: list[dict[str, Any]]) -> None:
+        """Insert the unambiguous multi-retrieval template step when omitted.
+
+        Multiple LLM nodes make ownership ambiguous, so that case remains in
+        the planner's hands. With exactly one LLM, every independent retrieval
+        result can safely fan into one template immediately before that LLM.
+        """
+        node_types = [str(node.get("node_type") or "") for node in plan_nodes]
+        if node_types.count(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL) < 2:
+            return
+        if node_types.count(BuiltinNodeTypes.LLM) != 1:
+            return
+        if BuiltinNodeTypes.TEMPLATE_TRANSFORM in node_types:
+            return
+
+        llm_index = node_types.index(BuiltinNodeTypes.LLM)
+        retrievals_before_llm = node_types[:llm_index].count(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL)
+        if retrievals_before_llm < 2:
+            return
+        plan_nodes.insert(
+            llm_index,
+            {
+                "label": "Combine Knowledge",
+                "node_type": BuiltinNodeTypes.TEMPLATE_TRANSFORM,
+                "purpose": "Combine every knowledge retrieval result into one labelled context for the LLM.",
+            },
+        )
+
+    # ------------------------------------------------------------------
     # Builder
     # ------------------------------------------------------------------
     @classmethod
@@ -569,7 +756,7 @@ class WorkflowGenerator:
     # ------------------------------------------------------------------
     @classmethod
     def _postprocess_graph(cls, *, graph: GraphDict, mode: WorkflowGenerationMode) -> GraphDict:
-        """Fill safe defaults, normalise positions and dedupe edges."""
+        """Fill safe defaults and apply only deterministic graph repairs."""
 
         # Internally treat nodes/edges as untyped dicts — TypedDicts forbid the
         # arbitrary-key setdefault writes we need here, but the caller only sees
@@ -586,6 +773,12 @@ class WorkflowGenerator:
         # ``{{#…#}}`` and ``["node-id", "var"]`` references) BEFORE the rest
         # of the postprocess pass touches them.
         cls._sanitize_node_ids(nodes=nodes, edges=edges)
+
+        # An LLM context accepts one selector. If the builder wires multiple
+        # retrieval nodes straight into an LLM but selects only one result,
+        # insert a template-transform fan-in that renders every result into
+        # one string and point the context at that output.
+        cls._insert_multi_retrieval_context_templates(nodes=nodes, edges=edges)
 
         # Container-child nodes carry their own relative positions inside the
         # parent and have a special ``type`` (custom-iteration-start /
@@ -685,7 +878,10 @@ class WorkflowGenerator:
         # fails at run time with "variable not found". The dominant failure
         # mode is a prompt that references ``{#start.url#}`` when the start
         # node has ``variables: []``, so we auto-inject missing start-node
-        # variables before we surface them as errors.
+        # variables. We also repair a mistaken output name when its source
+        # exposes exactly one valid output; ambiguous references still fail
+        # closed in the structural validator.
+        cls._normalize_sys_query_references(nodes=nodes, mode=mode)
         cls._reconcile_variable_references(nodes=nodes, mode=mode)
 
         # Schema backstop: a "file" / "file-list" start variable MUST carry a
@@ -700,6 +896,104 @@ class WorkflowGenerator:
     # ------------------------------------------------------------------
     # Variable-reference reconciliation
     # ------------------------------------------------------------------
+
+    @classmethod
+    def _normalize_sys_query_references(
+        cls,
+        *,
+        nodes: list[dict[str, Any]],
+        mode: WorkflowGenerationMode,
+    ) -> None:
+        """Normalize malformed ``sys.query`` references without changing their intent.
+
+        Chatflows expose ``sys.query`` directly. Plain workflows do not, so
+        their query references become a Start-node input and the existing
+        reconciliation pass declares that input immediately afterwards.
+        """
+        if mode == "advanced-chat":
+            target_node_id = "sys"
+        else:
+            start_node = next(
+                (node for node in nodes if node.get("data", {}).get("type") == BuiltinNodeTypes.START),
+                None,
+            )
+            start_node_id = start_node.get("id") if start_node else None
+            if not isinstance(start_node_id, str) or not start_node_id:
+                return
+            target_node_id = start_node_id
+
+        for node in nodes:
+            data = node.get("data")
+            if isinstance(data, dict):
+                cls._normalize_sys_query_reference_in_data(data, target_node_id=target_node_id)
+
+    @classmethod
+    def _normalize_sys_query_reference_in_data(
+        cls,
+        value: Any,
+        *,
+        target_node_id: str,
+        allow_selector: bool = True,
+    ) -> Any:
+        """Rewrite query placeholders and selectors at any node-data depth.
+
+        Some node schemas store selectors inside another list, for example a
+        parameter extractor's ``query`` or a variable aggregator's
+        ``variables``. Literal string-list fields opt out so an option list
+        such as ``["sys", "query"]`` is preserved.
+        """
+        target_placeholder = f"{{{{#{target_node_id}.query#}}}}"
+        if isinstance(value, str):
+            return value.replace("{{#sys.query#}}", target_placeholder).replace("{{#sys,query#}}", target_placeholder)
+        if isinstance(value, dict):
+            for key, item in list(value.items()):
+                item_allows_selector = allow_selector and key not in cls._NON_SELECTOR_LIST_KEYS
+                if item_allows_selector and cls._is_sys_query_selector(item):
+                    value[key] = [target_node_id, "query"]
+                    continue
+                if (
+                    item_allows_selector
+                    and cls._is_selector_field(key)
+                    and isinstance(item, str)
+                    and cls._is_sys_query_token(item)
+                ):
+                    value[key] = [target_node_id, "query"]
+                    continue
+                value[key] = cls._normalize_sys_query_reference_in_data(
+                    item,
+                    target_node_id=target_node_id,
+                    allow_selector=item_allows_selector,
+                )
+            return value
+        if isinstance(value, list):
+            if allow_selector and cls._is_sys_query_selector(value):
+                return [target_node_id, "query"]
+            for index, item in enumerate(value):
+                value[index] = cls._normalize_sys_query_reference_in_data(
+                    item,
+                    target_node_id=target_node_id,
+                    allow_selector=allow_selector,
+                )
+        return value
+
+    @staticmethod
+    def _is_sys_query_selector(value: Any) -> bool:
+        """Recognize the valid selector and common one-item LLM variants."""
+        if value == ["sys", "query"]:
+            return True
+        if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0], str):
+            return False
+        return WorkflowGenerator._is_sys_query_token(value[0])
+
+    @staticmethod
+    def _is_sys_query_token(value: str) -> bool:
+        """Return whether a string is a compact malformed query selector."""
+        return value.replace(" ", "") in {"sys.query", "sys,query"}
+
+    @staticmethod
+    def _is_selector_field(key: str) -> bool:
+        """Return whether a data field explicitly stores one selector."""
+        return key == "selector" or key.endswith("_selector")
 
     # Detects ``{{#node_id.var#}}`` placeholders. We match the EXACT regex
     # Dify's workflow runtime uses (see
@@ -753,9 +1047,13 @@ class WorkflowGenerator:
     @classmethod
     def _reconcile_variable_references(cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode) -> None:
         """
-        Walk every variable reference, ensure it resolves; auto-fix missing
-        start-node variables (the safe, dominant case) by adding a stub
-        ``paragraph`` entry to ``start.data.variables``.
+        Apply deterministic repairs to unresolved variable references.
+
+        Missing start-node inputs are added as ``paragraph`` variables. For
+        non-start nodes, a mistaken output name is rewritten only when the
+        source exposes exactly one declared output. Sources with zero or
+        multiple outputs remain untouched so validation fails closed instead
+        of guessing which value the workflow should consume.
 
         For Advanced-Chat mode, ``sys.query`` and ``sys.files`` are always
         treated as resolved without any declaration. Tool nodes' parameter
@@ -784,16 +1082,83 @@ class WorkflowGenerator:
                 continue
             if cls._declares_variable(target, var):
                 continue
-            # Missing variable. Auto-fix start-node references; let everything
-            # else fall through and surface in the result's ``error`` field
-            # via the post-postprocess validator below.
             if start_node is not None and target is start_node:
                 cls._inject_start_variable(start_node, var)
                 logger.info("Workflow generator: auto-injected missing start variable %r", var)
+                continue
+
+            replacement = cls._sole_declared_variable(target)
+            if replacement is None:
+                continue
+            for node in nodes:
+                data = node.get("data")
+                if isinstance(data, dict):
+                    cls._rewrite_variable_reference_in_data(
+                        data,
+                        node_id=node_id,
+                        old_variable=var,
+                        new_variable=replacement,
+                    )
+            logger.info(
+                "Workflow generator: rewrote unresolved reference %s.%s to sole output %s.%s",
+                node_id,
+                var,
+                node_id,
+                replacement,
+            )
 
     @classmethod
-    def _collect_refs_in_data(cls, value: Any, out: set[tuple[str, str]]) -> None:
-        """Recursively walk a node's ``data`` and harvest every reference."""
+    def _rewrite_variable_reference_in_data(
+        cls,
+        value: Any,
+        *,
+        node_id: str,
+        old_variable: str,
+        new_variable: str,
+        allow_selector: bool = True,
+    ) -> Any:
+        """Rewrite one exact placeholder or selector at any data depth."""
+        if isinstance(value, str):
+            return cls._VAR_REF_RE.sub(
+                lambda match: (
+                    f"{{{{#{node_id}.{new_variable}#}}}}"
+                    if match.group(1) == node_id and match.group(2) == old_variable
+                    else match.group(0)
+                ),
+                value,
+            )
+        if isinstance(value, dict):
+            for key, item in list(value.items()):
+                value[key] = cls._rewrite_variable_reference_in_data(
+                    item,
+                    node_id=node_id,
+                    old_variable=old_variable,
+                    new_variable=new_variable,
+                    allow_selector=allow_selector and key not in cls._NON_SELECTOR_LIST_KEYS,
+                )
+            return value
+        if isinstance(value, list):
+            if allow_selector and value == [node_id, old_variable]:
+                return [node_id, new_variable]
+            for index, item in enumerate(value):
+                value[index] = cls._rewrite_variable_reference_in_data(
+                    item,
+                    node_id=node_id,
+                    old_variable=old_variable,
+                    new_variable=new_variable,
+                    allow_selector=allow_selector,
+                )
+        return value
+
+    @classmethod
+    def _collect_refs_in_data(
+        cls,
+        value: Any,
+        out: set[tuple[str, str]],
+        *,
+        allow_selector: bool = True,
+    ) -> None:
+        """Recursively harvest placeholders and selectors at any data depth."""
         if isinstance(value, str):
             for match in cls._VAR_REF_RE.finditer(value):
                 node_id, var = match.group(1).strip(), match.group(2).strip()
@@ -801,28 +1166,20 @@ class WorkflowGenerator:
                     out.add((node_id, var))
             return
         if isinstance(value, dict):
-            # Known selector shapes: 2-element [node_id, var] lists.
             for k, v in value.items():
-                # ``value_selector`` / ``query_variable_selector`` / etc.: a
-                # flat 2-element list of strings. Skip keys whose value is a
-                # plain string list that merely HAPPENS to have two entries —
-                # a 2-option ``select`` or a file variable's two allowed upload
-                # methods are NOT ``[node_id, var]`` selectors and must not be
-                # mistaken for references.
-                if (
-                    isinstance(v, list)
-                    and len(v) == 2
-                    and all(isinstance(x, str) for x in v)
-                    and k not in cls._NON_SELECTOR_LIST_KEYS
-                ):
-                    node_id, var = v[0].strip(), v[1].strip()
-                    if node_id and var:
-                        out.add((node_id, var))
-                cls._collect_refs_in_data(v, out)
+                cls._collect_refs_in_data(
+                    v,
+                    out,
+                    allow_selector=allow_selector and k not in cls._NON_SELECTOR_LIST_KEYS,
+                )
             return
         if isinstance(value, list):
+            if allow_selector and len(value) == 2 and all(isinstance(item, str) for item in value):
+                node_id, var = value[0].strip(), value[1].strip()
+                if node_id and var:
+                    out.add((node_id, var))
             for item in value:
-                cls._collect_refs_in_data(item, out)
+                cls._collect_refs_in_data(item, out, allow_selector=allow_selector)
 
     @classmethod
     def _declares_variable(cls, node: dict[str, Any], var: str) -> bool:
@@ -871,6 +1228,37 @@ class WorkflowGenerator:
         # Other node types (if-else, iteration-start, loop-start, ...) don't
         # produce outputs of their own.
         return False
+
+    @classmethod
+    def _sole_declared_variable(cls, node: dict[str, Any]) -> str | None:
+        """Return the only output exposed by ``node``, or ``None`` when ambiguous."""
+        data = node.get("data") or {}
+        node_type = data.get("type")
+        if node_type == BuiltinNodeTypes.LLM:
+            schema = ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
+            return "text" if not schema else None
+        if node_type == BuiltinNodeTypes.CODE:
+            outputs = [key for key in (data.get("outputs") or {}) if isinstance(key, str)]
+            return outputs[0] if len(outputs) == 1 else None
+        if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
+            parameters = [
+                parameter.get("name")
+                for parameter in (data.get("parameters") or [])
+                if isinstance(parameter, dict) and isinstance(parameter.get("name"), str)
+            ]
+            return parameters[0] if len(parameters) == 1 else None
+        if not isinstance(node_type, str):
+            return None
+        single_output_by_type: dict[str, str] = {
+            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: "result",
+            BuiltinNodeTypes.TEMPLATE_TRANSFORM: "output",
+            BuiltinNodeTypes.ITERATION: "output",
+            BuiltinNodeTypes.LOOP: "output",
+            BuiltinNodeTypes.DOCUMENT_EXTRACTOR: "text",
+            BuiltinNodeTypes.VARIABLE_AGGREGATOR: "output",
+            BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR: "output",
+        }
+        return single_output_by_type.get(node_type)
 
     @classmethod
     def _sanitize_node_ids(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
@@ -986,6 +1374,129 @@ class WorkflowGenerator:
         rest = m.group(2)
         new_id = id_map.get(node_id, node_id)
         return f"{{{{#{new_id}.{rest}#}}}}"
+
+    @classmethod
+    def _insert_multi_retrieval_context_templates(
+        cls,
+        *,
+        nodes: list[dict[str, Any]],
+        edges: list[dict[str, Any]],
+    ) -> None:
+        """Fan multiple retrieval inputs into an LLM through one template.
+
+        The repair is intentionally narrow: it applies only when at least two
+        knowledge-retrieval nodes have direct edges into the same LLM and that
+        LLM currently uses one of those results as its enabled context. This
+        is enough to repair the builder's lossy single-context output without
+        guessing about unrelated retrievals or mutually exclusive branches.
+        """
+        nodes_by_id: dict[str, dict[str, Any]] = {
+            node_id: node for node in nodes if isinstance(node_id := node.get("id"), str)
+        }
+        used_ids = set(nodes_by_id)
+        llm_nodes = [node for node in nodes if node.get("data", {}).get("type") == BuiltinNodeTypes.LLM]
+
+        for llm_node in llm_nodes:
+            llm_id = llm_node.get("id")
+            if not isinstance(llm_id, str):
+                continue
+
+            incoming_retrieval_edges: list[dict[str, Any]] = []
+            for edge in edges:
+                source_id = edge.get("source")
+                if edge.get("target") != llm_id or not isinstance(source_id, str):
+                    continue
+                source_node = nodes_by_id.get(source_id)
+                if source_node and source_node.get("data", {}).get("type") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+                    incoming_retrieval_edges.append(edge)
+            retrieval_ids = list(
+                dict.fromkeys(
+                    edge["source"] for edge in incoming_retrieval_edges if isinstance(edge.get("source"), str)
+                )
+            )
+            if len(retrieval_ids) < 2:
+                continue
+
+            llm_data = llm_node.get("data")
+            if not isinstance(llm_data, dict):
+                continue
+            context = llm_data.get("context")
+            if not isinstance(context, dict) or not context.get("enabled"):
+                continue
+            selector = context.get("variable_selector")
+            if selector not in [[retrieval_id, "result"] for retrieval_id in retrieval_ids]:
+                continue
+
+            template_id = cls._next_generated_node_id(prefix="retrieval_context", used_ids=used_ids)
+            variables = [
+                {"variable": f"knowledge_{index}", "value_selector": [retrieval_id, "result"]}
+                for index, retrieval_id in enumerate(retrieval_ids, start=1)
+            ]
+            sections = [
+                (
+                    f"## Knowledge source {index}\n"
+                    f"{{% for item in knowledge_{index} %}}{{{{ item.content }}}}\n{{% endfor %}}"
+                )
+                for index in range(1, len(retrieval_ids) + 1)
+            ]
+            nodes.append(
+                {
+                    "id": template_id,
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": BuiltinNodeTypes.TEMPLATE_TRANSFORM,
+                        "title": "Combine Knowledge",
+                        "variables": variables,
+                        "template": "\n\n".join(sections),
+                    },
+                }
+            )
+
+            incoming_edge_objects = {id(edge) for edge in incoming_retrieval_edges}
+            edges[:] = [edge for edge in edges if id(edge) not in incoming_edge_objects]
+            edges.extend(
+                {"source": retrieval_id, "target": template_id, "type": "custom"} for retrieval_id in retrieval_ids
+            )
+            edges.append({"source": template_id, "target": llm_id, "type": "custom"})
+
+            context["variable_selector"] = [template_id, "output"]
+            cls._ensure_llm_context_placeholder(llm_data)
+            logger.info(
+                "Workflow generator: inserted template %s to combine retrieval inputs for LLM %s",
+                template_id,
+                llm_id,
+            )
+
+    @staticmethod
+    def _next_generated_node_id(*, prefix: str, used_ids: set[str]) -> str:
+        """Return a short runtime-safe node id and reserve it in ``used_ids``."""
+        suffix = 1
+        candidate = prefix
+        while candidate in used_ids:
+            suffix += 1
+            candidate = f"{prefix}_{suffix}"
+        used_ids.add(candidate)
+        return candidate
+
+    @staticmethod
+    def _ensure_llm_context_placeholder(llm_data: dict[str, Any]) -> None:
+        """Ensure an enabled LLM context is actually present in its prompt."""
+        prompt_template = llm_data.get("prompt_template")
+        if isinstance(prompt_template, list):
+            messages = [message for message in prompt_template if isinstance(message, dict)]
+            if any("{{#context#}}" in str(message.get("text") or "") for message in messages):
+                return
+            target = next((message for message in reversed(messages) if message.get("role") == "user"), None)
+            if target is None:
+                prompt_template.append({"role": "user", "text": "{{#context#}}"})
+                return
+            target["text"] = f"{target.get('text') or ''}\n\n{{{{#context#}}}}"
+            return
+        if isinstance(prompt_template, dict):
+            text = str(prompt_template.get("text") or "")
+            if "{{#context#}}" not in text:
+                prompt_template["text"] = f"{text}\n\n{{{{#context#}}}}"
 
     @classmethod
     def _repair_branch_edge_handles(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
@@ -1540,8 +2051,9 @@ class WorkflowGenerator:
         """
         Walk every variable reference and flag anything pointing at a node
         that doesn't declare it. The postprocess step has already
-        auto-injected missing start-node variables, so by the time this
-        runs only NON-start references should ever fail.
+        auto-injected missing start-node variables and repaired references to
+        sole outputs, so by the time this runs only ambiguous or impossible
+        references should fail.
         """
         out: list[WorkflowGenerateErrorDict] = []
         by_id: dict[str, dict[str, Any]] = {n.get("id", ""): n for n in nodes if n.get("id")}

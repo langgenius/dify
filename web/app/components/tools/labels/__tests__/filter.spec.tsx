@@ -14,7 +14,7 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     tags: mockTags,
     tagsMap: mockTags.reduce((acc, tag) => ({ ...acc, [tag.name]: tag }), {}),
-    getTagLabel: (name: string) => mockTags.find(t => t.name === name)?.label ?? name,
+    getTagLabel: (name: string) => mockTags.find((t) => t.name === name)?.label ?? name,
   }),
 }))
 
@@ -101,11 +101,10 @@ describe('LabelFilter', () => {
 
       // Find the label item in the dropdown list
       const labelItems = screen.getAllByText('Agent')
-      const dropdownItem = labelItems.find(el => el.closest('.hover\\:bg-state-base-hover'))
+      const dropdownItem = labelItems.find((el) => el.closest('.hover\\:bg-state-base-hover'))
 
       await act(async () => {
-        if (dropdownItem)
-          fireEvent.click(dropdownItem)
+        if (dropdownItem) fireEvent.click(dropdownItem)
       })
 
       expect(mockOnChange).toHaveBeenCalledWith([])

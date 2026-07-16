@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, patch
 
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
-from models.account import TenantPluginAutoUpgradeStrategy
+from models.account import (
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategySetting,
+)
 
 MODULE = "tasks.process_tenant_plugin_autoupgrade_check_task"
 
@@ -41,8 +45,8 @@ def _run_task(
     *,
     plugins: list,
     manifests: list[MarketplacePluginSnapshot],
-    strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
-    upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
+    strategy_setting=TenantPluginAutoUpgradeStrategySetting.LATEST,
+    upgrade_mode=TenantPluginAutoUpgradeMode.ALL,
     exclude_plugins=None,
     include_plugins=None,
     category=None,
@@ -121,9 +125,9 @@ class TestUpgradeCallsMarketplaceService:
 
             process_tenant_plugin_autoupgrade_check_task(
                 "tenant-1",
-                TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
+                TenantPluginAutoUpgradeStrategySetting.LATEST,
                 0,
-                TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
+                TenantPluginAutoUpgradeMode.ALL,
                 [],
                 [],
             )
@@ -136,7 +140,7 @@ class TestStrategySetting:
         upgrade_mock, _ = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "1.0.1")],
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
+            strategy_setting=TenantPluginAutoUpgradeStrategySetting.DISABLED,
         )
         upgrade_mock.assert_not_called()
 
@@ -144,7 +148,7 @@ class TestStrategySetting:
         upgrade_mock, calls = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "1.0.5")],
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
         )
         upgrade_mock.assert_called_once()
         assert calls[0][2].endswith(":1.0.5@cafe1234")
@@ -153,7 +157,7 @@ class TestStrategySetting:
         upgrade_mock, _ = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "1.1.0")],
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
         )
         upgrade_mock.assert_not_called()
 
@@ -161,7 +165,7 @@ class TestStrategySetting:
         upgrade_mock, _ = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "2.0.0")],
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
         )
         upgrade_mock.assert_not_called()
 
@@ -169,7 +173,7 @@ class TestStrategySetting:
         upgrade_mock, _ = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "1.0.0")],
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
+            strategy_setting=TenantPluginAutoUpgradeStrategySetting.LATEST,
         )
         upgrade_mock.assert_not_called()
 
@@ -188,7 +192,7 @@ class TestUpgradeMode:
         upgrade_mock, calls = _run_task(
             plugins=plugins,
             manifests=manifests,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
+            upgrade_mode=TenantPluginAutoUpgradeMode.ALL,
         )
 
         assert upgrade_mock.call_count == 2
@@ -208,7 +212,7 @@ class TestUpgradeMode:
         upgrade_mock, calls = _run_task(
             plugins=plugins,
             manifests=manifests,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
+            upgrade_mode=TenantPluginAutoUpgradeMode.ALL,
         )
 
         assert upgrade_mock.call_count == 1
@@ -227,7 +231,7 @@ class TestUpgradeMode:
         upgrade_mock, calls = _run_task(
             plugins=plugins,
             manifests=manifests,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL,
+            upgrade_mode=TenantPluginAutoUpgradeMode.PARTIAL,
             include_plugins=["acme/foo"],
         )
 
@@ -247,7 +251,7 @@ class TestUpgradeMode:
         upgrade_mock, calls = _run_task(
             plugins=plugins,
             manifests=manifests,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+            upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
             exclude_plugins=["acme/bar"],
         )
 
@@ -267,8 +271,8 @@ class TestUpgradeMode:
         upgrade_mock, calls = _run_task(
             plugins=plugins,
             manifests=manifests,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
-            category=TenantPluginAutoUpgradeStrategy.PluginCategory.MODEL,
+            upgrade_mode=TenantPluginAutoUpgradeMode.ALL,
+            category=TenantPluginAutoUpgradeCategory.MODEL,
         )
 
         upgrade_mock.assert_called_once()
@@ -306,9 +310,9 @@ class TestErrorIsolation:
 
             process_tenant_plugin_autoupgrade_check_task(
                 "tenant-1",
-                TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
+                TenantPluginAutoUpgradeStrategySetting.LATEST,
                 0,
-                TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
+                TenantPluginAutoUpgradeMode.ALL,
                 [],
                 [],
             )

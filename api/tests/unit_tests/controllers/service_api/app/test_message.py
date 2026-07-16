@@ -51,7 +51,7 @@ class TestMessageListQuery:
         """Test conversation_id is required."""
         conversation_id = str(uuid.uuid4())
         query = MessageListQuery(conversation_id=conversation_id)
-        assert str(query.conversation_id) == conversation_id
+        assert query.conversation_id == conversation_id
 
     def test_query_with_defaults(self):
         """Test query with default values."""
@@ -87,13 +87,13 @@ class TestMessageListQuery:
         """Test query rejects limit < 1."""
         conversation_id = str(uuid.uuid4())
         with pytest.raises(ValueError):
-            MessageListQuery(conversation_id=conversation_id, limit=0)
+            MessageListQuery(conversation_id=conversation_id, limit=0)  # pyrefly: ignore[bad-argument-type]
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 100."""
         conversation_id = str(uuid.uuid4())
         with pytest.raises(ValueError):
-            MessageListQuery(conversation_id=conversation_id, limit=101)
+            MessageListQuery(conversation_id=conversation_id, limit=101)  # pyrefly: ignore[bad-argument-type]
 
 
 class TestMessageFeedbackPayload:
@@ -131,6 +131,7 @@ class TestMessageFeedbackPayload:
         """Test payload with long feedback content."""
         long_content = "A" * 1000
         payload = MessageFeedbackPayload(content=long_content)
+        assert payload.content is not None
         assert len(payload.content) == 1000
 
     def test_payload_with_unicode_content(self):
@@ -163,7 +164,7 @@ class TestFeedbackListQuery:
     def test_query_rejects_page_below_minimum(self):
         """Test query rejects page < 1."""
         with pytest.raises(ValueError):
-            FeedbackListQuery(page=0)
+            FeedbackListQuery(page=0)  # pyrefly: ignore[bad-argument-type]
 
     def test_query_limit_boundaries(self):
         """Test query limit boundaries."""
@@ -176,12 +177,12 @@ class TestFeedbackListQuery:
     def test_query_rejects_limit_below_minimum(self):
         """Test query rejects limit < 1."""
         with pytest.raises(ValueError):
-            FeedbackListQuery(limit=0)
+            FeedbackListQuery(limit=0)  # pyrefly: ignore[bad-argument-type]
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 101."""
         with pytest.raises(ValueError):
-            FeedbackListQuery(limit=102)
+            FeedbackListQuery(limit=102)  # pyrefly: ignore[bad-argument-type]
 
 
 class TestMessageAppModeValidation:
@@ -266,6 +267,7 @@ class TestMessageService:
             conversation_id=str(uuid.uuid4()),
             first_id=None,
             limit=20,
+            session=Mock(),
         )
 
         assert hasattr(result, "data")
@@ -281,7 +283,12 @@ class TestMessageService:
 
         with pytest.raises(services.errors.conversation.ConversationNotExistsError):
             MessageService.pagination_by_first_id(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), conversation_id="invalid_id", first_id=None, limit=20
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                conversation_id="invalid_id",
+                first_id=None,
+                limit=20,
+                session=Mock(),
             )
 
     @patch.object(MessageService, "pagination_by_first_id")
@@ -296,6 +303,7 @@ class TestMessageService:
                 conversation_id=str(uuid.uuid4()),
                 first_id="invalid_first_id",
                 limit=20,
+                session=Mock(),
             )
 
     @patch.object(MessageService, "create_feedback")
@@ -309,6 +317,7 @@ class TestMessageService:
             user=Mock(spec=EndUser),
             rating=FeedbackRating.LIKE,
             content="Great response!",
+            session=Mock(),
         )
 
         mock_create_feedback.assert_called_once()
@@ -325,6 +334,7 @@ class TestMessageService:
                 user=Mock(spec=EndUser),
                 rating=FeedbackRating.LIKE,
                 content=None,
+                session=Mock(),
             )
 
     @patch.object(MessageService, "get_all_messages_feedbacks")
@@ -336,7 +346,7 @@ class TestMessageService:
         ]
         mock_get_feedbacks.return_value = mock_feedbacks
 
-        result = MessageService.get_all_messages_feedbacks(app_model=Mock(spec=App), page=1, limit=20)
+        result = MessageService.get_all_messages_feedbacks(app_model=Mock(spec=App), page=1, limit=20, session=Mock())
 
         assert len(result) == 2
         assert result[0]["rating"] == "like"
@@ -348,7 +358,11 @@ class TestMessageService:
         mock_get_questions.return_value = mock_questions
 
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=Mock(spec=App), user=Mock(spec=EndUser), message_id=str(uuid.uuid4()), invoke_from=Mock()
+            app_model=Mock(spec=App),
+            user=Mock(spec=EndUser),
+            message_id=str(uuid.uuid4()),
+            invoke_from=Mock(),
+            session=Mock(),
         )
 
         assert len(result) == 3
@@ -361,7 +375,11 @@ class TestMessageService:
 
         with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), message_id=str(uuid.uuid4()), invoke_from=Mock()
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                message_id=str(uuid.uuid4()),
+                invoke_from=Mock(),
+                session=Mock(),
             )
 
     @patch.object(MessageService, "get_suggested_questions_after_answer")
@@ -371,7 +389,11 @@ class TestMessageService:
 
         with pytest.raises(MessageNotExistsError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), message_id="invalid_message_id", invoke_from=Mock()
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                message_id="invalid_message_id",
+                invoke_from=Mock(),
+                session=Mock(),
             )
 
 
@@ -449,7 +471,20 @@ class TestMessageFeedbackApi:
 
 class TestAppGetFeedbacksApi:
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(MessageService, "get_all_messages_feedbacks", lambda *_args, **_kwargs: ["f1"])
+        feedback = {
+            "id": "feedback-1",
+            "app_id": "app-1",
+            "conversation_id": "conversation-1",
+            "message_id": "message-1",
+            "rating": "like",
+            "content": "helpful answer",
+            "from_source": "user",
+            "from_end_user_id": "end-user-1",
+            "from_account_id": None,
+            "created_at": "2024-01-02T03:04:05",
+            "updated_at": "2024-01-02T03:04:06",
+        }
+        monkeypatch.setattr(MessageService, "get_all_messages_feedbacks", lambda *_args, **_kwargs: [feedback])
 
         api = AppGetFeedbacksApi()
         handler = unwrap(api.get)
@@ -458,7 +493,7 @@ class TestAppGetFeedbacksApi:
         with app.test_request_context("/app/feedbacks?page=1&limit=20", method="GET"):
             response = handler(api, app_model=app_model)
 
-        assert response == {"data": ["f1"]}
+        assert response == {"data": [feedback]}
 
 
 class TestMessageSuggestedApi:

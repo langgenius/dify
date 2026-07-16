@@ -5,9 +5,7 @@ import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  RiBracesLine,
-} from '@remixicon/react'
+import { RiBracesLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -44,15 +42,14 @@ const TriggerFormItem: FC<Props> = ({
   const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
   const showDescription = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
-  const [isShowSchema, {
-    setTrue: showSchema,
-    setFalse: hideSchema,
-  }] = useBoolean(false)
+  const [isShowSchema, { setTrue: showSchema, setFalse: hideSchema }] = useBoolean(false)
   return (
     <div className="space-y-0.5 py-1">
       <div>
         <div className="flex h-6 items-center">
-          <div className="system-sm-medium text-text-secondary">{label[language] || label.en_US}</div>
+          <div className="system-sm-medium text-text-secondary">
+            {label[language] || label.en_US}
+          </div>
           {required && (
             <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
@@ -81,7 +78,9 @@ const TriggerFormItem: FC<Props> = ({
           )}
         </div>
         {showDescription && tooltip && (
-          <div className="pb-0.5 body-xs-regular text-text-tertiary">{tooltip[language] || tooltip.en_US}</div>
+          <div className="pb-0.5 body-xs-regular text-text-tertiary">
+            {tooltip[language] || tooltip.en_US}
+          </div>
         )}
       </div>
       <FormInputItem
@@ -99,12 +98,7 @@ const TriggerFormItem: FC<Props> = ({
       />
 
       {isShowSchema && (
-        <SchemaModal
-          isShow
-          onClose={hideSchema}
-          rootName={name}
-          schema={input_schema!}
-        />
+        <SchemaModal isShow onClose={hideSchema} rootName={name} schema={input_schema!} />
       )}
     </div>
   )

@@ -41,7 +41,6 @@ from models.enums import TidbAuthBindingStatus
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
     from qdrant_client.conversions import common_types
-    from qdrant_client.http import models as rest
 
     type DictFilter = dict[str, str | int | bool | dict | list]
     type MetadataFilter = DictFilter | common_types.Filter

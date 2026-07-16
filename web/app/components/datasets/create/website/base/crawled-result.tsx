@@ -32,42 +32,54 @@ const CrawledResult: FC<Props> = ({
   const isCheckAll = checkedList.length === list.length
 
   const handleCheckedAll = useCallback(() => {
-    if (!isCheckAll)
-      onSelectedChange(list)
-
-    else
-      onSelectedChange([])
+    if (!isCheckAll) onSelectedChange(list)
+    else onSelectedChange([])
   }, [isCheckAll, list, onSelectedChange])
 
-  const handleItemCheckChange = useCallback((item: CrawlResultItem) => {
-    return (checked: boolean) => {
-      if (checked)
-        onSelectedChange([...checkedList, item])
-
-      else
-        onSelectedChange(checkedList.filter(checkedItem => checkedItem.source_url !== item.source_url))
-    }
-  }, [checkedList, onSelectedChange])
+  const handleItemCheckChange = useCallback(
+    (item: CrawlResultItem) => {
+      return (checked: boolean) => {
+        if (checked) onSelectedChange([...checkedList, item])
+        else
+          onSelectedChange(
+            checkedList.filter((checkedItem) => checkedItem.source_url !== item.source_url),
+          )
+      }
+    },
+    [checkedList, onSelectedChange],
+  )
 
   const [previewIndex, setPreviewIndex] = React.useState<number>(-1)
-  const handlePreview = useCallback((index: number) => {
-    return () => {
-      setPreviewIndex(index)
-      onPreview(list[index]!)
-    }
-  }, [list, onPreview])
+  const handlePreview = useCallback(
+    (index: number) => {
+      return () => {
+        setPreviewIndex(index)
+        onPreview(list[index]!)
+      }
+    },
+    [list, onPreview],
+  )
 
   return (
-    <div className={cn(className, 'border-t-[0.5px] border-divider-regular shadow-xs shadow-shadow-shadow-3')}>
+    <div
+      className={cn(
+        className,
+        'border-t-[0.5px] border-divider-regular shadow-xs shadow-shadow-shadow-3',
+      )}
+    >
       <div className="flex h-[34px] items-center justify-between px-4">
         <CheckboxWithLabel
           isChecked={isCheckAll}
           onChange={handleCheckedAll}
-          label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
+          label={
+            isCheckAll
+              ? t(($) => $[`${I18N_PREFIX}.resetAll`], { ns: 'datasetCreation' })
+              : t(($) => $[`${I18N_PREFIX}.selectAll`], { ns: 'datasetCreation' })
+          }
           labelClassName="system-[13px] leading-[16px] font-medium text-text-secondary"
         />
         <div className="text-xs text-text-tertiary">
-          {t(`${I18N_PREFIX}.scrapTimeInfo`, {
+          {t(($) => $[`${I18N_PREFIX}.scrapTimeInfo`], {
             ns: 'datasetCreation',
             total: list.length,
             time: usedTime.toFixed(1),
@@ -81,7 +93,9 @@ const CrawledResult: FC<Props> = ({
             isPreview={index === previewIndex}
             onPreview={handlePreview(index)}
             payload={item}
-            isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
+            isChecked={checkedList.some(
+              (checkedItem) => checkedItem.source_url === item.source_url,
+            )}
             onCheckChange={handleItemCheckChange(item)}
           />
         ))}

@@ -26,20 +26,16 @@ const getDisplayName = (item?: NotionCredential) => {
   return item?.workspaceName || item?.credentialName || ''
 }
 
-const CredentialSelector = ({
-  value,
-  items,
-  onSelect,
-}: CredentialSelectorProps) => {
-  const currentCredential = items.find(item => item.credentialId === value) ?? items[0]
+const CredentialSelector = ({ value, items, onSelect }: CredentialSelectorProps) => {
+  const currentCredential = items.find((item) => item.credentialId === value) ?? items[0]
   const currentDisplayName = getDisplayName(currentCredential)
 
   return (
-    <Select value={currentCredential?.credentialId ?? null} onValueChange={nextValue => nextValue && onSelect(nextValue)}>
-      <SelectTrigger
-        aria-label={currentDisplayName}
-        className="w-[168px]"
-      >
+    <Select
+      value={currentCredential?.credentialId ?? null}
+      onValueChange={(nextValue) => nextValue && onSelect(nextValue)}
+    >
+      <SelectTrigger aria-label={currentDisplayName} className="w-[168px]">
         <span className="flex min-w-0 items-center">
           <CredentialIcon
             className="mr-2 shrink-0"
@@ -72,9 +68,7 @@ const CredentialSelector = ({
                 name={displayName}
                 size={20}
               />
-              <SelectItemText title={displayName}>
-                {displayName}
-              </SelectItemText>
+              <SelectItemText title={displayName}>{displayName}</SelectItemText>
               <SelectItemIndicator />
             </SelectItem>
           )

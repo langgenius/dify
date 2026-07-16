@@ -119,6 +119,18 @@ class TestGetBuilderSystemPrompt:
         scoped = get_builder_system_prompt("workflow", {"start", "llm", "end"})
         assert len(scoped) < len(BUILDER_SYSTEM_PROMPT_WORKFLOW)
 
+    def test_documents_multi_retrieval_fan_in(self):
+        prompt = get_builder_system_prompt(
+            "workflow",
+            {"start", "knowledge-retrieval", "llm", "end"},
+        )
+
+        assert "context.variable_selector accepts only one selector" in prompt
+        assert 'value_selector: ["node2", "result"]' in prompt
+        assert 'value_selector: ["node3", "result"]' in prompt
+        assert "edge from EACH retrieval node to the template" in prompt
+        assert 'template\'s ``["<template-node-id>", "output"]``' in prompt
+
 
 class TestBuildNodeConfigCheatsheet:
     def test_none_returns_full_cheatsheet(self):

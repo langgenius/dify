@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Keine Beschreibung",
   "accessRule.noRules": "Keine Zugriffsregeln",
   "accessRule.noUserAccessSettings": "Keine individuellen Berechtigungseinstellungen",
+  "accessRule.onlyMe": "Nur ich",
+  "accessRule.onlyMeDescription": "Nur Sie können auf diese Ressource zugreifen.",
   "accessRule.permission": "Berechtigung",
   "accessRule.resourceOpenScope": "Freigabebereich der Ressource",
   "accessRule.resourceOpenScopeDescription": "Wählen Sie, für wen diese Ressource geöffnet ist. Rollenberechtigungen bestimmen weiterhin, was jedes Mitglied tun kann.",

@@ -12,10 +12,20 @@ type PluginDetail = {
   name: string
   declaration?: {
     trigger?: {
-      subscription_schema?: Array<{ name: string, type: string, required?: boolean, description?: string }>
+      subscription_schema?: Array<{
+        name: string
+        type: string
+        required?: boolean
+        description?: string
+      }>
       subscription_constructor?: {
-        credentials_schema?: Array<{ name: string, type: string, required?: boolean, help?: string }>
-        parameters?: Array<{ name: string, type: string, required?: boolean, description?: string }>
+        credentials_schema?: Array<{
+          name: string
+          type: string
+          required?: boolean
+          help?: string
+        }>
+        parameters?: Array<{ name: string; type: string; required?: boolean; description?: string }>
       }
     }
   }
@@ -46,7 +56,9 @@ function createMockPluginDetail(overrides: Partial<PluginDetail> = {}): PluginDe
   }
 }
 
-function createMockSubscriptionBuilder(overrides: Partial<TriggerSubscriptionBuilder> = {}): TriggerSubscriptionBuilder {
+function createMockSubscriptionBuilder(
+  overrides: Partial<TriggerSubscriptionBuilder> = {},
+): TriggerSubscriptionBuilder {
   return {
     id: 'builder-123',
     name: 'Test Builder',
@@ -93,7 +105,9 @@ const setMockPendingStates = (verifying: boolean, building: boolean) => {
 vi.mock('@/service/use-triggers', () => ({
   useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
     mutate: mockVerifyCredentials,
-    get isPending() { return mockIsVerifyingCredentials },
+    get isPending() {
+      return mockIsVerifyingCredentials
+    },
   }),
   useCreateTriggerSubscriptionBuilder: () => ({
     mutateAsync: mockCreateBuilder,
@@ -101,7 +115,9 @@ vi.mock('@/service/use-triggers', () => ({
   }),
   useBuildTriggerSubscription: () => ({
     mutate: mockBuildSubscription,
-    get isPending() { return mockIsBuilding },
+    get isPending() {
+      return mockIsBuilding
+    },
   }),
   useUpdateTriggerSubscriptionBuilder: () => ({
     mutate: mockUpdateBuilder,
@@ -154,7 +170,11 @@ const setMockFormValuesConfig = (config: MockFormValuesConfig) => {
 const setMockGetFormReturnsNull = (value: boolean) => {
   mockGetFormReturnsNull = value
 }
-const setMockFormValidation = (subscription: boolean, autoParams: boolean, manualProps: boolean) => {
+const setMockFormValidation = (
+  subscription: boolean,
+  autoParams: boolean,
+  manualProps: boolean,
+) => {
   mockSubscriptionFormValidated = subscription
   mockAutoParamsFormValidated = autoParams
   mockManualPropsFormValidated = manualProps
@@ -164,28 +184,43 @@ vi.mock('@/app/components/base/form/components/base', async () => {
   const React = await import('react')
 
   type MockFormRef = {
-    getFormValues: (options: Record<string, unknown>) => { values: Record<string, unknown>, isCheckValidated: boolean }
-    setFields: (fields: Array<{ name: string, errors?: string[], warnings?: string[] }>) => void
+    getFormValues: (options: Record<string, unknown>) => {
+      values: Record<string, unknown>
+      isCheckValidated: boolean
+    }
+    setFields: (fields: Array<{ name: string; errors?: string[]; warnings?: string[] }>) => void
     getForm: () => { setFieldValue: (name: string, value: unknown) => void } | null
   }
-  type MockBaseFormProps = { formSchemas: Array<{ name: string }>, onChange?: () => void }
+  type MockBaseFormProps = { formSchemas: Array<{ name: string }>; onChange?: () => void }
 
-  function MockBaseFormInner({ formSchemas, onChange }: MockBaseFormProps, ref: React.ForwardedRef<MockFormRef>) {
-    const isSubscriptionForm = formSchemas.some((s: { name: string }) => s.name === 'subscription_name')
+  function MockBaseFormInner(
+    { formSchemas, onChange }: MockBaseFormProps,
+    ref: React.ForwardedRef<MockFormRef>,
+  ) {
+    const isSubscriptionForm = formSchemas.some(
+      (s: { name: string }) => s.name === 'subscription_name',
+    )
     const isAutoParamsForm = formSchemas.some((s: { name: string }) =>
-      ['repo_name', 'branch', 'repo', 'text_field', 'dynamic_field', 'bool_field', 'text_input_field', 'unknown_field', 'count'].includes(s.name),
+      [
+        'repo_name',
+        'branch',
+        'repo',
+        'text_field',
+        'dynamic_field',
+        'bool_field',
+        'text_input_field',
+        'unknown_field',
+        'count',
+      ].includes(s.name),
     )
     const isManualPropsForm = formSchemas.some((s: { name: string }) => s.name === 'webhook_url')
 
     React.useImperativeHandle(ref, () => ({
       getFormValues: () => {
         let isValidated = mockFormValuesConfig.isCheckValidated
-        if (isSubscriptionForm)
-          isValidated = mockSubscriptionFormValidated
-        else if (isAutoParamsForm)
-          isValidated = mockAutoParamsFormValidated
-        else if (isManualPropsForm)
-          isValidated = mockManualPropsFormValidated
+        if (isSubscriptionForm) isValidated = mockSubscriptionFormValidated
+        else if (isAutoParamsForm) isValidated = mockAutoParamsFormValidated
+        else if (isManualPropsForm) isValidated = mockManualPropsFormValidated
 
         return {
           ...mockFormValuesConfig,
@@ -193,9 +228,7 @@ vi.mock('@/app/components/base/form/components/base', async () => {
         }
       },
       setFields: () => {},
-      getForm: () => mockGetFormReturnsNull
-        ? null
-        : { setFieldValue: () => {} },
+      getForm: () => (mockGetFormReturnsNull ? null : { setFieldValue: () => {} }),
     }))
     return (
       <div data-testid="base-form">
@@ -223,8 +256,10 @@ vi.mock('@/app/components/base/encrypted-bottom', () => ({
 vi.mock('../../log-viewer', () => ({
   default: ({ logs }: { logs: TriggerLogEntity[] }) => (
     <div data-testid="log-viewer">
-      {logs.map(log => (
-        <div key={log.id} data-testid={`log-${log.id}`}>{log.message}</div>
+      {logs.map((log) => (
+        <div key={log.id} data-testid={`log-${log.id}`}>
+          {log.message}
+        </div>
       ))}
     </div>
   ),
@@ -270,13 +305,17 @@ describe('CommonCreateModal', () => {
     it('should render modal with correct title for API Key method', () => {
       render(<CommonCreateModal {...defaultProps} />)
 
-      expect(screen.getByTestId('modal-title')).toHaveTextContent('pluginTrigger.modal.apiKey.title')
+      expect(screen.getByTestId('modal-title')).toHaveTextContent(
+        'pluginTrigger.modal.apiKey.title',
+      )
     })
 
     it('should render modal with correct title for Manual method', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
 
-      expect(screen.getByTestId('modal-title')).toHaveTextContent('pluginTrigger.modal.manual.title')
+      expect(screen.getByTestId('modal-title')).toHaveTextContent(
+        'pluginTrigger.modal.manual.title',
+      )
     })
 
     it('should render modal with correct title for OAuth method', () => {
@@ -290,9 +329,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -353,9 +390,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -370,7 +405,9 @@ describe('CommonCreateModal', () => {
     it('should show verify button text initially', () => {
       render(<CommonCreateModal {...defaultProps} />)
 
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.verify')
+      expect(screen.getByTestId('modal-confirm')).toHaveTextContent(
+        'pluginTrigger.modal.common.verify',
+      )
     })
   })
 
@@ -408,9 +445,7 @@ describe('CommonCreateModal', () => {
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
           trigger: {
-            subscription_schema: [
-              { name: 'webhook_url', type: 'text', required: true },
-            ],
+            subscription_schema: [{ name: 'webhook_url', type: 'text', required: true }],
             subscription_constructor: {
               credentials_schema: [],
               parameters: [],
@@ -428,7 +463,9 @@ describe('CommonCreateModal', () => {
     it('should show create button text for Manual method', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
 
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.create')
+      expect(screen.getByTestId('modal-confirm')).toHaveTextContent(
+        'pluginTrigger.modal.common.create',
+      )
     })
   })
 
@@ -547,7 +584,9 @@ describe('CommonCreateModal', () => {
   describe('MODAL_TITLE_KEY_MAP', () => {
     it('should use correct title key for APIKEY', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.APIKEY} />)
-      expect(screen.getByTestId('modal-title')).toHaveTextContent('pluginTrigger.modal.apiKey.title')
+      expect(screen.getByTestId('modal-title')).toHaveTextContent(
+        'pluginTrigger.modal.apiKey.title',
+      )
     })
 
     it('should use correct title key for OAUTH', () => {
@@ -557,7 +596,9 @@ describe('CommonCreateModal', () => {
 
     it('should use correct title key for MANUAL', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
-      expect(screen.getByTestId('modal-title')).toHaveTextContent('pluginTrigger.modal.manual.title')
+      expect(screen.getByTestId('modal-title')).toHaveTextContent(
+        'pluginTrigger.modal.manual.title',
+      )
     })
   })
 
@@ -567,9 +608,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -598,7 +637,9 @@ describe('CommonCreateModal', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.create')
+        expect(screen.getByTestId('modal-confirm')).toHaveTextContent(
+          'pluginTrigger.modal.common.create',
+        )
       })
     })
 
@@ -607,9 +648,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -652,7 +691,13 @@ describe('CommonCreateModal', () => {
         onSuccess()
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -666,7 +711,13 @@ describe('CommonCreateModal', () => {
         onError(new Error('Build failed'))
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -681,7 +732,14 @@ describe('CommonCreateModal', () => {
         onSuccess()
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} onClose={mockOnClose} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+          onClose={mockOnClose}
+        />,
+      )
 
       // Verify component renders with builder
       expect(screen.getByTestId('modal')).toBeInTheDocument()
@@ -694,9 +752,7 @@ describe('CommonCreateModal', () => {
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
           trigger: {
-            subscription_schema: [
-              { name: 'webhook_url', type: 'text', required: true },
-            ],
+            subscription_schema: [{ name: 'webhook_url', type: 'text', required: true }],
             subscription_constructor: {
               credentials_schema: [],
               parameters: [],
@@ -706,7 +762,13 @@ describe('CommonCreateModal', () => {
       })
       mockUsePluginStore.mockReturnValue(detailWithManualSchema)
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       const input = screen.getByTestId('form-field-webhook_url')
       fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
@@ -721,9 +783,7 @@ describe('CommonCreateModal', () => {
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
           trigger: {
-            subscription_schema: [
-              { name: 'webhook_url', type: 'text', required: true },
-            ],
+            subscription_schema: [{ name: 'webhook_url', type: 'text', required: true }],
             subscription_constructor: {
               credentials_schema: [],
               parameters: [],
@@ -749,9 +809,7 @@ describe('CommonCreateModal', () => {
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
           trigger: {
-            subscription_schema: [
-              { name: 'webhook_url', type: 'text', required: true },
-            ],
+            subscription_schema: [{ name: 'webhook_url', type: 'text', required: true }],
             subscription_constructor: {
               credentials_schema: [],
               parameters: [],
@@ -799,7 +857,13 @@ describe('CommonCreateModal', () => {
         endpoint: 'http://localhost:3000/callback',
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       // Verify component renders with the private address endpoint
       expect(screen.getByTestId('form-field-callback_url')).toBeInTheDocument()
@@ -813,7 +877,13 @@ describe('CommonCreateModal', () => {
         endpoint: 'https://example.com/callback',
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       // Verify component renders with public address endpoint
       expect(screen.getByTestId('form-field-callback_url')).toBeInTheDocument()
@@ -838,7 +908,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithAutoParams)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-repo_name')).toBeInTheDocument()
       expect(screen.getByTestId('form-field-branch')).toBeInTheDocument()
@@ -850,9 +926,7 @@ describe('CommonCreateModal', () => {
           trigger: {
             subscription_constructor: {
               credentials_schema: [],
-              parameters: [
-                { name: 'repo_name', type: 'string', required: true },
-              ],
+              parameters: [{ name: 'repo_name', type: 'string', required: true }],
             },
           },
         },
@@ -886,7 +960,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithVariousTypes)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-text_field')).toBeInTheDocument()
       expect(screen.getByTestId('form-field-secret_field')).toBeInTheDocument()
@@ -900,9 +980,7 @@ describe('CommonCreateModal', () => {
           trigger: {
             subscription_constructor: {
               credentials_schema: [],
-              parameters: [
-                { name: 'count', type: 'integer' },
-              ],
+              parameters: [{ name: 'count', type: 'integer' }],
             },
           },
         },
@@ -910,7 +988,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithInteger)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-count')).toBeInTheDocument()
     })
@@ -922,9 +1006,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -944,7 +1026,13 @@ describe('CommonCreateModal', () => {
   describe('Subscription Form in Configuration Step', () => {
     it('should render subscription name and callback URL fields', () => {
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-subscription_name')).toBeInTheDocument()
       expect(screen.getByTestId('form-field-callback_url')).toBeInTheDocument()
@@ -957,16 +1045,26 @@ describe('CommonCreateModal', () => {
 
       render(<CommonCreateModal {...defaultProps} />)
 
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.verifying')
+      expect(screen.getByTestId('modal-confirm')).toHaveTextContent(
+        'pluginTrigger.modal.common.verifying',
+      )
     })
 
     it('should show creating text when isBuilding is true', () => {
       setMockPendingStates(false, true)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.creating')
+      expect(screen.getByTestId('modal-confirm')).toHaveTextContent(
+        'pluginTrigger.modal.common.creating',
+      )
     })
 
     it('should disable confirm button when verifying', () => {
@@ -981,7 +1079,13 @@ describe('CommonCreateModal', () => {
       setMockPendingStates(false, true)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('modal-confirm')).toBeDisabled()
     })
@@ -1016,7 +1120,13 @@ describe('CommonCreateModal', () => {
 
     it('should not show EncryptedBottom in Configuration step', () => {
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       expect(screen.queryByTestId('encrypted-bottom')).not.toBeInTheDocument()
     })
@@ -1028,7 +1138,13 @@ describe('CommonCreateModal', () => {
       setMockFormValidation(false, true, true)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1045,9 +1161,7 @@ describe('CommonCreateModal', () => {
           trigger: {
             subscription_constructor: {
               credentials_schema: [],
-              parameters: [
-                { name: 'repo_name', type: 'string', required: true },
-              ],
+              parameters: [{ name: 'repo_name', type: 'string', required: true }],
             },
           },
         },
@@ -1055,7 +1169,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithAutoParams)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1070,9 +1190,7 @@ describe('CommonCreateModal', () => {
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
           trigger: {
-            subscription_schema: [
-              { name: 'webhook_url', type: 'text', required: true },
-            ],
+            subscription_schema: [{ name: 'webhook_url', type: 'text', required: true }],
             subscription_constructor: {
               credentials_schema: [],
               parameters: [],
@@ -1083,7 +1201,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithManualSchema)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1100,9 +1224,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -1143,7 +1265,13 @@ describe('CommonCreateModal', () => {
         onError(new Error('Raw build error'))
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1167,7 +1295,13 @@ describe('CommonCreateModal', () => {
         onError(new Error('Raw error'))
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1185,9 +1319,7 @@ describe('CommonCreateModal', () => {
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
           trigger: {
-            subscription_schema: [
-              { name: 'webhook_url', type: 'text', required: true },
-            ],
+            subscription_schema: [{ name: 'webhook_url', type: 'text', required: true }],
             subscription_constructor: {
               credentials_schema: [],
               parameters: [],
@@ -1239,7 +1371,13 @@ describe('CommonCreateModal', () => {
         endpoint: 'https://example.com/callback',
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       // Component should render without errors even when getForm returns null
       expect(screen.getByTestId('modal')).toBeInTheDocument()
@@ -1264,7 +1402,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithFormTypeEnum)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-text_input_field')).toBeInTheDocument()
       expect(screen.getByTestId('form-field-secret_input_field')).toBeInTheDocument()
@@ -1276,9 +1420,7 @@ describe('CommonCreateModal', () => {
           trigger: {
             subscription_constructor: {
               credentials_schema: [],
-              parameters: [
-                { name: 'unknown_field', type: 'unknown-type' },
-              ],
+              parameters: [{ name: 'unknown_field', type: 'unknown-type' }],
             },
           },
         },
@@ -1286,7 +1428,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithUnknownType)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-unknown_field')).toBeInTheDocument()
     })
@@ -1298,9 +1446,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -1332,7 +1478,14 @@ describe('CommonCreateModal', () => {
         onSuccess()
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} onClose={mockOnClose} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+          onClose={mockOnClose}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1360,9 +1513,7 @@ describe('CommonCreateModal', () => {
           trigger: {
             subscription_constructor: {
               credentials_schema: [],
-              parameters: [
-                { name: 'dynamic_field', type: 'dynamic-select', required: true },
-              ],
+              parameters: [{ name: 'dynamic_field', type: 'dynamic-select', required: true }],
             },
           },
         },
@@ -1370,7 +1521,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithDynamicSelect)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-dynamic_field')).toBeInTheDocument()
     })
@@ -1383,9 +1540,7 @@ describe('CommonCreateModal', () => {
           trigger: {
             subscription_constructor: {
               credentials_schema: [],
-              parameters: [
-                { name: 'bool_field', type: 'boolean', required: false },
-              ],
+              parameters: [{ name: 'bool_field', type: 'boolean', required: false }],
             },
           },
         },
@@ -1393,7 +1548,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithBoolean)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-bool_field')).toBeInTheDocument()
     })
@@ -1410,9 +1571,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -1446,7 +1605,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithEmptyParams)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       // Should only have subscription form fields
       expect(screen.getByTestId('form-field-subscription_name')).toBeInTheDocument()
@@ -1506,7 +1671,12 @@ describe('CommonCreateModal', () => {
             subscription_constructor: {
               credentials_schema: [],
               parameters: [
-                { name: 'repo_name', type: 'string', required: true, description: 'Repository name' },
+                {
+                  name: 'repo_name',
+                  type: 'string',
+                  required: true,
+                  description: 'Repository name',
+                },
               ],
             },
           },
@@ -1515,7 +1685,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithDescription)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-repo_name')).toBeInTheDocument()
     })
@@ -1564,12 +1740,8 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
-              parameters: [
-                { name: 'repo', type: 'string', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
+              parameters: [{ name: 'repo', type: 'string', required: true }],
             },
           },
         },
@@ -1621,7 +1793,13 @@ describe('CommonCreateModal', () => {
       })
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1637,9 +1815,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -1657,9 +1833,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -1680,7 +1854,13 @@ describe('CommonCreateModal', () => {
         onSuccess()
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1709,7 +1889,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithMixedTypes)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-dynamic_field')).toBeInTheDocument()
       expect(screen.getByTestId('form-field-bool_field')).toBeInTheDocument()
@@ -1733,7 +1919,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithNonDynamic)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-text_field')).toBeInTheDocument()
       expect(screen.getByTestId('form-field-number_field')).toBeInTheDocument()
@@ -1756,7 +1948,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithNonBoolean)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-text_field')).toBeInTheDocument()
       expect(screen.getByTestId('form-field-secret_field')).toBeInTheDocument()
@@ -1769,7 +1967,13 @@ describe('CommonCreateModal', () => {
         endpoint: undefined,
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builderWithoutEndpoint} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builderWithoutEndpoint}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-callback_url')).toBeInTheDocument()
     })
@@ -1779,7 +1983,13 @@ describe('CommonCreateModal', () => {
         endpoint: '',
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builderWithEmptyEndpoint} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builderWithEmptyEndpoint}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-callback_url')).toBeInTheDocument()
     })
@@ -1793,9 +2003,7 @@ describe('CommonCreateModal', () => {
           trigger: {
             subscription_constructor: {
               credentials_schema: [],
-              parameters: [
-                { name: 'dynamic_field', type: 'dynamic-select', required: true },
-              ],
+              parameters: [{ name: 'dynamic_field', type: 'dynamic-select', required: true }],
             },
           },
         },
@@ -1803,7 +2011,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithoutPluginId)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-dynamic_field')).toBeInTheDocument()
     })
@@ -1842,7 +2056,13 @@ describe('CommonCreateModal', () => {
       setMockPendingStates(false, true)
       const builder = createMockSubscriptionBuilder()
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('modal')).toHaveAttribute('data-disabled', 'true')
     })
@@ -1855,9 +2075,7 @@ describe('CommonCreateModal', () => {
           trigger: {
             subscription_constructor: {
               credentials_schema: [],
-              parameters: [
-                { name: 'text_type_field', type: 'text' },
-              ],
+              parameters: [{ name: 'text_type_field', type: 'text' }],
             },
           },
         },
@@ -1865,7 +2083,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithText)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-text_type_field')).toBeInTheDocument()
     })
@@ -1876,9 +2100,7 @@ describe('CommonCreateModal', () => {
           trigger: {
             subscription_constructor: {
               credentials_schema: [],
-              parameters: [
-                { name: 'secret_type_field', type: 'secret' },
-              ],
+              parameters: [{ name: 'secret_type_field', type: 'secret' }],
             },
           },
         },
@@ -1886,7 +2108,13 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithSecret)
 
       const builder = createMockSubscriptionBuilder()
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.OAUTH}
+          builder={builder}
+        />,
+      )
 
       expect(screen.getByTestId('form-field-secret_type_field')).toBeInTheDocument()
     })
@@ -1898,9 +2126,7 @@ describe('CommonCreateModal', () => {
         provider: '',
         declaration: {
           trigger: {
-            subscription_schema: [
-              { name: 'webhook_url', type: 'text', required: true },
-            ],
+            subscription_schema: [{ name: 'webhook_url', type: 'text', required: true }],
             subscription_constructor: {
               credentials_schema: [],
               parameters: [],
@@ -1926,7 +2152,13 @@ describe('CommonCreateModal', () => {
         endpoint: '',
       })
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builderWithoutEndpoint} />)
+      render(
+        <CommonCreateModal
+          {...defaultProps}
+          createType={SupportedCreationMethods.MANUAL}
+          builder={builderWithoutEndpoint}
+        />,
+      )
 
       // Component should render without errors
       expect(screen.getByTestId('modal')).toBeInTheDocument()
@@ -1939,9 +2171,7 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
             },
           },
         },
@@ -1949,7 +2179,9 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
 
       // Make createBuilder slow
-      mockCreateBuilder.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)))
+      mockCreateBuilder.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 1000)),
+      )
 
       render(<CommonCreateModal {...defaultProps} />)
 
@@ -1967,12 +2199,8 @@ describe('CommonCreateModal', () => {
         declaration: {
           trigger: {
             subscription_constructor: {
-              credentials_schema: [
-                { name: 'api_key', type: 'secret', required: true },
-              ],
-              parameters: [
-                { name: 'extra_param', type: 'string', required: true },
-              ],
+              credentials_schema: [{ name: 'api_key', type: 'secret', required: true }],
+              parameters: [{ name: 'extra_param', type: 'string', required: true }],
             },
           },
         },
@@ -2004,9 +2232,7 @@ describe('CommonCreateModal', () => {
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
           trigger: {
-            subscription_schema: [
-              { name: 'webhook_url', type: 'text', required: true },
-            ],
+            subscription_schema: [{ name: 'webhook_url', type: 'text', required: true }],
             subscription_constructor: {
               credentials_schema: [],
               parameters: [],

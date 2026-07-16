@@ -22,6 +22,9 @@ export const zApiBasedExtensionResponse = z.object({
   name: z.string(),
 })
 
+/**
+ * APIBasedExtensionListResponse
+ */
 export const zApiBasedExtensionListResponse = z.array(zApiBasedExtensionResponse)
 
 /**

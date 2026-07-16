@@ -3,11 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import InstalledApp from '../page'
 
 vi.mock('@/app/components/explore/installed-app', () => ({
-  default: ({ id }: { id: string }) => (
-    <main aria-label="installed app">
-      {id}
-    </main>
-  ),
+  default: ({ id }: { id: string }) => <main aria-label="installed app">{id}</main>,
 }))
 
 describe('installed app route', () => {

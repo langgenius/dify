@@ -2,7 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import TaskStatusIndicator from '../task-status-indicator'
 
 vi.mock('@/app/components/header/plugins-nav/downloading-icon', () => ({
-  default: ({ active = true }: { active?: boolean }) => <span data-active={String(active)} data-testid="downloading-icon" />,
+  default: ({ active = true }: { active?: boolean }) => (
+    <span data-active={String(active)} data-testid="downloading-icon" />
+  ),
 }))
 
 const defaultProps = {
@@ -51,9 +53,19 @@ describe('TaskStatusIndicator', () => {
 
       const button = document.getElementById('plugin-task-trigger')!
 
-      expect(button).toHaveClass('size-8', 'border-[0.5px]', 'border-components-panel-border-subtle', 'bg-components-panel-bg', 'p-2', 'rounded-lg')
+      expect(button).toHaveClass(
+        'size-8',
+        'border-[0.5px]',
+        'border-components-panel-border-subtle',
+        'bg-components-panel-bg',
+        'p-2',
+        'rounded-lg',
+      )
       expect(screen.getByTestId('downloading-icon')).toHaveAttribute('data-active', 'false')
-      expect(screen.getByTestId('task-status-success-badge')).toHaveClass('size-3.5', 'text-text-success')
+      expect(screen.getByTestId('task-status-success-badge')).toHaveClass(
+        'size-3.5',
+        'text-text-success',
+      )
     })
   })
 
@@ -106,19 +118,18 @@ describe('TaskStatusIndicator', () => {
       expect(screen.queryByTestId('progress-circle')).not.toBeInTheDocument()
       const badgeIcon = screen.getByTestId('task-status-error-badge')
       expect(badgeIcon).toBeInTheDocument()
-      expect(badgeIcon.parentElement).toHaveClass('-top-1.5', '-right-1.5', 'box-content', 'size-3.5')
+      expect(badgeIcon.parentElement).toHaveClass(
+        '-top-1.5',
+        '-right-1.5',
+        'box-content',
+        'size-3.5',
+      )
       expect(badgeIcon.parentElement).toHaveClass('border')
       expect(badgeIcon).toHaveClass('size-3.5')
     })
 
     it('should handle zero totalPluginsLength without division error', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isInstalling
-          totalPluginsLength={0}
-        />,
-      )
+      render(<TaskStatusIndicator {...defaultProps} isInstalling totalPluginsLength={0} />)
       expect(screen.queryByTestId('progress-circle')).not.toBeInTheDocument()
     })
   })
@@ -170,11 +181,7 @@ describe('TaskStatusIndicator', () => {
   describe('Failed state', () => {
     it('should show error icon when isFailed', () => {
       const { container } = render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isFailed
-          totalPluginsLength={2}
-        />,
+        <TaskStatusIndicator {...defaultProps} isFailed totalPluginsLength={2} />,
       )
       const errorIcon = container.querySelector('.text-text-destructive')
       expect(errorIcon).toBeInTheDocument()
@@ -196,37 +203,19 @@ describe('TaskStatusIndicator', () => {
     })
 
     it('should keep the center install icon neutral in failed state', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isFailed
-          totalPluginsLength={1}
-        />,
-      )
+      render(<TaskStatusIndicator {...defaultProps} isFailed totalPluginsLength={1} />)
 
       expect(screen.getByTestId('downloading-icon')).toHaveAttribute('data-active', 'false')
     })
 
     it('should apply destructive styling when isFailed', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isFailed
-          totalPluginsLength={1}
-        />,
-      )
+      render(<TaskStatusIndicator {...defaultProps} isFailed totalPluginsLength={1} />)
       const button = document.getElementById('plugin-task-trigger')!
       expect(button.className).toContain('bg-state-destructive-hover')
     })
 
     it('should apply destructive styling when isInstallingWithError', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isInstallingWithError
-          totalPluginsLength={2}
-        />,
-      )
+      render(<TaskStatusIndicator {...defaultProps} isInstallingWithError totalPluginsLength={2} />)
       const button = document.getElementById('plugin-task-trigger')!
       expect(button.className).toContain('bg-state-destructive-hover')
     })
@@ -259,26 +248,13 @@ describe('TaskStatusIndicator', () => {
     })
 
     it('should apply cursor-pointer for error states', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isFailed
-          totalPluginsLength={1}
-        />,
-      )
+      render(<TaskStatusIndicator {...defaultProps} isFailed totalPluginsLength={1} />)
       const button = document.getElementById('plugin-task-trigger')!
       expect(button.className).toContain('cursor-pointer')
     })
 
     it('should apply open trigger styling when the task menu is expanded', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isFailed
-          isOpen
-          totalPluginsLength={1}
-        />,
-      )
+      render(<TaskStatusIndicator {...defaultProps} isFailed isOpen totalPluginsLength={1} />)
 
       const button = document.getElementById('plugin-task-trigger')!
       expect(button).toHaveClass('bg-state-destructive-hover-alt', 'shadow-xs')

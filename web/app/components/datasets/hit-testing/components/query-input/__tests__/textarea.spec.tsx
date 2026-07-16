@@ -101,7 +101,9 @@ describe('Textarea', () => {
       // Assert - Corner icon should have red class
       const cornerWrapper = container.querySelector('.right-0.top-0')
       const cornerSvg = cornerWrapper?.querySelector('svg')
-      expect(cornerSvg?.className.baseVal || cornerSvg?.getAttribute('class')).toContain('text-util-colors-red-red-100')
+      expect(cornerSvg?.className.baseVal || cornerSvg?.getAttribute('class')).toContain(
+        'text-util-colors-red-red-100',
+      )
     })
   })
 

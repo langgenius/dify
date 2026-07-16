@@ -1,9 +1,11 @@
 import { screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { renderToString } from 'react-dom/server'
-import { createSystemFeaturesWrapper, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import {
+  createSystemFeaturesWrapper,
+  renderWithSystemFeatures,
+} from '@/__tests__/utils/mock-system-features'
 import WebAppStoreProvider, { useWebAppStore } from '@/context/web-app-context'
-
 import { AccessMode } from '@/models/access-control'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -25,12 +27,13 @@ vi.mock('@/service/use-share', () => ({
 const mockGetProcessedSystemVariablesFromUrlParams = vi.fn()
 
 vi.mock('@/app/components/base/chat/utils', () => ({
-  getProcessedSystemVariablesFromUrlParams: (...args: any[]) => mockGetProcessedSystemVariablesFromUrlParams(...args),
+  getProcessedSystemVariablesFromUrlParams: (...args: any[]) =>
+    mockGetProcessedSystemVariablesFromUrlParams(...args),
 }))
 
 const TestConsumer = () => {
-  const embeddedUserId = useWebAppStore(state => state.embeddedUserId)
-  const embeddedConversationId = useWebAppStore(state => state.embeddedConversationId)
+  const embeddedUserId = useWebAppStore((state) => state.embeddedUserId)
+  const embeddedConversationId = useWebAppStore((state) => state.embeddedConversationId)
   return (
     <>
       <div data-testid="embedded-user-id">{embeddedUserId ?? 'null'}</div>
@@ -89,15 +92,16 @@ describe('WebAppStoreProvider embedded user id handling', () => {
     const { wrapper: Wrapper } = createSystemFeaturesWrapper()
 
     try {
-      expect(() => renderToString(
-        <Wrapper>
-          <WebAppStoreProvider>
-            <div />
-          </WebAppStoreProvider>
-        </Wrapper>,
-      )).not.toThrow()
-    }
-    finally {
+      expect(() =>
+        renderToString(
+          <Wrapper>
+            <WebAppStoreProvider>
+              <div />
+            </WebAppStoreProvider>
+          </Wrapper>,
+        ),
+      ).not.toThrow()
+    } finally {
       Object.defineProperty(globalThis, 'window', {
         configurable: true,
         value: originalWindow,
@@ -106,6 +110,38 @@ describe('WebAppStoreProvider embedded user id handling', () => {
 
     expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith('redirected-app')
   })
+
+  it('does not derive a share code from an external redirect target', () => {
+    const params = new URLSearchParams()
+    params.set('redirect_url', 'https://evil.example/chatbot/evil-app')
+    navigationMocks.usePathname.mockReturnValue('/webapp-signin')
+    navigationMocks.useSearchParams.mockReturnValue(params)
+    mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
+
+    renderWithSystemFeatures(
+      <WebAppStoreProvider>
+        <TestConsumer />
+      </WebAppStoreProvider>,
+    )
+
+    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+  })
+
+  it.each(['/webapp-signin/check-code', '/console/webapp-signin/check-code'])(
+    'does not derive a share code from the sign-in route %s',
+    (pathname) => {
+      navigationMocks.usePathname.mockReturnValue(pathname)
+      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
+
+      renderWithSystemFeatures(
+        <WebAppStoreProvider>
+          <TestConsumer />
+        </WebAppStoreProvider>,
+      )
+
+      expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+    },
+  )
 
   it('hydrates embedded user and conversation ids from system variables', async () => {
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
@@ -128,7 +164,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
   })
 
   it('clears embedded user id when system variable is absent', async () => {
-    useWebAppStore.setState(state => ({
+    useWebAppStore.setState((state) => ({
       ...state,
       embeddedUserId: 'previous-user',
       embeddedConversationId: 'existing-conversation',

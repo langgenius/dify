@@ -485,7 +485,9 @@ describe('EditPipelineInfo', () => {
         return Promise.resolve()
       })
 
-      const { container } = render(<EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />)
+      const { container } = render(
+        <EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />,
+      )
 
       const appIcon = container.querySelector('[class*="cursor-pointer"]')
       fireEvent.click(appIcon!)

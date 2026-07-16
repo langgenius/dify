@@ -1,34 +1,36 @@
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
-import { SpecificGroupsOrMembers } from '../specific-groups-or-members'
-import { createAccessControlDraftHarness } from './access-control-test-utils'
+import SpecificGroupsOrMembers from '../specific-groups-or-members'
 
-const mockUseSearchForWhiteListCandidates = vi.fn()
+const mockUseAppWhiteListSubjects = vi.fn()
 
 vi.mock('@/service/access-control', () => ({
-  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
+  useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
 }))
 
-vi.mock('@/service/access-control/use-app-access-control', () => ({
-  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
+vi.mock('../add-member-or-group-pop', () => ({
+  default: () => <div data-testid="add-member-or-group-dialog" />,
 }))
 
-const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup => ({
-  id: 'group-1',
-  name: 'Group One',
-  groupSize: 5,
-  ...overrides,
-} as AccessControlGroup)
+const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup =>
+  ({
+    id: 'group-1',
+    name: 'Group One',
+    groupSize: 5,
+    ...overrides,
+  }) as AccessControlGroup
 
-const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount => ({
-  id: 'member-1',
-  name: 'Member One',
-  email: 'member@example.com',
-  avatar: '',
-  avatarUrl: '',
-  ...overrides,
-} as AccessControlAccount)
+const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount =>
+  ({
+    id: 'member-1',
+    name: 'Member One',
+    email: 'member@example.com',
+    avatar: '',
+    avatarUrl: '',
+    ...overrides,
+  }) as AccessControlAccount
 
 describe('SpecificGroupsOrMembers', () => {
   const baseGroup = createGroup()
@@ -36,48 +38,50 @@ describe('SpecificGroupsOrMembers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchForWhiteListCandidates.mockReturnValue({
-      isLoading: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-      data: { pages: [] },
+    useAccessControlStore.setState({
+      appId: '',
+      specificGroups: [],
+      specificMembers: [],
+      currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+      selectedGroupsForBreadcrumb: [],
+    })
+    mockUseAppWhiteListSubjects.mockReturnValue({
+      isPending: false,
+      data: {
+        groups: [baseGroup],
+        members: [baseMember],
+      },
     })
   })
 
   it('should render the collapsed row when not in specific mode', () => {
-    const harness = createAccessControlDraftHarness(
-      <SpecificGroupsOrMembers />,
-      { currentMenu: AccessMode.ORGANIZATION },
-    )
+    useAccessControlStore.setState({
+      currentMenu: AccessMode.ORGANIZATION,
+    })
 
-    render(harness.element)
+    render(<SpecificGroupsOrMembers />)
 
     expect(screen.getByText('app.accessControlDialog.accessItems.specific')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.operation.add' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('add-member-or-group-dialog')).not.toBeInTheDocument()
   })
 
-  it('should show loading when the selected subjects are pending', async () => {
-    const harness = createAccessControlDraftHarness(<SpecificGroupsOrMembers loading />)
-    render(harness.element)
+  it('should show loading while whitelist subjects are pending', async () => {
+    mockUseAppWhiteListSubjects.mockReturnValue({
+      isPending: true,
+      data: undefined,
+    })
 
-    expect(screen.getByRole('combobox', { name: 'common.operation.add' })).toBeDisabled()
+    const { container } = render(<SpecificGroupsOrMembers />)
 
     await waitFor(() => {
-      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
     })
   })
 
   it('should render fetched groups and members and support removal', async () => {
-    const harness = createAccessControlDraftHarness(
-      <SpecificGroupsOrMembers />,
-      {
-        appId: 'app-1',
-        specificGroups: [baseGroup],
-        specificMembers: [baseMember],
-      },
-    )
+    useAccessControlStore.setState({ appId: 'app-1' })
 
-    render(harness.element)
+    render(<SpecificGroupsOrMembers />)
 
     await waitFor(() => {
       expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
@@ -89,9 +93,9 @@ describe('SpecificGroupsOrMembers', () => {
     const memberRemove = removeButtons[1]!
 
     fireEvent.click(groupRemove)
-    expect(harness.getSnapshot().specificGroups).toEqual([])
+    expect(useAccessControlStore.getState().specificGroups).toEqual([])
 
     fireEvent.click(memberRemove)
-    expect(harness.getSnapshot().specificMembers).toEqual([])
+    expect(useAccessControlStore.getState().specificMembers).toEqual([])
   })
 })

@@ -97,13 +97,13 @@ def test_list_scopes_api_based_extensions_to_authenticated_tenant(
     assert account_create_response.status_code == 201
 
     APIBasedExtensionService.save(
-        db_session_with_containers,
         APIBasedExtension(
             tenant_id=foreign_tenant_id,
             name="Foreign API",
             api_endpoint="https://foreign.example.com/hook",
             api_key="foreign-secret-12345",
         ),
+        session=db_session_with_containers,
     )
 
     response = test_client_with_containers.get(

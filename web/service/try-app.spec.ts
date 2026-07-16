@@ -1,26 +1,33 @@
-import { get } from './base'
+import { consoleClient } from '@/service/client'
 import { fetchTryAppDatasets } from './try-app'
-
-vi.mock('./base', () => ({
-  get: vi.fn(),
-}))
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
     trialApps: {
-      info: vi.fn(),
-      workflows: vi.fn(),
-      parameters: vi.fn(),
+      byAppId: {
+        datasets: {
+          get: vi.fn(),
+        },
+      },
     },
   },
 }))
 
 describe('fetchTryAppDatasets', () => {
-  it('serializes ids as repeated query params', async () => {
-    vi.mocked(get).mockResolvedValue({ data: [] })
+  it('passes ids to the generated client', async () => {
+    vi.mocked(consoleClient.trialApps.byAppId.datasets.get).mockResolvedValue({
+      data: [],
+      has_more: false,
+      limit: 20,
+      page: 1,
+      total: 0,
+    })
 
     await fetchTryAppDatasets('app-1', ['id-1', 'id-2'])
 
-    expect(get).toHaveBeenCalledWith('/trial-apps/app-1/datasets?ids=id-1&ids=id-2')
+    expect(consoleClient.trialApps.byAppId.datasets.get).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      query: { ids: ['id-1', 'id-2'] },
+    })
   })
 })

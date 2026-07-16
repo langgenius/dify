@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react'
 import ScoreSlider from '../index'
 
 describe('ScoreSlider', () => {
-  const getSliderInput = () => screen.getByLabelText('appDebug.feature.annotation.scoreThreshold.title')
+  const getSliderInput = () =>
+    screen.getByLabelText('appDebug.feature.annotation.scoreThreshold.title')
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -20,11 +21,15 @@ describe('ScoreSlider', () => {
     expect(screen.getByText('0.0')).toBeInTheDocument()
     expect(screen.getByText('1.0')).toBeInTheDocument()
     expect(screen.getByText(/feature\.annotation\.scoreThreshold\.easyMatch/)).toBeInTheDocument()
-    expect(screen.getByText(/feature\.annotation\.scoreThreshold\.accurateMatch/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/feature\.annotation\.scoreThreshold\.accurateMatch/),
+    ).toBeInTheDocument()
   })
 
   it('should render with custom className', () => {
-    const { container } = render(<ScoreSlider className="custom-class" value={90} onChange={vi.fn()} />)
+    const { container } = render(
+      <ScoreSlider className="custom-class" value={90} onChange={vi.fn()} />,
+    )
 
     expect(getSliderInput()).toBeInTheDocument()
     expect(container.firstChild).toHaveClass('custom-class')

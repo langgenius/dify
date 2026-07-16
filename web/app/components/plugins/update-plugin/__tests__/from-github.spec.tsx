@@ -3,15 +3,23 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/app/components/plugins/install-plugin/install-from-github', () => ({
-  default: ({ updatePayload, onClose, onSuccess }: {
+  default: ({
+    updatePayload,
+    onClose,
+    onSuccess,
+  }: {
     updatePayload?: Record<string, unknown>
     onClose: () => void
     onSuccess: () => void
   }) => (
     <div data-testid="install-from-github">
       <span data-testid="update-payload">{JSON.stringify(updatePayload)}</span>
-      <button data-testid="close-btn" onClick={onClose}>Close</button>
-      <button data-testid="success-btn" onClick={onSuccess}>Success</button>
+      <button data-testid="close-btn" onClick={onClose}>
+        Close
+      </button>
+      <button data-testid="success-btn" onClick={onSuccess}>
+        Success
+      </button>
     </div>
   ),
 }))

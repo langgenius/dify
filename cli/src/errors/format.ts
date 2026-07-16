@@ -29,15 +29,13 @@ export type PrintableError = {
 
 export function formatErrorForCli(err: PrintableError, opts: FormatErrorOptions = {}): string {
   const env = err.toEnvelope()
-  if (opts.format === 'json')
-    return renderEnvelope(env)
+  if (opts.format === 'json') return renderEnvelope(env)
   return renderHuman(env, opts.isErrTTY ?? false)
 }
 
 function renderEnvelope(env: ErrorEnvelope): string {
   const raw = env.error.raw_response
-  if (raw === undefined)
-    return JSON.stringify(env)
+  if (raw === undefined) return JSON.stringify(env)
   if (!isVerbose()) {
     delete env.error.raw_response
     return JSON.stringify(env)
@@ -49,10 +47,8 @@ function renderEnvelope(env: ErrorEnvelope): string {
 // CLI-authored hint wins: it knows local remediation (e.g. which command to
 // run); the server hint fills in when the CLI has nothing for this error.
 function resolveHint(e: ErrorEnvelope['error']): string | undefined {
-  if (e.hint !== undefined)
-    return e.hint
-  if (e.server?.hint != null)
-    return e.server.hint
+  if (e.hint !== undefined) return e.hint
+  if (e.server?.hint != null) return e.server.hint
   const rawHiddenAndUnparsed = e.server === undefined && Boolean(e.raw_response) && !isVerbose()
   return rawHiddenAndUnparsed ? RAW_RESPONSE_HINT : undefined
 }
@@ -68,13 +64,9 @@ function renderHuman(env: ErrorEnvelope, isErrTTY: boolean): string {
     lines.push(`  - ${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`)
   }
   const hint = resolveHint(e)
-  if (hint !== undefined)
-    lines.push(`${cs.magenta('hint:')} ${cs.cyan(hint)}`)
-  if (e.method !== undefined && e.url !== undefined)
-    lines.push(`request: ${e.method} ${e.url}`)
-  if (e.http_status !== undefined)
-    lines.push(`http_status: ${e.http_status}`)
-  if (isVerbose() && e.raw_response)
-    lines.push(`raw_response: ${redactBearer(e.raw_response)}`)
+  if (hint !== undefined) lines.push(`${cs.magenta('hint:')} ${cs.cyan(hint)}`)
+  if (e.method !== undefined && e.url !== undefined) lines.push(`request: ${e.method} ${e.url}`)
+  if (e.http_status !== undefined) lines.push(`http_status: ${e.http_status}`)
+  if (isVerbose() && e.raw_response) lines.push(`raw_response: ${redactBearer(e.raw_response)}`)
   return lines.join('\n')
 }

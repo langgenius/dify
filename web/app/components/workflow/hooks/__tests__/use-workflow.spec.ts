@@ -1,7 +1,11 @@
 import type { NodeDefault } from '../../types'
 import { act, renderHook } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
-import { baseRunningData, renderWorkflowFlowHook, renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import {
+  baseRunningData,
+  renderWorkflowFlowHook,
+  renderWorkflowHook,
+} from '../../__tests__/workflow-test-env'
 import { BlockClassificationEnum } from '../../block-selector/types'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import {
@@ -16,7 +20,8 @@ import {
 
 let mockAppMode = 'workflow'
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) => selector({ appDetail: { mode: mockAppMode } }),
+  useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) =>
+    selector({ appDetail: { mode: mockAppMode } }),
 }))
 
 beforeEach(() => {
@@ -85,7 +90,9 @@ describe('useWorkflowReadOnly', () => {
   it('should return workflowReadOnly false when status is Succeeded', () => {
     const { result } = renderWorkflowHook(() => useWorkflowReadOnly(), {
       initialStoreState: {
-        workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Succeeded } }),
+        workflowRunningData: baseRunningData({
+          result: { status: WorkflowRunningStatus.Succeeded },
+        }),
       },
     })
     expect(result.current.workflowReadOnly).toBe(false)
@@ -218,7 +225,6 @@ describe('useNodesReadOnly', () => {
       hooksStoreProps: {
         accessControl: {
           canEdit: false,
-          canComment: true,
           canRun: true,
           canImportExportDSL: true,
           canReleaseAndVersion: true,
@@ -265,12 +271,14 @@ describe('useWorkflow connection validation', () => {
       },
     })
 
-    expect(result.current.isValidConnection({
-      source: 'agent-v2',
-      sourceHandle: 'source',
-      target: 'code',
-      targetHandle: 'target',
-    })).toBe(true)
+    expect(
+      result.current.isValidConnection({
+        source: 'agent-v2',
+        sourceHandle: 'source',
+        target: 'code',
+        targetHandle: 'target',
+      }),
+    ).toBe(true)
   })
 })
 

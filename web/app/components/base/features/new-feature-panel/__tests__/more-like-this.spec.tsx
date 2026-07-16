@@ -4,7 +4,7 @@ import * as React from 'react'
 import { FeaturesProvider } from '../../context'
 import MoreLikeThis from '../more-like-this'
 
-const renderWithProvider = (props: { disabled?: boolean, onChange?: OnFeaturesChange } = {}) => {
+const renderWithProvider = (props: { disabled?: boolean; onChange?: OnFeaturesChange } = {}) => {
   return render(
     <FeaturesProvider>
       <MoreLikeThis disabled={props.disabled} onChange={props.onChange} />

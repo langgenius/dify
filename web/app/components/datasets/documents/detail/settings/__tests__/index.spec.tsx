@@ -1,40 +1,29 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import Settings from '../index'
 
 // Mock the dataset detail context
 let mockRuntimeMode: string | undefined = 'general'
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { runtime_mode: string | undefined } }) => unknown) => {
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: { runtime_mode: string | undefined } }) => unknown,
+  ) => {
     return selector({ dataset: { runtime_mode: mockRuntimeMode } })
   },
 }))
 
 vi.mock('../document-settings', () => ({
-  default: ({ datasetId, documentId }: { datasetId: string, documentId: string }) => (
+  default: ({ datasetId, documentId }: { datasetId: string; documentId: string }) => (
     <div data-testid="document-settings">
-      DocumentSettings -
-      {' '}
-      {datasetId}
-      {' '}
-      -
-      {' '}
-      {documentId}
+      DocumentSettings - {datasetId} - {documentId}
     </div>
   ),
 }))
 
 vi.mock('../pipeline-settings', () => ({
-  default: ({ datasetId, documentId }: { datasetId: string, documentId: string }) => (
+  default: ({ datasetId, documentId }: { datasetId: string; documentId: string }) => (
     <div data-testid="pipeline-settings">
-      PipelineSettings -
-      {' '}
-      {datasetId}
-      {' '}
-      -
-      {' '}
-      {documentId}
+      PipelineSettings - {datasetId} - {documentId}
     </div>
   ),
 }))
@@ -47,9 +36,7 @@ describe('Settings', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      const { container } = render(
-        <Settings datasetId="dataset-1" documentId="doc-1" />,
-      )
+      const { container } = render(<Settings datasetId="dataset-1" documentId="doc-1" />)
 
       expect(container.firstChild).toBeInTheDocument()
     })
@@ -109,9 +96,7 @@ describe('Settings', () => {
 
     it('should maintain structure when rerendered', () => {
       mockRuntimeMode = 'general'
-      const { rerender } = render(
-        <Settings datasetId="dataset-1" documentId="doc-1" />,
-      )
+      const { rerender } = render(<Settings datasetId="dataset-1" documentId="doc-1" />)
 
       rerender(<Settings datasetId="dataset-2" documentId="doc-2" />)
 

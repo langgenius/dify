@@ -8,12 +8,10 @@ import { AgentKnowledgeRetrieval } from '../knowledge'
 import { AgentSkills } from '../skills'
 import { AgentTools } from '../tools'
 
-vi.mock('../drive-context', () => ({
-  FILES_DRIVE_PREFIX: 'files/',
-  getAgentDriveFileName: (key: string) => key.split('/').pop() ?? key,
-  useAgentDriveApiContext: () => ({ agentId: 'agent-1' }),
-  useAgentDriveFiles: () => ({ files: [], query: { refetch: vi.fn() } }),
-  useAgentDriveSkills: () => ({ skills: [], query: { refetch: vi.fn() } }),
+vi.mock('../config-context', () => ({
+  useAgentConfigApiContext: () => ({ agentId: 'agent-1', draftType: 'draft' }),
+  useAgentConfigFiles: () => ({ files: [] }),
+  useAgentConfigSkills: () => ({ skills: [] }),
 }))
 
 function renderEmptySections() {
@@ -47,12 +45,22 @@ describe('Agent configure empty sections', () => {
     renderEmptySections()
 
     expect(screen.getByText('agentV2.agentDetail.configure.skills.empty.title')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.skills.empty.description')).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.skills.empty.description'),
+    ).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.configure.files.empty.title')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.files.empty.description')).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.files.empty.description'),
+    ).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.configure.tools.empty.title')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.tools.empty.description')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.empty.title')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.empty.description')).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.tools.empty.description'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.empty.title'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.empty.description'),
+    ).toBeInTheDocument()
   })
 })

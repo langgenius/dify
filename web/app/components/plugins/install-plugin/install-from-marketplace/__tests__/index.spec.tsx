@@ -6,7 +6,9 @@ import InstallFromMarketplace from '../index'
 
 // Factory functions for test data
 // Use type casting to avoid strict locale requirements in tests
-const createMockManifest = (overrides: Partial<PluginManifestInMarket> = {}): PluginManifestInMarket => ({
+const createMockManifest = (
+  overrides: Partial<PluginManifestInMarket> = {},
+): PluginManifestInMarket => ({
   plugin_unique_identifier: 'test-unique-identifier',
   name: 'Test Plugin',
   org: 'test-org',
@@ -103,12 +105,24 @@ vi.mock('../steps/install', () => ({
     <div data-testid="install-step">
       <span data-testid="unique-identifier">{uniqueIdentifier}</span>
       <span data-testid="payload-name">{payload?.name}</span>
-      <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
-      <button data-testid="start-install-btn" onClick={onStartToInstall}>Start Install</button>
-      <button data-testid="install-success-btn" onClick={() => onInstalled()}>Install Success</button>
-      <button data-testid="install-success-no-refresh-btn" onClick={() => onInstalled(true)}>Install Success No Refresh</button>
-      <button data-testid="install-fail-btn" onClick={() => onFailed('Installation failed')}>Install Fail</button>
-      <button data-testid="install-fail-no-msg-btn" onClick={() => onFailed()}>Install Fail No Msg</button>
+      <button data-testid="cancel-btn" onClick={onCancel}>
+        Cancel
+      </button>
+      <button data-testid="start-install-btn" onClick={onStartToInstall}>
+        Start Install
+      </button>
+      <button data-testid="install-success-btn" onClick={() => onInstalled()}>
+        Install Success
+      </button>
+      <button data-testid="install-success-no-refresh-btn" onClick={() => onInstalled(true)}>
+        Install Success No Refresh
+      </button>
+      <button data-testid="install-fail-btn" onClick={() => onFailed('Installation failed')}>
+        Install Fail
+      </button>
+      <button data-testid="install-fail-no-msg-btn" onClick={() => onFailed()}>
+        Install Fail No Msg
+      </button>
     </div>
   ),
 }))
@@ -135,12 +149,30 @@ vi.mock('../../install-bundle/ready-to-install', () => ({
       <span data-testid="bundle-step-value">{step}</span>
       <span data-testid="bundle-plugins-count">{allPlugins?.length || 0}</span>
       <span data-testid="is-from-marketplace">{isFromMarketPlace ? 'true' : 'false'}</span>
-      <button data-testid="bundle-cancel-btn" onClick={onClose}>Cancel</button>
-      <button data-testid="bundle-start-install-btn" onClick={onStartToInstall}>Start Install</button>
-      <button data-testid="bundle-set-installing-true" onClick={() => setIsInstalling(true)}>Set Installing True</button>
-      <button data-testid="bundle-set-installing-false" onClick={() => setIsInstalling(false)}>Set Installing False</button>
-      <button data-testid="bundle-change-to-installed" onClick={() => onStepChange(InstallStep.installed)}>Change to Installed</button>
-      <button data-testid="bundle-change-to-failed" onClick={() => onStepChange(InstallStep.installFailed)}>Change to Failed</button>
+      <button data-testid="bundle-cancel-btn" onClick={onClose}>
+        Cancel
+      </button>
+      <button data-testid="bundle-start-install-btn" onClick={onStartToInstall}>
+        Start Install
+      </button>
+      <button data-testid="bundle-set-installing-true" onClick={() => setIsInstalling(true)}>
+        Set Installing True
+      </button>
+      <button data-testid="bundle-set-installing-false" onClick={() => setIsInstalling(false)}>
+        Set Installing False
+      </button>
+      <button
+        data-testid="bundle-change-to-installed"
+        onClick={() => onStepChange(InstallStep.installed)}
+      >
+        Change to Installed
+      </button>
+      <button
+        data-testid="bundle-change-to-failed"
+        onClick={() => onStepChange(InstallStep.installFailed)}
+      >
+        Change to Failed
+      </button>
     </div>
   ),
 }))
@@ -164,7 +196,9 @@ vi.mock('../../base/installed', () => ({
       <span data-testid="is-market-payload">{isMarketPayload ? 'true' : 'false'}</span>
       <span data-testid="is-failed">{isFailed ? 'true' : 'false'}</span>
       <span data-testid="error-msg">{errMsg || 'no-error'}</span>
-      <button data-testid="installed-close-btn" onClick={onCancel}>Close</button>
+      <button data-testid="installed-close-btn" onClick={onCancel}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -198,14 +232,26 @@ describe('InstallFromMarketplace', () => {
       expect(screen.getByText('plugin.installModal.installPlugin')).toBeInTheDocument()
     })
 
+    it('should expose the current step title as the dialog name', () => {
+      render(<InstallFromMarketplace {...defaultProps} />)
+
+      expect(
+        screen.getByRole('dialog', { name: 'plugin.installModal.installPlugin' }),
+      ).toBeInTheDocument()
+    })
+
+    it('should initially focus the safe cancel action', async () => {
+      render(<InstallFromMarketplace {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus()
+      })
+    })
+
     it('should render with bundle step when isBundle is true', () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       expect(screen.getByTestId('bundle-step')).toBeInTheDocument()
@@ -215,11 +261,7 @@ describe('InstallFromMarketplace', () => {
     it('should constrain bundle dialog height so dependency lists can scroll', () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       expect(screen.getByRole('dialog')).toHaveClass('max-h-[calc(100dvh-48px)]')
@@ -228,11 +270,7 @@ describe('InstallFromMarketplace', () => {
     it('should pass isFromMarketPlace as true to bundle component', () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       expect(screen.getByTestId('is-from-marketplace')).toHaveTextContent('true')
@@ -273,11 +311,7 @@ describe('InstallFromMarketplace', () => {
     it('should show bundle complete title when bundle installation completes', async () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
@@ -293,7 +327,9 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('install-fail-btn'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installFailed')).toBeInTheDocument()
+        expect(
+          screen.getByRole('dialog', { name: 'plugin.installModal.installFailed' }),
+        ).toBeInTheDocument()
       })
     })
   })
@@ -342,11 +378,7 @@ describe('InstallFromMarketplace', () => {
     it('should update step via onStepChange in bundle mode', async () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
@@ -440,11 +472,7 @@ describe('InstallFromMarketplace', () => {
     it('should call onClose in bundle mode cancel', () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       fireEvent.click(screen.getByTestId('bundle-cancel-btn'))
@@ -505,11 +533,7 @@ describe('InstallFromMarketplace', () => {
     it('should pass setIsInstalling to bundle component', () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       fireEvent.click(screen.getByTestId('bundle-set-installing-true'))
@@ -571,35 +595,20 @@ describe('InstallFromMarketplace', () => {
   describe('Prop Variations', () => {
     it('should work with Plugin type manifest', () => {
       const plugin = createMockPlugin()
-      render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          manifest={plugin}
-        />,
-      )
+      render(<InstallFromMarketplace {...defaultProps} manifest={plugin} />)
 
       expect(screen.getByTestId('payload-name')).toHaveTextContent('Test Plugin')
     })
 
     it('should work with PluginManifestInMarket type manifest', () => {
       const manifest = createMockManifest({ name: 'Market Plugin' })
-      render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          manifest={manifest}
-        />,
-      )
+      render(<InstallFromMarketplace {...defaultProps} manifest={manifest} />)
 
       expect(screen.getByTestId('payload-name')).toHaveTextContent('Market Plugin')
     })
 
     it('should handle different uniqueIdentifier values', () => {
-      render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          uniqueIdentifier="custom-unique-id-123"
-        />,
-      )
+      render(<InstallFromMarketplace {...defaultProps} uniqueIdentifier="custom-unique-id-123" />)
 
       expect(screen.getByTestId('unique-identifier')).toHaveTextContent('custom-unique-id-123')
     })
@@ -612,25 +621,14 @@ describe('InstallFromMarketplace', () => {
     })
 
     it('should work with isBundle=false', () => {
-      render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={false}
-        />,
-      )
+      render(<InstallFromMarketplace {...defaultProps} isBundle={false} />)
 
       expect(screen.getByTestId('install-step')).toBeInTheDocument()
       expect(screen.queryByTestId('bundle-step')).not.toBeInTheDocument()
     })
 
     it('should work with empty dependencies array in bundle mode', () => {
-      render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={[]}
-        />,
-      )
+      render(<InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={[]} />)
 
       expect(screen.getByTestId('bundle-step')).toBeInTheDocument()
       expect(screen.getByTestId('bundle-plugins-count')).toHaveTextContent('0')
@@ -646,12 +644,7 @@ describe('InstallFromMarketplace', () => {
         name: 'Minimal',
         version: '0.0.1',
       })
-      render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          manifest={minimalManifest}
-        />,
-      )
+      render(<InstallFromMarketplace {...defaultProps} manifest={minimalManifest} />)
 
       expect(screen.getByTestId('payload-name')).toHaveTextContent('Minimal')
     })
@@ -673,11 +666,7 @@ describe('InstallFromMarketplace', () => {
     it('should handle bundle mode step changes', async () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       // Change to installed step
@@ -691,11 +680,7 @@ describe('InstallFromMarketplace', () => {
     it('should handle bundle mode failure step change', async () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       fireEvent.click(screen.getByTestId('bundle-change-to-failed'))
@@ -798,11 +783,7 @@ describe('InstallFromMarketplace', () => {
     it('should pass dependencies to bundle component', () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       expect(screen.getByTestId('bundle-plugins-count')).toHaveTextContent('2')
@@ -811,11 +792,7 @@ describe('InstallFromMarketplace', () => {
     it('should pass current step to bundle component', () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       expect(screen.getByTestId('bundle-step-value')).toHaveTextContent(InstallStep.readyToInstall)
@@ -914,11 +891,7 @@ describe('InstallFromMarketplace', () => {
     it('should return installComplete for bundle installed step', async () => {
       const dependencies = createMockDependencies()
       render(
-        <InstallFromMarketplace
-          {...defaultProps}
-          isBundle={true}
-          dependencies={dependencies}
-        />,
+        <InstallFromMarketplace {...defaultProps} isBundle={true} dependencies={dependencies} />,
       )
 
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))

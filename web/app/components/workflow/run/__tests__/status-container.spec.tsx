@@ -27,7 +27,11 @@ describe('StatusContainer', () => {
       expect(screen.getByText('Finished')).toBeInTheDocument()
       expect(container.firstElementChild).toHaveClass('bg-workflow-display-success-bg')
       expect(container.firstElementChild).toHaveClass('text-text-success')
-      expect(container.querySelector('.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight\\.svg\\)\\]')).toBeInTheDocument()
+      expect(
+        container.querySelector(
+          '.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight\\.svg\\)\\]',
+        ),
+      ).toBeInTheDocument()
     })
 
     it('should render failed styling for the dark theme', () => {
@@ -41,7 +45,11 @@ describe('StatusContainer', () => {
 
       expect(container.firstElementChild).toHaveClass('bg-workflow-display-error-bg')
       expect(container.firstElementChild).toHaveClass('text-text-warning')
-      expect(container.querySelector('.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight-dark\\.svg\\)\\]')).toBeInTheDocument()
+      expect(
+        container.querySelector(
+          '.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight-dark\\.svg\\)\\]',
+        ),
+      ).toBeInTheDocument()
     })
 
     it('should render warning styling for paused runs', () => {

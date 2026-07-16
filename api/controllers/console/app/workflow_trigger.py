@@ -12,6 +12,7 @@ from configs import dify_config
 from controllers.common.schema import query_params_from_model, register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import login_required
 from models.enums import AppTriggerStatus
 from models.model import App, AppMode
@@ -121,7 +122,7 @@ class WebhookTriggerApi(Resource):
             if not webhook_trigger:
                 raise NotFound("Webhook trigger not found for this node")
 
-            return WebhookTriggerResponse.model_validate(webhook_trigger, from_attributes=True).model_dump(mode="json")
+            return dump_response(WebhookTriggerResponse, webhook_trigger)
 
 
 @console_ns.route("/apps/<uuid:app_id>/triggers")
@@ -160,9 +161,7 @@ class AppTriggersApi(Resource):
             else:
                 trigger.icon = ""  # type: ignore
 
-        return WorkflowTriggerListResponse.model_validate({"data": triggers}, from_attributes=True).model_dump(
-            mode="json"
-        )
+        return dump_response(WorkflowTriggerListResponse, {"data": triggers})
 
 
 @console_ns.route("/apps/<uuid:app_id>/trigger-enable")
@@ -204,4 +203,4 @@ class AppTriggerEnableApi(Resource):
         else:
             trigger.icon = ""  # type: ignore
 
-        return WorkflowTriggerResponse.model_validate(trigger, from_attributes=True).model_dump(mode="json")
+        return dump_response(WorkflowTriggerResponse, trigger)

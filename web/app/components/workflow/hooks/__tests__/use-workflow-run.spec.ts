@@ -17,7 +17,9 @@ describe('useWorkflowRun', () => {
 
     expect(result.current.handleBackupDraft).toBe(handlers.handleBackupDraft)
     expect(result.current.handleLoadBackupDraft).toBe(handlers.handleLoadBackupDraft)
-    expect(result.current.handleRestoreFromPublishedWorkflow).toBe(handlers.handleRestoreFromPublishedWorkflow)
+    expect(result.current.handleRestoreFromPublishedWorkflow).toBe(
+      handlers.handleRestoreFromPublishedWorkflow,
+    )
     expect(result.current.handleRun).toBe(handlers.handleRun)
     expect(result.current.handleStopRun).toBe(handlers.handleStopRun)
   })

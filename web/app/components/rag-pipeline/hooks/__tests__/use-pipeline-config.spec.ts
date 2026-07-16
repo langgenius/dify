@@ -1,6 +1,5 @@
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { usePipelineConfig } from '../use-pipeline-config'
 
 const mockUseStore = vi.fn()
@@ -15,12 +14,14 @@ vi.mock('@/app/components/workflow/store', () => ({
 
 const mockUseWorkflowConfig = vi.fn()
 vi.mock('@/service/use-workflow', () => ({
-  useWorkflowConfig: (url: string, callback: (data: unknown) => void) => mockUseWorkflowConfig(url, callback),
+  useWorkflowConfig: (url: string, callback: (data: unknown) => void) =>
+    mockUseWorkflowConfig(url, callback),
 }))
 
 const mockUseDataSourceList = vi.fn()
 vi.mock('@/service/use-pipeline', () => ({
-  useDataSourceList: (enabled: boolean, callback: (data: unknown) => void) => mockUseDataSourceList(enabled, callback),
+  useDataSourceList: (enabled: boolean, callback: (data: unknown) => void) =>
+    mockUseDataSourceList(enabled, callback),
 }))
 
 vi.mock('@/utils/var', () => ({
@@ -79,10 +80,7 @@ describe('usePipelineConfig', () => {
     it('should call useWorkflowConfig with correct URL for file upload config', () => {
       renderHook(() => usePipelineConfig())
 
-      expect(mockUseWorkflowConfig).toHaveBeenCalledWith(
-        '/files/upload',
-        expect.any(Function),
-      )
+      expect(mockUseWorkflowConfig).toHaveBeenCalledWith('/files/upload', expect.any(Function))
     })
 
     it('should call useDataSourceList when pipelineId exists', () => {
@@ -194,15 +192,15 @@ describe('usePipelineConfig', () => {
   describe('handleUpdateDataSourceList', () => {
     it('should set data source list', () => {
       let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation((_enabled: boolean, callback: (data: unknown) => void) => {
-        capturedCallback = callback
-      })
+      mockUseDataSourceList.mockImplementation(
+        (_enabled: boolean, callback: (data: unknown) => void) => {
+          capturedCallback = callback
+        },
+      )
 
       renderHook(() => usePipelineConfig())
 
-      const dataSourceList = [
-        { declaration: { identity: { icon: '/icon.png' } } },
-      ]
+      const dataSourceList = [{ declaration: { identity: { icon: '/icon.png' } } }]
 
       capturedCallback?.(dataSourceList)
 
@@ -211,15 +209,15 @@ describe('usePipelineConfig', () => {
 
     it('should prepend basePath to icon if not included', () => {
       let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation((_enabled: boolean, callback: (data: unknown) => void) => {
-        capturedCallback = callback
-      })
+      mockUseDataSourceList.mockImplementation(
+        (_enabled: boolean, callback: (data: unknown) => void) => {
+          capturedCallback = callback
+        },
+      )
 
       renderHook(() => usePipelineConfig())
 
-      const dataSourceList = [
-        { declaration: { identity: { icon: '/icon.png' } } },
-      ]
+      const dataSourceList = [{ declaration: { identity: { icon: '/icon.png' } } }]
 
       capturedCallback?.(dataSourceList)
 
@@ -228,15 +226,15 @@ describe('usePipelineConfig', () => {
 
     it('should not modify icon if it already includes basePath', () => {
       let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation((_enabled: boolean, callback: (data: unknown) => void) => {
-        capturedCallback = callback
-      })
+      mockUseDataSourceList.mockImplementation(
+        (_enabled: boolean, callback: (data: unknown) => void) => {
+          capturedCallback = callback
+        },
+      )
 
       renderHook(() => usePipelineConfig())
 
-      const dataSourceList = [
-        { declaration: { identity: { icon: '/base/icon.png' } } },
-      ]
+      const dataSourceList = [{ declaration: { identity: { icon: '/base/icon.png' } } }]
 
       capturedCallback?.(dataSourceList)
 
@@ -245,15 +243,15 @@ describe('usePipelineConfig', () => {
 
     it('should handle non-string icon', () => {
       let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation((_enabled: boolean, callback: (data: unknown) => void) => {
-        capturedCallback = callback
-      })
+      mockUseDataSourceList.mockImplementation(
+        (_enabled: boolean, callback: (data: unknown) => void) => {
+          capturedCallback = callback
+        },
+      )
 
       renderHook(() => usePipelineConfig())
 
-      const dataSourceList = [
-        { declaration: { identity: { icon: { url: '/icon.png' } } } },
-      ]
+      const dataSourceList = [{ declaration: { identity: { icon: { url: '/icon.png' } } } }]
 
       capturedCallback?.(dataSourceList)
 

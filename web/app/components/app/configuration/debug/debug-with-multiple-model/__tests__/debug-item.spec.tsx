@@ -28,13 +28,17 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('../chat-item', () => ({
   default: ({ modelAndParameter }: { modelAndParameter: ModelAndParameter }) => (
-    <div data-testid="chat-item" data-model-id={modelAndParameter.id}>ChatItem</div>
+    <div data-testid="chat-item" data-model-id={modelAndParameter.id}>
+      ChatItem
+    </div>
   ),
 }))
 
 vi.mock('../text-generation-item', () => ({
   default: ({ modelAndParameter }: { modelAndParameter: ModelAndParameter }) => (
-    <div data-testid="text-generation-item" data-model-id={modelAndParameter.id}>TextGenerationItem</div>
+    <div data-testid="text-generation-item" data-model-id={modelAndParameter.id}>
+      TextGenerationItem
+    </div>
   ),
 }))
 
@@ -45,7 +49,9 @@ vi.mock('../model-parameter-trigger', () => ({
   },
 }))
 
-const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
+const createModelAndParameter = (
+  overrides: Partial<ModelAndParameter> = {},
+): ModelAndParameter => ({
   id: 'model-1',
   model: 'gpt-3.5-turbo',
   provider: 'openai',
@@ -53,8 +59,13 @@ const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): Mo
   ...overrides,
 })
 
-const createTextGenerationModelList = (models: Array<{ provider: string, model: string, status?: ModelStatusEnum }> = []) => {
-  const providers: Record<string, { provider: string, models: Array<{ model: string, status: ModelStatusEnum }> }> = {}
+const createTextGenerationModelList = (
+  models: Array<{ provider: string; model: string; status?: ModelStatusEnum }> = [],
+) => {
+  const providers: Record<
+    string,
+    { provider: string; models: Array<{ model: string; status: ModelStatusEnum }> }
+  > = {}
 
   models.forEach(({ provider, model, status = ModelStatusEnum.active }) => {
     if (!providers[provider]) {
@@ -127,7 +138,9 @@ describe('DebugItem', () => {
         onDebugWithMultipleModelChange: vi.fn(),
       })
 
-      const { container } = renderComponent({ modelAndParameter: createModelAndParameter({ id: 'model-2' }) })
+      const { container } = renderComponent({
+        modelAndParameter: createModelAndParameter({ id: 'model-2' }),
+      })
 
       // The index is displayed as "#2" in the component
       const indexElement = container.querySelector('.font-medium.italic')
@@ -440,10 +453,7 @@ describe('DebugItem', () => {
       const user = await openMenu()
       await user.click(screen.getByText('common.operation.remove'))
 
-      expect(onMultipleModelConfigsChange).toHaveBeenCalledWith(
-        true,
-        [models[0], models[2]],
-      )
+      expect(onMultipleModelConfigsChange).toHaveBeenCalledWith(true, [models[0], models[2]])
     })
 
     it('should insert duplicated model at correct position', async () => {

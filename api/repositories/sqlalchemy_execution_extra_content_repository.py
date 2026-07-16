@@ -18,9 +18,9 @@ from core.entities.execution_extra_content import (
 from core.entities.execution_extra_content import (
     HumanInputContent as HumanInputContentDomainModel,
 )
-from graphon.nodes.human_input.entities import FormDefinition
-from graphon.nodes.human_input.enums import HumanInputFormStatus
-from graphon.nodes.human_input.human_input_node import HumanInputNode
+from core.workflow.nodes.human_input.callback import DifyHITLCallback
+from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from models.execution_extra_content import (
     ExecutionExtraContent as ExecutionExtraContentModel,
 )
@@ -166,7 +166,7 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
                 logger.warning("Failed to load submitted data for HumanInputContent(id=%s)", model.id)
                 return None
 
-        rendered_content = HumanInputNode.render_form_content_with_outputs(
+        rendered_content = DifyHITLCallback.render_form_content_with_outputs(
             form.rendered_content,
             submitted_data,
             _extract_output_field_names(form_definition.form_content),

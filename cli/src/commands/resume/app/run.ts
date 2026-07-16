@@ -50,15 +50,13 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
   let action = opts.action
   if (action === undefined) {
     const formResp = await deps.http.get<{ user_actions: { id: string }[] }>(
-      `apps/${encodeURIComponent(opts.appId)}/form/human_input/${encodeURIComponent(opts.formToken)}`,
+      `apps/${encodeURIComponent(opts.appId)}/human-input-forms/${encodeURIComponent(opts.formToken)}`,
     )
     if (formResp.user_actions.length === 1) {
       action = formResp.user_actions[0]?.id ?? ''
-    }
-    else if (formResp.user_actions.length === 0) {
+    } else if (formResp.user_actions.length === 0) {
       action = ''
-    }
-    else {
+    } else {
       throw new Error('--action required: form has multiple user actions')
     }
   }

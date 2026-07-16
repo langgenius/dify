@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { waitForAppsConsole } from '../support/apps'
+import { waitForConsoleHome } from '../support/home'
 import { apiURL, defaultBaseURL, defaultLocale } from '../test-env'
 
 export type AuthSessionMetadata = {
@@ -58,8 +58,7 @@ const getRemainingTimeout = (deadline: number) => Math.max(deadline - Date.now()
 const encodeField = (value: string) => Buffer.from(value, 'utf8').toString('base64')
 
 const assertAPIResponse = async (response: APIResponse, action: string) => {
-  if (response.ok())
-    return
+  if (response.ok()) return
 
   const body = await response.text().catch(() => '')
   throw new Error(
@@ -90,8 +89,7 @@ const postConsoleAPI = async (
 
 const validateInitPasswordIfNeeded = async (context: BrowserContext, deadline: number) => {
   const initStatus = await getConsoleAPI<InitStatusResponse>(context, '/console/api/init', deadline)
-  if (initStatus.status === 'finished')
-    return false
+  if (initStatus.status === 'finished') return false
 
   console.warn('[e2e] auth bootstrap: validating init password')
   await postConsoleAPI(context, '/console/api/init', deadline, { password: initPassword })
@@ -150,12 +148,12 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
     const { mode, usedInitPassword } = await ensureAdminAccount(context, deadline)
     await loginAdmin(context, deadline)
 
-    console.warn('[e2e] auth bootstrap: verifying apps console')
-    await page.goto(appURL(baseURL, '/apps'), {
+    console.warn('[e2e] auth bootstrap: verifying console home')
+    await page.goto(appURL(baseURL, '/'), {
       timeout: getRemainingTimeout(deadline),
       waitUntil: 'domcontentloaded',
     })
-    await waitForAppsConsole(page, getRemainingTimeout(deadline))
+    await waitForConsoleHome(page, getRemainingTimeout(deadline))
 
     await context.storageState({ path: authStatePath })
 
@@ -167,8 +165,7 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
     }
 
     await writeFile(authMetadataPath, `${JSON.stringify(metadata, null, 2)}\n`, 'utf8')
-  }
-  finally {
+  } finally {
     await context.close()
   }
 }

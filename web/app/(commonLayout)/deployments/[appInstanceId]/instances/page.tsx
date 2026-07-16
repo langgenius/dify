@@ -1,8 +1,5 @@
-import { DeployTab } from '@/features/deployments/detail/deploy-tab'
+import { DeploymentInstances } from '@/features/deployments/detail/instances'
 
-export default async function InstanceDetailInstancesPage({ params }: {
-  params: Promise<{ appInstanceId: string }>
-}) {
-  const { appInstanceId } = await params
-  return <DeployTab appInstanceId={appInstanceId} />
+export default function InstanceDetailInstancesPage() {
+  return <DeploymentInstances />
 }

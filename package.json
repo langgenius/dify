@@ -1,8 +1,51 @@
 {
   "name": "dify",
-  "type": "module",
   "private": true,
-  "packageManager": "pnpm@11.8.0",
+  "type": "module",
+  "scripts": {
+    "check": "vp fmt --check && vp lint --quiet && pnpm lint:eslint",
+    "check:fix": "pnpm lint:eslint:fix && vp check --fix",
+    "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
+    "prepare": "vp config",
+    "lint:oxlint": "vp lint",
+    "lint:oxlint:fix": "vp lint --fix",
+    "lint:oxlint:quiet": "vp lint --quiet",
+    "lint:eslint": "eslint --concurrency=auto",
+    "lint:eslint:fix": "eslint --fix --concurrency=auto",
+    "lint:eslint:quiet": "eslint --quiet --concurrency=auto"
+  },
+  "devDependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
+    "@eslint/markdown": "catalog:",
+    "@iconify-json/heroicons": "catalog:",
+    "@iconify-json/ri": "catalog:",
+    "@tanstack/eslint-plugin-query": "catalog:",
+    "@typescript-eslint/parser": "catalog:",
+    "@typescript/native": "catalog:",
+    "concurrently": "catalog:",
+    "eslint": "catalog:",
+    "eslint-markdown": "catalog:",
+    "eslint-plugin-antfu": "catalog:",
+    "eslint-plugin-command": "catalog:",
+    "eslint-plugin-erasable-syntax-only": "catalog:",
+    "eslint-plugin-hyoban": "catalog:",
+    "eslint-plugin-jsdoc": "catalog:",
+    "eslint-plugin-jsonc": "catalog:",
+    "eslint-plugin-markdown-preferences": "catalog:",
+    "eslint-plugin-n": "catalog:",
+    "eslint-plugin-no-barrel-files": "catalog:",
+    "eslint-plugin-perfectionist": "catalog:",
+    "eslint-plugin-pnpm": "catalog:",
+    "eslint-plugin-regexp": "catalog:",
+    "eslint-plugin-storybook": "catalog:",
+    "eslint-plugin-toml": "catalog:",
+    "eslint-plugin-unicorn": "catalog:",
+    "eslint-plugin-yml": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
   "devEngines": {
     "runtime": {
       "name": "node",
@@ -13,23 +56,5 @@
   "engines": {
     "node": "^22.22.1"
   },
-  "scripts": {
-    "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
-    "prepare": "vp config",
-    "type-check": "vp run -r type-check",
-    "lint": "eslint --cache --concurrency=auto",
-    "lint:ci": "eslint --cache --cache-strategy content --concurrency 2",
-    "lint:fix": "vp run lint --fix",
-    "lint:quiet": "vp run lint --quiet"
-  },
-  "devDependencies": {
-    "@antfu/eslint-config": "catalog:",
-    "concurrently": "catalog:",
-    "eslint": "catalog:",
-    "eslint-markdown": "catalog:",
-    "eslint-plugin-markdown-preferences": "catalog:",
-    "eslint-plugin-no-barrel-files": "catalog:",
-    "vite": "catalog:",
-    "vite-plus": "catalog:"
-  }
+  "packageManager": "pnpm@11.10.0"
 }

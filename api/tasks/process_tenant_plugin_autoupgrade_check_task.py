@@ -11,11 +11,15 @@ from core.plugin.entities.plugin import PluginInstallation, PluginInstallationSo
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
 from extensions.ext_redis import redis_client
-from models.account import TenantPluginAutoUpgradeStrategy
+from models.account import (
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategySetting,
+)
 
 logger = logging.getLogger(__name__)
 
-PluginCategory = TenantPluginAutoUpgradeStrategy.PluginCategory
+PluginCategory = TenantPluginAutoUpgradeCategory
 RETRY_TIMES_OF_ONE_PLUGIN_IN_ONE_TENANT = 3
 CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_snapshot:"
 CACHE_REDIS_TTL = 60 * 60  # 1 hour
@@ -95,9 +99,9 @@ def _plugin_matches_category(plugin: PluginInstallation, category: str | None) -
 @shared_task(queue="plugin")
 def process_tenant_plugin_autoupgrade_check_task(
     tenant_id: str,
-    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting,
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting,
     upgrade_time_of_day: int,
-    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode,
+    upgrade_mode: TenantPluginAutoUpgradeMode,
     exclude_plugins: list[str],
     include_plugins: list[str],
     category: PluginCategory | str | None = None,
@@ -113,14 +117,14 @@ def process_tenant_plugin_autoupgrade_check_task(
             )
         )
 
-        if strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED:
+        if strategy_setting == TenantPluginAutoUpgradeStrategySetting.DISABLED:
             return
 
         # get plugin_ids to check
         plugin_ids: list[tuple[str, str, str]] = []  # plugin_id, version, unique_identifier
         click.echo(click.style(f"Upgrade mode: {upgrade_mode}", fg="green"))
 
-        if upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL and include_plugins:
+        if upgrade_mode == TenantPluginAutoUpgradeMode.PARTIAL and include_plugins:
             all_plugins = manager.list_plugins(tenant_id)
 
             for plugin in all_plugins:
@@ -137,7 +141,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                         )
                     )
 
-        elif upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE:
+        elif upgrade_mode == TenantPluginAutoUpgradeMode.EXCLUDE:
             # get all plugins and remove excluded plugins
             all_plugins = manager.list_plugins(tenant_id)
             plugin_ids = [
@@ -147,7 +151,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                 and plugin.plugin_id not in exclude_plugins
                 and _plugin_matches_category(plugin, category_value)
             ]
-        elif upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL:
+        elif upgrade_mode == TenantPluginAutoUpgradeMode.ALL:
             all_plugins = manager.list_plugins(tenant_id)
             plugin_ids = [
                 (plugin.plugin_id, plugin.version, plugin.plugin_unique_identifier)
@@ -187,8 +191,8 @@ def process_tenant_plugin_autoupgrade_check_task(
                         return False
 
                     version_checker = {
-                        TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST: operator.ne,
-                        TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY: fix_only_checker,
+                        TenantPluginAutoUpgradeStrategySetting.LATEST: operator.ne,
+                        TenantPluginAutoUpgradeStrategySetting.FIX_ONLY: fix_only_checker,
                     }
 
                     if version_checker[strategy_setting](latest_version, current_version):

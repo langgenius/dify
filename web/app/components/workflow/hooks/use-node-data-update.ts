@@ -15,31 +15,35 @@ export const useNodeDataUpdate = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const collaborativeWorkflow = useCollaborativeWorkflow()
 
-  const handleNodeDataUpdate = useCallback(({ id, data }: NodeDataUpdatePayload) => {
-    const { nodes, setNodes } = collaborativeWorkflow.getState()
-    const newNodes = produce(nodes, (draft) => {
-      const currentNode = draft.find(node => node.id === id)!
+  const handleNodeDataUpdate = useCallback(
+    ({ id, data }: NodeDataUpdatePayload) => {
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
+      const newNodes = produce(nodes, (draft) => {
+        const currentNode = draft.find((node) => node.id === id)!
 
-      if (currentNode)
-        currentNode.data = { ...currentNode.data, ...data }
-    })
-    setNodes(newNodes)
-  }, [collaborativeWorkflow])
-
-  const handleNodeDataUpdateWithSyncDraft = useCallback((
-    payload: NodeDataUpdatePayload,
-    options?: {
-      sync?: boolean
-      notRefreshWhenSyncError?: boolean
-      callback?: SyncCallback
+        if (currentNode) currentNode.data = { ...currentNode.data, ...data }
+      })
+      setNodes(newNodes)
     },
-  ) => {
-    if (getNodesReadOnly())
-      return
+    [collaborativeWorkflow],
+  )
 
-    handleNodeDataUpdate(payload)
-    handleSyncWorkflowDraft(options?.sync, options?.notRefreshWhenSyncError, options?.callback)
-  }, [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly])
+  const handleNodeDataUpdateWithSyncDraft = useCallback(
+    (
+      payload: NodeDataUpdatePayload,
+      options?: {
+        sync?: boolean
+        notRefreshWhenSyncError?: boolean
+        callback?: SyncCallback
+      },
+    ) => {
+      if (getNodesReadOnly()) return
+
+      handleNodeDataUpdate(payload)
+      handleSyncWorkflowDraft(options?.sync, options?.notRefreshWhenSyncError, options?.callback)
+    },
+    [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly],
+  )
 
   return {
     handleNodeDataUpdate,

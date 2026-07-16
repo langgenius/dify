@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Fără descriere",
   "accessRule.noRules": "Fără reguli de acces",
   "accessRule.noUserAccessSettings": "Fără setări individuale de permisiuni",
+  "accessRule.onlyMe": "Doar eu",
+  "accessRule.onlyMeDescription": "Numai tu poți accesa această resursă.",
   "accessRule.permission": "Permisiune",
   "accessRule.resourceOpenScope": "Domeniul de deschidere al resursei",
   "accessRule.resourceOpenScopeDescription": "Alege cui îi este deschisă această resursă. Permisiunile de rol decid în continuare ce poate face fiecare membru.",

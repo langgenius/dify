@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
-
 import BatchModal from '../index'
 
 vi.mock('../csv-downloader', () => ({
@@ -13,18 +12,18 @@ vi.mock('../csv-downloader', () => ({
 }))
 
 vi.mock('../csv-uploader', () => ({
-  default: ({ file, updateFile }: { file: { file?: { id: string } } | undefined, updateFile: (file: { file: { id: string } } | undefined) => void }) => (
+  default: ({
+    file,
+    updateFile,
+  }: {
+    file: { file?: { id: string } } | undefined
+    updateFile: (file: { file: { id: string } } | undefined) => void
+  }) => (
     <div data-testid="csv-uploader">
-      <button
-        data-testid="upload-btn"
-        onClick={() => updateFile({ file: { id: 'test-file-id' } })}
-      >
+      <button data-testid="upload-btn" onClick={() => updateFile({ file: { id: 'test-file-id' } })}>
         Upload
       </button>
-      <button
-        data-testid="clear-btn"
-        onClick={() => updateFile(undefined)}
-      >
+      <button data-testid="clear-btn" onClick={() => updateFile(undefined)}>
         Clear
       </button>
       {file && <span data-testid="file-info">{file.file?.id}</span>}
@@ -131,7 +130,9 @@ describe('BatchModal', () => {
     it('should pass docForm to CSVDownloader', () => {
       render(<BatchModal {...defaultProps} docForm={ChunkingMode.qa} />)
 
-      expect(screen.getByTestId('csv-downloader').getAttribute('data-doc-form')).toBe(ChunkingMode.qa)
+      expect(screen.getByTestId('csv-downloader').getAttribute('data-doc-form')).toBe(
+        ChunkingMode.qa,
+      )
     })
   })
 
@@ -163,8 +164,7 @@ describe('BatchModal', () => {
 
       // Act - try to click run (should be disabled)
       const runButton = screen.getByText(/list\.batchModal\.run/i).closest('button')
-      if (runButton)
-        fireEvent.click(runButton)
+      if (runButton) fireEvent.click(runButton)
 
       expect(mockOnConfirm).not.toHaveBeenCalled()
     })

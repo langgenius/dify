@@ -89,12 +89,18 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
 
-    def _get_app_model_config(self, app_model: App, conversation: Conversation | None = None) -> AppModelConfig:
+    def _get_app_model_config(
+        self,
+        app_model: App,
+        conversation: Conversation | None = None,
+        *,
+        session: Session,
+    ) -> AppModelConfig:
         if conversation:
             stmt = select(AppModelConfig).where(
                 AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
             )
-            app_model_config = db.session.scalar(stmt)
+            app_model_config = session.scalar(stmt)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -102,7 +108,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             if app_model.app_model_config_id is None:
                 raise AppModelConfigBrokenError()
 
-            app_model_config = app_model.app_model_config
+            app_model_config = session.get(AppModelConfig, app_model.app_model_config_id)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -118,6 +124,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             AdvancedChatAppGenerateEntity,
         ],
         conversation: Conversation | None = None,
+        *,
+        session: Session,
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records
@@ -183,9 +191,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     from_account_id=account_id,
                 )
 
-                db.session.add(conversation)
-                db.session.flush()
-                db.session.refresh(conversation)
+                session.add(conversation)
+                session.flush()
+                session.refresh(conversation)
             else:
                 conversation.updated_at = naive_utc_now()
 
@@ -216,9 +224,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 app_mode=app_config.app_mode,
             )
 
-            db.session.add(message)
-            db.session.flush()
-            db.session.refresh(message)
+            session.add(message)
+            session.flush()
+            session.refresh(message)
 
             message_files = []
             for file in application_generate_entity.files:
@@ -235,16 +243,16 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 message_files.append(message_file)
 
             if message_files:
-                db.session.add_all(message_files)
+                session.add_all(message_files)
 
-            db.session.commit()
+            session.commit()
 
             if isinstance(application_generate_entity, ConversationAppGenerateEntity):
                 application_generate_entity.conversation_id = conversation.id
                 application_generate_entity.is_new_conversation = created_new_conversation
             return conversation, message
         except Exception:
-            db.session.rollback()
+            session.rollback()
             raise
 
     def _get_conversation_introduction(self, application_generate_entity: AppGenerateEntity) -> str:

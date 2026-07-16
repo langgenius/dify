@@ -18,13 +18,7 @@ export type AppCardProps = {
   isExplore?: boolean
 }
 
-const AppCard = ({
-  app,
-  canCreate,
-  onCreate,
-  onTry,
-  isExplore = true,
-}: AppCardProps) => {
+const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardProps) => {
   const { t } = useTranslation()
   const nameId = useId()
   const descriptionId = useId()
@@ -47,8 +41,7 @@ const AppCard = ({
       return
     }
 
-    if (canCreate)
-      onCreate()
+    if (canCreate) onCreate()
   }
 
   return (
@@ -61,7 +54,7 @@ const AppCard = ({
       {isClickable && (
         <button
           type="button"
-          className="absolute inset-0 z-10 cursor-pointer appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          className="absolute inset-0 z-10 cursor-pointer appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           aria-labelledby={nameId}
           aria-describedby={app.description ? descriptionId : undefined}
           onClick={handleCardClick}
@@ -84,19 +77,44 @@ const AppCard = ({
         </div>
         <div className="flex w-0 grow flex-col gap-1 py-px">
           <div className="flex items-center system-md-semibold text-text-secondary">
-            <div id={nameId} className="truncate" title={appBasicInfo.name}>{appBasicInfo.name}</div>
+            <div id={nameId} className="truncate" title={appBasicInfo.name}>
+              {appBasicInfo.name}
+            </div>
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
-            {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.CHAT && <div className="truncate">{t('types.chatbot', { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && <div className="truncate">{t('types.agent', { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.WORKFLOW && <div className="truncate">{t('types.workflow', { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.COMPLETION && <div className="truncate">{t('types.completion', { ns: 'app' }).toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && (
+              <div className="truncate">
+                {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.CHAT && (
+              <div className="truncate">
+                {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && (
+              <div className="truncate">
+                {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.WORKFLOW && (
+              <div className="truncate">
+                {t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.COMPLETION && (
+              <div className="truncate">
+                {t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
       </div>
       <div className="flex shrink-0 items-start px-4 py-1">
-        <div id={descriptionId} className="line-clamp-2 min-h-8 flex-1 system-xs-regular text-text-tertiary">
+        <div
+          id={descriptionId}
+          className="line-clamp-2 min-h-8 flex-1 system-xs-regular text-text-tertiary"
+        >
           {app.description}
         </div>
       </div>

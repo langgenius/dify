@@ -2,17 +2,9 @@ import type { MouseEvent } from 'react'
 import type { BlockDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Handle,
-  Position,
-} from 'reactflow'
+import { Handle, Position } from 'reactflow'
 import BlockSelector from '../../../block-selector'
 import {
   useAvailableBlocks,
@@ -20,14 +12,8 @@ import {
   useNodesInteractions,
   useNodesReadOnly,
 } from '../../../hooks'
-import {
-  useStore,
-  useWorkflowStore,
-} from '../../../store'
-import {
-  BlockEnum,
-  NodeRunningStatus,
-} from '../../../types'
+import { useStore, useWorkflowStore } from '../../../store'
+import { BlockEnum, NodeRunningStatus } from '../../../types'
 import { getNodeCatalogType } from '../../../utils'
 
 type NodeHandleProps = {
@@ -38,75 +24,82 @@ type NodeHandleProps = {
 } & Pick<Node, 'id' | 'data'>
 
 const canAutoOpenStartNodeSelector = (nodeType: BlockEnum, isChatMode: boolean) => {
-  if (isChatMode)
-    return false
-
-  return nodeType === BlockEnum.Start
-    || nodeType === BlockEnum.TriggerSchedule
-    || nodeType === BlockEnum.TriggerWebhook
-    || nodeType === BlockEnum.TriggerPlugin
-}
-
-export const NodeTargetHandle = memo(({
-  id,
-  data,
-  handleId,
-  handleClassName,
-  nodeSelectorClassName,
-}: NodeHandleProps) => {
-  const [open, setOpen] = useState(false)
-  const { handleNodeAdd } = useNodesInteractions()
-  const { getNodesReadOnly } = useNodesReadOnly()
-  const connected = data._connectedTargetHandleIds?.includes(handleId)
-  const { availablePrevBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
-  const isConnectable = !!availablePrevBlocks.length
-
-  const handleOpenChange = useCallback((v: boolean) => {
-    setOpen(v)
-  }, [])
-  const handleHandleClick = useCallback((e: MouseEvent) => {
-    e.stopPropagation()
-    if (!connected)
-      setOpen(v => !v)
-  }, [connected])
-  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
-    handleNodeAdd(
-      {
-        nodeType: type,
-        pluginDefaultValue,
-      },
-      {
-        nextNodeId: id,
-        nextNodeTargetHandle: handleId,
-      },
-    )
-  }, [handleNodeAdd, id, handleId])
+  if (isChatMode) return false
 
   return (
-    <>
-      <Handle
-        id={handleId}
-        type="target"
-        position={Position.Left}
-        className={cn(
-          'z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
-          'after:absolute after:top-1 after:left-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
-          'transition-all hover:scale-125',
-          data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
-          data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
-          data._runningStatus === NodeRunningStatus.Exception && 'after:bg-workflow-link-line-failure-handle',
-          !connected && 'after:opacity-0',
-          (data.type === BlockEnum.Start
-            || data.type === BlockEnum.TriggerWebhook
-            || data.type === BlockEnum.TriggerSchedule
-            || data.type === BlockEnum.TriggerPlugin) && 'opacity-0',
-          handleClassName,
-        )}
-        isConnectable={isConnectable}
-        onClick={handleHandleClick}
-      >
-        {
-          !connected && isConnectable && !getNodesReadOnly() && (
+    nodeType === BlockEnum.Start ||
+    nodeType === BlockEnum.TriggerSchedule ||
+    nodeType === BlockEnum.TriggerWebhook ||
+    nodeType === BlockEnum.TriggerPlugin
+  )
+}
+
+export const NodeTargetHandle = memo(
+  ({ id, data, handleId, handleClassName, nodeSelectorClassName }: NodeHandleProps) => {
+    const [open, setOpen] = useState(false)
+    const { handleNodeAdd } = useNodesInteractions()
+    const { getNodesReadOnly } = useNodesReadOnly()
+    const connected = data._connectedTargetHandleIds?.includes(handleId)
+    const { availablePrevBlocks } = useAvailableBlocks(
+      getNodeCatalogType(data),
+      data.isInIteration || data.isInLoop,
+    )
+    const isConnectable = !!availablePrevBlocks.length
+
+    const handleOpenChange = useCallback((v: boolean) => {
+      setOpen(v)
+    }, [])
+    const handleHandleClick = useCallback(
+      (e: MouseEvent) => {
+        e.stopPropagation()
+        if (!connected) setOpen((v) => !v)
+      },
+      [connected],
+    )
+    const handleSelect = useCallback(
+      (type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
+        handleNodeAdd(
+          {
+            nodeType: type,
+            pluginDefaultValue,
+          },
+          {
+            nextNodeId: id,
+            nextNodeTargetHandle: handleId,
+          },
+        )
+      },
+      [handleNodeAdd, id, handleId],
+    )
+
+    return (
+      <>
+        <Handle
+          id={handleId}
+          type="target"
+          position={Position.Left}
+          className={cn(
+            'z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
+            'after:absolute after:top-1 after:left-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+            'transition-all hover:scale-125',
+            data._runningStatus === NodeRunningStatus.Succeeded &&
+              'after:bg-workflow-link-line-success-handle',
+            data._runningStatus === NodeRunningStatus.Failed &&
+              'after:bg-workflow-link-line-error-handle',
+            data._runningStatus === NodeRunningStatus.Exception &&
+              'after:bg-workflow-link-line-failure-handle',
+            !connected && 'after:opacity-0',
+            (data.type === BlockEnum.Start ||
+              data.type === BlockEnum.TriggerWebhook ||
+              data.type === BlockEnum.TriggerSchedule ||
+              data.type === BlockEnum.TriggerPlugin) &&
+              'opacity-0',
+            handleClassName,
+          )}
+          isConnectable={isConnectable}
+          onClick={handleHandleClick}
+        >
+          {!connected && isConnectable && !getNodesReadOnly() && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
@@ -116,7 +109,7 @@ export const NodeTargetHandle = memo(({
                 nextNodeTargetHandle: handleId,
               }}
               placement="left"
-              triggerClassName={open => `
+              triggerClassName={(open) => `
                 absolute left-0 top-0 opacity-0 pointer-events-none transition-opacity duration-150
                 ${nodeSelectorClassName}
                 group-hover:opacity-100
@@ -125,110 +118,127 @@ export const NodeTargetHandle = memo(({
               `}
               availableBlocksTypes={availablePrevBlocks}
             />
-          )
-        }
-      </Handle>
-    </>
-  )
-})
+          )}
+        </Handle>
+      </>
+    )
+  },
+)
 NodeTargetHandle.displayName = 'NodeTargetHandle'
 
-export const NodeSourceHandle = memo(({
-  id,
-  data,
-  handleId,
-  handleClassName,
-  nodeSelectorClassName,
-  showExceptionStatus,
-}: NodeHandleProps) => {
-  const { t } = useTranslation()
-  const shouldAutoOpenStartNodeSelector = useStore(s => s.shouldAutoOpenStartNodeSelector)
-  const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
-  const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
-  const workflowStoreApi = useWorkflowStore()
-  const { handleNodeAdd } = useNodesInteractions()
-  const { getNodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
-  const isConnectable = !!availableNextBlocks.length
-  const isChatMode = useIsChatMode()
-  const shouldAutoOpen = shouldAutoOpenStartNodeSelector && canAutoOpenStartNodeSelector(data.type, isChatMode)
-  const [open, setOpen] = useState(() => shouldAutoOpen)
-
-  const connected = data._connectedSourceHandleIds?.includes(handleId)
-  const handleOpenChange = useCallback((v: boolean) => {
-    setOpen(v)
-  }, [])
-  const handleHandleClick = useCallback((e: MouseEvent) => {
-    e.stopPropagation()
-    setOpen(v => !v)
-  }, [])
-  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
-    handleNodeAdd(
-      {
-        nodeType: type,
-        pluginDefaultValue,
-      },
-      {
-        prevNodeId: id,
-        prevNodeSourceHandle: handleId,
-      },
+export const NodeSourceHandle = memo(
+  ({
+    id,
+    data,
+    handleId,
+    handleClassName,
+    nodeSelectorClassName,
+    showExceptionStatus,
+  }: NodeHandleProps) => {
+    const { t } = useTranslation()
+    const shouldAutoOpenStartNodeSelector = useStore((s) => s.shouldAutoOpenStartNodeSelector)
+    const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
+    const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
+    const workflowStoreApi = useWorkflowStore()
+    const { handleNodeAdd } = useNodesInteractions()
+    const { getNodesReadOnly } = useNodesReadOnly()
+    const { availableNextBlocks } = useAvailableBlocks(
+      getNodeCatalogType(data),
+      data.isInIteration || data.isInLoop,
     )
-  }, [handleNodeAdd, id, handleId])
+    const isConnectable = !!availableNextBlocks.length
+    const isChatMode = useIsChatMode()
+    const shouldAutoOpen =
+      shouldAutoOpenStartNodeSelector && canAutoOpenStartNodeSelector(data.type, isChatMode)
+    const [open, setOpen] = useState(() => shouldAutoOpen)
 
-  useEffect(() => {
-    if (!shouldAutoOpenStartNodeSelector)
-      return
+    const connected = data._connectedSourceHandleIds?.includes(handleId)
+    const handleOpenChange = useCallback((v: boolean) => {
+      setOpen(v)
+    }, [])
+    const handleHandleClick = useCallback((e: MouseEvent) => {
+      e.stopPropagation()
+      setOpen((v) => !v)
+    }, [])
+    const handleSelect = useCallback(
+      (type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
+        handleNodeAdd(
+          {
+            nodeType: type,
+            pluginDefaultValue,
+          },
+          {
+            prevNodeId: id,
+            prevNodeSourceHandle: handleId,
+          },
+        )
+      },
+      [handleNodeAdd, id, handleId],
+    )
 
-    if (isChatMode) {
-      setShouldAutoOpenStartNodeSelector?.(false)
-      return
-    }
+    useEffect(() => {
+      if (!shouldAutoOpenStartNodeSelector) return
 
-    if (canAutoOpenStartNodeSelector(data.type, false)) {
-      if (setShouldAutoOpenStartNodeSelector)
-        setShouldAutoOpenStartNodeSelector(false)
-      else
-        workflowStoreApi?.setState?.({ shouldAutoOpenStartNodeSelector: false })
+      if (isChatMode) {
+        setShouldAutoOpenStartNodeSelector?.(false)
+        return
+      }
 
-      if (setHasSelectedStartNode)
-        setHasSelectedStartNode(false)
-      else
-        workflowStoreApi?.setState?.({ hasSelectedStartNode: false })
-    }
-  }, [shouldAutoOpenStartNodeSelector, data.type, isChatMode, setShouldAutoOpenStartNodeSelector, setHasSelectedStartNode, workflowStoreApi])
+      if (canAutoOpenStartNodeSelector(data.type, false)) {
+        if (setShouldAutoOpenStartNodeSelector) setShouldAutoOpenStartNodeSelector(false)
+        else workflowStoreApi?.setState?.({ shouldAutoOpenStartNodeSelector: false })
 
-  return (
-    <Handle
-      id={handleId}
-      type="source"
-      position={Position.Right}
-      className={cn(
-        'group/handle z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
-        'after:absolute after:top-1 after:right-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
-        'transition-all hover:scale-125',
-        data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
-        data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
-        showExceptionStatus && data._runningStatus === NodeRunningStatus.Exception && 'after:bg-workflow-link-line-failure-handle',
-        !connected && 'after:opacity-0',
-        handleClassName,
-      )}
-      isConnectable={isConnectable}
-      onClick={handleHandleClick}
-    >
-      <div className="absolute -top-1 left-1/2 hidden -translate-x-1/2 -translate-y-full rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg group-hover/handle:block">
-        <div className="system-xs-regular text-text-tertiary">
-          <div className="whitespace-nowrap">
-            <span className="system-xs-medium text-text-secondary">{t('common.parallelTip.click.title', { ns: 'workflow' })}</span>
-            {t('common.parallelTip.click.desc', { ns: 'workflow' })}
-          </div>
-          <div>
-            <span className="system-xs-medium text-text-secondary">{t('common.parallelTip.drag.title', { ns: 'workflow' })}</span>
-            {t('common.parallelTip.drag.desc', { ns: 'workflow' })}
+        if (setHasSelectedStartNode) setHasSelectedStartNode(false)
+        else workflowStoreApi?.setState?.({ hasSelectedStartNode: false })
+      }
+    }, [
+      shouldAutoOpenStartNodeSelector,
+      data.type,
+      isChatMode,
+      setShouldAutoOpenStartNodeSelector,
+      setHasSelectedStartNode,
+      workflowStoreApi,
+    ])
+
+    return (
+      <Handle
+        id={handleId}
+        type="source"
+        position={Position.Right}
+        className={cn(
+          'group/handle z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
+          'after:absolute after:top-1 after:right-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+          'transition-all hover:scale-125',
+          data._runningStatus === NodeRunningStatus.Succeeded &&
+            'after:bg-workflow-link-line-success-handle',
+          data._runningStatus === NodeRunningStatus.Failed &&
+            'after:bg-workflow-link-line-error-handle',
+          showExceptionStatus &&
+            data._runningStatus === NodeRunningStatus.Exception &&
+            'after:bg-workflow-link-line-failure-handle',
+          !connected && 'after:opacity-0',
+          handleClassName,
+        )}
+        isConnectable={isConnectable}
+        onClick={handleHandleClick}
+      >
+        <div className="absolute -top-1 left-1/2 hidden -translate-x-1/2 -translate-y-full rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg group-hover/handle:block">
+          <div className="system-xs-regular text-text-tertiary">
+            <div className="whitespace-nowrap">
+              <span className="system-xs-medium text-text-secondary">
+                {t(($) => $['common.parallelTip.click.title'], { ns: 'workflow' })}
+              </span>
+              {t(($) => $['common.parallelTip.click.desc'], { ns: 'workflow' })}
+            </div>
+            <div>
+              <span className="system-xs-medium text-text-secondary">
+                {t(($) => $['common.parallelTip.drag.title'], { ns: 'workflow' })}
+              </span>
+              {t(($) => $['common.parallelTip.drag.desc'], { ns: 'workflow' })}
+            </div>
           </div>
         </div>
-      </div>
-      {
-        isConnectable && !getNodesReadOnly() && (
+        {isConnectable && !getNodesReadOnly() && (
           <BlockSelector
             open={open}
             onOpenChange={handleOpenChange}
@@ -237,7 +247,7 @@ export const NodeSourceHandle = memo(({
               prevNodeId: id,
               prevNodeSourceHandle: handleId,
             }}
-            triggerClassName={open => `
+            triggerClassName={(open) => `
               absolute top-0 left-0 opacity-0 pointer-events-none transition-opacity duration-150
               ${nodeSelectorClassName}
               group-hover:opacity-100
@@ -246,9 +256,9 @@ export const NodeSourceHandle = memo(({
             `}
             availableBlocksTypes={availableNextBlocks}
           />
-        )
-      }
-    </Handle>
-  )
-})
+        )}
+      </Handle>
+    )
+  },
+)
 NodeSourceHandle.displayName = 'NodeSourceHandle'

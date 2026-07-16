@@ -1,11 +1,16 @@
 import type { DocumentListQuery } from '../use-document-list-query-state'
-
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentsPageState } from '../use-documents-page-state'
 
 const mockUpdateQuery = vi.fn()
-let mockQuery: DocumentListQuery = { page: 1, limit: 10, keyword: '', status: 'all', sort: '-created_at' }
+let mockQuery: DocumentListQuery = {
+  page: 1,
+  limit: 10,
+  keyword: '',
+  status: 'all',
+  sort: '-created_at',
+}
 
 vi.mock('@/models/datasets', () => ({
   DisplayStatusList: [
@@ -33,7 +38,7 @@ vi.mock('../use-document-list-query-state', async () => {
         query,
         updateQuery: (updates: Partial<DocumentListQuery>) => {
           mockUpdateQuery(updates)
-          setQuery(prev => ({ ...prev, ...updates }))
+          setQuery((prev) => ({ ...prev, ...updates }))
         },
       }
     },

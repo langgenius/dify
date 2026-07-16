@@ -34,8 +34,9 @@ def test_sso_complete_rejects_assertion_missing_email(ee_feat, jws_mod, app: Fla
     jws_mod.VerifyError = Exception
 
     client = app.test_client()
-    resp = client.get("/openapi/v1/oauth/device/sso-complete?sso_assertion=blob")
-    assert resp.status_code == 400, resp.data
+    resp = client.get("/openapi/v1/oauth/device/sso-complete?sso_assertion=blob", follow_redirects=False)
+    assert resp.status_code == 302, resp.data
+    assert "sso_error=sso_failed" in resp.headers["Location"]
 
 
 @patch("controllers.openapi.oauth_device_sso.jws")
@@ -48,8 +49,9 @@ def test_sso_complete_rejects_assertion_empty_issuer(ee_feat, jws_mod, app: Flas
     jws_mod.VerifyError = Exception
 
     client = app.test_client()
-    resp = client.get("/openapi/v1/oauth/device/sso-complete?sso_assertion=blob")
-    assert resp.status_code == 400
+    resp = client.get("/openapi/v1/oauth/device/sso-complete?sso_assertion=blob", follow_redirects=False)
+    assert resp.status_code == 302
+    assert "sso_error=sso_failed" in resp.headers["Location"]
 
 
 def test_verify_approval_grant_raises_on_missing_field():

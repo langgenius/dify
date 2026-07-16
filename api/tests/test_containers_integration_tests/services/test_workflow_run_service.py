@@ -92,7 +92,7 @@ class TestWorkflowRunService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         return app, account
 
@@ -544,7 +544,7 @@ class TestWorkflowRunService:
             icon="🚀",
             icon_background="#4ECDC4",
         )
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Create workflow run without node executions
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
@@ -596,7 +596,7 @@ class TestWorkflowRunService:
             icon="🚀",
             icon_background="#4ECDC4",
         )
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Use invalid workflow run ID
         invalid_workflow_run_id = str(uuid.uuid4())
@@ -648,7 +648,7 @@ class TestWorkflowRunService:
             icon="🚀",
             icon_background="#4ECDC4",
         )
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Create workflow run
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")

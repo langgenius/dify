@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { useCallback } from 'react'
+import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useIsSharePage } from '@/hooks/use-is-share-page'
 
@@ -20,6 +21,14 @@ const useTimestamp = () => {
     select: data => data.profile.timezone ?? undefined,
     enabled: !isSharePage,
   })
+  const resolvedTimezone = timezoneOverride ?? accountTimezone ?? getBrowserTimezone()
+
+  const formatTime = useCallback(
+    (value: number, format: string) => {
+      return formatToLocalTime(dayjs.unix(value).tz(resolvedTimezone), locale, format)
+    },
+    [locale, resolvedTimezone],
+  )
 
   const tz = isSharePage ? dayjs.tz.guess() : timezone
 
@@ -31,7 +40,7 @@ const useTimestamp = () => {
     return dayjs(value).tz(tz).format(format)
   }, [tz])
 
-  return { formatTime, formatDate }
+  return { formatTime, formatDate, formatMonthDay }
 }
 
 export default useTimestamp

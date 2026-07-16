@@ -11,10 +11,7 @@ vi.mock('@/i18n-config/i18next-config', () => ({
 
 const mockSetUrlFilters = vi.fn()
 vi.mock('@/hooks/use-query-params', () => ({
-  useMarketplaceFilters: () => [
-    { q: '', tags: [], category: '' },
-    mockSetUrlFilters,
-  ],
+  useMarketplaceFilters: () => [{ q: '', tags: [], category: '' }, mockSetUrlFilters],
 }))
 
 vi.mock('@/service/use-plugins', () => ({
@@ -31,9 +28,7 @@ function createWrapper() {
     },
   })
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
   return { Wrapper, queryClient }
 }
@@ -45,15 +40,14 @@ const mockPostMarketplaceResponse = {
       { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
       { type: 'plugin', org: 'test', name: 'plugin2', tags: [] },
     ],
-    bundles: [] as Array<{ type: string, org: string, name: string, tags: unknown[] }>,
+    bundles: [] as Array<{ type: string; org: string; name: string; tags: unknown[] }>,
     total: 2,
   },
 }
 
 vi.mock('@/service/base', () => ({
   postMarketplace: vi.fn(() => {
-    if (mockPostMarketplaceShouldFail)
-      return Promise.reject(new Error('Mock API error'))
+    if (mockPostMarketplaceShouldFail) return Promise.reject(new Error('Mock API error'))
     return Promise.resolve(mockPostMarketplaceResponse)
   }),
 }))
@@ -89,16 +83,12 @@ vi.mock('@/service/client', () => ({
     })),
     collectionPlugins: vi.fn(async () => ({
       data: {
-        plugins: [
-          { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
-        ],
+        plugins: [{ type: 'plugin', org: 'test', name: 'plugin1', tags: [] }],
       },
     })),
     searchAdvanced: vi.fn(async () => ({
       data: {
-        plugins: [
-          { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
-        ],
+        plugins: [{ type: 'plugin', org: 'test', name: 'plugin1', tags: [] }],
         total: 1,
       },
     })),
@@ -133,10 +123,9 @@ describe('useMarketplacePluginsByCollectionId', () => {
   it('should return initial state when collectionId is undefined', async () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(
-      () => useMarketplacePluginsByCollectionId(undefined),
-      { wrapper: Wrapper },
-    )
+    const { result } = renderHook(() => useMarketplacePluginsByCollectionId(undefined), {
+      wrapper: Wrapper,
+    })
     expect(result.current.plugins).toEqual([])
     expect(result.current.isLoading).toBe(false)
     expect(result.current.isSuccess).toBe(false)
@@ -145,10 +134,9 @@ describe('useMarketplacePluginsByCollectionId', () => {
   it('should return isLoading false when collectionId is provided and query completes', async () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(
-      () => useMarketplacePluginsByCollectionId('test-collection'),
-      { wrapper: Wrapper },
-    )
+    const { result } = renderHook(() => useMarketplacePluginsByCollectionId('test-collection'), {
+      wrapper: Wrapper,
+    })
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
     })
@@ -159,10 +147,11 @@ describe('useMarketplacePluginsByCollectionId', () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
-      () => useMarketplacePluginsByCollectionId('test-collection', {
-        category: 'tool',
-        type: 'plugin',
-      }),
+      () =>
+        useMarketplacePluginsByCollectionId('test-collection', {
+          category: 'tool',
+          type: 'plugin',
+        }),
       { wrapper: Wrapper },
     )
     await waitFor(() => {
@@ -173,10 +162,9 @@ describe('useMarketplacePluginsByCollectionId', () => {
   it('should return plugins property from hook', async () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(
-      () => useMarketplacePluginsByCollectionId('collection-1'),
-      { wrapper: Wrapper },
-    )
+    const { result } = renderHook(() => useMarketplacePluginsByCollectionId('collection-1'), {
+      wrapper: Wrapper,
+    })
     await waitFor(() => {
       expect(result.current.plugins).toBeDefined()
     })

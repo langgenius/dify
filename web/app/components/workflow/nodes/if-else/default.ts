@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { IfElseNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -36,38 +37,60 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
       },
     ],
   },
-  checkValid(payload: IfElseNodeType, t: any) {
+  checkValid(payload: IfElseNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     const { cases } = payload
     if (!cases || cases.length === 0)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: 'IF' })
+      errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: 'IF' })
 
     cases.forEach((caseItem, index) => {
       if (!caseItem.conditions.length)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: index === 0 ? 'IF' : 'ELIF' })
+        errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+          ns: 'workflow',
+          field: index === 0 ? 'IF' : 'ELIF',
+        })
 
       caseItem.conditions.forEach((condition) => {
-        if (!errorMessages && (!condition.variable_selector || condition.variable_selector.length === 0))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variable`, { ns: 'workflow' }) })
+        if (
+          !errorMessages &&
+          (!condition.variable_selector || condition.variable_selector.length === 0)
+        )
+          errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+            ns: 'workflow',
+            field: t(($) => $[`${i18nPrefix}.fields.variable`], { ns: 'workflow' }),
+          })
         if (!errorMessages && !condition.comparison_operator)
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.ifElse.operator', { ns: 'workflow' }) })
+          errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+            ns: 'workflow',
+            field: t(($) => $['nodes.ifElse.operator'], { ns: 'workflow' }),
+          })
         if (!errorMessages) {
           if (condition.sub_variable_condition) {
             const isSet = condition.sub_variable_condition.conditions.every((c) => {
-              if (!c.comparison_operator)
-                return false
+              if (!c.comparison_operator) return false
 
-              if (isEmptyRelatedOperator(c.comparison_operator!))
-                return true
+              if (isEmptyRelatedOperator(c.comparison_operator!)) return true
 
-              return (c.varType === VarType.boolean || c.varType === VarType.arrayBoolean) ? c.value === undefined : !!c.value
+              return c.varType === VarType.boolean || c.varType === VarType.arrayBoolean
+                ? c.value === undefined
+                : !!c.value
             })
             if (!isSet)
-              errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
-          }
-          else {
-            if (!isEmptyRelatedOperator(condition.comparison_operator!) && ((condition.varType === VarType.boolean || condition.varType === VarType.arrayBoolean) ? condition.value === undefined : !condition.value))
-              errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
+              errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+                ns: 'workflow',
+                field: t(($) => $[`${i18nPrefix}.fields.variableValue`], { ns: 'workflow' }),
+              })
+          } else {
+            if (
+              !isEmptyRelatedOperator(condition.comparison_operator!) &&
+              (condition.varType === VarType.boolean || condition.varType === VarType.arrayBoolean
+                ? condition.value === undefined
+                : !condition.value)
+            )
+              errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+                ns: 'workflow',
+                field: t(($) => $[`${i18nPrefix}.fields.variableValue`], { ns: 'workflow' }),
+              })
           }
         }
       })

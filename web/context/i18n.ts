@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { useTranslation } from '#i18n'
 import { IS_CLOUD_EDITION } from '@/config'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
-import { apiReferencePathTranslations, docPathProductAvailability } from '@/types/doc-paths'
+import { docPathProductAvailability } from '@/types/doc-paths'
 
 export const useLocale = () => {
   const { i18n } = useTranslation()
@@ -49,44 +49,34 @@ const splitPathHash = (path: string) => {
 const getProductAwarePath = (path: string): string => {
   const { pathname, hash } = splitPathHash(path)
   const availableProducts = docPathProductAvailability[pathname]
-  if (!availableProducts?.length)
-    return path
+  if (!availableProducts?.length) return path
 
   const currentProduct = getCurrentDocsProduct()
   const targetProduct = availableProducts.includes(currentProduct)
     ? currentProduct
     : availableProducts[0]
 
-  if (!targetProduct)
-    return path
+  if (!targetProduct) return path
 
   return `/${targetProduct}${pathname}${hash}`
 }
 
-export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathMap?: DocPathMap) => string) => {
+export const useDocLink = (
+  baseUrl?: string,
+): ((path?: DocPathWithoutLang, pathMap?: DocPathMap) => string) => {
   let baseDocUrl = baseUrl || defaultDocBaseUrl
-  baseDocUrl = (baseDocUrl.endsWith('/')) ? baseDocUrl.slice(0, -1) : baseDocUrl
+  baseDocUrl = baseDocUrl.endsWith('/') ? baseDocUrl.slice(0, -1) : baseDocUrl
   const locale = useLocale()
   return useCallback(
     (path?: DocPathWithoutLang, pathMap?: DocPathMap): string => {
       const docLanguage = getDocLanguage(locale)
       const pathUrl = path || ''
-      let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
-      let languagePrefix = `/${docLanguage}`
+      let targetPath = pathMap ? pathMap[locale] || pathUrl : pathUrl
+      const languagePrefix = `/${docLanguage}`
 
-      if (targetPath.startsWith('/api-reference/')) {
-        languagePrefix = ''
-        if (docLanguage !== 'en') {
-          const translatedPath = apiReferencePathTranslations[targetPath]?.[docLanguage]
-          if (translatedPath) {
-            targetPath = translatedPath
-          }
-        }
-      }
-      else if (!targetPath) {
+      if (!targetPath) {
         targetPath = getDocHomePath()
-      }
-      else {
+      } else {
         targetPath = getProductAwarePath(targetPath)
       }
 

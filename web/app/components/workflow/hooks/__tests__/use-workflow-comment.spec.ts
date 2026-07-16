@@ -1,11 +1,16 @@
-import type { WorkflowCommentDetail, WorkflowCommentList } from '@/contract/console/workflow-comment'
+import type {
+  WorkflowCommentDetail,
+  WorkflowCommentList,
+} from '@/app/components/workflow/comment/types'
 import { act, waitFor } from '@testing-library/react'
 import { createTestQueryClient, seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { ControlMode } from '../../types'
 import { useWorkflowComment } from '../use-workflow-comment'
 
-const mockScreenToFlowPosition = vi.hoisted(() => vi.fn(({ x, y }: { x: number, y: number }) => ({ x: x - 90, y: y - 180 })))
+const mockScreenToFlowPosition = vi.hoisted(() =>
+  vi.fn(({ x, y }: { x: number; y: number }) => ({ x: x - 90, y: y - 180 })),
+)
 const mockSetCenter = vi.hoisted(() => vi.fn())
 const mockGetNodes = vi.hoisted(() => vi.fn(() => []))
 
@@ -28,6 +33,14 @@ const commentsUpdateState = vi.hoisted(() => ({
 const globalFeatureState = vi.hoisted(() => ({
   enableCollaboration: true,
 }))
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'Alice',
+    email: 'alice@example.com',
+    avatar_url: 'alice.png',
+  },
+}))
 
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
@@ -41,16 +54,32 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      email: 'alice@example.com',
-      avatar_url: 'alice.png',
-    },
-  }),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
@@ -59,17 +88,29 @@ vi.mock('@/service/client', () => ({
         enable_collaboration_mode: globalFeatureState.enableCollaboration,
       }),
     },
-    workflowComments: {
-      create: (...args: unknown[]) => mockCreateWorkflowComment(...args),
-      delete: (...args: unknown[]) => mockDeleteWorkflowComment(...args),
-      detail: (...args: unknown[]) => mockFetchWorkflowComment(...args),
-      list: (...args: unknown[]) => mockFetchWorkflowComments(...args),
-      resolve: (...args: unknown[]) => mockResolveWorkflowComment(...args),
-      update: (...args: unknown[]) => mockUpdateWorkflowComment(...args),
-      replies: {
-        create: (...args: unknown[]) => mockCreateWorkflowCommentReply(...args),
-        delete: (...args: unknown[]) => mockDeleteWorkflowCommentReply(...args),
-        update: (...args: unknown[]) => mockUpdateWorkflowCommentReply(...args),
+    apps: {
+      byAppId: {
+        workflow: {
+          comments: {
+            get: (...args: unknown[]) => mockFetchWorkflowComments(...args),
+            post: (...args: unknown[]) => mockCreateWorkflowComment(...args),
+            byCommentId: {
+              delete: (...args: unknown[]) => mockDeleteWorkflowComment(...args),
+              get: (...args: unknown[]) => mockFetchWorkflowComment(...args),
+              put: (...args: unknown[]) => mockUpdateWorkflowComment(...args),
+              resolve: {
+                post: (...args: unknown[]) => mockResolveWorkflowComment(...args),
+              },
+              replies: {
+                post: (...args: unknown[]) => mockCreateWorkflowCommentReply(...args),
+                byReplyId: {
+                  delete: (...args: unknown[]) => mockDeleteWorkflowCommentReply(...args),
+                  put: (...args: unknown[]) => mockUpdateWorkflowCommentReply(...args),
+                },
+              },
+            },
+          },
+        },
       },
     },
   },
@@ -164,7 +205,7 @@ describe('useWorkflowComment', () => {
 
     await waitFor(() => {
       expect(mockFetchWorkflowComments).toHaveBeenCalledWith({
-        params: { appId: 'app-1' },
+        params: { app_id: 'app-1' },
       })
     })
 
@@ -192,12 +233,14 @@ describe('useWorkflowComment', () => {
         pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
         isCommentQuickAdd: true,
         mentionableUsersCache: {
-          'app-1': [{
-            id: 'user-2',
-            name: 'Bob',
-            email: 'bob@example.com',
-            avatar_url: 'bob.png',
-          }],
+          'app-1': [
+            {
+              id: 'user-2',
+              name: 'Bob',
+              email: 'bob@example.com',
+              avatar_url: 'bob.png',
+            },
+          ],
         },
       },
     })
@@ -207,7 +250,7 @@ describe('useWorkflowComment', () => {
     })
 
     expect(mockCreateWorkflowComment).toHaveBeenCalledWith({
-      params: { appId: 'app-1' },
+      params: { app_id: 'app-1' },
       body: {
         position_x: 10,
         position_y: 20,
@@ -227,7 +270,7 @@ describe('useWorkflowComment', () => {
       mention_count: 1,
       reply_count: 0,
     })
-    expect(comments[0]?.participants.map(p => p.id)).toEqual(['user-1', 'user-2'])
+    expect(comments[0]?.participants.map((p) => p.id)).toEqual(['user-1', 'user-2'])
     expect(store.getState().commentDetailCache['comment-2']).toMatchObject({
       content: 'new message',
       position_x: 10,
@@ -277,12 +320,14 @@ describe('useWorkflowComment', () => {
         pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
         isCommentQuickAdd: true,
         mentionableUsersCache: {
-          'app-1': [{
-            id: 'user-2',
-            name: 'Bob',
-            email: 'bob@example.com',
-            avatar_url: 'bob.png',
-          }],
+          'app-1': [
+            {
+              id: 'user-2',
+              name: 'Bob',
+              email: 'bob@example.com',
+              avatar_url: 'bob.png',
+            },
+          ],
         },
       },
     })
@@ -296,18 +341,22 @@ describe('useWorkflowComment', () => {
       id: 'comment-date-time',
       created_at: expectedCreatedAt,
       updated_at: expectedCreatedAt,
-      participants: [{
-        id: 'user-1',
-        name: 'Alice',
-        email: 'alice@example.com',
-        avatar_url: 'alice.png',
-      }],
+      participants: [
+        {
+          id: 'user-1',
+          name: 'Alice',
+          email: 'alice@example.com',
+          avatar_url: 'alice.png',
+        },
+      ],
     })
-    expect(store.getState().commentDetailCache['comment-date-time']?.mentions).toEqual([{
-      mentioned_user_id: 'missing-user',
-      mentioned_user_account: null,
-      reply_id: null,
-    }])
+    expect(store.getState().commentDetailCache['comment-date-time']?.mentions).toEqual([
+      {
+        mentioned_user_id: 'missing-user',
+        mentioned_user_account: null,
+        reply_id: null,
+      },
+    ])
   })
 
   it('rolls back optimistic position update when API update fails', async () => {
@@ -332,7 +381,7 @@ describe('useWorkflowComment', () => {
     })
 
     expect(mockUpdateWorkflowComment).toHaveBeenCalledWith({
-      params: { appId: 'app-1', commentId: comment.id },
+      params: { app_id: 'app-1', comment_id: comment.id },
       body: {
         content: 'hello',
         position_x: 300,
@@ -376,7 +425,7 @@ describe('useWorkflowComment', () => {
 
     await waitFor(() => {
       expect(mockFetchWorkflowComment).toHaveBeenCalledWith({
-        params: { appId: 'app-1', commentId: comment.id },
+        params: { app_id: 'app-1', comment_id: comment.id },
       })
     })
     expect(mockFetchWorkflowComments).toHaveBeenCalledTimes(2)
@@ -425,11 +474,7 @@ describe('useWorkflowComment', () => {
     await waitFor(() => {
       expect(store.getState().activeCommentId).toBe(commentB.id)
     })
-    expect(mockSetCenter).toHaveBeenCalledWith(
-      502,
-      80,
-      { zoom: 1, duration: 600 },
-    )
+    expect(mockSetCenter).toHaveBeenCalledWith(502, 80, { zoom: 1, duration: 600 })
 
     act(() => {
       result.current.handleCreateComment({
@@ -485,31 +530,33 @@ describe('useWorkflowComment', () => {
     })
 
     expect(mockResolveWorkflowComment).toHaveBeenCalledWith({
-      params: { appId: 'app-1', commentId: commentA.id },
+      params: { app_id: 'app-1', comment_id: commentA.id },
     })
 
     await act(async () => {
       await result.current.handleCommentReply(commentA.id, '  new reply  ', ['user-2'])
-      await result.current.handleCommentReplyUpdate(commentA.id, 'reply-1', '  edited reply  ', ['user-2'])
+      await result.current.handleCommentReplyUpdate(commentA.id, 'reply-1', '  edited reply  ', [
+        'user-2',
+      ])
       await result.current.handleCommentReplyDelete(commentA.id, 'reply-1')
     })
 
     expect(mockCreateWorkflowCommentReply).toHaveBeenCalledWith({
-      params: { appId: 'app-1', commentId: commentA.id },
+      params: { app_id: 'app-1', comment_id: commentA.id },
       body: {
         content: 'new reply',
         mentioned_user_ids: ['user-2'],
       },
     })
     expect(mockUpdateWorkflowCommentReply).toHaveBeenCalledWith({
-      params: { appId: 'app-1', commentId: commentA.id, replyId: 'reply-1' },
+      params: { app_id: 'app-1', comment_id: commentA.id, reply_id: 'reply-1' },
       body: {
         content: 'edited reply',
         mentioned_user_ids: ['user-2'],
       },
     })
     expect(mockDeleteWorkflowCommentReply).toHaveBeenCalledWith({
-      params: { appId: 'app-1', commentId: commentA.id, replyId: 'reply-1' },
+      params: { app_id: 'app-1', comment_id: commentA.id, reply_id: 'reply-1' },
     })
 
     await act(async () => {
@@ -517,7 +564,7 @@ describe('useWorkflowComment', () => {
     })
 
     expect(mockDeleteWorkflowComment).toHaveBeenCalledWith({
-      params: { appId: 'app-1', commentId: commentA.id },
+      params: { app_id: 'app-1', comment_id: commentA.id },
     })
     await waitFor(() => {
       expect(store.getState().activeCommentId).toBe(commentB.id)
@@ -552,7 +599,7 @@ describe('useWorkflowComment', () => {
     })
 
     expect(mockCreateWorkflowCommentReply).toHaveBeenCalledWith({
-      params: { appId: 'app-1', commentId: 'comment-1' },
+      params: { app_id: 'app-1', comment_id: 'comment-1' },
       body: {
         content: 'new reply',
         mentioned_user_ids: [],
@@ -576,7 +623,7 @@ describe('useWorkflowComment', () => {
     })
 
     expect(mockUpdateWorkflowCommentReply).toHaveBeenCalledWith({
-      params: { appId: 'app-1', commentId: 'comment-1', replyId: 'reply-1' },
+      params: { app_id: 'app-1', comment_id: 'comment-1', reply_id: 'reply-1' },
       body: {
         content: 'updated reply',
         mentioned_user_ids: [],
@@ -600,7 +647,7 @@ describe('useWorkflowComment', () => {
     })
 
     expect(mockDeleteWorkflowCommentReply).toHaveBeenCalledWith({
-      params: { appId: 'app-1', commentId: 'comment-1', replyId: 'reply-1' },
+      params: { app_id: 'app-1', comment_id: 'comment-1', reply_id: 'reply-1' },
     })
     expect(store.getState().activeCommentDetailLoading).toBe(false)
   })

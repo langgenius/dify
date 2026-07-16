@@ -11,7 +11,7 @@ describe('TabSlider Component', () => {
   ]
 
   it('should render all options correctly', () => {
-    render(<TabSlider value="tab1" options={mockOptions} onChange={() => { }} />)
+    render(<TabSlider value="tab1" options={mockOptions} onChange={() => {}} />)
 
     expect(screen.getByText('Overview')).toBeInTheDocument()
     expect(screen.getByText('Settings')).toBeInTheDocument()
@@ -41,7 +41,7 @@ describe('TabSlider Component', () => {
   })
 
   it('should apply active styles and render indicator for the active tab', () => {
-    render(<TabSlider value="tab2" options={mockOptions} onChange={() => { }} />)
+    render(<TabSlider value="tab2" options={mockOptions} onChange={() => {}} />)
 
     const activeTab = screen.getByTestId('tab-slider-item-tab2')
     const activeText = within(activeTab).getByTestId('tab-slider-item-text')
@@ -57,7 +57,7 @@ describe('TabSlider Component', () => {
   })
 
   it('should apply smallItem styles when smallItem prop is true', () => {
-    render(<TabSlider value="tab1" options={mockOptions} onChange={() => { }} smallItem />)
+    render(<TabSlider value="tab1" options={mockOptions} onChange={() => {}} smallItem />)
 
     const item = screen.getByTestId('tab-slider-item-tab1')
     expect(item).toHaveClass('system-sm-semibold-uppercase')
@@ -65,7 +65,7 @@ describe('TabSlider Component', () => {
   })
 
   it('should apply standard sizing when smallItem prop is false', () => {
-    render(<TabSlider value="tab1" options={mockOptions} onChange={() => { }} />)
+    render(<TabSlider value="tab1" options={mockOptions} onChange={() => {}} />)
 
     const item = screen.getByTestId('tab-slider-item-tab1')
     expect(item).toHaveClass('system-xl-semibold')
@@ -73,13 +73,11 @@ describe('TabSlider Component', () => {
 
   it('should handle border styles based on noBorderBottom prop', () => {
     const { rerender } = render(
-      <TabSlider value="tab1" options={mockOptions} onChange={() => { }} />,
+      <TabSlider value="tab1" options={mockOptions} onChange={() => {}} />,
     )
     expect(screen.getByTestId('tab-slider')).toHaveClass('border-b')
 
-    rerender(
-      <TabSlider value="tab1" options={mockOptions} onChange={() => { }} noBorderBottom />,
-    )
+    rerender(<TabSlider value="tab1" options={mockOptions} onChange={() => {}} noBorderBottom />)
     expect(screen.getByTestId('tab-slider')).not.toHaveClass('border-b')
   })
 
@@ -89,7 +87,7 @@ describe('TabSlider Component', () => {
       <TabSlider
         value="tab1"
         options={mockOptions}
-        onChange={() => { }}
+        onChange={() => {}}
         itemClassName={customClass}
       />,
     )

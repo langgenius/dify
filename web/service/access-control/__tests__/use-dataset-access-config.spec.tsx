@@ -20,7 +20,12 @@ const mocks = vi.hoisted(() => ({
     queryFn: vi.fn().mockResolvedValue({ data: [], scope: 'specific' }),
   })),
   userAccessSettingsKey: vi.fn(() => ['rbac-access-config', 'datasets', 'user-access-settings']),
-  userAccessSettingsQueryKey: vi.fn(() => ['rbac-access-config', 'datasets', 'user-access-settings', 'dataset-1']),
+  userAccessSettingsQueryKey: vi.fn(() => [
+    'rbac-access-config',
+    'datasets',
+    'user-access-settings',
+    'dataset-1',
+  ]),
   updateOpenScope: vi.fn().mockResolvedValue({}),
   updateUserAccessSettings: vi.fn().mockResolvedValue({}),
   removeMemberBindings: vi.fn().mockResolvedValue({}),
@@ -28,25 +33,55 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
-    rbacAccessConfig: {
-      datasets: {
-        updateOpenScope: mocks.updateOpenScope,
-        updateUserAccessSettings: mocks.updateUserAccessSettings,
-        removeMemberBindings: mocks.removeMemberBindings,
+    workspaces: {
+      current: {
+        rbac: {
+          datasets: {
+            byDatasetId: {
+              accessPolicies: {
+                byPolicyId: {
+                  memberBindings: {
+                    delete: mocks.removeMemberBindings,
+                  },
+                },
+              },
+              users: {
+                byTargetAccountId: {
+                  accessPolicies: {
+                    put: mocks.updateUserAccessSettings,
+                  },
+                },
+              },
+              whitelist: {
+                put: mocks.updateOpenScope,
+              },
+            },
+          },
+        },
       },
     },
   },
   consoleQuery: {
-    rbacAccessConfig: {
-      datasets: {
-        accessRules: {
-          key: mocks.accessRulesKey,
-          queryOptions: mocks.accessRulesQueryOptions,
-        },
-        userAccessSettings: {
-          key: mocks.userAccessSettingsKey,
-          queryKey: mocks.userAccessSettingsQueryKey,
-          queryOptions: mocks.userAccessSettingsQueryOptions,
+    workspaces: {
+      current: {
+        rbac: {
+          datasets: {
+            byDatasetId: {
+              accessPolicy: {
+                get: {
+                  key: mocks.accessRulesKey,
+                  queryOptions: mocks.accessRulesQueryOptions,
+                },
+              },
+              userAccessPolicies: {
+                get: {
+                  key: mocks.userAccessSettingsKey,
+                  queryKey: mocks.userAccessSettingsQueryKey,
+                  queryOptions: mocks.userAccessSettingsQueryOptions,
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -79,7 +114,7 @@ describe('use-dataset-access-config', () => {
       expect(mocks.accessRulesQueryOptions).toHaveBeenCalledWith({
         input: {
           params: {
-            datasetId: 'dataset-1',
+            dataset_id: 'dataset-1',
           },
           query: {
             language: 'ja',
@@ -92,12 +127,14 @@ describe('use-dataset-access-config', () => {
   // User access settings mirror the app access-config API shape for datasets.
   describe('User Access Settings', () => {
     it('should fetch user access settings for a dataset id', () => {
-      renderHook(() => useDatasetUserAccessSettings('dataset-1', 'zh'), { wrapper: createWrapper() })
+      renderHook(() => useDatasetUserAccessSettings('dataset-1', 'zh'), {
+        wrapper: createWrapper(),
+      })
 
       expect(mocks.userAccessSettingsQueryOptions).toHaveBeenCalledWith({
         input: {
           params: {
-            datasetId: 'dataset-1',
+            dataset_id: 'dataset-1',
           },
           query: {
             language: 'zh',
@@ -107,16 +144,21 @@ describe('use-dataset-access-config', () => {
     })
 
     it('should update user access settings for a dataset id', async () => {
-      const { result } = renderHook(() => useUpdateDatasetUserAccessSettings('dataset-1'), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useUpdateDatasetUserAccessSettings('dataset-1'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
-        await result.current.mutateAsync({ accountId: 'account-1', accessPolicyIds: ['policy-1', 'policy-2'] })
+        await result.current.mutateAsync({
+          accountId: 'account-1',
+          accessPolicyIds: ['policy-1', 'policy-2'],
+        })
       })
 
       expect(mocks.updateUserAccessSettings).toHaveBeenCalledWith({
         params: {
-          datasetId: 'dataset-1',
-          accountId: 'account-1',
+          dataset_id: 'dataset-1',
+          target_account_id: 'account-1',
         },
         body: {
           access_policy_ids: ['policy-1', 'policy-2'],
@@ -127,7 +169,9 @@ describe('use-dataset-access-config', () => {
     })
 
     it('should remove dataset access policy member bindings for account ids', async () => {
-      const { result } = renderHook(() => useRemoveDatasetAccessPolicyMemberBindings('dataset-1'), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useRemoveDatasetAccessPolicyMemberBindings('dataset-1'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
         await result.current.mutateAsync({ accessPolicyId: 'policy-1', accountIds: ['account-1'] })
@@ -135,8 +179,8 @@ describe('use-dataset-access-config', () => {
 
       expect(mocks.removeMemberBindings).toHaveBeenCalledWith({
         params: {
-          datasetId: 'dataset-1',
-          policyId: 'policy-1',
+          dataset_id: 'dataset-1',
+          policy_id: 'policy-1',
         },
         body: {
           account_ids: ['account-1'],
@@ -147,7 +191,9 @@ describe('use-dataset-access-config', () => {
     })
 
     it('should update open scope for a dataset id', async () => {
-      const { result } = renderHook(() => useUpdateDatasetOpenScope('dataset-1'), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useUpdateDatasetOpenScope('dataset-1'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
         await result.current.mutateAsync('specific')
@@ -155,7 +201,7 @@ describe('use-dataset-access-config', () => {
 
       expect(mocks.updateOpenScope).toHaveBeenCalledWith({
         params: {
-          datasetId: 'dataset-1',
+          dataset_id: 'dataset-1',
         },
         body: {
           scope: 'specific',

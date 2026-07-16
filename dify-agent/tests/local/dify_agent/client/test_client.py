@@ -28,6 +28,8 @@ from dify_agent.protocol import (
     RunCancelledEvent,
     RunEvent,
     RunEventsResponse,
+    RunFailedEvent,
+    RunFailedEventData,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -61,6 +63,14 @@ def _run_succeeded_event(*, event_id: str = "2-0", run_id: str = "run-1") -> Run
         id=event_id,
         run_id=run_id,
         data=RunSucceededEventData(output="done", session_snapshot=CompositorSessionSnapshot(layers=[])),
+    )
+
+
+def _run_failed_event(error: str, *, event_id: str = "2-0", run_id: str = "run-1") -> RunFailedEvent:
+    return RunFailedEvent(
+        id=event_id,
+        run_id=run_id,
+        data=RunFailedEventData(error=error),
     )
 
 
@@ -137,9 +147,9 @@ class DisconnectingSyncStream(httpx.SyncByteStream):
 
 
 def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "result")
+    monkeypatch.setattr(client_module, "_function_tool_result_payload_key_cache", "part")
     decoder = client_module._SSEDecoder()
-    payload = _function_tool_result_payload("part")
+    payload = _function_tool_result_payload("result")
 
     assert decoder.feed_line(f"data: {json.dumps(payload)}") is None
     event = decoder.feed_line("")
@@ -153,7 +163,7 @@ def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest
 def test_function_tool_result_payload_normalization_supports_old_part_schema(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "part")
+    monkeypatch.setattr(client_module, "_function_tool_result_payload_key_cache", "part")
     payload = _function_tool_result_payload("result")
 
     normalized = client_module._normalize_run_event_payload_for_local_pydantic_ai(payload)
@@ -259,7 +269,11 @@ def test_sync_sandbox_methods_post_dtos_and_parse_responses() -> None:
                 200,
                 json={
                     "path": "report.txt",
-                    "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "dify-file-ref:file-1",
+                        "download_url": "https://files.example.com/report.txt",
+                    },
                 },
             )
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
@@ -276,6 +290,7 @@ def test_sync_sandbox_methods_post_dtos_and_parse_responses() -> None:
     assert preview.text == "hello"
     assert isinstance(uploaded, SandboxUploadResponse)
     assert uploaded.file.reference == "dify-file-ref:file-1"
+    assert uploaded.file.download_url == "https://files.example.com/report.txt"
 
 
 def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
@@ -293,7 +308,11 @@ def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
                 200,
                 json={
                     "path": "report.txt",
-                    "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "dify-file-ref:file-1",
+                        "download_url": "https://files.example.com/report.txt",
+                    },
                 },
             )
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
@@ -309,9 +328,33 @@ def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
         assert listing.path == "."
         assert preview.text == "hello"
         assert uploaded.file.reference == "dify-file-ref:file-1"
+        assert uploaded.file.download_url == "https://files.example.com/report.txt"
         await http_client.aclose()
 
     asyncio.run(scenario())
+
+
+def test_sync_upload_sandbox_file_rejects_missing_download_url() -> None:
+    locator = _sandbox_locator()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path != "/sandbox/files/upload":
+            raise AssertionError(f"unexpected request: {request.method} {request.url}")
+        return httpx.Response(
+            200,
+            json={
+                "path": "report.txt",
+                "file": {
+                    "transfer_method": "tool_file",
+                    "reference": "dify-file-ref:file-1",
+                },
+            },
+        )
+
+    client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+
+    with pytest.raises(DifyAgentValidationError):
+        _ = client.upload_sandbox_file_sync(locator, "report.txt")
 
 
 def test_sync_sandbox_methods_map_invalid_json_to_validation_error() -> None:
@@ -413,6 +456,26 @@ def test_sync_sse_parser_supports_comments_multiline_data_and_id_fill() -> None:
 
     assert [event.id for event in events] == ["5-0"]
     assert [event.type for event in events] == ["run_started"]
+
+
+@pytest.mark.parametrize("separator", ["\x85", "\u2028", "\u2029"])
+def test_sync_sse_parser_preserves_unicode_line_separators(separator: str) -> None:
+    error = f"before{separator}after"
+    body = _event_frame(_run_failed_event(error))
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=body)
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", reconnect=False))
+
+    assert len(events) == 1
+    assert isinstance(events[0], RunFailedEvent)
+    assert events[0].data.error == error
 
 
 def test_stream_events_stops_after_terminal_event() -> None:
@@ -557,6 +620,27 @@ def test_async_stream_events_yields_terminal_event() -> None:
         events = [event async for event in client.stream_events("run-1")]
 
         assert [event.type for event in events] == ["run_succeeded"]
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_sse_parser_preserves_unicode_line_separators() -> None:
+    error = "next-line:\x85line-separator:\u2028paragraph-separator:\u2029done"
+    body = _event_frame(_run_failed_event(error))
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=body)
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1")]
+
+        assert len(events) == 1
+        assert isinstance(events[0], RunFailedEvent)
+        assert events[0].data.error == error
         await http_client.aclose()
 
     asyncio.run(scenario())

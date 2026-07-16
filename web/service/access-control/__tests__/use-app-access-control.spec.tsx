@@ -23,14 +23,16 @@ vi.mock('@/service/share', () => ({
 }))
 
 vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => queryOptions({
-    queryKey: ['system-features'],
-    queryFn: () => Promise.resolve({
-      webapp_auth: {
-        enabled: mockSystemFeatures.webappAuthEnabled,
-      },
+  systemFeaturesQueryOptions: () =>
+    queryOptions({
+      queryKey: ['system-features'],
+      queryFn: () =>
+        Promise.resolve({
+          webapp_auth: {
+            enabled: mockSystemFeatures.webappAuthEnabled,
+          },
+        }),
     }),
-  }),
 }))
 
 const createWrapper = () => {
@@ -73,21 +75,29 @@ describe('use-app-access-control', () => {
       })
 
       renderHook(
-        () => useSearchForWhiteListCandidates({
-          keyword: 'team one',
-          groupId: 'group-1',
-          resultsPerPage: 20,
-        }, true),
+        () =>
+          useSearchForWhiteListCandidates(
+            {
+              keyword: 'team one',
+              groupId: 'group-1',
+              resultsPerPage: 20,
+            },
+            true,
+          ),
         { wrapper: createWrapper() },
       )
 
       await waitFor(() => {
-        expect(get).toHaveBeenCalledWith('/enterprise/webapp/app/subject/search?keyword=team+one&groupId=group-1&resultsPerPage=20&pageNumber=1')
+        expect(get).toHaveBeenCalledWith(
+          '/enterprise/webapp/app/subject/search?keyword=team+one&groupId=group-1&resultsPerPage=20&pageNumber=1',
+        )
       })
     })
 
     it('should return public access when webapp auth is disabled', async () => {
-      const { result } = renderHook(() => useGetUserCanAccessApp({ appId: 'app-1' }), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useGetUserCanAccessApp({ appId: 'app-1' }), {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(result.current.data).toEqual({ result: true })
@@ -98,7 +108,9 @@ describe('use-app-access-control', () => {
     it('should call share access check when webapp auth is enabled', async () => {
       mockSystemFeatures.webappAuthEnabled = true
 
-      renderHook(() => useGetUserCanAccessApp({ appId: 'app-1', isInstalledApp: false }), { wrapper: createWrapper() })
+      renderHook(() => useGetUserCanAccessApp({ appId: 'app-1', isInstalledApp: false }), {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(getUserCanAccess).toHaveBeenCalledWith('app-1', false)

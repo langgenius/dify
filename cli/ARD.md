@@ -80,7 +80,14 @@ export default class MyCommand extends DifyCommand {
     // Authed: authedCtx() sets outputFormat + builds context
     const ctx = await this.authedCtx({ format: flags.output })
 
-    process.stdout.write(await runMyThing({ /* args */ }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io }))
+    process.stdout.write(
+      await runMyThing(
+        {
+          /* args */
+        },
+        { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
+      ),
+    )
   }
 }
 ```
@@ -102,7 +109,7 @@ import { ErrorCode } from '../../errors/codes.js'
 throw new BaseError({
   code: ErrorCode.UsageMissingArg,
   message: 'workspace id required',
-  hint: 'pass --workspace or run \'difyctl use workspace <id>\'',
+  hint: "pass --workspace or run 'difyctl use workspace <id>'",
 })
 ```
 
@@ -150,10 +157,7 @@ export type IOStreams = {
 `runWithSpinner` wraps async call with animated spinner on stderr. Auto-disables for structured output — no manual `enabled:` flag needed.
 
 ```typescript
-const result = await runWithSpinner(
-  { io, label: 'Fetching apps' },
-  () => client.list(params),
-)
+const result = await runWithSpinner({ io, label: 'Fetching apps' }, () => client.list(params))
 ```
 
 `STRUCTURED_FORMATS = new Set(['json', 'yaml', 'name'])` drives disable check. New structured format = add to this set only — no other callsites change.
@@ -174,9 +178,15 @@ Output rendering separated from data fetching via protocol objects.
 ```typescript
 // handlers.ts — implement the protocol on the data object
 export class MyListOutput implements TablePrintable {
-  tableColumns() { return COLUMNS }
-  tableRows() { return this.rows.map(r => r.tableRow()) }
-  json() { return { items: this.rows.map(r => r.json()) } }
+  tableColumns() {
+    return COLUMNS
+  }
+  tableRows() {
+    return this.rows.map((r) => r.tableRow())
+  }
+  json() {
+    return { items: this.rows.map((r) => r.json()) }
+  }
 }
 
 // index.ts — wrap and return
@@ -215,10 +225,16 @@ One file per resource under `src/api/`. Each exports class wrapping `KyInstance`
 ```typescript
 export class AppsClient {
   private readonly http: KyInstance
-  constructor(http: KyInstance) { this.http = http }
+  constructor(http: KyInstance) {
+    this.http = http
+  }
 
-  async list(params: ListParams): Promise<ListResponse> { /* ... */ throw new Error('elided') }
-  async describe(id: string, workspaceId: string, fields: string[]): Promise<DescribeResponse> { /* ... */ throw new Error('elided') }
+  async list(params: ListParams): Promise<ListResponse> {
+    /* ... */ throw new Error('elided')
+  }
+  async describe(id: string, workspaceId: string, fields: string[]): Promise<DescribeResponse> {
+    /* ... */ throw new Error('elided')
+  }
 }
 ```
 
@@ -285,18 +301,17 @@ expect(JSON.parse(out).workspaces).toHaveLength(2)
 
 ## Scripts
 
-| Command                 | When to run                                        |
-| ----------------------- | -------------------------------------------------- |
-| `pnpm dev <cmd> [args]` | Run CLI from source during dev                     |
-| `pnpm test`             | Full vitest suite — run before every commit        |
-| `pnpm test:coverage`    | Coverage report                                    |
-| `pnpm type-check`       | `tsc --noEmit` — catches type errors without build |
-| `pnpm lint`             | ESLint check                                       |
-| `pnpm lint:fix`         | ESLint auto-fix (perfectionist sort, chaining)     |
-| `pnpm build`            | Production bundle (`vp pack`)                      |
-| `pnpm tree:gen`         | Regenerate `src/commands/tree.ts` (registry)       |
-| `pnpm tree:check`       | Verify `tree.ts` matches the filesystem            |
-| `pnpm build:bin`        | Cross-compile standalone binaries via Bun (CI)     |
+| Command                 | When to run                                    |
+| ----------------------- | ---------------------------------------------- |
+| `pnpm dev <cmd> [args]` | Run CLI from source during dev                 |
+| `pnpm test`             | Full vitest suite — run before every commit    |
+| `pnpm test:coverage`    | Coverage report                                |
+| `pnpm -w check`         | Repository-wide static check                   |
+| `pnpm -w check:fix`     | Repository-wide static fixes                   |
+| `pnpm build`            | Production bundle (`vp pack`)                  |
+| `pnpm tree:gen`         | Regenerate `src/commands/tree.ts` (registry)   |
+| `pnpm tree:check`       | Verify `tree.ts` matches the filesystem        |
+| `pnpm build:bin`        | Cross-compile standalone binaries via Bun (CI) |
 
 **`pnpm tree:gen` rule:** run after adding, removing, renaming any command. The generated `tree.ts` is the runtime command registry — stale tree causes commands to be invisible at runtime. (Runs implicitly via `prebuild`/`predev`/`pretest`.)
 
@@ -306,7 +321,7 @@ expect(JSON.parse(out).workspaces).toHaveLength(2)
 
 ## Lint rules that catch contributors
 
-Repo runs `@antfu/eslint-config` + perfectionist + unicorn.
+The repository runs Vite+ Oxlint as the primary code-quality linter, an explicit ESLint config for unsupported cases, and Vite+ Oxfmt for formatting. The fallback config does not depend on the Antfu ESLint config.
 
 | Rule                               | What it catches                                    |
 | ---------------------------------- | -------------------------------------------------- |
@@ -316,7 +331,7 @@ Repo runs `@antfu/eslint-config` + perfectionist + unicorn.
 | `unicorn/no-new-array`             | Use `Array.from({ length: n })` not `new Array(n)` |
 | `noUncheckedIndexedAccess` (tsc)   | `arr[i]` is `T \| undefined`; guard before use     |
 
-`pnpm lint:fix` resolves perfectionist + chaining auto.
+Run `pnpm -w check:fix` for Oxlint, ESLint, TypeScript, and Oxfmt fixes and diagnostics.
 
 ---
 

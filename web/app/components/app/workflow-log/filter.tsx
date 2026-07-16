@@ -17,7 +17,7 @@ const today = dayjs()
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
-export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: TimePeriodName } } = {
+export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: TimePeriodName } } = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
@@ -47,7 +47,13 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           })
         }}
         onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
-        items={[{ value: 'all', name: 'All' }, { value: 'succeeded', name: 'Success' }, { value: 'failed', name: 'Fail' }, { value: 'stopped', name: 'Stop' }, { value: 'partial-succeeded', name: 'Partial Success' }]}
+        items={[
+          { value: 'all', name: 'All' },
+          { value: 'succeeded', name: 'Success' },
+          { value: 'failed', name: 'Fail' },
+          { value: 'stopped', name: 'Stop' },
+          { value: 'partial-succeeded', name: 'Partial Success' },
+        ]}
       />
       <Chip
         className="min-w-[150px]"
@@ -58,14 +64,17 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
+        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({
+          value: k,
+          name: t(($) => $[`filter.period.${v.name}`], { ns: 'appLog' }),
+        }))}
       />
       <Input
         wrapperClassName="w-[200px]"
         showLeftIcon
         showClearIcon
         value={queryParams.keyword ?? ''}
-        placeholder={t('operation.search', { ns: 'common' })!}
+        placeholder={t(($) => $['operation.search'], { ns: 'common' })!}
         onChange={(e) => {
           setQueryParams({ ...queryParams, keyword: e.target.value })
         }}

@@ -16,18 +16,22 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.login import current_account_with_tenant
 from models.model import InstalledApp
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -46,14 +50,19 @@ register_response_schema_models(console_ns, AudioBinaryResponse, AudioTranscript
 class ChatAudioApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     def post(self, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
 
         file = request.files["file"]
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=None,
+            )
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -67,6 +76,8 @@ class ChatAudioApi(InstalledAppResource):
             raise UnsupportedAudioTypeError()
         except ProviderNotSupportSpeechToTextServiceError:
             raise ProviderNotSupportSpeechToTextError()
+        except SpeechToTextDisabledServiceError:
+            raise SpeechToTextDisabledError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -90,7 +101,7 @@ class ChatTextApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
     def post(self, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         try:
@@ -99,13 +110,22 @@ class ChatTextApi(InstalledAppResource):
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice
+            message_ref = None
+            if message_id:
+                current_user, _ = current_account_with_tenant()
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    message_id,
+                    account_id=current_user.id,
+                )
 
             response = AudioService.transcript_tts(
                 app_model=app_model,
-                session=db.session,
+                session=db.session(),
                 text=text,
                 voice=voice,
-                message_id=message_id,
+                message_ref=message_ref,
             )
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:

@@ -2,10 +2,7 @@ import type { FC } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiCheckboxCircleFill,
-  RiErrorWarningFill,
-} from '@remixicon/react'
+import { RiCheckboxCircleFill, RiErrorWarningFill } from '@remixicon/react'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { DataSourceType } from '@/models/datasets'
@@ -21,7 +18,7 @@ type IndexingProgressItemProps = {
 }
 
 // Status icon component for completed/error states
-const StatusIcon: FC<{ status: string, error?: string }> = ({ status, error }) => {
+const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) => {
   if (status === 'completed')
     return <RiCheckboxCircleFill className="size-4 shrink-0 text-text-success" />
 
@@ -52,23 +49,12 @@ const SourceTypeIcon: FC<{
 }> = ({ sourceType, name, notionIcon }) => {
   if (sourceType === DataSourceType.FILE) {
     return (
-      <DocumentFileIcon
-        size="sm"
-        className="shrink-0"
-        name={name}
-        extension={getFileType(name)}
-      />
+      <DocumentFileIcon size="sm" className="shrink-0" name={name} extension={getFileType(name)} />
     )
   }
 
   if (sourceType === DataSourceType.NOTION) {
-    return (
-      <NotionIcon
-        className="shrink-0"
-        type="page"
-        src={notionIcon}
-      />
-    )
+    return <NotionIcon className="shrink-0" type="page" src={notionIcon} />
   }
 
   return null
@@ -99,20 +85,12 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
         />
       )}
       <div className="z-1 flex h-full items-center gap-1 pr-2 pl-[6px]">
-        <SourceTypeIcon
-          sourceType={sourceType}
-          name={name}
-          notionIcon={notionIcon}
-        />
+        <SourceTypeIcon sourceType={sourceType} name={name} notionIcon={notionIcon} />
         <div className="flex w-0 grow items-center gap-1" title={name}>
-          <div className="truncate system-xs-medium text-text-secondary">
-            {name}
-          </div>
+          <div className="truncate system-xs-medium text-text-secondary">{name}</div>
           {enableBilling && <PriorityLabel className="ml-0" />}
         </div>
-        {isEmbedding && (
-          <div className="shrink-0 text-xs text-text-secondary">{`${percent}%`}</div>
-        )}
+        {isEmbedding && <div className="shrink-0 text-xs text-text-secondary">{`${percent}%`}</div>}
         <StatusIcon status={detail.indexing_status} error={detail.error} />
       </div>
     </div>

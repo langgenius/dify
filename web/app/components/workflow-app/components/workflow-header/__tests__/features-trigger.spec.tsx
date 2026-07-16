@@ -30,10 +30,18 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -89,7 +97,9 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: <T,>(selector: (state: { accessControl: { canReleaseAndVersion: boolean } }) => T): T =>
+  useHooksStore: <T,>(
+    selector: (state: { accessControl: { canReleaseAndVersion: boolean } }) => T,
+  ): T =>
     selector({
       accessControl: {
         canReleaseAndVersion: true,
@@ -136,22 +146,64 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         data-has-trigger-node={String(Boolean(props.hasTriggerNode))}
         data-inputs={JSON.stringify(inputs)}
       >
-        <button type="button" onClick={() => { props.onRefreshData?.() }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onRefreshData?.()
+          }}
+        >
           publisher-refresh
         </button>
-        <button type="button" onClick={() => { props.onToggle?.(true) }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onToggle?.(true)
+          }}
+        >
           publisher-toggle-on
         </button>
-        <button type="button" onClick={() => { props.onToggle?.(false) }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onToggle?.(false)
+          }}
+        >
           publisher-toggle-off
         </button>
-        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.()).catch(() => undefined) }}>
+        <button
+          type="button"
+          onClick={() => {
+            Promise.resolve(props.onPublish?.()).catch(() => undefined)
+          }}
+        >
           publisher-publish
         </button>
-        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-1/workflows/publish', title: 'Test title', releaseNotes: 'Test notes' })).catch(() => undefined) }}>
+        <button
+          type="button"
+          onClick={() => {
+            Promise.resolve(
+              props.onPublish?.({
+                url: '/apps/app-1/workflows/publish',
+                title: 'Test title',
+                releaseNotes: 'Test notes',
+              }),
+            ).catch(() => undefined)
+          }}
+        >
           publisher-publish-with-params
         </button>
-        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-id/workflows/publish/custom', title: 'Custom title', releaseNotes: 'Custom notes' })).catch(() => undefined) }}>
+        <button
+          type="button"
+          onClick={() => {
+            Promise.resolve(
+              props.onPublish?.({
+                url: '/apps/app-id/workflows/publish/custom',
+                title: 'Custom title',
+                releaseNotes: 'Custom notes',
+              }),
+            ).catch(() => undefined)
+          }}
+        >
           publisher-publish-custom
         </button>
       </div>
@@ -194,11 +246,7 @@ const renderWithToast = (ui: ReactElement) => {
   const queryClient = new QueryClient()
   return {
     queryClient,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>,
-    ),
+    ...render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>),
   }
 }
 
@@ -216,10 +264,14 @@ describe('FeaturesTrigger', () => {
     mockUseTheme.mockReturnValue({ theme: 'light' })
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
     mockUseChecklist.mockReturnValue([])
-    mockUseChecklistBeforePublish.mockReturnValue({ handleCheckBeforePublish: mockHandleCheckBeforePublish })
+    mockUseChecklistBeforePublish.mockReturnValue({
+      handleCheckBeforePublish: mockHandleCheckBeforePublish,
+    })
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockUseNodesSyncDraft.mockReturnValue({ handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft })
-    mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => selector({ features: { file: {} } }))
+    mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
+      selector({ features: { file: {} } }),
+    )
     mockUseProviderContext.mockReturnValue(createProviderContext({}))
     mockUseNodes.mockReturnValue([])
     mockUseEdges.mockReturnValue([])
@@ -240,7 +292,9 @@ describe('FeaturesTrigger', () => {
       renderWithToast(<FeaturesTrigger />)
 
       // Assert
-      expect(screen.queryByRole('button', { name: /workflow\.common\.features/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /workflow\.common\.features/i }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render the features button when in chat mode', () => {
@@ -251,7 +305,9 @@ describe('FeaturesTrigger', () => {
       renderWithToast(<FeaturesTrigger />)
 
       // Assert
-      expect(screen.getByRole('button', { name: /workflow\.common\.features/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflow\.common\.features/i }),
+      ).toBeInTheDocument()
     })
 
     it('should apply dark theme styling when theme is dark', () => {
@@ -263,7 +319,9 @@ describe('FeaturesTrigger', () => {
       renderWithToast(<FeaturesTrigger />)
 
       // Assert
-      expect(screen.getByRole('button', { name: /workflow\.common\.features/i })).toHaveClass('rounded-lg')
+      expect(screen.getByRole('button', { name: /workflow\.common\.features/i })).toHaveClass(
+        'rounded-lg',
+      )
     })
   })
 
@@ -326,18 +384,20 @@ describe('FeaturesTrigger', () => {
   describe('Computed Props', () => {
     it('should append image input when file image upload is enabled', () => {
       // Arrange
-      mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => selector({
-        features: { file: { image: { enabled: true } } },
-      }))
-      mockUseNodes.mockReturnValue([
-        { id: 'start', data: { type: BlockEnum.Start } },
-      ])
+      mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
+        selector({
+          features: { file: { image: { enabled: true } } },
+        }),
+      )
+      mockUseNodes.mockReturnValue([{ id: 'start', data: { type: BlockEnum.Start } }])
 
       // Act
       renderWithToast(<FeaturesTrigger />)
 
       // Assert
-      const inputs = JSON.parse(screen.getByTestId('app-publisher').getAttribute('data-inputs') ?? '[]') as Array<{
+      const inputs = JSON.parse(
+        screen.getByTestId('app-publisher').getAttribute('data-inputs') ?? '[]',
+      ) as Array<{
         type?: string
         variable?: string
         required?: boolean
@@ -423,7 +483,10 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'workflow.panel.checklistTip' })
+        expect(toastMocks.call).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'workflow.panel.checklistTip',
+        })
       })
       expect(mockPublishWorkflow).not.toHaveBeenCalled()
     })
@@ -446,12 +509,8 @@ describe('FeaturesTrigger', () => {
     it('should publish workflow and update related stores when validation passes', async () => {
       // Arrange
       const user = userEvent.setup()
-      mockUseNodes.mockReturnValue([
-        { id: 'start', data: { type: BlockEnum.Start } },
-      ])
-      mockUseEdges.mockReturnValue([
-        { source: 'start' },
-      ])
+      mockUseNodes.mockReturnValue([{ id: 'start', data: { type: BlockEnum.Start } }])
+      mockUseEdges.mockReturnValue([{ source: 'start' }])
       renderWithToast(<FeaturesTrigger />)
 
       // Act
@@ -469,14 +528,22 @@ describe('FeaturesTrigger', () => {
         expect(mockSetPublishedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
         expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
-        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+        expect(toastMocks.call).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'common.api.actionSuccess',
+        })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
-        expect(mockSetQueryData).toHaveBeenCalledWith(['apps', 'detail', 'app-id'], expect.objectContaining({
-          name: 'Updated App',
-        }))
-        expect(useAppStore.getState().appDetail).toEqual(expect.objectContaining({
-          name: 'Updated App',
-        }))
+        expect(mockSetQueryData).toHaveBeenCalledWith(
+          ['apps', 'detail', 'app-id'],
+          expect.objectContaining({
+            name: 'Updated App',
+          }),
+        )
+        expect(useAppStore.getState().appDetail).toEqual(
+          expect.objectContaining({
+            name: 'Updated App',
+          }),
+        )
       })
     })
 
@@ -611,7 +678,10 @@ describe('FeaturesTrigger', () => {
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalled()
       })
-      expect(toastMocks.call).not.toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+      expect(toastMocks.call).not.toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.api.actionSuccess',
+      })
       expect(mockUpdatePublishedWorkflow).not.toHaveBeenCalled()
       expect(mockInvalidateAppTriggers).not.toHaveBeenCalled()
       expect(mockSetPublishedAt).not.toHaveBeenCalled()

@@ -37,7 +37,7 @@ class TestMetadataNullableBug:
         account = _make_account()
         # This should crash with TypeError when calling len(None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.create_metadata(Mock(), "dataset-123", mock_metadata_args, account, "tenant-123")
+            MetadataService.create_metadata("dataset-123", mock_metadata_args, account, "tenant-123", session=Mock())
 
     def test_metadata_service_update_with_none_name_crashes(self) -> None:
         """Test that MetadataService.update_metadata_name crashes when name is None."""
@@ -46,7 +46,7 @@ class TestMetadataNullableBug:
         # This should crash with TypeError when calling len(None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
             MetadataService.update_metadata_name(
-                Mock(), "dataset-123", "metadata-456", none_name, account, "tenant-123"
+                "dataset-123", "metadata-456", none_name, account, "tenant-123", session=Mock()
             )
 
     def test_api_layer_now_uses_pydantic_validation(self) -> None:

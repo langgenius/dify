@@ -22,13 +22,12 @@ const TestNavLink = ({ mode }: { mode: 'expand' | 'collapse' }) => {
 
   return (
     <div className="nav-link-container">
-      <div className={`flex h-9 items-center rounded-md py-2 text-sm font-normal ${
-        mode === 'expand' ? 'px-3' : 'px-2.5'
-      }`}
+      <div
+        className={`flex h-9 items-center rounded-md py-2 text-sm font-normal ${
+          mode === 'expand' ? 'px-3' : 'px-2.5'
+        }`}
       >
-        <div className={`h-4 w-4 shrink-0 ${mode === 'expand' ? 'mr-2' : 'mr-0'}`}>
-          Icon
-        </div>
+        <div className={`h-4 w-4 shrink-0 ${mode === 'expand' ? 'mr-2' : 'mr-0'}`}>Icon</div>
         <span
           className={`whitespace-nowrap transition-all duration-200 ease-in-out ${
             mode === 'expand'
@@ -53,22 +52,24 @@ const TestAppInfo = ({ expand }: { expand: boolean }) => {
 
   return (
     <div className="app-info-container">
-      <div className={`flex rounded-lg ${expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1'}`}>
-        <div className={`flex items-center self-stretch ${expand ? 'justify-between' : 'flex-col gap-1'}`}>
+      <div
+        className={`flex rounded-lg ${expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1'}`}
+      >
+        <div
+          className={`flex items-center self-stretch ${expand ? 'justify-between' : 'flex-col gap-1'}`}
+        >
           <div className="app-icon">AppIcon</div>
           <div className="dashboard-icon">Dashboard</div>
         </div>
         <div
           className={`flex flex-col items-start gap-1 transition-all duration-200 ease-in-out ${
-            expand
-              ? 'w-auto opacity-100'
-              : 'pointer-events-none w-0 overflow-hidden opacity-0'
+            expand ? 'w-auto opacity-100' : 'pointer-events-none w-0 overflow-hidden opacity-0'
           }`}
           data-testid="app-text-container"
         >
           <div className="flex w-full">
             <div
-              className="system-md-semibold truncate whitespace-nowrap text-text-secondary"
+              className="truncate system-md-semibold whitespace-nowrap text-text-secondary"
               data-testid="app-name"
             >
               {appDetail.name}

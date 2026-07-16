@@ -81,6 +81,7 @@ def runner(mocker: MockerFixture):
     mocker.patch("core.agent.fc_agent_runner.LLMResultChunkDelta", MagicMock)
 
     app_config = MagicMock()
+    app_config.app_id = "app"
     app_config.agent = MagicMock(max_iteration=2)
     app_config.prompt_template = MagicMock(simple_prompt_template="system")
 
@@ -130,6 +131,7 @@ def runner(mocker: MockerFixture):
     runner._current_thoughts = []
     runner.files = []
     runner.agent_callback = MagicMock()
+    runner.session = MagicMock()
 
     runner._init_prompt_tools = MagicMock(return_value=({}, []))
     runner.create_agent_thought = MagicMock(return_value="thought1")
@@ -296,8 +298,11 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.return_value = result
 
-        outputs = list(runner.run(message, "query"))
+        outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) == 1
+        assert "session" not in runner.create_agent_thought.call_args.kwargs
+        assert "session" not in runner.save_agent_thought.call_args.kwargs
+        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
         runner.queue_manager.publish.assert_called()
 
         queue_calls = runner.queue_manager.publish.call_args_list
@@ -306,16 +311,22 @@ class TestRunMethod:
     def test_run_streaming_branch(self, runner: FunctionCallAgentRunner):
         message = MagicMock(id="m1")
         runner.stream_tool_call = True
+        events: list[str] = []
+        session = MagicMock()
+        session.commit.side_effect = lambda: events.append("commit")
+        session.close.side_effect = lambda: events.append("close")
 
         content = [TextPromptMessageContent(data="hi")]
         chunk = DummyChunk(message=DummyMessage(content=content), usage=build_usage())
 
         def generator():
+            events.append("first-chunk")
             yield chunk
 
         runner.model_instance.invoke_llm.return_value = generator()
 
-        outputs = list(runner.run(message, "query"))
+        outputs = list(runner.run(session, message, "query"))
+        assert events == ["commit", "close", "first-chunk"]
         assert len(outputs) == 1
 
     def test_run_streaming_tool_calls_list_content(self, runner: FunctionCallAgentRunner):
@@ -338,7 +349,7 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.side_effect = [generator(), final_result]
 
-        outputs = list(runner.run(message, "query"))
+        outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) >= 1
 
     def test_run_non_streaming_list_content(self, runner: FunctionCallAgentRunner):
@@ -349,7 +360,7 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.return_value = result
 
-        outputs = list(runner.run(message, "query"))
+        outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) == 1
         assert runner.save_agent_thought.call_args.kwargs["thought"] == "hi"
 
@@ -378,7 +389,7 @@ class TestRunMethod:
 
         mocker.patch("core.agent.fc_agent_runner.json.dumps", side_effect=flaky_dumps)
 
-        outputs = list(runner.run(message, "query"))
+        outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) == 1
 
     def test_run_with_missing_tool_instance(self, runner: FunctionCallAgentRunner):
@@ -396,7 +407,7 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.side_effect = [result, final_result]
 
-        outputs = list(runner.run(message, "query"))
+        outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) >= 1
 
     def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
@@ -425,7 +436,7 @@ class TestRunMethod:
             return_value=("ok", ["file1"], tool_invoke_meta),
         )
 
-        outputs = list(runner.run(message, "query"))
+        outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) >= 1
         assert any(
             isinstance(call.args[0], QueueMessageFileEvent)
@@ -450,4 +461,4 @@ class TestRunMethod:
         runner.model_instance.invoke_llm.return_value = result
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(message, "query"))
+            list(runner.run(runner.session, message, "query"))

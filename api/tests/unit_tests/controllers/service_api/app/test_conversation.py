@@ -475,6 +475,7 @@ class TestConversationService:
             user=Mock(spec=EndUser),
             name="New Name",
             auto_generate=False,
+            session=Mock(),
         )
 
         assert result.name == "New Name"

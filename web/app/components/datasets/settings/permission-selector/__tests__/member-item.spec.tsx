@@ -168,7 +168,7 @@ describe('MemberItem', () => {
     })
 
     it('should handle special characters in name', () => {
-      const specialName = 'O\'Connor-Smith'
+      const specialName = "O'Connor-Smith"
       render(<MemberItem {...defaultProps} name={specialName} />)
       expect(screen.getByText(specialName)).toBeInTheDocument()
     })

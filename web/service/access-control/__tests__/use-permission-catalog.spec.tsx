@@ -52,7 +52,9 @@ describe('use-permission-catalog', () => {
       renderHook(() => useDatasetPermissionCatalog(true), { wrapper: createWrapper() })
 
       await waitFor(() => {
-        expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/role-permissions/catalog/dataset')
+        expect(get).toHaveBeenCalledWith(
+          '/workspaces/current/rbac/role-permissions/catalog/dataset',
+        )
       })
     })
 

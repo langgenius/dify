@@ -15,19 +15,20 @@ vi.mock('../datasource-icon', () => ({
   ),
 }))
 
-const createMockNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType => ({
-  title: 'Test Node',
-  desc: '',
-  type: {} as DataSourceNodeType['type'],
-  plugin_id: 'test-plugin',
-  provider_type: 'builtin',
-  provider_name: 'test-provider',
-  datasource_name: 'test-ds',
-  datasource_label: 'Test DS',
-  datasource_parameters: {},
-  datasource_configurations: {},
-  ...overrides,
-} as DataSourceNodeType)
+const createMockNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType =>
+  ({
+    title: 'Test Node',
+    desc: '',
+    type: {} as DataSourceNodeType['type'],
+    plugin_id: 'test-plugin',
+    provider_type: 'builtin',
+    provider_name: 'test-provider',
+    datasource_name: 'test-ds',
+    datasource_label: 'Test DS',
+    datasource_parameters: {},
+    datasource_configurations: {},
+    ...overrides,
+  }) as DataSourceNodeType
 
 describe('OptionCard', () => {
   const defaultProps = {
@@ -75,9 +76,7 @@ describe('OptionCard', () => {
 
     it('should not throw when onClick is undefined', () => {
       expect(() => {
-        const { container } = render(
-          <OptionCard {...defaultProps} onClick={undefined} />,
-        )
+        const { container } = render(<OptionCard {...defaultProps} onClick={undefined} />)
         fireEvent.click(container.firstElementChild!)
       }).not.toThrow()
     })

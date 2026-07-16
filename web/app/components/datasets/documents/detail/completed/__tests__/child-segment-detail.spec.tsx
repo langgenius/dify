@@ -1,14 +1,15 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
-
 import ChildSegmentDetail from '../child-segment-detail'
 
 // Mock segment list context
 let mockFullScreen = false
 const mockToggleFullScreen = vi.fn()
 vi.mock('../index', () => ({
-  useSegmentListContext: (selector: (state: { fullScreen: boolean, toggleFullScreen: () => void }) => unknown) => {
+  useSegmentListContext: (
+    selector: (state: { fullScreen: boolean; toggleFullScreen: () => void }) => unknown,
+  ) => {
     const state = {
       fullScreen: mockFullScreen,
       toggleFullScreen: mockToggleFullScreen,
@@ -30,22 +31,44 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('../common/action-buttons', () => ({
-  default: ({ handleCancel, handleSave, loading, isChildChunk }: { handleCancel: () => void, handleSave: () => void, loading: boolean, isChildChunk?: boolean }) => (
+  ActionButtons: ({
+    handleCancel,
+    handleSave,
+    loading,
+    isChildChunk,
+  }: {
+    handleCancel: () => void
+    handleSave: () => void
+    loading: boolean
+    isChildChunk?: boolean
+  }) => (
     <div data-testid="action-buttons">
-      <button onClick={handleCancel} data-testid="cancel-btn">Cancel</button>
-      <button onClick={handleSave} disabled={loading} data-testid="save-btn">Save</button>
+      <button onClick={handleCancel} data-testid="cancel-btn">
+        Cancel
+      </button>
+      <button onClick={handleSave} disabled={loading} data-testid="save-btn">
+        Save
+      </button>
       <span data-testid="is-child-chunk">{isChildChunk ? 'true' : 'false'}</span>
     </div>
   ),
 }))
 
 vi.mock('../common/chunk-content', () => ({
-  default: ({ question, onQuestionChange, isEditMode }: { question: string, onQuestionChange: (v: string) => void, isEditMode: boolean }) => (
+  default: ({
+    question,
+    onQuestionChange,
+    isEditMode,
+  }: {
+    question: string
+    onQuestionChange: (v: string) => void
+    isEditMode: boolean
+  }) => (
     <div data-testid="chunk-content">
       <input
         data-testid="content-input"
         value={question}
-        onChange={e => onQuestionChange(e.target.value)}
+        onChange={(e) => onQuestionChange(e.target.value)}
       />
       <span data-testid="edit-mode">{isEditMode ? 'editing' : 'viewing'}</span>
     </div>
@@ -57,11 +80,9 @@ vi.mock('../common/dot', () => ({
 }))
 
 vi.mock('../common/segment-index-tag', () => ({
-  SegmentIndexTag: ({ positionId, labelPrefix }: { positionId?: string, labelPrefix?: string }) => (
+  SegmentIndexTag: ({ positionId, labelPrefix }: { positionId?: string; labelPrefix?: string }) => (
     <span data-testid="segment-index-tag">
-      {labelPrefix}
-      {' '}
-      {positionId}
+      {labelPrefix} {positionId}
     </span>
   ),
 }))
@@ -129,9 +150,7 @@ describe('ChildSegmentDetail', () => {
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       const mockOnCancel = vi.fn()
-      render(
-        <ChildSegmentDetail {...defaultProps} onCancel={mockOnCancel} />,
-      )
+      render(<ChildSegmentDetail {...defaultProps} onCancel={mockOnCancel} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
@@ -152,11 +171,7 @@ describe('ChildSegmentDetail', () => {
 
       fireEvent.click(screen.getByTestId('save-btn'))
 
-      expect(mockOnUpdate).toHaveBeenCalledWith(
-        'chunk-1',
-        'child-chunk-1',
-        'Test content',
-      )
+      expect(mockOnUpdate).toHaveBeenCalledWith('chunk-1', 'child-chunk-1', 'Test content')
     })
 
     it('should update content when input changes', () => {

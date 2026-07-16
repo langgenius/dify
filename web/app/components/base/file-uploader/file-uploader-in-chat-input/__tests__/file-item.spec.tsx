@@ -12,9 +12,11 @@ vi.mock('@/utils/format', () => ({
 }))
 
 vi.mock('../../dynamic-pdf-preview', () => ({
-  default: ({ url, onCancel }: { url: string, onCancel: () => void }) => (
+  default: ({ url, onCancel }: { url: string; onCancel: () => void }) => (
     <div data-testid="pdf-preview" data-url={url}>
-      <button data-testid="pdf-close" onClick={onCancel}>Close PDF</button>
+      <button data-testid="pdf-close" onClick={onCancel}>
+        Close PDF
+      </button>
     </div>
   ),
 }))
@@ -89,9 +91,7 @@ describe('FileItem (chat-input)', () => {
 
   it('should call onReUpload when replay icon is clicked', () => {
     const onReUpload = vi.fn()
-    render(
-      <FileItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />,
-    )
+    render(<FileItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
 
     const replayIcon = screen.getByRole('button', { name: 'common.operation.retry' })
     fireEvent.click(replayIcon!)
@@ -313,10 +313,7 @@ describe('FileItem (chat-input)', () => {
 
   it('should not render download button when download_url is falsy', () => {
     render(
-      <FileItem
-        file={createFile({ url: undefined, base64Url: undefined })}
-        showDownloadAction
-      />,
+      <FileItem file={createFile({ url: undefined, base64Url: undefined })} showDownloadAction />,
     )
 
     const buttons = screen.queryAllByRole('button')

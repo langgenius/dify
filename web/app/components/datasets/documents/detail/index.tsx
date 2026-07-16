@@ -4,6 +4,7 @@ import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/mode
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,13 +12,23 @@ import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
+import {
+  useDocumentDetail,
+  useDocumentMetadata,
+  useInvalidDocumentList,
+} from '@/service/knowledge/use-document'
+import {
+  useCheckSegmentBatchImportProgress,
+  useChildSegmentListKey,
+  useSegmentBatchImport,
+  useSegmentListKey,
+} from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import { segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -36,8 +47,8 @@ type DocumentDetailProps = {
   documentId: string
 }
 
-const NON_TERMINAL_DISPLAY_STATUSES = new Set<typeof DisplayStatusList[number]>(
-  DisplayStatusList.filter(s => s === 'queuing' || s === 'indexing' || s === 'paused'),
+const NON_TERMINAL_DISPLAY_STATUSES = new Set<(typeof DisplayStatusList)[number]>(
+  DisplayStatusList.filter((s) => s === 'queuing' || s === 'indexing' || s === 'paused'),
 )
 
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
@@ -48,16 +59,17 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = useMemo(
-    () => getDatasetACLCapabilities(dataset?.permission_keys, {
-      currentUserId,
-      resourceMaintainer: dataset?.maintainer,
-      workspacePermissionKeys,
-    }),
+    () =>
+      getDatasetACLCapabilities(dataset?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: dataset?.maintainer,
+        workspacePermissionKeys,
+      }),
     [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const canEditDocument = datasetACLCapabilities.canEdit
@@ -72,46 +84,62 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
   const checkProcess = async (jobID: string) => {
-    await checkSegmentBatchImportProgress({ jobID }, {
-      onSuccess: (res) => {
-        setImportStatus(res.job_status)
-        if (res.job_status === segmentImportStatus.waiting || res.job_status === segmentImportStatus.processing)
-          setTimeout(() => checkProcess(res.job_id), 2500)
-        if (res.job_status === segmentImportStatus.error)
-          toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}`)
+    await checkSegmentBatchImportProgress(
+      { jobID },
+      {
+        onSuccess: (res) => {
+          setImportStatus(res.job_status)
+          if (
+            res.job_status === segmentImportStatus.waiting ||
+            res.job_status === segmentImportStatus.processing
+          )
+            setTimeout(() => checkProcess(res.job_id), 2500)
+          if (res.job_status === segmentImportStatus.error)
+            toast.error(`${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}`)
+        },
+        onError: (e) => {
+          const message = 'message' in e ? `: ${e.message}` : ''
+          toast.error(
+            `${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`,
+          )
+        },
       },
-      onError: (e) => {
-        const message = 'message' in e ? `: ${e.message}` : ''
-        toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}`)
-      },
-    })
+    )
   }
 
   const { mutateAsync: segmentBatchImport } = useSegmentBatchImport()
   const runBatch = async (csv: FileItem) => {
-    await segmentBatchImport({
-      url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
-      body: { upload_file_id: csv.file.id! },
-    }, {
-      onSuccess: (res) => {
-        setImportStatus(res.job_status)
-        checkProcess(res.job_id)
+    await segmentBatchImport(
+      {
+        url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
+        body: { upload_file_id: csv.file.id! },
       },
-      onError: (e) => {
-        const message = 'message' in e ? `: ${e.message}` : ''
-        toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}`)
+      {
+        onSuccess: (res) => {
+          setImportStatus(res.job_status)
+          checkProcess(res.job_id)
+        },
+        onError: (e) => {
+          const message = 'message' in e ? `: ${e.message}` : ''
+          toast.error(
+            `${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`,
+          )
+        },
       },
-    })
+    )
   }
 
-  const { data: documentDetail, error, refetch: detailMutate } = useDocumentDetail({
+  const {
+    data: documentDetail,
+    error,
+    refetch: detailMutate,
+  } = useDocumentDetail({
     datasetId,
     documentId,
     params: { metadata: 'without' },
     refetchInterval: (query) => {
       const status = query.state.data?.display_status
-      if (!status || NON_TERMINAL_DISPLAY_STATUSES.has(status))
-        return 2500
+      if (!status || NON_TERMINAL_DISPLAY_STATUSES.has(status)) return 2500
       return false
     },
   })
@@ -130,70 +158,103 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const isDetailLoading = !documentDetail && !error
 
-  const embedding = NON_TERMINAL_DISPLAY_STATUSES.has(documentDetail?.display_status as DocumentDisplayStatus)
+  const embedding = NON_TERMINAL_DISPLAY_STATUSES.has(
+    documentDetail?.display_status as DocumentDisplayStatus,
+  )
 
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
   const invalidDocumentList = useInvalidDocumentList(datasetId)
 
-  const handleOperate = useCallback((operateName?: string) => {
-    invalidDocumentList()
-    if (operateName === 'delete') {
-      backToPrev()
-    }
-    else {
-      detailMutate()
-      // If operation is not rename, refresh the chunk list after 5 seconds
-      if (operateName) {
-        setTimeout(() => {
-          invalidChunkList()
-          invalidChildChunkList()
-        }, 5000)
+  const handleOperate = useCallback(
+    (operateName?: string) => {
+      invalidDocumentList()
+      if (operateName === 'delete') {
+        backToPrev()
+      } else {
+        detailMutate()
+        // If operation is not rename, refresh the chunk list after 5 seconds
+        if (operateName) {
+          setTimeout(() => {
+            invalidChunkList()
+            invalidChildChunkList()
+          }, 5000)
+        }
       }
-    }
-  }, [invalidDocumentList, backToPrev, detailMutate, invalidChunkList, invalidChildChunkList])
+    },
+    [invalidDocumentList, backToPrev, detailMutate, invalidChunkList, invalidChildChunkList],
+  )
 
   const parentMode = useMemo(() => {
-    return documentDetail?.document_process_rule?.rules?.parent_mode || documentDetail?.dataset_process_rule?.rules?.parent_mode || 'paragraph'
-  }, [documentDetail?.document_process_rule?.rules?.parent_mode, documentDetail?.dataset_process_rule?.rules?.parent_mode])
+    return (
+      documentDetail?.document_process_rule?.rules?.parent_mode ||
+      documentDetail?.dataset_process_rule?.rules?.parent_mode ||
+      'paragraph'
+    )
+  }, [
+    documentDetail?.document_process_rule?.rules?.parent_mode,
+    documentDetail?.dataset_process_rule?.rules?.parent_mode,
+  ])
 
   const isFullDocMode = useMemo(() => {
     const chunkMode = documentDetail?.doc_form
     return chunkMode === ChunkingMode.parentChild && parentMode === 'full-doc'
   }, [documentDetail?.doc_form, parentMode])
 
-  const contextValue = useMemo(() => ({
-    datasetId,
-    documentId,
-    docForm: documentDetail?.doc_form as ChunkingMode,
-    parentMode,
-  }), [datasetId, documentId, documentDetail?.doc_form, parentMode])
+  const contextValue = useMemo(
+    () => ({
+      datasetId,
+      documentId,
+      docForm: documentDetail?.doc_form as ChunkingMode,
+      parentMode,
+    }),
+    [datasetId, documentId, documentDetail?.doc_form, parentMode],
+  )
 
-  const statusDetail = useMemo(() => ({
-    enabled: documentDetail?.enabled || false,
-    archived: documentDetail?.archived || false,
-    id: documentId,
-  }), [documentDetail?.enabled, documentDetail?.archived, documentId])
+  const statusDetail = useMemo(
+    () => ({
+      enabled: documentDetail?.enabled || false,
+      archived: documentDetail?.archived || false,
+      id: documentId,
+    }),
+    [documentDetail?.enabled, documentDetail?.archived, documentId],
+  )
 
-  const operationsDetail = useMemo(() => ({
-    name: documentDetail?.name || '',
-    enabled: documentDetail?.enabled || false,
-    archived: documentDetail?.archived || false,
-    id: documentId,
-    data_source_type: documentDetail?.data_source_type || '',
-    doc_form: documentDetail?.doc_form || '',
-  }), [documentDetail?.name, documentDetail?.enabled, documentDetail?.archived, documentId, documentDetail?.data_source_type, documentDetail?.doc_form])
+  const operationsDetail = useMemo(
+    () => ({
+      name: documentDetail?.name || '',
+      enabled: documentDetail?.enabled || false,
+      archived: documentDetail?.archived || false,
+      id: documentId,
+      data_source_type: documentDetail?.data_source_type || '',
+      doc_form: documentDetail?.doc_form || '',
+    }),
+    [
+      documentDetail?.name,
+      documentDetail?.enabled,
+      documentDetail?.archived,
+      documentId,
+      documentDetail?.data_source_type,
+      documentDetail?.doc_form,
+    ],
+  )
 
-  const docDetail = useMemo(() => ({
-    ...documentDetail,
-    ...documentMetadata,
-    doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type,
-  } as FullDocumentDetail), [documentDetail, documentMetadata])
+  const docDetail = useMemo(
+    () =>
+      ({
+        ...documentDetail,
+        ...documentMetadata,
+        doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type,
+      }) as FullDocumentDetail,
+    [documentDetail, documentMetadata],
+  )
 
-  const backButtonLabel = t('operation.back', { ns: 'common' })
-  const metadataToggleLabel = `${showMetadata
-    ? t('operation.close', { ns: 'common' })
-    : t('operation.view', { ns: 'common' })} ${t('metadata.title', { ns: 'datasetDocuments' })}`
+  const backButtonLabel = t(($) => $['operation.back'], { ns: 'common' })
+  const metadataToggleLabel = `${
+    showMetadata
+      ? t(($) => $['operation.close'], { ns: 'common' })
+      : t(($) => $['operation.view'], { ns: 'common' })
+  } ${t(($) => $['metadata.title'], { ns: 'datasetDocuments' })}`
 
   return (
     <DocumentContext.Provider value={contextValue}>
@@ -218,18 +279,22 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             parentMode={parentMode}
           />
           <div className="flex flex-wrap items-center">
-            {embeddingAvailable && canEditDocument && documentDetail && !documentDetail.archived && !isFullDocMode && (
-              <>
-                <SegmentAdd
-                  importStatus={importStatus}
-                  clearImportStatus={resetImportStatus}
-                  showNewSegmentModal={showNewSegmentModal}
-                  showBatchModal={showBatchModal}
-                  embedding={embedding}
-                />
-                <Divider type="vertical" className="mx-3! h-[14px]! bg-divider-regular!" />
-              </>
-            )}
+            {embeddingAvailable &&
+              canEditDocument &&
+              documentDetail &&
+              !documentDetail.archived &&
+              !isFullDocMode && (
+                <>
+                  <SegmentAdd
+                    importStatus={importStatus}
+                    clearImportStatus={resetImportStatus}
+                    showNewSegmentModal={showNewSegmentModal}
+                    showBatchModal={showBatchModal}
+                    embedding={embedding}
+                  />
+                  <Divider type="vertical" className="mx-3! h-[14px]! bg-divider-regular!" />
+                </>
+              )}
             {documentDetail && (
               <StatusItem
                 status={documentDetail.display_status || 'available'}
@@ -263,39 +328,55 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
             >
-              {
-                showMetadata
-                  ? <span aria-hidden="true" className="i-ri-layout-left-2-line size-4 text-components-button-secondary-text" />
-                  : <span aria-hidden="true" className="i-ri-layout-right-2-line size-4 text-components-button-secondary-text" />
-              }
+              {showMetadata ? (
+                <span
+                  aria-hidden="true"
+                  className="i-ri-layout-left-2-line size-4 text-components-button-secondary-text"
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="i-ri-layout-right-2-line size-4 text-components-button-secondary-text"
+                />
+              )}
             </button>
           </div>
         </div>
         <div className="flex flex-1 flex-row" style={{ height: 'calc(100% - 4rem)' }}>
-          {isDetailLoading
-            ? <Loading type="app" />
-            : (
-                <div className={cn('flex h-full min-w-0 grow flex-col', !embedding && isFullDocMode && 'relative px-11 pt-4', !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5')}>
-                  {embedding
-                    ? (
-                        <Embedding
-                          detailUpdate={detailMutate}
-                          indexingType={dataset?.indexing_technique}
-                          retrievalMethod={dataset?.retrieval_model_dict?.search_method}
-                        />
-                      )
-                    : (
-                        <Completed
-                          embeddingAvailable={embeddingAvailable}
-                          showNewSegmentModal={newSegmentModalVisible}
-                          onNewSegmentModalChange={setNewSegmentModalVisible}
-                          importStatus={importStatus}
-                          archived={documentDetail?.archived}
-                        />
-                      )}
-                </div>
+          {isDetailLoading ? (
+            <Loading type="app" />
+          ) : (
+            <div
+              className={cn(
+                'flex h-full min-w-0 grow flex-col',
+                !embedding && isFullDocMode && 'relative px-11 pt-4',
+                !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5',
               )}
-          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="justify-start!">
+            >
+              {embedding ? (
+                <Embedding
+                  detailUpdate={detailMutate}
+                  indexingType={dataset?.indexing_technique}
+                  retrievalMethod={dataset?.retrieval_model_dict?.search_method}
+                />
+              ) : (
+                <Completed
+                  embeddingAvailable={embeddingAvailable}
+                  showNewSegmentModal={newSegmentModalVisible}
+                  onNewSegmentModalChange={setNewSegmentModalVisible}
+                  importStatus={importStatus}
+                  archived={documentDetail?.archived}
+                />
+              )}
+            </div>
+          )}
+          <FloatRightContainer
+            showClose
+            isOpen={showMetadata}
+            onClose={() => setShowMetadata(false)}
+            isMobile={isMobile}
+            panelClassName="justify-start!"
+          >
             <Metadata
               className="mt-3 mr-2"
               datasetId={datasetId}

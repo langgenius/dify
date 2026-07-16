@@ -303,3 +303,46 @@ def test_load_active_session_for_conversation_isolates_other_conversations():
         store.load_active_session_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-A")
         is not None
     )
+
+
+def test_list_active_sessions_for_conversation_returns_all_active_rows():
+    store = AgentAppRuntimeSessionStore()
+    with session_factory.create_session() as session:
+        session.add(
+            AgentRuntimeSession(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
+                agent_id="agent-1",
+                agent_config_snapshot_id="snap-1",
+                conversation_id="conv-1",
+                backend_run_id="run-1",
+                session_snapshot=_snapshot(messages=1).model_dump_json(),
+                composition_layer_specs='[{"name":"execution_context","type":"dify.execution_context","deps":{},"metadata":{},"config":{"tenant_id":"tenant-1"}},{"name":"history","type":"pydantic_ai.history","deps":{},"metadata":{},"config":null}]',
+                status=AgentRuntimeSessionStatus.ACTIVE,
+            )
+        )
+        session.add(
+            AgentRuntimeSession(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
+                agent_id="agent-2",
+                agent_config_snapshot_id="snap-2",
+                conversation_id="conv-1",
+                backend_run_id="run-2",
+                session_snapshot=_snapshot(messages=2).model_dump_json(),
+                composition_layer_specs='[{"name":"execution_context","type":"dify.execution_context","deps":{},"metadata":{},"config":{"tenant_id":"tenant-1"}},{"name":"history","type":"pydantic_ai.history","deps":{},"metadata":{},"config":null}]',
+                status=AgentRuntimeSessionStatus.ACTIVE,
+            )
+        )
+        session.commit()
+
+    loaded = store.list_active_sessions_for_conversation(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        conversation_id="conv-1",
+    )
+
+    assert [session.scope.agent_id for session in loaded] == ["agent-2", "agent-1"]
+    assert all(session.scope.conversation_id == "conv-1" for session in loaded)

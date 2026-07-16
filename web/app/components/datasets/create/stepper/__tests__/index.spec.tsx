@@ -336,9 +336,7 @@ describe('StepperStep', () => {
 
     it('should calculate active correctly for different indices', () => {
       // Test index 1 with activeIndex 1
-      const { rerender } = render(
-        <StepperStep name="Step" index={1} activeIndex={1} />,
-      )
+      const { rerender } = render(<StepperStep name="Step" index={1} activeIndex={1} />)
       expect(screen.getByText('STEP 2')).toBeInTheDocument()
 
       // Test index 5 with activeIndex 5
@@ -457,9 +455,7 @@ describe('StepperStep', () => {
     describe('activeIndex prop', () => {
       it('should determine state based on activeIndex comparison', () => {
         // Active: index === activeIndex
-        const { rerender } = render(
-          <StepperStep name="Step" index={1} activeIndex={1} />,
-        )
+        const { rerender } = render(<StepperStep name="Step" index={1} activeIndex={1} />)
         expect(screen.getByText('STEP 2')).toBeInTheDocument()
 
         // Completed: index < activeIndex

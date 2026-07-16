@@ -14,9 +14,7 @@ type ModelSelectorPopupFrameProps = {
   children: ReactNode
 }
 
-export function ModelSelectorPopupFrame({
-  children,
-}: ModelSelectorPopupFrameProps) {
+export function ModelSelectorPopupFrame({ children }: ModelSelectorPopupFrameProps) {
   return (
     <div className="flex max-h-[min(624px,var(--available-height,624px))] flex-col overflow-hidden rounded-xl bg-components-panel-bg">
       {children}
@@ -46,30 +44,25 @@ export function ModelSelectorSearchHeader({
         )}
       >
         <span
-          className={`
-            mr-0.5 i-ri-search-line size-4 shrink-0
-            ${inputValue ? 'text-text-tertiary' : 'text-text-quaternary'}
-          `}
+          className={`mr-0.5 i-ri-search-line size-4 shrink-0 ${inputValue ? 'text-text-tertiary' : 'text-text-quaternary'} `}
           aria-hidden="true"
         />
         <ComboboxInput
-          aria-label={t('form.searchModel', { ns: 'datasetSettings' }) || ''}
+          aria-label={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
           className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
-          placeholder={t('form.searchModel', { ns: 'datasetSettings' }) || ''}
+          placeholder={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
         />
-        {
-          inputValue && (
-            <button
-              type="button"
-              aria-label={t('operation.clear', { ns: 'common' }) || 'Clear'}
-              className="ml-1.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-none text-text-quaternary outline-hidden hover:bg-transparent hover:text-text-quaternary focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-active"
-              onClick={() => onInputValueChange('')}
-              onPointerDown={event => event.preventDefault()}
-            >
-              <span className="i-custom-vender-solid-general-x-circle size-3.5" aria-hidden="true" />
-            </button>
-          )
-        }
+        {inputValue && (
+          <button
+            type="button"
+            aria-label={t(($) => $['operation.clear'], { ns: 'common' }) || 'Clear'}
+            className="ml-1.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-none text-text-quaternary outline-hidden hover:bg-transparent hover:text-text-quaternary focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+            onClick={() => onInputValueChange('')}
+            onPointerDown={(event) => event.preventDefault()}
+          >
+            <span className="i-custom-vender-solid-general-x-circle size-3.5" aria-hidden="true" />
+          </button>
+        )}
       </ComboboxInputGroup>
     </div>
   )
@@ -80,10 +73,7 @@ type ModelSelectorScrollBodyProps = {
   label: string
 }
 
-export function ModelSelectorScrollBody({
-  children,
-  label,
-}: ModelSelectorScrollBodyProps) {
+export function ModelSelectorScrollBody({ children, label }: ModelSelectorScrollBodyProps) {
   return (
     <ScrollAreaRoot className="relative min-h-0 overflow-hidden overscroll-contain">
       <ScrollAreaViewport
@@ -93,7 +83,7 @@ export function ModelSelectorScrollBody({
       >
         <ScrollAreaContent className="min-w-0 overflow-x-hidden">{children}</ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="z-2 data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+      <ScrollAreaScrollbar className="z-2">
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollAreaRoot>
@@ -108,8 +98,34 @@ export function CompatibleModelsNotice() {
       data-testid="compatible-models-banner"
       className="px-4 py-2 system-xs-regular text-text-tertiary"
     >
-      {t('modelProvider.selector.onlyCompatibleModelsShown', { ns: 'common' })}
+      {t(($) => $['modelProvider.selector.onlyCompatibleModelsShown'], { ns: 'common' })}
     </div>
+  )
+}
+
+type ShowIncompatibleModelsButtonProps = {
+  showIncompatibleModels: boolean
+  onClick: () => void
+}
+
+export function ShowIncompatibleModelsButton({
+  showIncompatibleModels,
+  onClick,
+}: ShowIncompatibleModelsButtonProps) {
+  const { t } = useTranslation()
+
+  return (
+    <button
+      type="button"
+      className="flex h-10 w-full cursor-pointer items-center px-4 text-left system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+      onClick={onClick}
+    >
+      <span className="min-w-0 truncate">
+        {showIncompatibleModels
+          ? t(($) => $['modelProvider.selector.hideIncompatibleModels'], { ns: 'common' })
+          : t(($) => $['modelProvider.selector.showIncompatibleModels'], { ns: 'common' })}
+      </span>
+    </button>
   )
 }
 
@@ -117,9 +133,7 @@ type ModelProviderSettingsFooterProps = {
   onOpenSettings: () => void
 }
 
-export function ModelProviderSettingsFooter({
-  onOpenSettings,
-}: ModelProviderSettingsFooterProps) {
+export function ModelProviderSettingsFooter({ onOpenSettings }: ModelProviderSettingsFooterProps) {
   const { t } = useTranslation()
 
   return (
@@ -130,7 +144,9 @@ export function ModelProviderSettingsFooter({
         onClick={onOpenSettings}
       >
         <span className="i-ri-equalizer-2-line size-4 shrink-0" />
-        <span className="system-xs-medium">{t('modelProvider.selector.modelProviderSettings', { ns: 'common' })}</span>
+        <span className="system-xs-medium">
+          {t(($) => $['modelProvider.selector.modelProviderSettings'], { ns: 'common' })}
+        </span>
       </button>
     </div>
   )

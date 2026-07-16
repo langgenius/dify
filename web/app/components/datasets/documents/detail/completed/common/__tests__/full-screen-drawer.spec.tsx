@@ -5,9 +5,20 @@ import { DocumentDetailDrawer } from '../full-screen-drawer'
 
 // Mock the Drawer component since it has high complexity
 vi.mock('../drawer', () => ({
-  CompletedDrawer: ({ children, open, panelClassName, panelContentClassName, modal }: { children: ReactNode, open: boolean, panelClassName: string, panelContentClassName: string, modal: boolean }) => {
-    if (!open)
-      return null
+  CompletedDrawer: ({
+    children,
+    open,
+    panelClassName,
+    panelContentClassName,
+    modal,
+  }: {
+    children: ReactNode
+    open: boolean
+    panelClassName: string
+    panelContentClassName: string
+    modal: boolean
+  }) => {
+    if (!open) return null
     return (
       <div
         data-testid="drawer-mock"
@@ -68,8 +79,12 @@ describe('DocumentDetailDrawer', () => {
 
       const drawer = screen.getByTestId('drawer-mock')
       expect(drawer.getAttribute('data-panel-class')).toContain('w-full')
-      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=right]:w-full')
-      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=left]:w-full')
+      expect(drawer.getAttribute('data-panel-class')).toContain(
+        'data-[swipe-direction=right]:w-full',
+      )
+      expect(drawer.getAttribute('data-panel-class')).toContain(
+        'data-[swipe-direction=left]:w-full',
+      )
     })
 
     it('should pass fullScreen=false to Drawer with fixed width class', () => {
@@ -81,8 +96,12 @@ describe('DocumentDetailDrawer', () => {
 
       const drawer = screen.getByTestId('drawer-mock')
       expect(drawer.getAttribute('data-panel-class')).toContain('w-[568px]')
-      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=right]:w-[568px]')
-      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=left]:w-[568px]')
+      expect(drawer.getAttribute('data-panel-class')).toContain(
+        'data-[swipe-direction=right]:w-[568px]',
+      )
+      expect(drawer.getAttribute('data-panel-class')).toContain(
+        'data-[swipe-direction=left]:w-[568px]',
+      )
     })
 
     it('should render as non-modal by default', () => {

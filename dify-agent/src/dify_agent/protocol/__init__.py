@@ -9,6 +9,7 @@ from .schemas import (
     DIFY_AGENT_MODEL_LAYER_ID,
     DIFY_AGENT_OUTPUT_LAYER_ID,
     RUN_EVENT_ADAPTER,
+    AgentRunUsage,
     BaseRunEvent,
     CancelRunRequest,
     CancelRunResponse,
@@ -27,7 +28,6 @@ from .schemas import (
     RunEventsResponse,
     RunFailedEvent,
     RunFailedEventData,
-    RunPurpose,
     RunLayerSpec,
     RunStartedEvent,
     RunStatus,
@@ -55,6 +55,7 @@ from .sandbox import (
 
 __all__ = [
     "BaseRunEvent",
+    "AgentRunUsage",
     "CancelRunRequest",
     "CancelRunResponse",
     "CreateRunRequest",
@@ -76,7 +77,6 @@ __all__ = [
     "RunEventsResponse",
     "RunFailedEvent",
     "RunFailedEventData",
-    "RunPurpose",
     "RunLayerSpec",
     "RunStartedEvent",
     "RunStatus",

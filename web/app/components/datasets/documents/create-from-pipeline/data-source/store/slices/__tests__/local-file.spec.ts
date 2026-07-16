@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { createStore } from 'zustand'
 import { createLocalFileSlice } from '../local-file'
 
-const createTestStore = () => createStore<LocalFileSliceShape>((...args) => createLocalFileSlice(...args))
+const createTestStore = () =>
+  createStore<LocalFileSliceShape>((...args) => createLocalFileSlice(...args))
 
 describe('createLocalFileSlice', () => {
   it('should initialize with default values', () => {

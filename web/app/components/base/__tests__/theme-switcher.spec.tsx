@@ -60,25 +60,43 @@ describe('ThemeSwitcher', () => {
     it('should highlight system option when theme is system', () => {
       mockTheme = 'system'
       render(<ThemeSwitcher />)
-      expect(screen.getByTestId('system-theme-container')).toHaveClass('bg-components-segmented-control-item-active-bg')
-      expect(screen.getByTestId('light-theme-container')).not.toHaveClass('bg-components-segmented-control-item-active-bg')
-      expect(screen.getByTestId('dark-theme-container')).not.toHaveClass('bg-components-segmented-control-item-active-bg')
+      expect(screen.getByTestId('system-theme-container')).toHaveClass(
+        'bg-components-segmented-control-item-active-bg',
+      )
+      expect(screen.getByTestId('light-theme-container')).not.toHaveClass(
+        'bg-components-segmented-control-item-active-bg',
+      )
+      expect(screen.getByTestId('dark-theme-container')).not.toHaveClass(
+        'bg-components-segmented-control-item-active-bg',
+      )
     })
 
     it('should highlight light option when theme is light', () => {
       mockTheme = 'light'
       render(<ThemeSwitcher />)
-      expect(screen.getByTestId('light-theme-container')).toHaveClass('bg-components-segmented-control-item-active-bg')
-      expect(screen.getByTestId('system-theme-container')).not.toHaveClass('bg-components-segmented-control-item-active-bg')
-      expect(screen.getByTestId('dark-theme-container')).not.toHaveClass('bg-components-segmented-control-item-active-bg')
+      expect(screen.getByTestId('light-theme-container')).toHaveClass(
+        'bg-components-segmented-control-item-active-bg',
+      )
+      expect(screen.getByTestId('system-theme-container')).not.toHaveClass(
+        'bg-components-segmented-control-item-active-bg',
+      )
+      expect(screen.getByTestId('dark-theme-container')).not.toHaveClass(
+        'bg-components-segmented-control-item-active-bg',
+      )
     })
 
     it('should highlight dark option when theme is dark', () => {
       mockTheme = 'dark'
       render(<ThemeSwitcher />)
-      expect(screen.getByTestId('dark-theme-container')).toHaveClass('bg-components-segmented-control-item-active-bg')
-      expect(screen.getByTestId('system-theme-container')).not.toHaveClass('bg-components-segmented-control-item-active-bg')
-      expect(screen.getByTestId('light-theme-container')).not.toHaveClass('bg-components-segmented-control-item-active-bg')
+      expect(screen.getByTestId('dark-theme-container')).toHaveClass(
+        'bg-components-segmented-control-item-active-bg',
+      )
+      expect(screen.getByTestId('system-theme-container')).not.toHaveClass(
+        'bg-components-segmented-control-item-active-bg',
+      )
+      expect(screen.getByTestId('light-theme-container')).not.toHaveClass(
+        'bg-components-segmented-control-item-active-bg',
+      )
     })
 
     it('should show divider between system and light when dark is active', () => {

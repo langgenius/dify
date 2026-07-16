@@ -1,33 +1,22 @@
-import {
-  ContextMenuContent,
-  ContextMenuItem,
-} from '@langgenius/dify-ui/context-menu'
+import { ContextMenuContent, ContextMenuItem } from '@langgenius/dify-ui/context-menu'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { useEdgesInteractions } from './hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
-export function EdgeContextmenu({
-  onClose,
-}: {
-  onClose: () => void
-}) {
+export function EdgeContextmenu({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
-  const contextMenuTarget = useStore(s => s.contextMenuTarget)
+  const contextMenuTarget = useStore((s) => s.contextMenuTarget)
   const edgeId = contextMenuTarget?.type === 'edge' ? contextMenuTarget.edgeId : undefined
   const { handleEdgeDeleteById } = useEdgesInteractions()
   const edges = useEdges()
-  const currentEdgeExists = !edgeId || edges.some(edge => edge.id === edgeId)
+  const currentEdgeExists = !edgeId || edges.some((edge) => edge.id === edgeId)
 
-  if (!edgeId || !currentEdgeExists)
-    return null
+  if (!edgeId || !currentEdgeExists) return null
 
   return (
-    <ContextMenuContent
-      popupClassName="rounded-lg"
-      sideOffset={4}
-    >
+    <ContextMenuContent popupClassName="rounded-lg" sideOffset={4}>
       <ContextMenuItem
         variant="destructive"
         className="justify-between gap-4 px-3"
@@ -36,7 +25,7 @@ export function EdgeContextmenu({
           onClose()
         }}
       >
-        <span>{t('common:operation.delete')}</span>
+        <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         <ShortcutKbd shortcut="workflow.delete" />
       </ContextMenuItem>
     </ContextMenuContent>

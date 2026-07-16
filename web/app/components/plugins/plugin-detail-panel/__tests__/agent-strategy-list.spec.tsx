@@ -19,7 +19,9 @@ const mockStrategies = [
   },
 ] as unknown as StrategyDetail[]
 
-let mockStrategyProviderDetail: { declaration: { identity: unknown, strategies: StrategyDetail[] } } | undefined
+let mockStrategyProviderDetail:
+  | { declaration: { identity: unknown; strategies: StrategyDetail[] } }
+  | undefined
 
 vi.mock('@/service/use-strategy', () => ({
   useStrategyProviderDetail: () => ({
@@ -81,7 +83,9 @@ describe('AgentStrategyList', () => {
     it('should render strategy items when data is available', () => {
       render(<AgentStrategyList detail={createPluginDetail()} />)
 
-      expect(screen.getByText('plugin.detailPanel.strategyNum:{"num":1,"strategy":"strategy"}'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('plugin.detailPanel.strategyNum:{"num":1,"strategy":"strategy"}'),
+      )!.toBeInTheDocument()
       expect(screen.getByTestId('strategy-item'))!.toBeInTheDocument()
     })
 
@@ -98,13 +102,18 @@ describe('AgentStrategyList', () => {
           identity: { author: 'test', name: 'test' },
           strategies: [
             ...mockStrategies,
-            { ...mockStrategies[0]!, identity: { ...mockStrategies[0]!.identity, name: 'strategy-2' } },
+            {
+              ...mockStrategies[0]!,
+              identity: { ...mockStrategies[0]!.identity, name: 'strategy-2' },
+            },
           ],
         },
       }
       render(<AgentStrategyList detail={createPluginDetail()} />)
 
-      expect(screen.getByText('plugin.detailPanel.strategyNum:{"num":2,"strategy":"strategies"}'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('plugin.detailPanel.strategyNum:{"num":2,"strategy":"strategies"}'),
+      )!.toBeInTheDocument()
       expect(screen.getAllByTestId('strategy-item')).toHaveLength(2)
     })
   })

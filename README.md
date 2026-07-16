@@ -125,8 +125,6 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
 - **Dify for enterprise / organizations<br/>**
   We provide additional enterprise-centric features. [Send us an email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) to discuss your enterprise needs. <br/>
 
-  > For startups and small businesses using AWS, check out [Dify Premium on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one click. It's an affordable AMI offering with the option to create apps with custom logo and branding.
-
 ## Staying ahead
 
 Star Dify on GitHub and be instantly notified of new releases.
@@ -209,9 +207,16 @@ At the same time, please consider supporting Dify by sharing it on social media 
   <img src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Star history
+## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+<!-- GitHub token name: star-history -->
+<a href="https://www.star-history.com/?repos=langgenius%2Fdify&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=langgenius/dify&type=date&theme=dark&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=langgenius/dify&type=date&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=langgenius/dify&type=date&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+ </picture>
+</a>
 
 ## Security disclosure
 

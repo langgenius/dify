@@ -540,11 +540,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       expect(screen.getByRole('button', { name: 'runLog.result' })).toBeInTheDocument()
@@ -557,11 +553,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       const { container } = render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       const tabsContainer = container.firstChild
@@ -579,11 +571,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       const buttons = screen.getAllByRole('button')
@@ -598,11 +586,7 @@ describe('Tabs', () => {
         const workflowData = createWorkflowRunningData()
 
         render(
-          <Tabs
-            currentTab="RESULT"
-            workflowRunningData={workflowData}
-            switchTab={mockSwitchTab}
-          />,
+          <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
         )
 
         const resultTab = screen.getByRole('button', { name: 'runLog.result' })
@@ -619,11 +603,7 @@ describe('Tabs', () => {
         const workflowData = createWorkflowRunningData()
 
         render(
-          <Tabs
-            currentTab="DETAIL"
-            workflowRunningData={workflowData}
-            switchTab={mockSwitchTab}
-          />,
+          <Tabs currentTab="DETAIL" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
         )
 
         const resultTab = screen.getByRole('button', { name: 'runLog.result' })
@@ -684,11 +664,7 @@ describe('Tabs', () => {
         const workflowData = createWorkflowRunningData()
 
         render(
-          <Tabs
-            currentTab="RESULT"
-            workflowRunningData={workflowData}
-            switchTab={mockSwitchTab}
-          />,
+          <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
         )
 
         const buttons = screen.getAllByRole('button')
@@ -701,11 +677,7 @@ describe('Tabs', () => {
         const mockSwitchTab = vi.fn()
 
         render(
-          <Tabs
-            currentTab="RESULT"
-            workflowRunningData={undefined}
-            switchTab={mockSwitchTab}
-          />,
+          <Tabs currentTab="RESULT" workflowRunningData={undefined} switchTab={mockSwitchTab} />,
         )
 
         const buttons = screen.getAllByRole('button')
@@ -720,11 +692,7 @@ describe('Tabs', () => {
         const workflowData = createWorkflowRunningData()
 
         render(
-          <Tabs
-            currentTab="RESULT"
-            workflowRunningData={workflowData}
-            switchTab={mockSwitchTab}
-          />,
+          <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
         )
 
         const buttons = screen.getAllByRole('button')
@@ -740,11 +708,7 @@ describe('Tabs', () => {
         const workflowData = createWorkflowRunningData()
 
         render(
-          <Tabs
-            currentTab="RESULT"
-            workflowRunningData={workflowData}
-            switchTab={mockSwitchTab}
-          />,
+          <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
         )
         fireEvent.click(screen.getByRole('button', { name: 'runLog.detail' }))
 
@@ -759,11 +723,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab="DETAIL"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="DETAIL" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
       fireEvent.click(screen.getByRole('button', { name: 'runLog.result' }))
 
@@ -775,11 +735,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
       fireEvent.click(screen.getByRole('button', { name: 'runLog.detail' }))
 
@@ -791,11 +747,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
       fireEvent.click(screen.getByRole('button', { name: 'runLog.tracing' }))
 
@@ -805,13 +757,7 @@ describe('Tabs', () => {
     it('should not call switchTab when tabs are disabled', () => {
       const mockSwitchTab = vi.fn()
 
-      render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={undefined}
-          switchTab={mockSwitchTab}
-        />,
-      )
+      render(<Tabs currentTab="RESULT" workflowRunningData={undefined} switchTab={mockSwitchTab} />)
 
       const buttons = screen.getAllByRole('button')
       buttons.forEach((button) => {
@@ -826,11 +772,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
       fireEvent.click(screen.getByRole('button', { name: 'runLog.result' }))
 
@@ -874,24 +816,18 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       const { rerender } = render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       expect(screen.getByRole('button', { name: 'runLog.result' })).toHaveClass('text-text-primary')
 
       rerender(
-        <Tabs
-          currentTab="DETAIL"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="DETAIL" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
-      expect(screen.getByRole('button', { name: 'runLog.result' })).toHaveClass('text-text-tertiary')
+      expect(screen.getByRole('button', { name: 'runLog.result' })).toHaveClass(
+        'text-text-tertiary',
+      )
       expect(screen.getByRole('button', { name: 'runLog.detail' })).toHaveClass('text-text-primary')
     })
 
@@ -900,11 +836,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       const { rerender } = render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={undefined}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={undefined} switchTab={mockSwitchTab} />,
       )
 
       const buttons = screen.getAllByRole('button')
@@ -913,11 +845,7 @@ describe('Tabs', () => {
       })
 
       rerender(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       const updatedButtons = screen.getAllByRole('button')
@@ -932,13 +860,7 @@ describe('Tabs', () => {
       const mockSwitchTab = vi.fn()
       const workflowData = createWorkflowRunningData()
 
-      render(
-        <Tabs
-          currentTab=""
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
-      )
+      render(<Tabs currentTab="" workflowRunningData={workflowData} switchTab={mockSwitchTab} />)
 
       const buttons = screen.getAllByRole('button')
       buttons.forEach((button) => {
@@ -951,14 +873,12 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab="result"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="result" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
-      expect(screen.getByRole('button', { name: 'runLog.result' })).toHaveClass('text-text-tertiary')
+      expect(screen.getByRole('button', { name: 'runLog.result' })).toHaveClass(
+        'text-text-tertiary',
+      )
     })
 
     it('should handle whitespace in currentTab', () => {
@@ -966,14 +886,12 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab=" RESULT "
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab=" RESULT " workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
-      expect(screen.getByRole('button', { name: 'runLog.result' })).toHaveClass('text-text-tertiary')
+      expect(screen.getByRole('button', { name: 'runLog.result' })).toHaveClass(
+        'text-text-tertiary',
+      )
     })
 
     it('should render correctly with minimal workflowRunningData', () => {
@@ -1006,11 +924,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       const buttons = screen.getAllByRole('button')
@@ -1026,11 +940,7 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       render(
-        <Tabs
-          currentTab="DETAIL"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="DETAIL" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       const resultTab = screen.getByRole('button', { name: 'runLog.result' })
@@ -1091,7 +1001,9 @@ describe('Tabs', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: 'runLog.tracing' })).toHaveClass('text-text-primary')
+      expect(screen.getByRole('button', { name: 'runLog.tracing' })).toHaveClass(
+        'text-text-primary',
+      )
     })
 
     it('should transition from disabled to enabled state', () => {
@@ -1099,22 +1011,14 @@ describe('Tabs', () => {
       const workflowData = createWorkflowRunningData()
 
       const { rerender } = render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={undefined}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={undefined} switchTab={mockSwitchTab} />,
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'runLog.detail' }))
       expect(mockSwitchTab).not.toHaveBeenCalled()
 
       rerender(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={workflowData}
-          switchTab={mockSwitchTab}
-        />,
+        <Tabs currentTab="RESULT" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'runLog.detail' }))

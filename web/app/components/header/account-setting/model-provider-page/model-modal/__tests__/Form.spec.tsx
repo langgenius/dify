@@ -31,26 +31,32 @@ vi.mock('../../hooks', () => ({
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
   AppSelector: ({ onSelect }: { onSelect: (item: AppSelectorValue) => void }) => (
-    <button type="button" onClick={() => onSelect({ app_id: 'app-1', inputs: {}, files: [] })}>Select App</button>
+    <button type="button" onClick={() => onSelect({ app_id: 'app-1', inputs: {}, files: [] })}>
+      Select App
+    </button>
   ),
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
   default: (props: {
-    setModel: (model: { model: string, model_type: string }) => void
+    setModel: (model: { model: string; model_type: string }) => void
     isAgentStrategy?: boolean
     readonly?: boolean
   }) => {
     modelSelectorPropsSpy(props)
     return (
-      <button type="button" onClick={() => props.setModel({ model: 'gpt-1', model_type: 'llm' })}>Select Model</button>
+      <button type="button" onClick={() => props.setModel({ model: 'gpt-1', model_type: 'llm' })}>
+        Select Model
+      </button>
     )
   },
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/multiple-tool-selector', () => ({
   default: ({ onChange }: { onChange: (items: Array<{ id: string }>) => void }) => (
-    <button type="button" onClick={() => onChange([{ id: 'tool-1' }])}>Select Tools</button>
+    <button type="button" onClick={() => onChange([{ id: 'tool-1' }])}>
+      Select Tools
+    </button>
   ),
 }))
 
@@ -65,22 +71,34 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
     toolSelectorPropsSpy(props)
     return (
       <div>
-        <button type="button" onClick={() => props.onSelect({ id: 'tool-1' })}>Select Tool</button>
-        <button type="button" onClick={props.onDelete}>Remove Tool</button>
+        <button type="button" onClick={() => props.onSelect({ id: 'tool-1' })}>
+          Select Tool
+        </button>
+        <button type="button" onClick={props.onDelete}>
+          Remove Tool
+        </button>
       </div>
     )
   },
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ filterVar, onChange }: { filterVar?: (payload: MockVarPayload) => boolean, onChange: (items: Array<{ name: string }>) => void }) => {
+  default: ({
+    filterVar,
+    onChange,
+  }: {
+    filterVar?: (payload: MockVarPayload) => boolean
+    onChange: (items: Array<{ name: string }>) => void
+  }) => {
     const allowed = filterVar ? filterVar({ type: 'text' }) : true
     const blocked = filterVar ? filterVar({ type: 'image' }) : false
     return (
       <div>
         <div>{allowed ? 'allowed' : 'blocked'}</div>
         <div>{blocked ? 'allowed' : 'blocked'}</div>
-        <button type="button" onClick={() => onChange([{ name: 'var-1' }])}>Pick Variable</button>
+        <button type="button" onClick={() => onChange([{ name: 'var-1' }])}>
+          Pick Variable
+        </button>
       </div>
     )
   },
@@ -91,7 +109,8 @@ vi.mock('../../../key-validator/ValidateStatus', () => ({
 }))
 
 const createI18n = (text: string) => ({ en_US: text, zh_Hans: text })
-const createPartialI18n = (text: string) => ({ en_US: text } as unknown as ReturnType<typeof createI18n>)
+const createPartialI18n = (text: string) =>
+  ({ en_US: text }) as unknown as ReturnType<typeof createI18n>
 
 const createBaseSchema = (
   type: FormTypeEnum,
@@ -106,8 +125,12 @@ const createBaseSchema = (
   ...overrides,
 })
 
-const createTextSchema = (overrides: Partial<CredentialFormSchemaTextInput> & { type?: FormTypeEnum }) => ({
-  ...createBaseSchema(overrides.type ?? FormTypeEnum.textInput, { variable: overrides.variable ?? 'text' }),
+const createTextSchema = (
+  overrides: Partial<CredentialFormSchemaTextInput> & { type?: FormTypeEnum },
+) => ({
+  ...createBaseSchema(overrides.type ?? FormTypeEnum.textInput, {
+    variable: overrides.variable ?? 'text',
+  }),
   placeholder: createI18n('Input'),
   ...overrides,
 })
@@ -247,23 +270,23 @@ describe('Form', () => {
           label: createI18n('Region'),
           options: [
             { label: createI18n('US'), value: 'us', show_on: [] },
-            { label: createI18n('EU'), value: 'eu', show_on: [{ variable: 'toggle', value: 'on' }] },
+            {
+              label: createI18n('EU'),
+              value: 'eu',
+              show_on: [{ variable: 'toggle', value: 'on' }],
+            },
           ],
         }),
         createRadioSchema({
           variable: 'hidden_region',
           label: createI18n('Hidden Region'),
           show_on: [{ variable: 'toggle', value: 'hidden' }],
-          options: [
-            { label: createI18n('Hidden A'), value: 'a', show_on: [] },
-          ],
+          options: [{ label: createI18n('Hidden A'), value: 'a', show_on: [] }],
         }),
         createRadioSchema({
           variable: '__model_name',
           label: createI18n('Locked'),
-          options: [
-            { label: createI18n('Locked A'), value: 'a', show_on: [] },
-          ],
+          options: [{ label: createI18n('Locked A'), value: 'a', show_on: [] }],
         }),
       ]
       const value: FormValue = { region: 'us', toggle: 'on', __model_name: 'a' }
@@ -300,7 +323,11 @@ describe('Form', () => {
           show_on: [{ variable: 'toggle', value: 'on' }],
           options: [
             { label: createI18n('Select A'), value: 'a', show_on: [] },
-            { label: createI18n('Select B'), value: 'b', show_on: [{ variable: 'toggle', value: 'on' }] },
+            {
+              label: createI18n('Select B'),
+              value: 'b',
+              show_on: [{ variable: 'toggle', value: 'on' }],
+            },
           ],
         }),
         createRadioSchema({
@@ -375,7 +402,12 @@ describe('Form', () => {
           label: createI18n('App Selector'),
         }),
       ]
-      const value: FormValue = { model_selector: {}, tool_selector: null, multi_tool: [], app_selector: null }
+      const value: FormValue = {
+        model_selector: {},
+        tool_selector: null,
+        multi_tool: [],
+        app_selector: null,
+      }
       const onChange = vi.fn()
 
       render(
@@ -396,21 +428,31 @@ describe('Form', () => {
       fireEvent.click(screen.getByText('Select Tools'))
       fireEvent.click(screen.getByText('Select App'))
 
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        model_selector: { model: 'gpt-1', model_type: 'llm', type: FormTypeEnum.modelSelector },
-      }))
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        tool_selector: { id: 'tool-1' },
-      }))
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        tool_selector: null,
-      }))
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        multi_tool: [{ id: 'tool-1' }],
-      }))
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        app_selector: { app_id: 'app-1', inputs: {}, files: [], type: FormTypeEnum.appSelector },
-      }))
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model_selector: { model: 'gpt-1', model_type: 'llm', type: FormTypeEnum.modelSelector },
+        }),
+      )
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tool_selector: { id: 'tool-1' },
+        }),
+      )
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tool_selector: null,
+        }),
+      )
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          multi_tool: [{ id: 'tool-1' }],
+        }),
+      )
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          app_selector: { app_id: 'app-1', inputs: {}, files: [], type: FormTypeEnum.appSelector },
+        }),
+      )
     })
 
     it('should render variable picker and custom render overrides', () => {
@@ -439,7 +481,12 @@ describe('Form', () => {
           type: 'custom-type',
         },
       ]
-      const value: FormValue = { override: '', any_var: [], any_without_scope: [], custom_field: '' }
+      const value: FormValue = {
+        override: '',
+        any_var: [],
+        any_without_scope: [],
+        custom_field: '',
+      }
       const onChange = vi.fn()
 
       render(
@@ -452,8 +499,11 @@ describe('Form', () => {
           showOnVariableMap={{}}
           isEditMode={false}
           fieldMoreInfo={() => <div>Extra Info</div>}
-          override={[[FormTypeEnum.textInput], () => <div key="override-field">Override Field</div>]}
-          customRenderField={schema => (
+          override={[
+            [FormTypeEnum.textInput],
+            () => <div key="override-field">Override Field</div>,
+          ]}
+          customRenderField={(schema) => (
             <div key={schema.variable}>
               Custom Render:
               {schema.variable}
@@ -469,7 +519,12 @@ describe('Form', () => {
 
       fireEvent.click(screen.getAllByText('Pick Variable')[0]!)
 
-      expect(onChange).toHaveBeenCalledWith({ override: '', any_var: [{ name: 'var-1' }], any_without_scope: [], custom_field: '' })
+      expect(onChange).toHaveBeenCalledWith({
+        override: '',
+        any_var: [{ name: 'var-1' }],
+        any_without_scope: [],
+        custom_field: '',
+      })
       expect(screen.getAllByText('Extra Info')).toHaveLength(2)
     })
 
@@ -632,7 +687,7 @@ describe('Form', () => {
 
     // Label with missing language key → en_US fallback used
     it('should fall back to en_US label when current language key is missing', () => {
-    // Arrange
+      // Arrange
       mockLanguageRef.value = 'fr_FR'
       const formSchemas: AnyFormSchema[] = [
         createTextSchema({
@@ -702,7 +757,11 @@ describe('Form', () => {
           label: createI18n('Choice'),
           options: [
             { label: createI18n('Always Visible'), value: 'a', show_on: [] },
-            { label: createI18n('Conditional'), value: 'b', show_on: [{ variable: 'toggle', value: 'yes' }] },
+            {
+              label: createI18n('Conditional'),
+              value: 'b',
+              show_on: [{ variable: 'toggle', value: 'yes' }],
+            },
           ],
         }),
       ]
@@ -751,7 +810,9 @@ describe('Form', () => {
         />,
       )
 
-      fireEvent.change(screen.getByPlaceholderText('Model Name'), { target: { value: 'new-model' } })
+      fireEvent.change(screen.getByPlaceholderText('Model Name'), {
+        target: { value: 'new-model' },
+      })
 
       expect(onChange).not.toHaveBeenCalled()
     })
@@ -918,7 +979,11 @@ describe('Form', () => {
           placeholder: createI18n('Pick one'),
           options: [
             { label: createI18n('Always'), value: 'a', show_on: [] },
-            { label: createI18n('Conditional'), value: 'b', show_on: [{ variable: 'toggle', value: 'yes' }] },
+            {
+              label: createI18n('Conditional'),
+              value: 'b',
+              show_on: [{ variable: 'toggle', value: 'yes' }],
+            },
           ],
         }),
       ]
@@ -1030,9 +1095,7 @@ describe('Form', () => {
         createRadioSchema({
           variable: '__model_type',
           label: createI18n('Model Type Radio'),
-          options: [
-            { label: createI18n('Type A'), value: 'a', show_on: [] },
-          ],
+          options: [{ label: createI18n('Type A'), value: 'a', show_on: [] }],
         }),
       ]
       const value: FormValue = { __model_type: 'a' }
@@ -1680,10 +1743,12 @@ describe('Form', () => {
       )
 
       expect(screen.getByText('Select Tool'))!.toBeInTheDocument()
-      expect(toolSelectorPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-        nodeOutputVars,
-        availableNodes,
-      }))
+      expect(toolSelectorPropsSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nodeOutputVars,
+          availableNodes,
+        }),
+      )
     })
 
     it('should pass isAgentStrategy to modelSelector', () => {
@@ -1711,9 +1776,11 @@ describe('Form', () => {
       )
 
       expect(screen.getByText('Select Model'))!.toBeInTheDocument()
-      expect(modelSelectorPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-        isAgentStrategy: true,
-      }))
+      expect(modelSelectorPropsSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isAgentStrategy: true,
+        }),
+      )
     })
 
     it('should use empty array fallback for multiToolSelector when value is null', () => {

@@ -9,7 +9,9 @@ vi.mock('@/service/datasets', () => ({
   fetchNotionPagePreview: vi.fn(),
 }))
 
-const mockFetchNotionPagePreview = fetchNotionPagePreview as MockedFunction<typeof fetchNotionPagePreview>
+const mockFetchNotionPagePreview = fetchNotionPagePreview as MockedFunction<
+  typeof fetchNotionPagePreview
+>
 
 // Factory function to create mock NotionPage objects
 const createMockNotionPage = (overrides: Partial<NotionPage> = {}): NotionPage => {
@@ -26,7 +28,10 @@ const createMockNotionPage = (overrides: Partial<NotionPage> = {}): NotionPage =
 }
 
 // Factory function to create NotionPage with emoji icon
-const createMockNotionPageWithEmojiIcon = (emoji: string, overrides: Partial<NotionPage> = {}): NotionPage => {
+const createMockNotionPageWithEmojiIcon = (
+  emoji: string,
+  overrides: Partial<NotionPage> = {},
+): NotionPage => {
   return createMockNotionPage({
     page_icon: {
       type: 'emoji',
@@ -38,7 +43,10 @@ const createMockNotionPageWithEmojiIcon = (emoji: string, overrides: Partial<Not
 }
 
 // Factory function to create NotionPage with URL icon
-const createMockNotionPageWithUrlIcon = (url: string, overrides: Partial<NotionPage> = {}): NotionPage => {
+const createMockNotionPageWithUrlIcon = (
+  url: string,
+  overrides: Partial<NotionPage> = {},
+): NotionPage => {
   return createMockNotionPage({
     page_icon: {
       type: 'url',
@@ -99,7 +107,7 @@ describe('NotionPagePreview', () => {
   afterEach(async () => {
     // Wait for any pending state updates to complete
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
   })
 
@@ -188,7 +196,7 @@ describe('NotionPagePreview', () => {
     it('should show loading indicator initially', async () => {
       // Arrange - Delay API response to keep loading state
       mockFetchNotionPagePreview.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ content: 'test' }), 100)),
+        () => new Promise((resolve) => setTimeout(() => resolve({ content: 'test' }), 100)),
       )
 
       // Act - Don't wait for content to load
@@ -218,12 +226,26 @@ describe('NotionPagePreview', () => {
       let resolveSecond: (value: { content: string }) => void
 
       mockFetchNotionPagePreview
-        .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
-        .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveFirst = resolve
+            }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveSecond = resolve
+            }),
+        )
 
       // Act - Initial render
       const { rerender, container } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
+        <NotionPagePreview
+          currentPage={page1}
+          notionCredentialId="cred-123"
+          hidePreview={vi.fn()}
+        />,
       )
 
       // First page loading - spinner should be visible
@@ -239,7 +261,13 @@ describe('NotionPagePreview', () => {
       })
 
       // Rerender with new page
-      rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
+      rerender(
+        <NotionPagePreview
+          currentPage={page2}
+          notionCredentialId="cred-123"
+          hidePreview={vi.fn()}
+        />,
+      )
 
       // Should show loading again
       await waitFor(() => {
@@ -288,7 +316,11 @@ describe('NotionPagePreview', () => {
       const page2 = createMockNotionPage({ page_id: 'page-2' })
 
       const { rerender } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
+        <NotionPagePreview
+          currentPage={page1}
+          notionCredentialId="cred-123"
+          hidePreview={vi.fn()}
+        />,
       )
 
       await waitFor(() => {
@@ -300,7 +332,13 @@ describe('NotionPagePreview', () => {
       })
 
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
+        rerender(
+          <NotionPagePreview
+            currentPage={page2}
+            notionCredentialId="cred-123"
+            hidePreview={vi.fn()}
+          />,
+        )
       })
 
       await waitFor(() => {
@@ -314,7 +352,9 @@ describe('NotionPagePreview', () => {
     })
 
     it('should handle API success and display content', async () => {
-      mockFetchNotionPagePreview.mockResolvedValue({ content: 'Notion page preview content from API' })
+      mockFetchNotionPagePreview.mockResolvedValue({
+        content: 'Notion page preview content from API',
+      })
 
       await renderNotionPagePreview()
 
@@ -371,7 +411,12 @@ describe('NotionPagePreview', () => {
   describe('State Management', () => {
     it('should initialize with loading state true', async () => {
       // Arrange - Keep loading indefinitely (never resolves)
-      mockFetchNotionPagePreview.mockImplementation(() => new Promise(() => { /* intentionally empty */ }))
+      mockFetchNotionPagePreview.mockImplementation(
+        () =>
+          new Promise(() => {
+            /* intentionally empty */
+          }),
+      )
 
       // Act - Don't wait for content
       const { container } = await renderNotionPagePreview({}, false)
@@ -394,10 +439,19 @@ describe('NotionPagePreview', () => {
 
       mockFetchNotionPagePreview
         .mockResolvedValueOnce({ content: 'Content 1' })
-        .mockImplementationOnce(() => new Promise(() => { /* never resolves */ }))
+        .mockImplementationOnce(
+          () =>
+            new Promise(() => {
+              /* never resolves */
+            }),
+        )
 
       const { rerender, container } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
+        <NotionPagePreview
+          currentPage={page1}
+          notionCredentialId="cred-123"
+          hidePreview={vi.fn()}
+        />,
       )
 
       await waitFor(() => {
@@ -406,7 +460,13 @@ describe('NotionPagePreview', () => {
 
       // Change page
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
+        rerender(
+          <NotionPagePreview
+            currentPage={page2}
+            notionCredentialId="cred-123"
+            hidePreview={vi.fn()}
+          />,
+        )
       })
 
       // Assert - Loading should be shown again
@@ -424,10 +484,19 @@ describe('NotionPagePreview', () => {
 
       mockFetchNotionPagePreview
         .mockResolvedValueOnce({ content: 'Content 1' })
-        .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveSecond = resolve
+            }),
+        )
 
       const { rerender } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
+        <NotionPagePreview
+          currentPage={page1}
+          notionCredentialId="cred-123"
+          hidePreview={vi.fn()}
+        />,
       )
 
       await waitFor(() => {
@@ -436,7 +505,13 @@ describe('NotionPagePreview', () => {
 
       // Change page
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
+        rerender(
+          <NotionPagePreview
+            currentPage={page2}
+            notionCredentialId="cred-123"
+            hidePreview={vi.fn()}
+          />,
+        )
       })
 
       // Resolve second fetch
@@ -620,7 +695,11 @@ describe('NotionPagePreview', () => {
       const page2 = createMockNotionPage({ page_id: 'page-2' })
 
       const { rerender } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
+        <NotionPagePreview
+          currentPage={page1}
+          notionCredentialId="cred-123"
+          hidePreview={vi.fn()}
+        />,
       )
 
       await waitFor(() => {
@@ -628,7 +707,13 @@ describe('NotionPagePreview', () => {
       })
 
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
+        rerender(
+          <NotionPagePreview
+            currentPage={page2}
+            notionCredentialId="cred-123"
+            hidePreview={vi.fn()}
+          />,
+        )
       })
 
       await waitFor(() => {
@@ -642,7 +727,11 @@ describe('NotionPagePreview', () => {
       const hidePreview2 = vi.fn()
 
       const { rerender } = render(
-        <NotionPagePreview currentPage={page} notionCredentialId="cred-123" hidePreview={hidePreview1} />,
+        <NotionPagePreview
+          currentPage={page}
+          notionCredentialId="cred-123"
+          hidePreview={hidePreview1}
+        />,
       )
 
       await waitFor(() => {
@@ -650,7 +739,13 @@ describe('NotionPagePreview', () => {
       })
 
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page} notionCredentialId="cred-123" hidePreview={hidePreview2} />)
+        rerender(
+          <NotionPagePreview
+            currentPage={page}
+            notionCredentialId="cred-123"
+            hidePreview={hidePreview2}
+          />,
+        )
       })
 
       // Assert - Should not call API again (currentPage didn't change by reference)
@@ -670,7 +765,13 @@ describe('NotionPagePreview', () => {
       })
 
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page} notionCredentialId="cred-2" hidePreview={vi.fn()} />)
+        rerender(
+          <NotionPagePreview
+            currentPage={page}
+            notionCredentialId="cred-2"
+            hidePreview={vi.fn()}
+          />,
+        )
       })
 
       // Assert - Should not call API again (only currentPage is in dependency array)
@@ -679,16 +780,27 @@ describe('NotionPagePreview', () => {
 
     it('should handle rapid page changes', async () => {
       const pages = Array.from({ length: 5 }, (_, i) =>
-        createMockNotionPage({ page_id: `page-${i}` }))
+        createMockNotionPage({ page_id: `page-${i}` }),
+      )
 
       const { rerender } = render(
-        <NotionPagePreview currentPage={pages[0]} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
+        <NotionPagePreview
+          currentPage={pages[0]}
+          notionCredentialId="cred-123"
+          hidePreview={vi.fn()}
+        />,
       )
 
       // Rapidly change pages
       for (let i = 1; i < pages.length; i++) {
         await act(async () => {
-          rerender(<NotionPagePreview currentPage={pages[i]} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
+          rerender(
+            <NotionPagePreview
+              currentPage={pages[i]}
+              notionCredentialId="cred-123"
+              hidePreview={vi.fn()}
+            />,
+          )
         })
       }
 
@@ -700,7 +812,7 @@ describe('NotionPagePreview', () => {
 
     it('should handle unmount during loading', async () => {
       mockFetchNotionPagePreview.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ content: 'delayed' }), 1000)),
+        () => new Promise((resolve) => setTimeout(() => resolve({ content: 'delayed' }), 1000)),
       )
 
       // Act - Don't wait for content
@@ -717,7 +829,11 @@ describe('NotionPagePreview', () => {
       const page = createMockNotionPage()
 
       const { rerender, container } = render(
-        <NotionPagePreview currentPage={page} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
+        <NotionPagePreview
+          currentPage={page}
+          notionCredentialId="cred-123"
+          hidePreview={vi.fn()}
+        />,
       )
 
       await waitFor(() => {
@@ -725,7 +841,13 @@ describe('NotionPagePreview', () => {
       })
 
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={undefined} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
+        rerender(
+          <NotionPagePreview
+            currentPage={undefined}
+            notionCredentialId="cred-123"
+            hidePreview={vi.fn()}
+          />,
+        )
       })
 
       // Assert - Should not crash, API should not be called again
@@ -908,8 +1030,7 @@ describe('NotionPagePreview', () => {
       expect(container.firstChild).toBeInTheDocument()
       // NotionIcon renders img when type is 'url'
       const img = container.querySelector('img[alt="page icon"]')
-      if (img)
-        expect(img).toBeInTheDocument()
+      if (img) expect(img).toBeInTheDocument()
 
       // Restore console.error
       consoleErrorSpy.mockRestore()

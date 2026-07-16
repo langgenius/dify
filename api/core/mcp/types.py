@@ -22,10 +22,13 @@ for reference.
 * Define additional model classes instead of using dictionaries. Do this even if they're
   not separate types in the schema.
 """
-# Client support both version, not support 2025-06-18 yet.
+# Latest protocol version the Dify MCP client negotiates with upstream MCP servers.
 LATEST_PROTOCOL_VERSION = "2025-06-18"
-# Server support 2024-11-05 to allow claude to use.
-SERVER_LATEST_PROTOCOL_VERSION = "2024-11-05"
+# Latest protocol version the Dify MCP server advertises to connecting clients.
+SERVER_LATEST_PROTOCOL_VERSION = "2025-06-18"
+# Protocol versions the Dify MCP server can negotiate down to (e.g. Claude on 2024-11-05).
+SERVER_SUPPORTED_PROTOCOL_VERSIONS: frozenset[str] = frozenset({"2024-11-05", "2025-03-26", "2025-06-18"})
+# Version assumed when a client omits the MCP-Protocol-Version header on post-initialize requests.
 DEFAULT_NEGOTIATED_VERSION = "2025-03-26"
 ProgressToken = str | int
 Cursor = str

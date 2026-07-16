@@ -14,6 +14,7 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
+    AgentRunUsage,
     CancelRunRequest,
     CancelRunResponse,
     PydanticAIStreamRunEvent,
@@ -23,22 +24,41 @@ from dify_agent.protocol import (
     RunSucceededEventData,
     RuntimeLayerSpec,
 )
-from pydantic_ai.messages import PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    TextPartDelta,
+    ThinkingPartDelta,
+    ToolCallPart,
+    ToolReturnPart,
+)
 
 from clients.agent_backend import (
     AgentBackendError,
     AgentBackendRunEventAdapter,
+    AgentBackendRunFailedError,
+    AgentBackendRunFailedInternalEvent,
+    AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
+from core.app.apps.agent_app import app_runner as app_runner_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import (
+    QueueAgentMessageEvent,
+    QueueAgentThoughtEvent,
+    QueueLLMChunkEvent,
+    QueueMessageEndEvent,
+)
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
+from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
+from models.model import MessageAgentThought
 
 
 class _FakeCredentialsProvider:
@@ -47,19 +67,24 @@ class _FakeCredentialsProvider:
 
 
 class _NoToolsBuilder:
-    def build(self, **kwargs):
+    def build_layers(self, **kwargs):
         del kwargs
+        return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
 
 
 class _FakeQueueManager:
     def __init__(self) -> None:
         self.events: list[Any] = []
+        self._stop_requested = False
 
     def publish(self, event: Any, _from: Any) -> None:
         self.events.append(event)
 
     def is_stopped(self) -> bool:
-        return False
+        return self._stop_requested
+
+    def request_stop(self) -> None:
+        self._stop_requested = True
 
 
 class _StoppedQueueManager(_FakeQueueManager):
@@ -90,12 +115,46 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+            agent_message_delta="hello ",
         )
         yield PydanticAIStreamRunEvent(
             id="3-0",
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
+            agent_message_delta="agent",
+        )
+        yield RunSucceededEvent(
+            id="4-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "hello agent"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                usage=AgentRunUsage(prompt_tokens=3, completion_tokens=5),
+            ),
+        )
+
+
+class _StreamingRecordingFakeAgentBackendRunClient(_RecordingFakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+            agent_message_delta="hello ",
+        )
+        yield PydanticAIStreamRunEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
+            agent_message_delta="agent",
         )
         yield RunSucceededEvent(
             id="4-0",
@@ -108,7 +167,11 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         )
 
 
-class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+class _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(_RecordingFakeAgentBackendRunClient):
+    def __init__(self, *, queue_manager: _FakeQueueManager, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._queue_manager = queue_manager
+
     @override
     def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
         del after
@@ -118,7 +181,31 @@ class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             id="2-0",
             run_id=run_id,
             created_at=created_at,
-            data=PartStartEvent(index=0, part=TextPart(content="hello")),
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+            agent_message_delta="hello ",
+        )
+        self._queue_manager.request_stop()
+        yield PydanticAIStreamRunEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
+            agent_message_delta="agent",
+        )
+
+
+class _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello")),
+            agent_message_delta="hello",
         )
         yield RunSucceededEvent(
             id="3-0",
@@ -131,14 +218,151 @@ class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         )
 
 
+class _NullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield RunSucceededEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output=None,
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _StreamingTextNullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="streamed answer")),
+            agent_message_delta="streamed answer",
+        )
+        yield RunSucceededEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output=None,
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _AgentAnswerStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+            agent_message_delta="hello ",
+        )
+        yield PydanticAIStreamRunEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
+            agent_message_delta="agent",
+        )
+        yield RunSucceededEvent(
+            id="4-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "final answer"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=ThinkingPartDelta(content_delta="I need to inspect the file.")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=FunctionToolCallEvent(part=ToolCallPart(tool_name="bash", args={"cmd": "ls"}, tool_call_id="tool-1")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="4-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=FunctionToolResultEvent(part=ToolReturnPart(tool_name="bash", content="ok", tool_call_id="tool-1")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="5-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=1, delta=TextPartDelta(content_delta="final answer")),
+            agent_message_delta="final answer",
+        )
+        yield RunSucceededEvent(
+            id="6-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "final answer"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _FakeDbSession:
+    def __init__(self) -> None:
+        self.rows: dict[str, MessageAgentThought] = {}
+        self.rollback_count = 0
+
+    def add(self, row: MessageAgentThought) -> None:
+        self.rows[str(row.id)] = row
+
+    def commit(self) -> None:
+        pass
+
+    def get(self, _model: type[MessageAgentThought], row_id: str) -> MessageAgentThought | None:
+        return self.rows.get(row_id)
+
+    def delete(self, row: MessageAgentThought) -> None:
+        self.rows.pop(str(row.id), None)
+
+    def rollback(self) -> None:
+        self.rollback_count += 1
+
+
 class _FakeSessionStore:
     def __init__(
         self,
         loaded: CompositorSessionSnapshot | None = None,
         loaded_session: StoredAgentAppSession | None = None,
+        listed_sessions: list[StoredAgentAppSession] | None = None,
     ) -> None:
         self.loaded = loaded
         self._loaded_session = loaded_session
+        self._listed_sessions = list(listed_sessions or [])
         self.loaded_scopes: list[AgentAppSessionScope] = []
         self.saved: list[
             tuple[
@@ -150,6 +374,7 @@ class _FakeSessionStore:
                 str | None,
             ]
         ] = []
+        self.cleaned: list[tuple[AgentAppSessionScope, str | None]] = []
 
     def load_active_snapshot(self, scope: AgentAppSessionScope) -> CompositorSessionSnapshot | None:
         self.loaded_scopes.append(scope)
@@ -162,6 +387,14 @@ class _FakeSessionStore:
         if self.loaded is None:
             return None
         return StoredAgentAppSession(scope=scope, session_snapshot=self.loaded, backend_run_id=None)
+
+    def list_active_sessions_for_conversation(
+        self, *, tenant_id: str, app_id: str, conversation_id: str
+    ) -> list[StoredAgentAppSession]:
+        assert tenant_id == "tenant-1"
+        assert app_id == "app-1"
+        assert conversation_id == "conv-1"
+        return list(self._listed_sessions)
 
     def save_active_snapshot(
         self,
@@ -176,6 +409,22 @@ class _FakeSessionStore:
         self.saved.append(
             (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
         )
+
+    def mark_cleaned(self, *, scope: AgentAppSessionScope, backend_run_id: str | None = None) -> None:
+        self.cleaned.append((scope, backend_run_id))
+
+
+class _MonotonicClock:
+    def __init__(self, *values: float) -> None:
+        self._values = list(values)
+        self._index = 0
+
+    def __call__(self) -> float:
+        if self._index >= len(self._values):
+            return self._values[-1]
+        value = self._values[self._index]
+        self._index += 1
+        return value
 
 
 def _soul() -> AgentSoulConfig:
@@ -201,19 +450,25 @@ def _dify_ctx() -> Any:
     )
 
 
-def _runner(client: FakeAgentBackendRunClient, store: _FakeSessionStore) -> AgentAppRunner:
+def _runner(
+    client: FakeAgentBackendRunClient,
+    store: _FakeSessionStore,
+    *,
+    text_delta_debounce_seconds: float = 0,
+) -> AgentAppRunner:
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         ),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
         session_store=store,  # type: ignore[arg-type]
+        text_delta_debounce_seconds=text_delta_debounce_seconds,
     )
 
 
-def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
+def _run(runner: AgentAppRunner, qm: _FakeQueueManager, *, agent_runtime_exit_intent: str = "suspend") -> None:
     runner.run(
         dify_context=_dify_ctx(),
         agent_id="agent-1",
@@ -224,6 +479,7 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
         message_id="msg-1",
         model_name="gpt-4o-mini",
         queue_manager=qm,  # type: ignore[arg-type]
+        agent_runtime_exit_intent=agent_runtime_exit_intent,  # type: ignore[arg-type]
     )
 
 
@@ -248,6 +504,8 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
 
     _run(_runner(client, store), qm)
 
+    assert client.request is not None
+    assert client.request.on_exit.default.value == "suspend"
     # One LLM chunk + one message-end, carrying the backend's answer text.
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
@@ -264,18 +522,134 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert saved_scope.agent_config_snapshot_id == "snap-1"
     assert saved_run_id == "fake-run-1"
     assert saved_snapshot is not None
+    assert saved_specs
     # A successful turn carries no ask_human pause correlation.
     assert pending_form_id is None
     assert pending_tool_call_id is None
-    assert [spec.name for spec in saved_specs] == [
-        "agent_soul_prompt",
-        "agent_app_user_prompt",
-        "execution_context",
-        "history",
-    ]
+    assert store.cleaned == []
 
 
-def test_successful_turn_forwards_agent_backend_stream_text_deltas_without_duplicate_terminal_chunk():
+def test_successful_turn_enqueues_cleanup_for_superseded_sessions_after_saving_snapshot(monkeypatch):
+    superseded = StoredAgentAppSession(
+        scope=AgentAppSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            conversation_id="conv-1",
+            agent_id="agent-2",
+            agent_config_snapshot_id="snap-2",
+        ),
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        backend_run_id="run-old",
+        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+    )
+    current_scope_session = StoredAgentAppSession(
+        scope=AgentAppSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            conversation_id="conv-1",
+            agent_id="agent-1",
+            agent_config_snapshot_id="snap-1",
+        ),
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        backend_run_id="run-current",
+        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+    )
+    store = _FakeSessionStore(listed_sessions=[current_scope_session, superseded])
+    client = FakeAgentBackendRunClient()
+    qm = _FakeQueueManager()
+    cleanup_delay = MagicMock()
+    monkeypatch.setattr(app_runner_module.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
+
+    _run(_runner(client, store), qm)
+
+    assert store.saved
+    cleanup_delay.assert_called_once()
+    payload = cleanup_delay.call_args.args[0]
+    assert payload["metadata"]["conversation_id"] == "conv-1"
+    assert payload["metadata"]["agent_id"] == "agent-2"
+    assert payload["metadata"]["previous_agent_backend_run_id"] == "run-old"
+    assert payload["idempotency_key"] == "tenant-1:app-1:conv-1:agent-2:snap-2:superseded-session-cleanup:run-old"
+
+
+def test_superseded_session_cleanup_enqueue_failure_does_not_fail_turn(monkeypatch):
+    superseded = StoredAgentAppSession(
+        scope=AgentAppSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            conversation_id="conv-1",
+            agent_id="agent-2",
+            agent_config_snapshot_id="snap-2",
+        ),
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        backend_run_id="run-old",
+        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+    )
+    store = _FakeSessionStore(listed_sessions=[superseded])
+    client = FakeAgentBackendRunClient()
+    qm = _FakeQueueManager()
+    cleanup_delay = MagicMock(side_effect=RuntimeError("queue down"))
+    monkeypatch.setattr(app_runner_module.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
+
+    _run(_runner(client, store), qm)
+
+    cleanup_delay.assert_called_once()
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "hello agent"
+
+
+def test_delete_on_exit_turn_marks_session_cleaned_without_saving_snapshot():
+    client = _StreamingRecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm, agent_runtime_exit_intent="delete")
+
+    assert client.request is not None
+    assert client.request.on_exit.default.value == "delete"
+    assert store.saved == []
+    assert len(store.cleaned) == 1
+    cleaned_scope, cleaned_run_id = store.cleaned[0]
+    assert cleaned_scope.conversation_id == "conv-1"
+    assert cleaned_scope.agent_config_snapshot_id == "snap-1"
+    assert cleaned_run_id == "fake-run-1"
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "hello agent"
+
+
+def test_delete_on_exit_turn_swallows_cleanup_failure_after_success():
+    client = _StreamingRecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    store.mark_cleaned = MagicMock(side_effect=RuntimeError("cleanup failed"))  # type: ignore[method-assign]
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm, agent_runtime_exit_intent="delete")
+
+    assert store.saved == []
+    store.mark_cleaned.assert_called_once()
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert len(end_events) == 1
+
+
+def test_delete_on_exit_turn_marks_session_cleaned_when_publish_fails():
+    client = _StreamingRecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    store.mark_cleaned = MagicMock(side_effect=RuntimeError("cleanup failed"))  # type: ignore[method-assign]
+    qm = _FakeQueueManager()
+    runner = _runner(client, store)
+    runner._publish_terminal_answer = MagicMock(side_effect=RuntimeError("publish failed"))
+
+    with pytest.raises(RuntimeError, match="publish failed"):
+        _run(runner, qm, agent_runtime_exit_intent="delete")
+
+    assert store.saved == []
+    store.mark_cleaned.assert_called_once()
+
+
+def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_output(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
     client = _StreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -283,25 +657,513 @@ def test_successful_turn_forwards_agent_backend_stream_text_deltas_without_dupli
     _run(_runner(client, store), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
     end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
-    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello ", "agent"]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello agent"]
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello ", "agent"]
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
+    assert end_events[0].llm_result.usage.prompt_tokens == 3
+    assert end_events[0].llm_result.usage.completion_tokens == 5
+    assert end_events[0].llm_result.usage.total_tokens == 8
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert rows == []
     assert store.saved
 
 
-def test_successful_turn_forwards_part_start_text_and_publishes_missing_terminal_suffix():
-    client = _StreamingPartStartFakeAgentBackendRunClient()
+def test_successful_turn_routes_single_agent_message_delta(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    client = _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
     _run(_runner(client, store), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
     end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
-    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello", " agent"]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello agent"]
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello"]
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert rows == []
+
+
+def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null():
+    client = _NullOutputFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert chunk_events == []
+    assert agent_message_events == []
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == ""
+
+
+def test_successful_turn_with_stream_text_and_null_terminal_output_keeps_empty_message(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    client = _StreamingTextNullOutputFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert chunk_events == []
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["streamed answer"]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == ""
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].answer == "streamed answer"
+
+
+def test_successful_turn_routes_agent_answer_to_agent_message(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    client = _AgentAnswerStreamingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["final answer"]
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello ", "agent"]
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "final answer"
+    thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+    assert len(thought_events) == 2
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].answer == "hello agent"
+    assert rows[0].thought == ""
+    assert rows[0].tool == ""
+
+
+def test_agent_message_deltas_are_debounced_to_agent_message(monkeypatch):
+    monkeypatch.setattr(app_runner_module.time, "monotonic", _MonotonicClock(0.0, 0.2))
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    client = _StreamingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store, text_delta_debounce_seconds=0.5), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello agent"]
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello agent"]
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert rows == []
+
+
+def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    client = _ProcessStreamingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["final answer"]
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["final answer"]
+    thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+    assert len(thought_events) >= 3
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert rows[0].thought == "I need to inspect the file."
+    assert rows[0].tool == ""
+    assert rows[1].tool == "bash"
+    assert rows[1].tool_input == '{"cmd": "ls"}'
+    assert rows[1].observation == "ok"
+    assert len(rows) == 2
+
+
+def test_streaming_turn_cancels_after_persisting_seen_agent_answer(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+    client = _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(queue_manager=qm)
+
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
+    assert chunk_events == []
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello "]
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].answer == "hello "
+    assert client.cancelled_run_ids == ["fake-run-1"]
+
+
+def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "shell_run",
+                    "args": {"script": "npx skills find browser"},
+                    "tool_call_id": "shell-call-1",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "content": "Knowledge base search results: browser skill",
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 2
+    assert rows[0].tool == "shell_run"
+    assert rows[0].tool_input == '{"script": "npx skills find browser"}'
+    assert rows[0].observation == ""
+    assert rows[1].tool == ""
+    assert rows[1].tool_input == ""
+    assert rows[1].observation == "Knowledge base search results: browser skill"
+
+
+def test_answer_suffix_trim_keeps_non_terminal_prefix(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.append_answer_text("intermediate final answer")
+    recorder.trim_answer_suffix("final answer")
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].answer == "intermediate "
+
+
+def test_tool_call_part_binds_late_call_id_to_delta_row(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "part_delta",
+                "index": 0,
+                "delta": {
+                    "part_delta_kind": "tool_call",
+                    "tool_name_delta": "knowledge_base_search",
+                    "args_delta": {"query": "browser"},
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "part_start",
+                "index": 0,
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "knowledge_base_search",
+                    "args": {"query": "browser"},
+                    "tool_call_id": "tool-call-1",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "knowledge_base_search",
+                    "content": "Knowledge base search results: browser skill",
+                    "tool_call_id": "tool-call-1",
+                },
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].tool == "knowledge_base_search"
+    assert rows[0].tool_input == '{"query": "browser"}'
+    assert rows[0].observation == "Knowledge base search results: browser skill"
+
+
+def test_thinking_after_tool_starts_new_snapshot_row(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "part_delta",
+                "index": 0,
+                "delta": {
+                    "part_delta_kind": "thinking",
+                    "content_delta": "The first thought.",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "shell_run",
+                    "args": {"cmd": "date"},
+                    "tool_call_id": "tool-call-1",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "part_delta",
+                "index": 0,
+                "delta": {
+                    "part_delta_kind": "thinking",
+                    "content_delta": "The next thought.",
+                },
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert [row.thought for row in rows] == ["The first thought.", "", "The next thought."]
+    assert rows[0].id != rows[2].id
+    assert rows[1].tool == "shell_run"
+    assert rows[1].tool_input == '{"cmd": "date"}'
+
+
+def test_tool_result_without_call_id_matches_unique_open_tool_name(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "knowledge_base_search",
+                    "args": {"query": "browser"},
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "knowledge_base_search",
+                    "content": "Knowledge base search results: browser skill",
+                },
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].tool == "knowledge_base_search"
+    assert rows[0].tool_input == '{"query": "browser"}'
+    assert rows[0].observation == "Knowledge base search results: browser skill"
+
+
+def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "shell_run",
+                    "args": {"script": "lookup find"},
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "shell_run",
+                    "content": "find output",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "shell_run",
+                    "args": {"script": "lookup out"},
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "shell_run",
+                    "content": "out output",
+                },
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 2
+    assert rows[0].tool == "shell_run"
+    assert rows[0].tool_input == '{"script": "lookup find"}'
+    assert rows[0].observation == "find output"
+    assert rows[1].tool == "shell_run"
+    assert rows[1].tool_input == '{"script": "lookup out"}'
+    assert rows[1].observation == "out output"
+
+
+def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_distinct_rows(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    for script, output in (("lookup find", "find output"), ("lookup out", "out output")):
+        recorder.handle_stream_event(
+            AgentBackendStreamInternalEvent(
+                run_id="run-1",
+                data={
+                    "event_kind": "function_tool_call",
+                    "index": 0,
+                    "part": {
+                        "part_kind": "tool-call",
+                        "tool_name": "shell_run",
+                        "tool_call_id": "None",
+                        "args": {"script": script},
+                    },
+                },
+            )
+        )
+        recorder.handle_stream_event(
+            AgentBackendStreamInternalEvent(
+                run_id="run-1",
+                data={
+                    "event_kind": "function_tool_result",
+                    "part": {
+                        "part_kind": "tool-return",
+                        "tool_name": "shell_run",
+                        "tool_call_id": "None",
+                        "content": output,
+                    },
+                },
+            )
+        )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 2
+    assert rows[0].tool == "shell_run"
+    assert rows[0].tool_input == '{"script": "lookup find"}'
+    assert rows[0].observation == "find output"
+    assert rows[1].tool == "shell_run"
+    assert rows[1].tool_input == '{"script": "lookup out"}'
+    assert rows[1].observation == "out output"
 
 
 def test_prior_session_snapshot_is_threaded_into_request():
@@ -346,11 +1208,46 @@ def test_failed_run_raises_agent_backend_error():
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    with pytest.raises(AgentBackendError):
+    with pytest.raises(AgentBackendRunFailedError, match="fake failure .*agent_run_id=fake-run-1"):
         _run(_runner(client, store), qm)
     # No message-end on failure; no snapshot saved.
     assert not [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
     assert store.saved == []
+
+
+def test_agent_backend_failure_to_exception_maps_rate_limit_reason():
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="quota exceeded",
+            reason="InvokeRateLimitError",
+        )
+    )
+
+    assert isinstance(err, InvokeRateLimitError)
+    assert str(err) == "quota exceeded"
+
+
+def test_agent_backend_failure_to_exception_preserves_unknown_reason_context():
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            source_event_id="event-1",
+            error="Knowledge retrieval failed",
+            reason="knowledge_retrieve_failed",
+        )
+    )
+
+    assert isinstance(err, AgentBackendRunFailedError)
+    assert err.run_id == "run-1"
+    assert err.reason == "knowledge_retrieve_failed"
+    assert err.source_event_id == "event-1"
+    assert err.detail == {
+        "error": "Knowledge retrieval failed",
+        "reason": "knowledge_retrieve_failed",
+        "source_event_id": "event-1",
+    }
+    assert str(err) == "Knowledge retrieval failed (agent_run_id=run-1)"
 
 
 def test_stopped_task_cancels_agent_backend_run_and_skips_session_save():
@@ -365,10 +1262,11 @@ def test_stopped_task_cancels_agent_backend_run_and_skips_session_save():
     assert store.saved == []
 
 
-def test_extract_answer_handles_plain_string_and_dict():
-    assert AgentAppRunner._extract_answer("plain text") == "plain text"
-    assert AgentAppRunner._extract_answer({"text": "hi"}) == "hi"
-    assert AgentAppRunner._extract_answer({"a": 1}) == '{"a": 1}'
+def test_terminal_output_to_answer_handles_plain_string_and_dict():
+    assert AgentAppRunner._terminal_output_to_answer(None) == ""
+    assert AgentAppRunner._terminal_output_to_answer("plain text") == "plain text"
+    assert AgentAppRunner._terminal_output_to_answer({"text": "hi"}) == "hi"
+    assert AgentAppRunner._terminal_output_to_answer({"a": 1}) == '{"a": 1}'
 
 
 def test_ask_human_pauses_turn_creates_form_and_persists_correlation():
@@ -397,6 +1295,22 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation():
     assert store.saved
     assert store.saved[0][4] == "form-1"
     assert store.saved[0][5] == "fake-ask-human-1"
+
+
+def test_delete_on_exit_deferred_tool_marks_session_cleaned_and_raises_error():
+    client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
+    store = _FakeSessionStore()
+    store.mark_cleaned = MagicMock(side_effect=RuntimeError("cleanup failed"))  # type: ignore[method-assign]
+    qm = _FakeQueueManager()
+    runner = _runner(client, store)
+    runner._pause_for_ask_human = MagicMock()
+
+    with pytest.raises(AgentBackendError, match="finalization cannot pause for human input"):
+        _run(runner, qm, agent_runtime_exit_intent="delete")
+
+    runner._pause_for_ask_human.assert_not_called()
+    assert store.saved == []
+    store.mark_cleaned.assert_called_once()
 
 
 def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch):

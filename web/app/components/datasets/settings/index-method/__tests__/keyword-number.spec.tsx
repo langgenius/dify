@@ -11,19 +11,24 @@ describe('KeyWordNumber', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
-    selector: 'input[type="range"]',
-  })
+  const getSlider = () =>
+    screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
+      selector: 'input[type="range"]',
+    })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      expect(screen.getByText(/form\.numberOfKeywords/, { selector: '.truncate' })).toBeInTheDocument()
+      expect(
+        screen.getByText(/form\.numberOfKeywords/, { selector: '.truncate' }),
+      ).toBeInTheDocument()
     })
 
     it('should render label text', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      expect(screen.getByText(/form\.numberOfKeywords/, { selector: '.truncate' })).toBeInTheDocument()
+      expect(
+        screen.getByText(/form\.numberOfKeywords/, { selector: '.truncate' }),
+      ).toBeInTheDocument()
     })
 
     it('should render infotip with question icon', () => {

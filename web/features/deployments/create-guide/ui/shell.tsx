@@ -1,16 +1,10 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { stepAtom } from '@/features/deployments/create-guide/state'
+import { stepAtom } from '@/features/deployments/create-guide/state/primitives'
 import { GuideCard, GuideFrame } from './layout'
-import {
-  ReleaseActionButtons,
-  ReleaseStepContent,
-} from './release-step'
-import {
-  SourceActionButtons,
-  SourceStepContent,
-} from './source-step'
+import { ReleaseActionButtons, ReleaseStepContent } from './release-step'
+import { SourceActionButtons, SourceStepContent } from './source-step'
 import {
   TargetBackButton,
   TargetDeployButton,
@@ -23,10 +17,7 @@ export function CreateDeploymentGuideShell() {
 
   return (
     <GuideFrame activeStep={step}>
-      <GuideCard
-        contentScrollable={step !== 'source'}
-        actions={<CreateDeploymentGuideActionBar />}
-      >
+      <GuideCard contentScrollable={step !== 'source'} actions={<CreateDeploymentGuideActionBar />}>
         <CreateDeploymentGuideStepContent />
       </GuideCard>
     </GuideFrame>

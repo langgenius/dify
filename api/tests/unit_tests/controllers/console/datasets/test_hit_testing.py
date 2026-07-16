@@ -1,6 +1,6 @@
 import uuid
 from inspect import unwrap
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -135,7 +135,7 @@ class TestHitTestingApi:
                 return_value={"query": {"content": "what is vector search"}, "records": []},
             ),
         ):
-            result = method(api, account, "tenant-1", dataset_id)
+            result = method(api, MagicMock(), account, "tenant-1", dataset_id)
 
         assert "query" in result
         assert "records" in result
@@ -173,7 +173,7 @@ class TestHitTestingApi:
                 return_value={"query": {"content": payload["query"]}, "records": records},
             ),
         ):
-            result = method(api, account, "tenant-1", dataset_id)
+            result = method(api, MagicMock(), account, "tenant-1", dataset_id)
 
         assert result["query"] == {"content": payload["query"]}
         assert result["records"][0]["segment"]["keywords"] == []
@@ -204,7 +204,7 @@ class TestHitTestingApi:
             ),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, account, "tenant-1", dataset_id)
+                method(api, MagicMock(), account, "tenant-1", dataset_id)
 
     def test_hit_testing_invalid_args(self, app: Flask, dataset, dataset_id, account: Account):
         api = HitTestingApi()
@@ -234,4 +234,4 @@ class TestHitTestingApi:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid parameters"):
-                method(api, account, "tenant-1", dataset_id)
+                method(api, MagicMock(), account, "tenant-1", dataset_id)

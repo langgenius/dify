@@ -9,7 +9,11 @@ describe('GlobalInputs', () => {
   it('should render the title and tooltip copy', () => {
     render(<GlobalInputs />)
 
-    expect(screen.getByText('datasetPipeline.inputFieldPanel.globalInputs.title')).toBeInTheDocument()
-    expect(screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip')).toBeInTheDocument()
+    expect(
+      screen.getByText('datasetPipeline.inputFieldPanel.globalInputs.title'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip'),
+    ).toBeInTheDocument()
   })
 })

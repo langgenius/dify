@@ -36,21 +36,19 @@ const RAGToolRecommendations = ({
   } = useRAGRecommendedPlugins('tool')
 
   const recommendedPlugins = useMemo(() => {
-    if (ragRecommendedPlugins)
-      return ragRecommendedPlugins.installed_recommended_plugins
+    if (ragRecommendedPlugins) return ragRecommendedPlugins.installed_recommended_plugins
     return []
   }, [ragRecommendedPlugins])
 
   const unInstalledPlugins = useMemo(() => {
     if (ragRecommendedPlugins)
-      return (ragRecommendedPlugins.uninstalled_recommended_plugins).map(getFormattedPlugin)
+      return ragRecommendedPlugins.uninstalled_recommended_plugins.map(getFormattedPlugin)
     return []
   }, [ragRecommendedPlugins])
 
   const loadMore = useCallback(() => {
     onTagsChange((prev) => {
-      if (prev.includes('rag'))
-        return prev
+      if (prev.includes('rag')) return prev
       return [...prev, 'rag']
     })
   }, [onTagsChange])
@@ -60,10 +58,14 @@ const RAGToolRecommendations = ({
       <button
         type="button"
         className="flex w-full items-center rounded-md px-3 pt-1 pb-0.5 text-left text-text-tertiary"
-        onClick={() => setIsCollapsed(prev => !prev)}
+        onClick={() => setIsCollapsed((prev) => !prev)}
       >
-        <span className="system-xs-medium text-text-tertiary">{t('ragToolSuggestions.title', { ns: 'pipeline' })}</span>
-        <ArrowDownRoundFill className={`ml-1 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+        <span className="system-xs-medium text-text-tertiary">
+          {t(($) => $['ragToolSuggestions.title'], { ns: 'pipeline' })}
+        </span>
+        <ArrowDownRoundFill
+          className={`ml-1 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+        />
       </button>
       {!isCollapsed && (
         <>
@@ -73,24 +75,26 @@ const RAGToolRecommendations = ({
               <Loading type="app" />
             </div>
           )}
-          {!isFetchingRAGRecommendedPlugins && recommendedPlugins.length === 0 && unInstalledPlugins.length === 0 && (
-            <p className="px-3 py-1 system-xs-regular text-text-tertiary">
-              <Trans
-                i18nKey="ragToolSuggestions.noRecommendationPlugins"
-                ns="pipeline"
-                components={{
-                  CustomLink: (
-                    <Link
-                      className="text-text-accent"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      href={getMarketplaceUrl('', { tags: 'rag' })}
-                    />
-                  ),
-                }}
-              />
-            </p>
-          )}
+          {!isFetchingRAGRecommendedPlugins &&
+            recommendedPlugins.length === 0 &&
+            unInstalledPlugins.length === 0 && (
+              <p className="px-3 py-1 system-xs-regular text-text-tertiary">
+                <Trans
+                  i18nKey={($) => $['ragToolSuggestions.noRecommendationPlugins']}
+                  ns="pipeline"
+                  components={{
+                    CustomLink: (
+                      <Link
+                        className="text-text-accent"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        href={getMarketplaceUrl('', { tags: 'rag' })}
+                      />
+                    ),
+                  }}
+                />
+              </p>
+            )}
           {(recommendedPlugins.length > 0 || unInstalledPlugins.length > 0) && (
             <>
               <List
@@ -107,7 +111,7 @@ const RAGToolRecommendations = ({
                   <RiMoreLine className="size-4 text-text-tertiary" />
                 </div>
                 <div className="system-xs-regular text-text-tertiary">
-                  {t('operation.more', { ns: 'common' })}
+                  {t(($) => $['operation.more'], { ns: 'common' })}
                 </div>
               </div>
             </>

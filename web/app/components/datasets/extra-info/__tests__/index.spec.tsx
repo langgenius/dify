@@ -4,9 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
-
 // Component Imports (after mocks)
-
 import ApiAccess from '../api-access'
 import ApiAccessCard from '../api-access/card'
 import ExtraInfo from '../index'
@@ -25,8 +23,18 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock next/link
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode, href: string, [key: string]: unknown }) => (
-    <a href={href} {...props}>{children}</a>
+  default: ({
+    children,
+    href,
+    ...props
+  }: {
+    children: React.ReactNode
+    href: string
+    [key: string]: unknown
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }))
 
@@ -53,8 +61,9 @@ vi.mock('@/context/dataset-detail', () => ({
     dataset: mockDataset,
     mutateDatasetRes: mockMutateDatasetRes,
   })),
-  useDatasetDetailContextWithSelector: vi.fn((selector: (v: { dataset?: typeof mockDataset, mutateDatasetRes?: () => void }) => unknown) =>
-    selector({ dataset: mockDataset as DataSet, mutateDatasetRes: mockMutateDatasetRes }),
+  useDatasetDetailContextWithSelector: vi.fn(
+    (selector: (v: { dataset?: typeof mockDataset; mutateDatasetRes?: () => void }) => unknown) =>
+      selector({ dataset: mockDataset as DataSet, mutateDatasetRes: mockMutateDatasetRes }),
   ),
 }))
 
@@ -88,15 +97,14 @@ vi.mock('@/context/i18n', () => ({
 
 // Mock SecretKeyModal to avoid complex modal rendering
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
-    isShow
-      ? (
-          <div data-testid="secret-key-modal">
-            <button onClick={onClose} data-testid="close-modal-btn">Close</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({ isShow, onClose }: { isShow: boolean; onClose: () => void }) =>
+    isShow ? (
+      <div data-testid="secret-key-modal">
+        <button onClick={onClose} data-testid="close-modal-btn">
+          Close
+        </button>
+      </div>
+    ) : null,
 }))
 
 // Test Data Factory
@@ -114,7 +122,8 @@ const createMockRelatedApp = (overrides: Partial<RelatedApp> = {}): RelatedApp =
 
 const createMockRelatedAppsResponse = (count: number = 2): RelatedAppResponse => ({
   data: Array.from({ length: count }, (_, i) =>
-    createMockRelatedApp({ id: `app-${i + 1}`, name: `App ${i + 1}` })),
+    createMockRelatedApp({ id: `app-${i + 1}`, name: `App ${i + 1}` }),
+  ),
   total: count,
 })
 
@@ -153,13 +162,7 @@ describe('Statistics', () => {
     it('should render related apps total correctly', () => {
       const relatedApps = createMockRelatedAppsResponse(5)
 
-      render(
-        <Statistics
-          expand={true}
-          documentCount={10}
-          relatedApps={relatedApps}
-        />,
-      )
+      render(<Statistics expand={true} documentCount={10} relatedApps={relatedApps} />)
 
       expect(screen.getByText('5')).toBeInTheDocument()
     })
@@ -203,13 +206,7 @@ describe('Statistics', () => {
     })
 
     it('should render placeholder when relatedApps is undefined', () => {
-      render(
-        <Statistics
-          expand={true}
-          documentCount={10}
-          relatedApps={undefined}
-        />,
-      )
+      render(<Statistics expand={true} documentCount={10} relatedApps={undefined} />)
 
       expect(screen.getAllByText('--').length).toBeGreaterThanOrEqual(1)
     })
@@ -229,13 +226,7 @@ describe('Statistics', () => {
     it('should handle empty related apps array', () => {
       const emptyRelatedApps: RelatedAppResponse = { data: [], total: 0 }
 
-      render(
-        <Statistics
-          expand={true}
-          documentCount={10}
-          relatedApps={emptyRelatedApps}
-        />,
-      )
+      render(<Statistics expand={true} documentCount={10} relatedApps={emptyRelatedApps} />)
 
       expect(screen.getByText('0')).toBeInTheDocument()
     })
@@ -272,13 +263,7 @@ describe('Statistics', () => {
     it('should render LinkedAppsPanel when related apps exist', async () => {
       const relatedApps = createMockRelatedAppsResponse(3)
 
-      render(
-        <Statistics
-          expand={true}
-          documentCount={10}
-          relatedApps={relatedApps}
-        />,
-      )
+      render(<Statistics expand={true} documentCount={10} relatedApps={relatedApps} />)
 
       // The LinkedAppsPanel should be rendered inside the tooltip
       // We can't easily test tooltip content in this context without more setup
@@ -289,13 +274,7 @@ describe('Statistics', () => {
     it('should render NoLinkedAppsPanel when no related apps', () => {
       const emptyRelatedApps: RelatedAppResponse = { data: [], total: 0 }
 
-      render(
-        <Statistics
-          expand={true}
-          documentCount={10}
-          relatedApps={emptyRelatedApps}
-        />,
-      )
+      render(<Statistics expand={true} documentCount={10} relatedApps={emptyRelatedApps} />)
 
       // Verify component renders correctly with empty apps
       expect(screen.getByText('0')).toBeInTheDocument()
@@ -365,45 +344,25 @@ describe('ApiAccess', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(
-        <ApiAccess
-          expand={true}
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccess expand={true} apiEnabled={true} />)
 
       expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
 
     it('should render API title when expanded', () => {
-      render(
-        <ApiAccess
-          expand={true}
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccess expand={true} apiEnabled={true} />)
 
       expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
 
     it('should not render API title when collapsed', () => {
-      render(
-        <ApiAccess
-          expand={false}
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccess expand={false} apiEnabled={true} />)
 
       expect(screen.queryByText(/appMenus\.apiAccess/i)).not.toBeInTheDocument()
     })
 
     it('should render indicator when API is enabled', () => {
-      const { container } = render(
-        <ApiAccess
-          expand={true}
-          apiEnabled={true}
-        />,
-      )
+      const { container } = render(<ApiAccess expand={true} apiEnabled={true} />)
 
       // Indicator component should be present
       const indicatorElement = container.querySelector('.relative.flex.h-8')
@@ -411,12 +370,7 @@ describe('ApiAccess', () => {
     })
 
     it('should render indicator when API is disabled', () => {
-      const { container } = render(
-        <ApiAccess
-          expand={true}
-          apiEnabled={false}
-        />,
-      )
+      const { container } = render(<ApiAccess expand={true} apiEnabled={false} />)
 
       // Indicator component should be present
       const indicatorElement = container.querySelector('.relative.flex.h-8')
@@ -428,12 +382,7 @@ describe('ApiAccess', () => {
     it('should toggle popup open state on click', async () => {
       const user = userEvent.setup()
 
-      render(
-        <ApiAccess
-          expand={true}
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccess expand={true} apiEnabled={true} />)
 
       const trigger = screen.getByText(/appMenus\.apiAccess/i).closest('[class*="cursor-pointer"]')
       expect(trigger).toBeInTheDocument()
@@ -445,26 +394,18 @@ describe('ApiAccess', () => {
     })
 
     it('should apply hover styles on trigger', () => {
-      render(
-        <ApiAccess
-          expand={true}
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccess expand={true} apiEnabled={true} />)
 
-      const trigger = screen.getByText(/appMenus\.apiAccess/i).closest('div[class*="cursor-pointer"]')
+      const trigger = screen
+        .getByText(/appMenus\.apiAccess/i)
+        .closest('div[class*="cursor-pointer"]')
       expect(trigger).toHaveClass('cursor-pointer')
     })
   })
 
   describe('Props Variations', () => {
     it('should apply compressed layout when expand is false', () => {
-      const { container } = render(
-        <ApiAccess
-          expand={false}
-          apiEnabled={true}
-        />,
-      )
+      const { container } = render(<ApiAccess expand={false} apiEnabled={true} />)
 
       // When collapsed, width should be w-8
       const triggerContainer = container.querySelector('[class*="w-8"]')
@@ -474,12 +415,7 @@ describe('ApiAccess', () => {
     it('should pass apiEnabled to Card component', async () => {
       const user = userEvent.setup()
 
-      render(
-        <ApiAccess
-          expand={true}
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccess expand={true} apiEnabled={true} />)
 
       const trigger = screen.getByText(/appMenus\.apiAccess/i).closest('[class*="cursor-pointer"]')
       if (trigger) {
@@ -491,19 +427,9 @@ describe('ApiAccess', () => {
 
   describe('Memoization', () => {
     it('should be memoized with React.memo', () => {
-      const { rerender } = render(
-        <ApiAccess
-          expand={true}
-          apiEnabled={true}
-        />,
-      )
+      const { rerender } = render(<ApiAccess expand={true} apiEnabled={true} />)
 
-      rerender(
-        <ApiAccess
-          expand={true}
-          apiEnabled={true}
-        />,
-      )
+      rerender(<ApiAccess expand={true} apiEnabled={true} />)
 
       expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
@@ -522,51 +448,31 @@ describe('ApiAccessCard', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={true} />)
 
       expect(screen.getByText(/serviceApi\.enabled/i)).toBeInTheDocument()
     })
 
     it('should display enabled status when API is enabled', () => {
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={true} />)
 
       expect(screen.getByText(/serviceApi\.enabled/i)).toBeInTheDocument()
     })
 
     it('should display disabled status when API is disabled', () => {
-      render(
-        <ApiAccessCard
-          apiEnabled={false}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={false} />)
 
       expect(screen.getByText(/serviceApi\.disabled/i)).toBeInTheDocument()
     })
 
     it('should render API Reference link', () => {
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={true} />)
 
       expect(screen.getByText(/overview\.apiInfo\.doc/i)).toBeInTheDocument()
     })
 
     it('should render switch component', () => {
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={true} />)
 
       expect(screen.getByRole('switch')).toBeInTheDocument()
     })
@@ -576,11 +482,7 @@ describe('ApiAccessCard', () => {
     it('should call enableDatasetServiceApi when switch is toggled on', async () => {
       const user = userEvent.setup()
 
-      render(
-        <ApiAccessCard
-          apiEnabled={false}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={false} />)
 
       const switchButton = screen.getByRole('switch')
       await user.click(switchButton)
@@ -593,11 +495,7 @@ describe('ApiAccessCard', () => {
     it('should call disableDatasetServiceApi when switch is toggled off', async () => {
       const user = userEvent.setup()
 
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={true} />)
 
       const switchButton = screen.getByRole('switch')
       await user.click(switchButton)
@@ -610,11 +508,7 @@ describe('ApiAccessCard', () => {
     it('should call mutateDatasetRes after successful API toggle', async () => {
       const user = userEvent.setup()
 
-      render(
-        <ApiAccessCard
-          apiEnabled={false}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={false} />)
 
       const switchButton = screen.getByRole('switch')
       await user.click(switchButton)
@@ -628,11 +522,7 @@ describe('ApiAccessCard', () => {
       mockEnableDatasetServiceApi.mockResolvedValueOnce({ result: 'fail' })
       const user = userEvent.setup()
 
-      render(
-        <ApiAccessCard
-          apiEnabled={false}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={false} />)
 
       const switchButton = screen.getByRole('switch')
       await user.click(switchButton)
@@ -646,11 +536,7 @@ describe('ApiAccessCard', () => {
     })
 
     it('should have correct href for API Reference link', () => {
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={true} />)
 
       const apiRefLink = screen.getByText(/overview\.apiInfo\.doc/i).closest('a')
       expect(apiRefLink).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
@@ -661,11 +547,7 @@ describe('ApiAccessCard', () => {
     it('should disable switch when dataset lacks edit ACL permission', () => {
       mockDataset.permission_keys = []
 
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={true} />)
 
       const switchButton = screen.getByRole('switch')
       expect(switchButton).toHaveAttribute('aria-disabled', 'true')
@@ -674,11 +556,7 @@ describe('ApiAccessCard', () => {
     it('should enable switch when dataset has edit ACL permission', () => {
       mockDataset.permission_keys = [DatasetACLPermission.Edit]
 
-      render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      render(<ApiAccessCard apiEnabled={true} />)
 
       const switchButton = screen.getByRole('switch')
       expect(switchButton).not.toHaveAttribute('aria-disabled', 'true')
@@ -687,34 +565,18 @@ describe('ApiAccessCard', () => {
 
   describe('Memoization', () => {
     it('should be memoized with React.memo', () => {
-      const { rerender } = render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      const { rerender } = render(<ApiAccessCard apiEnabled={true} />)
 
-      rerender(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      rerender(<ApiAccessCard apiEnabled={true} />)
 
       expect(screen.getByText(/serviceApi\.enabled/i)).toBeInTheDocument()
     })
 
     it('should use useCallback for handlers', () => {
       // Verify handlers are stable by rendering multiple times
-      const { rerender } = render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      const { rerender } = render(<ApiAccessCard apiEnabled={true} />)
 
-      rerender(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
-      )
+      rerender(<ApiAccessCard apiEnabled={true} />)
 
       // Component should render without issues with memoized callbacks
       expect(screen.getByRole('switch')).toBeInTheDocument()
@@ -868,7 +730,7 @@ describe('ExtraInfo', () => {
       expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
 
       // Reset mock
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(selector =>
+      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector) =>
         selector({ dataset: mockDataset as DataSet, mutateDatasetRes: vi.fn() }),
       )
     })
@@ -914,13 +776,7 @@ describe('ExtraInfo', () => {
     it('should pass relatedApps to Statistics component', () => {
       const relatedApps = createMockRelatedAppsResponse(7)
 
-      render(
-        <ExtraInfo
-          expand={true}
-          documentCount={10}
-          relatedApps={relatedApps}
-        />,
-      )
+      render(<ExtraInfo expand={true} documentCount={10} relatedApps={relatedApps} />)
 
       expect(screen.getByText('7')).toBeInTheDocument()
     })
@@ -940,25 +796,13 @@ describe('ExtraInfo', () => {
     })
 
     it('should handle undefined relatedApps', () => {
-      render(
-        <ExtraInfo
-          expand={true}
-          documentCount={10}
-          relatedApps={undefined}
-        />,
-      )
+      render(<ExtraInfo expand={true} documentCount={10} relatedApps={undefined} />)
 
       expect(screen.getByText('10')).toBeInTheDocument()
     })
 
     it('should handle all undefined optional props', () => {
-      render(
-        <ExtraInfo
-          expand={true}
-          documentCount={undefined}
-          relatedApps={undefined}
-        />,
-      )
+      render(<ExtraInfo expand={true} documentCount={undefined} relatedApps={undefined} />)
 
       // Should render without crashing
       expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
@@ -967,13 +811,7 @@ describe('ExtraInfo', () => {
     it('should handle zero values correctly', () => {
       const emptyRelatedApps: RelatedAppResponse = { data: [], total: 0 }
 
-      render(
-        <ExtraInfo
-          expand={true}
-          documentCount={0}
-          relatedApps={emptyRelatedApps}
-        />,
-      )
+      render(<ExtraInfo expand={true} documentCount={0} relatedApps={emptyRelatedApps} />)
 
       expect(screen.getAllByText('0')).toHaveLength(2)
     })
@@ -1083,11 +921,7 @@ describe('ExtraInfo Integration', () => {
 
   it('should render complete expanded view with all child components', () => {
     render(
-      <ExtraInfo
-        expand={true}
-        documentCount={25}
-        relatedApps={createMockRelatedAppsResponse(5)}
-      />,
+      <ExtraInfo expand={true} documentCount={25} relatedApps={createMockRelatedAppsResponse(5)} />,
     )
 
     // Statistics content
@@ -1102,20 +936,17 @@ describe('ExtraInfo Integration', () => {
     const user = userEvent.setup()
 
     render(
-      <ExtraInfo
-        expand={true}
-        documentCount={10}
-        relatedApps={createMockRelatedAppsResponse(3)}
-      />,
+      <ExtraInfo expand={true} documentCount={10} relatedApps={createMockRelatedAppsResponse(3)} />,
     )
 
     // Verify statistics are visible
     expect(screen.getByText('10')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
 
-    const apiAccessTrigger = screen.getByText(/appMenus\.apiAccess/i).closest('[class*="cursor-pointer"]')
-    if (apiAccessTrigger)
-      await user.click(apiAccessTrigger)
+    const apiAccessTrigger = screen
+      .getByText(/appMenus\.apiAccess/i)
+      .closest('[class*="cursor-pointer"]')
+    if (apiAccessTrigger) await user.click(apiAccessTrigger)
 
     // The popup should open with Card content (showing enabled/disabled status)
     await waitFor(() => {
@@ -1125,11 +956,7 @@ describe('ExtraInfo Integration', () => {
 
   it('should integrate with context correctly across all components', async () => {
     render(
-      <ExtraInfo
-        expand={true}
-        documentCount={10}
-        relatedApps={createMockRelatedAppsResponse()}
-      />,
+      <ExtraInfo expand={true} documentCount={10} relatedApps={createMockRelatedAppsResponse()} />,
     )
 
     // The component tree should correctly receive context values

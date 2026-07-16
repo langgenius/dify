@@ -6,11 +6,7 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { ApiKeyStep } from '../../hooks/use-common-modal-state'
-import {
-  ConfigurationStepContent,
-  MultiSteps,
-  VerifyStepContent,
-} from '../modal-steps'
+import { ConfigurationStepContent, MultiSteps, VerifyStepContent } from '../modal-steps'
 
 const mockBaseForm = vi.fn()
 vi.mock('@/app/components/base/form/components/base', () => ({
@@ -24,7 +20,7 @@ vi.mock('@/app/components/base/form/components/base', () => ({
     mockBaseForm(formSchemas)
     return (
       <div data-testid="base-form">
-        {formSchemas.map(schema => (
+        {formSchemas.map((schema) => (
           <button key={schema.name} data-testid={`field-${schema.name}`} onClick={onChange}>
             {schema.name}
           </button>
@@ -35,9 +31,11 @@ vi.mock('@/app/components/base/form/components/base', () => ({
 }))
 
 vi.mock('../../../log-viewer', () => ({
-  default: ({ logs }: { logs: Array<{ id: string, message: string }> }) => (
+  default: ({ logs }: { logs: Array<{ id: string; message: string }> }) => (
     <div data-testid="log-viewer">
-      {logs.map(log => <span key={log.id}>{log.message}</span>)}
+      {logs.map((log) => (
+        <span key={log.id}>{log.message}</span>
+      ))}
     </div>
   ),
 }))
@@ -97,7 +95,15 @@ describe('modal-steps', () => {
         manualPropertiesSchema={[{ name: 'webhook_url', type: FormTypeEnum.textInput }]}
         manualPropertiesFormRef={formRef}
         onManualPropertiesChange={onManualPropertiesChange}
-        logs={[{ id: '1', message: 'log-entry', timestamp: 'now', level: 'info', response: { status_code: 200 } } as never]}
+        logs={[
+          {
+            id: '1',
+            message: 'log-entry',
+            timestamp: 'now',
+            level: 'info',
+            response: { status_code: 200 },
+          } as never,
+        ]}
         pluginId="plugin-id"
         pluginName="Plugin A"
         provider="provider-a"

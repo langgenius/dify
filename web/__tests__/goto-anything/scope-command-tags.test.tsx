@@ -6,8 +6,7 @@ type SearchMode = 'scopes' | 'commands' | null
 
 // Mock component to test tag display logic
 const TagDisplay: React.FC<{ searchMode: SearchMode }> = ({ searchMode }) => {
-  if (!searchMode)
-    return null
+  if (!searchMode) return null
 
   return (
     <div className="flex items-center gap-1 text-xs text-text-tertiary">
@@ -38,10 +37,8 @@ describe('Scope and Command Tags', () => {
 
   describe('Search Mode Detection', () => {
     const getSearchMode = (query: string): SearchMode => {
-      if (query.startsWith('@'))
-        return 'scopes'
-      if (query.startsWith('/'))
-        return 'commands'
+      if (query.startsWith('@')) return 'scopes'
+      if (query.startsWith('/')) return 'commands'
       return null
     }
 
@@ -73,7 +70,9 @@ describe('Scope and Command Tags', () => {
   describe('Tag Styling', () => {
     it('should apply correct styling classes', () => {
       const { container } = render(<TagDisplay searchMode="scopes" />)
-      const tagContainer = container.querySelector('.flex.items-center.gap-1.text-xs.text-text-tertiary')
+      const tagContainer = container.querySelector(
+        '.flex.items-center.gap-1.text-xs.text-text-tertiary',
+      )
       expect(tagContainer).toBeInTheDocument()
     })
 
@@ -93,10 +92,8 @@ describe('Scope and Command Tags', () => {
     const SearchComponent: React.FC<{ query: string }> = ({ query }) => {
       let searchMode: SearchMode = null
 
-      if (query.startsWith('@'))
-        searchMode = 'scopes'
-      else if (query.startsWith('/'))
-        searchMode = 'commands'
+      if (query.startsWith('@')) searchMode = 'scopes'
+      else if (query.startsWith('/')) searchMode = 'commands'
 
       return (
         <div>

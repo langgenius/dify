@@ -36,7 +36,7 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 vi.mock('@/next/navigation', () => ({
   useSearchParams: () => ({
-    get: (key: string) => key === 'mode' ? mockMode.value : null,
+    get: (key: string) => (key === 'mode' ? mockMode.value : null),
   }),
 }))
 
@@ -62,8 +62,12 @@ vi.mock('../text-generation-sidebar', () => ({
     return (
       <div data-testid="sidebar">
         <span data-testid="sidebar-current-tab">{props.currentTab}</span>
-        <button type="button" onClick={props.onRunOnceSend}>run-once</button>
-        <button type="button" onClick={() => props.onBatchSend([['name'], ['Alice']])}>run-batch</button>
+        <button type="button" onClick={props.onRunOnceSend}>
+          run-once
+        </button>
+        <button type="button" onClick={() => props.onBatchSend([['name'], ['Alice']])}>
+          run-batch
+        </button>
       </div>
     )
   },
@@ -91,7 +95,9 @@ vi.mock('../text-generation-result-panel', () => ({
         >
           set-run-control
         </button>
-        <button type="button" onClick={props.onRunStart}>start-run</button>
+        <button type="button" onClick={props.onRunStart}>
+          start-run
+        </button>
       </div>
     )
   },
@@ -173,11 +179,13 @@ describe('TextGeneration', () => {
     const { container } = render(<TextGeneration isInstalledApp />)
 
     expect(screen.getByTestId('sidebar-current-tab')).toHaveTextContent('create')
-    expect(sidebarPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      currentTab: 'create',
-      isInstalledApp: true,
-      isPC: true,
-    }))
+    expect(sidebarPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentTab: 'create',
+        isInstalledApp: true,
+        isPC: true,
+      }),
+    )
 
     const root = container.firstElementChild as HTMLElement
     expect(root).toHaveClass('flex', 'h-full', 'rounded-2xl', 'shadow-md')

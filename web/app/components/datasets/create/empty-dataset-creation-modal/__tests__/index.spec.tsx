@@ -43,10 +43,12 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 // Type cast mocked functions
 const mockCreateEmptyDataset = createEmptyDataset as MockedFunction<typeof createEmptyDataset>
 const mockInvalidDatasetList = vi.fn()
-const mockUseInvalidDatasetList = useInvalidDatasetList as MockedFunction<typeof useInvalidDatasetList>
+const mockUseInvalidDatasetList = useInvalidDatasetList as MockedFunction<
+  typeof useInvalidDatasetList
+>
 
 // Test data builder for props
-const createDefaultProps = (overrides?: Partial<{ show: boolean, onHide: () => void }>) => ({
+const createDefaultProps = (overrides?: Partial<{ show: boolean; onHide: () => void }>) => ({
   show: true,
   onHide: vi.fn(),
   ...overrides,
@@ -81,7 +83,9 @@ describe('EmptyDatasetCreationModal', () => {
       expect(screen.getByText('datasetCreation.stepOne.modal.title')).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.tip')).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.input')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')).toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder'),
+      ).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.confirmButton')).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.cancelButton')).toBeInTheDocument()
     })
@@ -91,7 +95,9 @@ describe('EmptyDatasetCreationModal', () => {
 
       render(<EmptyDatasetCreationModal {...props} />)
 
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const input = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
       expect(input.value).toBe('')
     })
 
@@ -161,7 +167,9 @@ describe('EmptyDatasetCreationModal', () => {
     it('should update input value when user types', () => {
       const props = createDefaultProps()
       render(<EmptyDatasetCreationModal {...props} />)
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const input = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
 
       fireEvent.change(input, { target: { value: 'My Dataset' } })
 
@@ -171,7 +179,9 @@ describe('EmptyDatasetCreationModal', () => {
     it('should persist input value when modal is hidden and shown again via rerender', () => {
       const onHide = vi.fn()
       const { rerender } = render(<EmptyDatasetCreationModal show={true} onHide={onHide} />)
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const input = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
 
       // Act - Type in input
       fireEvent.change(input, { target: { value: 'Test Dataset' } })
@@ -182,14 +192,18 @@ describe('EmptyDatasetCreationModal', () => {
       rerender(<EmptyDatasetCreationModal show={true} onHide={onHide} />)
 
       // Assert - Input value persists because component state is preserved during rerender
-      const newInput = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const newInput = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
       expect(newInput.value).toBe('Test Dataset')
     })
 
     it('should handle consecutive input changes', () => {
       const props = createDefaultProps()
       render(<EmptyDatasetCreationModal {...props} />)
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const input = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
 
       fireEvent.change(input, { target: { value: 'A' } })
       expect(input.value).toBe('A')

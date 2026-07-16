@@ -21,12 +21,7 @@ import * as React from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { VarType } from '@/app/components/workflow/types'
 import { CustomTextNode } from '../../custom-text/node'
-import {
-  useExternalToolOptions,
-  useOptions,
-  usePromptOptions,
-  useVariableOptions,
-} from '../hooks'
+import { useExternalToolOptions, useOptions, usePromptOptions, useVariableOptions } from '../hooks'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -41,16 +36,14 @@ import {
 function makeLexicalWrapper() {
   const initialConfig = {
     namespace: 'hooks-test',
-    onError: (err: Error) => { throw err },
+    onError: (err: Error) => {
+      throw err
+    },
     // CustomTextNode must be registered so editor.update() in addOption's onSelect can create it
     nodes: [CustomTextNode],
   }
   return function LexicalWrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <LexicalComposer initialConfig={initialConfig}>
-        {children}
-      </LexicalComposer>
-    )
+    return <LexicalComposer initialConfig={initialConfig}>{children}</LexicalComposer>
   }
 }
 
@@ -72,7 +65,10 @@ function makeRequestURLBlock(overrides: Partial<RequestURLBlockType> = {}): Requ
   return { show: true, selectable: true, ...overrides }
 }
 
-function makeVariableBlock(variables: Option[] = [], overrides: Partial<VariableBlockType> = {}): VariableBlockType {
+function makeVariableBlock(
+  variables: Option[] = [],
+  overrides: Partial<VariableBlockType> = {},
+): VariableBlockType {
   return { show: true, variables, ...overrides }
 }
 
@@ -94,7 +90,11 @@ function makeVar(variable: string, type: VarType = VarType.string) {
   return { variable, type }
 }
 
-function makeNodeOutPutVar(nodeId: string, title: string, vars: ReturnType<typeof makeVar>[] = []): NodeOutPutVar {
+function makeNodeOutPutVar(
+  nodeId: string,
+  title: string,
+  vars: ReturnType<typeof makeVar>[] = [],
+): NodeOutPutVar {
   return { nodeId, title, vars }
 }
 
@@ -135,27 +135,22 @@ describe('usePromptOptions', () => {
    */
   describe('contextBlock', () => {
     it('should NOT include context option when show is false', () => {
-      const { result } = renderHook(
-        () => usePromptOptions(makeContextBlock({ show: false })),
-        { wrapper },
-      )
+      const { result } = renderHook(() => usePromptOptions(makeContextBlock({ show: false })), {
+        wrapper,
+      })
       expect(result.current).toHaveLength(0)
     })
 
     it('should include context option when show is true', () => {
-      const { result } = renderHook(
-        () => usePromptOptions(makeContextBlock({ show: true })),
-        { wrapper },
-      )
+      const { result } = renderHook(() => usePromptOptions(makeContextBlock({ show: true })), {
+        wrapper,
+      })
       expect(result.current).toHaveLength(1)
       expect(result.current[0]!.group).toBe('prompt context')
     })
 
     it('should render the context PromptMenuItem without crashing', () => {
-      const { result } = renderHook(
-        () => usePromptOptions(makeContextBlock()),
-        { wrapper },
-      )
+      const { result } = renderHook(() => usePromptOptions(makeContextBlock()), { wrapper })
       // renderMenuOption returns a React element – just verify it's truthy
       const el = result.current[0]!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
@@ -210,19 +205,17 @@ describe('usePromptOptions', () => {
     })
 
     it('should include query option when show is true', () => {
-      const { result } = renderHook(
-        () => usePromptOptions(undefined, makeQueryBlock()),
-        { wrapper },
-      )
+      const { result } = renderHook(() => usePromptOptions(undefined, makeQueryBlock()), {
+        wrapper,
+      })
       expect(result.current).toHaveLength(1)
       expect(result.current[0]!.group).toBe('prompt query')
     })
 
     it('should render the query PromptMenuItem without crashing', () => {
-      const { result } = renderHook(
-        () => usePromptOptions(undefined, makeQueryBlock()),
-        { wrapper },
-      )
+      const { result } = renderHook(() => usePromptOptions(undefined, makeQueryBlock()), {
+        wrapper,
+      })
       const el = result.current[0]!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
     })
@@ -264,7 +257,8 @@ describe('usePromptOptions', () => {
   describe('requestURLBlock', () => {
     it('should NOT include request URL option when show is false', () => {
       const { result } = renderHook(
-        () => usePromptOptions(undefined, undefined, undefined, makeRequestURLBlock({ show: false })),
+        () =>
+          usePromptOptions(undefined, undefined, undefined, makeRequestURLBlock({ show: false })),
         { wrapper },
       )
       expect(result.current).toHaveLength(0)
@@ -294,7 +288,12 @@ describe('usePromptOptions', () => {
         () => {
           const [editor] = useLexicalComposerContext()
           capturedEditor = editor
-          return usePromptOptions(undefined, undefined, undefined, makeRequestURLBlock({ selectable: true }))
+          return usePromptOptions(
+            undefined,
+            undefined,
+            undefined,
+            makeRequestURLBlock({ selectable: true }),
+          )
         },
         { wrapper },
       )
@@ -309,7 +308,12 @@ describe('usePromptOptions', () => {
         () => {
           const [editor] = useLexicalComposerContext()
           capturedEditor = editor
-          return usePromptOptions(undefined, undefined, undefined, makeRequestURLBlock({ selectable: false }))
+          return usePromptOptions(
+            undefined,
+            undefined,
+            undefined,
+            makeRequestURLBlock({ selectable: false }),
+          )
         },
         { wrapper },
       )
@@ -389,12 +393,13 @@ describe('usePromptOptions', () => {
   describe('all blocks visible', () => {
     it('should return all four options in correct order', () => {
       const { result } = renderHook(
-        () => usePromptOptions(
-          makeContextBlock(),
-          makeQueryBlock(),
-          makeHistoryBlock(),
-          makeRequestURLBlock(),
-        ),
+        () =>
+          usePromptOptions(
+            makeContextBlock(),
+            makeQueryBlock(),
+            makeHistoryBlock(),
+            makeRequestURLBlock(),
+          ),
         { wrapper },
       )
       expect(result.current).toHaveLength(4)
@@ -423,7 +428,8 @@ describe('useVariableOptions', () => {
   describe('when variableBlock.show is false', () => {
     it('should return an empty array', () => {
       const { result } = renderHook(
-        () => useVariableOptions(makeVariableBlock([{ value: 'foo', name: 'foo' }], { show: false })),
+        () =>
+          useVariableOptions(makeVariableBlock([{ value: 'foo', name: 'foo' }], { show: false })),
         { wrapper },
       )
       expect(result.current).toHaveLength(0)
@@ -435,10 +441,7 @@ describe('useVariableOptions', () => {
    */
   describe('when variableBlock is undefined', () => {
     it('should return an empty array', () => {
-      const { result } = renderHook(
-        () => useVariableOptions(undefined),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useVariableOptions(undefined), { wrapper })
       expect(result.current).toHaveLength(0)
     })
   })
@@ -468,10 +471,7 @@ describe('useVariableOptions', () => {
         { value: 'alpha', name: 'Alpha' },
         { value: 'beta', name: 'Beta' },
       ]
-      const { result } = renderHook(
-        () => useVariableOptions(makeVariableBlock(vars)),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useVariableOptions(makeVariableBlock(vars)), { wrapper })
       // 2 variable options + 1 addOption = 3
       expect(result.current).toHaveLength(3)
       expect(result.current[0]!.key).toBe('alpha')
@@ -480,10 +480,7 @@ describe('useVariableOptions', () => {
 
     it('should render variable VariableMenuItems without crashing', () => {
       const vars: Option[] = [{ value: 'myvar', name: 'My Var' }]
-      const { result } = renderHook(
-        () => useVariableOptions(makeVariableBlock(vars)),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useVariableOptions(makeVariableBlock(vars)), { wrapper })
       // Pass a queryString so we exercise the highlight splitting code path in VariableMenuItem
       const el = result.current[0]!.renderMenuOption({ ...renderProps, queryString: 'my' })
       expect(el).toBeTruthy()
@@ -517,10 +514,9 @@ describe('useVariableOptions', () => {
         { value: 'beta', name: 'Beta' },
         { value: 'ALPHA_UPPER', name: 'ALPHA_UPPER' },
       ]
-      const { result } = renderHook(
-        () => useVariableOptions(makeVariableBlock(vars), 'alpha'),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useVariableOptions(makeVariableBlock(vars), 'alpha'), {
+        wrapper,
+      })
       // 'alpha' regex (case-insensitive) matches 'alpha' and 'ALPHA_UPPER'; addOption is always appended
       expect(result.current).toHaveLength(3)
       expect(result.current[0]!.key).toBe('alpha')
@@ -532,10 +528,9 @@ describe('useVariableOptions', () => {
         { value: 'alpha', name: 'Alpha' },
         { value: 'beta', name: 'Beta' },
       ]
-      const { result } = renderHook(
-        () => useVariableOptions(makeVariableBlock(vars), 'zzz'),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useVariableOptions(makeVariableBlock(vars), 'zzz'), {
+        wrapper,
+      })
       // No match → filtered options=[] + addOption = 1
       expect(result.current).toHaveLength(1)
     })
@@ -549,10 +544,7 @@ describe('useVariableOptions', () => {
    */
   describe('addOption (the last element)', () => {
     it('should render addOption VariableMenuItem without crashing', () => {
-      const { result } = renderHook(
-        () => useVariableOptions(makeVariableBlock([])),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useVariableOptions(makeVariableBlock([])), { wrapper })
       const lastOption = result.current[result.current.length - 1]
       const el = lastOption!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
@@ -611,10 +603,7 @@ describe('useExternalToolOptions', () => {
    */
   describe('when externalToolBlockType is undefined', () => {
     it('should return an empty array', () => {
-      const { result } = renderHook(
-        () => useExternalToolOptions(undefined),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useExternalToolOptions(undefined), { wrapper })
       expect(result.current).toHaveLength(0)
     })
   })
@@ -713,10 +702,9 @@ describe('useExternalToolOptions', () => {
    */
   describe('addOption (the last element)', () => {
     it('should render addOption VariableMenuItem (with Tool03/ArrowUpRight icons) without crashing', () => {
-      const { result } = renderHook(
-        () => useExternalToolOptions(makeExternalToolBlock({}, [])),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useExternalToolOptions(makeExternalToolBlock({}, [])), {
+        wrapper,
+      })
       const lastOption = result.current[result.current.length - 1]
       const el = lastOption!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
@@ -737,10 +725,7 @@ describe('useExternalToolOptions', () => {
       // Covers the optional-chaining branch: externalToolBlockType?.onAddExternalTool?.()
       const block = makeExternalToolBlock({}, [])
       delete block.onAddExternalTool
-      const { result } = renderHook(
-        () => useExternalToolOptions(block),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useExternalToolOptions(block), { wrapper })
       const lastOption = result.current[result.current.length - 1]
       expect(() => lastOption!.onSelectMenuOption()).not.toThrow()
     })
@@ -774,13 +759,14 @@ describe('useOptions', () => {
   describe('allFlattenOptions aggregation', () => {
     it('should combine prompt, variable, and external tool options', () => {
       const { result } = renderHook(
-        () => useOptions(
-          makeContextBlock(), // 1 prompt option
-          undefined,
-          undefined,
-          makeVariableBlock([{ value: 'v1', name: 'v1' }]), // 1 var + 1 addOption = 2
-          makeExternalToolBlock({}, [{ name: 't1', variableName: 'tv1' }]), // 1 tool + 1 addOption = 2
-        ),
+        () =>
+          useOptions(
+            makeContextBlock(), // 1 prompt option
+            undefined,
+            undefined,
+            makeVariableBlock([{ value: 'v1', name: 'v1' }]), // 1 var + 1 addOption = 2
+            makeExternalToolBlock({}, [{ name: 't1', variableName: 'tv1' }]), // 1 tool + 1 addOption = 2
+          ),
         { wrapper },
       )
       // 1 + 2 + 2 = 5
@@ -794,14 +780,15 @@ describe('useOptions', () => {
   describe('workflowVariableOptions when show is false', () => {
     it('should return empty array', () => {
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock([], { show: false }),
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock([], { show: false }),
+          ),
         { wrapper },
       )
       expect(result.current.workflowVariableOptions).toHaveLength(0)
@@ -817,14 +804,15 @@ describe('useOptions', () => {
         makeNodeOutPutVar('node-1', 'Node One', [makeVar('out', VarType.string)]),
       ]
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock(vars),
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock(vars),
+          ),
         { wrapper },
       )
       expect(result.current.workflowVariableOptions).toHaveLength(1)
@@ -838,14 +826,11 @@ describe('useOptions', () => {
   describe('workflowVariableOptions when variables is undefined', () => {
     it('should default to empty array', () => {
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          { show: true, variables: undefined },
-        ),
+        () =>
+          useOptions(undefined, undefined, undefined, undefined, undefined, {
+            show: true,
+            variables: undefined,
+          }),
         { wrapper },
       )
       // No special block injections and no variables → empty array
@@ -860,17 +845,18 @@ describe('useOptions', () => {
   describe('errorMessageBlockType injection', () => {
     it('should prepend error_message node when show is true and not already present', () => {
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock([]),
-          undefined,
-          undefined,
-                    { show: true } satisfies ErrorMessageBlockType,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock([]),
+            undefined,
+            undefined,
+            { show: true } satisfies ErrorMessageBlockType,
+          ),
         { wrapper },
       )
       expect(result.current.workflowVariableOptions[0]!.nodeId).toBe('error_message')
@@ -881,43 +867,51 @@ describe('useOptions', () => {
     it('should NOT inject error_message when already present in variables', () => {
       // The findIndex check ensures deduplication
       const existingVars: NodeOutPutVar[] = [
-        makeNodeOutPutVar('error_message', 'error_message', [makeVar('error_message', VarType.string)]),
+        makeNodeOutPutVar('error_message', 'error_message', [
+          makeVar('error_message', VarType.string),
+        ]),
       ]
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock(existingVars),
-          undefined,
-          undefined,
-                    { show: true } satisfies ErrorMessageBlockType,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock(existingVars),
+            undefined,
+            undefined,
+            { show: true } satisfies ErrorMessageBlockType,
+          ),
         { wrapper },
       )
       // Should still be 1, not 2
-      const errorNodes = result.current.workflowVariableOptions.filter(v => v.nodeId === 'error_message')
+      const errorNodes = result.current.workflowVariableOptions.filter(
+        (v) => v.nodeId === 'error_message',
+      )
       expect(errorNodes).toHaveLength(1)
     })
 
     it('should NOT inject error_message when errorMessageBlockType.show is false', () => {
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock([]),
-          undefined,
-          undefined,
-                    { show: false } satisfies ErrorMessageBlockType,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock([]),
+            undefined,
+            undefined,
+            { show: false } satisfies ErrorMessageBlockType,
+          ),
         { wrapper },
       )
-      const errorNodes = result.current.workflowVariableOptions.filter(v => v.nodeId === 'error_message')
+      const errorNodes = result.current.workflowVariableOptions.filter(
+        (v) => v.nodeId === 'error_message',
+      )
       expect(errorNodes).toHaveLength(0)
     })
   })
@@ -928,18 +922,19 @@ describe('useOptions', () => {
   describe('lastRunBlockType injection', () => {
     it('should prepend last_run node when show is true and not already present', () => {
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock([]),
-          undefined,
-          undefined,
-          undefined,
-                    { show: true } satisfies LastRunBlockType,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock([]),
+            undefined,
+            undefined,
+            undefined,
+            { show: true } satisfies LastRunBlockType,
+          ),
         { wrapper },
       )
       expect(result.current.workflowVariableOptions[0]!.nodeId).toBe('last_run')
@@ -951,41 +946,47 @@ describe('useOptions', () => {
         makeNodeOutPutVar('last_run', 'last_run', [makeVar('last_run', VarType.object)]),
       ]
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock(existingVars),
-          undefined,
-          undefined,
-          undefined,
-                    { show: true } satisfies LastRunBlockType,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock(existingVars),
+            undefined,
+            undefined,
+            undefined,
+            { show: true } satisfies LastRunBlockType,
+          ),
         { wrapper },
       )
-      const lastRunNodes = result.current.workflowVariableOptions.filter(v => v.nodeId === 'last_run')
+      const lastRunNodes = result.current.workflowVariableOptions.filter(
+        (v) => v.nodeId === 'last_run',
+      )
       expect(lastRunNodes).toHaveLength(1)
     })
 
     it('should NOT inject last_run when lastRunBlockType.show is false', () => {
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock([]),
-          undefined,
-          undefined,
-          undefined,
-                    { show: false } satisfies LastRunBlockType,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock([]),
+            undefined,
+            undefined,
+            undefined,
+            { show: false } satisfies LastRunBlockType,
+          ),
         { wrapper },
       )
-      const lastRunNodes = result.current.workflowVariableOptions.filter(v => v.nodeId === 'last_run')
+      const lastRunNodes = result.current.workflowVariableOptions.filter(
+        (v) => v.nodeId === 'last_run',
+      )
       expect(lastRunNodes).toHaveLength(0)
     })
   })
@@ -999,19 +1000,20 @@ describe('useOptions', () => {
     it('should prepend current node with title "current_prompt" when generatorType is prompt', () => {
       const currentBlock: CurrentBlockType = { show: true, generatorType: GeneratorType.prompt }
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock([]),
-          undefined,
-          currentBlock,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock([]),
+            undefined,
+            currentBlock,
+          ),
         { wrapper },
       )
-      const currentNode = result.current.workflowVariableOptions.find(v => v.nodeId === 'current')
+      const currentNode = result.current.workflowVariableOptions.find((v) => v.nodeId === 'current')
       expect(currentNode).toBeDefined()
       expect(currentNode!.title).toBe('current_prompt')
       expect(currentNode!.vars[0]!.type).toBe(VarType.string)
@@ -1021,19 +1023,20 @@ describe('useOptions', () => {
       // Any generatorType value other than 'prompt' results in 'current_code'
       const currentBlock: CurrentBlockType = { show: true, generatorType: GeneratorType.code }
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock([]),
-          undefined,
-          currentBlock,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock([]),
+            undefined,
+            currentBlock,
+          ),
         { wrapper },
       )
-      const currentNode = result.current.workflowVariableOptions.find(v => v.nodeId === 'current')
+      const currentNode = result.current.workflowVariableOptions.find((v) => v.nodeId === 'current')
       expect(currentNode).toBeDefined()
       expect(currentNode!.title).toBe('current_code')
     })
@@ -1045,38 +1048,44 @@ describe('useOptions', () => {
       ]
       const currentBlock: CurrentBlockType = { show: true, generatorType: GeneratorType.prompt }
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock(existingVars),
-          undefined,
-          currentBlock,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock(existingVars),
+            undefined,
+            currentBlock,
+          ),
         { wrapper },
       )
-      const currentNodes = result.current.workflowVariableOptions.filter(v => v.nodeId === 'current')
+      const currentNodes = result.current.workflowVariableOptions.filter(
+        (v) => v.nodeId === 'current',
+      )
       expect(currentNodes).toHaveLength(1)
     })
 
     it('should NOT inject current node when currentBlockType.show is false', () => {
       const currentBlock: CurrentBlockType = { show: false, generatorType: GeneratorType.prompt }
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock([]),
-          undefined,
-          currentBlock,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock([]),
+            undefined,
+            currentBlock,
+          ),
         { wrapper },
       )
-      const currentNodes = result.current.workflowVariableOptions.filter(v => v.nodeId === 'current')
+      const currentNodes = result.current.workflowVariableOptions.filter(
+        (v) => v.nodeId === 'current',
+      )
       expect(currentNodes).toHaveLength(0)
     })
   })
@@ -1096,22 +1105,23 @@ describe('useOptions', () => {
       const lastRunBlock: LastRunBlockType = { show: true }
 
       const { result } = renderHook(
-        () => useOptions(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          makeWorkflowVariableBlock(baseVars),
-          undefined,
-          currentBlock,
-          errorBlock,
-          lastRunBlock,
-        ),
+        () =>
+          useOptions(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            makeWorkflowVariableBlock(baseVars),
+            undefined,
+            currentBlock,
+            errorBlock,
+            lastRunBlock,
+          ),
         { wrapper },
       )
 
-      const ids = result.current.workflowVariableOptions.map(v => v.nodeId)
+      const ids = result.current.workflowVariableOptions.map((v) => v.nodeId)
       // current is unshifted last, so it ends up at index 0
       expect(ids[0]).toBe('current')
       expect(ids[1]).toBe('last_run')
@@ -1131,19 +1141,20 @@ describe('useOptions', () => {
       const wfVars: NodeOutPutVar[] = [makeNodeOutPutVar('node-x', 'NodeX', [])]
 
       const { result } = renderHook(
-        () => useOptions(
-          makeContextBlock(),
-          makeQueryBlock(),
-          makeHistoryBlock(),
-          makeVariableBlock(vars),
-          makeExternalToolBlock({}, tools),
-          makeWorkflowVariableBlock(wfVars),
-          makeRequestURLBlock(),
-                    { show: true, generatorType: GeneratorType.prompt } satisfies CurrentBlockType,
-                    { show: true } satisfies ErrorMessageBlockType,
-                    { show: true } satisfies LastRunBlockType,
-                    'v1',
-        ),
+        () =>
+          useOptions(
+            makeContextBlock(),
+            makeQueryBlock(),
+            makeHistoryBlock(),
+            makeVariableBlock(vars),
+            makeExternalToolBlock({}, tools),
+            makeWorkflowVariableBlock(wfVars),
+            makeRequestURLBlock(),
+            { show: true, generatorType: GeneratorType.prompt } satisfies CurrentBlockType,
+            { show: true } satisfies ErrorMessageBlockType,
+            { show: true } satisfies LastRunBlockType,
+            'v1',
+          ),
         { wrapper },
       )
 

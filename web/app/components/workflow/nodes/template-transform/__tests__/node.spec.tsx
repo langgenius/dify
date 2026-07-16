@@ -3,7 +3,9 @@ import { render } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
-const createData = (overrides: Partial<TemplateTransformNodeType> = {}): TemplateTransformNodeType => ({
+const createData = (
+  overrides: Partial<TemplateTransformNodeType> = {},
+): TemplateTransformNodeType => ({
   title: 'Template Transform',
   desc: '',
   type: BlockEnum.TemplateTransform,
@@ -14,12 +16,7 @@ const createData = (overrides: Partial<TemplateTransformNodeType> = {}): Templat
 
 describe('template-transform/node', () => {
   it('renders an empty shell without summary content', () => {
-    const { container } = render(
-      <Node
-        id="template-node"
-        data={createData()}
-      />,
-    )
+    const { container } = render(<Node id="template-node" data={createData()} />)
 
     expect(container.firstElementChild).toBeEmptyDOMElement()
   })

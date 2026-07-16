@@ -6,9 +6,7 @@ describe('ModalFoot', () => {
     const onCancel = vi.fn()
     const onConfirm = vi.fn()
 
-    render(
-      <ModalFoot onCancel={onCancel} onConfirm={onConfirm} />,
-    )
+    render(<ModalFoot onCancel={onCancel} onConfirm={onConfirm} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))

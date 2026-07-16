@@ -4,16 +4,18 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type TagListResponse = Array<TagResponse>
+
+export type TagBasePayload = {
+  name: string
+  type: TagType
+}
+
 export type TagResponse = {
   binding_count?: string | null
   id: string
   name: string
   type?: string | null
-}
-
-export type TagBasePayload = {
-  name: string
-  type: TagType
 }
 
 export type TagUpdateRequestPayload = {
@@ -33,7 +35,7 @@ export type GetTagsData = {
 }
 
 export type GetTagsResponses = {
-  200: Array<TagResponse>
+  200: TagListResponse
 }
 
 export type GetTagsResponse = GetTagsResponses[keyof GetTagsResponses]

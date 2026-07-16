@@ -50,10 +50,8 @@ describe('Slash Command Dual-Mode System', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(slashCommandRegistry.findCommand).mockImplementation((name: string) => {
-      if (name === 'docs')
-        return mockDirectCommand
-      if (name === 'theme')
-        return mockSubmenuCommand
+      if (name === 'docs') return mockDirectCommand
+      if (name === 'theme') return mockSubmenuCommand
       return undefined
     })
     vi.mocked(slashCommandRegistry.getAllCommands).mockReturnValue([
@@ -131,8 +129,8 @@ describe('Slash Command Dual-Mode System', () => {
   describe('Mode Detection and Routing', () => {
     it('should correctly identify direct mode commands', () => {
       const commands = slashCommandRegistry.getAllCommands()
-      const directCommands = commands.filter(cmd => cmd.mode === 'direct')
-      const submenuCommands = commands.filter(cmd => cmd.mode === 'submenu')
+      const directCommands = commands.filter((cmd) => cmd.mode === 'direct')
+      const submenuCommands = commands.filter((cmd) => cmd.mode === 'submenu')
 
       expect(directCommands).toContainEqual(expect.objectContaining({ name: 'docs' }))
       expect(submenuCommands).toContainEqual(expect.objectContaining({ name: 'theme' }))

@@ -3,13 +3,21 @@ import type { ModelProvider } from '../../declarations'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { ConfigurationMethodEnum, ModelTypeEnum, PreferredProviderTypeEnum } from '../../declarations'
+import {
+  ConfigurationMethodEnum,
+  ModelTypeEnum,
+  PreferredProviderTypeEnum,
+} from '../../declarations'
 import { useChangeProviderPriority } from '../use-change-provider-priority'
 
 const mockUpdateModelList = vi.fn()
 const mockUpdateModelProviders = vi.fn()
 const mockNotify = vi.fn()
-const mockQueryKey = vi.fn(({ input }: { input: { params: { provider: string } } }) => ['model-providers', 'models', input.params.provider])
+const mockQueryKey = vi.fn(({ input }: { input: { params: { provider: string } } }) => [
+  'model-providers',
+  'models',
+  input.params.provider,
+])
 const mockChangePreferredProviderType = vi.fn()
 const mockMutationOptions = vi.fn((options: Record<string, unknown>) => ({
   mutationFn: (variables: unknown) => mockChangePreferredProviderType(variables),
@@ -30,12 +38,23 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    modelProviders: {
-      models: {
-        queryKey: (options: { input: { params: { provider: string } } }) => mockQueryKey(options),
-      },
-      changePreferredProviderType: {
-        mutationOptions: (options: Record<string, unknown>) => mockMutationOptions(options),
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              get: {
+                queryKey: (options: { input: { params: { provider: string } } }) =>
+                  mockQueryKey(options),
+              },
+            },
+            preferredProviderType: {
+              post: {
+                mutationOptions: (options: Record<string, unknown>) => mockMutationOptions(options),
+              },
+            },
+          },
+        },
       },
     },
   },
@@ -46,37 +65,38 @@ vi.mock('../../hooks', () => ({
   useUpdateModelProviders: () => mockUpdateModelProviders,
 }))
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'langgenius/openai/openai',
-  configurate_methods: [
-    ConfigurationMethodEnum.customizableModel,
-    ConfigurationMethodEnum.predefinedModel,
-  ],
-  supported_model_types: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding],
-  label: { en_US: 'OpenAI' },
-  icon_small: { en_US: 'https://example.com/icon.png' },
-  provider_credential_schema: { credential_form_schemas: [] },
-  model_credential_schema: {
-    model: {
-      label: { en_US: 'Model' },
-      placeholder: { en_US: 'Select model' },
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'langgenius/openai/openai',
+    configurate_methods: [
+      ConfigurationMethodEnum.customizableModel,
+      ConfigurationMethodEnum.predefinedModel,
+    ],
+    supported_model_types: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding],
+    label: { en_US: 'OpenAI' },
+    icon_small: { en_US: 'https://example.com/icon.png' },
+    provider_credential_schema: { credential_form_schemas: [] },
+    model_credential_schema: {
+      model: {
+        label: { en_US: 'Model' },
+        placeholder: { en_US: 'Select model' },
+      },
+      credential_form_schemas: [],
     },
-    credential_form_schemas: [],
-  },
-  ...overrides,
-} as ModelProvider)
+    ...overrides,
+  }) as ModelProvider
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, gcTime: 0 },
-    mutations: { retry: false },
-  },
-})
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  })
 
 const createWrapper = (queryClient: QueryClient) => {
-  return ({ children }: { children: ReactNode }) => (
+  return ({ children }: { children: ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children)
-  )
 }
 
 describe('useChangeProviderPriority', () => {
@@ -88,7 +108,9 @@ describe('useChangeProviderPriority', () => {
   describe('when changing provider priority', () => {
     it('should submit the selected preferred provider type for the current provider', async () => {
       const queryClient = createTestQueryClient()
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined)
+      const invalidateQueries = vi
+        .spyOn(queryClient, 'invalidateQueries')
+        .mockResolvedValue(undefined)
       const provider = createProvider()
       const { result } = renderHook(() => useChangeProviderPriority(provider), {
         wrapper: createWrapper(queryClient),
@@ -131,7 +153,9 @@ describe('useChangeProviderPriority', () => {
 
     it('should tolerate an undefined provider and still submit a request without refreshing model lists', async () => {
       const queryClient = createTestQueryClient()
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined)
+      const invalidateQueries = vi
+        .spyOn(queryClient, 'invalidateQueries')
+        .mockResolvedValue(undefined)
       const { result } = renderHook(() => useChangeProviderPriority(undefined), {
         wrapper: createWrapper(queryClient),
       })
@@ -160,7 +184,9 @@ describe('useChangeProviderPriority', () => {
   describe('when the mutation is not successful immediately', () => {
     it('should show an error toast when the mutation fails', async () => {
       const queryClient = createTestQueryClient()
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined)
+      const invalidateQueries = vi
+        .spyOn(queryClient, 'invalidateQueries')
+        .mockResolvedValue(undefined)
       mockChangePreferredProviderType.mockRejectedValueOnce(new Error('network error'))
       const { result } = renderHook(() => useChangeProviderPriority(createProvider()), {
         wrapper: createWrapper(queryClient),
@@ -185,9 +211,12 @@ describe('useChangeProviderPriority', () => {
 
     it('should expose the pending mutation state while the request is in flight', async () => {
       let resolveMutation: (() => void) | undefined
-      mockChangePreferredProviderType.mockImplementationOnce(() => new Promise<void>((resolve) => {
-        resolveMutation = resolve
-      }))
+      mockChangePreferredProviderType.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveMutation = resolve
+          }),
+      )
 
       const queryClient = createTestQueryClient()
       const { result } = renderHook(() => useChangeProviderPriority(createProvider()), {

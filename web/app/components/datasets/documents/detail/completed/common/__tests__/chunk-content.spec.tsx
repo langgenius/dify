@@ -189,9 +189,7 @@ describe('ChunkContent', () => {
     })
 
     it('should disable textarea when isEditMode is false in text mode', () => {
-      const { container } = render(
-        <ChunkContent {...defaultProps} isEditMode={false} />,
-      )
+      const { container } = render(<ChunkContent {...defaultProps} isEditMode={false} />)
 
       // Assert - In view mode, Markdown is rendered instead of textarea
       // Assert - In view mode, Markdown is rendered instead of textarea
@@ -273,11 +271,7 @@ describe('ChunkContent', () => {
 
     it('should handle ChunkingMode.parentChild similar to text mode', () => {
       render(
-        <ChunkContent
-          {...defaultProps}
-          docForm={ChunkingMode.parentChild}
-          isEditMode={true}
-        />,
+        <ChunkContent {...defaultProps} docForm={ChunkingMode.parentChild} isEditMode={true} />,
       )
 
       // Assert - parentChild should render like text mode
@@ -288,13 +282,7 @@ describe('ChunkContent', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty question', () => {
-      render(
-        <ChunkContent
-          {...defaultProps}
-          question=""
-          isEditMode={true}
-        />,
-      )
+      render(<ChunkContent {...defaultProps} question="" isEditMode={true} />)
 
       const textarea = screen.getByRole('textbox')
       expect(textarea)!.toHaveValue('')
@@ -317,13 +305,7 @@ describe('ChunkContent', () => {
     })
 
     it('should handle undefined answer in QA mode', () => {
-      render(
-        <ChunkContent
-          {...defaultProps}
-          docForm={ChunkingMode.qa}
-          isEditMode={true}
-        />,
-      )
+      render(<ChunkContent {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
 
       // Assert - should render without crashing
       // Assert - should render without crashing
@@ -335,9 +317,7 @@ describe('ChunkContent', () => {
         <ChunkContent {...defaultProps} question="Initial" isEditMode={true} />,
       )
 
-      rerender(
-        <ChunkContent {...defaultProps} question="Updated" isEditMode={true} />,
-      )
+      rerender(<ChunkContent {...defaultProps} question="Updated" isEditMode={true} />)
 
       const textarea = screen.getByRole('textbox')
       expect(textarea)!.toHaveValue('Updated')

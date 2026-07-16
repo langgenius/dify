@@ -68,7 +68,11 @@ describe('ActionButton', () => {
   })
 
   it('forwards additional button props', () => {
-    render(<ActionButton disabled data-testid="test-button">Disabled Button</ActionButton>)
+    render(
+      <ActionButton disabled data-testid="test-button">
+        Disabled Button
+      </ActionButton>,
+    )
     const button = screen.getByRole('button', { name: 'Disabled Button' })
     expect(button).toBeDisabled()
     expect(button).toHaveAttribute('data-testid', 'test-button')

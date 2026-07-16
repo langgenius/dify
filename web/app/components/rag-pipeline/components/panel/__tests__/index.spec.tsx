@@ -57,7 +57,10 @@ const { dynamicMocks, mockInputFieldEditorProps } = vi.hoisted(() => {
 })
 
 vi.mock('@/next/dynamic', () => ({
-  default: (_loader: () => Promise<{ default: React.ComponentType }>, _options?: Record<string, unknown>) => {
+  default: (
+    _loader: () => Promise<{ default: React.ComponentType }>,
+    _options?: Record<string, unknown>,
+  ) => {
     return dynamicMocks.createMockComponent()
   },
 }))
@@ -214,7 +217,8 @@ describe('RagPipelinePanel', () => {
       render(<RagPipelinePanel />)
 
       await waitFor(() => {
-        const deleteUrl = capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-1')
+        const deleteUrl =
+          capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-1')
         expect(deleteUrl).toBe('/rag/pipelines/pipeline-xyz/workflows/version-1')
       })
     })
@@ -225,7 +229,8 @@ describe('RagPipelinePanel', () => {
       render(<RagPipelinePanel />)
 
       await waitFor(() => {
-        const updateUrl = capturedPanelProps?.versionHistoryPanelProps?.updateVersionUrl?.('version-2')
+        const updateUrl =
+          capturedPanelProps?.versionHistoryPanelProps?.updateVersionUrl?.('version-2')
         expect(updateUrl).toBe('/rag/pipelines/pipeline-def/workflows/version-2')
       })
     })
@@ -655,8 +660,10 @@ describe('URL Generator Functions', () => {
     render(<RagPipelinePanel />)
 
     await waitFor(() => {
-      const deleteUrl1 = capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-x')
-      const deleteUrl2 = capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-x')
+      const deleteUrl1 =
+        capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-x')
+      const deleteUrl2 =
+        capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-x')
       expect(deleteUrl1).toBe(deleteUrl2)
     })
   })
@@ -667,8 +674,10 @@ describe('URL Generator Functions', () => {
     render(<RagPipelinePanel />)
 
     await waitFor(() => {
-      const deleteUrl1 = capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-1')
-      const deleteUrl2 = capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-2')
+      const deleteUrl1 =
+        capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-1')
+      const deleteUrl2 =
+        capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-2')
       expect(deleteUrl1).not.toBe(deleteUrl2)
       expect(deleteUrl1).toBe('/rag/pipelines/stable-pipeline/workflows/version-1')
       expect(deleteUrl2).toBe('/rag/pipelines/stable-pipeline/workflows/version-2')
@@ -714,8 +723,7 @@ describe('Performance', () => {
   it('should handle multiple rerenders without issues', async () => {
     const { rerender } = render(<RagPipelinePanel />)
 
-    for (let i = 0; i < 10; i++)
-      rerender(<RagPipelinePanel />)
+    for (let i = 0; i < 10; i++) rerender(<RagPipelinePanel />)
 
     await waitFor(() => {
       expect(screen.getByTestId('workflow-panel')).toBeInTheDocument()

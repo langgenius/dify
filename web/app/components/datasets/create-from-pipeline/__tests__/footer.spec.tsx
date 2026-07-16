@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import Footer from '../footer'
 
 // Configurable mock for search params
@@ -22,7 +21,13 @@ let capturedActiveTab: string | undefined
 let capturedDslUrl: string | undefined
 
 vi.mock('../create-options/create-from-dsl-modal', () => ({
-  default: ({ show, onClose, onSuccess, activeTab, dslUrl }: {
+  default: ({
+    show,
+    onClose,
+    onSuccess,
+    activeTab,
+    dslUrl,
+  }: {
     show: boolean
     onClose: () => void
     onSuccess: () => void
@@ -31,14 +36,16 @@ vi.mock('../create-options/create-from-dsl-modal', () => ({
   }) => {
     capturedActiveTab = activeTab
     capturedDslUrl = dslUrl
-    return show
-      ? (
-          <div data-testid="dsl-modal">
-            <button data-testid="close-modal" onClick={onClose}>Close</button>
-            <button data-testid="success-modal" onClick={onSuccess}>Success</button>
-          </div>
-        )
-      : null
+    return show ? (
+      <div data-testid="dsl-modal">
+        <button data-testid="close-modal" onClick={onClose}>
+          Close
+        </button>
+        <button data-testid="success-modal" onClick={onSuccess}>
+          Success
+        </button>
+      </div>
+    ) : null
   },
   CreateFromDSLModalTab: {
     FROM_URL: 'FROM_URL',

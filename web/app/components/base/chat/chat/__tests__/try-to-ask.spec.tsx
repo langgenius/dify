@@ -11,24 +11,14 @@ describe('TryToAsk', () => {
   })
 
   it('renders the component with header text', () => {
-    render(
-      <TryToAsk
-        suggestedQuestions={['Question 1']}
-        onSend={mockOnSend}
-      />,
-    )
+    render(<TryToAsk suggestedQuestions={['Question 1']} onSend={mockOnSend} />)
     expect(screen.getByText(/tryToAsk/i)).toBeInTheDocument()
   })
 
   it('renders all suggested questions as buttons', () => {
     const questions = ['What is AI?', 'How does it work?', 'Tell me more']
 
-    render(
-      <TryToAsk
-        suggestedQuestions={questions}
-        onSend={mockOnSend}
-      />,
-    )
+    render(<TryToAsk suggestedQuestions={questions} onSend={mockOnSend} />)
 
     questions.forEach((question) => {
       expect(screen.getByRole('button', { name: question })).toBeInTheDocument()
@@ -39,12 +29,7 @@ describe('TryToAsk', () => {
     const user = userEvent.setup()
     const questions = ['Question 1', 'Question 2', 'Question 3']
 
-    render(
-      <TryToAsk
-        suggestedQuestions={questions}
-        onSend={mockOnSend}
-      />,
-    )
+    render(<TryToAsk suggestedQuestions={questions} onSend={mockOnSend} />)
 
     await user.click(screen.getByRole('button', { name: 'Question 2' }))
 
@@ -56,12 +41,7 @@ describe('TryToAsk', () => {
     const user = userEvent.setup()
     const questions = ['First', 'Second', 'Third']
 
-    render(
-      <TryToAsk
-        suggestedQuestions={questions}
-        onSend={mockOnSend}
-      />,
-    )
+    render(<TryToAsk suggestedQuestions={questions} onSend={mockOnSend} />)
 
     await user.click(screen.getByRole('button', { name: 'First' }))
     await user.click(screen.getByRole('button', { name: 'Third' }))
@@ -72,12 +52,7 @@ describe('TryToAsk', () => {
   })
 
   it('renders no buttons when suggestedQuestions is empty', () => {
-    render(
-      <TryToAsk
-        suggestedQuestions={[]}
-        onSend={mockOnSend}
-      />,
-    )
+    render(<TryToAsk suggestedQuestions={[]} onSend={mockOnSend} />)
 
     expect(screen.queryAllByRole('button')).toHaveLength(0)
   })
@@ -86,12 +61,7 @@ describe('TryToAsk', () => {
     const user = userEvent.setup()
     const question = 'Single question'
 
-    render(
-      <TryToAsk
-        suggestedQuestions={[question]}
-        onSend={mockOnSend}
-      />,
-    )
+    render(<TryToAsk suggestedQuestions={[question]} onSend={mockOnSend} />)
 
     const button = screen.getByRole('button', { name: question })
     expect(button).toBeInTheDocument()

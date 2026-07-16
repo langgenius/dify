@@ -6,12 +6,6 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['workspace.role.manage'] as string[],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
-
 vi.mock('@/service/access-control/use-workspace-roles', () => ({
   useCopyWorkspaceRole: () => ({
     mutateAsync: vi.fn(),
@@ -55,12 +49,7 @@ describe('RoleList', () => {
 
   describe('Rendering', () => {
     it('shows a loading status while the first page is loading', () => {
-      render(
-        <RoleList
-          groups={[]}
-          isLoading
-        />,
-      )
+      render(<RoleList groups={[]} isLoading />)
 
       expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
       expect(screen.queryByText(/permission\.role\.groups/)).not.toBeInTheDocument()
@@ -80,13 +69,15 @@ describe('RoleList', () => {
               id: 'custom',
               category: 'global_custom',
               title: 'Custom Roles',
-              items: [createRole({
-                id: 'role-custom',
-                category: 'global_custom',
-                name: 'Executive',
-                description: 'Unrestricted access to all workspace operations',
-                is_builtin: false,
-              })],
+              items: [
+                createRole({
+                  id: 'role-custom',
+                  category: 'global_custom',
+                  name: 'Executive',
+                  description: 'Unrestricted access to all workspace operations',
+                  is_builtin: false,
+                }),
+              ],
             },
           ]}
         />,
@@ -162,13 +153,15 @@ describe('RoleList', () => {
               id: 'custom',
               category: 'global_custom',
               title: 'Custom Roles',
-              items: [createRole({
-                id: 'role-custom',
-                category: 'global_custom',
-                name: 'Partner',
-                description: '',
-                is_builtin: false,
-              })],
+              items: [
+                createRole({
+                  id: 'role-custom',
+                  category: 'global_custom',
+                  name: 'Partner',
+                  description: '',
+                  is_builtin: false,
+                }),
+              ],
             },
           ]}
         />,

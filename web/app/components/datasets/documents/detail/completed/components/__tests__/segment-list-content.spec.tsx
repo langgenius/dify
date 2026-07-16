@@ -10,25 +10,25 @@ vi.mock('../../child-segment-list', () => ({
 }))
 
 vi.mock('../../segment-card', () => ({
-  default: ({ detail, onClick }: { detail: { id: string }, onClick?: () => void }) => (
-    <div data-testid="segment-card" onClick={onClick}>{detail?.id}</div>
+  default: ({ detail, onClick }: { detail: { id: string }; onClick?: () => void }) => (
+    <div data-testid="segment-card" onClick={onClick}>
+      {detail?.id}
+    </div>
   ),
 }))
 
 vi.mock('../../segment-list', () => {
   const SegmentList = vi.fn(({ items }: { items: { id: string }[] }) => (
-    <div data-testid="segment-list">
-      {items?.length ?? 0}
-      {' '}
-      items
-    </div>
+    <div data-testid="segment-list">{items?.length ?? 0} items</div>
   ))
   return { default: SegmentList }
 })
 
 describe('FullDocModeContent', () => {
   const defaultProps = {
-    segments: [{ id: 'seg-1', position: 1, content: 'test', word_count: 10 }] as SegmentDetailModel[],
+    segments: [
+      { id: 'seg-1', position: 1, content: 'test', word_count: 10 },
+    ] as SegmentDetailModel[],
     childSegments: [],
     isLoadingSegmentList: false,
     isLoadingChildSegmentList: false,

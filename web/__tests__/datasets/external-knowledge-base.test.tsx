@@ -65,11 +65,11 @@ describe('External Knowledge Base Creation Flow', () => {
   describe('Form Validation Logic', () => {
     const isFormValid = (form: CreateKnowledgeBaseReq): boolean => {
       return (
-        form.name.trim() !== ''
-        && form.external_knowledge_api_id !== ''
-        && form.external_knowledge_id !== ''
-        && form.external_retrieval_model.top_k !== undefined
-        && form.external_retrieval_model.score_threshold !== undefined
+        form.name.trim() !== '' &&
+        form.external_knowledge_api_id !== '' &&
+        form.external_knowledge_id !== '' &&
+        form.external_retrieval_model.top_k !== undefined &&
+        form.external_retrieval_model.score_threshold !== undefined
       )
     }
 

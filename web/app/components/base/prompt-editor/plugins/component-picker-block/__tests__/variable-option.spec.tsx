@@ -23,10 +23,7 @@ describe('VariableMenuItem', () => {
 
     it('should render the icon when provided', () => {
       render(
-        <VariableMenuItem
-          {...defaultProps}
-          icon={<span data-testid="test-icon">icon</span>}
-        />,
+        <VariableMenuItem {...defaultProps} icon={<span data-testid="test-icon">icon</span>} />,
       )
       expect(screen.getByTestId('test-icon')).toBeInTheDocument()
     })

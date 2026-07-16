@@ -9,15 +9,14 @@ type IModalFootProps = {
   onCancel: () => void
 }
 
-const ModalFoot: FC<IModalFootProps> = ({
-  onConfirm,
-  onCancel,
-}) => {
+const ModalFoot: FC<IModalFootProps> = ({ onConfirm, onCancel }) => {
   const { t } = useTranslation()
   return (
     <div className="flex justify-end gap-2">
-      <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
-      <Button variant="primary" onClick={onConfirm}>{t('operation.save', { ns: 'common' })}</Button>
+      <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+      <Button variant="primary" onClick={onConfirm}>
+        {t(($) => $['operation.save'], { ns: 'common' })}
+      </Button>
     </div>
   )
 }

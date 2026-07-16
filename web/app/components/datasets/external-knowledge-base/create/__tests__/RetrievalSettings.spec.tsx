@@ -3,22 +3,49 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock param items to simplify testing
 vi.mock('@/app/components/base/param-item/top-k-item', () => ({
-  default: ({ value, onChange, enable }: { value: number, onChange: (key: string, val: number) => void, enable: boolean }) => (
+  default: ({
+    value,
+    onChange,
+    enable,
+  }: {
+    value: number
+    onChange: (key: string, val: number) => void
+    enable: boolean
+  }) => (
     <div data-testid="top-k-item">
       <span data-testid="top-k-value">{value}</span>
-      <button data-testid="top-k-change" onClick={() => onChange('top_k', 8)}>change</button>
+      <button data-testid="top-k-change" onClick={() => onChange('top_k', 8)}>
+        change
+      </button>
       <span data-testid="top-k-enabled">{String(enable)}</span>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
-  default: ({ value, onChange, enable, onSwitchChange }: { value: number, onChange: (key: string, val: number) => void, enable: boolean, onSwitchChange: (key: string, val: boolean) => void }) => (
+  default: ({
+    value,
+    onChange,
+    enable,
+    onSwitchChange,
+  }: {
+    value: number
+    onChange: (key: string, val: number) => void
+    enable: boolean
+    onSwitchChange: (key: string, val: boolean) => void
+  }) => (
     <div data-testid="score-threshold-item">
       <span data-testid="score-value">{value}</span>
-      <button data-testid="score-change" onClick={() => onChange('score_threshold', 0.9)}>change</button>
+      <button data-testid="score-change" onClick={() => onChange('score_threshold', 0.9)}>
+        change
+      </button>
       <span data-testid="score-enabled">{String(enable)}</span>
-      <button data-testid="score-switch" onClick={() => onSwitchChange('score_threshold_enabled', true)}>switch</button>
+      <button
+        data-testid="score-switch"
+        onClick={() => onSwitchChange('score_threshold_enabled', true)}
+      >
+        switch
+      </button>
     </div>
   ),
 }))

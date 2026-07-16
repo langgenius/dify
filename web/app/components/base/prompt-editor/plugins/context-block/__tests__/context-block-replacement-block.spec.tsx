@@ -18,16 +18,14 @@ function createEditorConfig() {
   return {
     namespace: 'test',
     nodes: [CustomTextNode, ContextBlockNode],
-    onError: (error: Error) => { throw error },
+    onError: (error: Error) => {
+      throw error
+    },
   }
 }
 
 function TestWrapper({ children }: { children: ReactNode }) {
-  return (
-    <LexicalComposer initialConfig={createEditorConfig()}>
-      {children}
-    </LexicalComposer>
-  )
+  return <LexicalComposer initialConfig={createEditorConfig()}>{children}</LexicalComposer>
 }
 
 function renderWithEditor(ui: ReactNode) {
@@ -41,7 +39,11 @@ const defaultOnCapture = (editor: LexicalEditor) => {
   capturedEditor = editor
 }
 
-function EditorCapture({ onCapture = defaultOnCapture }: { onCapture?: (e: LexicalEditor) => void }) {
+function EditorCapture({
+  onCapture = defaultOnCapture,
+}: {
+  onCapture?: (e: LexicalEditor) => void
+}) {
   const [editor] = useLexicalComposerContext()
   React.useEffect(() => {
     onCapture(editor)
@@ -51,23 +53,25 @@ function EditorCapture({ onCapture = defaultOnCapture }: { onCapture?: (e: Lexic
 
 type ReadResult = {
   count: number
-  datasets: Array<{ id: string, name: string, type: string }>
+  datasets: Array<{ id: string; name: string; type: string }>
   canNotAddContext: boolean
 }
 
 function insertTextAndRead(text: string): ReadResult {
-  if (!capturedEditor)
-    throw new Error('Editor not captured')
+  if (!capturedEditor) throw new Error('Editor not captured')
 
   // Insert CustomTextNode with the given text
-  capturedEditor.update(() => {
-    const root = $getRoot()
-    root.clear()
-    const paragraph = $createParagraphNode()
-    const textNode = $createCustomTextNode(text)
-    paragraph.append(textNode)
-    root.append(paragraph)
-  }, { discrete: true })
+  capturedEditor.update(
+    () => {
+      const root = $getRoot()
+      root.clear()
+      const paragraph = $createParagraphNode()
+      const textNode = $createCustomTextNode(text)
+      paragraph.append(textNode)
+      root.append(paragraph)
+    },
+    { discrete: true },
+  )
 
   // Read the resulting state — extract all properties inside .read()
   const result: ReadResult = { count: 0, datasets: [], canNotAddContext: false }
@@ -126,7 +130,9 @@ describe('ContextBlockReplacementBlock', () => {
       const configWithoutNode = {
         namespace: 'test',
         nodes: [CustomTextNode],
-        onError: (error: Error) => { throw error },
+        onError: (error: Error) => {
+          throw error
+        },
       }
 
       expect(() => {

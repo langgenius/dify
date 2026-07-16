@@ -57,11 +57,12 @@ class MCPServerParameterType(StrEnum):
     OBJECT = auto()
 
 
-class PluginParameterAutoGenerate(BaseModel):
-    class Type(StrEnum):
-        PROMPT_INSTRUCTION = auto()
+class PluginParameterAutoGenerateType(StrEnum):
+    PROMPT_INSTRUCTION = auto()
 
-    type: Type
+
+class PluginParameterAutoGenerate(BaseModel):
+    type: PluginParameterAutoGenerateType
 
 
 class PluginParameterTemplate(BaseModel):

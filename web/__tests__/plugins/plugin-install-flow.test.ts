@@ -7,19 +7,27 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { checkForUpdates, fetchReleases, handleUpload } from '@/app/components/plugins/install-plugin/hooks'
+import {
+  checkForUpdates,
+  fetchReleases,
+  handleUpload,
+} from '@/app/components/plugins/install-plugin/hooks'
 
 const mockToastNotify = vi.fn()
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign((message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }), {
-    success: (message: string) => mockToastNotify({ type: 'success', message }),
-    error: (message: string) => mockToastNotify({ type: 'error', message }),
-    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-    info: (message: string) => mockToastNotify({ type: 'info', message }),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  }),
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) =>
+      mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
 }))
 
 const mockUploadGitHub = vi.fn()
@@ -137,9 +145,7 @@ describe('Plugin Installation Flow Integration', () => {
       const releases = await fetchReleases('nonexistent-org', 'nonexistent-repo')
 
       expect(releases).toEqual([])
-      expect(mockToastNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error' }),
-      )
+      expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('handles upload failure gracefully', async () => {
@@ -160,7 +166,8 @@ describe('Plugin Installation Flow Integration', () => {
 
   describe('Task Status Polling Integration', () => {
     it('polls until plugin installation succeeds', async () => {
-      const mockCheckTaskStatus = vi.fn()
+      const mockCheckTaskStatus = vi
+        .fn()
         .mockResolvedValueOnce({
           task: {
             plugins: [{ plugin_unique_identifier: 'test:1.0.0', status: 'running' }],
@@ -179,9 +186,8 @@ describe('Plugin Installation Flow Integration', () => {
         sleep: () => Promise.resolve(),
       }))
 
-      const { default: checkTaskStatus } = await import(
-        '@/app/components/plugins/install-plugin/base/check-task-status',
-      )
+      const { default: checkTaskStatus } =
+        await import('@/app/components/plugins/install-plugin/base/check-task-status')
 
       const checker = checkTaskStatus()
       const result = await checker.check({
@@ -202,9 +208,8 @@ describe('Plugin Installation Flow Integration', () => {
       const { checkTaskStatus: fetchCheckTaskStatus } = await import('@/service/plugins')
       ;(fetchCheckTaskStatus as ReturnType<typeof vi.fn>).mockImplementation(mockCheckTaskStatus)
 
-      const { default: checkTaskStatus } = await import(
-        '@/app/components/plugins/install-plugin/base/check-task-status',
-      )
+      const { default: checkTaskStatus } =
+        await import('@/app/components/plugins/install-plugin/base/check-task-status')
 
       const checker = checkTaskStatus()
       const result = await checker.check({
@@ -217,9 +222,8 @@ describe('Plugin Installation Flow Integration', () => {
     })
 
     it('stops polling when stop() is called', async () => {
-      const { default: checkTaskStatus } = await import(
-        '@/app/components/plugins/install-plugin/base/check-task-status',
-      )
+      const { default: checkTaskStatus } =
+        await import('@/app/components/plugins/install-plugin/base/check-task-status')
 
       const checker = checkTaskStatus()
       checker.stop()

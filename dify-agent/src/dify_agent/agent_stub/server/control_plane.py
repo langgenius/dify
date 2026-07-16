@@ -1,4 +1,10 @@
-"""Shared Agent Stub control-plane service used by HTTP and gRPC transports."""
+"""Shared Agent Stub control-plane service used by HTTP and gRPC transports.
+
+This layer owns the authenticated control-plane delegation for file, config,
+and drive operations. Transport adapters validate transport DTOs first, then
+call into this service so auth, handler lookup, and error mapping stay shared
+across HTTP and gRPC.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +14,9 @@ from uuid import uuid4
 
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConnectResponse,
+    AgentStubConfigManifestResponse,
+    AgentStubConfigPushRequest,
+    AgentStubConfigPushResponse,
     AgentStubDriveCommitRequest,
     AgentStubDriveCommitResponse,
     AgentStubDriveManifestResponse,
@@ -16,6 +25,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
 )
+from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestError, AgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestError, AgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestError, AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal, AgentStubTokenCodec, AgentStubTokenError
@@ -47,11 +57,12 @@ class AgentStubControlPlaneService:
 
     HTTP and gRPC adapters validate or decode transport payloads before calling
     this service, so this layer focuses only on shared auth, connection-id
-    generation, plus file and drive request delegation.
+    generation, plus file, config, and drive request delegation.
     """
 
     token_codec: AgentStubTokenCodec | None
     file_request_handler: AgentStubFileRequestHandler | None = None
+    config_request_handler: AgentStubConfigRequestHandler | None = None
     drive_request_handler: AgentStubDriveRequestHandler | None = None
     connection_id_factory: Callable[[], str] = field(default=lambda: str(uuid4()))
 
@@ -107,6 +118,96 @@ class AgentStubControlPlaneService:
         except AgentStubDriveRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
+    async def get_config_manifest(
+        self,
+        *,
+        authorization: str | None,
+    ) -> AgentStubConfigManifestResponse:
+        principal = self._authenticate(authorization)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.manifest(principal=principal)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    async def pull_config_skill(
+        self,
+        *,
+        name: str,
+        authorization: str | None,
+    ) -> bytes:
+        principal = self._authenticate(authorization)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.pull_skill(principal=principal, name=name)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    async def inspect_config_skill(
+        self,
+        *,
+        name: str,
+        authorization: str | None,
+    ) -> dict[str, object]:
+        principal = self._authenticate(authorization)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.inspect_skill(principal=principal, name=name)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    async def pull_config_file(
+        self,
+        *,
+        name: str,
+        authorization: str | None,
+    ) -> bytes:
+        principal = self._authenticate(authorization)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.pull_file(principal=principal, name=name)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    async def push_config(
+        self,
+        *,
+        request: AgentStubConfigPushRequest,
+        authorization: str | None,
+    ) -> AgentStubConfigPushResponse:
+        principal = self._authenticate(authorization)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.push(principal=principal, request=request)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    async def update_config_env(
+        self,
+        *,
+        env_text: str,
+        authorization: str | None,
+    ) -> dict[str, object]:
+        principal = self._authenticate(authorization)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.update_env(principal=principal, env_text=env_text)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    async def update_config_note(
+        self,
+        *,
+        note: str,
+        authorization: str | None,
+    ) -> dict[str, object]:
+        principal = self._authenticate(authorization)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.update_note(principal=principal, note=note)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
     async def commit_drive(
         self,
         *,
@@ -134,6 +235,11 @@ class AgentStubControlPlaneService:
         if self.file_request_handler is None:
             raise AgentStubConfigurationError(503, "Agent Stub file API is not configured")
         return self.file_request_handler
+
+    def _require_config_request_handler(self) -> AgentStubConfigRequestHandler:
+        if self.config_request_handler is None:
+            raise AgentStubConfigurationError(503, "Agent Stub config API is not configured")
+        return self.config_request_handler
 
     def _require_drive_request_handler(self) -> AgentStubDriveRequestHandler:
         if self.drive_request_handler is None:

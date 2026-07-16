@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import EmptyState from '../empty-state'
+import { EmptyState } from '../empty-state'
 
 describe('EmptyState', () => {
   describe('loading variant', () => {
@@ -73,13 +73,17 @@ describe('EmptyState', () => {
       })
 
       it('should show specific search hint with shortcuts', () => {
-        const Actions = {
+        const actions = {
           app: { key: '@app', shortcut: '@app' },
           plugin: { key: '@plugin', shortcut: '@plugin' },
         } as unknown as Record<string, import('../../actions/types').ActionItem>
-        render(<EmptyState variant="no-results" searchMode="general" Actions={Actions} />)
+        render(<EmptyState variant="no-results" searchMode="general" actions={actions} />)
 
-        expect(screen.getByText('app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":"@app, @plugin"}')).toBeInTheDocument()
+        expect(
+          screen.getByText(
+            'app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":"@app, @plugin"}',
+          ),
+        ).toBeInTheDocument()
       })
     })
 
@@ -109,7 +113,9 @@ describe('EmptyState', () => {
       it('should render no knowledge bases found message', () => {
         render(<EmptyState variant="no-results" searchMode="@knowledge" />)
 
-        expect(screen.getByText('app.gotoAnything.emptyState.noKnowledgeBasesFound')).toBeInTheDocument()
+        expect(
+          screen.getByText('app.gotoAnything.emptyState.noKnowledgeBasesFound'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -117,7 +123,9 @@ describe('EmptyState', () => {
       it('should render no workflow nodes found message', () => {
         render(<EmptyState variant="no-results" searchMode="@node" />)
 
-        expect(screen.getByText('app.gotoAnything.emptyState.noWorkflowNodesFound')).toBeInTheDocument()
+        expect(
+          screen.getByText('app.gotoAnything.emptyState.noWorkflowNodesFound'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -137,10 +145,12 @@ describe('EmptyState', () => {
       expect(screen.getByText('app.gotoAnything.noResults')).toBeInTheDocument()
     })
 
-    it('should use empty object as default Actions', () => {
+    it('should use empty object as default actions', () => {
       render(<EmptyState variant="no-results" searchMode="general" />)
 
-      expect(screen.getByText('app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":""}')).toBeInTheDocument()
+      expect(
+        screen.getByText('app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":""}'),
+      ).toBeInTheDocument()
     })
   })
 })

@@ -1,18 +1,9 @@
 import { act } from '@testing-library/react'
-import {
-  $createParagraphNode,
-  $getRoot,
-} from 'lexical'
+import { $createParagraphNode, $getRoot } from 'lexical'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
-import {
-  createLexicalTestEditor,
-  expectInlineWrapperDom,
-} from '../../test-helpers'
+import { createLexicalTestEditor, expectInlineWrapperDom } from '../../test-helpers'
 import CurrentBlockComponent from '../component'
-import {
-  $createCurrentBlockNode,
-  CurrentBlockNode,
-} from '../node'
+import { $createCurrentBlockNode, CurrentBlockNode } from '../node'
 
 const createTestEditor = () => {
   return createLexicalTestEditor('current-block-node-test', [CurrentBlockNode])

@@ -42,7 +42,9 @@ describe('Countdown', () => {
       localStorage.setItem(COUNT_DOWN_KEY, '1000')
       render(<Countdown />)
 
-      expect(screen.queryByRole('button', { name: 'login.checkCode.resend' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'login.checkCode.resend' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -60,8 +62,7 @@ describe('Countdown', () => {
         await waitFor(() => {
           expect(container).toHaveTextContent('30')
         })
-      }
-      finally {
+      } finally {
         act(() => {
           root.unmount()
         })

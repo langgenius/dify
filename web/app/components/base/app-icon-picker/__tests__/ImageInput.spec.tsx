@@ -15,8 +15,7 @@ const waitForCropperContainer = async () => {
 const loadCropperImage = async () => {
   await waitForCropperContainer()
   const cropperImage = screen.getByTestId('container').querySelector('img')
-  if (!cropperImage)
-    throw new Error('Could not find cropper image')
+  if (!cropperImage) throw new Error('Could not find cropper image')
 
   fireEvent.load(cropperImage)
 }
@@ -153,7 +152,9 @@ describe('ImageInput', () => {
     it('should apply active border class on drag enter', () => {
       render(<ImageInput />)
 
-      const dropZone = screen.getByText(/browse/i).closest('[class*="border-dashed"]') as HTMLElement
+      const dropZone = screen
+        .getByText(/browse/i)
+        .closest('[class*="border-dashed"]') as HTMLElement
 
       fireEvent.dragEnter(dropZone)
       expect(dropZone).toHaveClass('border-primary-600')
@@ -162,7 +163,9 @@ describe('ImageInput', () => {
     it('should remove active border class on drag leave', () => {
       render(<ImageInput />)
 
-      const dropZone = screen.getByText(/browse/i).closest('[class*="border-dashed"]') as HTMLElement
+      const dropZone = screen
+        .getByText(/browse/i)
+        .closest('[class*="border-dashed"]') as HTMLElement
 
       fireEvent.dragEnter(dropZone)
       expect(dropZone).toHaveClass('border-primary-600')
@@ -174,7 +177,9 @@ describe('ImageInput', () => {
     it('should show image after dropping a file', async () => {
       render(<ImageInput />)
 
-      const dropZone = screen.getByText(/browse/i).closest('[class*="border-dashed"]') as HTMLElement
+      const dropZone = screen
+        .getByText(/browse/i)
+        .closest('[class*="border-dashed"]') as HTMLElement
       const file = new File(['image-data'], 'dropped.png', { type: 'image/png' })
 
       fireEvent.drop(dropZone, {

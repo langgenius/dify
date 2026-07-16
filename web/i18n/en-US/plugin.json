@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "Details",
   "detailPanel.operation.info": "Integration Info",
   "detailPanel.operation.install": "Install",
+  "detailPanel.operation.moreActions": "More actions",
   "detailPanel.operation.remove": "Remove",
   "detailPanel.operation.update": "Update",
   "detailPanel.operation.updateTooltip": "Update to access the latest models.",

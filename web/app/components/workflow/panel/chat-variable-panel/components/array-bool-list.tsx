@@ -16,30 +16,32 @@ type Props = Readonly<{
   onChange: (list: boolean[]) => void
 }>
 
-const ArrayValueList: FC<Props> = ({
-  className,
-  list,
-  onChange,
-}) => {
+const ArrayValueList: FC<Props> = ({ className, list, onChange }) => {
   const { t } = useTranslation()
 
-  const handleChange = useCallback((index: number) => {
-    return (value: boolean) => {
-      const newList = produce(list, (draft: any[]) => {
-        draft[index] = value
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleChange = useCallback(
+    (index: number) => {
+      return (value: boolean) => {
+        const newList = produce(list, (draft: any[]) => {
+          draft[index] = value
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
-  const handleItemRemove = useCallback((index: number) => {
-    return () => {
-      const newList = produce(list, (draft) => {
-        draft.splice(index, 1)
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleItemRemove = useCallback(
+    (index: number) => {
+      return () => {
+        const newList = produce(list, (draft) => {
+          draft.splice(index, 1)
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
   const handleItemAdd = useCallback(() => {
     const newList = produce(list, (draft: any[]) => {
@@ -52,10 +54,7 @@ const ArrayValueList: FC<Props> = ({
     <div className={cn('w-full space-y-2', className)}>
       {list.map((item, index) => (
         <div className="flex items-center space-x-1" key={index}>
-          <BoolValue
-            value={item}
-            onChange={handleChange(index)}
-          />
+          <BoolValue value={item} onChange={handleChange(index)} />
 
           <RemoveButton
             className="bg-gray-100! p-2! hover:bg-gray-200!"
@@ -65,7 +64,7 @@ const ArrayValueList: FC<Props> = ({
       ))}
       <Button variant="tertiary" className="w-full" onClick={handleItemAdd}>
         <RiAddLine className="mr-1 size-4" />
-        <span>{t('chatVariable.modal.addArrayValue', { ns: 'workflow' })}</span>
+        <span>{t(($) => $['chatVariable.modal.addArrayValue'], { ns: 'workflow' })}</span>
       </Button>
     </div>
   )

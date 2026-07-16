@@ -31,7 +31,7 @@ const createMockFile = (overrides: Partial<File> = {}): File => {
 }
 
 // Helper to render FilePreview with default props
-const renderFilePreview = (props: Partial<{ file?: File, hidePreview: () => void }> = {}) => {
+const renderFilePreview = (props: Partial<{ file?: File; hidePreview: () => void }> = {}) => {
   const defaultProps = {
     file: createMockFile(),
     hidePreview: vi.fn(),
@@ -112,7 +112,7 @@ describe('FilePreview', () => {
     it('should show loading indicator initially', async () => {
       // Arrange - Delay API response to keep loading state
       mockFetchFilePreview.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ content: 'test' }), 100)),
+        () => new Promise((resolve) => setTimeout(() => resolve({ content: 'test' }), 100)),
       )
 
       const { container } = renderFilePreview()
@@ -143,13 +143,21 @@ describe('FilePreview', () => {
       let resolveSecond: (value: { content: string }) => void
 
       mockFetchFilePreview
-        .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
-        .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveFirst = resolve
+            }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveSecond = resolve
+            }),
+        )
 
       // Act - Initial render
-      const { rerender, container } = render(
-        <FilePreview file={file1} hidePreview={vi.fn()} />,
-      )
+      const { rerender, container } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
 
       // First file loading - spinner should be visible
       // First file loading - spinner should be visible
@@ -213,9 +221,7 @@ describe('FilePreview', () => {
       const file1 = createMockFile({ id: 'file-1' })
       const file2 = createMockFile({ id: 'file-2' })
 
-      const { rerender } = render(
-        <FilePreview file={file1} hidePreview={vi.fn()} />,
-      )
+      const { rerender } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
 
       await waitFor(() => {
         expect(mockFetchFilePreview).toHaveBeenCalledWith({ fileID: 'file-1' })
@@ -303,7 +309,12 @@ describe('FilePreview', () => {
   describe('State Management', () => {
     it('should initialize with loading state true', async () => {
       // Arrange - Keep loading indefinitely (never resolves)
-      mockFetchFilePreview.mockImplementation(() => new Promise(() => { /* intentionally empty */ }))
+      mockFetchFilePreview.mockImplementation(
+        () =>
+          new Promise(() => {
+            /* intentionally empty */
+          }),
+      )
 
       const { container } = renderFilePreview()
 
@@ -325,13 +336,14 @@ describe('FilePreview', () => {
       const file1 = createMockFile({ id: 'file-1' })
       const file2 = createMockFile({ id: 'file-2' })
 
-      mockFetchFilePreview
-        .mockResolvedValueOnce({ content: 'Content 1' })
-        .mockImplementationOnce(() => new Promise(() => { /* never resolves */ }))
-
-      const { rerender, container } = render(
-        <FilePreview file={file1} hidePreview={vi.fn()} />,
+      mockFetchFilePreview.mockResolvedValueOnce({ content: 'Content 1' }).mockImplementationOnce(
+        () =>
+          new Promise(() => {
+            /* never resolves */
+          }),
       )
+
+      const { rerender, container } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
 
       await waitFor(() => {
         expect(screen.getByText('Content 1'))!.toBeInTheDocument()
@@ -353,13 +365,14 @@ describe('FilePreview', () => {
 
       let resolveSecond: (value: { content: string }) => void
 
-      mockFetchFilePreview
-        .mockResolvedValueOnce({ content: 'Content 1' })
-        .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
-
-      const { rerender } = render(
-        <FilePreview file={file1} hidePreview={vi.fn()} />,
+      mockFetchFilePreview.mockResolvedValueOnce({ content: 'Content 1' }).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve
+          }),
       )
+
+      const { rerender } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
 
       await waitFor(() => {
         expect(screen.getByText('Content 1'))!.toBeInTheDocument()
@@ -554,9 +567,7 @@ describe('FilePreview', () => {
       const file1 = createMockFile({ id: 'file-1' })
       const file2 = createMockFile({ id: 'file-2' })
 
-      const { rerender } = render(
-        <FilePreview file={file1} hidePreview={vi.fn()} />,
-      )
+      const { rerender } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
 
       await waitFor(() => {
         expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
@@ -574,9 +585,7 @@ describe('FilePreview', () => {
       const hidePreview1 = vi.fn()
       const hidePreview2 = vi.fn()
 
-      const { rerender } = render(
-        <FilePreview file={file} hidePreview={hidePreview1} />,
-      )
+      const { rerender } = render(<FilePreview file={file} hidePreview={hidePreview1} />)
 
       await waitFor(() => {
         expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
@@ -592,12 +601,9 @@ describe('FilePreview', () => {
     })
 
     it('should handle rapid file changes', async () => {
-      const files = Array.from({ length: 5 }, (_, i) =>
-        createMockFile({ id: `file-${i}` }))
+      const files = Array.from({ length: 5 }, (_, i) => createMockFile({ id: `file-${i}` }))
 
-      const { rerender } = render(
-        <FilePreview file={files[0]} hidePreview={vi.fn()} />,
-      )
+      const { rerender } = render(<FilePreview file={files[0]} hidePreview={vi.fn()} />)
 
       // Rapidly change files
       for (let i = 1; i < files.length; i++)
@@ -611,7 +617,7 @@ describe('FilePreview', () => {
 
     it('should handle unmount during loading', async () => {
       mockFetchFilePreview.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ content: 'delayed' }), 1000)),
+        () => new Promise((resolve) => setTimeout(() => resolve({ content: 'delayed' }), 1000)),
       )
 
       const { unmount } = renderFilePreview()
@@ -626,9 +632,7 @@ describe('FilePreview', () => {
     it('should handle file changing from defined to undefined', async () => {
       const file = createMockFile()
 
-      const { rerender, container } = render(
-        <FilePreview file={file} hidePreview={vi.fn()} />,
-      )
+      const { rerender, container } = render(<FilePreview file={file} hidePreview={vi.fn()} />)
 
       await waitFor(() => {
         expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)

@@ -14,7 +14,6 @@ describe('BUILTIN_TOOLS_ARRAY', () => {
   })
 
   it('should be an array of strings', () => {
-    for (const tool of BUILTIN_TOOLS_ARRAY)
-      expect(typeof tool).toBe('string')
+    for (const tool of BUILTIN_TOOLS_ARRAY) expect(typeof tool).toBe('string')
   })
 })

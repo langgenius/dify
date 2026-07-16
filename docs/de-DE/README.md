@@ -128,8 +128,6 @@ Alle Dify-Angebote kommen mit entsprechenden APIs, sodass Sie Dify mühelos in I
 - **Dify für Unternehmen / Organisationen</br>**
   Wir bieten zusätzliche, unternehmensspezifische Funktionen. [Über diesen Chatbot können Sie uns Ihre Fragen mitteilen](https://udify.app/chat/22L1zSxg6yW1cWQg) oder [senden Sie uns eine E-Mail](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry), um Ihre unternehmerischen Bedürfnisse zu besprechen. </br>
 
-  > Für Startups und kleine Unternehmen, die AWS nutzen, schauen Sie sich [Dify Premium on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) an und stellen Sie es mit nur einem Klick in Ihrer eigenen AWS VPC bereit. Es handelt sich um ein erschwingliches AMI-Angebot mit der Option, Apps mit individuellem Logo und Branding zu erstellen.
-
 ## Immer einen Schritt voraus
 
 Star Dify auf GitHub und lassen Sie sich sofort über neue Releases benachrichtigen.

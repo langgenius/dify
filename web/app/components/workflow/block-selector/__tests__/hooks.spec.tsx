@@ -8,23 +8,27 @@ describe('block-selector hooks', () => {
   })
 
   it('keeps the start tab enabled when a configured user input start node exists', () => {
-    const { result } = renderHook(() => useTabs({
-      noStart: false,
-      defaultActiveTab: TabsEnum.Start,
-    }))
+    const { result } = renderHook(() =>
+      useTabs({
+        noStart: false,
+        defaultActiveTab: TabsEnum.Start,
+      }),
+    )
 
-    expect(result.current.tabs.find(tab => tab.key === TabsEnum.Start)?.disabled).toBeFalsy()
+    expect(result.current.tabs.find((tab) => tab.key === TabsEnum.Start)?.disabled).toBeFalsy()
     expect(result.current.activeTab).toBe(TabsEnum.Start)
   })
 
   it('disables the start tab when an unconfigured start placeholder exists', () => {
-    const { result } = renderHook(() => useTabs({
-      noStart: false,
-      hasStartPlaceholderNode: true,
-      defaultActiveTab: TabsEnum.Start,
-    }))
+    const { result } = renderHook(() =>
+      useTabs({
+        noStart: false,
+        hasStartPlaceholderNode: true,
+        defaultActiveTab: TabsEnum.Start,
+      }),
+    )
 
-    const startTab = result.current.tabs.find(tab => tab.key === TabsEnum.Start)
+    const startTab = result.current.tabs.find((tab) => tab.key === TabsEnum.Start)
     expect(startTab?.disabled).toBe(true)
     expect(startTab?.disabledTip).toBe('workflow.tabs.unconfiguredStartDisabledTip')
     expect(startTab?.disabledTipLinkKey).toBe('startNodesDocs')
@@ -38,11 +42,11 @@ describe('block-selector hooks', () => {
       forceEnableStartTab: true,
     }
 
-    const { result, rerender } = renderHook(nextProps => useTabs(nextProps), {
+    const { result, rerender } = renderHook((nextProps) => useTabs(nextProps), {
       initialProps: props,
     })
 
-    expect(result.current.tabs.find(tab => tab.key === TabsEnum.Start)?.disabled).toBeFalsy()
+    expect(result.current.tabs.find((tab) => tab.key === TabsEnum.Start)?.disabled).toBeFalsy()
 
     act(() => {
       result.current.setActiveTab(TabsEnum.Blocks)
@@ -62,30 +66,34 @@ describe('block-selector hooks', () => {
     const { result: visible } = renderHook(() => useToolTabs())
     const { result: hidden } = renderHook(() => useToolTabs(true))
 
-    expect(visible.current.some(tab => tab.key === ToolTypeEnum.MCP)).toBe(true)
-    expect(hidden.current.some(tab => tab.key === ToolTypeEnum.MCP)).toBe(false)
+    expect(visible.current.some((tab) => tab.key === ToolTypeEnum.MCP)).toBe(true)
+    expect(hidden.current.some((tab) => tab.key === ToolTypeEnum.MCP)).toBe(false)
   })
 
   it('includes the snippets tab by default', () => {
     const { result } = renderHook(() => useTabs({}))
 
-    expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(true)
+    expect(result.current.tabs.some((tab) => tab.key === TabsEnum.Snippets)).toBe(true)
   })
 
   it('hides the snippets tab and falls back when snippets are disabled', () => {
-    const { result } = renderHook(() => useTabs({
-      defaultActiveTab: TabsEnum.Snippets,
-      noSnippets: true,
-    }))
+    const { result } = renderHook(() =>
+      useTabs({
+        defaultActiveTab: TabsEnum.Snippets,
+        noSnippets: true,
+      }),
+    )
 
-    expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(false)
+    expect(result.current.tabs.some((tab) => tab.key === TabsEnum.Snippets)).toBe(false)
     expect(result.current.activeTab).toBe(TabsEnum.Blocks)
   })
 
   it('resets the active tab to the current default tab', () => {
-    const { result } = renderHook(() => useTabs({
-      noStart: false,
-    }))
+    const { result } = renderHook(() =>
+      useTabs({
+        noStart: false,
+      }),
+    )
 
     act(() => {
       result.current.setActiveTab(TabsEnum.Start)

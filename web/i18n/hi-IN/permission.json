@@ -28,6 +28,8 @@
   "accessRule.noDescription": "कोई विवरण नहीं",
   "accessRule.noRules": "कोई एक्सेस नियम नहीं",
   "accessRule.noUserAccessSettings": "कोई व्यक्तिगत अनुमति सेटिंग्स नहीं",
+  "accessRule.onlyMe": "केवल मैं",
+  "accessRule.onlyMeDescription": "केवल आप इस संसाधन तक पहुँच सकते हैं।",
   "accessRule.permission": "अनुमति",
   "accessRule.resourceOpenScope": "संसाधन का खुला दायरा",
   "accessRule.resourceOpenScopeDescription": "चुनें कि यह संसाधन किसके लिए खुला है। भूमिका अनुमतियां अभी भी तय करती हैं कि प्रत्येक सदस्य क्या कर सकता है।",

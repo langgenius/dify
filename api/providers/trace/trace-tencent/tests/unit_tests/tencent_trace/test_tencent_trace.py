@@ -441,7 +441,7 @@ class TestTencentDataTrace:
                     results = tencent_data_trace._get_workflow_node_executions(trace_info)
 
                     assert results == mock_executions
-                    account.set_tenant_id.assert_called_once_with("tenant-1")
+                    account.set_tenant_id_with_session.assert_called_once_with("tenant-1", session=session)
 
     def test_get_workflow_node_executions_no_app_id(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=WorkflowTraceInfo)

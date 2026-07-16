@@ -34,19 +34,17 @@ const OnlineDocuments = ({
   onCredentialChange,
 }: OnlineDocumentsProps) => {
   const docLink = useDocLink()
-  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
   const openIntegrationsSetting = useIntegrationsSetting()
-  const {
-    documentsData,
-    searchValue,
-    selectedPagesId,
-    currentCredentialId,
-  } = useDataSourceStoreWithSelector(useShallow(state => ({
-    documentsData: state.documentsData,
-    searchValue: state.searchValue,
-    selectedPagesId: state.selectedPagesId,
-    currentCredentialId: state.currentCredentialId,
-  })))
+  const { documentsData, searchValue, selectedPagesId, currentCredentialId } =
+    useDataSourceStoreWithSelector(
+      useShallow((state) => ({
+        documentsData: state.documentsData,
+        searchValue: state.searchValue,
+        selectedPagesId: state.selectedPagesId,
+        currentCredentialId: state.currentCredentialId,
+      })),
+    )
 
   const { data: dataSourceAuth } = useGetDataSourceAuth({
     pluginId: nodeData.plugin_id,
@@ -56,16 +54,19 @@ const OnlineDocuments = ({
   const dataSourceStore = useDataSourceStore()
 
   const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
-    const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
-      next.pages.forEach((page) => {
-        prev[page.page_id] = {
-          ...page,
-          workspace_id: next.workspace_id,
-        }
-      })
+    const pagesMap = (documentsData || []).reduce(
+      (prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
+        next.pages.forEach((page) => {
+          prev[page.page_id] = {
+            ...page,
+            workspace_id: next.workspace_id,
+          }
+        })
 
-      return prev
-    }, {})
+        return prev
+      },
+      {},
+    )
     return pagesMap
   }, [documentsData])
 
@@ -76,10 +77,14 @@ const OnlineDocuments = ({
   const getOnlineDocuments = useCallback(async () => {
     const { currentCredentialId } = dataSourceStore.getState()
     // Convert datasource_parameters to inputs format for the API
-    const inputs = Object.entries(nodeData.datasource_parameters || {}).reduce((acc, [key, value]) => {
-      acc[key] = typeof value === 'object' && value !== null && 'value' in value ? value.value : value
-      return acc
-    }, {} as Record<string, any>)
+    const inputs = Object.entries(nodeData.datasource_parameters || {}).reduce(
+      (acc, [key, value]) => {
+        acc[key] =
+          typeof value === 'object' && value !== null && 'value' in value ? value.value : value
+        return acc
+      },
+      {} as Record<string, any>,
+    )
 
     ssePost(
       datasourceNodeRunURL,
@@ -103,27 +108,37 @@ const OnlineDocuments = ({
   }, [dataSourceStore, datasourceNodeRunURL, nodeData.datasource_parameters])
 
   useEffect(() => {
-    if (!currentCredentialId)
-      return
+    if (!currentCredentialId) return
     getOnlineDocuments()
   }, [currentCredentialId, getOnlineDocuments])
 
-  const handleSearchValueChange = useCallback((value: string) => {
-    const { setSearchValue } = dataSourceStore.getState()
-    setSearchValue(value)
-  }, [dataSourceStore])
+  const handleSearchValueChange = useCallback(
+    (value: string) => {
+      const { setSearchValue } = dataSourceStore.getState()
+      setSearchValue(value)
+    },
+    [dataSourceStore],
+  )
 
-  const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
-    const { setSelectedPagesId, setOnlineDocuments } = dataSourceStore.getState()
-    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId]!)
-    setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
-    setOnlineDocuments(selectedPages)
-  }, [dataSourceStore, PagesMapAndSelectedPagesId])
+  const handleSelectPages = useCallback(
+    (newSelectedPagesId: Set<string>) => {
+      const { setSelectedPagesId, setOnlineDocuments } = dataSourceStore.getState()
+      const selectedPages = Array.from(newSelectedPagesId).map(
+        (pageId) => PagesMapAndSelectedPagesId[pageId]!,
+      )
+      setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
+      setOnlineDocuments(selectedPages)
+    },
+    [dataSourceStore, PagesMapAndSelectedPagesId],
+  )
 
-  const handlePreviewPage = useCallback((previewPageId: string) => {
-    const { setCurrentDocument } = dataSourceStore.getState()
-    setCurrentDocument(PagesMapAndSelectedPagesId[previewPageId])
-  }, [PagesMapAndSelectedPagesId, dataSourceStore])
+  const handlePreviewPage = useCallback(
+    (previewPageId: string) => {
+      const { setCurrentDocument } = dataSourceStore.getState()
+      setCurrentDocument(PagesMapAndSelectedPagesId[previewPageId])
+    },
+    [PagesMapAndSelectedPagesId, dataSourceStore],
+  )
 
   const handleSetting = useCallback(() => {
     openIntegrationsSetting({
@@ -147,32 +162,27 @@ const OnlineDocuments = ({
           <div className="flex grow items-center">
             <Title name={nodeData.datasource_label} />
           </div>
-          <SearchInput
-            value={searchValue}
-            onChange={handleSearchValueChange}
-          />
+          <SearchInput value={searchValue} onChange={handleSearchValueChange} />
         </div>
         <div className="overflow-hidden rounded-b-xl">
-          {documentsData?.length
-            ? (
-                <PageSelector
-                  key={`${currentCredentialId}:${supportBatchUpload ? 'multiple' : 'single'}`}
-                  checkedIds={selectedPagesId}
-                  disabledValue={new Set()}
-                  searchValue={searchValue}
-                  list={documentsData[0]!.pages || []}
-                  pagesMap={PagesMapAndSelectedPagesId}
-                  onSelect={handleSelectPages}
-                  canPreview={!isInPipeline}
-                  onPreview={handlePreviewPage}
-                  isMultipleChoice={supportBatchUpload}
-                />
-              )
-            : (
-                <div className="flex h-[296px] items-center justify-center">
-                  <Loading type="app" />
-                </div>
-              )}
+          {documentsData?.length ? (
+            <PageSelector
+              key={`${currentCredentialId}:${supportBatchUpload ? 'multiple' : 'single'}`}
+              checkedIds={selectedPagesId}
+              disabledValue={new Set()}
+              searchValue={searchValue}
+              list={documentsData[0]!.pages || []}
+              pagesMap={PagesMapAndSelectedPagesId}
+              onSelect={handleSelectPages}
+              canPreview={!isInPipeline}
+              onPreview={handlePreviewPage}
+              isMultipleChoice={supportBatchUpload}
+            />
+          ) : (
+            <div className="flex h-[296px] items-center justify-center">
+              <Loading type="app" />
+            </div>
+          )}
         </div>
       </div>
     </div>

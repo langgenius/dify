@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Tingkatkan untuk mengunggah beberapa dokumen sekaligus",
   "upgrade.workflowRestore.description": "Pemulihan versi workflow tidak tersedia di paket Anda saat ini.",
   "upgrade.workflowRestore.title": "Tingkatkan untuk memulihkan versi workflow",
+  "upgrade.workflowVersionRun.description": "Menjalankan versi workflow tertentu berdasarkan ID workflow tidak tersedia di paket Anda saat ini.",
+  "upgrade.workflowVersionRun.title": "Tingkatkan untuk menjalankan versi workflow tertentu",
   "upgradeBtn.encourage": "Tingkatkan Sekarang",
   "upgradeBtn.encourageShort": "Upgrade",
   "upgradeBtn.plain": "Lihat Paket",

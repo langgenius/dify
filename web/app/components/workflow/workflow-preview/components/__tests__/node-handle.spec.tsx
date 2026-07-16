@@ -15,33 +15,25 @@ const createNodeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType
 
 const TargetHandleNode = ({ id, data }: NodeProps<CommonNodeType>) => (
   <div>
-    <NodeTargetHandle
-      id={id}
-      data={data}
-      handleId="target-1"
-      handleClassName="target-marker"
-    />
+    <NodeTargetHandle id={id} data={data} handleId="target-1" handleClassName="target-marker" />
   </div>
 )
 
 const SourceHandleNode = ({ id, data }: NodeProps<CommonNodeType>) => (
   <div>
-    <NodeSourceHandle
-      id={id}
-      data={data}
-      handleId="source-1"
-      handleClassName="source-marker"
-    />
+    <NodeSourceHandle id={id} data={data} handleId="source-1" handleClassName="source-marker" />
   </div>
 )
 
 const renderFlowNode = (type: 'targetNode' | 'sourceNode', data: CommonNodeType) =>
   renderWorkflowFlowComponent(<div />, {
-    nodes: [createNode({
-      id: 'node-1',
-      type,
-      data,
-    })],
+    nodes: [
+      createNode({
+        id: 'node-1',
+        type,
+        data,
+      }),
+    ],
     edges: [],
     reactFlowProps: {
       nodeTypes: {
@@ -67,11 +59,13 @@ describe('node-handle', () => {
 
     it('should merge custom classes and hide start-like nodes completely', async () => {
       const { container } = renderWorkflowFlowComponent(<div />, {
-        nodes: [createNode({
-          id: 'node-2',
-          type: 'targetNode',
-          data: createNodeData({ type: BlockEnum.Start }),
-        })],
+        nodes: [
+          createNode({
+            id: 'node-2',
+            type: 'targetNode',
+            data: createNodeData({ type: BlockEnum.Start }),
+          }),
+        ],
         edges: [],
         reactFlowProps: {
           nodeTypes: {
@@ -101,7 +95,10 @@ describe('node-handle', () => {
   // Source handle connection state.
   describe('NodeSourceHandle', () => {
     it('should keep the source indicator visible when the handle is connected', async () => {
-      const { container } = renderFlowNode('sourceNode', createNodeData({ _connectedSourceHandleIds: ['source-1'] }))
+      const { container } = renderFlowNode(
+        'sourceNode',
+        createNodeData({ _connectedSourceHandleIds: ['source-1'] }),
+      )
 
       await waitFor(() => expect(container.querySelector('.source-marker')).toBeInTheDocument())
 

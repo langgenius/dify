@@ -3,11 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import InSiteMessageNotification from '../notification'
 
-const {
-  mockConfig,
-  mockNotification,
-  mockNotificationDismiss,
-} = vi.hoisted(() => ({
+const { mockConfig, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
   mockConfig: {
     isCloudEdition: true,
   },
@@ -29,18 +25,22 @@ vi.mock(import('@/config'), async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     notification: {
-      queryOptions: (options?: Record<string, unknown>) => ({
-        queryKey: ['console', 'notification'],
-        queryFn: (...args: unknown[]) => mockNotification(...args),
-        ...options,
-      }),
-    },
-    notificationDismiss: {
-      mutationOptions: (options?: Record<string, unknown>) => ({
-        mutationKey: ['console', 'notificationDismiss'],
-        mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
-        ...options,
-      }),
+      get: {
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'notification', 'get'],
+          queryFn: (...args: unknown[]) => mockNotification(...args),
+          ...options,
+        }),
+      },
+      dismiss: {
+        post: {
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
+            mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
+            ...options,
+          }),
+        },
+      },
     },
   },
 }))
@@ -58,9 +58,7 @@ const createWrapper = () => {
   })
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 
   return Wrapper
@@ -115,7 +113,12 @@ describe('InSiteMessageNotification', () => {
             body: JSON.stringify({
               main: 'Parsed body main',
               actions: [
-                { action: 'link', data: 'https://example.com/docs', text: 'Visit docs', type: 'primary' },
+                {
+                  action: 'link',
+                  data: 'https://example.com/docs',
+                  text: 'Visit docs',
+                  type: 'primary',
+                },
                 { action: 'close', text: 'Outline close', type: 'outline' },
                 { action: 'close', text: 'Dismiss now', type: 'default' },
                 { action: 'link', data: 'https://example.com/invalid', text: 100, type: 'primary' },
@@ -149,7 +152,7 @@ describe('InSiteMessageNotification', () => {
             },
           },
           expect.objectContaining({
-            mutationKey: ['console', 'notificationDismiss'],
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
           }),
         )
       })
@@ -187,7 +190,7 @@ describe('InSiteMessageNotification', () => {
             },
           },
           expect.objectContaining({
-            mutationKey: ['console', 'notificationDismiss'],
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
           }),
         )
       })

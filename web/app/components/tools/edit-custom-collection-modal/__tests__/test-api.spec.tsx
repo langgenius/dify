@@ -9,10 +9,6 @@ vi.mock('@/service/tools', () => ({
   testAPIAvailable: vi.fn(),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en-US'),
-}))
-
 const testAPIAvailableMock = vi.mocked(testAPIAvailable)
 
 describe('TestApi', () => {
@@ -35,13 +31,15 @@ describe('TestApi', () => {
     summary: 'summary',
     method: 'GET',
     server_url: 'https://api.example.com',
-    parameters: [{
-      name: 'limit',
-      label: {
-        en_US: 'Limit',
-        zh_Hans: '限制',
-      },
-    } as CustomParamSchema['parameters'][0]],
+    parameters: [
+      {
+        name: 'limit',
+        label: {
+          en_US: 'Limit',
+          zh_Hans: '限制',
+        },
+      } as CustomParamSchema['parameters'][0],
+    ],
   }
 
   const mockOnHide = vi.fn()
@@ -225,7 +223,9 @@ describe('TestApi', () => {
 
       // Check that the auth method display shows the correct type
       // Check that the auth method display shows the correct type
-      expect(screen.getByText('tools.createTool.authMethod.types.api_key_header'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('tools.createTool.authMethod.types.api_key_header'),
+      )!.toBeInTheDocument()
     })
   })
 

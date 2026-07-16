@@ -15,7 +15,10 @@ describe('SearchInput', () => {
 
     it('renders custom placeholder', () => {
       render(<SearchInput value="" onValueChange={() => {}} placeholder="Custom Placeholder" />)
-      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveAttribute('placeholder', 'Custom Placeholder')
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveAttribute(
+        'placeholder',
+        'Custom Placeholder',
+      )
     })
 
     it('uses custom aria label', () => {
@@ -34,23 +37,6 @@ describe('SearchInput', () => {
 
       const clearButton = screen.getByLabelText('common.operation.clear')
       expect(clearButton).toBeInTheDocument()
-    })
-
-    it('uses the design-system focus treatment for the clear button', () => {
-      render(<SearchInput value="has value" onValueChange={() => {}} />)
-
-      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
-      expect(clearButton).toHaveClass(
-        'right-1.5',
-        'size-5',
-        'focus-visible:bg-components-input-bg-hover',
-        'focus-visible:ring-2',
-        'focus-visible:ring-state-accent-solid',
-        'focus-visible:ring-inset',
-      )
-      expect(clearButton).not.toHaveClass('size-4')
-      expect(clearButton).not.toHaveClass('focus-visible:ring-1')
-      expect(clearButton).not.toHaveClass('focus-visible:ring-components-input-border-active')
     })
   })
 
@@ -161,7 +147,9 @@ describe('SearchInput', () => {
 
   describe('Style', () => {
     it('applies custom className', () => {
-      const { container } = render(<SearchInput value="" onValueChange={() => {}} className="custom-test" />)
+      const { container } = render(
+        <SearchInput value="" onValueChange={() => {}} className="custom-test" />,
+      )
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('custom-test')
     })

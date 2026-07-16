@@ -24,6 +24,9 @@ describe('PipelineScreenShot', () => {
     expect(sources[0]).toHaveAttribute('srcset', '/console/screenshots/dark/Pipeline.png')
     expect(sources[1]).toHaveAttribute('srcset', '/console/screenshots/dark/Pipeline@2x.png')
     expect(sources[2]).toHaveAttribute('srcset', '/console/screenshots/dark/Pipeline@3x.png')
-    expect(screen.getByAltText('Pipeline Screenshot')).toHaveAttribute('src', '/console/screenshots/dark/Pipeline.png')
+    expect(screen.getByAltText('Pipeline Screenshot')).toHaveAttribute(
+      'src',
+      '/console/screenshots/dark/Pipeline.png',
+    )
   })
 })

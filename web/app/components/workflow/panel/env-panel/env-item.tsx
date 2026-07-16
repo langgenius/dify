@@ -12,19 +12,16 @@ type EnvItemProps = {
   onDelete: (env: EnvironmentVariable) => void
 }
 
-const EnvItem = ({
-  env,
-  onEdit,
-  onDelete,
-}: EnvItemProps) => {
-  const envSecrets = useStore(s => s.envSecrets)
+const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
+  const envSecrets = useStore((s) => s.envSecrets)
   const [destructive, setDestructive] = useState(false)
 
   return (
-    <div className={cn(
-      'group mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
-      destructive && 'border-state-destructive-border hover:bg-state-destructive-hover',
-    )}
+    <div
+      className={cn(
+        'group mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+        destructive && 'border-state-destructive-border hover:bg-state-destructive-hover',
+      )}
     >
       <div className="px-2.5 py-2">
         <div className="flex items-center justify-between">
@@ -47,12 +44,19 @@ const EnvItem = ({
             </div>
           </div>
         </div>
-        <div className="truncate system-xs-regular text-text-tertiary">{env.value_type === 'secret' ? envSecrets[env.id] : env.value}</div>
+        <div className="truncate system-xs-regular text-text-tertiary">
+          {env.value_type === 'secret' ? envSecrets[env.id] : env.value}
+        </div>
       </div>
       {env.description && (
         <>
           <div className="h-[0.5px] bg-divider-subtle" />
-          <div className={cn('rounded-br-[8px] rounded-bl-[8px] bg-background-default-subtle px-2.5 py-2 group-hover:bg-transparent', destructive && 'bg-state-destructive-hover hover:bg-state-destructive-hover')}>
+          <div
+            className={cn(
+              'rounded-br-[8px] rounded-bl-[8px] bg-background-default-subtle px-2.5 py-2 group-hover:bg-transparent',
+              destructive && 'bg-state-destructive-hover hover:bg-state-destructive-hover',
+            )}
+          >
             <div className="truncate system-xs-regular text-text-tertiary">{env.description}</div>
           </div>
         </>

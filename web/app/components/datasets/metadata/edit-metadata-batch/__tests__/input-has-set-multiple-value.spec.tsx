@@ -13,7 +13,13 @@ describe('InputHasSetMultipleValue', () => {
     it('should render with correct wrapper styling', () => {
       const handleClear = vi.fn()
       const { container } = render(<InputHasSetMultipleValue onClear={handleClear} />)
-      expect(container.firstChild).toHaveClass('h-6', 'grow', 'rounded-md', 'bg-components-input-bg-normal', 'p-0.5')
+      expect(container.firstChild).toHaveClass(
+        'h-6',
+        'grow',
+        'rounded-md',
+        'bg-components-input-bg-normal',
+        'p-0.5',
+      )
     })
 
     it('should render multiple value text', () => {
@@ -43,14 +49,18 @@ describe('InputHasSetMultipleValue', () => {
 
     it('should show close icon when readOnly is false', () => {
       const handleClear = vi.fn()
-      const { container } = render(<InputHasSetMultipleValue onClear={handleClear} readOnly={false} />)
+      const { container } = render(
+        <InputHasSetMultipleValue onClear={handleClear} readOnly={false} />,
+      )
       const svg = container.querySelector('svg')
       expect(svg).toBeInTheDocument()
     })
 
     it('should show close icon when readOnly is undefined', () => {
       const handleClear = vi.fn()
-      const { container } = render(<InputHasSetMultipleValue onClear={handleClear} readOnly={undefined} />)
+      const { container } = render(
+        <InputHasSetMultipleValue onClear={handleClear} readOnly={undefined} />,
+      )
       const svg = container.querySelector('svg')
       expect(svg).toBeInTheDocument()
     })

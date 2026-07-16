@@ -6,7 +6,7 @@ import builtins
 import importlib
 import sys
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from flask import Flask
@@ -92,6 +92,7 @@ def test_validate_credentials_success(app: Flask, load_balancing_module, monkeyp
         model="gpt-4o",
         model_type=ModelType.LLM,
         credentials={"api_key": "sk-***"},
+        session=ANY,
     )
 
 
@@ -143,5 +144,6 @@ def test_validate_credentials_with_config_id(app: Flask, load_balancing_module, 
         model="gpt-4o",
         model_type=ModelType.LLM,
         credentials={"api_key": "sk-***"},
+        session=ANY,
         config_id="cfg-1",
     )

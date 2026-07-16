@@ -12,7 +12,9 @@ describe('PluginSourceBadge', () => {
     it('should render marketplace source badge', () => {
       render(<PluginSourceBadge source={PluginSource.marketplace} />)
 
-      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.marketplace')).toBeInTheDocument()
+      expect(
+        screen.getByLabelText('plugin.detailPanel.categoryTip.marketplace'),
+      ).toBeInTheDocument()
     })
 
     it('should render github source badge', () => {
@@ -70,7 +72,9 @@ describe('PluginSourceBadge', () => {
     it('should show marketplace tooltip', () => {
       render(<PluginSourceBadge source={PluginSource.marketplace} />)
 
-      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.marketplace')).toBeInTheDocument()
+      expect(
+        screen.getByLabelText('plugin.detailPanel.categoryTip.marketplace'),
+      ).toBeInTheDocument()
     })
 
     it('should show github tooltip', () => {
@@ -95,22 +99,30 @@ describe('PluginSourceBadge', () => {
   describe('Icon Element Structure', () => {
     it('should render icon inside tooltip for marketplace', () => {
       const { container } = render(<PluginSourceBadge source={PluginSource.marketplace} />)
-      expect(container.querySelector('[aria-label="plugin.detailPanel.categoryTip.marketplace"]')).toBeInTheDocument()
+      expect(
+        container.querySelector('[aria-label="plugin.detailPanel.categoryTip.marketplace"]'),
+      ).toBeInTheDocument()
     })
 
     it('should render icon inside tooltip for github', () => {
       const { container } = render(<PluginSourceBadge source={PluginSource.github} />)
-      expect(container.querySelector('[aria-label="plugin.detailPanel.categoryTip.github"]')).toBeInTheDocument()
+      expect(
+        container.querySelector('[aria-label="plugin.detailPanel.categoryTip.github"]'),
+      ).toBeInTheDocument()
     })
 
     it('should render icon inside tooltip for local', () => {
       const { container } = render(<PluginSourceBadge source={PluginSource.local} />)
-      expect(container.querySelector('[aria-label="plugin.detailPanel.categoryTip.local"]')).toBeInTheDocument()
+      expect(
+        container.querySelector('[aria-label="plugin.detailPanel.categoryTip.local"]'),
+      ).toBeInTheDocument()
     })
 
     it('should render icon inside tooltip for debugging', () => {
       const { container } = render(<PluginSourceBadge source={PluginSource.debugging} />)
-      expect(container.querySelector('[aria-label="plugin.detailPanel.categoryTip.debugging"]')).toBeInTheDocument()
+      expect(
+        container.querySelector('[aria-label="plugin.detailPanel.categoryTip.debugging"]'),
+      ).toBeInTheDocument()
     })
   })
 

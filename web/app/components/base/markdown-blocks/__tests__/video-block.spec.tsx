@@ -1,7 +1,6 @@
 import { render } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it } from 'vitest'
-
 import VideoGallery from '../../video-gallery'
 import VideoBlock from '../video-block'
 
@@ -21,10 +20,7 @@ type BlockNode = {
 describe('VideoBlock', () => {
   it('renders multiple video sources from node.children', () => {
     const node: BlockNode = {
-      children: [
-        { properties: { src: 'a.mp4' } },
-        { properties: { src: 'b.mp4' } },
-      ],
+      children: [{ properties: { src: 'a.mp4' } }, { properties: { src: 'b.mp4' } }],
     }
 
     render(<VideoBlock node={node} />)

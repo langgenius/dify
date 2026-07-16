@@ -1,11 +1,7 @@
 import type { Model } from '../../declarations'
 import { render, screen } from '@testing-library/react'
 import { Theme } from '@/types/app'
-import {
-  ConfigurationMethodEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '../../declarations'
+import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import ModelIcon from '../index'
 
 type I18nText = {
@@ -65,7 +61,10 @@ describe('ModelIcon', () => {
 
     render(<ModelIcon provider={provider} />)
 
-    expect(screen.getByRole('img', { name: /model-icon/i })).toHaveAttribute('src', 'light-only.png')
+    expect(screen.getByRole('img', { name: /model-icon/i })).toHaveAttribute(
+      'src',
+      'light-only.png',
+    )
   })
 
   // Theme selection

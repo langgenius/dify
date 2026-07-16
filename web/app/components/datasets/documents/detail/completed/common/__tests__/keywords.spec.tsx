@@ -9,35 +9,20 @@ describe('Keywords', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      const { container } = render(
-        <Keywords
-          keywords={['test']}
-          onKeywordsChange={vi.fn()}
-        />,
-      )
+      const { container } = render(<Keywords keywords={['test']} onKeywordsChange={vi.fn()} />)
 
       expect(container.firstChild).toBeInTheDocument()
     })
 
     it('should render the keywords label', () => {
-      render(
-        <Keywords
-          keywords={['test']}
-          onKeywordsChange={vi.fn()}
-        />,
-      )
+      render(<Keywords keywords={['test']} onKeywordsChange={vi.fn()} />)
 
       // Assert - i18n key format
       expect(screen.getByText(/segment\.keywords/i)).toBeInTheDocument()
     })
 
     it('should render with correct container classes', () => {
-      const { container } = render(
-        <Keywords
-          keywords={['test']}
-          onKeywordsChange={vi.fn()}
-        />,
-      )
+      const { container } = render(<Keywords keywords={['test']} onKeywordsChange={vi.fn()} />)
 
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('flex')
@@ -87,11 +72,7 @@ describe('Keywords', () => {
 
     it('should apply custom className', () => {
       const { container } = render(
-        <Keywords
-          keywords={['test']}
-          onKeywordsChange={vi.fn()}
-          className="custom-class"
-        />,
+        <Keywords keywords={['test']} onKeywordsChange={vi.fn()} className="custom-class" />,
       )
 
       const wrapper = container.firstChild as HTMLElement
@@ -100,11 +81,7 @@ describe('Keywords', () => {
 
     it('should use default actionType of view', () => {
       render(
-        <Keywords
-          segInfo={{ id: '1', keywords: [] }}
-          keywords={[]}
-          onKeywordsChange={vi.fn()}
-        />,
+        <Keywords segInfo={{ id: '1', keywords: [] }} keywords={[]} onKeywordsChange={vi.fn()} />,
       )
 
       // Assert - dash should appear in view mode with empty keywords
@@ -114,36 +91,21 @@ describe('Keywords', () => {
 
   describe('Structure', () => {
     it('should render label with uppercase styling', () => {
-      const { container } = render(
-        <Keywords
-          keywords={['test']}
-          onKeywordsChange={vi.fn()}
-        />,
-      )
+      const { container } = render(<Keywords keywords={['test']} onKeywordsChange={vi.fn()} />)
 
       const labelElement = container.querySelector('.system-xs-medium-uppercase')
       expect(labelElement).toBeInTheDocument()
     })
 
     it('should render keywords container with overflow handling', () => {
-      const { container } = render(
-        <Keywords
-          keywords={['test']}
-          onKeywordsChange={vi.fn()}
-        />,
-      )
+      const { container } = render(<Keywords keywords={['test']} onKeywordsChange={vi.fn()} />)
 
       const keywordsContainer = container.querySelector('.overflow-auto')
       expect(keywordsContainer).toBeInTheDocument()
     })
 
     it('should render keywords container with max height', () => {
-      const { container } = render(
-        <Keywords
-          keywords={['test']}
-          onKeywordsChange={vi.fn()}
-        />,
-      )
+      const { container } = render(<Keywords keywords={['test']} onKeywordsChange={vi.fn()} />)
 
       const keywordsContainer = container.querySelector('.max-h-\\[200px\\]')
       expect(keywordsContainer).toBeInTheDocument()
@@ -171,11 +133,7 @@ describe('Keywords', () => {
   describe('Edge Cases', () => {
     it('should handle empty keywords array in view mode without segInfo keywords', () => {
       const { container } = render(
-        <Keywords
-          keywords={[]}
-          onKeywordsChange={vi.fn()}
-          actionType="view"
-        />,
+        <Keywords keywords={[]} onKeywordsChange={vi.fn()} actionType="view" />,
       )
 
       // Assert - container should be rendered

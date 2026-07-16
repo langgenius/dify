@@ -8,9 +8,10 @@ import { ObjectFromEntries, ObjectKeys } from './utils/object'
 const CLIENT_ENV_PREFIX = 'NEXT_PUBLIC_'
 type ClientSchema = Record<`${typeof CLIENT_ENV_PREFIX}${string}`, z.ZodType>
 
-const coercedBoolean = z.string()
-  .refine(s => s === 'true' || s === 'false' || s === '0' || s === '1')
-  .transform(s => s === 'true' || s === '1')
+const coercedBoolean = z
+  .string()
+  .refine((s) => s === 'true' || s === 'false' || s === '0' || s === '1')
+  .transform((s) => s === 'true' || s === '1')
 const coercedNumber = z.coerce.number().int().positive()
 
 /// Keep keys sorted except grouped feature-specific blocks.
@@ -41,7 +42,11 @@ const clientSchema = {
   /**
    * The base path for the application
    */
-  NEXT_PUBLIC_BASE_PATH: z.string().regex(/^\/.*[^/]$/).or(z.literal('')).default(''),
+  NEXT_PUBLIC_BASE_PATH: z
+    .string()
+    .regex(/^\/.*[^/]$/)
+    .or(z.literal(''))
+    .default(''),
   /**
    * number of concurrency
    */
@@ -69,7 +74,7 @@ const clientSchema = {
    * Currently gates the `/create` and `/refine` slash commands in the
    * "Go to Anything" command palette (Cmd/Ctrl+K).
    */
-  NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(true),
 
   /**
    * Cloud-only system-features defaults.
@@ -187,70 +192,186 @@ export const env = createEnv({
   },
   client: clientSchema,
   experimental__runtimeEnv: {
-    NEXT_PUBLIC_ALLOW_EMBED: isServer ? process.env.NEXT_PUBLIC_ALLOW_EMBED : getRuntimeEnvFromBody('allowEmbed'),
-    NEXT_PUBLIC_ALLOW_INLINE_STYLES: isServer ? process.env.NEXT_PUBLIC_ALLOW_INLINE_STYLES : getRuntimeEnvFromBody('allowInlineStyles'),
-    NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
-    NEXT_PUBLIC_AMPLITUDE_API_KEY: isServer ? process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY : getRuntimeEnvFromBody('amplitudeApiKey'),
-    NEXT_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('apiPrefix'),
-    NEXT_PUBLIC_BASE_PATH: isServer ? process.env.NEXT_PUBLIC_BASE_PATH : getRuntimeEnvFromBody('basePath'),
-    NEXT_PUBLIC_BATCH_CONCURRENCY: isServer ? process.env.NEXT_PUBLIC_BATCH_CONCURRENCY : getRuntimeEnvFromBody('batchConcurrency'),
-    NEXT_PUBLIC_COOKIE_DOMAIN: isServer ? process.env.NEXT_PUBLIC_COOKIE_DOMAIN : getRuntimeEnvFromBody('cookieDomain'),
-    NEXT_PUBLIC_CSP_WHITELIST: isServer ? process.env.NEXT_PUBLIC_CSP_WHITELIST : getRuntimeEnvFromBody('cspWhitelist'),
-    NEXT_PUBLIC_DEPLOY_ENV: isServer ? process.env.NEXT_PUBLIC_DEPLOY_ENV : getRuntimeEnvFromBody('deployEnv'),
-    NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: isServer ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
-    NEXT_PUBLIC_EDITION: isServer ? process.env.NEXT_PUBLIC_EDITION : getRuntimeEnvFromBody('edition'),
-    NEXT_PUBLIC_ENABLE_AGENT_V2: isServer ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 : getRuntimeEnvFromBody('enableAgentV2'),
-    NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW : getRuntimeEnvFromBody('enableFeaturePreview'),
+    NEXT_PUBLIC_ALLOW_EMBED: isServer
+      ? process.env.NEXT_PUBLIC_ALLOW_EMBED
+      : getRuntimeEnvFromBody('allowEmbed'),
+    NEXT_PUBLIC_ALLOW_INLINE_STYLES: isServer
+      ? process.env.NEXT_PUBLIC_ALLOW_INLINE_STYLES
+      : getRuntimeEnvFromBody('allowInlineStyles'),
+    NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer
+      ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME
+      : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
+    NEXT_PUBLIC_AMPLITUDE_API_KEY: isServer
+      ? process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
+      : getRuntimeEnvFromBody('amplitudeApiKey'),
+    NEXT_PUBLIC_API_PREFIX: isServer
+      ? process.env.NEXT_PUBLIC_API_PREFIX
+      : getRuntimeEnvFromBody('apiPrefix'),
+    NEXT_PUBLIC_BASE_PATH: isServer
+      ? process.env.NEXT_PUBLIC_BASE_PATH
+      : getRuntimeEnvFromBody('basePath'),
+    NEXT_PUBLIC_BATCH_CONCURRENCY: isServer
+      ? process.env.NEXT_PUBLIC_BATCH_CONCURRENCY
+      : getRuntimeEnvFromBody('batchConcurrency'),
+    NEXT_PUBLIC_COOKIE_DOMAIN: isServer
+      ? process.env.NEXT_PUBLIC_COOKIE_DOMAIN
+      : getRuntimeEnvFromBody('cookieDomain'),
+    NEXT_PUBLIC_CSP_WHITELIST: isServer
+      ? process.env.NEXT_PUBLIC_CSP_WHITELIST
+      : getRuntimeEnvFromBody('cspWhitelist'),
+    NEXT_PUBLIC_DEPLOY_ENV: isServer
+      ? process.env.NEXT_PUBLIC_DEPLOY_ENV
+      : getRuntimeEnvFromBody('deployEnv'),
+    NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: isServer
+      ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
+      : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
+    NEXT_PUBLIC_EDITION: isServer
+      ? process.env.NEXT_PUBLIC_EDITION
+      : getRuntimeEnvFromBody('edition'),
+    NEXT_PUBLIC_ENABLE_AGENT_V2: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
+      : getRuntimeEnvFromBody('enableAgentV2'),
+    NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
+      : getRuntimeEnvFromBody('enableFeaturePreview'),
 
     /**
      * Cloud-only system-features defaults.
      * These values are only used when NEXT_PUBLIC_EDITION=CLOUD (IS_CLOUD_EDITION).
      */
-    NEXT_PUBLIC_ENABLE_MARKETPLACE: isServer ? process.env.NEXT_PUBLIC_ENABLE_MARKETPLACE : getRuntimeEnvFromBody('enableMarketplace'),
-    NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN: isServer ? process.env.NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN : getRuntimeEnvFromBody('enableEmailCodeLogin'),
-    NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: isServer ? process.env.NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN : getRuntimeEnvFromBody('enableEmailPasswordLogin'),
-    NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN: isServer ? process.env.NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN : getRuntimeEnvFromBody('enableSocialOauthLogin'),
-    NEXT_PUBLIC_ENABLE_COLLABORATION_MODE: isServer ? process.env.NEXT_PUBLIC_ENABLE_COLLABORATION_MODE : getRuntimeEnvFromBody('enableCollaborationMode'),
-    NEXT_PUBLIC_ALLOW_REGISTER: isServer ? process.env.NEXT_PUBLIC_ALLOW_REGISTER : getRuntimeEnvFromBody('allowRegister'),
-    NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE: isServer ? process.env.NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE : getRuntimeEnvFromBody('allowCreateWorkspace'),
-    NEXT_PUBLIC_IS_EMAIL_SETUP: isServer ? process.env.NEXT_PUBLIC_IS_EMAIL_SETUP : getRuntimeEnvFromBody('isEmailSetup'),
-    NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: isServer ? process.env.NEXT_PUBLIC_ENABLE_CHANGE_EMAIL : getRuntimeEnvFromBody('enableChangeEmail'),
-    NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: isServer ? process.env.NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED : getRuntimeEnvFromBody('creatorsPlatformFeaturesEnabled'),
-    NEXT_PUBLIC_ENABLE_TRIAL_APP: isServer ? process.env.NEXT_PUBLIC_ENABLE_TRIAL_APP : getRuntimeEnvFromBody('enableTrialApp'),
-    NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: isServer ? process.env.NEXT_PUBLIC_ENABLE_EXPLORE_BANNER : getRuntimeEnvFromBody('enableExploreBanner'),
-    NEXT_PUBLIC_ENABLE_LEARN_APP: isServer ? process.env.NEXT_PUBLIC_ENABLE_LEARN_APP : getRuntimeEnvFromBody('enableLearnApp'),
-    NEXT_PUBLIC_RBAC_ENABLED: isServer ? process.env.NEXT_PUBLIC_RBAC_ENABLED : getRuntimeEnvFromBody('rbacEnabled'),
+    NEXT_PUBLIC_ENABLE_MARKETPLACE: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_MARKETPLACE
+      : getRuntimeEnvFromBody('enableMarketplace'),
+    NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN
+      : getRuntimeEnvFromBody('enableEmailCodeLogin'),
+    NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN
+      : getRuntimeEnvFromBody('enableEmailPasswordLogin'),
+    NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN
+      : getRuntimeEnvFromBody('enableSocialOauthLogin'),
+    NEXT_PUBLIC_ENABLE_COLLABORATION_MODE: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_COLLABORATION_MODE
+      : getRuntimeEnvFromBody('enableCollaborationMode'),
+    NEXT_PUBLIC_ALLOW_REGISTER: isServer
+      ? process.env.NEXT_PUBLIC_ALLOW_REGISTER
+      : getRuntimeEnvFromBody('allowRegister'),
+    NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE: isServer
+      ? process.env.NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE
+      : getRuntimeEnvFromBody('allowCreateWorkspace'),
+    NEXT_PUBLIC_IS_EMAIL_SETUP: isServer
+      ? process.env.NEXT_PUBLIC_IS_EMAIL_SETUP
+      : getRuntimeEnvFromBody('isEmailSetup'),
+    NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_CHANGE_EMAIL
+      : getRuntimeEnvFromBody('enableChangeEmail'),
+    NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: isServer
+      ? process.env.NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED
+      : getRuntimeEnvFromBody('creatorsPlatformFeaturesEnabled'),
+    NEXT_PUBLIC_ENABLE_TRIAL_APP: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_TRIAL_APP
+      : getRuntimeEnvFromBody('enableTrialApp'),
+    NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_EXPLORE_BANNER
+      : getRuntimeEnvFromBody('enableExploreBanner'),
+    NEXT_PUBLIC_ENABLE_LEARN_APP: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_LEARN_APP
+      : getRuntimeEnvFromBody('enableLearnApp'),
+    NEXT_PUBLIC_RBAC_ENABLED: isServer
+      ? process.env.NEXT_PUBLIC_RBAC_ENABLED
+      : getRuntimeEnvFromBody('rbacEnabled'),
 
-    NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX : getRuntimeEnvFromBody('enableSingleDollarLatex'),
-    NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL : getRuntimeEnvFromBody('enableWebsiteFirecrawl'),
-    NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER : getRuntimeEnvFromBody('enableWebsiteJinareader'),
-    NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL : getRuntimeEnvFromBody('enableWebsiteWatercrawl'),
-    NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: isServer ? process.env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH : getRuntimeEnvFromBody('indexingMaxSegmentationTokensLength'),
-    NEXT_PUBLIC_IS_MARKETPLACE: isServer ? process.env.NEXT_PUBLIC_IS_MARKETPLACE : getRuntimeEnvFromBody('isMarketplace'),
-    NEXT_PUBLIC_LOOP_NODE_MAX_COUNT: isServer ? process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT : getRuntimeEnvFromBody('loopNodeMaxCount'),
-    NEXT_PUBLIC_MAINTENANCE_NOTICE: isServer ? process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE : getRuntimeEnvFromBody('maintenanceNotice'),
-    NEXT_PUBLIC_MARKETPLACE_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX : getRuntimeEnvFromBody('marketplaceApiPrefix'),
-    NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: isServer ? process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX : getRuntimeEnvFromBody('marketplaceUrlPrefix'),
-    NEXT_PUBLIC_MAX_ITERATIONS_NUM: isServer ? process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM : getRuntimeEnvFromBody('maxIterationsNum'),
-    NEXT_PUBLIC_MAX_PARALLEL_LIMIT: isServer ? process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT : getRuntimeEnvFromBody('maxParallelLimit'),
-    NEXT_PUBLIC_MAX_TOOLS_NUM: isServer ? process.env.NEXT_PUBLIC_MAX_TOOLS_NUM : getRuntimeEnvFromBody('maxToolsNum'),
-    NEXT_PUBLIC_MAX_TREE_DEPTH: isServer ? process.env.NEXT_PUBLIC_MAX_TREE_DEPTH : getRuntimeEnvFromBody('maxTreeDepth'),
-    NEXT_PUBLIC_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('publicApiPrefix'),
-    NEXT_PUBLIC_SENTRY_DSN: isServer ? process.env.NEXT_PUBLIC_SENTRY_DSN : getRuntimeEnvFromBody('sentryDsn'),
-    NEXT_PUBLIC_SITE_ABOUT: isServer ? process.env.NEXT_PUBLIC_SITE_ABOUT : getRuntimeEnvFromBody('siteAbout'),
-    NEXT_PUBLIC_SOCKET_URL: isServer ? process.env.NEXT_PUBLIC_SOCKET_URL : getRuntimeEnvFromBody('socketUrl'),
-    NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: isServer ? process.env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS : getRuntimeEnvFromBody('supportEmailAddress'),
-    NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: isServer ? process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN : getRuntimeEnvFromBody('supportMailLogin'),
-    NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS: isServer ? process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS : getRuntimeEnvFromBody('textGenerationTimeoutMs'),
-    NEXT_PUBLIC_TOP_K_MAX_VALUE: isServer ? process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE : getRuntimeEnvFromBody('topKMaxValue'),
-    NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON: isServer ? process.env.NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON : getRuntimeEnvFromBody('uploadImageAsIcon'),
-    NEXT_PUBLIC_WEB_PREFIX: isServer ? process.env.NEXT_PUBLIC_WEB_PREFIX : getRuntimeEnvFromBody('webPrefix'),
-    NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL: isServer ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL : getRuntimeEnvFromBody('zendeskFieldIdEmail'),
-    NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT: isServer ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT : getRuntimeEnvFromBody('zendeskFieldIdEnvironment'),
-    NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN: isServer ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN : getRuntimeEnvFromBody('zendeskFieldIdPlan'),
-    NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION: isServer ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION : getRuntimeEnvFromBody('zendeskFieldIdVersion'),
-    NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID: isServer ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID : getRuntimeEnvFromBody('zendeskFieldIdWorkspaceId'),
-    NEXT_PUBLIC_ZENDESK_WIDGET_KEY: isServer ? process.env.NEXT_PUBLIC_ZENDESK_WIDGET_KEY : getRuntimeEnvFromBody('zendeskWidgetKey'),
+    NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX
+      : getRuntimeEnvFromBody('enableSingleDollarLatex'),
+    NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL
+      : getRuntimeEnvFromBody('enableWebsiteFirecrawl'),
+    NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER
+      : getRuntimeEnvFromBody('enableWebsiteJinareader'),
+    NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL
+      : getRuntimeEnvFromBody('enableWebsiteWatercrawl'),
+    NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: isServer
+      ? process.env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+      : getRuntimeEnvFromBody('indexingMaxSegmentationTokensLength'),
+    NEXT_PUBLIC_IS_MARKETPLACE: isServer
+      ? process.env.NEXT_PUBLIC_IS_MARKETPLACE
+      : getRuntimeEnvFromBody('isMarketplace'),
+    NEXT_PUBLIC_LOOP_NODE_MAX_COUNT: isServer
+      ? process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT
+      : getRuntimeEnvFromBody('loopNodeMaxCount'),
+    NEXT_PUBLIC_MAINTENANCE_NOTICE: isServer
+      ? process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE
+      : getRuntimeEnvFromBody('maintenanceNotice'),
+    NEXT_PUBLIC_MARKETPLACE_API_PREFIX: isServer
+      ? process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX
+      : getRuntimeEnvFromBody('marketplaceApiPrefix'),
+    NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: isServer
+      ? process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX
+      : getRuntimeEnvFromBody('marketplaceUrlPrefix'),
+    NEXT_PUBLIC_MAX_ITERATIONS_NUM: isServer
+      ? process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM
+      : getRuntimeEnvFromBody('maxIterationsNum'),
+    NEXT_PUBLIC_MAX_PARALLEL_LIMIT: isServer
+      ? process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
+      : getRuntimeEnvFromBody('maxParallelLimit'),
+    NEXT_PUBLIC_MAX_TOOLS_NUM: isServer
+      ? process.env.NEXT_PUBLIC_MAX_TOOLS_NUM
+      : getRuntimeEnvFromBody('maxToolsNum'),
+    NEXT_PUBLIC_MAX_TREE_DEPTH: isServer
+      ? process.env.NEXT_PUBLIC_MAX_TREE_DEPTH
+      : getRuntimeEnvFromBody('maxTreeDepth'),
+    NEXT_PUBLIC_PUBLIC_API_PREFIX: isServer
+      ? process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX
+      : getRuntimeEnvFromBody('publicApiPrefix'),
+    NEXT_PUBLIC_SENTRY_DSN: isServer
+      ? process.env.NEXT_PUBLIC_SENTRY_DSN
+      : getRuntimeEnvFromBody('sentryDsn'),
+    NEXT_PUBLIC_SITE_ABOUT: isServer
+      ? process.env.NEXT_PUBLIC_SITE_ABOUT
+      : getRuntimeEnvFromBody('siteAbout'),
+    NEXT_PUBLIC_SOCKET_URL: isServer
+      ? process.env.NEXT_PUBLIC_SOCKET_URL
+      : getRuntimeEnvFromBody('socketUrl'),
+    NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: isServer
+      ? process.env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS
+      : getRuntimeEnvFromBody('supportEmailAddress'),
+    NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: isServer
+      ? process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN
+      : getRuntimeEnvFromBody('supportMailLogin'),
+    NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS: isServer
+      ? process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS
+      : getRuntimeEnvFromBody('textGenerationTimeoutMs'),
+    NEXT_PUBLIC_TOP_K_MAX_VALUE: isServer
+      ? process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE
+      : getRuntimeEnvFromBody('topKMaxValue'),
+    NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON: isServer
+      ? process.env.NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON
+      : getRuntimeEnvFromBody('uploadImageAsIcon'),
+    NEXT_PUBLIC_WEB_PREFIX: isServer
+      ? process.env.NEXT_PUBLIC_WEB_PREFIX
+      : getRuntimeEnvFromBody('webPrefix'),
+    NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL: isServer
+      ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL
+      : getRuntimeEnvFromBody('zendeskFieldIdEmail'),
+    NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT: isServer
+      ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT
+      : getRuntimeEnvFromBody('zendeskFieldIdEnvironment'),
+    NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN: isServer
+      ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN
+      : getRuntimeEnvFromBody('zendeskFieldIdPlan'),
+    NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION: isServer
+      ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION
+      : getRuntimeEnvFromBody('zendeskFieldIdVersion'),
+    NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID: isServer
+      ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID
+      : getRuntimeEnvFromBody('zendeskFieldIdWorkspaceId'),
+    NEXT_PUBLIC_ZENDESK_WIDGET_KEY: isServer
+      ? process.env.NEXT_PUBLIC_ZENDESK_WIDGET_KEY
+      : getRuntimeEnvFromBody('zendeskWidgetKey'),
   },
   emptyStringAsUndefined: true,
 })
@@ -283,10 +404,6 @@ export function getDatasetMap() {
     throw new TypeError('getDatasetMap can only be called on the server')
   }
   return ObjectFromEntries(
-    ObjectKeys(clientSchema)
-      .map(envKey => [
-        getDatasetAttributeName(envKey),
-        env[envKey],
-      ]),
+    ObjectKeys(clientSchema).map((envKey) => [getDatasetAttributeName(envKey), env[envKey]]),
   )
 }

@@ -27,9 +27,7 @@ describe('DisplayToggle', () => {
 
   describe('Props', () => {
     it('should render expand icon when isCollapsed is true', () => {
-      const { container } = render(
-        <DisplayToggle isCollapsed={true} toggleCollapsed={vi.fn()} />,
-      )
+      const { container } = render(<DisplayToggle isCollapsed={true} toggleCollapsed={vi.fn()} />)
 
       // Assert - RiLineHeight icon for expand
       const icon = container.querySelector('.size-4')
@@ -37,9 +35,7 @@ describe('DisplayToggle', () => {
     })
 
     it('should render collapse icon when isCollapsed is false', () => {
-      const { container } = render(
-        <DisplayToggle isCollapsed={false} toggleCollapsed={vi.fn()} />,
-      )
+      const { container } = render(<DisplayToggle isCollapsed={false} toggleCollapsed={vi.fn()} />)
 
       // Assert - Collapse icon
       const icon = container.querySelector('.size-4')
@@ -73,9 +69,7 @@ describe('DisplayToggle', () => {
   // Tooltip tests
   describe('Tooltip', () => {
     it('should render with tooltip wrapper', () => {
-      const { container } = render(
-        <DisplayToggle isCollapsed={true} toggleCollapsed={vi.fn()} />,
-      )
+      const { container } = render(<DisplayToggle isCollapsed={true} toggleCollapsed={vi.fn()} />)
 
       // Assert - Tooltip renders a wrapper around button
       expect(container.firstChild).toBeInTheDocument()
@@ -96,9 +90,7 @@ describe('DisplayToggle', () => {
     })
 
     it('should maintain structure when rerendered', () => {
-      const { rerender } = render(
-        <DisplayToggle isCollapsed={true} toggleCollapsed={vi.fn()} />,
-      )
+      const { rerender } = render(<DisplayToggle isCollapsed={true} toggleCollapsed={vi.fn()} />)
 
       rerender(<DisplayToggle isCollapsed={false} toggleCollapsed={vi.fn()} />)
 

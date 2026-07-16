@@ -17,19 +17,28 @@ vi.mock('next-themes', () => ({
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
-    <a href={href} data-testid="mock-link">{children}</a>
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href} data-testid="mock-link">
+      {children}
+    </a>
   ),
 }))
 
 vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn((path: string, { theme }: { theme: string }) => `https://marketplace.url${path}?theme=${theme}`),
+  getMarketplaceUrl: vi.fn(
+    (path: string, { theme }: { theme: string }) => `https://marketplace.url${path}?theme=${theme}`,
+  ),
 }))
 
 // Mock marketplace components
 
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
-  default: ({ plugins, cardRender, cardContainerClassName, emptyClassName }: {
+  default: ({
+    plugins,
+    cardRender,
+    cardContainerClassName,
+    emptyClassName,
+  }: {
     plugins: Plugin[]
     cardRender: (p: Plugin) => React.ReactNode
     cardContainerClassName?: string
@@ -37,7 +46,7 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
   }) => (
     <div data-testid="mock-list" className={cardContainerClassName}>
       {plugins.length === 0 && <div className={emptyClassName} aria-label="empty-state" />}
-      {plugins.map(plugin => (
+      {plugins.map((plugin) => (
         <div key={plugin.plugin_id} data-testid={`list-item-${plugin.plugin_id}`}>
           {cardRender(plugin)}
         </div>
@@ -47,7 +56,7 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
 }))
 
 vi.mock('@/app/components/plugins/provider-card', () => ({
-  default: ({ className, payload }: { className?: string, payload: Plugin }) => (
+  default: ({ className, payload }: { className?: string; payload: Plugin }) => (
     <div data-testid={`mock-provider-card-${payload.plugin_id}`} className={className}>
       {payload.name}
     </div>
@@ -120,7 +129,10 @@ describe('InstallFromMarketplace Component', () => {
       // Assert
       expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url/plugins/datasource?theme=light')
+      expect(screen.getByTestId('mock-link')).toHaveAttribute(
+        'href',
+        'https://marketplace.url/plugins/datasource?theme=light',
+      )
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
       expect(screen.getByTestId('mock-list')).toHaveClass('grid', 'grid-cols-3', 'gap-2')
       expect(screen.getByTestId('mock-provider-card-plugin-1')).toHaveClass('h-[146px]')
@@ -179,6 +191,31 @@ describe('InstallFromMarketplace Component', () => {
 
       // Assert
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('should use the marketplace callback action when provided', () => {
+      // Arrange
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: mockPlugins,
+        isLoading: false,
+      })
+      const onOpenMarketplace = vi.fn()
+      render(
+        <InstallFromMarketplace
+          providers={mockProviders}
+          searchText=""
+          onOpenMarketplace={onOpenMarketplace}
+        />,
+      )
+
+      // Act
+      fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.difyMarketplace' }))
+
+      // Assert
+      expect(onOpenMarketplace).toHaveBeenCalledTimes(1)
+      expect(
+        screen.queryByRole('link', { name: 'plugin.marketplace.difyMarketplace' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

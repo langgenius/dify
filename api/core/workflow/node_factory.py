@@ -43,6 +43,8 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
+from core.workflow.nodes.human_input.callback import DifyHITLCallback
+from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData
@@ -409,9 +411,9 @@ class DifyNodeFactory(NodeFactory):
                 "file_reference_factory": self._file_reference_factory,
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
-                "runtime": self._human_input_runtime,
-                "file_reference_factory": self._file_reference_factory,
-                "form_repository": self._human_input_runtime.build_form_repository(),
+                "hitl_callback": self._build_human_input_callback(
+                    node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"])
+                ),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
@@ -515,6 +517,20 @@ class DifyNodeFactory(NodeFactory):
             "message_transformer": self._agent_message_transformer,
         }
 
+    def _build_human_input_callback(
+        self,
+        *,
+        node_data: DifyHumanInputNodeData,
+    ) -> DifyHITLCallback:
+        return DifyHITLCallback(
+            form_repository=self._human_input_runtime.build_form_repository(),
+            node_data=node_data,
+            conversation_id=self._conversation_id(),
+            delivery_methods=self._human_input_runtime._resolve_delivery_methods(node_data=node_data),
+            display_in_ui=self._human_input_runtime._display_in_ui(node_data=node_data),
+            file_reference_factory=self._file_reference_factory,
+        )
+
     def _build_llm_compatible_node_init_kwargs(
         self,
         *,
@@ -533,7 +549,11 @@ class DifyNodeFactory(NodeFactory):
             "credentials_provider": self._llm_credentials_provider,
             "model_factory": self._llm_model_factory,
             "model_instance": (
-                self._wrap_model_instance_for_node(node_data=validated_node_data, model_instance=model_instance)
+                self._wrap_model_instance_for_node(
+                    node_data=validated_node_data,
+                    model_instance=model_instance,
+                    request_metadata={"app_id": self._dify_context.app_id},
+                )
                 if wrap_model_instance
                 else model_instance
             ),
@@ -565,13 +585,14 @@ class DifyNodeFactory(NodeFactory):
         *,
         node_data: LLMCompatibleNodeData,
         model_instance: ModelInstance,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> DifyPreparedLLM:
         # Only graphon's LLM node consumes the polling protocol. Keep classifier
         # and extractor nodes on the existing wrapper even if the same model
         # advertises polling support.
         if node_data.type == BuiltinNodeTypes.LLM and DifyNodeFactory._supports_plugin_llm_polling(model_instance):
-            return DifyPreparedPollingLLM(model_instance)
-        return DifyPreparedLLM(model_instance)
+            return DifyPreparedPollingLLM(model_instance, request_metadata=request_metadata)
+        return DifyPreparedLLM(model_instance, request_metadata=request_metadata)
 
     @staticmethod
     def _supports_plugin_llm_polling(model_instance: ModelInstance) -> bool:

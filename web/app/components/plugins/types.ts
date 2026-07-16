@@ -224,14 +224,16 @@ export type PluginDetail = {
   alternative_plugin_id: string
 }
 
-export type PluginInfoFromMarketPlace = {
-  category: PluginCategoryEnum
-  latest_package_identifier: string
-  latest_version: string
-}
-
 export type Plugin = {
-  type: 'plugin' | 'bundle' | 'model' | 'extension' | 'tool' | 'agent_strategy' | 'datasource' | 'trigger'
+  type:
+    | 'plugin'
+    | 'bundle'
+    | 'model'
+    | 'extension'
+    | 'tool'
+    | 'agent_strategy'
+    | 'datasource'
+    | 'trigger'
   org: string
   author?: string
   name: string
@@ -450,36 +452,8 @@ export type InstalledPluginCategoryListResponse = {
   has_more: boolean
 }
 
-export type InstalledLatestVersionResponse = {
-  versions: {
-    [plugin_id: string]: {
-      unique_identifier: string
-      version: string
-      status: 'active' | 'deleted'
-      deprecated_reason: string
-      alternative_plugin_id: string
-    } | null
-  }
-}
-
 export type UninstallPluginResponse = {
   success: boolean
-}
-
-export type PluginsFromMarketplaceResponse = {
-  plugins: Plugin[]
-  bundles?: Plugin[]
-  total: number
-}
-export type PluginsFromMarketplaceByInfoResponse = {
-  list: {
-    plugin: Plugin
-    version: {
-      plugin_name: string
-      plugin_org: string
-      unique_identifier: string
-    }
-  }[]
 }
 
 export type GitHubItemAndMarketPlaceDependency = {
@@ -570,7 +544,7 @@ const AgentFeature = {
   HISTORY_MESSAGES: 'history-messages',
 } as const
 
-type AgentFeature = typeof AgentFeature[keyof typeof AgentFeature]
+type AgentFeature = (typeof AgentFeature)[keyof typeof AgentFeature]
 
 type Identity = {
   author: string

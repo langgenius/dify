@@ -18,9 +18,8 @@ vi.mock('@/models/datasets', () => ({
   },
 }))
 
-const { formatPreviewChunks } = await import(
-  '@/app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils',
-)
+const { formatPreviewChunks } =
+  await import('@/app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils')
 
 describe('Chunk Preview Formatting', () => {
   describe('general text chunks', () => {
@@ -36,7 +35,7 @@ describe('Chunk Preview Formatting', () => {
       const result = formatPreviewChunks(outputs)
 
       expect(Array.isArray(result)).toBe(true)
-      const chunks = result as Array<{ content: string, summary?: string }>
+      const chunks = result as Array<{ content: string; summary?: string }>
       expect(chunks).toHaveLength(2)
       expect(chunks[0]!.content).toBe('Chunk 1 content')
       expect(chunks[0]!.summary).toBe('Summary 1')
@@ -164,7 +163,7 @@ describe('Chunk Preview Formatting', () => {
       }
 
       const result = formatPreviewChunks(outputs) as {
-        qa_chunks: Array<{ question: string, answer: string }>
+        qa_chunks: Array<{ question: string; answer: string }>
       }
 
       expect(result.qa_chunks).toHaveLength(2)

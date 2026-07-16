@@ -11,7 +11,11 @@ describe('Tag Component', () => {
     })
 
     it('should render with ReactNode children', () => {
-      render(<Tag><span data-testid="child">Node</span></Tag>)
+      render(
+        <Tag>
+          <span data-testid="child">Node</span>
+        </Tag>,
+      )
       expect(screen.getByTestId('child')).toBeInTheDocument()
     })
 
@@ -73,12 +77,20 @@ describe('Tag Component', () => {
     })
 
     it('should apply both bordered and hideBg together', () => {
-      const { container } = render(<Tag bordered hideBg>Test</Tag>)
+      const { container } = render(
+        <Tag bordered hideBg>
+          Test
+        </Tag>,
+      )
       expect(container.firstChild).toHaveClass('border', 'bg-transparent')
     })
 
     it('should override color background with hideBg', () => {
-      const { container } = render(<Tag color="red" hideBg>Test</Tag>)
+      const { container } = render(
+        <Tag color="red" hideBg>
+          Test
+        </Tag>,
+      )
       const tag = container.firstChild
       expect(tag).toHaveClass('bg-transparent', 'text-red-800')
     })

@@ -75,6 +75,7 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     # default values
     assert config.EDITION == "SELF_HOSTED"
     assert config.API_COMPRESSION_ENABLED is False
+    assert config.AGENT_SHELL_ENABLED is True
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
     assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
 
@@ -108,6 +109,25 @@ def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     assert config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT == 10
     assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 600
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 600
+
+
+def test_internal_files_url_falls_back_to_server_console_api_url(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+    monkeypatch.setenv("SERVER_CONSOLE_API_URL", "http://api:5001")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.INTERNAL_FILES_URL == "http://api:5001"
+
+
+def test_internal_files_url_prefers_explicit_value(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+    monkeypatch.setenv("INTERNAL_FILES_URL", "http://files-internal:5001")
+    monkeypatch.setenv("SERVER_CONSOLE_API_URL", "http://api:5001")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.INTERNAL_FILES_URL == "http://files-internal:5001"
 
 
 # NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.

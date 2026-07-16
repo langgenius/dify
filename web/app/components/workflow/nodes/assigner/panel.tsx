@@ -1,9 +1,7 @@
 import type { FC } from 'react'
 import type { AssignerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -13,10 +11,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.assigner'
 
-const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
   const handleAddOperationItem = useHandleAddOperationItem()
   const {
@@ -40,7 +35,9 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
     <div className="flex flex-col items-start self-stretch py-2">
       <div className="flex w-full flex-col items-start justify-center gap-1 self-stretch px-4 py-2">
         <div className="flex items-start gap-2 self-stretch">
-          <div className="flex grow flex-col items-start justify-center system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.variables`, { ns: 'workflow' })}</div>
+          <div className="flex grow flex-col items-start justify-center system-sm-semibold-uppercase text-text-secondary">
+            {t(($) => $[`${i18nPrefix}.variables`], { ns: 'workflow' })}
+          </div>
           <ActionButton onClick={handleAddOperation}>
             <RiAddLine className="size-4 shrink-0 text-text-tertiary" />
           </ActionButton>

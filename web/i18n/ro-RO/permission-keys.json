@@ -50,5 +50,5 @@
   "snippets.management": "Gestionează fragmente",
   "tool.manage": "Gestionează instrumente",
   "workspace.member.manage": "Gestionează membrii",
-  "workspace.role.manage": "Gestionează permisiunile rolurilor și regulile de acces la resurse"
+  "workspace.role.manage": "Gestionează rolurile și seturile de permisiuni"
 }

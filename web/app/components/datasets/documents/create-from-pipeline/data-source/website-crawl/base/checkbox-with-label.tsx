@@ -23,8 +23,13 @@ export default function CheckboxWithLabel({
   return (
     <div className={cn('flex items-center', className)}>
       <label className="flex min-w-0 cursor-pointer items-center">
-        <Checkbox checked={isChecked} onCheckedChange={checked => onChange(checked)} />
-        <span className={cn('ml-2 min-w-0 text-left system-sm-medium text-text-secondary', labelClassName)}>
+        <Checkbox checked={isChecked} onCheckedChange={(checked) => onChange(checked)} />
+        <span
+          className={cn(
+            'ml-2 min-w-0 text-left system-sm-medium text-text-secondary',
+            labelClassName,
+          )}
+        >
           {label}
         </span>
       </label>

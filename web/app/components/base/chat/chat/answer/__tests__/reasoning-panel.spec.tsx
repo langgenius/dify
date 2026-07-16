@@ -3,21 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ReasoningPanel from '../reasoning-panel'
 
 // Mock react-i18next so the reused chat.thinking/chat.thought labels resolve.
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'chat.thinking': 'Thinking...',
-        'chat.thought': 'Thought',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
 
 // Mock the heavy Markdown renderer to a simple passthrough.
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div data-testid="reasoning-markdown">{content}</div>,
+  Markdown: ({ content }: { content: string }) => (
+    <div data-testid="reasoning-markdown">{content}</div>
+  ),
 }))
 
 describe('ReasoningPanel', () => {
@@ -37,13 +28,13 @@ describe('ReasoningPanel', () => {
 
   it('shows the thinking state while not done', () => {
     render(<ReasoningPanel content={{ llm: 'let me think' }} done={false} />)
-    expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
+    expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
     expect(screen.getByText('let me think')).toBeInTheDocument()
   })
 
   it('shows the thought state once done (answer started / terminal / history)', () => {
     render(<ReasoningPanel content={{ llm: 'done thinking' }} done />)
-    expect(screen.getByText(/Thought/)).toBeInTheDocument()
+    expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
   })
 
   it('counts elapsed time up while thinking', () => {
@@ -67,7 +58,7 @@ describe('ReasoningPanel', () => {
     act(() => {
       vi.advanceTimersByTime(1000)
     })
-    expect(screen.getByText(/Thought\(0\.7s\)/)).toBeInTheDocument()
+    expect(screen.getByText(/chat\.thought\(0\.7s\)/)).toBeInTheDocument()
   })
 
   it('concatenates reasoning from multiple LLM nodes', () => {

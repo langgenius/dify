@@ -50,5 +50,5 @@
   "snippets.management": "إدارة المقتطفات",
   "tool.manage": "إدارة الأدوات",
   "workspace.member.manage": "إدارة الأعضاء",
-  "workspace.role.manage": "إدارة أذونات الأدوار وقواعد الوصول إلى الموارد"
+  "workspace.role.manage": "إدارة الأدوار ومجموعات الأذونات"
 }

@@ -19,7 +19,8 @@ const mockDataSourceStore = { getState: mockGetState }
 
 vi.mock('../../../../../store', () => ({
   useDataSourceStore: () => mockDataSourceStore,
-  useDataSourceStoreWithSelector: (selector: (s: typeof mockStoreState) => unknown) => selector(mockStoreState),
+  useDataSourceStoreWithSelector: (selector: (s: typeof mockStoreState) => unknown) =>
+    selector(mockStoreState),
 }))
 
 type BreadcrumbsProps = React.ComponentProps<typeof Breadcrumbs>
@@ -95,7 +96,9 @@ describe('Breadcrumbs', () => {
 
         // Assert - Search result text should be displayed
         // Assert - Search result text should be displayed
-        expect(screen.getByText(/datasetPipeline\.onlineDrive\.breadcrumbs\.searchResult/))!.toBeInTheDocument()
+        expect(
+          screen.getByText(/datasetPipeline\.onlineDrive\.breadcrumbs\.searchResult/),
+        )!.toBeInTheDocument()
       })
 
       it('should not show search results when keywords is empty', () => {
@@ -163,7 +166,9 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'),
+        )!.toBeInTheDocument()
       })
 
       it('should not show all buckets title when breadcrumbs exist', () => {
@@ -175,7 +180,9 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'),
+        ).not.toBeInTheDocument()
       })
 
       it('should not show all buckets title when bucket is set', () => {
@@ -219,7 +226,9 @@ describe('Breadcrumbs', () => {
         // Assert - Should show bucket name instead
         // Assert - Should show bucket name instead
         // Assert - Should show bucket name instead
-        expect(screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -294,7 +303,9 @@ describe('Breadcrumbs', () => {
 
         // Assert - "All Files" should be displayed
         // Assert - "All Files" should be displayed
-        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'),
+        )!.toBeInTheDocument()
       })
 
       it('should not render Drive component when hasBucket is true', () => {
@@ -306,7 +317,9 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -464,7 +477,9 @@ describe('Breadcrumbs', () => {
 
         // Assert - Only Drive should be visible
         // Assert - Only Drive should be visible
-        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'),
+        )!.toBeInTheDocument()
       })
 
       it('should handle single breadcrumb', () => {
@@ -960,7 +975,9 @@ describe('Breadcrumbs', () => {
 
       // Assert - Should show all buckets title
       // Assert - Should show all buckets title
-      expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'),
+      )!.toBeInTheDocument()
     })
 
     it('should handle breadcrumb with only whitespace', () => {
@@ -999,16 +1016,19 @@ describe('Breadcrumbs', () => {
       { isInPipeline: false, bucket: '', expectedNum: 3 },
       { isInPipeline: true, bucket: 'b', expectedNum: 1 },
       { isInPipeline: false, bucket: 'b', expectedNum: 2 },
-    ])('should calculate displayBreadcrumbNum=$expectedNum when isInPipeline=$isInPipeline and bucket=$bucket', ({ isInPipeline, bucket, expectedNum }) => {
-      mockStoreState.hasBucket = !!bucket
-      const breadcrumbs = Array.from({ length: expectedNum + 2 }, (_, i) => `f${i}`)
-      const props = createDefaultProps({ isInPipeline, bucket, breadcrumbs })
+    ])(
+      'should calculate displayBreadcrumbNum=$expectedNum when isInPipeline=$isInPipeline and bucket=$bucket',
+      ({ isInPipeline, bucket, expectedNum }) => {
+        mockStoreState.hasBucket = !!bucket
+        const breadcrumbs = Array.from({ length: expectedNum + 2 }, (_, i) => `f${i}`)
+        const props = createDefaultProps({ isInPipeline, bucket, breadcrumbs })
 
-      render(<Breadcrumbs {...props} />)
+        render(<Breadcrumbs {...props} />)
 
-      // Assert - Should collapse because breadcrumbs.length > expectedNum
-      expect(getDropdownTrigger()).toBeInTheDocument()
-    })
+        // Assert - Should collapse because breadcrumbs.length > expectedNum
+        expect(getDropdownTrigger()).toBeInTheDocument()
+      },
+    )
   })
 
   describe('Integration', () => {

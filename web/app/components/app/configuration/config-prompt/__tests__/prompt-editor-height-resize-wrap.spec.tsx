@@ -36,11 +36,7 @@ describe('PromptEditorHeightResizeWrap', () => {
     const onHeightChange = vi.fn()
 
     const { container } = render(
-      <PromptEditorHeightResizeWrap
-        height={150}
-        minHeight={100}
-        onHeightChange={onHeightChange}
-      >
+      <PromptEditorHeightResizeWrap height={150} minHeight={100} onHeightChange={onHeightChange}>
         <div>content</div>
       </PromptEditorHeightResizeWrap>,
     )

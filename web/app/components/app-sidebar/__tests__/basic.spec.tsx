@@ -4,11 +4,18 @@ import AppBasic from '../basic'
 
 vi.mock('@/app/components/base/icons/src/vender/workflow', () => ({
   ApiAggregate: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="api-icon" {...props} />,
-  WindowCursor: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="webapp-icon" {...props} />,
+  WindowCursor: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="webapp-icon" {...props} />
+  ),
 }))
 
 vi.mock('../../base/app-icon', () => ({
-  default: ({ icon, background, innerIcon, className }: {
+  default: ({
+    icon,
+    background,
+    innerIcon,
+    className,
+  }: {
     icon?: string
     background?: string
     innerIcon?: React.ReactNode

@@ -21,15 +21,18 @@ describe('AppIcon', () => {
   beforeEach(() => {
     // Mock custom element
     if (!customElements.get('em-emoji')) {
-      customElements.define('em-emoji', class extends HTMLElement {
-        constructor() {
-          super()
-        }
+      customElements.define(
+        'em-emoji',
+        class extends HTMLElement {
+          constructor() {
+            super()
+          }
 
-        connectedCallback() {
-          this.innerHTML = this.getAttribute('id') || '🤖'
-        }
-      })
+          connectedCallback() {
+            this.innerHTML = this.getAttribute('id') || '🤖'
+          }
+        },
+      )
     }
 
     // Reset mock hover value
@@ -111,7 +114,9 @@ describe('AppIcon', () => {
   })
 
   it('does not apply background style for image icons', () => {
-    const { container } = render(<AppIcon iconType="image" imageUrl="test.jpg" background="#FF5500" />)
+    const { container } = render(
+      <AppIcon iconType="image" imageUrl="test.jpg" background="#FF5500" />,
+    )
     // Should not have the background style from the prop
     expect(container.firstChild).not.toHaveStyle('background: #FF5500')
   })
@@ -154,9 +159,7 @@ describe('AppIcon', () => {
 
   it('handles conditional isValidImageIcon check correctly', () => {
     // Case 1: Valid image icon
-    const { rerender } = render(
-      <AppIcon iconType="image" imageUrl="test.jpg" />,
-    )
+    const { rerender } = render(<AppIcon iconType="image" imageUrl="test.jpg" />)
     expect(screen.getByAltText('app icon')).toBeInTheDocument()
 
     // Case 2: Invalid - missing image URL

@@ -82,24 +82,24 @@ class ImportTargetResolver:
             "Target tenant must be provided by --target-tenant, import config, or package metadata."
         )
 
-    def resolve(self, request: ImportRequest) -> ImportTarget:
+    def resolve(self, request: ImportRequest, *, session: Session) -> ImportTarget:
         target_tenant_name = self.select_target_tenant_name(request)
         package_target = request.package.metadata.target_tenant or {}
         if request.cli_target_tenant or request.config_target_tenant:
-            tenant = self._resolve_tenant_by_id_or_name(target_tenant_name)
+            tenant = self._resolve_tenant_by_id_or_name(target_tenant_name, session=session)
         elif package_target.get("id") and self._is_uuid(package_target["id"]):
-            tenant = db.session.get(Tenant, package_target["id"])
+            tenant = session.get(Tenant, package_target["id"])
             if tenant is not None and package_target.get("name") and tenant.name != package_target.get("name"):
                 raise MigrationDataError(
                     f"Target tenant id/name mismatch: {package_target['id']} / {package_target['name']}"
                 )
         else:
-            tenant = self._resolve_tenant_by_id_or_name(target_tenant_name)
+            tenant = self._resolve_tenant_by_id_or_name(target_tenant_name, session=session)
         if tenant is None:
             raise MigrationDataError(f"Target tenant not found: {target_tenant_name}")
 
         account_query = (
-            db.session.query(Account)
+            session.query(Account)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
             .filter(TenantAccountJoin.tenant_id == tenant.id)
         )
@@ -123,12 +123,12 @@ class ImportTargetResolver:
             operator_email=account.email,
         )
 
-    def _resolve_tenant_by_id_or_name(self, value: str) -> Tenant | None:
+    def _resolve_tenant_by_id_or_name(self, value: str, *, session: Session) -> Tenant | None:
         if self._is_uuid(value):
-            tenant = db.session.get(Tenant, value)
+            tenant = session.get(Tenant, value)
             if tenant is not None:
                 return tenant
-        tenants = list(db.session.scalars(sa.select(Tenant).where(Tenant.name == value)).all())
+        tenants = list(session.scalars(sa.select(Tenant).where(Tenant.name == value)).all())
         if len(tenants) > 1:
             raise MigrationDataError(f"Target tenant name is ambiguous; use target_tenant.id: {value}")
         return tenants[0] if tenants else None
@@ -149,8 +149,8 @@ class MigrationImportService:
     def __init__(self, *, target_resolver: ImportTargetResolver | None = None) -> None:
         self.target_resolver = target_resolver or ImportTargetResolver()
 
-    def import_package(self, request: ImportRequest) -> ImportResult:
-        target = self.target_resolver.resolve(request)
+    def import_package(self, request: ImportRequest, *, session: Session) -> ImportResult:
+        target = self.target_resolver.resolve(request, session=session)
         options = request.options_override or request.package.metadata.import_options
         report_items = [
             ResourceReportItem(
@@ -172,9 +172,12 @@ class MigrationImportService:
             id_mapping,
             id_mapping_details,
             self._source_api_provider_ids_by_name(request.package),
+            session=session,
         )
-        self._import_mcp_tools(request.package, target, options, report_items, id_mapping, id_mapping_details)
-        self._preflight_dependency_only_mcp(request.package, target, report_items)
+        self._import_mcp_tools(
+            request.package, target, options, report_items, id_mapping, id_mapping_details, session=session
+        )
+        self._preflight_dependency_only_mcp(request.package, target, report_items, session=session)
         workflow_tool_app_ids = self._workflow_tool_source_app_ids(request.package)
         imported_workflow_ids: set[str] = set()
         if workflow_tool_app_ids:
@@ -187,8 +190,11 @@ class MigrationImportService:
                 id_mapping_details=id_mapping_details,
                 imported_workflow_ids=imported_workflow_ids,
                 only_app_ids=workflow_tool_app_ids,
+                session=session,
             )
-        self._import_workflow_tools(request.package, target, options, id_mapping, id_mapping_details, report_items)
+        self._import_workflow_tools(
+            request.package, target, options, id_mapping, id_mapping_details, report_items, session=session
+        )
         self._import_workflows(
             request.package,
             target,
@@ -198,6 +204,7 @@ class MigrationImportService:
             id_mapping_details=id_mapping_details,
             imported_workflow_ids=imported_workflow_ids,
             skip_app_ids=imported_workflow_ids,
+            session=session,
         )
         return ImportResult(
             report_items=report_items,
@@ -222,14 +229,16 @@ class MigrationImportService:
         imported_workflow_ids: set[str] | None = None,
         only_app_ids: set[str] | None = None,
         skip_app_ids: set[str] | None = None,
+        *,
+        session: Session,
     ) -> None:
-        account = db.session.get(Account, target.operator_id)
-        tenant = db.session.get(Tenant, target.tenant_id)
+        account = session.get(Account, target.operator_id)
+        tenant = session.get(Tenant, target.tenant_id)
         if account is None:
             raise MigrationDataError(f"Operator account not found: {target.operator_id}")
         if tenant is None:
             raise MigrationDataError(f"Target tenant not found: {target.tenant_id}")
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=session)
 
         for workflow_data in package.workflows:
             app_id = self._optional_string(workflow_data.get("id"))
@@ -242,7 +251,7 @@ class MigrationImportService:
                 id_mapping,
             )
             existing_app = (
-                self._find_existing_app(app_id, target.tenant_id)
+                self._find_existing_app(app_id, target.tenant_id, session=session)
                 if options.id_strategy == IdStrategy.PRESERVE_ID
                 else None
             )
@@ -270,6 +279,7 @@ class MigrationImportService:
                 app_id=app_id,
                 existing_app=existing_app,
                 options=options,
+                session=session,
             )
             if app_id:
                 self._record_id_mappings(
@@ -283,7 +293,7 @@ class MigrationImportService:
                 if imported_workflow_ids is not None:
                     imported_workflow_ids.add(app_id)
             if options.create_app_api_token_on_import:
-                self._create_or_reuse_app_api_token(imported_app_id, target.tenant_id)
+                self._create_or_reuse_app_api_token(imported_app_id, target.tenant_id, session=session)
             report_items.append(
                 ResourceReportItem(
                     ResourceType.WORKFLOW,
@@ -310,8 +320,9 @@ class MigrationImportService:
         app_id: str | None,
         existing_app: App | None,
         options: ImportOptions,
+        session: Session,
     ) -> str:
-        import_service = AppDslService(cast(Session, db.session))
+        import_service = AppDslService(cast(Session, session))
         if existing_app is not None:
             import_result = import_service.import_app(
                 account=account,
@@ -332,7 +343,7 @@ class MigrationImportService:
             raise MigrationDataError(f"Workflow import failed: {error}")
         if import_result.app_id is None:
             raise MigrationDataError(f"Workflow import did not return an app id: {workflow_data.get('name')}")
-        db.session.commit()
+        session.commit()
         return import_result.app_id
 
     def _rewrite_workflow_dsl_provider_ids(self, dsl_content: str, id_mapping: dict[str, str]) -> str:
@@ -400,13 +411,13 @@ class MigrationImportService:
     def _should_preserve_source_app_id(self, options: ImportOptions) -> bool:
         return options.id_strategy == IdStrategy.PRESERVE_ID
 
-    def _find_existing_app(self, app_id: str | None, tenant_id: str) -> App | None:
+    def _find_existing_app(self, app_id: str | None, tenant_id: str, *, session: Session) -> App | None:
         if not self._is_uuid_string(app_id):
             return None
-        return db.session.scalar(sa.select(App).where(App.id == app_id, App.tenant_id == tenant_id))
+        return session.scalar(sa.select(App).where(App.id == app_id, App.tenant_id == tenant_id))
 
-    def _create_or_reuse_app_api_token(self, app_id: str, tenant_id: str) -> None:
-        existing = db.session.scalar(
+    def _create_or_reuse_app_api_token(self, app_id: str, tenant_id: str, *, session: Session) -> None:
+        existing = session.scalar(
             sa.select(ApiToken).where(
                 ApiToken.type == ApiTokenType.APP,
                 ApiToken.app_id == app_id,
@@ -418,10 +429,10 @@ class MigrationImportService:
         api_token = ApiToken()
         api_token.app_id = app_id
         api_token.tenant_id = tenant_id
-        api_token.token = ApiToken.generate_api_key("app", 24)
+        api_token.token = ApiToken.generate_api_key("app", 24, session=session)
         api_token.type = ApiTokenType.APP
-        db.session.add(api_token)
-        db.session.commit()
+        session.add(api_token)
+        session.commit()
 
     def _import_api_tools(
         self,
@@ -432,11 +443,13 @@ class MigrationImportService:
         id_mapping: dict[str, str],
         id_mapping_details: list[ResourceIdMapping],
         source_provider_ids_by_name: dict[str, set[str]],
+        *,
+        session: Session,
     ) -> None:
         for tool_data in package.tools:
             provider_name = self._required_string(tool_data, "provider_name", "api_tool")
             schema = self._required_string(tool_data, "schema", "api_tool")
-            existing = db.session.scalar(
+            existing = session.scalar(
                 sa.select(ApiToolProvider).where(
                     ApiToolProvider.tenant_id == target.tenant_id,
                     ApiToolProvider.name == provider_name,
@@ -501,7 +514,7 @@ class MigrationImportService:
                     icon=icon,
                 )
                 status = "created"
-            target_provider = self._find_api_tool_provider(target.tenant_id, provider_name)
+            target_provider = self._find_api_tool_provider(target.tenant_id, provider_name, session=session)
             if target_provider is not None:
                 self._record_id_mappings(
                     id_mapping,
@@ -513,8 +526,10 @@ class MigrationImportService:
                 )
             report_items.append(ResourceReportItem(ResourceType.API_TOOL, provider_name, provider_name, status))
 
-    def _find_api_tool_provider(self, tenant_id: str, provider_name: str) -> ApiToolProvider | None:
-        return db.session.scalar(
+    def _find_api_tool_provider(
+        self, tenant_id: str, provider_name: str, *, session: Session
+    ) -> ApiToolProvider | None:
+        return session.scalar(
             sa.select(ApiToolProvider).where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
@@ -555,16 +570,21 @@ class MigrationImportService:
         id_mapping: dict[str, str],
         id_mapping_details: list[ResourceIdMapping],
         report_items: list[ResourceReportItem],
+        *,
+        session: Session,
     ) -> None:
         if not package.workflow_tools:
             return
-        account = db.session.get(Account, target.operator_id)
+        account = session.get(Account, target.operator_id)
         if account is None:
             raise MigrationDataError(f"Operator account not found: {target.operator_id}")
         for workflow_tool_data in package.workflow_tools:
             app_id = self._optional_string(workflow_tool_data.get("app_id"))
             resolved_app_id = id_mapping.get(app_id or "", app_id)
-            if not resolved_app_id or self._find_existing_app(resolved_app_id, target.tenant_id) is None:
+            if (
+                not resolved_app_id
+                or self._find_existing_app(resolved_app_id, target.tenant_id, session=session) is None
+            ):
                 report_items.append(
                     ResourceReportItem(
                         ResourceType.WORKFLOW_TOOL,
@@ -576,7 +596,7 @@ class MigrationImportService:
                 )
                 continue
             try:
-                self._ensure_workflow_app_is_published(target, account, resolved_app_id)
+                self._ensure_workflow_app_is_published(target, account, resolved_app_id, session=session)
             except Exception as exc:
                 report_items.append(
                     ResourceReportItem(
@@ -592,7 +612,7 @@ class MigrationImportService:
             tool_name = self._required_string(workflow_tool_data, "name", "workflow_tool")
             lookup_workflow_tool_id = workflow_tool_id if options.id_strategy == IdStrategy.PRESERVE_ID else None
             existing = self._find_existing_workflow_tool(
-                target.tenant_id, lookup_workflow_tool_id, tool_name, resolved_app_id
+                target.tenant_id, lookup_workflow_tool_id, tool_name, resolved_app_id, session=session
             )
             if existing is not None and options.conflict_strategy == ConflictStrategy.FAIL:
                 raise MigrationDataError(f"Workflow tool already exists and conflict_strategy=fail: {tool_name}")
@@ -659,7 +679,7 @@ class MigrationImportService:
                 )
                 status = "created"
                 target_provider = self._find_existing_workflow_tool(
-                    target.tenant_id, import_id or None, tool_name, resolved_app_id
+                    target.tenant_id, import_id or None, tool_name, resolved_app_id, session=session
                 )
                 if target_provider is None:
                     raise MigrationDataError(f"Workflow tool was not created: {tool_name}")
@@ -675,8 +695,10 @@ class MigrationImportService:
                 )
             report_items.append(ResourceReportItem(ResourceType.WORKFLOW_TOOL, identifier, tool_name, status))
 
-    def _ensure_workflow_app_is_published(self, target: ImportTarget, account: Account, app_id: str) -> None:
-        app = self._find_existing_app(app_id, target.tenant_id)
+    def _ensure_workflow_app_is_published(
+        self, target: ImportTarget, account: Account, app_id: str, *, session: Session
+    ) -> None:
+        app = self._find_existing_app(app_id, target.tenant_id, session=session)
         if app is None:
             raise MigrationDataError(f"Referenced workflow app was not found in target tenant: {app_id}")
         if app.workflow_id:
@@ -708,13 +730,17 @@ class MigrationImportService:
         report_items: list[ResourceReportItem],
         id_mapping: dict[str, str],
         id_mapping_details: list[ResourceIdMapping],
+        *,
+        session: Session,
     ) -> None:
         for mcp_data in package.mcp_tools:
             name = self._required_string(mcp_data, "name", "mcp_tool")
             server_identifier = self._required_string(mcp_data, "server_identifier", "mcp_tool")
             provider_id = self._optional_string(mcp_data.get("id"))
             lookup_provider_id = provider_id if options.id_strategy == IdStrategy.PRESERVE_ID else None
-            existing = self._find_existing_mcp_tool(target.tenant_id, lookup_provider_id, server_identifier)
+            existing = self._find_existing_mcp_tool(
+                target.tenant_id, lookup_provider_id, server_identifier, session=session
+            )
             if existing is not None and options.conflict_strategy == ConflictStrategy.FAIL:
                 raise MigrationDataError(f"MCP tool already exists and conflict_strategy=fail: {name}")
             if existing is not None and options.conflict_strategy == ConflictStrategy.SKIP:
@@ -730,7 +756,7 @@ class MigrationImportService:
                 report_items.append(ResourceReportItem(ResourceType.MCP_TOOL, existing.id, name, "skipped"))
                 continue
 
-            service = MCPToolManageService(session=cast(Session, db.session))
+            service = MCPToolManageService(session=cast(Session, session))
             configuration = MCPConfiguration.model_validate(mcp_data.get("configuration") or {})
             authentication = (
                 MCPAuthentication.model_validate(mcp_data["authentication"]) if mcp_data.get("authentication") else None
@@ -752,7 +778,7 @@ class MigrationImportService:
                     # stored mode (update_provider now defaults to OFF when omitted).
                     identity_mode=IdentityMode(existing.identity_mode),
                 )
-                db.session.commit()
+                session.commit()
                 status = "updated"
                 identifier = existing.id
                 provider = existing
@@ -770,14 +796,16 @@ class MigrationImportService:
                     configuration=configuration,
                     authentication=authentication,
                 )
-                created_provider = self._find_existing_mcp_tool(target.tenant_id, lookup_provider_id, server_identifier)
+                created_provider = self._find_existing_mcp_tool(
+                    target.tenant_id, lookup_provider_id, server_identifier, session=session
+                )
                 if created_provider is None:
                     raise MigrationDataError(f"MCP provider was not created: {name}")
                 status = "created"
                 provider = created_provider
                 identifier = provider.id
             self._restore_mcp_provider_tools(provider, mcp_data)
-            db.session.commit()
+            session.commit()
             if provider_id:
                 self._record_id_mappings(
                     id_mapping,
@@ -797,12 +825,17 @@ class MigrationImportService:
         provider.authed = True
 
     def _find_existing_mcp_tool(
-        self, tenant_id: str, provider_id: str | None, server_identifier: str
+        self,
+        tenant_id: str,
+        provider_id: str | None,
+        server_identifier: str,
+        *,
+        session: Session,
     ) -> MCPToolProvider | None:
         predicates = [MCPToolProvider.server_identifier == server_identifier]
         if self._is_uuid_string(provider_id):
             predicates.append(MCPToolProvider.id == provider_id)
-        return db.session.scalar(
+        return session.scalar(
             sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates)).limit(1)
         )
 
@@ -816,26 +849,39 @@ class MigrationImportService:
         return True
 
     def _find_existing_workflow_tool(
-        self, tenant_id: str, workflow_tool_id: str | None, tool_name: str, app_id: str
+        self,
+        tenant_id: str,
+        workflow_tool_id: str | None,
+        tool_name: str,
+        app_id: str,
+        *,
+        session: Session,
     ) -> WorkflowToolProvider | None:
         predicates = [WorkflowToolProvider.name == tool_name, WorkflowToolProvider.app_id == app_id]
         if self._is_uuid_string(workflow_tool_id):
             predicates.append(WorkflowToolProvider.id == workflow_tool_id)
-        return db.session.scalar(
+        return session.scalar(
             sa.select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, or_(*predicates))
             .limit(1)
         )
 
     def _preflight_dependency_only_mcp(
-        self, package: MigrationPackage, target: ImportTarget, report_items: list[ResourceReportItem]
+        self,
+        package: MigrationPackage,
+        target: ImportTarget,
+        report_items: list[ResourceReportItem],
+        *,
+        session: Session,
     ) -> None:
         for dependency in package.dependencies:
             if dependency.get("kind") != DependencyKind.MCP_TOOL.value:
                 continue
             provider_id = str(dependency.get("provider_id", dependency.get("id", "")))
             provider_name = self._optional_string(dependency.get("provider_name") or dependency.get("name"))
-            existing = self._find_dependency_only_mcp_provider(target.tenant_id, provider_id, provider_name)
+            existing = self._find_dependency_only_mcp_provider(
+                target.tenant_id, provider_id, provider_name, session=session
+            )
             report_name = f"mcp_tool {provider_name or getattr(existing, 'name', None) or provider_id}"
             if existing is not None:
                 report_items.append(
@@ -864,12 +910,17 @@ class MigrationImportService:
             )
 
     def _find_dependency_only_mcp_provider(
-        self, tenant_id: str, provider_id: str, provider_name: str | None
+        self,
+        tenant_id: str,
+        provider_id: str,
+        provider_name: str | None,
+        *,
+        session: Session,
     ) -> MCPToolProvider | None:
         predicates = [MCPToolProvider.server_identifier == provider_id]
         if self._is_uuid_string(provider_id):
             predicates.append(MCPToolProvider.id == provider_id)
-        return db.session.scalar(
+        return session.scalar(
             sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates)).limit(1)
         )
 

@@ -50,5 +50,5 @@
   "snippets.management": "Gérer les extraits",
   "tool.manage": "Gérer les outils",
   "workspace.member.manage": "Gérer les membres",
-  "workspace.role.manage": "Gérer les autorisations de rôles et les règles d'accès aux ressources"
+  "workspace.role.manage": "Gérer les rôles et les ensembles d'autorisations"
 }

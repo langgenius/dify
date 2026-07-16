@@ -2,7 +2,6 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
-
 import CodeBlock from '../code-block'
 
 const { mockHighlightCode } = vi.hoisted(() => ({
@@ -18,10 +17,9 @@ const mockEcharts = vi.hoisted(() => {
   const state = {
     finishedHandler: undefined as undefined | ((event?: unknown) => void),
     echartsInstance: {
-      resize: vi.fn<(opts?: { width?: string, height?: string }) => void>(),
+      resize: vi.fn<(opts?: { width?: string; height?: string }) => void>(),
       trigger: vi.fn((eventName: string, event?: unknown) => {
-        if (eventName === 'finished')
-          state.finishedHandler?.(event)
+        if (eventName === 'finished') state.finishedHandler?.(event)
       }),
     },
     getInstanceByDom: vi.fn(() => state.echartsInstance),
@@ -85,28 +83,33 @@ vi.mock('echarts', () => ({
 vi.mock('echarts-for-react', async () => {
   const React = await vi.importActual<typeof import('react')>('react')
 
-  const MockReactEcharts = React.forwardRef(({
-    onChartReady,
-    onEvents,
-  }: {
-    onChartReady?: (instance: typeof mockEcharts.echartsInstance) => void
-    onEvents?: { finished?: (event?: unknown) => void }
-  }, ref: React.ForwardedRef<{ getEchartsInstance: () => typeof mockEcharts.echartsInstance }>) => {
-    React.useImperativeHandle(ref, () => ({
-      getEchartsInstance: () => mockEcharts.echartsInstance,
-    }))
+  const MockReactEcharts = React.forwardRef(
+    (
+      {
+        onChartReady,
+        onEvents,
+      }: {
+        onChartReady?: (instance: typeof mockEcharts.echartsInstance) => void
+        onEvents?: { finished?: (event?: unknown) => void }
+      },
+      ref: React.ForwardedRef<{ getEchartsInstance: () => typeof mockEcharts.echartsInstance }>,
+    ) => {
+      React.useImperativeHandle(ref, () => ({
+        getEchartsInstance: () => mockEcharts.echartsInstance,
+      }))
 
-    React.useEffect(() => {
-      mockEcharts.finishedHandler = onEvents?.finished
-      onChartReady?.(mockEcharts.echartsInstance)
-      onEvents?.finished?.({})
-      return () => {
-        mockEcharts.finishedHandler = undefined
-      }
-    }, [onChartReady, onEvents])
+      React.useEffect(() => {
+        mockEcharts.finishedHandler = onEvents?.finished
+        onChartReady?.(mockEcharts.echartsInstance)
+        onEvents?.finished?.({})
+        return () => {
+          mockEcharts.finishedHandler = undefined
+        }
+      }, [onChartReady, onEvents])
 
-    return <div className="echarts-for-react" />
-  })
+      return <div className="echarts-for-react" />
+    },
+  )
 
   return {
     __esModule: true,
@@ -116,7 +119,9 @@ vi.mock('echarts-for-react', async () => {
 
 vi.mock('@/app/components/base/mermaid', () => ({
   __esModule: true,
-  default: ({ PrimitiveCode }: { PrimitiveCode: string }) => <div data-testid="mock-mermaid">{PrimitiveCode}</div>,
+  default: ({ PrimitiveCode }: { PrimitiveCode: string }) => (
+    <div data-testid="mock-mermaid">{PrimitiveCode}</div>
+  ),
 }))
 
 const findEchartsHost = async () => {
@@ -174,15 +179,12 @@ describe('CodeBlock', () => {
     offsetHeightSpy = null
 
     const windowWithLegacyAudio = window as WindowWithLegacyAudio
-    if (originalAudioContext)
-      windowWithLegacyAudio.AudioContext = originalAudioContext
-    else
-      delete windowWithLegacyAudio.AudioContext
+    if (originalAudioContext) windowWithLegacyAudio.AudioContext = originalAudioContext
+    else delete windowWithLegacyAudio.AudioContext
 
     if (originalWebkitAudioContext)
       windowWithLegacyAudio.webkitAudioContext = originalWebkitAudioContext
-    else
-      delete windowWithLegacyAudio.webkitAudioContext
+    else delete windowWithLegacyAudio.webkitAudioContext
 
     delete windowWithLegacyAudio.abcjsAudioContext
     originalAudioContext = undefined
@@ -192,7 +194,11 @@ describe('CodeBlock', () => {
   // Base rendering behaviors for inline and language labels.
   describe('Rendering', () => {
     it('should render inline code element when inline prop is true', () => {
-      const { container } = render(<CodeBlock inline className="language-javascript">const a=1;</CodeBlock>)
+      const { container } = render(
+        <CodeBlock inline className="language-javascript">
+          const a=1;
+        </CodeBlock>,
+      )
 
       const code = container.querySelector('code')
       expect(code).toBeTruthy()
@@ -216,7 +222,9 @@ describe('CodeBlock', () => {
 
       expect(screen.getByText('JavaScript'))!.toBeInTheDocument()
       await waitFor(() => {
-        expect(document.querySelector('code.language-javascript')?.textContent).toContain('const x = 1;')
+        expect(document.querySelector('code.language-javascript')?.textContent).toContain(
+          'const x = 1;',
+        )
       })
     })
 
@@ -264,7 +272,9 @@ describe('CodeBlock', () => {
 
       expect(screen.getByText('JavaScript'))!.toBeInTheDocument()
       await waitFor(() => {
-        expect(document.querySelector('code.language-javascript')?.textContent).toContain('const y = 2;')
+        expect(document.querySelector('code.language-javascript')?.textContent).toContain(
+          'const y = 2;',
+        )
       })
     })
 
@@ -361,7 +371,9 @@ describe('CodeBlock', () => {
     it('should stop processing extra finished events when chart finished callback fires repeatedly', async () => {
       render(<CodeBlock className="language-echarts">{'{"series":[]}'}</CodeBlock>)
       const chart = await findEchartsInstance()
-      const chartWithTrigger = chart as unknown as { trigger?: (eventName: string, event?: unknown) => void }
+      const chartWithTrigger = chart as unknown as {
+        trigger?: (eventName: string, event?: unknown) => void
+      }
 
       act(() => {
         for (let i = 0; i < 8; i++) {
@@ -371,7 +383,7 @@ describe('CodeBlock', () => {
       })
 
       await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 500))
       })
 
       expect(await findEchartsHost())!.toBeInTheDocument()
@@ -423,7 +435,9 @@ describe('CodeBlock', () => {
     })
 
     it('should wire resize listener when echarts view re-enters with a ready chart instance', async () => {
-      const { rerender, unmount } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
+      const { rerender, unmount } = render(
+        <CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>,
+      )
       await findEchartsHost()
 
       rerender(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
@@ -445,7 +459,9 @@ describe('CodeBlock', () => {
     })
 
     it('should cleanup echarts resize listener when no debounce timer is pending', async () => {
-      const { rerender, unmount } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
+      const { rerender, unmount } = render(
+        <CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>,
+      )
       await findEchartsHost()
 
       rerender(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)

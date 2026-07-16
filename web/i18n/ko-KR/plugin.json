@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "세부 정보",
   "detailPanel.operation.info": "플러그인 정보",
   "detailPanel.operation.install": "설치",
+  "detailPanel.operation.moreActions": "추가 작업",
   "detailPanel.operation.remove": "제거",
   "detailPanel.operation.update": "업데이트",
   "detailPanel.operation.updateTooltip": "최신 모델에 액세스하려면 업데이트하세요.",

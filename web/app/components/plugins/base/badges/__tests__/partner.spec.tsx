@@ -21,7 +21,10 @@ vi.mock('../icon-with-tooltip', () => ({
     const Icon = isDark ? BadgeIconDark : BadgeIconLight
     return (
       <div data-testid="icon-with-tooltip" data-popup-content={popupContent} data-theme={theme}>
-        <Icon className={className} data-testid={isDark ? 'partner-dark-icon' : 'partner-light-icon'} />
+        <Icon
+          className={className}
+          data-testid={isDark ? 'partner-dark-icon' : 'partner-light-icon'}
+        />
       </div>
     )
   },
@@ -30,13 +33,17 @@ vi.mock('../icon-with-tooltip', () => ({
 // Mock Partner icons
 vi.mock('@/app/components/base/icons/src/public/plugins/PartnerDark', () => ({
   default: ({ className, ...rest }: { className?: string }) => (
-    <div data-testid="partner-dark-icon" className={className} {...rest}>PartnerDark</div>
+    <div data-testid="partner-dark-icon" className={className} {...rest}>
+      PartnerDark
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/base/icons/src/public/plugins/PartnerLight', () => ({
   default: ({ className, ...rest }: { className?: string }) => (
-    <div data-testid="partner-light-icon" className={className} {...rest}>PartnerLight</div>
+    <div data-testid="partner-light-icon" className={className} {...rest}>
+      PartnerLight
+    </div>
   ),
 }))
 
