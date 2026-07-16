@@ -9,6 +9,7 @@ readable error envelope.
 
 import json
 import threading
+import time
 from copy import deepcopy
 from typing import Any, cast
 from unittest.mock import MagicMock
@@ -257,6 +258,77 @@ class TestParallelNodeBuilder:
         assert result["error"] == ""
         assert model.builder_calls == 3
         assert model.max_active_builders == 3
+
+    def test_failed_builder_cancels_queued_builders(self, monkeypatch):
+        # One worker: node1's builder fails immediately, node2's blocks the
+        # worker briefly, node3 sits in the queue. The failure must cancel
+        # node3 before the worker frees up — no LLM call for it at all.
+        monkeypatch.setattr(dify_config, "WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS", 1)
+        planner = {
+            "title": "x",
+            "description": "x",
+            "nodes": [
+                {"id": "node1", "label": "Start", "node_type": "start", "purpose": "x"},
+                {"id": "node2", "label": "Mid", "node_type": "llm", "purpose": "x"},
+                {"id": "node3", "label": "End", "node_type": "end", "purpose": "x"},
+            ],
+            "edges": [{"source": "node1", "target": "node2"}, {"source": "node2", "target": "node3"}],
+        }
+        builder_calls: list[str] = []
+
+        class _FailFastModel:
+            def invoke_llm(self, *, prompt_messages, model_parameters, stream):
+                if "workflow planner" in str(prompt_messages[0].content).lower():
+                    return _llm_result(json.dumps(planner))
+                user_prompt = "\n".join(str(message.content) for message in prompt_messages)
+                node_id = next(n for n in ("node1", "node2", "node3") if f"id={n}, type=" in user_prompt)
+                builder_calls.append(node_id)
+                if node_id == "node1":
+                    raise RuntimeError("permanent provider failure")
+                time.sleep(0.3)
+                return _llm_result(json.dumps({"config": {}}))
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=_FailFastModel(),
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["errors"][0]["code"] == "MODEL_ERROR"
+        assert "node3" not in builder_calls
+
+    def test_builder_response_without_config_object_fails_closed(self):
+        planner = {
+            "title": "x",
+            "description": "x",
+            "nodes": [
+                {"id": "node1", "label": "Start", "node_type": "start", "purpose": "x"},
+                {"id": "node2", "label": "End", "node_type": "end", "purpose": "x"},
+            ],
+            "edges": [{"source": "node1", "target": "node2"}],
+        }
+        # node2's response parses as JSON but carries no ``config`` object — a
+        # schema error, so no JSON-repair retry fires and the graph fails closed.
+        model = _ParallelBuilderModel(planner, {"node1": {"variables": []}, "node2": cast(Any, "not an object")})
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert "missing 'config' object" in result["error"]
+        assert result["errors"][0]["code"] == "INVALID_SCHEMA"
+        assert result["graph"]["nodes"] == []
+        assert model.calls_for("node2") == 1
 
     def test_refine_reuses_keep_nodes_and_only_builds_updated_nodes(self):
         planner = {
@@ -869,8 +941,214 @@ class TestAutoModeResolution:
         assert "auto (choose workflow or advanced-chat)" in planner_prompt
 
 
+class TestPlannerSchemaValidation:
+    """Planner responses missing the topology contract are rejected with a stage error."""
+
+    _NODES = [{"id": "node1", "label": "Start", "node_type": "start", "purpose": "x"}]
+
+    def test_non_list_nodes_value_is_rejected(self):
+        with pytest.raises(ValueError, match="missing 'nodes' array"):
+            WorkflowGenerator._validate_planner_schema({"nodes": "start,llm,end"})
+
+    def test_node_entry_without_node_type_is_rejected(self):
+        with pytest.raises(ValueError, match="malformed node entry"):
+            WorkflowGenerator._validate_planner_schema({"nodes": [{"id": "node1", "label": "Start"}]})
+
+    def test_missing_edges_array_is_rejected(self):
+        with pytest.raises(ValueError, match="missing non-empty 'edges' array"):
+            WorkflowGenerator._validate_planner_schema({"nodes": self._NODES, "edges": []})
+
+    def test_malformed_edge_entry_is_rejected(self):
+        with pytest.raises(ValueError, match="malformed edge entry"):
+            WorkflowGenerator._validate_planner_schema({"nodes": self._NODES, "edges": ["node1->node2"]})
+
+    def test_edge_with_non_string_endpoint_is_rejected(self):
+        with pytest.raises(ValueError, match="edge missing source or target"):
+            WorkflowGenerator._validate_planner_schema(
+                {"nodes": self._NODES, "edges": [{"source": "node1", "target": 2}]}
+            )
+
+
+class TestAssembleParallelGraph:
+    """Direct assembly contracts not exercised by the fixture-driven pipeline tests."""
+
+    def test_loop_children_are_stamped_and_wired_to_loop_start(self):
+        plan_nodes = [
+            {"id": "node1", "label": "Retry Loop", "node_type": "loop", "purpose": "x"},
+            {"id": "node2", "label": "Step", "node_type": "llm", "purpose": "x", "parent": "Retry Loop"},
+        ]
+
+        graph = WorkflowGenerator._assemble_parallel_graph(
+            plan_nodes=plan_nodes,
+            plan_edges=[],
+            configs_by_id={"node1": {}, "node2": {}},
+            existing_by_id={},
+        )
+
+        child = next(node for node in graph["nodes"] if node["id"] == "node2")
+        assert child["parentId"] == "node1"
+        assert child["data"]["isInLoop"] is True
+        assert child["data"]["loop_id"] == "node1"
+        loop_start = next(node for node in graph["nodes"] if node["id"] == "node1start")
+        assert loop_start["data"]["type"] == "loop-start"
+        assert any(edge["source"] == "node1start" and edge["target"] == "node2" for edge in graph["edges"])
+
+    def test_planned_edge_handles_are_copied_to_graph_edges(self):
+        plan_nodes = [
+            {"id": "node1", "label": "Branch", "node_type": "if-else", "purpose": "x"},
+            {"id": "node2", "label": "Then", "node_type": "llm", "purpose": "x"},
+        ]
+
+        graph = WorkflowGenerator._assemble_parallel_graph(
+            plan_nodes=plan_nodes,
+            plan_edges=[{"source": "node1", "target": "node2", "source_handle": "case1", "target_handle": "target"}],
+            configs_by_id={"node1": {}, "node2": {}},
+            existing_by_id={},
+        )
+
+        edge = graph["edges"][0]
+        assert edge["sourceHandle"] == "case1"
+        assert edge["targetHandle"] == "target"
+
+    def test_kept_child_without_planned_parent_recovers_containment(self):
+        # Refine plans rarely re-state ``parent`` on kept children; the
+        # deepcopied wrapper's parentId must keep the child wired to the
+        # container's synthetic start node.
+        plan_nodes = [
+            {"id": "node1", "label": "Per Item", "node_type": "iteration", "purpose": "x", "action": "keep"},
+            {"id": "node2", "label": "Step", "node_type": "llm", "purpose": "x", "action": "keep"},
+        ]
+        existing_by_id = {
+            "node1": {
+                "id": "node1",
+                "data": {"type": "iteration", "title": "Per Item", "start_node_id": "node1start"},
+            },
+            "node2": {
+                "id": "node2",
+                "parentId": "node1",
+                "extent": "parent",
+                "position": {"x": 240, "y": 60},
+                "data": {"type": "llm", "title": "Step", "isInIteration": True, "iteration_id": "node1"},
+            },
+        }
+
+        graph = WorkflowGenerator._assemble_parallel_graph(
+            plan_nodes=plan_nodes,
+            plan_edges=[],
+            configs_by_id={},
+            existing_by_id=existing_by_id,
+            existing_edges=[{"source": "node1start", "target": "node2"}],
+        )
+
+        child = next(node for node in graph["nodes"] if node["id"] == "node2")
+        assert child["parentId"] == "node1"
+        assert any(edge["source"] == "node1start" and edge["target"] == "node2" for edge in graph["edges"])
+
+    def test_kept_node_with_removed_container_sheds_stale_markers(self):
+        plan_nodes = [{"id": "node2", "label": "Step", "node_type": "llm", "purpose": "x", "action": "keep"}]
+        existing_by_id = {
+            "node2": {
+                "id": "node2",
+                "parentId": "gone",
+                "extent": "parent",
+                "zIndex": 1002,
+                "position": {"x": 240, "y": 60},
+                "data": {"type": "llm", "title": "Step", "isInIteration": True, "iteration_id": "gone"},
+            }
+        }
+
+        graph = WorkflowGenerator._assemble_parallel_graph(
+            plan_nodes=plan_nodes,
+            plan_edges=[],
+            configs_by_id={},
+            existing_by_id=existing_by_id,
+            existing_edges=[],
+        )
+
+        node = graph["nodes"][0]
+        for wrapper_key in ("parentId", "extent", "zIndex", "position"):
+            assert wrapper_key not in node
+        for marker_key in ("isInIteration", "iteration_id"):
+            assert marker_key not in node["data"]
+
+    def test_refine_entry_edge_keeps_existing_target_over_plan_order(self):
+        # The planner lists container children in arbitrary order; a kept
+        # container's entry edge must follow the existing draft, not the list.
+        plan_nodes = [
+            {"id": "it", "label": "Per Item", "node_type": "iteration", "purpose": "x"},
+            {"id": "b", "label": "B", "node_type": "llm", "purpose": "x", "parent": "Per Item"},
+            {"id": "a", "label": "A", "node_type": "llm", "purpose": "x", "parent": "Per Item"},
+        ]
+
+        graph = WorkflowGenerator._assemble_parallel_graph(
+            plan_nodes=plan_nodes,
+            plan_edges=[{"source": "a", "target": "b"}],
+            configs_by_id={"it": {}, "a": {}, "b": {}},
+            existing_by_id={},
+            existing_edges=[{"source": "itstart", "target": "a"}],
+        )
+
+        entry = next(edge for edge in graph["edges"] if edge["source"] == "itstart")
+        assert entry["target"] == "a"
+
+
+class TestSoleDeclaredVariable:
+    """Human-input output inference feeds the variable-reference reconciler."""
+
+    def test_single_human_input_output_is_inferred(self):
+        node = {
+            "data": {
+                "type": "human-input",
+                "inputs": [{"output_variable_name": "approval"}, "junk entry"],
+            }
+        }
+        assert WorkflowGenerator._sole_declared_variable(node) == "approval"
+
+    def test_multiple_human_input_outputs_are_ambiguous(self):
+        node = {
+            "data": {
+                "type": "human-input",
+                "inputs": [{"output_variable_name": "a"}, {"output_variable_name": "b"}],
+            }
+        }
+        assert WorkflowGenerator._sole_declared_variable(node) is None
+
+    def test_single_parameter_extractor_output_is_inferred(self):
+        node = {"data": {"type": "parameter-extractor", "parameters": [{"name": "city"}]}}
+        assert WorkflowGenerator._sole_declared_variable(node) == "city"
+
+    def test_list_operator_declares_its_fixed_outputs(self):
+        node = {"data": {"type": "list-operator"}}
+        assert WorkflowGenerator._declares_variable(node, "first_record") is True
+        assert WorkflowGenerator._declares_variable(node, "not_an_output") is False
+
+    def test_existing_llm_context_placeholder_is_left_untouched(self):
+        llm_data = {"prompt_template": [{"role": "user", "text": "Answer using {{#context#}}"}]}
+        WorkflowGenerator._ensure_llm_context_placeholder(llm_data)
+        assert llm_data["prompt_template"] == [{"role": "user", "text": "Answer using {{#context#}}"}]
+
+
 class TestWorkflowGeneratorFailurePaths:
     """Planner / builder failures must return an error envelope, never raise."""
+
+    def test_missing_result_event_falls_back_to_stamped_empty_envelope(self, monkeypatch):
+        # Guards the defensive fallback for a future refactor that forgets to
+        # emit the final result event — the envelope must still carry a
+        # concrete mode, never the ``auto`` sentinel.
+        monkeypatch.setattr(WorkflowGenerator, "_iter_generation_events", MagicMock(return_value=iter([])))
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=MagicMock(),
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="auto",
+            instruction="x",
+        )
+
+        assert result["graph"]["nodes"] == []
+        assert result["mode"] == "advanced-chat"
 
     def test_planner_returns_invalid_json(self):
         model_instance = MagicMock()

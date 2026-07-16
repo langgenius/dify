@@ -38,6 +38,7 @@ import json_repair
 from configs import dify_config
 from core.workflow.generator.prompts.node_builder_prompts import (
     NODE_BUILDER_USER_PROMPT,
+    format_mode_section,
     format_parallel_plan,
     format_start_inputs_section,
     get_node_builder_system_prompt,
@@ -108,11 +109,12 @@ _PLANNER_DEFAULT_MAX_TOKENS = 4096
 
 
 # Per-node calls trade a larger request count for a shorter critical path.
-# The cap comes from ``WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS`` (default 5,
-# enough to run a typical 3–6-node plan as a single wave); provider rate-limit
-# bursts are absorbed by ``_invoke_with_retry``'s bounded backoff, and operators
-# can dial the env var back down if their provider is stricter. Read at call
-# time so tests (and live config reloads) can adjust it without re-importing.
+# The cap comes from ``WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS`` (default 6,
+# enough to run the planner's recommended 3–6-node plans as a single wave);
+# provider rate-limit bursts are absorbed by ``_invoke_with_retry``'s bounded
+# backoff, and operators can dial the env var back down if their provider is
+# stricter. Read at call time so tests (and live config reloads) can adjust it
+# without re-importing.
 def _node_builder_max_workers() -> int:
     return dify_config.WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS
 
@@ -531,6 +533,7 @@ class WorkflowGenerator:
                 provider=provider,
                 model_name=model_name,
                 model_mode=model_mode,
+                mode=resolved_mode,
                 instruction=instruction,
                 ideal_output=ideal_output,
                 plan_nodes=plan_nodes,
@@ -735,23 +738,24 @@ class WorkflowGenerator:
             SystemPromptMessage(content=PLANNER_SYSTEM_PROMPT),
             UserPromptMessage(content=user_prompt),
         ]
-        for attempt in range(2):
-            attempt_messages = (
-                messages if attempt == 0 else [*messages, UserPromptMessage(content=_PLANNER_SCHEMA_RETRY_HINT)]
-            )
-            parsed = cls._invoke_and_parse_json(
-                model_instance=model_instance,
-                messages=attempt_messages,
-                model_parameters=_clamp_for_planner(model_parameters),
-                stage="Planner",
-            )
-            try:
-                return cls._validate_planner_schema(parsed)
-            except _StageSchemaError:
-                if attempt > 0:
-                    raise
-                logger.info("Workflow generator: planner schema invalid; retrying once")
-        raise AssertionError("planner schema retry loop exhausted unexpectedly")
+        clamped_parameters = _clamp_for_planner(model_parameters)
+        parsed = cls._invoke_and_parse_json(
+            model_instance=model_instance,
+            messages=messages,
+            model_parameters=clamped_parameters,
+            stage="Planner",
+        )
+        try:
+            return cls._validate_planner_schema(parsed)
+        except _StageSchemaError:
+            logger.info("Workflow generator: planner schema invalid; retrying once")
+        parsed = cls._invoke_and_parse_json(
+            model_instance=model_instance,
+            messages=[*messages, UserPromptMessage(content=_PLANNER_SCHEMA_RETRY_HINT)],
+            model_parameters=clamped_parameters,
+            stage="Planner",
+        )
+        return cls._validate_planner_schema(parsed)
 
     @staticmethod
     def _validate_planner_schema(parsed: dict[str, Any]) -> PlannerResultDict:
@@ -800,6 +804,7 @@ class WorkflowGenerator:
         provider: str,
         model_name: str,
         model_mode: str,
+        mode: WorkflowGenerationMode,
         instruction: str,
         ideal_output: str,
         plan_nodes: list[dict[str, Any]],
@@ -821,9 +826,14 @@ class WorkflowGenerator:
             for node in ((current_graph or {}).get("nodes") or [])
             if isinstance(node, dict) and node.get("id")
         }
+        existing_edges = [edge for edge in ((current_graph or {}).get("edges") or []) if isinstance(edge, dict)]
         nodes_to_build = [
             node for node in plan_nodes if not (node.get("action") == "keep" and str(node.get("id")) in existing_by_id)
         ]
+
+        # Shared across every builder call in this request — compute once.
+        plan_json = format_parallel_plan(plan_nodes, plan_edges, start_inputs)
+        mode_section = format_mode_section(mode)
 
         configs_by_id: dict[str, dict[str, Any]] = {}
         if nodes_to_build:
@@ -837,26 +847,36 @@ class WorkflowGenerator:
                         provider=provider,
                         model_name=model_name,
                         model_mode=model_mode,
+                        mode_section=mode_section,
                         instruction=instruction,
                         ideal_output=ideal_output,
                         target_node=node,
-                        plan_nodes=plan_nodes,
-                        plan_edges=plan_edges,
+                        plan_json=plan_json,
                         tool_catalogue_text=tool_catalogue_text,
                         start_inputs=start_inputs,
                         existing_node=existing_by_id.get(str(node.get("id"))),
                     ): str(node.get("id"))
                     for node in nodes_to_build
                 }
-                for future in as_completed(futures):
-                    node_id = futures[future]
-                    configs_by_id[node_id] = future.result()
+                try:
+                    for future in as_completed(futures):
+                        node_id = futures[future]
+                        configs_by_id[node_id] = future.result()
+                except BaseException:
+                    # Fail fast: one failed fragment aborts the whole graph, so
+                    # queued builder calls would only burn quota and delay the
+                    # error envelope. In-flight calls cannot be interrupted;
+                    # they finish while the pool shuts down.
+                    for pending in futures:
+                        pending.cancel()
+                    raise
 
         return cls._assemble_parallel_graph(
             plan_nodes=plan_nodes,
             plan_edges=plan_edges,
             configs_by_id=configs_by_id,
             existing_by_id=existing_by_id,
+            existing_edges=existing_edges,
         )
 
     @classmethod
@@ -868,11 +888,11 @@ class WorkflowGenerator:
         provider: str,
         model_name: str,
         model_mode: str,
+        mode_section: str,
         instruction: str,
         ideal_output: str,
         target_node: dict[str, Any],
-        plan_nodes: list[dict[str, Any]],
-        plan_edges: list[dict[str, Any]],
+        plan_json: str,
         tool_catalogue_text: str,
         start_inputs: list[dict[str, Any]],
         existing_node: dict[str, Any] | None,
@@ -899,6 +919,7 @@ class WorkflowGenerator:
             purpose=str(target_node.get("purpose") or ""),
             instruction=instruction.strip(),
             ideal_output_section=format_ideal_output_section(ideal_output),
+            mode_section=mode_section,
             model_section=model_section,
             tool_catalogue_section=(
                 format_node_tool_catalogue_section(tool_catalogue_text) if node_type == BuiltinNodeTypes.TOOL else ""
@@ -907,7 +928,7 @@ class WorkflowGenerator:
                 format_start_inputs_section(start_inputs) if node_type == BuiltinNodeTypes.START else ""
             ),
             existing_config_section=existing_config_section,
-            plan_json=format_parallel_plan(plan_nodes, plan_edges),
+            plan_json=plan_json,
         )
         parsed = cls._invoke_and_parse_json(
             model_instance=model_instance,
@@ -931,8 +952,15 @@ class WorkflowGenerator:
         plan_edges: list[dict[str, Any]],
         configs_by_id: dict[str, dict[str, Any]],
         existing_by_id: dict[str, dict[str, Any]],
+        existing_edges: list[dict[str, Any]] | None = None,
     ) -> GraphDict:
-        """Expand compact node configs and planner topology into graph JSON."""
+        """Expand compact node configs and planner topology into graph JSON.
+
+        ``existing_edges`` (refine only) preserves wiring the planner cannot
+        express: the synthetic ``<container>start`` entry edge keeps its
+        existing target instead of being re-pointed at whichever child the
+        planner happened to list first.
+        """
         label_to_id = {
             str(node.get("label")): str(node.get("id")) for node in plan_nodes if node.get("label") and node.get("id")
         }
@@ -963,6 +991,11 @@ class WorkflowGenerator:
 
             parent_ref = str(planned.get("parent") or "")
             parent_id = label_to_id.get(parent_ref, parent_ref)
+            if not parent_id and str(node.get("parentId") or "") in type_by_id:
+                # Kept nodes rarely re-state containment — recover the parent
+                # from the deepcopied wrapper so entry-edge synthesis still
+                # counts this child.
+                parent_id = str(node["parentId"])
             if parent_id:
                 child_index = len(children_by_parent.get(parent_id, []))
                 node["parentId"] = parent_id
@@ -976,6 +1009,15 @@ class WorkflowGenerator:
                     node["data"].setdefault("isInLoop", True)
                     node["data"].setdefault("loop_id", parent_id)
                 children_by_parent.setdefault(parent_id, []).append(node_id)
+            elif node.get("parentId"):
+                # The container was dropped from the plan: strip the stale
+                # containment markers so the kept node rejoins the top level
+                # (and its auto-layout) instead of pointing at a deleted parent.
+                for wrapper_key in ("parentId", "extent", "zIndex", "position", "positionAbsolute"):
+                    node.pop(wrapper_key, None)
+                if isinstance(node.get("data"), dict):
+                    for marker_key in ("isInIteration", "iteration_id", "isInLoop", "loop_id"):
+                        node["data"].pop(marker_key, None)
 
             nodes.append(node)
             if node_type in cls._CONTAINER_TYPES:
@@ -1019,10 +1061,20 @@ class WorkflowGenerator:
                 edge["targetHandle"] = str(target_handle)
             edges.append(edge)
 
-        existing_pairs = {(edge.get("source"), edge.get("target")) for edge in edges}
+        # Synthesize each container's entry edge. Refine keeps the existing
+        # entry target when it is still a child — the planner's node listing
+        # order says nothing about execution order inside a kept container.
+        planned_sources = {str(edge.get("source") or "") for edge in edges}
+        existing_entry_targets = {
+            str(edge.get("source") or ""): str(edge.get("target") or "") for edge in (existing_edges or [])
+        }
         for parent_id, child_ids in children_by_parent.items():
-            if child_ids and (f"{parent_id}start", child_ids[0]) not in existing_pairs:
-                edges.append({"source": f"{parent_id}start", "target": child_ids[0]})
+            start_id = f"{parent_id}start"
+            if not child_ids or start_id in planned_sources:
+                continue
+            preferred = existing_entry_targets.get(start_id, "")
+            entry_target = preferred if preferred in child_ids else child_ids[0]
+            edges.append({"source": start_id, "target": entry_target})
 
         return cast(GraphDict, {"nodes": nodes, "edges": edges, "viewport": _DEFAULT_VIEWPORT})
 

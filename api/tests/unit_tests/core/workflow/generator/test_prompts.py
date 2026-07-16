@@ -3,6 +3,7 @@
 import json
 
 from core.workflow.generator.prompts.node_builder_prompts import (
+    format_mode_section,
     format_parallel_plan,
     format_start_inputs_section,
     get_node_builder_system_prompt,
@@ -12,6 +13,7 @@ from core.workflow.generator.prompts.node_builder_prompts import (
 )
 from core.workflow.generator.prompts.planner_prompts import (
     PLANNER_SYSTEM_PROMPT,
+    format_existing_graph_section,
     format_ideal_output_section,
 )
 from core.workflow.generator.prompts.planner_prompts import (
@@ -115,3 +117,47 @@ class TestNodeBuilderUserSections:
 
         assert " " not in rendered
         assert json.loads(rendered)["edges"] == [{"source": "node1", "target": "node2"}]
+        assert "start_inputs" not in json.loads(rendered)
+
+    def test_parallel_plan_carries_declared_start_inputs(self):
+        rendered = format_parallel_plan(
+            [{"id": "node1", "node_type": "start"}],
+            [],
+            [{"variable": "url", "label": "URL", "type": "text-input"}],
+        )
+
+        assert json.loads(rendered)["start_inputs"] == [{"variable": "url", "label": "URL", "type": "text-input"}]
+
+
+class TestModeSection:
+    def test_advanced_chat_documents_system_variables(self):
+        out = format_mode_section("advanced-chat")
+
+        assert "sys.query" in out
+        assert '["sys", "query"]' in out
+        assert "do NOT invent start-node variables" in out
+
+    def test_workflow_mode_forbids_system_variables(self):
+        out = format_mode_section("workflow")
+
+        assert "NO automatic system variables" in out
+
+
+class TestExistingGraphSection:
+    def test_edge_lines_surface_branch_source_handles(self):
+        out = format_existing_graph_section(
+            {
+                "nodes": [{"id": "node1", "data": {"type": "if-else", "title": "Branch"}}],
+                "edges": [
+                    {"source": "node1", "target": "node2", "sourceHandle": "case-uuid-1"},
+                    {"source": "node2", "target": "node3", "sourceHandle": "source"},
+                ],
+            }
+        )
+
+        assert "- node1 -> node2 (source_handle='case-uuid-1')" in out
+        assert "- node2 -> node3\n" in out
+        assert "copy its source_handle verbatim" in out
+
+    def test_create_mode_renders_nothing(self):
+        assert format_existing_graph_section(None) == ""

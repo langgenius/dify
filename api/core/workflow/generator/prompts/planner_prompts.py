@@ -183,7 +183,13 @@ def format_existing_graph_section(current_graph: dict | None) -> str:
     for edge in edges:
         if not isinstance(edge, dict):
             continue
-        edge_lines.append(f"- {edge.get('source', '')} -> {edge.get('target', '')}")
+        # Branch wiring (if-else case ids, classifier class ids, human-input
+        # action ids) lives in ``sourceHandle``. The planner is the only
+        # source of edges for the rebuilt graph, so the real handle must be
+        # surfaced here or refine silently rewires branches.
+        handle = str(edge.get("sourceHandle") or "")
+        handle_suffix = f" (source_handle={handle!r})" if handle and handle != "source" else ""
+        edge_lines.append(f"- {edge.get('source', '')} -> {edge.get('target', '')}{handle_suffix}")
     nodes_block = "\n".join(node_lines) or "(none)"
     edges_block = "\n".join(edge_lines) or "(none)"
     return (
@@ -193,7 +199,9 @@ def format_existing_graph_section(current_graph: dict | None) -> str:
         "node list to reflect that change while keeping everything the "
         "instruction does not mention — preserve existing nodes, their order, "
         "and their labels wherever the change leaves them untouched. Only add, "
-        "remove, or rename nodes the requested change actually requires.\n\n"
+        "remove, or rename nodes the requested change actually requires. "
+        "For every retained edge, copy its source_handle verbatim from the "
+        "list below — branch wiring must survive the refine unchanged.\n\n"
         f"Current nodes:\n{nodes_block}\n\n"
         f"Current edges:\n{edges_block}\n\n"
     )

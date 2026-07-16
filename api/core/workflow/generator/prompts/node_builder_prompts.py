@@ -56,7 +56,7 @@ purpose={purpose}
 
 {instruction}
 
-{ideal_output_section}{model_section}{tool_catalogue_section}{start_inputs_section}{existing_config_section}\
+{ideal_output_section}{mode_section}{model_section}{tool_catalogue_section}{start_inputs_section}{existing_config_section}\
 # Normalized plan and topology
 
 {plan_json}
@@ -71,9 +71,43 @@ def get_node_builder_system_prompt(node_type: str) -> str:
     return _NODE_BUILDER_HEAD + (snippet or f"- {node_type}: emit the minimum valid config fields.")
 
 
-def format_parallel_plan(plan_nodes: list[dict[str, Any]], plan_edges: list[dict[str, Any]]) -> str:
-    """Serialize the shared plan compactly so every node call has graph context."""
-    return json.dumps({"nodes": plan_nodes, "edges": plan_edges}, ensure_ascii=False, separators=(",", ":"))
+def format_parallel_plan(
+    plan_nodes: list[dict[str, Any]],
+    plan_edges: list[dict[str, Any]],
+    start_inputs: list[dict[str, Any]] | None = None,
+) -> str:
+    """Serialize the shared plan compactly so every node call has graph context.
+
+    ``start_inputs`` rides along so downstream builders reference the declared
+    ``{{#<start-id>.<variable>#}}`` names instead of guessing them from prose
+    — a guessed name gets auto-injected as a spurious form input later.
+    """
+    payload: dict[str, Any] = {"nodes": plan_nodes, "edges": plan_edges}
+    if start_inputs:
+        payload["start_inputs"] = start_inputs
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+def format_mode_section(mode: str) -> str:
+    """Tell each builder which app mode it is configuring for.
+
+    Matters most in advanced-chat, where ``sys.query`` / ``sys.files`` are the
+    sanctioned way to reference the user's message — without this the model
+    invents start-node variables that postprocess then materializes as
+    spurious form inputs.
+    """
+    if mode == "advanced-chat":
+        return (
+            "# App mode\n\n"
+            "advanced-chat: the user's chat message is available as sys.query and uploaded files "
+            'as sys.files — placeholder {{#sys.query#}}, selector ["sys", "query"]. Reference them '
+            "directly; do NOT invent start-node variables for the chat message.\n\n"
+        )
+    return (
+        "# App mode\n\n"
+        "workflow: there are NO automatic system variables; reference user input only through "
+        "the start node's declared variables.\n\n"
+    )
 
 
 def format_start_inputs_section(start_inputs: list[dict[str, Any]]) -> str:
