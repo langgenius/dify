@@ -1,10 +1,13 @@
 import types
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from contexts.wrapper import RecyclableContextVar
+from core.datasource import datasource_manager as datasource_manager_module
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
 from core.datasource.errors import DatasourceProviderNotFoundError
@@ -12,6 +15,34 @@ from core.workflow.file_reference import parse_file_reference
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
+from models.base import TypeBase
+from models.tools import ToolFile
+
+
+@pytest.fixture
+def tool_file_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
+    """Bind datasource-owned lookups to a SQLite ToolFile table."""
+    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[ToolFile.__tablename__]])
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(datasource_manager_module.session_factory, "create_session", session_maker)
+    with session_maker() as session:
+        yield session
+
+
+def _persist_tool_file(session: Session, *, file_id: str, tenant_id: str) -> ToolFile:
+    tool_file = ToolFile(
+        user_id="user-1",
+        tenant_id=tenant_id,
+        conversation_id=None,
+        file_key="files/image.png",
+        mimetype="image/png",
+        name="image.png",
+        size=10,
+    )
+    tool_file.id = file_id
+    session.add(tool_file)
+    session.commit()
+    return tool_file
 
 
 def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage, None, None]:
@@ -373,7 +404,8 @@ def test_stream_node_events_emits_events_online_document(mocker: MockerFixture):
     assert events[-1].node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
 
 
-def test_stream_node_events_builds_file_and_variables_from_messages(mocker: MockerFixture):
+def test_stream_node_events_builds_file_and_variables_from_messages(mocker: MockerFixture, tool_file_session: Session):
+    _persist_tool_file(tool_file_session, file_id="tool_file_1", tenant_id="t1")
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_messages_text_only("ignored"))
 
     def _transformed(**_kwargs):
@@ -418,19 +450,6 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker: Mock
         side_effect=_transformed,
     )
 
-    fake_tool_file = types.SimpleNamespace(mimetype="image/png")
-
-    class _Session:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc):
-            return False
-
-        def scalar(self, _stmt):
-            return fake_tool_file
-
-    mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_Session())
     mocker.patch("core.datasource.datasource_manager.get_file_type_by_mime_type", return_value=FileType.IMAGE)
     built = File(
         file_type=FileType.IMAGE,
@@ -481,7 +500,8 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker: Mock
     assert events[-1].node_run_result.outputs["x"] == 1
 
 
-def test_stream_node_events_raises_when_toolfile_missing(mocker: MockerFixture):
+def test_stream_node_events_raises_when_toolfile_missing(mocker: MockerFixture, tool_file_session: Session):
+    _persist_tool_file(tool_file_session, file_id="missing", tenant_id="other-tenant")
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_messages_text_only("ignored"))
 
     def _transformed(**_kwargs):
@@ -495,18 +515,6 @@ def test_stream_node_events_raises_when_toolfile_missing(mocker: MockerFixture):
         "core.datasource.datasource_manager.DatasourceFileMessageTransformer.transform_datasource_invoke_messages",
         side_effect=_transformed,
     )
-
-    class _Session:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc):
-            return False
-
-        def scalar(self, _stmt):
-            return None
-
-    mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_Session())
 
     with pytest.raises(ValueError, match="ToolFile not found for file_id=missing, tenant_id=t1"):
         list(
