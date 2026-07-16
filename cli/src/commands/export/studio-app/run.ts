@@ -30,7 +30,10 @@ export type ExportAppResult = {
   readonly writtenTo: string | undefined
 }
 
-export async function runExportApp(opts: ExportAppOptions, deps: ExportAppDeps): Promise<ExportAppResult> {
+export async function runExportApp(
+  opts: ExportAppOptions,
+  deps: ExportAppDeps,
+): Promise<ExportAppResult> {
   const env = deps.envLookup ?? getEnv
   const io = deps.io ?? nullStreams()
   const dslFactory = deps.dslFactory ?? ((h: HttpClient) => new AppDslClient(h))
@@ -41,9 +44,8 @@ export async function runExportApp(opts: ExportAppOptions, deps: ExportAppDeps):
 
   const client = dslFactory(deps.http)
 
-  const yaml = await runWithSpinner(
-    { io, label: `Exporting DSL for app ${opts.appId}` },
-    () => client.exportDsl(opts.appId, {
+  const yaml = await runWithSpinner({ io, label: `Exporting DSL for app ${opts.appId}` }, () =>
+    client.exportDsl(opts.appId, {
       includeSecret: opts.includeSecret,
       workflowId: opts.workflowId,
     }),

@@ -147,6 +147,7 @@
   "maxActiveRequestsTip": "Maksymalna liczba jednoczesnych aktywnych żądań na aplikację (0 dla nieograniczonej)",
   "mermaid.classic": "Klasyczny",
   "mermaid.handDrawn": "Ręcznie rysowane",
+  "mermaid.waitForCompletion": "Oczekiwanie na ukończenie kodu diagramu...",
   "newApp.Cancel": "Anuluj",
   "newApp.Confirm": "Potwierdzić",
   "newApp.Create": "Utwórz",

@@ -10,8 +10,6 @@ import {
   AlertDialogTrigger,
 } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('AlertDialog wrapper', () => {
   describe('Rendering', () => {
     it('should render alert dialog content when dialog is open', async () => {
@@ -25,7 +23,9 @@ describe('AlertDialog wrapper', () => {
       )
 
       await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Confirm Delete')
-      await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('This action cannot be undone.')
+      await expect
+        .element(screen.getByRole('alertdialog'))
+        .toHaveTextContent('This action cannot be undone.')
     })
 
     it('should not render content when dialog is closed', async () => {
@@ -84,10 +84,10 @@ describe('AlertDialog wrapper', () => {
 
       expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
 
-      asHTMLElement(screen.getByRole('button', { name: 'Open Dialog' }).element()).click()
+      await screen.getByRole('button', { name: 'Open Dialog' }).click()
       await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Action Required')
 
-      asHTMLElement(screen.getByRole('button', { name: 'Cancel' }).element()).click()
+      await screen.getByRole('button', { name: 'Cancel' }).click()
       await vi.waitFor(() => {
         expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
       })
@@ -127,14 +127,14 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      asHTMLElement(screen.getByRole('button', { name: 'Open Dialog' }).element()).click()
+      await screen.getByRole('button', { name: 'Open Dialog' }).click()
       await expect.element(screen.getByRole('alertdialog')).toBeInTheDocument()
 
-      asHTMLElement(screen.getByRole('button', { name: 'Confirm' }).element()).click()
+      await screen.getByRole('button', { name: 'Confirm' }).click()
       expect(onConfirm).toHaveBeenCalledTimes(1)
       await expect.element(screen.getByRole('alertdialog')).toBeInTheDocument()
 
-      asHTMLElement(screen.getByRole('button', { name: 'Cancel' }).element()).click()
+      await screen.getByRole('button', { name: 'Cancel' }).click()
       await vi.waitFor(() => {
         expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
       })

@@ -24,9 +24,11 @@ const selectTrialCredits = (workspace: {
 }
 
 export const useTrialCredits = () => {
-  const trialCreditsQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
-    select: selectTrialCredits,
-  }))
+  const trialCreditsQuery = useQuery(
+    consoleQuery.workspaces.current.post.queryOptions({
+      select: selectTrialCredits,
+    }),
+  )
   const trialCredits = trialCreditsQuery.data
 
   return {

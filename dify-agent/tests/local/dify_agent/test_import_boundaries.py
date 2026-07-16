@@ -121,8 +121,7 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
             "openai",
             "pydantic_settings",
             "redis",
-            "shell_session_manager.shellctl.client",
-            "shell_session_manager.shellctl.server",
+            "shellctl.client",
         ],
         imports=[
             "dify_agent.protocol",
@@ -147,7 +146,7 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
     )
 
 
-def test_agent_stub_cli_main_import_is_client_safe() -> None:
+def test_agent_cli_help_import_is_client_safe() -> None:
     _run_import_check(
         blocked_imports=[
             "dify_agent.server",
@@ -158,20 +157,17 @@ def test_agent_stub_cli_main_import_is_client_safe() -> None:
             "jwcrypto",
             "pydantic_settings",
             "redis",
-            "shell_session_manager",
         ],
         imports=[
-            "dify_agent.agent_stub.client",
             "dify_agent.agent_stub.protocol",
-            "dify_agent.agent_stub.cli.main",
+            "dify_agent.layers._agent_cli_help",
             "dify_agent.agent_stub.shell_env",
             "dify_agent.layers.shell.layer",
             "dify_agent.runtime.compositor_factory",
         ],
         assertions=[
-            "assert hasattr(dify_agent_agent_stub_client, 'request_agent_stub_drive_manifest_sync')",
             "assert hasattr(dify_agent_agent_stub_protocol, 'AgentStubConnectRequest')",
-            "assert hasattr(dify_agent_agent_stub_cli_main, 'main')",
+            "assert hasattr(dify_agent_layers__agent_cli_help, 'render_agent_stub_cli_help')",
             "assert hasattr(dify_agent_agent_stub_shell_env, 'build_shell_agent_stub_env')",
             "assert hasattr(dify_agent_layers_shell_layer, 'DifyShellLayer')",
             "assert hasattr(dify_agent_runtime_compositor_factory, 'create_default_layer_providers')",
@@ -228,7 +224,7 @@ def test_agent_stub_cli_main_import_is_client_safe() -> None:
     )
 
 
-def test_agent_stub_cli_help_render_does_not_load_server_modules() -> None:
+def test_agent_cli_help_render_does_not_load_server_or_cli_modules() -> None:
     blocked_modules = [
         "dify_agent.server",
         "dify_agent.agent_stub.server",
@@ -238,26 +234,17 @@ def test_agent_stub_cli_help_render_does_not_load_server_modules() -> None:
         "jwcrypto",
         "pydantic_settings",
         "redis",
-        "shell_session_manager",
     ]
     script = "\n".join(
         [
-            "import click",
             "import importlib",
-            "import os",
             "import sys",
-            "from typer.main import get_command",
             f"blocked_modules = {blocked_modules!r}",
-            'original_disable_plugins = os.environ.get("PYDANTIC_DISABLE_PLUGINS")',
-            'original_disable_plugins_present = "PYDANTIC_DISABLE_PLUGINS" in os.environ',
-            'module = importlib.import_module("dify_agent.agent_stub.cli.main")',
-            "command = get_command(module.app)",
-            "help_text = command.get_help(click.Context(command))",
-            'assert "Forward shell-visible dify-agent commands" in help_text',
-            "if original_disable_plugins_present:",
-            '    assert os.environ.get("PYDANTIC_DISABLE_PLUGINS") == original_disable_plugins',
-            "else:",
-            '    assert "PYDANTIC_DISABLE_PLUGINS" not in os.environ',
+            'module = importlib.import_module("dify_agent.layers._agent_cli_help")',
+            'help_text = module.render_agent_stub_cli_help(("config",))',
+            'assert "Inspect or update Agent Soul-backed config assets" in help_text',
+            'assert "typer" not in sys.modules',
+            'assert "click" not in sys.modules',
             "loaded_blocked = sorted(",
             "    name",
             "    for name in sys.modules",
@@ -267,6 +254,24 @@ def test_agent_stub_cli_help_render_does_not_load_server_modules() -> None:
         ]
     )
     _run_python_script(script)
+
+
+def test_shellctl_client_imports_do_not_import_server_modules() -> None:
+    _run_import_check(
+        blocked_imports=[
+            "aiosqlite",
+            "fastapi",
+            "sqlalchemy",
+            "sqlmodel",
+            "uvicorn",
+        ],
+        imports=["shellctl", "shellctl.client", "shellctl.shared"],
+        assertions=[
+            "assert hasattr(shellctl, 'ShellctlClient')",
+            "assert hasattr(shellctl_client, 'ShellctlClient')",
+            "assert hasattr(shellctl_shared, 'JobResult')",
+        ],
+    )
 
 
 def test_server_settings_import_does_not_import_agent_stub_app() -> None:

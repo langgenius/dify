@@ -4,7 +4,7 @@ import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useSnippetsQueryState } from '../use-snippets-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
-  // eslint-disable-next-line react/use-state -- renderHook executes a custom hook, not React.useState
+  // oxlint-disable-next-line eslint-react/use-state -- renderHook executes a custom hook, not React.useState
   return renderHookWithNuqs(() => useSnippetsQueryState(), { searchParams })
 }
 
@@ -68,8 +68,7 @@ describe('useSnippetsQueryState', () => {
       expect(onUrlUpdate).toHaveBeenCalled()
       const update = onUrlUpdate.mock.calls.at(-1)![0]
       expect(update.searchParams.get('keywords')).toBe('search')
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })

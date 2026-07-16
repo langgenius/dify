@@ -10,6 +10,7 @@ import json
 import logging
 import secrets
 import uuid
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, NotRequired, TypedDict, cast
@@ -68,6 +69,7 @@ from services.errors.account import (
     RefreshTokenAccountNotFoundError,
     RefreshTokenNotFoundError,
     RoleAlreadyAssignedError,
+    SeatsLimitExceededError,
     TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
@@ -328,7 +330,7 @@ class AccountService:
             .limit(1)
         )
         if current_tenant:
-            account.set_tenant_id(current_tenant.tenant_id)
+            account.set_tenant_id_with_session(current_tenant.tenant_id, session=session)
         else:
             available_ta = session.scalar(
                 select(TenantAccountJoin)
@@ -339,7 +341,7 @@ class AccountService:
             if not available_ta:
                 return None
 
-            account.set_tenant_id(available_ta.tenant_id)
+            account.set_tenant_id_with_session(available_ta.tenant_id, session=session)
             available_ta.current = True
             available_ta.last_opened_at = naive_utc_now()
             session.commit()
@@ -348,6 +350,8 @@ class AccountService:
         # NOTE: make sure account is accessible outside of a db session
         # This ensures that it will work correctly after upgrading to Flask version 3.1.2
         session.refresh(account)
+        if session.expire_on_commit and account.current_tenant is not None:
+            session.refresh(account.current_tenant)
         session.close()
         return account
 
@@ -435,6 +439,13 @@ class AccountService:
             from controllers.console.error import AccountNotFound
 
             raise AccountNotFound()
+
+        # A licensed seat is one Account row, deployment-wide; joining an existing
+        # account into another workspace does not pass through here and costs no seat.
+        # is_authenticated=True: server-side enforcement needs the full license payload,
+        # which the enterprise fill withholds from unauthenticated (browser-facing) calls.
+        if not FeatureService.get_system_features(is_authenticated=True).license.seats.is_available():
+            raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
@@ -1319,7 +1330,7 @@ class TenantService:
                 role_ids=[owner_role_id],
                 session=session,
             )
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=session)
         session.commit()
         tenant_was_created.send(tenant)
 
@@ -1541,7 +1552,7 @@ class TenantService:
             tenant_account_join.current = True
             tenant_account_join.last_opened_at = naive_utc_now()
             # Set the current tenant for the account
-            account.set_tenant_id(tenant_account_join.tenant_id)
+            account.set_tenant_id_with_session(tenant_account_join.tenant_id, session=session)
             session.commit()
 
     @staticmethod
@@ -1562,6 +1573,25 @@ class TenantService:
             updated_accounts.append(account)
 
         return updated_accounts
+
+    @staticmethod
+    def iter_member_account_id_batches(tenant_id: str, batch_size: int, *, session: Session) -> Iterator[list[str]]:
+        """Yield workspace member account ids in bounded, ordered batches."""
+        offset = 0
+        while True:
+            stmt = (
+                select(TenantAccountJoin.account_id)
+                .where(TenantAccountJoin.tenant_id == tenant_id)
+                .order_by(TenantAccountJoin.id)
+                .offset(offset)
+                .limit(batch_size)
+            )
+            account_ids = list(session.scalars(stmt).all())
+            if not account_ids:
+                return
+
+            yield account_ids
+            offset += batch_size
 
     @staticmethod
     def get_dataset_operator_members(tenant: Tenant, *, session: Session) -> list[Account]:
@@ -1956,7 +1986,7 @@ class RegisterService:
                 try:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=session)
                     TenantService.create_tenant_member(tenant, account, session, role="owner")
-                    account.current_tenant = tenant
+                    account.set_current_tenant_with_session(tenant, session=session)
                     tenant_was_created.send(tenant)
                 except Exception:
                     _try_join_enterprise_default_workspace(str(account.id))
@@ -1969,6 +1999,10 @@ class RegisterService:
             session.rollback()
             logger.exception("Register failed")
             raise AccountRegisterError("Workspace is not allowed to create.")
+        except SeatsLimitExceededError:
+            session.rollback()
+            logger.exception("Register failed")
+            raise
         except AccountRegisterError as are:
             session.rollback()
             logger.exception("Register failed")

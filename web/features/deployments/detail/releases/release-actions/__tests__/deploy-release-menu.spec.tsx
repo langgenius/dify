@@ -57,9 +57,8 @@ vi.mock('../delete-release-dialog', async () => {
   const { deleteReleaseDialogOpenAtom } = await import('../state')
 
   return {
-    DeleteReleaseDialog: () => useAtomValue(deleteReleaseDialogOpenAtom)
-      ? <div role="dialog">delete confirm</div>
-      : null,
+    DeleteReleaseDialog: () =>
+      useAtomValue(deleteReleaseDialogOpenAtom) ? <div role="dialog">delete confirm</div> : null,
   }
 })
 
@@ -92,12 +91,7 @@ describe('DeployReleaseMenu', () => {
   it('should disable release deletion when deployment usage cannot be checked', () => {
     const release = createRelease()
 
-    render(
-      <DeployReleaseMenu
-        releaseId={release.id}
-        releaseRows={[release]}
-      />,
-    )
+    render(<DeployReleaseMenu releaseId={release.id} releaseRows={[release]} />)
 
     fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
     const deleteItem = screen.getByRole('menuitem', { name: 'deployments.versions.deleteRelease' })

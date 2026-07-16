@@ -6,7 +6,7 @@ from flask import request
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, Unauthorized
 
 from controllers.openapi.auth.data import AuthData, CallerKind
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.account import AccountStatus, TenantStatus
 from models.enums import AppStatus, EndUserType
 from services.account_service import AccountService, TenantService
@@ -23,7 +23,8 @@ def load_app(data: AuthData) -> None:
         uuid.UUID(app_id)
     except ValueError:
         raise NotFound("app not found")
-    app = AppService.get_app_by_id(app_id, session=db.session())
+    with session_factory.create_session() as session:
+        app = AppService.get_app_by_id(app_id, session)
     if not app or app.status != AppStatus.NORMAL:
         raise NotFound("app not found")
     data.app = app
@@ -34,7 +35,8 @@ def load_tenant(data: AuthData) -> None:
         return
     if data.app is None:
         raise InternalServerError("pipeline_invariant_violated: app not loaded before load_tenant")
-    tenant = TenantService.get_tenant_by_id(str(data.app.tenant_id), session=db.session())
+    with session_factory.create_session() as session:
+        tenant = TenantService.get_tenant_by_id(str(data.app.tenant_id), session=session)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden("workspace unavailable")
     data.tenant = tenant
@@ -50,7 +52,8 @@ def load_tenant_from_request(data: AuthData) -> None:
         uuid.UUID(workspace_id)
     except ValueError:
         raise NotFound("workspace not found")
-    tenant = TenantService.get_tenant_by_id(workspace_id, session=db.session())
+    with session_factory.create_session() as session:
+        tenant = TenantService.get_tenant_by_id(workspace_id, session=session)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise NotFound("workspace not found")
     data.tenant = tenant
@@ -59,11 +62,12 @@ def load_tenant_from_request(data: AuthData) -> None:
 def load_account(data: AuthData) -> None:
     if data.caller is not None:
         return
-    account = AccountService.get_account_by_id(str(data.account_id), session=db.session())
-    if account is None:
-        raise Unauthorized("account not found")
-    if data.tenant:
-        account.current_tenant = data.tenant
+    with session_factory.create_session() as session:
+        account = AccountService.get_account_by_id(str(data.account_id), session=session)
+        if account is None:
+            raise Unauthorized("account not found")
+        if data.tenant:
+            account.set_current_tenant_with_session(data.tenant, session=session)
     data.caller = account
     data.caller_kind = CallerKind.ACCOUNT
 
@@ -75,7 +79,8 @@ def load_workspace_role(data: AuthData) -> None:
         return
     if data.caller is not None and getattr(data.caller, "status", None) != AccountStatus.ACTIVE:
         return
-    role = TenantService.get_account_role_in_tenant(str(data.account_id), str(data.tenant.id), session=db.session())
+    with session_factory.create_session() as session:
+        role = TenantService.get_account_role_in_tenant(str(data.account_id), str(data.tenant.id), session=session)
     if role is None:
         return
     data.tenant_role = role

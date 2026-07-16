@@ -1,8 +1,14 @@
 'use client'
 
-import type { EnvVarBindingSlot, EnvVarValueSelection } from '@/features/deployments/shared/components/env-var-bindings'
+import type {
+  EnvVarBindingSlot,
+  EnvVarValueSelection,
+} from '@/features/deployments/shared/components/env-var-bindings'
 import { atom } from 'jotai'
-import { envVarBindingSlotFromContract, envVarBindingValueType } from '@/features/deployments/shared/components/env-var-bindings-utils'
+import {
+  envVarBindingSlotFromContract,
+  envVarBindingValueType,
+} from '@/features/deployments/shared/components/env-var-bindings-utils'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
@@ -10,8 +16,17 @@ import {
 } from '@/features/deployments/shared/components/runtime-credential-bindings-utils'
 import { dslEnvVarSlots } from '@/features/deployments/shared/domain/dsl'
 import { environmentMatchesIdentifier } from './environment'
-import { effectiveMethodAtom, envVarValuesAtom, manualBindingSelectionsAtom, selectedEnvironmentIdAtom } from './primitives'
-import { deployableEnvironmentsDataAtom, deploymentOptionsDataAtom, deploymentOptionsReadyAtom } from './queries'
+import {
+  effectiveMethodAtom,
+  envVarValuesAtom,
+  manualBindingSelectionsAtom,
+  selectedEnvironmentIdAtom,
+} from './primitives'
+import {
+  deployableEnvironmentsDataAtom,
+  deploymentOptionsDataAtom,
+  deploymentOptionsReadyAtom,
+} from './queries'
 import { submittedReleaseReadyAtom } from './release'
 import { dslContentAtom, sourceReady } from './source'
 import { envVarSelectionReady } from './utils'
@@ -19,9 +34,7 @@ import { envVarSelectionReady } from './utils'
 export const deployableEnvironmentsAtom = atom((get) => {
   const deployableEnvironments = get(deployableEnvironmentsDataAtom)
 
-  return sourceReady(get)
-    ? deployableEnvironments?.environments ?? []
-    : []
+  return sourceReady(get) ? (deployableEnvironments?.environments ?? []) : []
 })
 
 const deployableEnvironmentsReadyAtom = atom((get) => {
@@ -36,7 +49,9 @@ export const deploymentTargetBindingSlotsAtom = atom((get) => {
   const deploymentOptions = get(deploymentOptionsDataAtom)
 
   return sourceReady(get)
-    ? deploymentOptions?.options?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
+    ? (deploymentOptions?.options?.credentialSlots?.filter((slot) =>
+        runtimeCredentialSlotKey(slot),
+      ) ?? [])
     : []
 })
 
@@ -50,8 +65,12 @@ export const deploymentTargetBindingSelectionsAtom = atom((get) => {
 export const requiredBindingsReadyAtom = atom((get) => {
   const bindingSelections = get(deploymentTargetBindingSelectionsAtom)
 
-  return get(deploymentTargetBindingSlotsAtom).every(slot =>
-    !hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]),
+  return get(deploymentTargetBindingSlotsAtom).every(
+    (slot) =>
+      !hasMissingRequiredRuntimeCredentialBinding(
+        slot,
+        bindingSelections[runtimeCredentialSlotKey(slot)],
+      ),
   )
 })
 
@@ -62,41 +81,41 @@ export const deploymentTargetEnvVarSlotsAtom = atom((get) => {
   const dslContent = get(dslContentAtom)
 
   // Deployment options own the canonical slot list; DSL metadata only enriches import-DSL defaults.
-  const deploymentOptionEnvVarSlots = slots?.flatMap((slot): EnvVarBindingSlot[] => {
-    const bindingSlot = envVarBindingSlotFromContract(slot)
-    return bindingSlot ? [bindingSlot] : []
-  }) ?? []
-  const dslEnvVarMetadataSlots = method === 'importDsl' && dslContent
-    ? dslEnvVarSlots(dslContent).flatMap((slot) => {
-        const key = slot.key.trim()
-        if (!key)
-          return []
+  const deploymentOptionEnvVarSlots =
+    slots?.flatMap((slot): EnvVarBindingSlot[] => {
+      const bindingSlot = envVarBindingSlotFromContract(slot)
+      return bindingSlot ? [bindingSlot] : []
+    }) ?? []
+  const dslEnvVarMetadataSlots =
+    method === 'importDsl' && dslContent
+      ? dslEnvVarSlots(dslContent).flatMap((slot) => {
+          const key = slot.key.trim()
+          if (!key) return []
 
-        return [{
-          key,
-          ...(slot.description ? { description: slot.description } : {}),
-          ...(slot.defaultValue !== undefined ? { defaultValue: slot.defaultValue, hasDefaultValue: true } : {}),
-          ...(slot.valueType ? { valueType: envVarBindingValueType(slot.valueType) } : {}),
-        }]
-      })
-    : []
+          return [
+            {
+              key,
+              ...(slot.description ? { description: slot.description } : {}),
+              ...(slot.defaultValue !== undefined
+                ? { defaultValue: slot.defaultValue, hasDefaultValue: true }
+                : {}),
+              ...(slot.valueType ? { valueType: envVarBindingValueType(slot.valueType) } : {}),
+            },
+          ]
+        })
+      : []
 
-  if (dslEnvVarMetadataSlots.length === 0)
-    return deploymentOptionEnvVarSlots
+  if (dslEnvVarMetadataSlots.length === 0) return deploymentOptionEnvVarSlots
 
-  const metadataByKey = new Map(
-    dslEnvVarMetadataSlots.map(slot => [slot.key, slot] as const),
-  )
+  const metadataByKey = new Map(dslEnvVarMetadataSlots.map((slot) => [slot.key, slot] as const))
 
   return deploymentOptionEnvVarSlots.map((slot) => {
     const metadata = metadataByKey.get(slot.key)
-    if (!metadata)
-      return slot
+    if (!metadata) return slot
 
     const nextSlot = { ...slot }
 
-    if (!nextSlot.description && metadata.description)
-      nextSlot.description = metadata.description
+    if (!nextSlot.description && metadata.description) nextSlot.description = metadata.description
     if (!nextSlot.hasDefaultValue && metadata.defaultValue !== undefined) {
       nextSlot.defaultValue = metadata.defaultValue
       nextSlot.hasDefaultValue = true
@@ -111,7 +130,7 @@ export const deploymentTargetEnvVarSlotsAtom = atom((get) => {
 export const requiredEnvVarsReadyAtom = atom((get) => {
   const envVarValues = get(envVarValuesAtom)
 
-  return get(deploymentTargetEnvVarSlotsAtom).every(slot =>
+  return get(deploymentTargetEnvVarSlotsAtom).every((slot) =>
     envVarSelectionReady(slot, envVarValues[slot.key]),
   )
 })
@@ -119,16 +138,18 @@ export const requiredEnvVarsReadyAtom = atom((get) => {
 export const canDeployAtom = atom((get) => {
   const effectiveSelectedEnvironmentId = get(effectiveSelectedEnvironmentIdAtom)
   const selectedEnvironment = effectiveSelectedEnvironmentId
-    ? get(deployableEnvironmentsAtom).find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId))
+    ? get(deployableEnvironmentsAtom).find((env) =>
+        environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId),
+      )
     : undefined
 
   return Boolean(
-    selectedEnvironment?.id
-    && get(deployableEnvironmentsReadyAtom)
-    && get(deploymentOptionsReadyAtom)
-    && get(requiredBindingsReadyAtom)
-    && get(requiredEnvVarsReadyAtom)
-    && get(submittedReleaseReadyAtom),
+    selectedEnvironment?.id &&
+    get(deployableEnvironmentsReadyAtom) &&
+    get(deploymentOptionsReadyAtom) &&
+    get(requiredBindingsReadyAtom) &&
+    get(requiredEnvVarsReadyAtom) &&
+    get(submittedReleaseReadyAtom),
   )
 })
 

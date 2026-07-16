@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, override
 from agenton.compositor import CompositorSessionSnapshot
 
 from clients.agent_backend import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendHTTPError,
@@ -481,6 +482,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
                         continue
+                    if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
+                        if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
+                            self._record_agent_message_delta_metadata(metadata, internal_event)
+                        continue
                     metadata["agent_backend"] = {
                         **dict(metadata.get("agent_backend") or {}),
                         "stream_event_count": stream_event_count,
@@ -732,6 +737,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             usage = event.data.get("usage") or event.data.get("model_usage")
             if isinstance(usage, Mapping):
                 agent_backend["usage"] = dict(usage)
+        metadata["agent_backend"] = agent_backend
+
+    @staticmethod
+    def _record_agent_message_delta_metadata(
+        metadata: dict[str, Any], event: AgentBackendAgentMessageDeltaInternalEvent
+    ) -> None:
+        agent_backend = dict(metadata.get("agent_backend") or {})
+        agent_backend["agent_message_delta_count"] = int(agent_backend.get("agent_message_delta_count") or 0) + 1
+        agent_backend["agent_message_delta_length"] = int(agent_backend.get("agent_message_delta_length") or 0) + len(
+            event.delta
+        )
         metadata["agent_backend"] = agent_backend
 
     @classmethod

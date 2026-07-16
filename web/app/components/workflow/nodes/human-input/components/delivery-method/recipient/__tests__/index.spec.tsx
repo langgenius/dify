@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import Recipient from '../index'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
@@ -6,20 +7,37 @@ const mockUseAppContext = vi.hoisted(() => vi.fn())
 const mockUseMembers = vi.hoisted(() => vi.fn())
 const mockAppContextState = vi.hoisted(() => ({
   userProfile: { email: 'owner@example.com' },
-  currentWorkspace: { name: 'Dify\'s Lab' },
+  currentWorkspace: { name: "Dify's Lab" },
 }))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -28,10 +46,7 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: (props: {
-    checked: boolean
-    onCheckedChange: (value: boolean) => void
-  }) => (
+  Switch: (props: { checked: boolean; onCheckedChange: (value: boolean) => void }) => (
     <button type="button" onClick={() => props.onCheckedChange(!props.checked)}>
       toggle-workspace
     </button>
@@ -52,7 +67,7 @@ vi.mock('../email-input', () => ({
   default: (props: {
     onAdd: (email: string) => void
     onSelect: (id: string) => void
-    onDelete: (recipient: { type: 'member' | 'external', user_id?: string, email?: string }) => void
+    onDelete: (recipient: { type: 'member' | 'external'; user_id?: string; email?: string }) => void
   }) => (
     <div>
       <button type="button" onClick={() => props.onAdd('new@example.com')}>
@@ -64,7 +79,10 @@ vi.mock('../email-input', () => ({
       <button type="button" onClick={() => props.onDelete({ type: 'member', user_id: 'member-1' })}>
         delete-member
       </button>
-      <button type="button" onClick={() => props.onDelete({ type: 'external', email: 'external@example.com' })}>
+      <button
+        type="button"
+        onClick={() => props.onDelete({ type: 'external', email: 'external@example.com' })}
+      >
         delete-external
       </button>
     </div>
@@ -77,7 +95,9 @@ describe('Recipient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string, options?: { workspaceName?: string }) => options?.workspaceName ?? key,
+      t: withSelectorKey(
+        (key: string, options?: { workspaceName?: string }) => options?.workspaceName ?? key,
+      ),
     })
     mockUseAppContext.mockReturnValue(mockAppContextState)
     mockUseMembers.mockReturnValue({
@@ -141,15 +161,11 @@ describe('Recipient', () => {
     })
     expect(onChange).toHaveBeenNthCalledWith(4, {
       whole_workspace: false,
-      items: [
-        { type: 'external', email: 'external@example.com' },
-      ],
+      items: [{ type: 'external', email: 'external@example.com' }],
     })
     expect(onChange).toHaveBeenNthCalledWith(5, {
       whole_workspace: false,
-      items: [
-        { type: 'member', user_id: 'member-1' },
-      ],
+      items: [{ type: 'member', user_id: 'member-1' }],
     })
     expect(onChange).toHaveBeenNthCalledWith(6, {
       whole_workspace: true,

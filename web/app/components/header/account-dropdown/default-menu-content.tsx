@@ -16,10 +16,12 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
-import { isCurrentWorkspaceOwnerAtom, langGeniusVersionInfoAtom, userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -34,17 +36,9 @@ type AccountMenuRouteItemProps = {
   trailing?: ReactNode
 }
 
-function AccountMenuRouteItem({
-  href,
-  iconClassName,
-  label,
-  trailing,
-}: AccountMenuRouteItemProps) {
+function AccountMenuRouteItem({ href, iconClassName, label, trailing }: AccountMenuRouteItemProps) {
   return (
-    <DropdownMenuLinkItem
-      className="justify-between"
-      render={<Link href={href} />}
-    >
+    <DropdownMenuLinkItem className="justify-between" render={<Link href={href} />}>
       <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
     </DropdownMenuLinkItem>
   )
@@ -89,10 +83,7 @@ function AccountMenuActionItem({
   trailing,
 }: AccountMenuActionItemProps) {
   return (
-    <DropdownMenuItem
-      className="justify-between"
-      onClick={onClick}
-    >
+    <DropdownMenuItem className="justify-between" onClick={onClick}>
       <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
     </DropdownMenuItem>
   )
@@ -140,19 +131,21 @@ export function DefaultMenuContent({
                 </PremiumBadge>
               )}
             </div>
-            <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
+            <div className="system-xs-regular break-all text-text-tertiary">
+              {userProfile.email}
+            </div>
           </div>
           <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
         </div>
         <AccountMenuRouteItem
           href="/account"
           iconClassName="i-ri-account-circle-line"
-          label={t('account.account', { ns: 'common' })}
+          label={t(($) => $['account.account'], { ns: 'common' })}
           trailing={<ExternalLinkIndicator />}
         />
         <AccountMenuActionItem
           iconClassName="i-ri-settings-3-line"
-          label={t('userProfile.settings', { ns: 'common' })}
+          label={t(($) => $['userProfile.settings'], { ns: 'common' })}
           onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
         />
       </DropdownMenuGroup>
@@ -163,7 +156,7 @@ export function DefaultMenuContent({
             <AccountMenuExternalItem
               href={docLink('/use-dify/getting-started/introduction')}
               iconClassName="i-ri-book-open-line"
-              label={t('userProfile.helpCenter', { ns: 'common' })}
+              label={t(($) => $['userProfile.helpCenter'], { ns: 'common' })}
               trailing={<ExternalLinkIndicator />}
             />
             {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
@@ -173,34 +166,43 @@ export function DefaultMenuContent({
             <AccountMenuExternalItem
               href="https://roadmap.dify.ai"
               iconClassName="i-ri-map-2-line"
-              label={t('userProfile.roadmap', { ns: 'common' })}
+              label={t(($) => $['userProfile.roadmap'], { ns: 'common' })}
               trailing={<ExternalLinkIndicator />}
             />
             <AccountMenuExternalItem
               href="https://github.com/langgenius/dify"
               iconClassName="i-ri-github-line"
-              label={t('userProfile.github', { ns: 'common' })}
-              trailing={(
+              label={t(($) => $['userProfile.github'], { ns: 'common' })}
+              trailing={
                 <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
                   <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
                   <GithubStar className="system-2xs-medium-uppercase text-text-tertiary" />
                 </div>
-              )}
+              }
             />
             {env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
               <AccountMenuActionItem
                 iconClassName="i-ri-information-2-line"
-                label={t('userProfile.about', { ns: 'common' })}
+                label={t(($) => $['userProfile.about'], { ns: 'common' })}
                 onClick={() => {
                   onShowAbout()
                   closeAccountDropdown()
                 }}
-                trailing={(
+                trailing={
                   <div className="flex shrink-0 items-center">
-                    <div className="mr-2 system-xs-regular text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
-                    <StatusDot status={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'success' : 'warning'} />
+                    <div className="mr-2 system-xs-regular text-text-tertiary">
+                      {langGeniusVersionInfo.current_version}
+                    </div>
+                    <StatusDot
+                      status={
+                        langGeniusVersionInfo.current_version ===
+                        langGeniusVersionInfo.latest_version
+                          ? 'success'
+                          : 'warning'
+                      }
+                    />
                   </div>
-                )}
+                }
               />
             )}
           </AccountMenuSection>
@@ -214,7 +216,7 @@ export function DefaultMenuContent({
         >
           <MenuItemContent
             iconClassName="i-ri-t-shirt-2-line"
-            label={t('theme.theme', { ns: 'common' })}
+            label={t(($) => $['theme.theme'], { ns: 'common' })}
             trailing={<ThemeSwitcher />}
           />
         </DropdownMenuItem>
@@ -223,7 +225,7 @@ export function DefaultMenuContent({
       <AccountMenuSection>
         <AccountMenuActionItem
           iconClassName="i-ri-logout-box-r-line"
-          label={t('userProfile.logout', { ns: 'common' })}
+          label={t(($) => $['userProfile.logout'], { ns: 'common' })}
           onClick={() => {
             void onLogout()
           }}

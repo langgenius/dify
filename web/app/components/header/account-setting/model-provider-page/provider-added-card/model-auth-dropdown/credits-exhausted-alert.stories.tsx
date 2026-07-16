@@ -22,7 +22,10 @@ function createSeededQueryClient(overrides?: Partial<ICurrentWorkspace>) {
   const qc = new QueryClient({
     defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } },
   })
-  qc.setQueryData(consoleQuery.workspaces.current.post.queryKey(), { ...baseWorkspace, ...overrides })
+  qc.setQueryData(consoleQuery.workspaces.current.post.queryKey(), {
+    ...baseWorkspace,
+    ...overrides,
+  })
   return qc
 }
 
@@ -33,7 +36,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Alert shown when trial credits are exhausted, with usage progress bar and upgrade link.',
+        component:
+          'Alert shown when trial credits are exhausted, with usage progress bar and upgrade link.',
       },
     },
   },
@@ -69,7 +73,9 @@ export const PartialUsage: Story = {
   decorators: [
     (Story) => {
       return (
-        <QueryClientProvider client={createSeededQueryClient({ trial_credits: 500, trial_credits_used: 480 })}>
+        <QueryClientProvider
+          client={createSeededQueryClient({ trial_credits: 500, trial_credits_used: 480 })}
+        >
           <div className="w-[320px]">
             <Story />
           </div>

@@ -4,6 +4,7 @@ import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { FlowType } from '@/types/common'
 import { AgentV2Panel } from '../panel'
 
 const {
@@ -17,6 +18,7 @@ const {
   mockPromptEditorProps,
   mockCopyFromRosterMutate,
   mockCopyFromRosterState,
+  mockConfigsMap,
   mockCreateInlineAgentBinding,
   mockSetInputs,
   mockStoreState,
@@ -28,7 +30,9 @@ const {
   mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
   mockHandleNodeDataUpdate: vi.fn(),
-  mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) => options?.callback?.onSuccess?.()),
+  mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) =>
+    options?.callback?.onSuccess?.(),
+  ),
   mockInsertNodes: vi.fn(),
   mockOrchestratePanelContentProps: [] as Array<{
     agentId?: string
@@ -45,6 +49,10 @@ const {
   mockCopyFromRosterMutate: vi.fn(),
   mockCopyFromRosterState: {
     isPending: false,
+  },
+  mockConfigsMap: {
+    flowId: 'app-1',
+    flowType: 'appFlow' as FlowType,
   },
   mockCreateInlineAgentBinding: vi.fn(),
   mockSetInputs: vi.fn(),
@@ -74,7 +82,7 @@ vi.mock('../../_base/components/output-vars', () => ({
 
     return <div>{children}</div>
   },
-  VarItem: ({ name, type, description }: { name: string, type: string, description?: string }) => (
+  VarItem: ({ name, type, description }: { name: string; type: string; description?: string }) => (
     <div>{`${name}:${type}:${description || ''}`}</div>
   ),
 }))
@@ -89,7 +97,7 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
           aria-label="workflow.nodes.agent.task.label"
           placeholder={typeof props.placeholder === 'string' ? props.placeholder : undefined}
           value={props.value}
-          onChange={event => props.onChange?.(event.currentTarget.value)}
+          onChange={(event) => props.onChange?.(event.currentTarget.value)}
           onBlur={props.onBlur}
           onFocus={props.onFocus}
         />
@@ -100,10 +108,12 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
 }))
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => [{
-    focus: mockEditorFocus,
-    update: mockEditorUpdate,
-  }],
+  useLexicalComposerContext: () => [
+    {
+      focus: mockEditorFocus,
+      update: mockEditorUpdate,
+    },
+  ],
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -156,15 +166,17 @@ vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
     <>
       <button
         type="button"
-        onClick={() => onSelect({
-          id: 'agent-2',
-          name: 'Mara',
-          description: 'Tender Analyst',
-          icon: 'M',
-          icon_background: '#D1E9FF',
-          icon_type: 'emoji',
-          role: 'Analyst',
-        })}
+        onClick={() =>
+          onSelect({
+            id: 'agent-2',
+            name: 'Mara',
+            description: 'Tender Analyst',
+            icon: 'M',
+            icon_background: '#D1E9FF',
+            icon_type: 'emoji',
+            role: 'Analyst',
+          })
+        }
       >
         Select Mara
       </button>
@@ -183,7 +195,8 @@ vi.mock('../hooks', () => ({
     createInlineAgentBinding: mockCreateInlineAgentBinding,
     isCreatingInlineAgent: false,
   }),
-  useWorkflowInlineAgentDetail: (nodeId?: string, agentId?: string | null) => mockUseWorkflowInlineAgentDetail(nodeId, agentId),
+  useWorkflowInlineAgentDetail: (nodeId?: string, agentId?: string | null) =>
+    mockUseWorkflowInlineAgentDetail(nodeId, agentId),
 }))
 
 vi.mock('../components/agent-orchestrate-panel-content', () => ({
@@ -194,9 +207,7 @@ vi.mock('../components/agent-orchestrate-panel-content', () => ({
   }) => {
     mockOrchestratePanelContentProps.push(props)
 
-    return (
-      <div role="region" aria-label="readonly-roster-orchestrate-panel" />
-    )
+    return <div role="region" aria-label="readonly-roster-orchestrate-panel" />
   },
   WorkflowInlineAgentConfigureWorkspace: (props: {
     agentId?: string
@@ -216,10 +227,7 @@ vi.mock('../components/agent-orchestrate-panel-content', () => ({
 
     return (
       <div role="region" aria-label="inline-orchestrate-panel">
-        <button
-          type="button"
-          onClick={props.onSaveInlineToRoster}
-        >
+        <button type="button" onClick={props.onSaveInlineToRoster}>
           Inline workspace more
         </button>
         <button
@@ -253,42 +261,47 @@ vi.mock('../components/save-inline-agent-to-roster-dialog', () => ({
       node_id: string
       workflow_id: string
     }) => void
-  }) => open
-    ? (
-        <div role="dialog" aria-label="save-inline-agent-to-roster">
-          <button
-            type="button"
-            onClick={() => onSaved({
+  }) =>
+    open ? (
+      <div role="dialog" aria-label="save-inline-agent-to-roster">
+        <button
+          type="button"
+          onClick={() =>
+            onSaved({
               id: 'binding-1',
               binding_type: 'roster_agent',
               agent_id: 'saved-roster-agent',
               current_snapshot_id: 'saved-snapshot',
               workflow_id: 'workflow-1',
               node_id: 'agent-node',
-            })}
-          >
-            Save inline agent to roster
-          </button>
-        </div>
-      )
-    : null,
+            })
+          }
+        >
+          Save inline agent to roster
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('../../_base/hooks/use-available-var-list', () => ({
   default: () => ({
-    availableVars: [{
-      nodeId: 'start',
-      title: 'START',
-      vars: [{ variable: 'question', type: 'string' }],
-    }],
-    availableNodesWithParent: [{
-      id: 'start',
-      data: {
+    availableVars: [
+      {
+        nodeId: 'start',
         title: 'START',
-        type: BlockEnum.Start,
+        vars: [{ variable: 'question', type: 'string' }],
       },
-      position: { x: 0, y: 0 },
-    }],
+    ],
+    availableNodesWithParent: [
+      {
+        id: 'start',
+        data: {
+          title: 'START',
+          type: BlockEnum.Start,
+        },
+        position: { x: 0, y: 0 },
+      },
+    ],
   }),
 }))
 
@@ -298,6 +311,11 @@ vi.mock('@/app/components/workflow/hooks', () => ({
     handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
   }),
   useWorkflowVariableType: () => vi.fn(),
+}))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: { configsMap: typeof mockConfigsMap }) => unknown) =>
+    selector({ configsMap: mockConfigsMap }),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -328,29 +346,36 @@ describe('agent/panel', () => {
     mockStoreState.appId = 'app-1'
     mockStoreState.openInlineAgentPanelNodeId = undefined
     mockCopyFromRosterState.isPending = false
-    mockCopyFromRosterMutate.mockImplementation((_variables, options?: {
-      onSuccess?: (composerState: {
-        binding: {
-          agent_id: string
-          binding_type: 'inline_agent'
-          current_snapshot_id: string
-          id: string
-          node_id: string
-          workflow_id: string
-        }
-      }) => void
-    }) => {
-      options?.onSuccess?.({
-        binding: {
-          id: 'binding-1',
-          binding_type: 'inline_agent',
-          agent_id: 'inline-copy-agent',
-          current_snapshot_id: 'inline-copy-snapshot',
-          workflow_id: 'workflow-1',
-          node_id: 'agent-node',
+    mockConfigsMap.flowId = 'app-1'
+    mockConfigsMap.flowType = FlowType.appFlow
+    mockCopyFromRosterMutate.mockImplementation(
+      (
+        _variables,
+        options?: {
+          onSuccess?: (composerState: {
+            binding: {
+              agent_id: string
+              binding_type: 'inline_agent'
+              current_snapshot_id: string
+              id: string
+              node_id: string
+              workflow_id: string
+            }
+          }) => void
         },
-      })
-    })
+      ) => {
+        options?.onSuccess?.({
+          binding: {
+            id: 'binding-1',
+            binding_type: 'inline_agent',
+            agent_id: 'inline-copy-agent',
+            current_snapshot_id: 'inline-copy-snapshot',
+            workflow_id: 'workflow-1',
+            node_id: 'agent-node',
+          },
+        })
+      },
+    )
     mockCreateInlineAgentBinding.mockImplementation(() => {})
     mockUseNodeCrud.mockImplementation((_id: string, data: AgentV2NodeType) => ({
       inputs: data,
@@ -369,38 +394,39 @@ describe('agent/panel', () => {
           }
         : undefined,
     }))
-    mockUseWorkflowInlineAgentDetail.mockImplementation((nodeId?: string, agentId?: string | null) => ({
-      data: nodeId && agentId
-        ? {
-            agent: {
-              id: agentId,
-              name: 'Workflow Agent 1',
-              description: '',
-              scope: 'workflow_only',
-              status: 'active',
-            },
-          }
-        : undefined,
-      isFetching: false,
-      refetch: mockWorkflowInlineAgentDetailRefetch,
-    }))
+    mockUseWorkflowInlineAgentDetail.mockImplementation(
+      (nodeId?: string, agentId?: string | null) => ({
+        data:
+          nodeId && agentId
+            ? {
+                agent: {
+                  id: agentId,
+                  name: 'Workflow Agent 1',
+                  description: '',
+                  scope: 'workflow_only',
+                  status: 'active',
+                },
+              }
+            : undefined,
+        isFetching: false,
+        refetch: mockWorkflowInlineAgentDetailRefetch,
+      }),
+    )
   })
 
   it('renders selected roster agent trigger and default Agent v2 output vars', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
     expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
     expect(screen.getByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
-    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.advancedSetting' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.advancedSetting' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('text')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.queryByText('usage')).not.toBeInTheDocument()
@@ -409,29 +435,33 @@ describe('agent/panel', () => {
     expect(screen.getByText('workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
     expect(screen.getByText('json')).toBeInTheDocument()
     expect(screen.getByText('object')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
+    ).toBeInTheDocument()
   })
 
   it('opens and closes the roster agent layered panel', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+    )
 
     const panel = screen.getByRole('dialog', { name: 'Nadia' })
     expect(panel).toBeInTheDocument()
     expect(within(panel).getByText('Researcher')).toBeInTheDocument()
-    const consoleLink = within(panel).getByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })
-    expect(consoleLink).toHaveAttribute('href', '/roster/agent/agent-1/configure')
+    const consoleLink = within(panel).getByRole('link', {
+      name: 'workflow.nodes.agent.roster.editInConsole',
+    })
+    expect(consoleLink).toHaveAttribute('href', '/agents/agent-1/configure')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(within(panel).getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' })).toBeInTheDocument()
-    expect(within(panel).getByRole('region', { name: 'readonly-roster-orchestrate-panel' })).toBeInTheDocument()
+    expect(
+      within(panel).getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }),
+    ).toBeInTheDocument()
+    expect(
+      within(panel).getByRole('region', { name: 'readonly-roster-orchestrate-panel' }),
+    ).toBeInTheDocument()
     expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
       agentId: 'agent-1',
       nodeId: 'agent-node',
@@ -444,15 +474,11 @@ describe('agent/panel', () => {
   })
 
   it('copies a roster agent from the drawer into an inline agent for this node', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }))
 
     expect(mockCopyFromRosterMutate).toHaveBeenCalledWith(
@@ -485,6 +511,33 @@ describe('agent/panel', () => {
       expect.objectContaining({
         sync: true,
         notRefreshWhenSyncError: true,
+      }),
+    )
+  })
+
+  it('copies a roster agent through the snippet composer API', () => {
+    mockConfigsMap.flowId = 'snippet-1'
+    mockConfigsMap.flowType = FlowType.snippet
+    mockStoreState.appId = undefined as never
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }))
+
+    expect(mockCopyFromRosterMutate).toHaveBeenCalledWith(
+      {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'agent-node',
+        },
+        body: {
+          source_agent_id: 'agent-1',
+        },
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
       }),
     )
   })
@@ -522,8 +575,12 @@ describe('agent/panel', () => {
 
     expect(screen.queryByText(/^workflow\.errorMsg\.fieldRequired/)).not.toBeInTheDocument()
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.change', hidden: true })).toBeDisabled()
-    expect(screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.name' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.roster.change', hidden: true }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.name' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.agent.roster.editInConsole')).not.toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.agent.roster.makeCopy')).not.toBeInTheDocument()
@@ -550,12 +607,17 @@ describe('agent/panel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+    )
 
     expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('agent-node')
-    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith('agent-node', expect.objectContaining({
-      onSuccess: expect.any(Function),
-    }))
+    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(
+      'agent-node',
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     rerender(
       <AgentV2Panel
@@ -569,7 +631,9 @@ describe('agent/panel', () => {
       />,
     )
 
-    expect(screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.name' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.name' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
   })
@@ -594,14 +658,30 @@ describe('agent/panel', () => {
     expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
     expect(screen.getByRole('dialog', { name: 'Workflow Agent 1' })).toBeInTheDocument()
-    const trigger = screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/, hidden: true })
-    expect(within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.name')).toBeInTheDocument()
-    expect(within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
+    const trigger = screen.getByRole('button', {
+      name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+      hidden: true,
+    })
+    expect(
+      within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.name'),
+    ).toBeInTheDocument()
+    expect(
+      within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.type'),
+    ).toBeInTheDocument()
     const panel = screen.getByRole('dialog', { name: 'Workflow Agent 1' })
-    expect(container.querySelector('.i-custom-vender-agent-v2-configure')).toHaveClass('h-3.5', 'w-3')
-    expect(container.querySelector('.i-custom-vender-agent-v2-configure')?.parentElement).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
-    expect(screen.queryByText('workflow.nodes.agent.roster.inlineSetup.title')).not.toBeInTheDocument()
-    expect(within(panel).getByText('workflow.nodes.agent.roster.inlineSetup.description')).toBeInTheDocument()
+    expect(container.querySelector('.i-custom-vender-agent-v2-configure')).toHaveClass(
+      'h-3.5',
+      'w-3',
+    )
+    expect(
+      container.querySelector('.i-custom-vender-agent-v2-configure')?.parentElement,
+    ).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
+    expect(
+      screen.queryByText('workflow.nodes.agent.roster.inlineSetup.title'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(panel).getByText('workflow.nodes.agent.roster.inlineSetup.description'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
     expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
       agentId: 'inline-agent-1',
@@ -611,6 +691,76 @@ describe('agent/panel', () => {
     expect(screen.queryByText('workflow.nodes.agent.roster.editInConsole')).not.toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.agent.roster.makeCopy')).not.toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
+  })
+
+  it('does not open copied inline agent configuration before its composer is created', () => {
+    mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: undefined,
+      isFetching: false,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
+
+    const { container, rerender } = render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'source-inline-agent',
+            current_snapshot_id: 'source-inline-snapshot',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+      }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: {
+        agent: {
+          id: 'cloned-inline-agent',
+          name: 'Cloned Workflow Agent',
+          description: '',
+          scope: 'workflow_only',
+          status: 'active',
+        },
+        binding: {
+          binding_type: 'inline_agent',
+          agent_id: 'cloned-inline-agent',
+          current_snapshot_id: 'cloned-inline-snapshot',
+        },
+      },
+      isFetching: false,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
+    rerender(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'source-inline-agent',
+            current_snapshot_id: 'source-inline-snapshot',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByRole('dialog', { name: 'Cloned Workflow Agent' })).toBeInTheDocument()
+    expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
+      agentId: 'cloned-inline-agent',
+      nodeId: 'agent-node',
+      open: true,
+    })
   })
 
   it('uses the detail header when opening an existing inline agent from the roster trigger', () => {
@@ -628,7 +778,9 @@ describe('agent/panel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+    )
     expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('agent-node')
     expect(mockWorkflowInlineAgentDetailRefetch).toHaveBeenCalled()
 
@@ -650,10 +802,18 @@ describe('agent/panel', () => {
     const panel = screen.getByRole('dialog', { name: 'Workflow Agent 1' })
     expect(panel).toBeInTheDocument()
     expect(within(panel).getByText('Workflow Agent 1')).toBeInTheDocument()
-    expect(within(panel).queryByText('workflow.nodes.agent.roster.inlineSetup.title')).not.toBeInTheDocument()
-    expect(within(panel).getByText('workflow.nodes.agent.roster.inlineSetup.description')).toBeInTheDocument()
-    expect(within(panel).queryByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })).not.toBeInTheDocument()
-    expect(within(panel).queryByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' })).not.toBeInTheDocument()
+    expect(
+      within(panel).queryByText('workflow.nodes.agent.roster.inlineSetup.title'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(panel).getByText('workflow.nodes.agent.roster.inlineSetup.description'),
+    ).toBeInTheDocument()
+    expect(
+      within(panel).queryByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(panel).queryByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
   })
 
@@ -685,7 +845,9 @@ describe('agent/panel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+    )
     expect(mockWorkflowInlineAgentDetailRefetch).toHaveBeenCalled()
 
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
@@ -703,10 +865,17 @@ describe('agent/panel', () => {
       />,
     )
 
-    const trigger = screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/, hidden: true })
+    const trigger = screen.getByRole('button', {
+      name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+      hidden: true,
+    })
     expect(trigger).not.toHaveAttribute('aria-busy')
-    expect(within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.name')).toBeInTheDocument()
-    expect(within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
+    expect(
+      within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.name'),
+    ).toBeInTheDocument()
+    expect(
+      within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.type'),
+    ).toBeInTheDocument()
     expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
       agentId: 'inline-agent-1',
       inlineComposerState: expect.objectContaining({
@@ -736,9 +905,13 @@ describe('agent/panel', () => {
     )
 
     const panel = screen.getByRole('dialog', { name: 'Workflow Agent 1' })
-    expect(within(panel).queryByRole('button', { name: 'workflow.nodes.agent.roster.more' })).not.toBeInTheDocument()
+    expect(
+      within(panel).queryByRole('button', { name: 'workflow.nodes.agent.roster.more' }),
+    ).not.toBeInTheDocument()
     fireEvent.click(within(panel).getByRole('button', { name: 'Inline workspace more' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save inline agent to roster', hidden: true }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Save inline agent to roster', hidden: true }),
+    )
 
     expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith(undefined)
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
@@ -815,7 +988,7 @@ describe('agent/panel', () => {
     expect(screen.queryByRole('button', { name: 'Start from Scratch' })).not.toBeInTheDocument()
   })
 
-  it('opens the inline panel while workflow composer state is still loading', () => {
+  it('keeps the inline panel closed while workflow composer state is still loading', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     mockUseWorkflowInlineAgentDetail.mockReturnValue({
       data: undefined,
@@ -839,16 +1012,15 @@ describe('agent/panel', () => {
 
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
-    const panel = screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.name' })
-    expect(panel).toBeInTheDocument()
-    expect(within(panel).queryByRole('button', { name: 'workflow.nodes.agent.roster.more' })).not.toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
-    expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
-      agentId: 'inline-agent-1',
-      inlineComposerState: undefined,
-      nodeId: 'agent-node',
-      open: true,
-    })
+    expect(
+      screen.queryByRole('button', {
+        name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+      }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'inline-orchestrate-panel' }),
+    ).not.toBeInTheDocument()
   })
 
   it('recovers the inline setup panel open state from the node open marker', () => {
@@ -879,13 +1051,7 @@ describe('agent/panel', () => {
   })
 
   it('updates roster agent binding from the selector', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.change' }))
     fireEvent.click(screen.getByRole('button', { name: 'Select Mara' }))
@@ -908,29 +1074,36 @@ describe('agent/panel', () => {
   })
 
   it('switches a roster agent to a workflow-only inline agent from the selector', () => {
-    mockCreateInlineAgentBinding.mockImplementation((_nodeId: string, options?: {
-      onSuccess?: (binding: {
-        binding_type: 'inline_agent'
-        agent_id: string
-        current_snapshot_id: string
-      }) => void
-    }) => {
-      options?.onSuccess?.({
-        binding_type: 'inline_agent',
-        agent_id: 'inline-agent-1',
-        current_snapshot_id: 'inline-snapshot-1',
-      })
-    })
+    mockCreateInlineAgentBinding.mockImplementation(
+      (
+        _nodeId: string,
+        options?: {
+          onSuccess?: (binding: {
+            binding_type: 'inline_agent'
+            agent_id: string
+            current_snapshot_id: string
+          }) => void
+        },
+      ) => {
+        options?.onSuccess?.({
+          binding_type: 'inline_agent',
+          agent_id: 'inline-agent-1',
+          current_snapshot_id: 'inline-snapshot-1',
+        })
+      },
+    )
 
     render(
       <AgentV2Panel
         id="agent-node"
         data={createData({
           agent_task: 'Keep this task',
-          agent_declared_outputs: [{
-            name: 'summary',
-            type: 'string',
-          }],
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+            },
+          ],
         })}
         panelProps={panelProps}
       />,
@@ -940,9 +1113,12 @@ describe('agent/panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start from Scratch' }))
 
     expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('agent-node')
-    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith('agent-node', expect.objectContaining({
-      onSuccess: expect.any(Function),
-    }))
+    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(
+      'agent-node',
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
       {
         id: 'agent-node',
@@ -951,10 +1127,12 @@ describe('agent/panel', () => {
             binding_type: 'inline_agent',
           },
           agent_task: 'Keep this task',
-          agent_declared_outputs: [{
-            name: 'summary',
-            type: 'string',
-          }],
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+            },
+          ],
           _openInlineAgentPanel: true,
         }),
       },
@@ -973,10 +1151,12 @@ describe('agent/panel', () => {
             current_snapshot_id: 'inline-snapshot-1',
           },
           agent_task: 'Keep this task',
-          agent_declared_outputs: [{
-            name: 'summary',
-            type: 'string',
-          }],
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+            },
+          ],
           _openInlineAgentPanel: true,
         }),
       },
@@ -999,13 +1179,7 @@ describe('agent/panel', () => {
         role: '',
       },
     })
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
     expect(screen.getByText('Nadia')).toBeInTheDocument()
     expect(screen.queryByText('Clarification Drafter')).not.toBeInTheDocument()
@@ -1025,31 +1199,37 @@ describe('agent/panel', () => {
 
     fireEvent.change(editor, { target: { value: 'Clarify {{#start.question#}}' } })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      agent_task: 'Clarify {{#start.question#}}',
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_task: 'Clarify {{#start.question#}}',
+      }),
+    )
     expect(mockPromptEditorProps[0]?.workflowVariableBlock).toMatchObject({
       show: true,
     })
     expect(mockPromptEditorProps[0]?.isSupportFileVar).toBe(true)
     expect(mockPromptEditorProps[0]?.agentOutputBlock).toMatchObject({
       show: true,
-      outputs: expect.arrayContaining([
-        expect.objectContaining({ name: 'text' }),
-      ]),
+      outputs: expect.arrayContaining([expect.objectContaining({ name: 'text' })]),
       onEdit: expect.any(Function),
     })
     expect(mockPromptEditorProps[0]?.contextBlock).toBeUndefined()
 
-    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.insert' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflow.nodes.agent.task.insert' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' }),
+    ).not.toBeInTheDocument()
 
     fireEvent.focus(editor)
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
     expect(mockEditorFocus).toHaveBeenCalled()
     expect(mockInsertNodes.mock.calls[0]?.[0]?.[0]?.getTextContent()).toBe('/')
-    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the output variable editor from an agent task output token hover', () => {
@@ -1057,12 +1237,14 @@ describe('agent/panel', () => {
       <AgentV2Panel
         id="agent-node"
         data={createData({
-          agent_declared_outputs: [{
-            name: 'summary',
-            type: 'string',
-            required: false,
-            description: 'Short summary',
-          }],
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+              required: false,
+              description: 'Short summary',
+            },
+          ],
         })}
         panelProps={panelProps}
       />,
@@ -1073,47 +1255,48 @@ describe('agent/panel', () => {
     })
 
     expect(mockOutputVarsProps.at(-1)?.collapsed).toBe(false)
-    expect(screen.getByRole('form', { name: 'workflow.nodes.agent.outputVars.editorLabel' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).toHaveValue('summary')
+    expect(
+      screen.getByRole('form', { name: 'workflow.nodes.agent.outputVars.editorLabel' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+    ).toHaveValue('summary')
   })
 
   it('expands output variables when an agent task output token changes declared outputs', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
     expect(mockOutputVarsProps.at(-1)?.collapsed).toBe(true)
 
     act(() => {
-      mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([{
-        name: 'summary',
-        type: 'string',
-        required: false,
-      }], 'Generate [§output:summary:summary§]')
+      mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.(
+        [
+          {
+            name: 'summary',
+            type: 'string',
+            required: false,
+          },
+        ],
+        'Generate [§output:summary:summary§]',
+      )
     })
 
     expect(mockOutputVarsProps.at(-1)?.collapsed).toBe(false)
   })
 
   it('opens the output variable editor for a prompt token missing from declared outputs', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
     act(() => {
       mockPromptEditorProps[0]?.agentOutputBlock?.onEdit?.('qna_report', 'string')
     })
 
-    expect(screen.getByRole('form', { name: 'workflow.nodes.agent.outputVars.editorLabel' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).toHaveValue('qna_report')
+    expect(
+      screen.getByRole('form', { name: 'workflow.nodes.agent.outputVars.editorLabel' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+    ).toHaveValue('qna_report')
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }))
 
@@ -1151,11 +1334,14 @@ describe('agent/panel', () => {
       mockPromptEditorProps[0]?.agentOutputBlock?.onEdit?.('qna_report', 'string')
     })
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }), {
-      target: {
-        value: 'final_report',
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+      {
+        target: {
+          value: 'final_report',
+        },
       },
-    })
+    )
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }))
 
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
@@ -1176,8 +1362,11 @@ describe('agent/panel', () => {
         notRefreshWhenSyncError: true,
       }),
     )
-    const updatedData = mockHandleNodeDataUpdateWithSyncDraft.mock.calls.at(-1)?.[0].data as AgentV2NodeType
-    expect(updatedData.agent_declared_outputs?.some(output => output.name === 'qna_report')).toBe(false)
+    const updatedData = mockHandleNodeDataUpdateWithSyncDraft.mock.calls.at(-1)?.[0]
+      .data as AgentV2NodeType
+    expect(updatedData.agent_declared_outputs?.some((output) => output.name === 'qna_report')).toBe(
+      false,
+    )
     expect(screen.getByText('final_report')).toBeInTheDocument()
   })
 
@@ -1187,34 +1376,40 @@ describe('agent/panel', () => {
         id="agent-node"
         data={createData({
           agent_task: 'Generate [§output:qna_report:qna_report§]',
-          agent_declared_outputs: [{
-            name: 'qna_report',
-            type: 'string',
-            required: false,
-            description: 'Old report',
-          }],
+          agent_declared_outputs: [
+            {
+              name: 'qna_report',
+              type: 'string',
+              required: false,
+              description: 'Old report',
+            },
+          ],
         })}
         panelProps={panelProps}
       />,
     )
 
     act(() => {
-      mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([
-        {
-          name: 'qna_report',
-          type: 'string',
-          required: false,
-          description: 'Old report',
-        },
-        {
-          name: 'final_report',
-          type: 'string',
-          required: false,
-        },
-      ], 'Generate [§output:final_report:final_report§]')
+      mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.(
+        [
+          {
+            name: 'qna_report',
+            type: 'string',
+            required: false,
+            description: 'Old report',
+          },
+          {
+            name: 'final_report',
+            type: 'string',
+            required: false,
+          },
+        ],
+        'Generate [§output:final_report:final_report§]',
+      )
     })
 
-    const updatedData = mockHandleNodeDataUpdateWithSyncDraft.mock.calls.at(-1)?.[0].data as AgentV2NodeType
+    const updatedData = mockHandleNodeDataUpdateWithSyncDraft.mock.calls.at(-1)?.[0]
+      .data as AgentV2NodeType
     expect(updatedData.agent_task).toBe('Generate [§output:final_report:final_report§]')
     expect(updatedData.agent_declared_outputs).toEqual([
       expect.objectContaining({
@@ -1231,12 +1426,14 @@ describe('agent/panel', () => {
         id="agent-node"
         data={createData({
           agent_task: 'Generate [§output:qna_report:qna_report§]',
-          agent_declared_outputs: [{
-            name: 'qna_report',
-            type: 'string',
-            required: false,
-            description: 'Old report',
-          }],
+          agent_declared_outputs: [
+            {
+              name: 'qna_report',
+              type: 'string',
+              required: false,
+              description: 'Old report',
+            },
+          ],
         })}
         panelProps={panelProps}
       />,
@@ -1246,36 +1443,35 @@ describe('agent/panel', () => {
       mockPromptEditorProps[0]?.onChange?.('Generate [§output:final_report:final_report§]')
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      agent_task: 'Generate [§output:final_report:final_report§]',
-      agent_declared_outputs: [
-        expect.objectContaining({
-          name: 'final_report',
-          type: 'string',
-          description: 'Old report',
-        }),
-      ],
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_task: 'Generate [§output:final_report:final_report§]',
+        agent_declared_outputs: [
+          expect.objectContaining({
+            name: 'final_report',
+            type: 'string',
+            description: 'Old report',
+          }),
+        ],
+      }),
+    )
     expect(screen.getByText('final_report')).toBeInTheDocument()
   })
 
   it('syncs declared outputs created from the agent task editor', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([
-      ...mockPromptEditorProps[0]!.agentOutputBlock!.outputs!,
-      {
-        name: 'summary',
-        type: 'string',
-        required: false,
-      },
-    ], 'Use [§output:summary:summary§]')
+    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.(
+      [
+        ...mockPromptEditorProps[0]!.agentOutputBlock!.outputs!,
+        {
+          name: 'summary',
+          type: 'string',
+          required: false,
+        },
+      ],
+      'Use [§output:summary:summary§]',
+    )
 
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
       {
@@ -1299,13 +1495,7 @@ describe('agent/panel', () => {
   })
 
   it('keeps the latest local task draft when outputs change before rerender', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
     fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' }), {
       target: {
@@ -1343,13 +1533,7 @@ describe('agent/panel', () => {
   })
 
   it('saves agent task to workflow draft node data', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
     fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' }), {
       target: {
@@ -1357,9 +1541,11 @@ describe('agent/panel', () => {
       },
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      agent_task: 'Use the previous result',
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_task: 'Use the previous result',
+      }),
+    )
   })
 
   it('removes declared outputs when their prompt output token is deleted', () => {
@@ -1391,14 +1577,16 @@ describe('agent/panel', () => {
       },
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      agent_task: 'Use [§output:manual:manual§]',
-      agent_declared_outputs: [
-        expect.objectContaining({
-          name: 'manual',
-        }),
-      ],
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_task: 'Use [§output:manual:manual§]',
+        agent_declared_outputs: [
+          expect.objectContaining({
+            name: 'manual',
+          }),
+        ],
+      }),
+    )
   })
 
   it('does not remove prompt output tokens when declared outputs are changed from the output list', () => {
@@ -1529,25 +1717,27 @@ describe('agent/panel', () => {
   })
 
   it('adds a declared output to workflow draft node data', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
-    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }), {
-      target: {
-        value: 'summary',
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+      {
+        target: {
+          value: 'summary',
+        },
       },
-    })
-    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.descriptionLabel' }), {
-      target: {
-        value: 'Short summary',
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.descriptionLabel' }),
+      {
+        target: {
+          value: 'Short summary',
+        },
       },
-    })
+    )
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }))
 
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
@@ -1572,16 +1762,14 @@ describe('agent/panel', () => {
   })
 
   it('submits the output editor with a scoped Mod+Enter shortcut', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
-    const nameInput = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
+    )
+    const nameInput = screen.getByRole('textbox', {
+      name: 'workflow.nodes.agent.outputVars.nameLabel',
+    })
     fireEvent.change(nameInput, {
       target: {
         value: 'summary',
@@ -1612,16 +1800,14 @@ describe('agent/panel', () => {
   })
 
   it('cancels the output editor with a scoped Escape shortcut', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
-    const nameInput = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
+    )
+    const nameInput = screen.getByRole('textbox', {
+      name: 'workflow.nodes.agent.outputVars.nameLabel',
+    })
     fireEvent.change(nameInput, {
       target: {
         value: 'summary',
@@ -1629,49 +1815,57 @@ describe('agent/panel', () => {
     })
     fireEvent.keyDown(document, { key: 'Escape' })
 
-    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+    ).toBeInTheDocument()
 
     fireEvent.keyDown(nameInput, { key: 'Escape' })
 
-    expect(screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
+    ).toBeInTheDocument()
     expect(mockHandleNodeDataUpdateWithSyncDraft).not.toHaveBeenCalled()
   })
 
   it('reveals output editor advanced options with the collapsible trigger', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.defaultValueLabel' }),
+    ).not.toBeInTheDocument()
 
-    expect(screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.defaultValueLabel' })).not.toBeInTheDocument()
-
-    const advancedTrigger = screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.showAdvancedOptions' })
+    const advancedTrigger = screen.getByRole('button', {
+      name: 'workflow.nodes.agent.outputVars.showAdvancedOptions',
+    })
     expect(advancedTrigger).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(advancedTrigger)
 
     expect(advancedTrigger).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.defaultValueLabel' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.defaultValueLabel' }),
+    ).toBeInTheDocument()
   })
 
   it('does not show name validation error before the user enters a name', () => {
-    render(
-      <AgentV2Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
-
-    expect(screen.queryByText('workflow.nodes.agent.outputVars.nameInvalid')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' })).toBeDisabled()
+    expect(
+      screen.queryByText('workflow.nodes.agent.outputVars.nameInvalid'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }),
+    ).toBeDisabled()
   })
 })

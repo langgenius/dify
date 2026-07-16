@@ -10,7 +10,7 @@ vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
-  default: ({ src, size }: { src: string, size: string }) => (
+  default: ({ src, size }: { src: string; size: string }) => (
     <div data-testid="card-icon" data-src={src} data-size={size} />
   ),
 }))
@@ -95,7 +95,11 @@ describe('PluginItem', () => {
       const iconWrapper = cardIcon.parentElement
 
       expect(iconWrapper).toHaveClass('relative', 'self-start')
-      expect(screen.getByTestId('status-icon').parentElement).toHaveClass('absolute', '-bottom-0.5', '-right-0.5')
+      expect(screen.getByTestId('status-icon').parentElement).toHaveClass(
+        'absolute',
+        '-bottom-0.5',
+        '-right-0.5',
+      )
     })
 
     it('should pass icon url to CardIcon', () => {
@@ -128,8 +132,16 @@ describe('PluginItem', () => {
 
       expect(mockGetIconUrl).not.toHaveBeenCalled()
       expect(screen.queryByTestId('card-icon')).not.toBeInTheDocument()
-      expect(container.querySelector('[data-testid="magic-box-icon"]')).toHaveClass('size-8', 'text-text-tertiary')
-      expect(screen.getByTestId('status-icon').parentElement).toHaveClass('absolute', '-bottom-0.5', '-right-0.5', 'z-10')
+      expect(container.querySelector('[data-testid="magic-box-icon"]')).toHaveClass(
+        'size-8',
+        'text-text-tertiary',
+      )
+      expect(screen.getByTestId('status-icon').parentElement).toHaveClass(
+        'absolute',
+        '-bottom-0.5',
+        '-right-0.5',
+        'z-10',
+      )
     })
   })
 

@@ -22,15 +22,15 @@ type DatasetAccessMockOptions = {
   isRbacEnabled?: boolean
 }
 
-type DatasetAccessAtomKind
-  = | 'userProfile'
-    | 'userProfileId'
-    | 'currentWorkspaceId'
-    | 'isCurrentWorkspaceOwner'
-    | 'workspacePermissionKeys'
-    | 'currentWorkspaceLoading'
-    | 'workspacePermissionKeysLoading'
-    | 'datasetRbacEnabled'
+type DatasetAccessAtomKind =
+  | 'userProfile'
+  | 'userProfileId'
+  | 'currentWorkspaceId'
+  | 'isCurrentWorkspaceOwner'
+  | 'workspacePermissionKeys'
+  | 'currentWorkspaceLoading'
+  | 'workspacePermissionKeysLoading'
+  | 'datasetRbacEnabled'
 
 type DatasetAccessMockAtom = {
   [DATASET_ACCESS_ATOM_KIND]: DatasetAccessAtomKind
@@ -52,9 +52,7 @@ const defaultUserProfile = {
 
 let datasetAccessMockRegistry: DatasetAccessMockRegistry | undefined
 
-const createMockAtom = (
-  kind: DatasetAccessAtomKind,
-): DatasetAccessMockAtom => ({
+const createMockAtom = (kind: DatasetAccessAtomKind): DatasetAccessMockAtom => ({
   [DATASET_ACCESS_ATOM_KIND]: kind,
 })
 
@@ -67,14 +65,15 @@ const getUserProfile = (state: DatasetAccessMockState) => ({
   ...state.userProfile,
 })
 
-const getWorkspacePermissionKeys = (state: DatasetAccessMockState) => state.workspacePermissionKeys ?? []
+const getWorkspacePermissionKeys = (state: DatasetAccessMockState) =>
+  state.workspacePermissionKeys ?? []
 
-export const createDatasetAccessAtomMock = async (
+export const createDatasetAccessAtomMock = async <TModule extends object>(
   importOriginal: <T>() => Promise<T>,
   getState: () => DatasetAccessMockState,
   getOptions: () => DatasetAccessMockOptions = () => ({}),
 ) => {
-  const actual = await importOriginal<typeof import('@/context/app-context-state')>()
+  const actual = await importOriginal<TModule>()
   datasetAccessMockRegistry = {
     getState,
     getOptions,
@@ -93,9 +92,7 @@ export const createDatasetAccessAtomMock = async (
   }
 }
 
-export const createDatasetAccessJotaiMock = async (
-  importOriginal: <T>() => Promise<T>,
-) => {
+export const createDatasetAccessJotaiMock = async (importOriginal: <T>() => Promise<T>) => {
   const actual = await importOriginal<typeof import('jotai')>()
 
   return {
@@ -104,19 +101,16 @@ export const createDatasetAccessJotaiMock = async (
       if (!isDatasetAccessMockAtom(atom))
         return actual.useAtomValue(atom as Parameters<typeof actual.useAtomValue>[0])
 
-      if (!datasetAccessMockRegistry)
-        throw new Error('Dataset access atom mock is not initialized')
+      if (!datasetAccessMockRegistry) throw new Error('Dataset access atom mock is not initialized')
 
       const state = datasetAccessMockRegistry.getState()
       const options = datasetAccessMockRegistry.getOptions()
       const userProfile = getUserProfile(state)
       const workspacePermissionKeys = getWorkspacePermissionKeys(state)
 
-      if (atom[DATASET_ACCESS_ATOM_KIND] === 'userProfile')
-        return userProfile
+      if (atom[DATASET_ACCESS_ATOM_KIND] === 'userProfile') return userProfile
 
-      if (atom[DATASET_ACCESS_ATOM_KIND] === 'userProfileId')
-        return userProfile.id
+      if (atom[DATASET_ACCESS_ATOM_KIND] === 'userProfileId') return userProfile.id
 
       if (atom[DATASET_ACCESS_ATOM_KIND] === 'currentWorkspaceId')
         return state.currentWorkspace?.id ?? 'workspace-1'

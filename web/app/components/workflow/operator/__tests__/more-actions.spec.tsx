@@ -9,41 +9,47 @@ const mockToSvg = vi.fn()
 const mockDownloadUrl = vi.fn()
 const mockSetViewport = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
-const {
-  mockDropdownContentProps,
-  mockWorkflowState,
-} = vi.hoisted(() => ({
+const { mockDropdownContentProps, mockWorkflowState } = vi.hoisted(() => ({
   mockDropdownContentProps: vi.fn(),
   mockWorkflowState: {
     knowledgeName: '',
     appName: 'Demo App',
   },
 }))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
-  const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    open: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
         <div>{children}</div>
       </DropdownMenuContext>
     ),
-    DropdownMenuTrigger: ({ children, className }: { children: React.ReactNode, className?: string }) => {
+    DropdownMenuTrigger: ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode
+      className?: string
+    }) => {
       const { open, setOpen } = useDropdownMenuContext()
       return (
         <button type="button" className={className} onClick={() => setOpen(!open)}>
@@ -88,7 +94,9 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
         </button>
       )
     },
-    DropdownMenuSeparator: ({ className }: { className?: string }) => <div className={className} data-testid="dropdown-separator" />,
+    DropdownMenuSeparator: ({ className }: { className?: string }) => (
+      <div className={className} data-testid="dropdown-separator" />
+    ),
   }
 })
 
@@ -126,10 +134,12 @@ vi.mock('../tip-popup', () => ({
 }))
 
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
-  default: ({ title, onCancel }: { title: string, onCancel: () => void }) => (
+  default: ({ title, onCancel }: { title: string; onCancel: () => void }) => (
     <div data-testid="image-preview">
       <span>{title}</span>
-      <button type="button" onClick={onCancel}>close-preview</button>
+      <button type="button" onClick={onCancel}>
+        close-preview
+      </button>
     </div>
   ),
 }))

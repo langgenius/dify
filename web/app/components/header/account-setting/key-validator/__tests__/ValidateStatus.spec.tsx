@@ -1,7 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import {
-  ValidatingTip,
-} from '../ValidateStatus'
+import { ValidatingTip } from '../ValidateStatus'
 
 describe('ValidateStatus', () => {
   beforeEach(() => {

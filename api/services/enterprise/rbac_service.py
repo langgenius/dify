@@ -255,6 +255,7 @@ class ResourceUserAccessPoliciesResponse(_RBACModel):
 
 class ReplaceUserAccessPolicies(_RBACModel):
     access_policy_ids: list[str] = Field(default_factory=list)
+    account_ids: list[str] = Field(default_factory=list)
 
     @field_validator("access_policy_ids", mode="before")
     @classmethod
@@ -1126,16 +1127,17 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             app_id: str,
-            target_account_id: str,
+            target_account_id: str | None,
             payload: ReplaceUserAccessPolicies,
         ) -> ReplaceUserAccessPoliciesResponse:
+            request_data = payload.model_dump(mode="json")
             data = _inner_call(
                 "PUT",
                 f"{_INNER_PREFIX}/apps/user-access-policies",
                 tenant_id=tenant_id,
                 account_id=account_id,
                 params={"app_id": app_id, "account_id": target_account_id},
-                json=payload.model_dump(mode="json"),
+                json=request_data,
             )
             return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
 
@@ -1295,7 +1297,7 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             dataset_id: str,
-            target_account_id: str,
+            target_account_id: str | None,
             payload: ReplaceUserAccessPolicies,
         ) -> ReplaceUserAccessPoliciesResponse:
             data = _inner_call(
@@ -1304,7 +1306,7 @@ class RBACService:
                 tenant_id=tenant_id,
                 account_id=account_id,
                 params={"dataset_id": dataset_id, "account_id": target_account_id},
-                json=payload.model_dump(mode="json"),
+                json=payload.model_dump(mode="json", exclude_unset=True),
             )
             return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
 

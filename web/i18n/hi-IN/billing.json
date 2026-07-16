@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "एक बार में कई दस्तावेज़ अपलोड करने के लिए अपग्रेड करें",
   "upgrade.workflowRestore.description": "आपकी वर्तमान योजना में वर्कफ़्लो संस्करण पुनर्स्थापना उपलब्ध नहीं है।",
   "upgrade.workflowRestore.title": "वर्कफ़्लो संस्करणों को पुनर्स्थापित करने के लिए अपग्रेड करें",
+  "upgrade.workflowVersionRun.description": "वर्कफ़्लो ID के ज़रिए किसी विशिष्ट वर्कफ़्लो संस्करण को चलाना आपकी वर्तमान योजना में उपलब्ध नहीं है।",
+  "upgrade.workflowVersionRun.title": "विशिष्ट वर्कफ़्लो संस्करण चलाने के लिए अपग्रेड करें",
   "upgradeBtn.encourage": "अभी अपग्रेड करें",
   "upgradeBtn.encourageShort": "अपग्रेड करें",
   "upgradeBtn.plain": "योजना अपग्रेड करें",

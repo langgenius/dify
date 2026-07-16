@@ -3,7 +3,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { CommentThread } from './thread'
 
 const mockSetCommentPreviewHovering = vi.hoisted(() => vi.fn())
-const mockFlowToScreenPosition = vi.hoisted(() => vi.fn(({ x, y }: { x: number, y: number }) => ({ x, y })))
+const mockFlowToScreenPosition = vi.hoisted(() =>
+  vi.fn(({ x, y }: { x: number; y: number }) => ({ x, y })),
+)
 const mockAppContextState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
@@ -18,16 +20,9 @@ const storeState = vi.hoisted(() => ({
       { id: 'user-1', name: 'Alice', email: 'alice@example.com', avatar_url: 'alice.png' },
       { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: 'bob.png' },
     ],
-  } as Record<string, Array<{ id: string, name: string, email: string, avatar_url: string }>>,
+  } as Record<string, Array<{ id: string; name: string; email: string; avatar_url: string }>>,
   setCommentPreviewHovering: (...args: unknown[]) => mockSetCommentPreviewHovering(...args),
 }))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
@@ -38,13 +33,30 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -77,15 +89,21 @@ vi.mock('@/app/components/base/inline-delete-confirm', () => ({
 
 vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-  AvatarRoot: ({ children }: { children: React.ReactNode }) => <div data-testid="avatar-root">{children}</div>,
+  AvatarRoot: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="avatar-root">{children}</div>
+  ),
   AvatarImage: ({ alt }: { alt: string }) => <div data-testid="avatar-image">{alt}</div>,
-  AvatarFallback: ({ children }: { children: React.ReactNode }) => <div data-testid="avatar-fallback">{children}</div>,
+  AvatarFallback: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="avatar-fallback">{children}</div>
+  ),
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children, ...props }: React.ComponentProps<'button'>) => (
-    <button type="button" {...props}>{children}</button>
+    <button type="button" {...props}>
+      {children}
+    </button>
   ),
   DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
@@ -96,11 +114,14 @@ vi.mock('@langgenius/dify-ui/tooltip', () => ({
     children,
     render,
     ...props
-  }: React.ComponentProps<'button'> & { children?: React.ReactNode, render?: React.ReactNode }) => {
-    if (render)
-      return <>{render}</>
+  }: React.ComponentProps<'button'> & { children?: React.ReactNode; render?: React.ReactNode }) => {
+    if (render) return <>{render}</>
 
-    return <button type="button" {...props}>{children}</button>
+    return (
+      <button type="button" {...props}>
+        {children}
+      </button>
+    )
   },
   TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
@@ -149,18 +170,20 @@ const createComment = (): WorkflowCommentDetail => ({
   updated_at: 2,
   resolved: false,
   mentions: [],
-  replies: [{
-    id: 'reply-1',
-    content: 'first reply',
-    created_by: 'user-1',
-    created_by_account: {
-      id: 'user-1',
-      name: 'Alice',
-      email: 'alice@example.com',
-      avatar_url: 'alice.png',
+  replies: [
+    {
+      id: 'reply-1',
+      content: 'first reply',
+      created_by: 'user-1',
+      created_by_account: {
+        id: 'user-1',
+        name: 'Alice',
+        email: 'alice@example.com',
+        avatar_url: 'alice.png',
+      },
+      created_at: 2,
     },
-    created_at: 2,
-  }],
+  ],
 })
 
 describe('CommentThread', () => {
@@ -228,11 +251,7 @@ describe('CommentThread', () => {
     const onCommentEdit = vi.fn()
 
     render(
-      <CommentThread
-        comment={createComment()}
-        onClose={vi.fn()}
-        onCommentEdit={onCommentEdit}
-      />,
+      <CommentThread comment={createComment()} onClose={vi.fn()} onCommentEdit={onCommentEdit} />,
     )
 
     fireEvent.click(screen.getByLabelText('workflow.comments.aria.commentActions'))
@@ -247,11 +266,7 @@ describe('CommentThread', () => {
   it('submits reply and updates preview hovering state on mouse enter/leave', async () => {
     const onReply = vi.fn()
     const { container } = render(
-      <CommentThread
-        comment={createComment()}
-        onClose={vi.fn()}
-        onReply={onReply}
-      />,
+      <CommentThread comment={createComment()} onClose={vi.fn()} onReply={onReply} />,
     )
 
     fireEvent.mouseEnter(container.firstElementChild as Element)
@@ -263,7 +278,9 @@ describe('CommentThread', () => {
     fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.reply'))
 
     await waitFor(() => {
-      expect(onReply).toHaveBeenCalledWith('content:workflow.comments.placeholder.reply', ['user-2'])
+      expect(onReply).toHaveBeenCalledWith('content:workflow.comments.placeholder.reply', [
+        'user-2',
+      ])
     })
   })
 

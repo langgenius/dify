@@ -7,12 +7,14 @@ import { createReactI18nextMock } from '@/test/i18n-mock'
 import { SubscriptionList } from '../index'
 import { SubscriptionListMode } from '../types'
 
-vi.mock('react-i18next', () => createReactI18nextMock({
-  'errorBoundary.title': 'Something went wrong',
-  'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
-  'errorBoundary.tryAgain': 'Try Again',
-  'errorBoundary.reloadPage': 'Reload Page',
-}))
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    'errorBoundary.title': 'Something went wrong',
+    'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
+    'errorBoundary.tryAgain': 'Try Again',
+    'errorBoundary.reloadPage': 'Reload Page',
+  }),
+)
 
 const mockRefetch = vi.fn()
 let mockSubscriptionListError: Error | null = null
@@ -26,15 +28,15 @@ let mockPluginDetail: PluginDetail | undefined
 
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => {
-    if (mockSubscriptionListError)
-      throw mockSubscriptionListError
+    if (mockSubscriptionListError) throw mockSubscriptionListError
     return mockSubscriptionListState
   },
 }))
 
 vi.mock('../../../store', () => ({
-  usePluginStore: (selector: (state: { detail: PluginDetail | undefined }) => PluginDetail | undefined) =>
-    selector({ detail: mockPluginDetail }),
+  usePluginStore: (
+    selector: (state: { detail: PluginDetail | undefined }) => PluginDetail | undefined,
+  ) => selector({ detail: mockPluginDetail }),
 }))
 
 const mockInitiateOAuth = vi.fn()
@@ -146,10 +148,7 @@ describe('SubscriptionList', () => {
 
     it('should visually distinguish selected subscription from unselected', () => {
       const { rerender } = render(
-        <SubscriptionList
-          mode={SubscriptionListMode.SELECTOR}
-          selectedId="sub-1"
-        />,
+        <SubscriptionList mode={SubscriptionListMode.SELECTOR} selectedId="sub-1" />,
       )
 
       const getRowClassName = () =>
@@ -157,12 +156,7 @@ describe('SubscriptionList', () => {
 
       const selectedClassName = getRowClassName()
 
-      rerender(
-        <SubscriptionList
-          mode={SubscriptionListMode.SELECTOR}
-          selectedId="other-id"
-        />,
-      )
+      rerender(<SubscriptionList mode={SubscriptionListMode.SELECTOR} selectedId="other-id" />)
 
       expect(selectedClassName).not.toBe(getRowClassName())
     })
@@ -172,12 +166,7 @@ describe('SubscriptionList', () => {
     it('should call onSelect with refetch callback when selecting a subscription', () => {
       const onSelect = vi.fn()
 
-      render(
-        <SubscriptionList
-          mode={SubscriptionListMode.SELECTOR}
-          onSelect={onSelect}
-        />,
-      )
+      render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
 
@@ -201,10 +190,7 @@ describe('SubscriptionList', () => {
     it('should open delete confirm without triggering selection', () => {
       const onSelect = vi.fn()
       const { container } = render(
-        <SubscriptionList
-          mode={SubscriptionListMode.SELECTOR}
-          onSelect={onSelect}
-        />,
+        <SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />,
       )
 
       const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
@@ -212,7 +198,9 @@ describe('SubscriptionList', () => {
       fireEvent.click(deleteButton)
 
       expect(onSelect).not.toHaveBeenCalled()
-      expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/))!.toBeInTheDocument()
+      expect(
+        screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/),
+      )!.toBeInTheDocument()
     })
   })
 

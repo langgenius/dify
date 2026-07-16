@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AgentLogItem from '../agent-log-item'
 
-const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
+const createLogItem = (
+  overrides: Partial<AgentLogItemWithChildren> = {},
+): AgentLogItemWithChildren => ({
   message_id: 'message-1',
   label: 'Planner',
   children: [],
@@ -30,12 +32,7 @@ describe('AgentLogItem', () => {
       children: [child],
     })
 
-    render(
-      <AgentLogItem
-        item={item}
-        onShowAgentOrToolLog={onShowAgentOrToolLog}
-      />,
-    )
+    render(<AgentLogItem item={item} onShowAgentOrToolLog={onShowAgentOrToolLog} />)
 
     expect(screen.getByText('Planner')).toBeInTheDocument()
     expect(screen.getByText((_, node) => node?.textContent === '1.234s')).toBeInTheDocument()
@@ -43,7 +40,9 @@ describe('AgentLogItem', () => {
     await user.click(screen.getByText('Planner'))
 
     expect(screen.getByRole('button', { name: /1 Action Logs/i })).toBeInTheDocument()
-    expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain('inspect data')
+    expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
+      'inspect data',
+    )
 
     await user.click(screen.getByRole('button', { name: /1 Action Logs/i }))
 

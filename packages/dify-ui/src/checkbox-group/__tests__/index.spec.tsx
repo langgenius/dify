@@ -1,11 +1,9 @@
 import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { Checkbox } from '../../checkbox'
-import { FieldItem, FieldLabel, FieldRoot } from '../../field'
-import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
+import { Field, FieldItem, FieldLabel } from '../../field'
+import { Fieldset, FieldsetLegend } from '../../fieldset'
 import { CheckboxGroup } from '../index'
-
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
 describe('CheckboxGroup', () => {
   it('should manage selected values and parent mixed state', async () => {
@@ -35,7 +33,7 @@ describe('CheckboxGroup', () => {
     await expect.element(parent).toHaveAttribute('data-indeterminate', '')
     await expect.element(write).toHaveAttribute('aria-checked', 'false')
 
-    asHTMLElement(parent.element()).click()
+    await parent.click()
 
     await vi.waitFor(async () => {
       await expect.element(parent).toHaveAttribute('aria-checked', 'true')
@@ -46,8 +44,8 @@ describe('CheckboxGroup', () => {
   it('should compose with Dify UI Field and Fieldset without losing labels', async () => {
     const onValueChange = vi.fn()
     const screen = await render(
-      <FieldRoot name="features">
-        <FieldsetRoot render={<CheckboxGroup value={['search']} onValueChange={onValueChange} />}>
+      <Field name="features">
+        <Fieldset render={<CheckboxGroup value={['search']} onValueChange={onValueChange} />}>
           <FieldsetLegend>Features</FieldsetLegend>
           <FieldItem>
             <FieldLabel>
@@ -61,14 +59,14 @@ describe('CheckboxGroup', () => {
               Analytics
             </FieldLabel>
           </FieldItem>
-        </FieldsetRoot>
-      </FieldRoot>,
+        </Fieldset>
+      </Field>,
     )
 
     const analytics = screen.getByRole('checkbox', { name: 'Analytics' })
     await expect.element(analytics).toHaveAttribute('aria-checked', 'false')
 
-    asHTMLElement(analytics.element()).click()
+    await analytics.click()
 
     expect(onValueChange).toHaveBeenCalledTimes(1)
     expect(onValueChange.mock.calls[0]?.[0]).toEqual(['search', 'analytics'])

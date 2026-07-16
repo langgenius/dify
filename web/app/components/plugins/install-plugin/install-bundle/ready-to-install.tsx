@@ -29,13 +29,16 @@ const ReadyToInstall: FC<Props> = ({
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([])
   const [installStatus, setInstallStatus] = useState<InstallStatus[]>([])
   const [installedVersionInfo, setInstalledVersionInfo] = useState<VersionProps[]>([])
-  const handleInstalled = useCallback((plugins: Plugin[], installStatus: InstallStatus[], versionInfo: VersionProps[]) => {
-    setInstallStatus(installStatus)
-    setInstalledPlugins(plugins)
-    setInstalledVersionInfo(versionInfo)
-    onStepChange(InstallStep.installed)
-    setIsInstalling(false)
-  }, [onStepChange, setIsInstalling])
+  const handleInstalled = useCallback(
+    (plugins: Plugin[], installStatus: InstallStatus[], versionInfo: VersionProps[]) => {
+      setInstallStatus(installStatus)
+      setInstalledPlugins(plugins)
+      setInstalledVersionInfo(versionInfo)
+      onStepChange(InstallStep.installed)
+      setIsInstalling(false)
+    },
+    [onStepChange, setIsInstalling],
+  )
   return (
     <>
       {step === InstallStep.readyToInstall && (

@@ -8,7 +8,9 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    get IS_CE_EDITION() { return mockIsCEEdition },
+    get IS_CE_EDITION() {
+      return mockIsCEEdition
+    },
   }
 })
 
@@ -36,18 +38,24 @@ describe('AccountAbout', () => {
 
   describe('Rendering', () => {
     it('should render correctly with version information', () => {
-      renderWithSystemFeatures(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />, {
-        systemFeatures: { branding: { enabled: false } },
-      })
+      renderWithSystemFeatures(
+        <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
+        {
+          systemFeatures: { branding: { enabled: false } },
+        },
+      )
 
       expect(screen.getByText(/^Version/)).toBeInTheDocument()
       expect(screen.getAllByText(/0.6.0/).length).toBeGreaterThan(0)
     })
 
     it('should render branding logo if enabled', () => {
-      renderWithSystemFeatures(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />, {
-        systemFeatures: { branding: { enabled: true, workspace_logo: 'custom-logo.png' } },
-      })
+      renderWithSystemFeatures(
+        <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
+        {
+          systemFeatures: { branding: { enabled: true, workspace_logo: 'custom-logo.png' } },
+        },
+      )
 
       const img = screen.getByAltText('logo')
       expect(img).toBeInTheDocument()
@@ -57,7 +65,9 @@ describe('AccountAbout', () => {
 
   describe('Version Logic', () => {
     it('should show "Latest Available" when current version equals latest', () => {
-      renderWithSystemFeatures(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
+      renderWithSystemFeatures(
+        <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
+      )
 
       expect(screen.getByText(/about.latestAvailable/)).toBeInTheDocument()
     })
@@ -65,7 +75,9 @@ describe('AccountAbout', () => {
     it('should show "Now Available" when current version is behind', () => {
       const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
 
-      renderWithSystemFeatures(<AccountAbout langGeniusVersionInfo={behindVersionInfo} onCancel={mockOnCancel} />)
+      renderWithSystemFeatures(
+        <AccountAbout langGeniusVersionInfo={behindVersionInfo} onCancel={mockOnCancel} />,
+      )
 
       expect(screen.getByText(/about.nowAvailable/)).toBeInTheDocument()
       expect(screen.getByText(/about.updateNow/)).toBeInTheDocument()
@@ -76,7 +88,9 @@ describe('AccountAbout', () => {
     it('should render correctly in Community Edition', () => {
       mockIsCEEdition = true
 
-      renderWithSystemFeatures(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
+      renderWithSystemFeatures(
+        <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
+      )
 
       expect(screen.getByText(/Open Source License/)).toBeInTheDocument()
     })
@@ -85,7 +99,9 @@ describe('AccountAbout', () => {
       mockIsCEEdition = true
       const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
 
-      renderWithSystemFeatures(<AccountAbout langGeniusVersionInfo={behindVersionInfo} onCancel={mockOnCancel} />)
+      renderWithSystemFeatures(
+        <AccountAbout langGeniusVersionInfo={behindVersionInfo} onCancel={mockOnCancel} />,
+      )
 
       expect(screen.queryByText(/about.updateNow/)).not.toBeInTheDocument()
     })
@@ -93,7 +109,9 @@ describe('AccountAbout', () => {
 
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
-      renderWithSystemFeatures(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
+      renderWithSystemFeatures(
+        <AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />,
+      )
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 

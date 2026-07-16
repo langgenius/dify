@@ -54,9 +54,8 @@ class EnterpriseAppDSLImport(Resource):
         if account is None:
             return {"message": f"account '{args.creator_email}' not found or inactive"}, 404
 
-        account.set_tenant_id(workspace_id)
-
         with Session(db.engine, expire_on_commit=False) as session:
+            account.set_tenant_id_with_session(workspace_id, session=session)
             dsl_service = AppDslService(session)
             result = dsl_service.import_app(
                 account=account,

@@ -17,13 +17,15 @@ vi.mock('../../../workflow-app/hooks', () => ({
 const mockUseNodes = vi.mocked(useNodes)
 const mockUseAvailableNodesMetaData = vi.mocked(useAvailableNodesMetaData)
 
-const createNode = (type: BlockEnum) => ({
-  data: { type } as Pick<CommonNodeType, 'type'>,
-}) as ReturnType<typeof useNodes>[number]
+const createNode = (type: BlockEnum) =>
+  ({
+    data: { type } as Pick<CommonNodeType, 'type'>,
+  }) as ReturnType<typeof useNodes>[number]
 
-const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMetaData> => ({
-  nodes: [],
-} as unknown as ReturnType<typeof useAvailableNodesMetaData>)
+const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMetaData> =>
+  ({
+    nodes: [],
+  }) as unknown as ReturnType<typeof useAvailableNodesMetaData>
 
 describe('StartBlocks', () => {
   beforeEach(() => {
@@ -134,7 +136,11 @@ describe('StartBlocks', () => {
         name: /workflow\.blocks\.start.*workflow\.nodes\.startPlaceholder\.userInputConflictTip/,
       })
       expect(userInputButton).toHaveAttribute('aria-disabled', 'true')
-      expect(userInputButton.querySelector('.i-custom-vender-workflow-user-input')?.closest('.opacity-30')).toBeInTheDocument()
+      expect(
+        userInputButton
+          .querySelector('.i-custom-vender-workflow-user-input')
+          ?.closest('.opacity-30'),
+      ).toBeInTheDocument()
 
       await user.tab()
       expect(userInputButton).toHaveFocus()

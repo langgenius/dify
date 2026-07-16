@@ -363,6 +363,11 @@ export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive
  */
 export const zLicenseModel = z.object({
   expired_at: z.string().default(''),
+  seats: zLicenseLimitationModel.default({
+    enabled: false,
+    limit: 0,
+    size: 0,
+  }),
   status: zLicenseStatus.default('none'),
   workspaces: zLicenseLimitationModel.default({
     enabled: false,
@@ -792,6 +797,11 @@ export const zSystemFeatureModel = z.object({
   is_email_setup: z.boolean().default(false),
   license: zLicenseModel.default({
     expired_at: '',
+    seats: {
+      enabled: false,
+      limit: 0,
+      size: 0,
+    },
     status: 'none',
     workspaces: {
       enabled: false,
@@ -831,19 +841,28 @@ export const zWebAppCustomConfigResponse = z.object({
 export const zWebMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
+  currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
   feedback: zSimpleFeedback.nullish(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
   metadata: zJsonValueType.nullish(),
   parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
   status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
+    .nullish(),
+  total_tokens: z.int().readonly(),
 })
 
 /**
@@ -942,6 +961,44 @@ export const zGeneratedAppResponseWritable = zJsonValue
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
+
+/**
+ * WebMessageListItem
+ */
+export const zWebMessageListItemWritable = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent),
+  feedback: zSimpleFeedback.nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValueType),
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
+  query: z.string(),
+  retriever_resources: z.array(zRetrieverResource),
+  status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
+    .nullish(),
+})
+
+/**
+ * WebMessageInfiniteScrollPagination
+ */
+export const zWebMessageInfiniteScrollPaginationWritable = z.object({
+  data: z.array(zWebMessageListItemWritable),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
 
 /**
  * WebSiteResponse

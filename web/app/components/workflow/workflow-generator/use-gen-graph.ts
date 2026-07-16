@@ -46,14 +46,17 @@ const useGenGraph = ({ storageKey }: Params) => {
     versionCountRef.current = versions?.length ?? 0
   }, [versions])
 
-  const addVersion = useCallback((version: GenerateWorkflowResponse) => {
-    const nextCount = Math.min(versionCountRef.current + 1, MAX_VERSIONS)
-    versionCountRef.current = nextCount
-    // Functional update so batched adds append instead of clobbering each
-    // other; the slice keeps the retained history under the cap.
-    setVersions(prev => [...(prev ?? []), version].slice(-MAX_VERSIONS))
-    setCurrentVersionIndex(nextCount - 1)
-  }, [setVersions, setCurrentVersionIndex])
+  const addVersion = useCallback(
+    (version: GenerateWorkflowResponse) => {
+      const nextCount = Math.min(versionCountRef.current + 1, MAX_VERSIONS)
+      versionCountRef.current = nextCount
+      // Functional update so batched adds append instead of clobbering each
+      // other; the slice keeps the retained history under the cap.
+      setVersions((prev) => [...(prev ?? []), version].slice(-MAX_VERSIONS))
+      setCurrentVersionIndex(nextCount - 1)
+    },
+    [setVersions, setCurrentVersionIndex],
+  )
 
   return {
     versions,

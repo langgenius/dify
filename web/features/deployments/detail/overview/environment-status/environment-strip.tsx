@@ -14,7 +14,8 @@ import { hasRuntimeInstanceDeployment } from '../../../shared/domain/runtime-sta
 import { EnvironmentTile } from './environment-tile'
 
 const OVERVIEW_RUNTIME_INSTANCE_LIMIT = 4
-const OVERVIEW_CARD_CLASS_NAME = 'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
+const OVERVIEW_CARD_CLASS_NAME =
+  'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
 
 type EnvironmentStripProps = {
   rows: EnvironmentDeployment[]
@@ -32,38 +33,34 @@ export function EnvironmentStrip({ rows, releaseRows }: EnvironmentStripProps) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
-        <h3 className="system-sm-semibold text-text-primary">{t('overview.strip.title')}</h3>
+        <h3 className="system-sm-semibold text-text-primary">
+          {t(($) => $['overview.strip.title'])}
+        </h3>
         {hasRuntimeRows && appInstanceId && (
           <Link
             href={`/deployments/${appInstanceId}/instances`}
             className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary transition-colors hover:text-text-secondary"
           >
-            {t('overview.previousReleases.viewAll')}
+            {t(($) => $['overview.previousReleases.viewAll'])}
             <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
           </Link>
         )}
       </div>
 
-      {!hasRuntimeRows
-        ? <EnvironmentEmptyState canDeploy={hasRelease} />
-        : (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-3">
-              {previewRows.map(row => (
-                <EnvironmentTile
-                  key={row.environment.id}
-                  row={row}
-                  releaseRows={releaseRows}
-                />
-              ))}
-            </div>
-          )}
+      {!hasRuntimeRows ? (
+        <EnvironmentEmptyState canDeploy={hasRelease} />
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-3">
+          {previewRows.map((row) => (
+            <EnvironmentTile key={row.environment.id} row={row} releaseRows={releaseRows} />
+          ))}
+        </div>
+      )}
     </section>
   )
 }
 
-function EnvironmentEmptyState({ canDeploy }: {
-  canDeploy: boolean
-}) {
+function EnvironmentEmptyState({ canDeploy }: { canDeploy: boolean }) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
@@ -72,23 +69,27 @@ function EnvironmentEmptyState({ canDeploy }: {
     <DeploymentEmptyState
       variant="section"
       icon="i-ri-server-line"
-      title={t('overview.strip.emptyTitle')}
-      description={canDeploy ? t('overview.strip.emptyDeployableDescription') : t('overview.strip.emptyDescription')}
+      title={t(($) => $['overview.strip.emptyTitle'])}
+      description={
+        canDeploy
+          ? t(($) => $['overview.strip.emptyDeployableDescription'])
+          : t(($) => $['overview.strip.emptyDescription'])
+      }
       className="min-h-44"
-      action={canDeploy && appInstanceId
-        ? (
-            <Button
-              type="button"
-              variant="primary"
-              size="medium"
-              className="gap-1.5"
-              onClick={() => openDeployDrawer({ appInstanceId })}
-            >
-              <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />
-              {t('overview.strip.deployToNewEnvironment')}
-            </Button>
-          )
-        : undefined}
+      action={
+        canDeploy && appInstanceId ? (
+          <Button
+            type="button"
+            variant="primary"
+            size="medium"
+            className="gap-1.5"
+            onClick={() => openDeployDrawer({ appInstanceId })}
+          >
+            <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />
+            {t(($) => $['overview.strip.deployToNewEnvironment'])}
+          </Button>
+        ) : undefined
+      }
     />
   )
 }
@@ -98,7 +99,7 @@ const SKELETON_KEYS = ['a', 'b', 'c']
 function CardSkeletons() {
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-3">
-      {SKELETON_KEYS.map(key => (
+      {SKELETON_KEYS.map((key) => (
         <EnvironmentTileSkeleton key={key} />
       ))}
     </div>
@@ -109,7 +110,10 @@ function EnvironmentTileSkeleton() {
   return (
     <article
       data-slot="deployment-overview-environment-tile-skeleton"
-      className={cn(OVERVIEW_CARD_CLASS_NAME, 'flex min-h-28 min-w-0 flex-col justify-between gap-4')}
+      className={cn(
+        OVERVIEW_CARD_CLASS_NAME,
+        'flex min-h-28 min-w-0 flex-col justify-between gap-4',
+      )}
     >
       <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -141,7 +145,9 @@ export function EnvironmentStripSkeleton() {
 
   return (
     <section className="flex flex-col gap-3">
-      <h3 className="system-sm-semibold text-text-primary">{t('overview.strip.title')}</h3>
+      <h3 className="system-sm-semibold text-text-primary">
+        {t(($) => $['overview.strip.title'])}
+      </h3>
       <CardSkeletons />
     </section>
   )

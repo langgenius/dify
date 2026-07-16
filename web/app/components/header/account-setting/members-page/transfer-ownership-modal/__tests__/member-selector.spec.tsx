@@ -91,7 +91,9 @@ describe('MemberSelector', () => {
   })
 
   it('should handle missing data gracefully', () => {
-    vi.mocked(useMembers).mockReturnValue({ data: undefined } as unknown as ReturnType<typeof useMembers>)
+    vi.mocked(useMembers).mockReturnValue({ data: undefined } as unknown as ReturnType<
+      typeof useMembers
+    >)
     render(<MemberSelector onSelect={mockOnSelect} />)
     expect(screen.getByText(/members\.transferModal\.transferPlaceholder/i)).toBeInTheDocument()
   })
@@ -99,7 +101,12 @@ describe('MemberSelector', () => {
   it('should filter by email when account name is empty', async () => {
     const user = userEvent.setup()
     vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [...mockAccounts, { id: '4', name: '', email: 'noname@example.com', avatar_url: '' }] },
+      data: {
+        accounts: [
+          ...mockAccounts,
+          { id: '4', name: '', email: 'noname@example.com', avatar_url: '' },
+        ],
+      },
     } as unknown as ReturnType<typeof useMembers>)
     render(<MemberSelector onSelect={mockOnSelect} />)
 
