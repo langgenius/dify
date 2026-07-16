@@ -16,32 +16,27 @@ from services.knowledge_fs_proxy import (
     forward_knowledge_fs_request,
 )
 
+_JWT_SECRET = "production-secret-with-at-least-32-bytes"
+
 
 def _set_config(
     monkeypatch: pytest.MonkeyPatch,
     *,
     base_url: str | None = "http://knowledge-fs.test",
-    api_token: str | None = "server-token",
-    tenant_id: str | None = "tenant-dev",
     timeout_seconds: float = 7.5,
-    jwt_secret: str | None = None,
+    jwt_secret: str | None = _JWT_SECRET,
 ) -> None:
     values = {
         "KNOWLEDGE_FS_BASE_URL": base_url,
-        "KNOWLEDGE_FS_API_TOKEN": SecretStr(api_token) if api_token is not None else None,
-        "KNOWLEDGE_FS_STATIC_TENANT_ID": tenant_id,
         "KNOWLEDGE_FS_TIMEOUT_SECONDS": timeout_seconds,
         "KNOWLEDGE_FS_JWT_SECRET": SecretStr(jwt_secret) if jwt_secret is not None else None,
-        "KNOWLEDGE_FS_JWT_ISSUER": "dify",
-        "KNOWLEDGE_FS_JWT_AUDIENCE": "knowledge-fs",
-        "KNOWLEDGE_FS_JWT_TTL_SECONDS": 60,
     }
     for name, value in values.items():
         monkeypatch.setattr(f"services.knowledge_fs_proxy.dify_config.{name}", value, raising=False)
 
 
 def test_unconfigured_kfs_is_rejected_before_external_io(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_config(monkeypatch, base_url=None, api_token=None, tenant_id=None)
+    _set_config(monkeypatch, base_url=None, jwt_secret=None)
     request = MagicMock()
     monkeypatch.setattr("services.knowledge_fs_proxy._HTTP_CLIENT.request", request)
 
@@ -52,7 +47,7 @@ def test_unconfigured_kfs_is_rejected_before_external_io(monkeypatch: pytest.Mon
 
 
 def test_partial_configuration_is_rejected_before_external_io(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_config(monkeypatch, api_token=None)
+    _set_config(monkeypatch, jwt_secret=None)
     request = MagicMock()
     monkeypatch.setattr("services.knowledge_fs_proxy._HTTP_CLIENT.request", request)
 
@@ -62,7 +57,7 @@ def test_partial_configuration_is_rejected_before_external_io(monkeypatch: pytes
     request.assert_not_called()
 
 
-def test_get_forwards_raw_query_with_server_credential(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_forwards_raw_query(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch, base_url="http://knowledge-fs.test/gateway")
     response = httpx.Response(200, content=b'{"items":[]}')
     request = MagicMock(return_value=response)
@@ -76,15 +71,14 @@ def test_get_forwards_raw_query_with_server_credential(monkeypatch: pytest.Monke
     )
 
     assert result is response
-    request.assert_called_once_with(
-        "GET",
-        httpx.URL("http://knowledge-fs.test/gateway/knowledge-spaces"),
-        params=b"limit=20&cursor=first&cursor=second",
-        content=None,
-        headers={"Accept": "application/json", "Authorization": "Bearer server-token"},
-        timeout=7.5,
-        follow_redirects=False,
-    )
+    request.assert_called_once()
+    assert request.call_args.args == ("GET", httpx.URL("http://knowledge-fs.test/gateway/knowledge-spaces"))
+    assert request.call_args.kwargs["params"] == b"limit=20&cursor=first&cursor=second"
+    assert request.call_args.kwargs["content"] is None
+    assert request.call_args.kwargs["headers"]["Accept"] == "application/json"
+    assert request.call_args.kwargs["headers"]["Authorization"].startswith("Bearer ")
+    assert request.call_args.kwargs["timeout"] == 7.5
+    assert request.call_args.kwargs["follow_redirects"] is False
 
 
 def test_post_forwards_raw_json_without_parsing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -102,32 +96,27 @@ def test_post_forwards_raw_json_without_parsing(monkeypatch: pytest.MonkeyPatch)
     )
 
     assert result is response
-    request.assert_called_once_with(
-        "POST",
-        httpx.URL("http://knowledge-fs.test/knowledge-spaces"),
-        params=None,
-        content=body,
-        headers={
-            "Accept": "application/json",
-            "Authorization": "Bearer server-token",
-            "Content-Type": "application/json",
-        },
-        timeout=7.5,
-        follow_redirects=False,
-    )
+    request.assert_called_once()
+    assert request.call_args.args == ("POST", httpx.URL("http://knowledge-fs.test/knowledge-spaces"))
+    assert request.call_args.kwargs["params"] is None
+    assert request.call_args.kwargs["content"] == body
+    assert request.call_args.kwargs["headers"]["Accept"] == "application/json"
+    assert request.call_args.kwargs["headers"]["Authorization"].startswith("Bearer ")
+    assert request.call_args.kwargs["headers"]["Content-Type"] == "application/json"
+    assert request.call_args.kwargs["timeout"] == 7.5
+    assert request.call_args.kwargs["follow_redirects"] is False
 
 
 @pytest.mark.parametrize(
     ("method", "expected_scope"),
     [("GET", "knowledge-spaces:read"), ("POST", "knowledge-spaces:write")],
 )
-def test_production_auth_signs_current_workspace_principal(
+def test_auth_signs_current_workspace_principal(
     monkeypatch: pytest.MonkeyPatch,
     method: KnowledgeFSMethod,
     expected_scope: str,
 ) -> None:
-    secret = "production-secret-with-at-least-32-bytes"
-    _set_config(monkeypatch, api_token=None, tenant_id=None, jwt_secret=secret)
+    _set_config(monkeypatch)
     response = httpx.Response(200, content=b'{"items":[]}')
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy._HTTP_CLIENT.request", request)
@@ -142,7 +131,7 @@ def test_production_auth_signs_current_workspace_principal(
     authorization = request.call_args.kwargs["headers"]["Authorization"]
     claims = jwt.decode(
         authorization.removeprefix("Bearer "),
-        secret,
+        _JWT_SECRET,
         algorithms=["HS256"],
         audience="knowledge-fs",
         issuer="dify",
@@ -152,17 +141,6 @@ def test_production_auth_signs_current_workspace_principal(
     assert claims["scopes"] == [expected_scope]
     assert claims["caller_kind"] == "interactive"
     assert claims["exp"] - claims["iat"] == 60
-
-
-def test_static_tenant_mismatch_fails_before_external_io(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_config(monkeypatch)
-    request = MagicMock()
-    monkeypatch.setattr("services.knowledge_fs_proxy._HTTP_CLIENT.request", request)
-
-    with pytest.raises(KnowledgeFSConfigurationError, match="current Dify workspace"):
-        forward_knowledge_fs_request(method="GET", path="knowledge-spaces", tenant_id="another-tenant")
-
-    request.assert_not_called()
 
 
 def test_timeout_is_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
