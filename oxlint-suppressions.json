@@ -5473,9 +5473,6 @@
   },
   "web/app/components/workflow/nodes/llm/use-config.ts": {
     "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },

@@ -1,12 +1,82 @@
 import type { ReactElement } from 'react'
+import type {
+  Model,
+  ModelItem,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import {
+  ConfigurationMethodEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import VariableModal from '../variable-modal'
+
+type MockModelParameterModalProps = {
+  provider: string
+  modelId: string
+  completionParams: Record<string, unknown>
+  modelList?: Model[]
+  setModel: (model: { provider: string; modelId: string; mode?: string }) => void
+  onCompletionParamsChange: (params: Record<string, unknown>) => void
+}
+
+let mockTextGenerationModelList: Model[] = []
+let latestModelParameterModalProps: MockModelParameterModalProps | undefined
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
+    currentProvider: undefined,
+    currentModel: undefined,
+    textGenerationModelList: mockTextGenerationModelList,
+    activeTextGenerationModelList: mockTextGenerationModelList,
+  }),
+}))
+
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    default: (props: MockModelParameterModalProps) => {
+      latestModelParameterModalProps = props
+
+      return (
+        <div>
+          <div>{props.modelId ? `selected:${props.modelId}` : 'selected:none'}</div>
+          {(props.modelList ?? mockTextGenerationModelList).flatMap((provider) =>
+            provider.models.map((model) => (
+              <button
+                key={`${provider.provider}:${model.model}`}
+                type="button"
+                onClick={() =>
+                  props.setModel({
+                    provider: provider.provider,
+                    modelId: model.model,
+                    mode: model.model_properties.mode as string,
+                  })
+                }
+              >
+                {model.model}
+              </button>
+            )),
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              props.onCompletionParamsChange({ ...props.completionParams, temperature: 0.4 })
+            }
+          >
+            Set temperature
+          </button>
+        </div>
+      )
+    },
+  }),
+)
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -18,6 +88,28 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 const mockToastError = vi.mocked(toast.error)
+
+const createModelItem = (model: string, mode: string): ModelItem => ({
+  model,
+  label: { en_US: model, zh_Hans: model },
+  model_type: ModelTypeEnum.textGeneration,
+  features: [],
+  fetch_from: ConfigurationMethodEnum.predefinedModel,
+  status: ModelStatusEnum.active,
+  model_properties: { mode },
+  load_balancing_enabled: false,
+})
+
+const createModelProvider = (): Model => ({
+  provider: 'openai',
+  icon_small: { en_US: '', zh_Hans: '' },
+  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+  models: [
+    createModelItem('chat-model', 'chat'),
+    createModelItem('completion-model', 'completion'),
+  ],
+  status: ModelStatusEnum.active,
+})
 
 const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
   id: 'env-1',
@@ -49,6 +141,8 @@ const renderWithProviders = (
 describe('VariableModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockTextGenerationModelList = [createModelProvider()]
+    latestModelParameterModalProps = undefined
   })
 
   it('creates a secret environment variable and normalizes spaces in its name', async () => {
@@ -152,5 +246,76 @@ describe('VariableModal', () => {
       value_type: 'number',
       description: 'editable',
     })
+  })
+
+  it('creates an LLM environment variable from the selected text-generation model', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+
+    renderWithProviders(<VariableModal onClose={vi.fn()} onSave={onSave} />, {
+      storeState: {
+        environmentVariables: [],
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.blocks.llm' }))
+    await user.type(
+      screen.getByPlaceholderText('workflow.env.modal.namePlaceholder'),
+      'for_summarize',
+    )
+    await user.click(screen.getByRole('button', { name: 'chat-model' }))
+    await user.click(screen.getByRole('button', { name: 'Set temperature' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(onSave).toHaveBeenCalledWith({
+      id: expect.any(String),
+      name: 'for_summarize',
+      value: {
+        provider: 'openai',
+        name: 'chat-model',
+        mode: 'chat',
+        completion_params: { temperature: 0.4 },
+      },
+      value_type: 'llm',
+      description: '',
+    })
+  })
+
+  it('keeps an edited LLM environment variable within its existing model mode', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    const env = createEnv({
+      id: 'env-llm',
+      name: 'for_research',
+      value: { provider: 'openai', name: 'chat-model', mode: 'chat' },
+      value_type: 'llm',
+      description: 'research model',
+    })
+
+    renderWithProviders(<VariableModal env={env} onClose={vi.fn()} onSave={onSave} />, {
+      storeState: {
+        environmentVariables: [env],
+      },
+    })
+
+    expect(screen.getByText('selected:chat-model')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'chat-model' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'completion-model' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'String' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Number' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Secret' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'workflow.blocks.llm' })).toBeEnabled()
+
+    act(() => {
+      latestModelParameterModalProps?.setModel({
+        provider: 'openai',
+        modelId: 'completion-model',
+        mode: 'completion',
+      })
+    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(mockToastError).toHaveBeenCalledWith('common.modelProvider.selector.incompatibleTip')
+    expect(onSave).toHaveBeenCalledWith(env)
   })
 })

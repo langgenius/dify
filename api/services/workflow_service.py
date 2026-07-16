@@ -23,6 +23,13 @@ from core.workflow.human_input_adapter import (
     adapt_human_input_node_data_for_graph,
     parse_human_input_delivery_methods,
 )
+from core.workflow.llm_environment_variable import (
+    LLMEnvironmentVariable,
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
+    validate_llm_environment_model_references,
+)
 from core.workflow.node_factory import (
     LATEST_VERSION,
     get_node_type_classes_mapping,
@@ -63,6 +70,7 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
+from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import VariablePool
 from graphon.variable_loader import load_into_variable_pool
@@ -146,6 +154,48 @@ from .workflow_restore import apply_published_workflow_snapshot_to_draft
 _file_access_controller = DatabaseFileAccessController()
 
 
+def _merge_environment_variable_patch(
+    current_variables: Sequence[VariableBase],
+    environment_variable_upserts: Sequence[VariableBase],
+    deleted_environment_variable_ids: Sequence[str],
+) -> list[VariableBase]:
+    """Merge a per-ID environment-variable patch while preserving untouched server values."""
+    upserts_by_id: dict[str, VariableBase] = {}
+    for variable in environment_variable_upserts:
+        if not variable.id:
+            raise ValueError("Patched environment variables require an id.")
+        if variable.id in upserts_by_id:
+            raise ValueError(f"Duplicate patched environment variable id: {variable.id}")
+        upserts_by_id[variable.id] = variable
+
+    deleted_ids = set(deleted_environment_variable_ids)
+    if len(deleted_ids) != len(deleted_environment_variable_ids):
+        raise ValueError("Deleted environment variable ids must be unique.")
+    if "" in deleted_ids:
+        raise ValueError("Deleted environment variable ids must not be empty.")
+    if conflicting_ids := deleted_ids.intersection(upserts_by_id):
+        conflicting_id = min(conflicting_ids)
+        raise ValueError(f"Environment variable cannot be upserted and deleted in the same patch: {conflicting_id}")
+
+    existing_ids: set[str] = set()
+    merged_variables: list[VariableBase] = []
+    for variable in current_variables:
+        variable_id = variable.id
+        if variable_id:
+            existing_ids.add(variable_id)
+        if variable_id in deleted_ids:
+            continue
+        merged_variables.append(upserts_by_id.get(variable_id, variable))
+
+    merged_variables.extend(
+        variable for variable_id, variable in upserts_by_id.items() if variable_id not in existing_ids
+    )
+    names = [variable.name for variable in merged_variables]
+    if len(set(names)) != len(names):
+        raise ValueError("Environment variable names must be unique.")
+    return merged_variables
+
+
 class WorkflowService:
     """
     Workflow Service
@@ -212,6 +262,19 @@ class WorkflowService:
 
         # return draft workflow
         return workflow
+
+    def _get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
+        """Return the app draft while holding its row lock for the caller's transaction."""
+        return session.scalar(
+            select(Workflow)
+            .where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
+            )
+            .limit(1)
+            .with_for_update()
+        )
 
     def get_published_workflow_by_id(self, app_model: App, workflow_id: str, *, session: Session) -> Workflow | None:
         """
@@ -320,6 +383,9 @@ class WorkflowService:
         environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
         session: Session,
+        environment_variable_upserts: Sequence[VariableBase] | None = None,
+        deleted_environment_variable_ids: Sequence[str] = (),
+        preserve_environment_variables: bool = False,
         commit: bool = True,
         sync_agent_bindings: bool = True,
     ) -> Workflow:
@@ -330,10 +396,17 @@ class WorkflowService:
         portable package references can be materialized atomically after the
         draft workflow has received its target-workspace id.
 
+        Existing drafts are row-locked before the hash check. Collaborative
+        graph-only saves preserve server environment variables, while an
+        explicit per-ID patch is merged in the same transaction as the graph.
+
         :raises WorkflowHashNotEqualError
         """
+        if environment_variable_upserts is None and deleted_environment_variable_ids:
+            raise ValueError("Deleted environment variable ids require an environment variable patch.")
+
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow(app_model=app_model, session=session)
+        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -346,6 +419,15 @@ class WorkflowService:
 
         # create draft workflow if not found
         if not workflow:
+            initial_environment_variables = (
+                _merge_environment_variable_patch(
+                    environment_variables,
+                    environment_variable_upserts,
+                    deleted_environment_variable_ids,
+                )
+                if environment_variable_upserts is not None
+                else list(environment_variables)
+            )
             workflow = Workflow(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
@@ -354,7 +436,7 @@ class WorkflowService:
                 graph=json.dumps(graph),
                 features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=environment_variables,
+                environment_variables=initial_environment_variables,
                 conversation_variables=conversation_variables,
             )
             session.add(workflow)
@@ -364,7 +446,14 @@ class WorkflowService:
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = naive_utc_now()
-            workflow.environment_variables = environment_variables
+            if environment_variable_upserts is not None:
+                workflow.environment_variables = _merge_environment_variable_patch(
+                    workflow.environment_variables,
+                    environment_variable_upserts,
+                    deleted_environment_variable_ids,
+                )
+            elif not preserve_environment_variables:
+                workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
@@ -399,10 +488,8 @@ class WorkflowService:
         environment_variables: Sequence[VariableBase],
         account: Account,
         session: Session,
-    ):
-        """
-        Update draft workflow environment variables
-        """
+    ) -> None:
+        """Replace every environment variable on a draft workflow and commit the transaction."""
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model, session=session)
 
@@ -414,6 +501,34 @@ class WorkflowService:
         workflow.updated_at = naive_utc_now()
 
         # commit db session changes
+        session.commit()
+
+    def patch_draft_workflow_environment_variables(
+        self,
+        *,
+        app_model: App,
+        environment_variables: Sequence[VariableBase],
+        deleted_environment_variable_ids: Sequence[str],
+        account: Account,
+        session: Session,
+    ) -> None:
+        """Atomically merge per-ID environment-variable upserts and deletions into a draft workflow.
+
+        The draft row is locked before reading its current variables so concurrent patches preserve
+        variables they do not touch. Existing variables keep their order and new variables are appended.
+        The transaction is committed before this method returns.
+        """
+        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
+        if not workflow:
+            raise ValueError("No draft workflow found.")
+
+        workflow.environment_variables = _merge_environment_variable_patch(
+            workflow.environment_variables,
+            environment_variables,
+            deleted_environment_variable_ids,
+        )
+        workflow.updated_by = account.id
+        workflow.updated_at = naive_utc_now()
         session.commit()
 
     def update_draft_workflow_conversation_variables(
@@ -535,6 +650,11 @@ class WorkflowService:
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
 
+        validate_llm_environment_model_references(
+            graph=draft_workflow.graph_dict,
+            environment_variables=draft_workflow.environment_variables,
+        )
+
         # Validate credentials before publishing, for credential policy check
         from services.feature_service import FeatureService
 
@@ -605,6 +725,14 @@ class WorkflowService:
         """
         graph_dict = workflow.graph_dict
         nodes = graph_dict.get("nodes", [])
+        has_llm_model_reference = any(
+            node.get("data", {}).get("type") == "llm"
+            and should_resolve_llm_model_selector(node.get("data", {}).get("model_selector"))
+            for node in nodes
+        )
+        environment_variables = (
+            {variable.name: variable for variable in workflow.environment_variables} if has_llm_model_reference else {}
+        )
 
         for node in nodes:
             node_data = node.get("data", {})
@@ -660,7 +788,22 @@ class WorkflowService:
                                 self._check_default_tool_credential(workflow.tenant_id, provider, session=session)
 
                 elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
+                    validation_node_data = node_data
                     model_config = node_data.get("model", {})
+                    if node_type == "llm" and should_resolve_llm_model_selector(node_data.get("model_selector")):
+                        selector = parse_llm_model_selector(node_data["model_selector"])
+                        variable = environment_variables.get(selector[1])
+                        if not isinstance(variable, LLMEnvironmentVariable):
+                            raise ValueError(
+                                f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                            )
+                        resolved_model = resolve_llm_model_config(
+                            node_model=ModelConfig.model_validate(model_config),
+                            variable_name=selector[1],
+                            variable_value=variable.value,
+                        )
+                        model_config = resolved_model.model_dump(mode="json")
+                        validation_node_data = {**node_data, "model": model_config}
                     provider = model_config.get("provider")
                     model_name = model_config.get("name")
 
@@ -668,7 +811,9 @@ class WorkflowService:
                         # Validate that the provider+model combination can fetch valid credentials
                         self._validate_llm_model_config(workflow.tenant_id, provider, model_name)
                         # Validate load balancing credentials if load balancing is enabled
-                        self._validate_load_balancing_credentials(workflow, node_data, node_id, session=session)
+                        self._validate_load_balancing_credentials(
+                            workflow, validation_node_data, node_id, session=session
+                        )
                     else:
                         raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
 

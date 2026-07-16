@@ -693,6 +693,13 @@ class SnippetService:
 
         SnippetService.validate_snippet_graph_forbidden_nodes(draft_workflow.graph_dict)
 
+        from core.workflow.llm_environment_variable import validate_llm_environment_model_references
+
+        validate_llm_environment_model_references(
+            graph=draft_workflow.graph_dict,
+            environment_variables=draft_workflow.environment_variables,
+        )
+
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
         WorkflowAgentPublishService.validate_agent_nodes_for_publish(

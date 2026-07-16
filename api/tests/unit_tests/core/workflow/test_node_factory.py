@@ -22,7 +22,7 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from graphon.variables.segments import ArrayObjectSegment, StringSegment
+from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 
 
 def _assert_constructor_node_data(data, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
@@ -726,6 +726,119 @@ class TestDifyNodeFactoryCreateNode:
             request_metadata={"app_id": "app-id"},
         )
         assert kwargs["model_instance"] is wrapped_model_instance
+
+    def test_resolve_llm_model_reference_uses_shared_model_and_parameters(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {
+                    "provider": "old-provider",
+                    "name": "old-model",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.2},
+                },
+                "model_selector": ["env", "for_summarize"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+            value={
+                "provider": "new-provider",
+                "name": "new-model",
+                "mode": "chat",
+                "completion_params": {"temperature": 0.8},
+            }
+        )
+
+        result = factory._resolve_llm_model_reference(node_data)
+
+        assert result.model.provider == "new-provider"
+        assert result.model.name == "new-model"
+        assert result.model.mode == node_data.model.mode
+        assert result.model.completion_params == {"temperature": 0.8}
+        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(("env", "for_summarize"))
+
+    def test_resolve_llm_model_reference_keeps_node_parameters_for_legacy_variable(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {
+                    "provider": "old-provider",
+                    "name": "old-model",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.2},
+                },
+                "model_selector": ["env", "for_summarize"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+            value={"provider": "new-provider", "name": "new-model", "mode": "chat"}
+        )
+
+        result = factory._resolve_llm_model_reference(node_data)
+
+        assert result.model.completion_params == {"temperature": 0.2}
+
+    def test_resolve_llm_model_reference_rejects_mode_mismatch(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "model_selector": ["env", "shared_model"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+            value={"provider": "provider", "name": "model", "mode": "completion"}
+        )
+
+        with pytest.raises(ValueError, match="uses mode 'completion'.*uses mode 'chat'"):
+            factory._resolve_llm_model_reference(node_data)
+
+    def test_resolve_llm_model_reference_rejects_missing_variable(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "model_selector": ["env", "shared_model"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = None
+
+        with pytest.raises(ValueError, match="shared_model.*not found"):
+            factory._resolve_llm_model_reference(node_data)
+
+    def test_resolve_llm_model_reference_keeps_static_model_for_legacy_non_environment_selector(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "model_selector": ["conversation", "shared_model"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+
+        result = factory._resolve_llm_model_reference(node_data)
+
+        assert result is node_data
+        factory.graph_runtime_state.variable_pool.get.assert_not_called()
 
     def test_build_llm_compatible_node_init_kwargs_uses_polling_wrapper_for_polling_llm_node(self, factory):
         node_data = LLMNodeData.model_validate(

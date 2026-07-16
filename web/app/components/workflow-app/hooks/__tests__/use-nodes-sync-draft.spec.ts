@@ -1,3 +1,4 @@
+import type { EnvironmentVariablePatch } from '@/service/workflow'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
@@ -323,6 +324,47 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(callbacks.onSuccess).toHaveBeenCalled()
     expect(callbacks.onError).not.toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('should include an environment variable patch in a full draft sync', async () => {
+    workflowStoreState = {
+      ...workflowStoreState,
+      environmentVariables: [{ id: 'env-existing', value: 'keep' }],
+    }
+    const environmentVariablePatch: EnvironmentVariablePatch = {
+      environmentVariables: [
+        {
+          id: 'env-1',
+          name: 'for_summarize',
+          description: '',
+          value_type: 'llm',
+          value: {
+            provider: 'langgenius/openai/openai',
+            name: 'gpt-4.1',
+            mode: 'chat',
+          },
+        },
+      ],
+      deletedEnvironmentVariableIds: ['env-2'],
+    }
+    const { result } = renderUseNodesSyncDraft()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false, undefined, { environmentVariablePatch })
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          environment_variables: [{ id: 'env-existing', value: 'keep' }],
+          environment_variable_patch: {
+            environment_variables: environmentVariablePatch.environmentVariables,
+            deleted_environment_variable_ids:
+              environmentVariablePatch.deletedEnvironmentVariableIds,
+          },
+        }),
+      }),
+    )
   })
 
   it('should keep pending inline Agent v2 nodes in draft without incomplete bindings', async () => {

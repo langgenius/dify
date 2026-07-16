@@ -40,6 +40,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.app.file_access import DatabaseFileAccessController
+from core.workflow.llm_environment_variable import environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -329,7 +330,7 @@ class SnippetEnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": v.value_type.exposed_type().value,
+                    "value_type": environment_variable_value_type(v),
                     "value": v.value,
                     "edited": False,
                     "visible": True,

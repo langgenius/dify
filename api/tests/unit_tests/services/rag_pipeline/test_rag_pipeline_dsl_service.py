@@ -7,8 +7,10 @@ import yaml
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
+from models.workflow import Workflow
 from services.dsl_version import check_version_compatibility
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline import rag_pipeline_dsl_service
@@ -158,6 +160,78 @@ def test_extract_dependencies_from_model_config_empty_config() -> None:
 
 
 # --- _extract_dependencies_from_workflow_graph ---
+
+
+def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(mocker: MockerFixture) -> None:
+    service = RagPipelineDslService(session=Mock())
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": ["env", "shared_model"],
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[
+            LLMEnvironmentVariable(
+                name="shared_model",
+                value={"provider": "new-provider", "name": "new-model", "mode": "chat"},
+            )
+        ],
+    )
+    analyze_dependency = mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        side_effect=lambda provider: provider,
+    )
+
+    result = service._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["new-provider"]
+    analyze_dependency.assert_called_once_with("new-provider")
+
+
+@pytest.mark.parametrize("model_selector", [[], ["env", "missing_model"]])
+def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_reference(
+    mocker: MockerFixture, model_selector: list[str]
+) -> None:
+    service = RagPipelineDslService(session=Mock())
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": model_selector,
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[],
+    )
+    analyze_dependency = mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        side_effect=lambda provider: provider,
+    )
+
+    result = service._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["old-provider"]
+    analyze_dependency.assert_called_once_with("old-provider")
 
 
 def test_extract_dependencies_from_workflow_graph_ignores_unknown_types(mocker: MockerFixture) -> None:

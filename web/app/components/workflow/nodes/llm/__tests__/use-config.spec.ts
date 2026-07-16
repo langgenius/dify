@@ -165,6 +165,7 @@ describe('llm/use-config', () => {
     } as ReturnType<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>)
     mockUseStore.mockImplementation((selector) => {
       return selector({
+        environmentVariables: [],
         nodesDefaultConfigs: {
           [BlockEnum.LLM]: {
             prompt_templates: {
@@ -241,11 +242,14 @@ describe('llm/use-config', () => {
         },
       })
       result.current.handleCompletionParamsChange({ top_p: 0.5 })
-      result.current.handleModelChanged({
-        provider: 'openai',
-        modelId: 'gpt-4.1',
-        mode: AppModeEnum.CHAT,
-      })
+      result.current.handleModelChanged(
+        {
+          provider: 'openai',
+          modelId: 'gpt-4.1',
+          mode: AppModeEnum.CHAT,
+        },
+        { temperature: 0.3 },
+      )
     })
 
     expect(setInputs).toHaveBeenNthCalledWith(
@@ -275,6 +279,7 @@ describe('llm/use-config', () => {
           provider: 'openai',
           name: 'gpt-4.1',
           mode: AppModeEnum.CHAT,
+          completion_params: { temperature: 0.3 },
         }),
       }),
     )
@@ -327,5 +332,172 @@ describe('llm/use-config', () => {
       )
       expect(handleVisionConfigAfterModelChanged).toHaveBeenCalled()
     })
+  })
+
+  it('resolves a referenced environment model with its shared completion params', () => {
+    inputRef.current = createPayload({
+      model_selector: ['env', 'for_summarize'],
+      model: {
+        provider: 'cached-provider',
+        name: 'cached-model',
+        mode: AppModeEnum.CHAT,
+        completion_params: { temperature: 0.2 },
+      },
+    })
+    mockUseNodeCrud.mockImplementation(() => ({
+      inputs: inputRef.current,
+      setInputs: vi.fn(),
+    }))
+    mockUseStore.mockImplementation((selector) =>
+      selector({
+        environmentVariables: [
+          {
+            id: 'env-1',
+            name: 'for_summarize',
+            value_type: 'llm',
+            value: {
+              provider: 'shared-provider',
+              name: 'shared-model',
+              mode: AppModeEnum.CHAT,
+              completion_params: { temperature: 0.8 },
+            },
+            description: '',
+          },
+        ],
+        nodesDefaultConfigs: {},
+      } as never),
+    )
+
+    const { result } = renderHook(() => useConfig('llm-node', inputRef.current))
+
+    expect(result.current.model).toEqual({
+      provider: 'shared-provider',
+      name: 'shared-model',
+      mode: AppModeEnum.CHAT,
+      completion_params: { temperature: 0.8 },
+    })
+    expect(result.current.isEnvironmentModelSource).toBe(true)
+    expect(mockUseConfigVision).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: 'shared-provider', name: 'shared-model' }),
+      expect.any(Object),
+    )
+    expect(mockUseLLMStructuredOutputConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: expect.objectContaining({ provider: 'shared-provider', name: 'shared-model' }),
+      }),
+    )
+  })
+
+  it('copies a newly bound environment identity and applies mode-specific prompt defaults', () => {
+    mockUseStore.mockImplementation((selector) =>
+      selector({
+        environmentVariables: [
+          {
+            id: 'env-1',
+            name: 'for_research',
+            value_type: 'llm',
+            value: {
+              provider: 'shared-provider',
+              name: 'shared-completion-model',
+              mode: AppModeEnum.COMPLETION,
+              completion_params: { top_p: 0.9 },
+            },
+            description: '',
+          },
+        ],
+        nodesDefaultConfigs: {
+          [BlockEnum.LLM]: {
+            prompt_templates: {
+              chat_model: { prompts: [] },
+              completion_model: {
+                prompt: { text: 'default completion prompt' },
+                conversation_histories_role: {
+                  user_prefix: 'User',
+                  assistant_prefix: 'Assistant',
+                },
+              },
+            },
+          },
+        },
+      } as never),
+    )
+
+    const { result } = renderHook(() => useConfig('llm-node', inputRef.current))
+
+    act(() => {
+      result.current.handleModelSelectorChange(['env', 'for_research'], { max_tokens: 42 })
+    })
+
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model_selector: ['env', 'for_research'],
+        model: expect.objectContaining({
+          provider: 'shared-provider',
+          name: 'shared-completion-model',
+          mode: AppModeEnum.COMPLETION,
+          completion_params: { top_p: 0.9 },
+        }),
+      }),
+    )
+    expect(appendDefaultPromptConfig).toHaveBeenCalled()
+    expect(appendDefaultPromptConfig.mock.calls[0]![1]).toEqual(
+      expect.objectContaining({ prompt_templates: expect.any(Object) }),
+    )
+    expect(appendDefaultPromptConfig.mock.calls[0]![2]).toBe(false)
+  })
+
+  it('switches back to direct input with the latest resolved environment identity', () => {
+    inputRef.current = createPayload({
+      model_selector: ['env', 'for_summarize'],
+      model: {
+        provider: 'cached-provider',
+        name: 'cached-model',
+        mode: AppModeEnum.CHAT,
+        completion_params: { temperature: 0.4 },
+      },
+    })
+    mockUseNodeCrud.mockImplementation(() => ({
+      inputs: inputRef.current,
+      setInputs: vi.fn(),
+    }))
+    mockUseStore.mockImplementation((selector) =>
+      selector({
+        environmentVariables: [
+          {
+            id: 'env-1',
+            name: 'for_summarize',
+            value_type: 'llm',
+            value: {
+              provider: 'latest-provider',
+              name: 'latest-model',
+              mode: AppModeEnum.CHAT,
+              completion_params: { temperature: 0.8 },
+            },
+            description: '',
+          },
+        ],
+        nodesDefaultConfigs: {},
+      } as never),
+    )
+
+    const { result } = renderHook(() => useConfig('llm-node', inputRef.current))
+
+    act(() => {
+      result.current.handleModelSourceChange(false)
+    })
+
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: {
+          provider: 'latest-provider',
+          name: 'latest-model',
+          mode: AppModeEnum.CHAT,
+          completion_params: { temperature: 0.8 },
+        },
+        model_selector: undefined,
+      }),
+    )
+    const updatedInputs = setInputs.mock.calls[0]![0]
+    expect(updatedInputs).toHaveProperty('model_selector', undefined)
   })
 })

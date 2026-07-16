@@ -22,6 +22,11 @@ from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.llm_environment_variable import (
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
+)
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -63,7 +68,7 @@ from graphon.nodes.http_request import build_http_request_config
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
-from graphon.variables.segments import ArrayObjectSegment
+from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
 
 if TYPE_CHECKING:
@@ -394,6 +399,8 @@ class DifyNodeFactory(NodeFactory):
         # stay explicit and constructors receive the concrete typed payload.
         resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
         node_type = node_data.type
+        if node_type == BuiltinNodeTypes.LLM:
+            resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             BuiltinNodeTypes.CODE: lambda: {
                 "code_executor": self._code_executor,
@@ -478,6 +485,25 @@ class DifyNodeFactory(NodeFactory):
     @staticmethod
     def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
         return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
+
+    def _resolve_llm_model_reference(self, node_data: LLMNodeData) -> LLMNodeData:
+        """Resolve an optional shared model selector from the workflow variable pool."""
+
+        model_selector = (node_data.model_extra or {}).get("model_selector")
+        if not should_resolve_llm_model_selector(model_selector):
+            return node_data
+
+        selector = parse_llm_model_selector(model_selector)
+        variable = self.graph_runtime_state.variable_pool.get(selector)
+        if not isinstance(variable, ObjectSegment):
+            raise ValueError(f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable")
+
+        resolved_model = resolve_llm_model_config(
+            node_model=node_data.model,
+            variable_name=selector[1],
+            variable_value=variable.value,
+        )
+        return node_data.model_copy(update={"model": resolved_model})
 
     def _build_agent_node_init_kwargs(self, *, node_class: type[Node]) -> dict[str, object]:
         if issubclass(node_class, DifyAgentNode):

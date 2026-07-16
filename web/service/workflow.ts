@@ -19,6 +19,20 @@ import { getFlowPrefix } from './utils'
 
 export type WorkflowDraftFeaturesPayload = WorkflowFeaturesConfigPayload
 
+export type EnvironmentVariablePatch = {
+  environmentVariables: EnvironmentVariable[]
+  deletedEnvironmentVariableIds: string[]
+}
+
+export type SyncDraftOptions = {
+  environmentVariablePatch?: EnvironmentVariablePatch
+}
+
+type EnvironmentVariablePatchPayload = {
+  environment_variables: EnvironmentVariable[]
+  deleted_environment_variable_ids: string[]
+}
+
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
 }
@@ -31,7 +45,9 @@ export const syncWorkflowDraft = ({
   params: Pick<
     FetchWorkflowDraftResponse,
     'graph' | 'features' | 'environment_variables' | 'conversation_variables'
-  >
+  > & {
+    environment_variable_patch?: EnvironmentVariablePatchPayload
+  }
 }) => {
   return post<CommonResponse & { updated_at: number; hash: string }>(
     url,
@@ -146,13 +162,16 @@ export const fetchNodeInspectVars = async (
 export const updateEnvironmentVariables = ({
   appId,
   environmentVariables,
+  deletedEnvironmentVariableIds,
 }: {
   appId: string
-  environmentVariables: EnvironmentVariable[]
-}) => {
-  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post({
-    params: { app_id: appId },
-    body: { environment_variables: environmentVariables },
+} & EnvironmentVariablePatch) => {
+  return post<CommonResponse>(`apps/${appId}/workflows/draft/environment-variables`, {
+    body: {
+      environment_variables: environmentVariables,
+      patch: true,
+      deleted_environment_variable_ids: deletedEnvironmentVariableIds,
+    },
   })
 }
 

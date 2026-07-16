@@ -5,10 +5,84 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.orm import Session
 
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import App, AppMode
 from models.model import AppModelConfig, IconType
+from models.workflow import Workflow
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import ImportStatus
+
+
+def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": ["env", "shared_model"],
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[
+            LLMEnvironmentVariable(
+                name="shared_model",
+                value={"provider": "new-provider", "name": "new-model", "mode": "chat"},
+            )
+        ],
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        analyze_dependency,
+    )
+
+    result = AppDslService._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["new-provider"]
+    analyze_dependency.assert_called_once_with("new-provider")
+
+
+@pytest.mark.parametrize("model_selector", [[], ["env", "missing_model"]])
+def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_reference(
+    monkeypatch: pytest.MonkeyPatch, model_selector: list[str]
+) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": model_selector,
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[],
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        analyze_dependency,
+    )
+
+    result = AppDslService._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["old-provider"]
+    analyze_dependency.assert_called_once_with("old-provider")
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)

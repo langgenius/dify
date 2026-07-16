@@ -1,5 +1,5 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
-import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
+import type { SyncDraftOptions, WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback } from 'react'
@@ -138,7 +138,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
 
   const performSync = useCallback(
-    async (notRefreshWhenSyncError?: boolean, callback?: SyncDraftCallback) => {
+    async (
+      notRefreshWhenSyncError?: boolean,
+      callback?: SyncDraftCallback,
+      options?: SyncDraftOptions,
+    ) => {
       if (getNodesReadOnly()) return
 
       const isFollower =
@@ -165,6 +169,15 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           params: {
             ...baseParams.params,
             hash: latestHash || null,
+            ...(options?.environmentVariablePatch
+              ? {
+                  environment_variable_patch: {
+                    environment_variables: options.environmentVariablePatch.environmentVariables,
+                    deleted_environment_variable_ids:
+                      options.environmentVariablePatch.deletedEnvironmentVariableIds,
+                  },
+                }
+              : {}),
           },
         }
 
