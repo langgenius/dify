@@ -63,10 +63,6 @@ func DefaultConfig(home, cwd, jobDir string) *Config {
 //
 // If a variable is set (even to empty string), its value replaces the default.
 // Set to empty to grant no additional paths beyond $HOME.
-//
-//	LANDLOCK_RW_PATHS     — comma-separated RW dirs    (default: empty)
-//	LANDLOCK_RO_PATHS     — comma-separated RO dirs    (default: system paths)
-//	LANDLOCK_RW_DEV_PATHS — comma-separated dev files  (default: /dev/null,...)
 func ConfigFromEnv(home, cwd, jobDir string) *Config {
 	cfg := DefaultConfig(home, cwd, jobDir)
 
