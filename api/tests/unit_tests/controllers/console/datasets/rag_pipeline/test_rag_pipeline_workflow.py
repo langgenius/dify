@@ -297,15 +297,18 @@ def test_rag_pipeline_run_uses_sqlite_session(
 ) -> None:
     api = api_type()
     handler = unwrap_all(api.post)
+    pipeline = _pipeline()
+    pipeline_id = UUID("44444444-4444-4444-4444-444444444444")
 
     with (
         Session(sqlite_engine) as session,
         app.test_request_context("/", json=payload),
         patch.object(type(module.console_ns), "payload", payload),
+        patch.object(module, "load_rag_pipeline", return_value=pipeline),
         patch.object(module.PipelineGenerateService, "generate", return_value=MagicMock()) as generate,
         patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
     ):
-        response = handler(api, session, _account(), _pipeline())
+        response = handler(api, session, _account(), pipeline_id)
 
     assert response == {"ok": True}
     assert generate.call_args.kwargs["session"] is session
@@ -326,12 +329,14 @@ def test_rag_pipeline_run_translates_rate_limit(
     }
     api = api_type()
     handler = unwrap_all(api.post)
+    pipeline_id = UUID("44444444-4444-4444-4444-444444444444")
 
     with (
         Session(sqlite_engine) as session,
         app.test_request_context("/", json=payload),
         patch.object(type(module.console_ns), "payload", payload),
+        patch.object(module, "load_rag_pipeline", return_value=_pipeline()),
         patch.object(module.PipelineGenerateService, "generate", side_effect=InvokeRateLimitError("limit")),
         pytest.raises(InvokeRateLimitHttpError),
     ):
-        handler(api, session, _account(), _pipeline())
+        handler(api, session, _account(), pipeline_id)

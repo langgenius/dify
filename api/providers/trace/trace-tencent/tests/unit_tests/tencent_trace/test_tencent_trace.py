@@ -22,8 +22,7 @@ from core.ops.entities.trace_entity import (
 )
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes
-from models import Account, App, Tenant, TenantAccountJoin
-from models.account import TenantAccountRole
+from models import Account, App, Tenant
 from models.model import AppMode, IconType
 
 logger = logging.getLogger(__name__)
@@ -420,7 +419,7 @@ class TestTencentDataTrace:
 
     @pytest.mark.parametrize(
         "sqlite3_session",
-        [(Account, App, Tenant, TenantAccountJoin)],
+        [(Account, App, Tenant)],
         indirect=True,
     )
     def test_get_workflow_node_executions(
@@ -447,13 +446,7 @@ class TestTencentDataTrace:
             created_by=account.id,
             max_active_requests=0,
         )
-        tenant_join = TenantAccountJoin(
-            tenant_id=tenant.id,
-            account_id=account.id,
-            current=True,
-            role=TenantAccountRole.OWNER,
-        )
-        sqlite3_session.add_all([app, tenant_join])
+        sqlite3_session.add(app)
         sqlite3_session.commit()
 
         trace_info = MagicMock(spec=WorkflowTraceInfo)
@@ -472,7 +465,6 @@ class TestTencentDataTrace:
         service_account = mock_repo.call_args.kwargs["user"]
         assert isinstance(service_account, Account)
         assert service_account.id == account.id
-        assert service_account.current_tenant_id == tenant.id
         assert mock_repo.call_args.kwargs["tenant_id"] == tenant.id
 
     @pytest.mark.parametrize("sqlite3_session", [()], indirect=True)

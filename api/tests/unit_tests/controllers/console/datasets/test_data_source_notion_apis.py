@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets.data_source import (
@@ -78,7 +79,7 @@ class TestDataSourceNotionIndexingEstimateApi:
                 return_value=MagicMock(model_dump=lambda: {"total_pages": 1}),
             ),
         ):
-            response, status = method(api, "tenant-1")
+            response, status = method(api, MagicMock(spec=Session), "tenant-1")
 
         assert status == 200
 
@@ -103,7 +104,7 @@ class TestDataSourceNotionDatasetSyncApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, "ds-1")
+            response, status = method(api, MagicMock(spec=Session), "ds-1")
 
         assert status == 200
 
@@ -119,7 +120,7 @@ class TestDataSourceNotionDatasetSyncApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, "ds-1")
+                method(api, MagicMock(spec=Session), "ds-1")
 
 
 class TestDataSourceNotionDocumentSyncApi:
@@ -142,7 +143,7 @@ class TestDataSourceNotionDocumentSyncApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, "ds-1", "doc-1")
+            response, status = method(api, MagicMock(spec=Session), "ds-1", "doc-1")
 
         assert status == 200
 
@@ -162,4 +163,4 @@ class TestDataSourceNotionDocumentSyncApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, "ds-1", "doc-1")
+                method(api, MagicMock(spec=Session), "ds-1", "doc-1")

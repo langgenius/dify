@@ -6,6 +6,7 @@ cover the concrete objects and session passed across the controller boundary.
 """
 
 import uuid
+from contextlib import nullcontext
 from inspect import unwrap
 from typing import cast
 from unittest.mock import patch
@@ -15,6 +16,7 @@ from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
+from controllers.common import session as session_module
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountRole
 from models.enums import TagType
@@ -33,6 +35,7 @@ def controller_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch)
     existing_session_factory = cast(sessionmaker[Session], lambda: sqlite_session)
     session_registry = scoped_session(existing_session_factory)
     monkeypatch.setattr(db, "session", session_registry)
+    monkeypatch.setattr(session_module.session_factory, "create_session", lambda: nullcontext(sqlite_session))
     return sqlite_session
 
 
@@ -225,7 +228,7 @@ class TestDatasetTagsApiDelete:
             json={"tag_id": "tag-1"},
         ):
             api = DatasetTagsApi()
-            result = unwrap(api.delete)(api, _=None)
+            result = unwrap(api.delete)(api, controller_session, _=None)
 
         assert result == ("", 204)
         mock_tag_svc.delete_tag.assert_called_once_with("tag-1", controller_session, tag_type=TagType.KNOWLEDGE)

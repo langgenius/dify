@@ -7,6 +7,7 @@ so model properties and service call contracts exercise real SQLAlchemy behavior
 """
 
 import uuid
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from inspect import unwrap
 from typing import cast
@@ -18,6 +19,7 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common import session as session_module
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountRole
@@ -51,6 +53,7 @@ def controller_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch)
     existing_session_factory = cast(sessionmaker[Session], lambda: sqlite_session)
     session_registry = scoped_session(existing_session_factory)
     monkeypatch.setattr(db, "session", session_registry)
+    monkeypatch.setattr(session_module.session_factory, "create_session", lambda: nullcontext(sqlite_session))
     return sqlite_session
 
 
@@ -336,6 +339,7 @@ class TestDatasetApiGet:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -523,6 +527,7 @@ class TestDatasetApiDelete:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -533,7 +538,7 @@ class TestDatasetApiDelete:
             method="DELETE",
         ):
             api = DatasetApi()
-            result = unwrap(api.delete)(api, _=dataset.tenant_id, dataset_id=dataset.id)
+            result = unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
         assert result == ("", 204)
 
@@ -544,6 +549,7 @@ class TestDatasetApiDelete:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -555,7 +561,7 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(NotFound):
-                unwrap(api.delete)(api, _=dataset.tenant_id, dataset_id=dataset.id)
+                unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_delete_dataset_in_use(
@@ -564,6 +570,7 @@ class TestDatasetApiDelete:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -575,7 +582,7 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(DatasetInUseError):
-                unwrap(api.delete)(api, _=dataset.tenant_id, dataset_id=dataset.id)
+                unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
 
 # ---------------------------------------------------------------------------
