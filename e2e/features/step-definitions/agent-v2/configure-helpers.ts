@@ -18,10 +18,10 @@ export const getCurrentAgentId = (world: DifyWorld) => {
 }
 
 export const getPreseededAgent = (world: DifyWorld, name: string) => {
-  const resource = world.agentBuilder.preflight.preseededResources[name]
+  const resource = world.agentBuilder.fixtures.preseededResources[name]
   if (!resource || resource.kind !== 'agent') {
     throw new Error(
-      `Preseeded Agent "${name}" is not available. Run the matching preflight step first.`,
+      `Preseeded Agent "${name}" is not available. Run the matching fixture setup step first.`,
     )
   }
 

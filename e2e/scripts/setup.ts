@@ -78,11 +78,15 @@ const composeArgs = [
 const getApiEnvironment = async (): Promise<Record<string, string>> => {
   const envFromExample = await readSimpleDotenv(apiEnvExampleFile)
   const agentBackendBaseUrl = getAgentBackendBaseUrl()
+  const marketplaceApiUrl = process.env.E2E_MARKETPLACE_API_URL?.trim()
 
   return {
     ...envFromExample,
     ...(agentBackendBaseUrl ? { AGENT_BACKEND_BASE_URL: agentBackendBaseUrl } : {}),
+    ...(marketplaceApiUrl ? { MARKETPLACE_API_URL: marketplaceApiUrl } : {}),
     FLASK_APP: 'app.py',
+    HTTP_PROXY: process.env.HTTP_PROXY || '',
+    HTTPS_PROXY: process.env.HTTPS_PROXY || '',
   }
 }
 

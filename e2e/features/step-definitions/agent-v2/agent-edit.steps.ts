@@ -1,16 +1,16 @@
 import type { PostAgentByAgentIdCopyResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../support/world'
-import { Then, When } from '@cucumber/cucumber'
+import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createE2EResourceName } from '../../../support/naming'
-import { getAgentComposerDraft, getTestAgent } from '../../agent-v2/support/agent'
+import { getAgentComposerDraft, getTestAgent, publishAgent } from '../../agent-v2/support/agent'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../../agent-v2/support/agent-builder-resources'
 import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord, asString } from '../../agent-v2/support/preflight/common'
+import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common'
 import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
 import {
   expectProviderToolActionVisible,
@@ -65,6 +65,13 @@ const getComposerInheritanceSnapshot = async (agentId: string) => {
   }
 }
 
+Given(
+  'the preseeded Agent v2 {string} has been published via API',
+  async function (this: DifyWorld, agentName: string) {
+    await publishAgent(getPreseededAgent(this, agentName).id)
+  },
+)
+
 When(
   'I duplicate the preseeded Agent v2 {string} from the Agent Roster',
   async function (this: DifyWorld, agentName: string) {
@@ -89,7 +96,7 @@ When(
         response.request().method() === 'POST' &&
         new URL(response.url()).pathname.endsWith(`/console/api/agent/${agent.id}/copy`),
     )
-    await dialog.getByRole('button', { name: 'Duplicate' }).click()
+    await dialog.getByRole('button', { exact: true, name: 'Duplicate' }).click()
 
     const copyResponse = await copyResponsePromise
     expect(copyResponse.status()).toBe(201)
@@ -107,9 +114,11 @@ When(
 
 Then('I should see the Agent v2 full-config fixture sections', async function (this: DifyWorld) {
   const page = this.getPage()
-  const stableModel = this.agentBuilder.preflight.stableModel
+  const stableModel = this.agentBuilder.fixtures.stableModel
   if (!stableModel)
-    throw new Error('Stable chat model preflight must run before asserting the full-config Agent.')
+    throw new Error(
+      'Stable chat model fixture setup must run before asserting the full-config Agent.',
+    )
 
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
   await expect(
@@ -130,7 +139,7 @@ Then('I should see the Agent v2 full-config fixture sections', async function (t
     }),
   ).toBeVisible()
 
-  const filesSection = page.getByRole('region', { name: 'Files' })
+  const filesSection = page.getByRole('region', { exact: true, name: 'Files' })
   await expect(filesSection).toBeVisible()
   await expect(
     filesSection.getByRole('button', {
@@ -168,9 +177,11 @@ Then(
   async function (this: DifyWorld, agentName: string) {
     const sourceAgent = getPreseededAgent(this, agentName)
     const duplicatedAgentId = getCurrentAgentId(this)
-    const stableModel = this.agentBuilder.preflight.stableModel
+    const stableModel = this.agentBuilder.fixtures.stableModel
     if (!stableModel)
-      throw new Error('Stable chat model preflight must run before asserting the duplicated Agent.')
+      throw new Error(
+        'Stable chat model fixture setup must run before asserting the duplicated Agent.',
+      )
 
     const [sourceDetail, duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
       getTestAgent(sourceAgent.id),
@@ -232,7 +243,7 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
   await expect(toolsSection).toBeVisible({ timeout: 30_000 })
   await expect(
     toolsSection.getByRole('button', { exact: true, name: 'Not authorized' }),
-  ).toBeVisible()
+  ).toHaveCount(2)
 
   const { action: jsonReplaceAction, tool: jsonTool } = await expectProviderToolActionVisible(
     toolsSection,

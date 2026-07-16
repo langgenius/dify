@@ -2,12 +2,7 @@ import type { ManagedProcess } from '../support/process'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { runCleanupTasks } from '../support/cleanup'
-import {
-  assertCucumberReport,
-  formatCucumberReportSummary,
-  getCucumberReportGate,
-  readCucumberReportSummary,
-} from '../support/cucumber-report'
+import { assertCucumberScenariosStarted } from '../support/cucumber-messages'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
 import { startWebServer, stopWebServer } from '../support/web-server'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
@@ -51,8 +46,7 @@ const parseArgs = (argv: string[]): RunOptions => {
 const hasCustomTags = (forwardArgs: string[]) =>
   forwardArgs.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
 
-const fullNonExternalTags =
-  'not @skip and not @preview and not @external-model and not @external-tool'
+const fullNonExternalTags = 'not @prepared and not @external-model and not @external-tool'
 
 const isTruthyEnv = (value: string | undefined) => value === '1' || value === 'true'
 
@@ -274,14 +268,9 @@ const main = async () => {
       env: cucumberEnv,
     })
 
-    const reportGate = getCucumberReportGate(cucumberEnv)
-    if (reportGate) {
-      const reportPath = path.join(cucumberReportDir, 'report.json')
-      const reportSummary = await readCucumberReportSummary(reportPath)
-      console.warn(
-        `[e2e] cucumber report ${reportGate.profile}: ${formatCucumberReportSummary(reportSummary)}`,
-      )
-      assertCucumberReport(reportSummary, reportGate)
+    if (result.exitCode === 0) {
+      const messages = await readFile(path.join(cucumberReportDir, 'report.ndjson'), 'utf8')
+      assertCucumberScenariosStarted(messages)
     }
 
     process.exitCode = result.exitCode

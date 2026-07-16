@@ -12,6 +12,8 @@
     "e2e:install": "playwright install --with-deps chromium webkit",
     "e2e:middleware:down": "tsx ./scripts/setup.ts middleware-down",
     "e2e:middleware:up": "tsx ./scripts/setup.ts middleware-up",
+    "e2e:post-merge": "tsx ./scripts/run-post-merge.ts",
+    "e2e:post-merge:prepare": "tsx ./scripts/seed.ts --pack agent-v2 --profile post-merge",
     "e2e:reset": "tsx ./scripts/setup.ts reset",
     "seed": "tsx ./scripts/seed.ts",
     "test:unit": "vitest run",
