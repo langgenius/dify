@@ -90,7 +90,7 @@ const DocumentList = ({
   })
 
   // Selection
-  const { hasErrorDocumentsSelected, downloadableSelectedIds, clearSelection } =
+  const { hasErrorDocumentsSelected, downloadableSelectedIds, syncableSelectedDocs, clearSelection } =
     useDocumentSelection({
       documents,
       selectedIds,
@@ -99,10 +99,11 @@ const DocumentList = ({
   const documentIds = useMemo(() => documents.map((doc) => doc.id), [documents])
 
   // Actions
-  const { handleAction, handleBatchReIndex, handleBatchDownload } = useDocumentActions({
+  const { handleAction, handleBatchReIndex, handleBatchDownload, handleBatchSync } = useDocumentActions({
     datasetId,
     selectedIds,
     downloadableSelectedIds,
+    syncableSelectedDocs,
     onUpdate,
     onClearSelection: clearSelection,
   })
@@ -243,6 +244,11 @@ const DocumentList = ({
           onBatchReIndex={
             datasetACLCapabilities.canEdit && hasErrorDocumentsSelected
               ? handleBatchReIndex
+              : undefined
+          }
+          onBatchSync={
+            datasetACLCapabilities.canEdit && syncableSelectedDocs.length > 0
+              ? handleBatchSync
               : undefined
           }
           onCancel={clearSelection}

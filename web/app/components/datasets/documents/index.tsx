@@ -1,7 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import { useAtomValue } from 'jotai'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@langgenius/dify-ui/toast'
 import Loading from '@/app/components/base/loading'
 import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -10,6 +12,8 @@ import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import {
+  useBatchSyncNotion,
+  useBatchSyncWebsite,
   useDocumentList,
   useInvalidDocumentDetail,
   useInvalidDocumentList,
@@ -31,7 +35,11 @@ const POLLING_INTERVAL = 2500
 const TERMINAL_INDEXING_STATUSES = new Set(['completed', 'paused', 'error'])
 const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing', 'paused'])
 
+const MAX_WAIT_MS = 300_000
+const MIN_WAIT_MS = 3_000
+
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
+  const { t } = useTranslation()
   const router = useRouter()
   const { plan } = useProviderContext()
   const isFreePlan = plan.type === 'sandbox'
@@ -131,6 +139,54 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     router.push(`/datasets/${datasetId}/documents/create`)
   }, [dataset?.runtime_mode, datasetACLCapabilities.canUse, datasetId, router])
 
+  const { mutateAsync: batchSyncNotion } = useBatchSyncNotion()
+  const { mutateAsync: batchSyncWebsite } = useBatchSyncWebsite()
+  const [isSyncingAll, setIsSyncingAll] = useState(false)
+  const documentsListRef = useRef(documentsRes?.data)
+  useEffect(() => { documentsListRef.current = documentsRes?.data }, [documentsRes?.data])
+
+  const handleSyncAll = useCallback(async () => {
+    setIsSyncingAll(true)
+    try {
+      const calls = []
+      if (dataset?.data_source_type === DataSourceType.NOTION)
+        calls.push(batchSyncNotion({ datasetId }))
+      else if (dataset?.data_source_type === DataSourceType.WEB)
+        calls.push(batchSyncWebsite({ datasetId }))
+      else {
+        calls.push(batchSyncNotion({ datasetId }))
+        calls.push(batchSyncWebsite({ datasetId }))
+      }
+      const results = await Promise.allSettled(calls)
+      if (results.some((r) => r.status === 'rejected')) {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        return
+      }
+      const startTime = Date.now()
+      await new Promise<void>((resolve) => {
+        const poll = () => {
+          invalidDocumentList()
+          setTimeout(() => {
+            const elapsed = Date.now() - startTime
+            if (elapsed > MAX_WAIT_MS) { resolve(); return }
+            const docs = documentsListRef.current ?? []
+            const allTerminal =
+              docs.length === 0 || docs.every((d) => TERMINAL_INDEXING_STATUSES.has(d.indexing_status))
+            if (allTerminal && elapsed >= MIN_WAIT_MS)
+              resolve()
+            else
+              poll()
+          }, POLLING_INTERVAL)
+        }
+        poll()
+      })
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+    }
+    finally {
+      setIsSyncingAll(false)
+    }
+  }, [batchSyncNotion, batchSyncWebsite, dataset?.data_source_type, datasetId, invalidDocumentList, t])
+
   const total = documentsRes?.total || 0
   const documentsList = documentsRes?.data
 
@@ -199,6 +255,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         onDeleteMetaData={handleDeleteMetaData}
         onBuiltInEnabledChange={setBuiltInEnabled}
         onAddDocument={routeToDocCreate}
+        onSyncAll={handleSyncAll}
+        isSyncingAll={isSyncingAll}
       />
       <div className="flex h-0 grow flex-col px-6 pt-4">{renderContent()}</div>
     </div>

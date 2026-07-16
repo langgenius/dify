@@ -11,6 +11,8 @@
   "batchAction.enable": "Enable",
   "batchAction.reIndex": "Re-index",
   "batchAction.selected": "Selected",
+  "batchAction.sync": "Synchroniseren",
+  "batchAction.syncAll": "Alles synchroniseren",
   "chunkingMode.general": "General",
   "chunkingMode.graph": "Graph",
   "chunkingMode.parentChild": "Parent-child",

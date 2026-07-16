@@ -103,6 +103,43 @@ describe('useDocumentSelection', () => {
     })
   })
 
+  describe('syncableSelectedDocs', () => {
+    it('should return non-archived NOTION and WEB docs from selection', () => {
+      const docs = [
+        createMockDocument({ id: 'doc1', data_source_type: DataSourceType.FILE }),
+        createMockDocument({ id: 'doc2', data_source_type: DataSourceType.NOTION, archived: false }),
+        createMockDocument({ id: 'doc3', data_source_type: DataSourceType.WEB, archived: false }),
+        createMockDocument({ id: 'doc4', data_source_type: DataSourceType.NOTION, archived: true }),
+      ]
+      const onSelectedIdChange = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDocumentSelection({
+          documents: docs,
+          selectedIds: ['doc1', 'doc2', 'doc3', 'doc4'],
+          onSelectedIdChange,
+        }),
+      )
+
+      expect(result.current.syncableSelectedDocs.map((d) => d.id)).toEqual(['doc2', 'doc3'])
+    })
+
+    it('should return empty array when only FILE docs selected', () => {
+      const docs = [createMockDocument({ id: 'doc1', data_source_type: DataSourceType.FILE })]
+      const onSelectedIdChange = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDocumentSelection({
+          documents: docs,
+          selectedIds: ['doc1'],
+          onSelectedIdChange,
+        }),
+      )
+
+      expect(result.current.syncableSelectedDocs).toEqual([])
+    })
+  })
+
   describe('clearSelection', () => {
     it('should call onSelectedIdChange with empty array', () => {
       const onSelectedIdChange = vi.fn()

@@ -11,6 +11,8 @@
   "batchAction.enable": "Вмикати",
   "batchAction.reIndex": "Повторно індексувати",
   "batchAction.selected": "Вибрані",
+  "batchAction.sync": "Синхронізувати",
+  "batchAction.syncAll": "Синхронізувати все",
   "chunkingMode.general": "Загальне",
   "chunkingMode.graph": "Графік",
   "chunkingMode.parentChild": "Батьки-діти",

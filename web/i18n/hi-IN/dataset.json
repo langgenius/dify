@@ -11,6 +11,8 @@
   "batchAction.enable": "योग्य बनाना",
   "batchAction.reIndex": "पुनः अनुक्रमित करें",
   "batchAction.selected": "चयनित",
+  "batchAction.sync": "सिंक",
+  "batchAction.syncAll": "सभी सिंक करें",
   "chunkingMode.general": "सामान्य",
   "chunkingMode.graph": "ग्राफ",
   "chunkingMode.parentChild": "माता-पिता का बच्चा",

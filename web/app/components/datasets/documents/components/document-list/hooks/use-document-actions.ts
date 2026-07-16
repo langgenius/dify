@@ -2,8 +2,10 @@ import type { CommonResponse } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DocumentActionType } from '@/models/datasets'
+import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import {
+  useBatchSyncNotion,
+  useBatchSyncWebsite,
   useDocumentArchive,
   useDocumentBatchRetryIndex,
   useDocumentDelete,
@@ -19,6 +21,7 @@ type UseDocumentActionsOptions = {
   datasetId: string
   selectedIds: string[]
   downloadableSelectedIds: string[]
+  syncableSelectedDocs: Array<{ data_source_type: DataSourceType }>
   onUpdate: () => void
   onClearSelection: () => void
 }
@@ -39,6 +42,7 @@ export const useDocumentActions = ({
   datasetId,
   selectedIds,
   downloadableSelectedIds,
+  syncableSelectedDocs,
   onUpdate,
   onClearSelection,
 }: UseDocumentActionsOptions) => {
@@ -51,6 +55,8 @@ export const useDocumentActions = ({
   const { mutateAsync: deleteDocument } = useDocumentDelete()
   const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
   const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip()
+  const { mutateAsync: batchSyncNotion } = useBatchSyncNotion()
+  const { mutateAsync: batchSyncWebsite } = useBatchSyncWebsite()
 
   type SupportedActionType =
     | typeof DocumentActionType.archive
@@ -120,10 +126,25 @@ export const useDocumentActions = ({
     downloadBlob({ data: blob, fileName: generateDocsZipFileName() })
   }, [datasetId, downloadableSelectedIds, isDownloadingZip, requestDocumentsZip, t])
 
+  const handleBatchSync = useCallback(async () => {
+    const hasNotion = syncableSelectedDocs.some((doc) => doc.data_source_type === DataSourceType.NOTION)
+    const hasWebsite = syncableSelectedDocs.some((doc) => doc.data_source_type === DataSourceType.WEB)
+    const calls: Promise<CommonResponse>[] = []
+    if (hasNotion) calls.push(batchSyncNotion({ datasetId }))
+    if (hasWebsite) calls.push(batchSyncWebsite({ datasetId }))
+    const results = await Promise.allSettled(calls)
+    if (results.some((r) => r.status === 'rejected'))
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    else
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+    onUpdate()
+  }, [batchSyncNotion, batchSyncWebsite, datasetId, onUpdate, syncableSelectedDocs, t])
+
   return {
     handleAction,
     handleBatchReIndex,
     handleBatchDownload,
+    handleBatchSync,
     isDownloadingZip,
   }
 }
