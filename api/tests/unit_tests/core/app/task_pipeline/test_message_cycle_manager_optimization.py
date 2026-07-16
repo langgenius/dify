@@ -1,24 +1,95 @@
 """Unit tests for the message cycle manager optimization."""
 
 import logging
+from collections.abc import Iterator
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask, current_app
+from sqlalchemy import Engine, event, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRetrieverResourcesEvent
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata
+from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.rag.entities import RetrievalSourceMetadata
-from models.model import App, AppMode
+from graphon.file import FileTransferMethod, FileType
+from models import model as model_module
+from models.base import TypeBase
+from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.model import App, AppMode, Conversation, MessageFile
 
 
-def _patch_create_session(mock_session):
-    session_cm = Mock()
-    session_cm.__enter__ = Mock(return_value=mock_session)
-    session_cm.__exit__ = Mock(return_value=False)
-    return patch("core.app.task_pipeline.message_cycle_manager.session_factory.create_session", return_value=session_cm)
+@dataclass(frozen=True)
+class _SQLiteDb:
+    engine: Engine
+    session: Session
+
+
+@pytest.fixture
+def cycle_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
+    """Bind request-owned and cycle-manager-owned sessions to isolated SQLite."""
+    TypeBase.metadata.create_all(
+        sqlite_engine,
+        tables=[App.__table__, Conversation.__table__, MessageFile.__table__],
+    )
+    owned_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with owned_session_factory() as request_session:
+        sqlite_db = _SQLiteDb(engine=sqlite_engine, session=request_session)
+        monkeypatch.setattr(message_cycle_manager_module, "db", sqlite_db)
+        monkeypatch.setattr(model_module, "db", sqlite_db)
+        monkeypatch.setattr(message_cycle_manager_module.session_factory, "create_session", owned_session_factory)
+        yield request_session
+
+
+def _app(*, app_id: str = "app-id", tenant_id: str = "tenant-1") -> App:
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name="Test App",
+        description="",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+    )
+
+
+def _conversation(*, conversation_id: str = "conv-1", app_id: str = "app-id") -> Conversation:
+    conversation = Conversation(
+        app_id=app_id,
+        mode=AppMode.CHAT,
+        name="",
+        status="normal",
+        from_source=ConversationFromSource.API,
+        inputs={},
+    )
+    conversation.id = conversation_id
+    return conversation
+
+
+def _message_file(
+    *,
+    file_id: str = "file-1",
+    message_id: str = "test-message-id",
+    belongs_to: MessageFileBelongsTo | None = MessageFileBelongsTo.ASSISTANT,
+    url: str | None = "http://example.com/image.png",
+    file_type: FileType = FileType.IMAGE,
+) -> MessageFile:
+    message_file = MessageFile(
+        message_id=message_id,
+        type=file_type,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-id",
+        belongs_to=belongs_to,
+        url=url,
+    )
+    message_file.id = file_id
+    return message_file
 
 
 class TestMessageCycleManagerOptimization:
@@ -37,30 +108,22 @@ class TestMessageCycleManagerOptimization:
         task_state = Mock()
         return MessageCycleManager(application_generate_entity=mock_application_generate_entity, task_state=task_state)
 
-    def test_get_message_event_type_with_assistant_file(self, message_cycle_manager):
+    def test_get_message_event_type_with_assistant_file(self, message_cycle_manager, cycle_db: Session):
         """Test get_message_event_type returns MESSAGE_FILE when message has assistant-generated files.
 
         This ensures that AI-generated images (belongs_to='assistant') trigger the MESSAGE_FILE event,
         allowing the frontend to properly display generated image files with url field.
         """
-        with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
-            # Setup mock session and message file
-            mock_session = Mock()
-            mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        cycle_db.add(_message_file())
+        cycle_db.commit()
 
-            mock_message_file = Mock()
-            mock_message_file.belongs_to = "assistant"
-            mock_session.scalar.return_value = mock_message_file
+        with current_app.app_context():
+            result = message_cycle_manager.get_message_event_type("test-message-id")
 
-            # Execute
-            with current_app.app_context():
-                result = message_cycle_manager.get_message_event_type("test-message-id")
+        assert result == StreamEvent.MESSAGE_FILE
+        assert "test-message-id" in message_cycle_manager._message_has_file
 
-            # Assert
-            assert result == StreamEvent.MESSAGE_FILE
-            mock_session.scalar.assert_called_once()
-
-    def test_get_message_event_type_with_user_file(self, message_cycle_manager):
+    def test_get_message_event_type_with_user_file(self, message_cycle_manager, cycle_db: Session):
         """Test get_message_event_type returns MESSAGE when message only has user-uploaded files.
 
         This is a regression test for the issue where user-uploaded images (belongs_to='user')
@@ -68,90 +131,81 @@ class TestMessageCycleManagerOptimization:
         resulting in broken images in the chat UI. The query filters for belongs_to='assistant',
         so when only user files exist, the database query returns None, resulting in MESSAGE event type.
         """
-        with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
-            # Setup mock session and message file
-            mock_session = Mock()
-            mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        cycle_db.add(_message_file(belongs_to=MessageFileBelongsTo.USER))
+        cycle_db.commit()
 
-            # When querying for assistant files with only user files present, return None
-            # (simulates database query with belongs_to='assistant' filter returning no results)
-            mock_session.scalar.return_value = None
+        with current_app.app_context():
+            result = message_cycle_manager.get_message_event_type("test-message-id")
 
-            # Execute
-            with current_app.app_context():
-                result = message_cycle_manager.get_message_event_type("test-message-id")
+        assert result == StreamEvent.MESSAGE
+        assert "test-message-id" not in message_cycle_manager._message_has_file
 
-            # Assert
-            assert result == StreamEvent.MESSAGE
-            mock_session.scalar.assert_called_once()
-
-    def test_get_message_event_type_without_message_file(self, message_cycle_manager):
+    def test_get_message_event_type_without_message_file(self, message_cycle_manager, cycle_db: Session):
         """Test get_message_event_type returns MESSAGE when message has no files."""
-        with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
-            # Setup mock session and no message file
-            mock_session = Mock()
-            mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
-            # Current implementation uses session.scalar(select(...))
-            mock_session.scalar.return_value = None
+        assert list(cycle_db.scalars(select(MessageFile)).all()) == []
 
-            # Execute
-            with current_app.app_context():
-                result = message_cycle_manager.get_message_event_type("test-message-id")
+        with current_app.app_context():
+            result = message_cycle_manager.get_message_event_type("test-message-id")
 
-            # Assert
-            assert result == StreamEvent.MESSAGE
-            mock_session.scalar.assert_called_once()
+        assert result == StreamEvent.MESSAGE
 
-    def test_get_message_event_type_uses_cache_without_query(self, message_cycle_manager):
+    def test_get_message_event_type_uses_cache_without_query(
+        self, message_cycle_manager, cycle_db: Session, sqlite_engine: Engine
+    ):
         """Return MESSAGE_FILE directly from in-memory cache without opening a DB session."""
         message_cycle_manager._message_has_file.add("cached-message")
+        statements: list[str] = []
 
-        with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
+        def record_statement(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+            statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_statement)
+        try:
             result = message_cycle_manager.get_message_event_type("cached-message")
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
         assert result == StreamEvent.MESSAGE_FILE
-        mock_session_factory.create_session.assert_not_called()
+        assert statements == []
 
-    def test_message_to_stream_response_with_precomputed_event_type(self, message_cycle_manager):
+    def test_message_to_stream_response_with_precomputed_event_type(self, message_cycle_manager, cycle_db: Session):
         """MessageCycleManager.message_to_stream_response expects a valid event_type; callers should precompute it."""
-        with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
-            # Setup mock session and message file
-            mock_session = Mock()
-            mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        cycle_db.add(_message_file())
+        cycle_db.commit()
 
-            mock_message_file = Mock()
-            mock_message_file.belongs_to = "assistant"
-            mock_session.scalar.return_value = mock_message_file
+        with current_app.app_context():
+            event_type = message_cycle_manager.get_message_event_type("test-message-id")
+            result = message_cycle_manager.message_to_stream_response(
+                answer="Hello world", message_id="test-message-id", event_type=event_type
+            )
 
-            # Execute: compute event type once, then pass to message_to_stream_response
-            with current_app.app_context():
-                event_type = message_cycle_manager.get_message_event_type("test-message-id")
-                result = message_cycle_manager.message_to_stream_response(
-                    answer="Hello world", message_id="test-message-id", event_type=event_type
-                )
+        assert isinstance(result, MessageStreamResponse)
+        assert result.answer == "Hello world"
+        assert result.id == "test-message-id"
+        assert result.event == StreamEvent.MESSAGE_FILE
 
-            # Assert
-            assert isinstance(result, MessageStreamResponse)
-            assert result.answer == "Hello world"
-            assert result.id == "test-message-id"
-            assert result.event == StreamEvent.MESSAGE_FILE
-            mock_session.scalar.assert_called_once()
-
-    def test_message_to_stream_response_with_event_type_skips_query(self, message_cycle_manager):
+    def test_message_to_stream_response_with_event_type_skips_query(
+        self, message_cycle_manager, cycle_db: Session, sqlite_engine: Engine
+    ):
         """Test that message_to_stream_response skips database query when event_type is provided."""
-        with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
-            # Execute with event_type provided
+        statements: list[str] = []
+
+        def record_statement(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+            statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_statement)
+        try:
             result = message_cycle_manager.message_to_stream_response(
                 answer="Hello world", message_id="test-message-id", event_type=StreamEvent.MESSAGE
             )
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
-            # Assert
-            assert isinstance(result, MessageStreamResponse)
-            assert result.answer == "Hello world"
-            assert result.id == "test-message-id"
-            assert result.event == StreamEvent.MESSAGE
-            # Should not open a session when event_type is provided
-            mock_session_factory.create_session.assert_not_called()
+        assert isinstance(result, MessageStreamResponse)
+        assert result.answer == "Hello world"
+        assert result.id == "test-message-id"
+        assert result.event == StreamEvent.MESSAGE
+        assert statements == []
 
     def test_message_to_stream_response_with_from_variable_selector(self, message_cycle_manager):
         """Test message_to_stream_response with from_variable_selector parameter."""
@@ -168,40 +222,32 @@ class TestMessageCycleManagerOptimization:
         assert result.from_variable_selector == ["var1", "var2"]
         assert result.event == StreamEvent.MESSAGE
 
-    def test_optimization_usage_example(self, message_cycle_manager):
+    def test_optimization_usage_example(self, message_cycle_manager, cycle_db: Session, sqlite_engine: Engine):
         """Test the optimization pattern that should be used by callers."""
-        # Step 1: Get event type once (this queries database)
-        with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
-            mock_session = Mock()
-            mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
-            # Current implementation uses session.scalar(select(...))
-            mock_session.scalar.return_value = None  # No files
+        statements: list[str] = []
+
+        def record_statement(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+            statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_statement)
+        try:
             with current_app.app_context():
                 event_type = message_cycle_manager.get_message_event_type("test-message-id")
-
-        # Should open session once
-        mock_session_factory.create_session.assert_called_once()
-        assert event_type == StreamEvent.MESSAGE
-
-        # Step 2: Use event_type for multiple calls (no additional queries)
-        with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
-            mock_session_factory.create_session.return_value.__enter__.return_value = Mock()
-
             chunk1_response = message_cycle_manager.message_to_stream_response(
                 answer="Chunk 1", message_id="test-message-id", event_type=event_type
             )
-
             chunk2_response = message_cycle_manager.message_to_stream_response(
                 answer="Chunk 2", message_id="test-message-id", event_type=event_type
             )
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
-            # Should not open session again when event_type provided
-            mock_session_factory.create_session.assert_not_called()
-
-            assert chunk1_response.event == StreamEvent.MESSAGE
-            assert chunk2_response.event == StreamEvent.MESSAGE
-            assert chunk1_response.answer == "Chunk 1"
-            assert chunk2_response.answer == "Chunk 2"
+        assert event_type == StreamEvent.MESSAGE
+        assert len([statement for statement in statements if statement.lstrip().upper().startswith("SELECT")]) == 1
+        assert chunk1_response.event == StreamEvent.MESSAGE
+        assert chunk2_response.event == StreamEvent.MESSAGE
+        assert chunk1_response.answer == "Chunk 1"
+        assert chunk2_response.answer == "Chunk 2"
 
     def test_generate_conversation_name_returns_none_for_completion(self, message_cycle_manager):
         """Return None when completion entities are used for conversation naming.
@@ -269,51 +315,38 @@ class TestMessageCycleManagerOptimization:
         assert message_cycle_manager._application_generate_entity.is_new_conversation is False
         mock_timer.assert_not_called()
 
-    def test_generate_conversation_name_worker_returns_when_conversation_missing(self, message_cycle_manager):
+    def test_generate_conversation_name_worker_returns_when_conversation_missing(
+        self, message_cycle_manager, cycle_db: Session
+    ):
         """Return early when the conversation cannot be found."""
         flask_app = Flask(__name__)
-        db_session = Mock()
-        db_session.scalar.return_value = None
+        assert list(cycle_db.scalars(select(Conversation)).all()) == []
 
-        with _patch_create_session(db_session):
-            message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-missing", "hello")
+        message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-missing", "hello")
 
-        db_session.commit.assert_not_called()
+        assert list(cycle_db.scalars(select(Conversation)).all()) == []
 
-    def test_generate_conversation_name_worker_returns_when_app_missing(self, message_cycle_manager):
+    def test_generate_conversation_name_worker_returns_when_app_missing(self, message_cycle_manager, cycle_db: Session):
         """Return early when non-completion conversation has no app relation."""
         flask_app = Flask(__name__)
-        conversation = SimpleNamespace(mode=AppMode.CHAT, app=None, app_id="app-id")
-        db_session = Mock()
-        db_session.scalar.return_value = conversation
-        db_session.get.return_value = None
+        conversation = _conversation()
+        cycle_db.add(conversation)
+        cycle_db.commit()
 
-        with _patch_create_session(db_session):
-            message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "hello")
+        message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "hello")
 
-        db_session.commit.assert_not_called()
+        assert cycle_db.get(Conversation, "conv-1").name == ""
+        assert cycle_db.get(App, "app-id") is None
 
-    def test_generate_conversation_name_worker_uses_cached_name(self, message_cycle_manager):
+    def test_generate_conversation_name_worker_uses_cached_name(
+        self, message_cycle_manager, cycle_db: Session, sqlite_engine: Engine
+    ):
         """Use cached conversation name when present and avoid LLM call."""
         flask_app = Flask(__name__)
-
-        class ConversationWithPoisonedApp:
-            mode = AppMode.CHAT
-            app_id = "app-id"
-            name = ""
-
-            @property
-            def app(self):
-                raise AssertionError("conversation.app must not open an implicit session")
-
-        conversation = ConversationWithPoisonedApp()
-        app_model = SimpleNamespace(tenant_id="tenant-1")
-        db_session = Mock()
-        db_session.scalar.return_value = conversation
-        db_session.get.return_value = app_model
+        cycle_db.add_all([_app(), _conversation()])
+        cycle_db.commit()
 
         with (
-            _patch_create_session(db_session) as create_session,
             patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
             patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
         ):
@@ -321,27 +354,23 @@ class TestMessageCycleManagerOptimization:
 
             message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "hello")
 
+        assert cycle_db.in_transaction() is False
+        with Session(sqlite_engine) as verification_session:
+            conversation = verification_session.get(Conversation, "conv-1")
+        assert conversation is not None
         assert conversation.name == "cached-title"
-        create_session.assert_called_once_with()
-        db_session.get.assert_called_once_with(App, "app-id")
-        db_session.commit.assert_called_once()
         mock_llm_generator.generate_conversation_name.assert_not_called()
         mock_redis.setex.assert_not_called()
 
-    def test_generate_conversation_name_worker_generates_and_caches_name(self, message_cycle_manager):
+    def test_generate_conversation_name_worker_generates_and_caches_name(
+        self, message_cycle_manager, cycle_db: Session, sqlite_engine: Engine
+    ):
         """Generate conversation name and write it to redis cache on cache miss."""
         flask_app = Flask(__name__)
-        conversation = SimpleNamespace(
-            mode=AppMode.CHAT,
-            app=SimpleNamespace(tenant_id="tenant-1"),
-            app_id="app-id",
-            name="",
-        )
-        db_session = Mock()
-        db_session.scalar.return_value = conversation
+        cycle_db.add_all([_app(), _conversation()])
+        cycle_db.commit()
 
         with (
-            _patch_create_session(db_session),
             patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
             patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
         ):
@@ -350,27 +379,27 @@ class TestMessageCycleManagerOptimization:
 
             message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "hello")
 
+        assert cycle_db.in_transaction() is False
+        with Session(sqlite_engine) as verification_session:
+            conversation = verification_session.get(Conversation, "conv-1")
+        assert conversation is not None
         assert conversation.name == "generated-title"
-        db_session.commit.assert_called_once()
         mock_redis.setex.assert_called_once()
 
     def test_generate_conversation_name_worker_falls_back_when_generation_fails(
-        self, message_cycle_manager, caplog: pytest.LogCaptureFixture
+        self,
+        message_cycle_manager,
+        cycle_db: Session,
+        sqlite_engine: Engine,
+        caplog: pytest.LogCaptureFixture,
     ):
         """Fallback to truncated query when LLM generation fails."""
         flask_app = Flask(__name__)
-        conversation = SimpleNamespace(
-            mode=AppMode.CHAT,
-            app=SimpleNamespace(tenant_id="tenant-1"),
-            app_id="app-id",
-            name="",
-        )
-        db_session = Mock()
-        db_session.scalar.return_value = conversation
+        cycle_db.add_all([_app(), _conversation()])
+        cycle_db.commit()
         long_query = "q" * 60
 
         with (
-            _patch_create_session(db_session),
             patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
             patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
             patch("core.app.task_pipeline.message_cycle_manager.dify_config") as mock_dify_config,
@@ -382,8 +411,11 @@ class TestMessageCycleManagerOptimization:
             with caplog.at_level(logging.ERROR, logger="core.app.task_pipeline.message_cycle_manager"):
                 message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", long_query)
 
+        assert cycle_db.in_transaction() is False
+        with Session(sqlite_engine) as verification_session:
+            conversation = verification_session.get(Conversation, "conv-1")
+        assert conversation is not None
         assert conversation.name == (long_query[:47] + "...")
-        db_session.commit.assert_called_once()
         assert any(record.levelno == logging.ERROR for record in caplog.records)
 
     def test_handle_annotation_reply_sets_metadata(self, message_cycle_manager):
@@ -454,33 +486,25 @@ class TestMessageCycleManagerOptimization:
         assert message_cycle_manager._task_state.metadata.retriever_resources[0].position == 1
         assert message_cycle_manager._task_state.metadata.retriever_resources[1].position == 2
 
-    def test_message_file_to_stream_response_builds_signed_url(self, message_cycle_manager):
+    def test_message_file_to_stream_response_builds_signed_url(self, message_cycle_manager, cycle_db: Session):
         """Build a stream response with a signed tool file URL.
 
-        Args: message_cycle_manager with mocked Session/db and sign_tool_file.
+        Args: message_cycle_manager with a persisted MessageFile and mocked sign_tool_file.
         Returns: MessageStreamResponse with signed url and belongs_to normalized to user.
         Side effects: Calls sign_tool_file for tool file ids.
         """
         message_cycle_manager._application_generate_entity.task_id = "task-1"
-
-        message_file = SimpleNamespace(
-            id="file-1",
-            type="image",
-            belongs_to=None,
-            url="tool://file.verylongextension",
-            message_id="msg-1",
+        cycle_db.add(
+            _message_file(
+                file_id="file-1",
+                message_id="msg-1",
+                belongs_to=None,
+                url="tool://file.verylongextension",
+            )
         )
+        cycle_db.commit()
 
-        session = Mock()
-        session.scalar.return_value = message_file
-
-        with (
-            patch("core.app.task_pipeline.message_cycle_manager.Session") as mock_session_cls,
-            patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file") as mock_sign,
-            patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
-        ):
-            mock_db.engine = Mock()
-            mock_session_cls.return_value.__enter__.return_value = session
+        with patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file") as mock_sign:
             mock_sign.return_value = "signed-url"
 
             response = message_cycle_manager.message_file_to_stream_response(SimpleNamespace(message_file_id="file-1"))
@@ -514,56 +538,42 @@ class TestMessageCycleManagerOptimization:
         assert len(message_cycle_manager._task_state.metadata.retriever_resources) == 1
         assert message_cycle_manager._task_state.metadata.retriever_resources[0].position == 1
 
-    def test_message_file_to_stream_response_uses_http_url_directly(self, message_cycle_manager):
+    def test_message_file_to_stream_response_uses_http_url_directly(self, message_cycle_manager, cycle_db: Session):
         """Use original URL when message file URL is already HTTP."""
         message_cycle_manager._application_generate_entity.task_id = "task-http"
-        message_file = SimpleNamespace(
-            id="file-http",
-            type="image",
-            belongs_to="assistant",
-            url="http://example.com/pic.png",
-            message_id="msg-http",
-        )
-
-        session = Mock()
-        session.scalar.return_value = message_file
-
-        with (
-            patch("core.app.task_pipeline.message_cycle_manager.Session") as mock_session_cls,
-            patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
-        ):
-            mock_db.engine = Mock()
-            mock_session_cls.return_value.__enter__.return_value = session
-
-            response = message_cycle_manager.message_file_to_stream_response(
-                SimpleNamespace(message_file_id="file-http")
+        cycle_db.add(
+            _message_file(
+                file_id="file-http",
+                message_id="msg-http",
+                belongs_to=MessageFileBelongsTo.ASSISTANT,
+                url="http://example.com/pic.png",
             )
+        )
+        cycle_db.commit()
+
+        response = message_cycle_manager.message_file_to_stream_response(SimpleNamespace(message_file_id="file-http"))
 
         assert response is not None
         assert response.url == "http://example.com/pic.png"
         assert "msg-http" in message_cycle_manager._message_has_file
 
-    def test_message_file_to_stream_response_defaults_extension_to_bin_without_dot(self, message_cycle_manager):
+    def test_message_file_to_stream_response_defaults_extension_to_bin_without_dot(
+        self, message_cycle_manager, cycle_db: Session
+    ):
         """Default tool file extension to .bin when URL has no extension part."""
         message_cycle_manager._application_generate_entity.task_id = "task-bin"
-        message_file = SimpleNamespace(
-            id="file-bin",
-            type="file",
-            belongs_to="assistant",
-            url="tool-file-id",
-            message_id="msg-bin",
+        cycle_db.add(
+            _message_file(
+                file_id="file-bin",
+                message_id="msg-bin",
+                belongs_to=MessageFileBelongsTo.ASSISTANT,
+                url="tool-file-id",
+                file_type=FileType.CUSTOM,
+            )
         )
+        cycle_db.commit()
 
-        session = Mock()
-        session.scalar.return_value = message_file
-
-        with (
-            patch("core.app.task_pipeline.message_cycle_manager.Session") as mock_session_cls,
-            patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file") as mock_sign,
-            patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
-        ):
-            mock_db.engine = Mock()
-            mock_session_cls.return_value.__enter__.return_value = session
+        with patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file") as mock_sign:
             mock_sign.return_value = "signed-bin-url"
 
             response = message_cycle_manager.message_file_to_stream_response(
@@ -574,19 +584,13 @@ class TestMessageCycleManagerOptimization:
         assert response.url == "signed-bin-url"
         mock_sign.assert_called_once_with(tool_file_id="tool-file-id", extension=".bin")
 
-    def test_message_file_to_stream_response_returns_none_when_file_missing(self, message_cycle_manager):
+    def test_message_file_to_stream_response_returns_none_when_file_missing(
+        self, message_cycle_manager, cycle_db: Session
+    ):
         """Return None when message file lookup does not find a record."""
-        session = Mock()
-        session.scalar.return_value = None
+        assert list(cycle_db.scalars(select(MessageFile)).all()) == []
 
-        with (
-            patch("core.app.task_pipeline.message_cycle_manager.Session") as mock_session_cls,
-            patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
-        ):
-            mock_db.engine = Mock()
-            mock_session_cls.return_value.__enter__.return_value = session
-
-            response = message_cycle_manager.message_file_to_stream_response(SimpleNamespace(message_file_id="missing"))
+        response = message_cycle_manager.message_file_to_stream_response(SimpleNamespace(message_file_id="missing"))
 
         assert response is None
 
