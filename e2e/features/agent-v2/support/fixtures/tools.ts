@@ -1,7 +1,7 @@
 import type { DifyWorld } from '../../../support/world'
 import type { LocalizedLabel, PreseededResource } from './common'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
-import { asRecord, asString, matchesNameOrLabel, skipBlockedPrecondition } from './common'
+import { asRecord, asString, failFixturePrerequisite, matchesNameOrLabel } from './common'
 
 type BuiltinToolProvider = {
   label?: LocalizedLabel
@@ -86,12 +86,12 @@ export const hasUnauthorizedToolCredentialState = (item: unknown) => {
   return asString(record.credential_type) === 'unauthorized'
 }
 
-export async function skipMissingPreseededTool(
+export async function requirePreseededTool(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | PreseededResource> {
+): Promise<PreseededResource> {
   const parsed = splitToolDisplayName(resourceName)
-  if (!parsed.ok) return skipBlockedPrecondition(world, parsed.reason)
+  if (!parsed.ok) return failFixturePrerequisite(world, parsed.reason)
 
   const ctx = await createApiContext()
   try {
@@ -106,7 +106,7 @@ export async function skipMissingPreseededTool(
     )
 
     if (!provider || !tool)
-      return skipBlockedPrecondition(world, `Preseeded tool "${resourceName}" was not found.`)
+      return failFixturePrerequisite(world, `Preseeded tool "${resourceName}" was not found.`)
 
     return {
       id: `${provider.name}/${tool.name}`,
