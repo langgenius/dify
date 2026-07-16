@@ -21,6 +21,7 @@ from controllers.console.knowledge_fs_proxy import (
     _console_api_errors,
     _proxy_knowledge_fs_mutation,
     _proxy_knowledge_fs_read_operation,
+    _proxy_response,
     proxy_knowledge_fs_get,
     proxy_knowledge_fs_write,
 )
@@ -303,6 +304,34 @@ def test_generic_write_forwards_contract_declared_request_headers(
     assert forward.call_args.kwargs["request_headers"] == {"idempotency-key": "delete-space-1"}
 
 
+def test_contract_response_headers_cannot_bypass_the_proxy_denylist() -> None:
+    denied_headers = (
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "te",
+        "trailer",
+        "transfer-encoding",
+        "upgrade",
+    )
+    upstream = httpx.Response(
+        200,
+        content=b"{}",
+        headers=dict.fromkeys(denied_headers, "blocked"),
+    )
+
+    response = _proxy_response(
+        _upstream(upstream),
+        tenant_id="tenant-1",
+        contract_response_headers=denied_headers,
+        max_response_bytes=1024 * 1024,
+    )
+
+    for name in denied_headers:
+        assert name not in response.headers
+
+
 def test_generic_post_rejects_non_editor(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     forward = MagicMock()
     monkeypatch.setattr(
@@ -388,6 +417,41 @@ def test_unconsumed_sse_response_closes_upstream(
         response = route("queries")
         assert isinstance(response, Response)
         response.close()
+
+    assert upstream.is_closed
+
+
+def test_sse_response_uses_the_generated_operation_limit(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    upstream = httpx.Response(
+        200,
+        stream=_EventStream(b"event: done\ndata: {}\n\n"),
+        headers={"Content-Type": "text/event-stream"},
+    )
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        MagicMock(return_value=_upstream(upstream, "stream")),
+    )
+    operation = MagicMock(
+        access="read",
+        max_response_bytes=1,
+        request_headers=(),
+        response_headers=(),
+    )
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy.get_knowledge_fs_operation",
+        lambda _method, _path: operation,
+    )
+    _set_current_workspace(monkeypatch, editor=False)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
+
+    with app.test_request_context("/console/api/knowledge-fs/queries", method="POST", data=b"{}"):
+        response = route("queries")
+        assert isinstance(response, Response)
+        assert response.get_data() == b""
 
     assert upstream.is_closed
 

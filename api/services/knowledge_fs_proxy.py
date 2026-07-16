@@ -87,7 +87,7 @@ def forward_knowledge_fs_request(
         request_headers: Contract-declared request headers forwarded by the Console adapter.
 
     Returns:
-        The KnowledgeFS response and its generated contract response kind.
+        The KnowledgeFS response and its actual transport kind. Non-success responses are buffered.
 
     Raises:
         KnowledgeFSConfigurationError: The connection is incomplete or blocked by outbound policy.

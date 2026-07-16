@@ -55,7 +55,6 @@ from services.knowledge_fs_proxy import (
 logger = logging.getLogger(__name__)
 
 _MAX_PROXY_BODY_BYTES = 64 * 1024 * 1024
-_MAX_STREAM_RESPONSE_BYTES = 64 * 1024 * 1024
 _RESPONSE_HEADER_ALLOWLIST = (
     "Cache-Control",
     "Content-Disposition",
@@ -68,8 +67,12 @@ _RESPONSE_HEADER_DENYLIST = frozenset(
         "authorization",
         "connection",
         "cookie",
+        "keep-alive",
         "proxy-authenticate",
+        "proxy-authorization",
         "set-cookie",
+        "te",
+        "trailer",
         "transfer-encoding",
         "upgrade",
     }
@@ -114,13 +117,18 @@ def _request_body() -> bytes:
     return body
 
 
-def _stream_response_body(upstream: httpx.Response, *, tenant_id: str) -> Iterator[bytes]:
+def _stream_response_body(
+    upstream: httpx.Response,
+    *,
+    tenant_id: str,
+    max_response_bytes: int,
+) -> Iterator[bytes]:
     """Yield one bounded SSE response and always release its pooled connection."""
     total_bytes = 0
     try:
         for chunk in upstream.iter_bytes():
             total_bytes += len(chunk)
-            if total_bytes > _MAX_STREAM_RESPONSE_BYTES:
+            if total_bytes > max_response_bytes:
                 logger.warning("KnowledgeFS stream exceeded the proxy limit for tenant_id=%s", tenant_id)
                 return
             yield chunk
@@ -135,6 +143,7 @@ def _proxy_response(
     *,
     tenant_id: str,
     contract_response_headers: tuple[str, ...],
+    max_response_bytes: int,
 ) -> Response:
     """Expose raw content, status, and allowlisted headers from KnowledgeFS.
 
@@ -161,7 +170,11 @@ def _proxy_response(
     if upstream_result.response_kind == "stream":
         response = Response(
             stream_with_context(  # pyrefly: ignore[no-matching-overload]
-                _stream_response_body(upstream, tenant_id=tenant_id)
+                _stream_response_body(
+                    upstream,
+                    tenant_id=tenant_id,
+                    max_response_bytes=max_response_bytes,
+                )
             ),
             status=upstream.status_code,
             headers=headers,
@@ -210,6 +223,7 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
         upstream,
         tenant_id=tenant_id,
         contract_response_headers=operation.response_headers,
+        max_response_bytes=operation.max_response_bytes,
     )
 
 
