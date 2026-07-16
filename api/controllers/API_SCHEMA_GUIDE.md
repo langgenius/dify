@@ -12,6 +12,22 @@ parameters, response schemas, and Swagger documentation.
 - Do not add new Flask-RESTX `fields.*` dictionaries, `Namespace.model(...)` exports, or `@marshal_with(...)` for migrated or new endpoints.
 - Do not use `@ns.expect(...)` for GET query parameters. Flask-RESTX documents that as a request body.
 
+## Transparent External-Service Proxies
+
+A raw Blueprint route may stay outside Dify's OpenAPI surface when it is a transparent proxy to an
+external service that owns the wire contract. This exception prevents Dify from maintaining a second
+request and response schema for the same API. It does not apply to ordinary Dify endpoints.
+
+Such a proxy must:
+
+- authenticate the Console caller and enforce the corresponding Dify RBAC permission before forwarding;
+- allowlist exact upstream method and path pairs before any network request;
+- use the SSRF-protected HTTP client with a fixed configured upstream origin;
+- bound request bodies and expose only explicitly allowlisted response headers;
+- preserve request and response payloads without parsing, reshaping, or documenting them as Dify schemas;
+- translate upstream credential failures so they cannot trigger browser-session authentication recovery; and
+- document these invariants in the proxy module and cover them through the concrete mounted route.
+
 ## Naming
 
 - Request body models: use a `Payload` suffix.

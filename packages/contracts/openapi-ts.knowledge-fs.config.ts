@@ -1,7 +1,10 @@
 import { defineConfig } from '@hey-api/openapi-ts'
 
 const proxyPrefix = '/knowledge-fs'
-const input = process.env.KNOWLEDGE_FS_OPENAPI ?? 'http://localhost:8788/openapi.json'
+const input = process.env.KNOWLEDGE_FS_OPENAPI
+const outputPath = process.env.KNOWLEDGE_FS_OUTPUT ?? 'generated/knowledge-fs'
+
+if (!input) throw new Error('KNOWLEDGE_FS_OPENAPI must point to the pinned local export')
 
 export default defineConfig({
   input,
@@ -14,7 +17,7 @@ export default defineConfig({
     fileName: {
       suffix: '.gen',
     },
-    path: 'generated/knowledge-fs',
+    path: outputPath,
   },
   parser: {
     filters: {

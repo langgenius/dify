@@ -55,7 +55,14 @@ export function CreateKnowledgeSpaceDialog() {
     setDescription('')
   }
 
+  const closeDialog = () => {
+    setOpen(false)
+    resetForm()
+  }
+
   const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && createKnowledgeSpaceMutation.isPending) return
+
     setOpen(nextOpen)
     if (!nextOpen) resetForm()
   }
@@ -86,7 +93,7 @@ export function CreateKnowledgeSpaceDialog() {
         },
         onSuccess: () => {
           toast.success(t(($) => $['newRag.createSuccess']))
-          handleOpenChange(false)
+          closeDialog()
           void queryClient.invalidateQueries({
             queryKey: consoleQuery.knowledgeFs.listKnowledgeSpaces.key({ type: 'infinite' }),
           })
@@ -102,7 +109,10 @@ export function CreateKnowledgeSpaceDialog() {
         {tCommon(($) => $['operation.create'])}
       </DialogTrigger>
       <DialogContent className="w-[520px] overflow-hidden! p-0!">
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+        <DialogCloseButton
+          aria-label={tCommon(($) => $['operation.close'])}
+          disabled={createKnowledgeSpaceMutation.isPending}
+        />
         <div className="pt-6 pr-14 pb-3 pl-6">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['newRag.createDialogTitle'])}

@@ -308,6 +308,21 @@ describe('DatasetsV2Page', () => {
     expect(retryKey).toBe(firstKey)
   })
 
+  it('keeps the create dialog open while creation is pending', async () => {
+    const user = userEvent.setup()
+    mutationMock.isPending = true
+    setResolvedPage()
+    render(<DatasetsV2Page />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: 'dataset.newRag.createDialogTitle',
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+
+    expect(dialog).toBeVisible()
+  })
+
   it('uses a new idempotency key when a failed creation is retried with edited content', async () => {
     const user = userEvent.setup()
     setResolvedPage()
