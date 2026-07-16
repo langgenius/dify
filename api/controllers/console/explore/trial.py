@@ -60,6 +60,7 @@ from core.errors.error import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
+from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.message_fields import SuggestedQuestionsResponse
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -373,7 +374,7 @@ class TrialWorkflowResponse(ResponseModel):
     updated_at: int | None = None
     tool_published: bool | None = None
     environment_variables: list[JsonObject] = Field(default_factory=list)
-    conversation_variables: list[JsonObject] = Field(default_factory=list)
+    conversation_variables: list[WorkflowConversationVariableResponse] = Field(default_factory=list)
     rag_pipeline_variables: list[JsonObject] = Field(default_factory=list)
 
     @field_validator("created_at", "updated_at", mode="before")

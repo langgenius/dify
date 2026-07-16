@@ -33,6 +33,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.variables import StringVariable
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode
@@ -1146,7 +1147,14 @@ class TestAppWorkflowApi:
             created_at=datetime(2024, 1, 1, tzinfo=UTC),
             updated_at=datetime(2024, 1, 2, tzinfo=UTC),
             environment_variables=[],
-            conversation_variables=[],
+            conversation_variables=[
+                StringVariable(
+                    id="conversation-variable-1",
+                    name="topic",
+                    value="sqlite",
+                    selector=["conversation", "topic"],
+                )
+            ],
             rag_pipeline_variables=[],
             get_created_by_account=MagicMock(return_value=created_by),
             get_updated_by_account=MagicMock(return_value=None),
@@ -1174,7 +1182,15 @@ class TestAppWorkflowApi:
             "updated_at": 1704153600,
             "tool_published": True,
             "environment_variables": [],
-            "conversation_variables": [],
+            "conversation_variables": [
+                {
+                    "id": "conversation-variable-1",
+                    "name": "topic",
+                    "value_type": "string",
+                    "value": "sqlite",
+                    "description": "",
+                }
+            ],
             "rag_pipeline_variables": [],
         }
         app_model.workflow_with_session.assert_called_once_with(session=session)

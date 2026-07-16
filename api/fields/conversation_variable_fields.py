@@ -60,6 +60,21 @@ class ConversationVariableResponse(ResponseModel):
         return to_timestamp(value)
 
 
+class WorkflowConversationVariableResponse(ResponseModel):
+    id: str
+    name: str
+    value_type: str
+    value: Any
+    description: str
+
+    @field_validator("value_type", mode="before")
+    @classmethod
+    def _serialize_value_type(cls, value: Any) -> str:
+        if hasattr(value, "exposed_type"):
+            return str(value.exposed_type())
+        return str(value)
+
+
 class PaginatedConversationVariableResponse(ResponseModel):
     page: int
     limit: int

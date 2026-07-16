@@ -58,6 +58,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
 from fields.base import ResponseModel
+from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.member_fields import SimpleAccount
 from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.enums import NodeType
@@ -236,21 +237,6 @@ class WorkflowOnlineUsersPayload(BaseModel):
     @classmethod
     def normalize_app_ids(cls, app_ids: list[str]) -> list[str]:
         return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
-
-
-class WorkflowConversationVariableResponse(ResponseModel):
-    id: str
-    name: str
-    value_type: str
-    value: Any
-    description: str
-
-    @field_validator("value_type", mode="before")
-    @classmethod
-    def _serialize_value_type(cls, value: Any) -> str:
-        if hasattr(value, "exposed_type"):
-            return str(value.exposed_type())
-        return str(value)
 
 
 class PipelineVariableResponse(ResponseModel):
