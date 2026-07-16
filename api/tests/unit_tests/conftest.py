@@ -37,6 +37,7 @@ os.environ.setdefault("STORAGE_TYPE", "opendal")
 
 from core.db.session_factory import configure_session_factory, session_factory
 from extensions import ext_redis
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 
 
@@ -148,32 +149,34 @@ def _configure_session_factory(_unit_test_engine):
         configure_session_factory(_unit_test_engine, expire_on_commit=False)
 
 
-def setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_owner):
+def persist_service_api_tenant_owner(session: Session, tenant: Tenant, owner: Account) -> TenantAccountJoin:
+    """Persist the owner identity resolved by service-API app authentication.
+
+    The legacy name is retained temporarily for consumers on independent
+    conversion branches, but this helper no longer fabricates an execute result.
     """
-    Helper to stub the tenant-owner execute result for service API app authentication.
-
-    The validate_app_token decorator currently resolves the active tenant owner
-    via db.session.execute(select(Tenant, Account)...).one_or_none().
-
-    Args:
-        mock_db: The mocked db object
-        mock_tenant: Mock tenant object to return
-        mock_owner: Mock owner object to return from the execute result
-    """
-    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_owner)
+    membership = TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=owner.id,
+        role=TenantAccountRole.OWNER,
+    )
+    owner._current_tenant = tenant
+    session.add_all([tenant, owner, membership])
+    session.commit()
+    return membership
 
 
-def setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_tenant_account_join):
-    """
-    Helper to stub the tenant-owner execute result for dataset token authentication.
+def persist_service_api_dataset_owner(
+    session: Session,
+    tenant: Tenant,
+    tenant_account_join: TenantAccountJoin,
+) -> None:
+    """Persist the tenant-owner mapping resolved by dataset-token authentication."""
+    session.add_all([tenant, tenant_account_join])
+    session.commit()
 
-    The validate_dataset_token decorator currently resolves the owner mapping via
-    db.session.execute(select(Tenant, TenantAccountJoin)...).one_or_none(), and
-    then loads the Account separately via db.session.get(...).
 
-    Args:
-        mock_db: The mocked db object
-        mock_tenant: Mock tenant object to return
-        mock_tenant_account_join: Mock tenant-account join object to return
-    """
-    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_tenant_account_join)
+# Compatibility aliases for controller files converted on independent branches.
+# Both names now require a real Session and persist rows; neither fabricates ORM results.
+setup_mock_tenant_owner_execute_result = persist_service_api_tenant_owner
+setup_mock_dataset_owner_execute_result = persist_service_api_dataset_owner

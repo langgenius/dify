@@ -7,18 +7,57 @@ Service API controller tests.
 """
 
 import uuid
+from collections.abc import Iterator
+from dataclasses import dataclass
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.account import TenantStatus
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.base import TypeBase
 from models.model import App, AppMode, EndUser
-from tests.unit_tests.conftest import (
-    setup_mock_dataset_owner_execute_result,
-    setup_mock_tenant_owner_execute_result,
-)
+
+
+@dataclass(frozen=True)
+class ServiceApiIdentity:
+    """Persisted owner identity for service-API authentication tests."""
+
+    session: Session
+    tenant: Tenant
+    account: Account
+    membership: TenantAccountJoin
+
+
+@pytest.fixture
+def service_api_identity(sqlite_engine: Engine) -> Iterator[ServiceApiIdentity]:
+    """Yield an isolated SQLite session with a real active tenant owner."""
+    TypeBase.metadata.create_all(
+        sqlite_engine,
+        tables=[Account.__table__, Tenant.__table__, TenantAccountJoin.__table__],
+    )
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        tenant = Tenant(name="Service API Workspace")
+        tenant.id = str(uuid.uuid4())
+        account = Account(name="Service API Owner", email=f"owner-{tenant.id}@example.com")
+        account.id = str(uuid.uuid4())
+        membership = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.OWNER,
+        )
+        account._current_tenant = tenant
+        session.add_all([tenant, account, membership])
+        session.commit()
+        yield ServiceApiIdentity(
+            session=session,
+            tenant=tenant,
+            account=account,
+            membership=membership,
+        )
 
 
 @pytest.fixture
@@ -108,40 +147,6 @@ def mock_dataset_api_token(mock_tenant_id):
     token.token = f"dataset_token_{uuid.uuid4().hex[:8]}"
     token.type = "dataset"
     return token
-
-
-class AuthenticationMocker:
-    """
-    Helper class to set up common authentication mocking patterns.
-
-    Usage:
-        auth_mocker = AuthenticationMocker()
-        with auth_mocker.mock_app_auth(mock_api_token, mock_app_model, mock_tenant):
-            # Test code here
-    """
-
-    @staticmethod
-    def setup_db_queries(mock_db, mock_app, mock_tenant, mock_account=None):
-        """Configure mock_db to return app and tenant via session.get()."""
-        mock_db.session.get.side_effect = [mock_app, mock_tenant]
-
-        if mock_account:
-            setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
-
-    @staticmethod
-    def setup_dataset_auth(mock_db, mock_tenant, mock_account):
-        """Configure mock_db for dataset token authentication."""
-        mock_ta = Mock()
-        mock_ta.account_id = mock_account.id
-
-        setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_ta)
-        mock_db.session.get.return_value = mock_account
-
-
-@pytest.fixture
-def auth_mocker():
-    """Provide an AuthenticationMocker instance."""
-    return AuthenticationMocker()
 
 
 @pytest.fixture
