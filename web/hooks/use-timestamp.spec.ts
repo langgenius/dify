@@ -58,7 +58,9 @@ describe('useTimestamp', () => {
 
     it('should format month names with the current interface locale', () => {
       mockUseLocale.mockReturnValue('zh-Hans')
-      const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
+      const { result } = renderHook(() => useTimestamp(), {
+        wrapper: createAccountProfileQueryWrapper(),
+      })
       const timestamp = 1704132000
 
       expect(result.current.formatTime(timestamp, 'MMM D')).toBe('1月 2')
@@ -90,7 +92,9 @@ describe('useTimestamp', () => {
 
     it('should format date string month names with the current interface locale', () => {
       mockUseLocale.mockReturnValue('zh-Hans')
-      const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
+      const { result } = renderHook(() => useTimestamp(), {
+        wrapper: createAccountProfileQueryWrapper(),
+      })
       const dateString = '2024-01-01T12:00:00Z'
 
       expect(result.current.formatDate(dateString, 'MMM D')).toBe('1月 1')
@@ -99,7 +103,9 @@ describe('useTimestamp', () => {
 
   describe('formatMonthDay', () => {
     it('should format month and day naturally for English', () => {
-      const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
+      const { result } = renderHook(() => useTimestamp(), {
+        wrapper: createAccountProfileQueryWrapper(),
+      })
       const timestamp = 1704132000
 
       expect(result.current.formatMonthDay(timestamp)).toBe('Jan 2')
@@ -107,7 +113,9 @@ describe('useTimestamp', () => {
 
     it('should format month and day naturally for Chinese', () => {
       mockUseLocale.mockReturnValue('zh-Hans')
-      const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
+      const { result } = renderHook(() => useTimestamp(), {
+        wrapper: createAccountProfileQueryWrapper(),
+      })
       const timestamp = 1704132000
 
       expect(result.current.formatMonthDay(timestamp)).toBe('1月2日')
