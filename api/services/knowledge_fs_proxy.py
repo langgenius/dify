@@ -10,10 +10,10 @@ rejects compressed responses.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
-from typing import Literal, NamedTuple, cast
+from typing import Literal, NamedTuple, Protocol, cast
 
 import httpx
 import jwt
@@ -60,6 +60,11 @@ class KnowledgeFSOperation(NamedTuple):
 class KnowledgeFSUpstreamResponse(NamedTuple):
     response: httpx.Response
     response_kind: KnowledgeFSResponseKind
+    operation: KnowledgeFSOperation
+
+
+class _RequestHeaders(Protocol):
+    def items(self) -> Iterable[tuple[str, str]]: ...
 
 
 class KnowledgeFSConfigurationError(RuntimeError):
@@ -121,7 +126,44 @@ def authorize_knowledge_fs_request(
         raise KnowledgeFSAccessDeniedError("KnowledgeFS operation is denied by workspace RBAC")
 
 
-def forward_knowledge_fs_request(
+def proxy_knowledge_fs_request(
+    *,
+    account: Account,
+    method: KnowledgeFSMethod,
+    path: str,
+    tenant_id: str,
+    accept: str | None = None,
+    content_type: str | None = None,
+    query: bytes | None = None,
+    body: bytes | None = None,
+    request_headers: _RequestHeaders | None = None,
+) -> KnowledgeFSUpstreamResponse:
+    """Authorize and forward one allowlisted KnowledgeFS request as a single use case."""
+    operation = get_knowledge_fs_operation(method, path)
+    authorize_knowledge_fs_request(
+        account=account,
+        tenant_id=tenant_id,
+        method=method,
+        operation=operation,
+    )
+    incoming_request_headers = {name.lower(): value for name, value in (request_headers or {}).items()}
+    contract_request_headers = {
+        name: incoming_request_headers[name] for name in operation.request_headers if name in incoming_request_headers
+    }
+    return _forward_knowledge_fs_request(
+        account_id=account.id,
+        method=method,
+        path=path,
+        tenant_id=tenant_id,
+        accept=accept,
+        content_type=content_type,
+        query=query,
+        body=body,
+        request_headers=contract_request_headers,
+    )
+
+
+def _forward_knowledge_fs_request(
     *,
     account_id: str,
     method: KnowledgeFSMethod,
@@ -212,7 +254,7 @@ def forward_knowledge_fs_request(
                 response.close()
                 raise KnowledgeFSTransportError("KnowledgeFS streaming response used an unsupported encoding")
             _set_response_read_timeout(response, dify_config.KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS)
-            return KnowledgeFSUpstreamResponse(response, response_kind)
+            return KnowledgeFSUpstreamResponse(response, response_kind, operation)
 
         max_response_bytes = (
             operation.max_response_bytes
@@ -220,7 +262,7 @@ def forward_knowledge_fs_request(
             else _MAX_BUFFERED_RESPONSE_BYTES
         )
         buffered_response = ssrf_proxy.buffer_response(response, max_response_bytes=max_response_bytes)
-        return KnowledgeFSUpstreamResponse(buffered_response, response_kind)
+        return KnowledgeFSUpstreamResponse(buffered_response, response_kind, operation)
     except ssrf_proxy.ResponseLimitError as exc:
         raise KnowledgeFSTransportError("KnowledgeFS response violated the proxy limit") from exc
     except ToolSSRFError as exc:

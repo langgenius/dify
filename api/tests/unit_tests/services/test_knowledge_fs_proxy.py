@@ -18,8 +18,11 @@ from services.knowledge_fs_proxy import (
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,
     authorize_knowledge_fs_request,
-    forward_knowledge_fs_request,
     get_knowledge_fs_operation,
+    proxy_knowledge_fs_request,
+)
+from services.knowledge_fs_proxy import (
+    _forward_knowledge_fs_request as forward_knowledge_fs_request,
 )
 
 _JWT_SECRET = "production-secret-with-at-least-32-bytes"
@@ -281,6 +284,61 @@ def test_authorization_rejects_workspace_rbac_denial(monkeypatch: pytest.MonkeyP
         scene="dataset_readonly",
         resource_type="dataset",
     )
+
+
+def test_proxy_use_case_authorizes_before_external_io(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = MagicMock(
+        id="account-1",
+        has_edit_permission=True,
+        is_admin_or_owner=True,
+        is_dataset_editor=True,
+    )
+    request = MagicMock()
+    monkeypatch.setattr(
+        "services.knowledge_fs_proxy.RBACService.CheckAccess.check",
+        MagicMock(return_value=False),
+    )
+    monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
+
+    with pytest.raises(KnowledgeFSAccessDeniedError):
+        proxy_knowledge_fs_request(
+            account=account,
+            method="GET",
+            path="knowledge-spaces",
+            tenant_id="tenant-1",
+        )
+
+    request.assert_not_called()
+
+
+def test_proxy_use_case_forwards_only_contract_declared_headers(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = MagicMock(
+        id="account-1",
+        has_edit_permission=True,
+        is_admin_or_owner=True,
+        is_dataset_editor=True,
+    )
+    upstream = MagicMock()
+    forward = MagicMock(return_value=upstream)
+    monkeypatch.setattr(
+        "services.knowledge_fs_proxy.RBACService.CheckAccess.check",
+        MagicMock(return_value=True),
+    )
+    monkeypatch.setattr("services.knowledge_fs_proxy._forward_knowledge_fs_request", forward)
+
+    result = proxy_knowledge_fs_request(
+        account=account,
+        method="DELETE",
+        path="knowledge-spaces/space-1",
+        tenant_id="tenant-1",
+        request_headers={
+            "Authorization": "browser-secret",
+            "Idempotency-Key": "delete-space-1",
+        },
+    )
+
+    assert result is upstream
+    assert forward.call_args.kwargs["request_headers"] == {"idempotency-key": "delete-space-1"}
 
 
 @pytest.mark.parametrize(

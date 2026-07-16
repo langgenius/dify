@@ -26,6 +26,7 @@ from werkzeug.exceptions import (
     BadGateway,
     Forbidden,
     GatewayTimeout,
+    MethodNotAllowed,
     NotFound,
     RequestEntityTooLarge,
     ServiceUnavailable,
@@ -47,9 +48,8 @@ from services.knowledge_fs_proxy import (
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,
     KnowledgeFSUpstreamResponse,
-    authorize_knowledge_fs_request,
-    forward_knowledge_fs_request,
     get_knowledge_fs_operation,
+    proxy_knowledge_fs_request,
 )
 
 logger = logging.getLogger(__name__)
@@ -203,15 +203,8 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     """
     current_user, tenant_id = current_account_with_tenant()
     try:
-        operation = get_knowledge_fs_operation(method, upstream_path)
-        authorize_knowledge_fs_request(
+        proxy_result = proxy_knowledge_fs_request(
             account=current_user,
-            tenant_id=tenant_id,
-            method=method,
-            operation=operation,
-        )
-        upstream = forward_knowledge_fs_request(
-            account_id=current_user.id,
             method=method,
             path=upstream_path,
             tenant_id=tenant_id,
@@ -219,9 +212,7 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
             content_type=request.content_type,
             query=request.query_string or None,
             body=_request_body() if method != "GET" else None,
-            request_headers={
-                name: value for name in operation.request_headers if (value := request.headers.get(name)) is not None
-            },
+            request_headers=request.headers,
         )
     except (
         KnowledgeFSConfigurationError,
@@ -232,26 +223,20 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     ) as exc:
         _translate_proxy_error(exc, tenant_id=tenant_id)
     return _proxy_response(
-        upstream,
+        proxy_result,
         tenant_id=tenant_id,
-        contract_response_headers=operation.response_headers,
-        max_response_bytes=operation.max_response_bytes,
+        contract_response_headers=proxy_result.operation.response_headers,
+        max_response_bytes=proxy_result.operation.max_response_bytes,
     )
 
 
 @cloud_edition_billing_rate_limit_check("knowledge")
-def _proxy_knowledge_fs_read_operation(
+def _proxy_knowledge_fs_non_get(
     method: KnowledgeFSMethod,
     upstream_path: str,
 ) -> ResponseReturnValue:
-    """Apply billing checks to contract-declared read-only non-GET operations."""
+    """Apply knowledge billing checks to one allowlisted non-GET operation."""
     return _proxy_request(method, upstream_path)
-
-
-@cloud_edition_billing_rate_limit_check("knowledge")
-def _proxy_knowledge_fs_mutation(upstream_path: str) -> ResponseReturnValue:
-    """Apply billing checks to contract-declared writes."""
-    return _proxy_request(cast(KnowledgeFSMethod, request.method), upstream_path)
 
 
 @bp.route("/knowledge-fs/<path:upstream_path>", methods=["GET"])
@@ -268,6 +253,8 @@ def proxy_knowledge_fs_get(upstream_path: str) -> ResponseReturnValue:
     Returns:
         The filtered raw KnowledgeFS response or a Console JSON error response.
     """
+    if request.method != "GET":
+        raise MethodNotAllowed(valid_methods=["GET"])
     return _proxy_request("GET", upstream_path)
 
 
@@ -287,9 +274,7 @@ def proxy_knowledge_fs_write(upstream_path: str) -> ResponseReturnValue:
     """
     method = cast(KnowledgeFSMethod, request.method)
     try:
-        operation = get_knowledge_fs_operation(method, upstream_path)
+        get_knowledge_fs_operation(method, upstream_path)
     except KnowledgeFSRouteNotAllowedError as exc:
         raise NotFound() from exc
-    if operation.access == "read":
-        return _proxy_knowledge_fs_read_operation(method, upstream_path)
-    return _proxy_knowledge_fs_mutation(upstream_path)
+    return _proxy_knowledge_fs_non_get(method, upstream_path)

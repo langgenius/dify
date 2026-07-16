@@ -11,6 +11,7 @@ from flask import Flask, Response
 from werkzeug.exceptions import (
     BadGateway,
     Forbidden,
+    MethodNotAllowed,
     NotFound,
     RequestEntityTooLarge,
     ServiceUnavailable,
@@ -19,8 +20,7 @@ from werkzeug.exceptions import (
 from controllers.console import bp
 from controllers.console.knowledge_fs_proxy import (
     _console_api_errors,
-    _proxy_knowledge_fs_mutation,
-    _proxy_knowledge_fs_read_operation,
+    _proxy_knowledge_fs_non_get,
     _proxy_response,
     proxy_knowledge_fs_get,
     proxy_knowledge_fs_write,
@@ -28,18 +28,40 @@ from controllers.console.knowledge_fs_proxy import (
 from controllers.console.wraps import RBACPermission
 from core.helper import ssrf_proxy
 from services.knowledge_fs_proxy import (
+    KnowledgeFSAccessDeniedError,
     KnowledgeFSConfigurationError,
+    KnowledgeFSOperation,
     KnowledgeFSResponseKind,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSUpstreamResponse,
+    get_knowledge_fs_operation,
 )
 
 
 def _upstream(
     response: httpx.Response,
     kind: KnowledgeFSResponseKind = "buffered",
+    *,
+    max_response_bytes: int | None = None,
 ) -> KnowledgeFSUpstreamResponse:
-    return KnowledgeFSUpstreamResponse(response, kind)
+    operation = KnowledgeFSOperation(
+        method="GET",
+        path="test",
+        response_kind=kind,
+        access="read",
+        rbac_permission="dataset_readonly",
+        max_response_bytes=max_response_bytes
+        or (64 * 1024 * 1024 if kind == "stream" else 25 * 1024 * 1024 if kind == "binary" else 1024 * 1024),
+        request_headers=(),
+        response_headers=(
+            "content-security-policy",
+            "x-content-type-options",
+            "x-query-run-id",
+            "x-session-id",
+        ),
+        response_media_types=(),
+    )
+    return KnowledgeFSUpstreamResponse(response, kind, operation)
 
 
 class _EventStream(httpx.SyncByteStream):
@@ -78,12 +100,8 @@ def _set_current_workspace(
 
 def _bypass_policy_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy._proxy_knowledge_fs_read_operation",
-        unwrap(_proxy_knowledge_fs_read_operation),
-    )
-    monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy._proxy_knowledge_fs_mutation",
-        unwrap(_proxy_knowledge_fs_mutation),
+        "controllers.console.knowledge_fs_proxy._proxy_knowledge_fs_non_get",
+        unwrap(_proxy_knowledge_fs_non_get),
     )
 
 
@@ -105,6 +123,24 @@ def test_console_blueprint_registers_generic_knowledge_fs_routes() -> None:
         )
         assert write_endpoint.endswith("proxy_knowledge_fs_write")
         assert write_values == {"upstream_path": "knowledge-spaces/space-1"}
+
+
+def test_generic_get_rejects_flasks_implicit_head_route(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    proxy = MagicMock(return_value=Response(status=200))
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_request", proxy)
+    route = unwrap(proxy_knowledge_fs_get)
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces",
+        method="HEAD",
+    ):
+        with pytest.raises(MethodNotAllowed):
+            route("knowledge-spaces")
+
+    proxy.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -150,7 +186,7 @@ def test_console_blueprint_registers_generic_knowledge_fs_routes() -> None:
         ),
     ],
 )
-def test_generic_routes_enforce_contract_specific_workspace_rbac(
+def test_generic_routes_delegate_to_the_authorized_service_use_case(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     route,
@@ -166,12 +202,11 @@ def test_generic_routes_enforce_contract_specific_workspace_rbac(
         content=b"asset" if response_kind == "binary" else b"{}",
         headers={"Content-Type": "application/octet-stream" if response_kind == "binary" else "application/json"},
     )
+    proxy = MagicMock(return_value=_upstream(upstream, response_kind))
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
-        MagicMock(return_value=_upstream(upstream, response_kind)),
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
+        proxy,
     )
-    authorize = MagicMock()
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.authorize_knowledge_fs_request", authorize)
     _set_current_workspace(monkeypatch)
     _bypass_policy_wrappers(monkeypatch)
     raw_route = unwrap(route)
@@ -180,9 +215,11 @@ def test_generic_routes_enforce_contract_specific_workspace_rbac(
         response = raw_route(path)
 
     assert isinstance(response, Response)
-    assert authorize.call_args.kwargs["tenant_id"] == "tenant-1"
-    assert authorize.call_args.kwargs["method"] == method
-    assert authorize.call_args.kwargs["operation"].rbac_permission == permission.value
+    assert proxy.call_args.kwargs["account"].id == "account-1"
+    assert proxy.call_args.kwargs["tenant_id"] == "tenant-1"
+    assert proxy.call_args.kwargs["method"] == method
+    assert proxy.call_args.kwargs["path"] == path
+    assert get_knowledge_fs_operation(method, path).rbac_permission == permission.value
 
 
 def test_read_post_applies_knowledge_rate_limit_once(
@@ -206,7 +243,7 @@ def test_read_post_applies_knowledge_rate_limit_once(
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_request", proxy)
 
     with app.test_request_context("/console/api/knowledge-fs/queries", method="POST"):
-        response = _proxy_knowledge_fs_read_operation("POST", "queries")
+        response = _proxy_knowledge_fs_non_get("POST", "queries")
 
     assert isinstance(response, Response)
     zadd.assert_called_once()
@@ -235,7 +272,7 @@ def test_generic_get_forwards_path_query_and_raw_response(
         )
     )
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         forward,
     )
     _set_current_workspace(monkeypatch)
@@ -247,17 +284,15 @@ def test_generic_get_forwards_path_query_and_raw_response(
     ):
         response = route("knowledge-spaces")
 
-    forward.assert_called_once_with(
-        account_id="account-1",
-        method="GET",
-        path="knowledge-spaces",
-        tenant_id="tenant-1",
-        accept=None,
-        content_type=None,
-        query=b"limit=20&cursor=first&cursor=second",
-        body=None,
-        request_headers={},
-    )
+    request = forward.call_args.kwargs
+    assert request["account"].id == "account-1"
+    assert request["method"] == "GET"
+    assert request["path"] == "knowledge-spaces"
+    assert request["tenant_id"] == "tenant-1"
+    assert request["accept"] is None
+    assert request["content_type"] is None
+    assert request["query"] == b"limit=20&cursor=first&cursor=second"
+    assert request["body"] is None
     assert isinstance(response, Response)
     assert response.status_code == 200
     assert response.get_json() == {"items": [], "nextCursor": None}
@@ -294,7 +329,7 @@ def test_generic_write_forwards_path_raw_body_and_current_tenant(
         )
     )
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         forward,
     )
     _set_current_workspace(monkeypatch)
@@ -310,17 +345,15 @@ def test_generic_write_forwards_path_raw_body_and_current_tenant(
     ):
         response = route(path)
 
-    forward.assert_called_once_with(
-        account_id="account-1",
-        method=method,
-        path=path,
-        tenant_id="tenant-1",
-        accept=None,
-        content_type="application/json",
-        query=None,
-        body=body,
-        request_headers={},
-    )
+    request = forward.call_args.kwargs
+    assert request["account"].id == "account-1"
+    assert request["method"] == method
+    assert request["path"] == path
+    assert request["tenant_id"] == "tenant-1"
+    assert request["accept"] is None
+    assert request["content_type"] == "application/json"
+    assert request["query"] is None
+    assert request["body"] == body
     assert isinstance(response, Response)
     assert response.status_code == 201
     assert response.get_json()["tenantId"] == "tenant-1"
@@ -336,7 +369,7 @@ def test_generic_write_forwards_contract_declared_request_headers(
         )
     )
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         forward,
     )
     _set_current_workspace(monkeypatch)
@@ -355,7 +388,7 @@ def test_generic_write_forwards_contract_declared_request_headers(
 
     assert isinstance(response, Response)
     assert response.status_code == 202
-    assert forward.call_args.kwargs["request_headers"] == {"idempotency-key": "delete-space-1"}
+    assert forward.call_args.kwargs["request_headers"].get("Idempotency-Key") == "delete-space-1"
 
 
 def test_processing_events_forwards_last_event_id(
@@ -368,7 +401,7 @@ def test_processing_events_forwards_last_event_id(
         headers={"Content-Type": "text/event-stream"},
     )
     forward = MagicMock(return_value=_upstream(upstream, "stream"))
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request", forward)
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request", forward)
     _set_current_workspace(monkeypatch)
     route = unwrap(proxy_knowledge_fs_get)
     path = "knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events"
@@ -381,7 +414,7 @@ def test_processing_events_forwards_last_event_id(
         assert isinstance(response, Response)
         response.close()
 
-    assert forward.call_args.kwargs["request_headers"] == {"last-event-id": "42"}
+    assert forward.call_args.kwargs["request_headers"].get("Last-Event-ID") == "42"
 
 
 def test_contract_response_headers_cannot_bypass_the_proxy_denylist() -> None:
@@ -434,90 +467,20 @@ def test_contract_response_headers_forward_binary_hardening_headers() -> None:
     assert response.headers["X-Content-Type-Options"] == "nosniff"
 
 
-def test_generic_post_rejects_non_editor(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    forward = MagicMock()
+def test_authorized_service_denial_is_exposed_as_forbidden(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
-        forward,
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
+        MagicMock(side_effect=KnowledgeFSAccessDeniedError("workspace access denied")),
     )
-    _set_current_workspace(monkeypatch, editor=False)
-    _bypass_policy_wrappers(monkeypatch)
-    route = unwrap(proxy_knowledge_fs_write)
+    _set_current_workspace(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_get)
 
-    with app.test_request_context(
-        "/console/api/knowledge-fs/knowledge-spaces",
-        method="POST",
-        data=b"{}",
-        content_type="application/json",
-    ):
+    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"):
         with pytest.raises(Forbidden):
             route("knowledge-spaces")
-
-    forward.assert_not_called()
-
-
-def test_api_key_mutation_requires_workspace_edit_permission(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    forward = MagicMock()
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request", forward)
-    _set_current_workspace(monkeypatch, has_edit_permission=False)
-    _bypass_policy_wrappers(monkeypatch)
-    route = unwrap(proxy_knowledge_fs_write)
-
-    with app.test_request_context(
-        "/console/api/knowledge-fs/knowledge-spaces/space-1/api-keys",
-        method="POST",
-        data=b"{}",
-        content_type="application/json",
-    ):
-        with pytest.raises(Forbidden):
-            route("knowledge-spaces/space-1/api-keys")
-
-    forward.assert_not_called()
-
-
-def test_api_key_deletion_requires_workspace_admin_or_owner(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    forward = MagicMock()
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request", forward)
-    _set_current_workspace(monkeypatch, admin_or_owner=False)
-    _bypass_policy_wrappers(monkeypatch)
-    route = unwrap(proxy_knowledge_fs_write)
-
-    with app.test_request_context(
-        "/console/api/knowledge-fs/knowledge-spaces/space-1/api-keys/key-1",
-        method="DELETE",
-    ):
-        with pytest.raises(Forbidden):
-            route("knowledge-spaces/space-1/api-keys/key-1")
-
-    forward.assert_not_called()
-
-
-def test_access_policy_mutation_requires_workspace_admin_or_owner(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    forward = MagicMock()
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request", forward)
-    _set_current_workspace(monkeypatch, admin_or_owner=False)
-    _bypass_policy_wrappers(monkeypatch)
-    route = unwrap(proxy_knowledge_fs_write)
-
-    with app.test_request_context(
-        "/console/api/knowledge-fs/knowledge-spaces/space-1/access-policy",
-        method="PATCH",
-        data=b"{}",
-        content_type="application/json",
-    ):
-        with pytest.raises(Forbidden):
-            route("knowledge-spaces/space-1/access-policy")
-
-    forward.assert_not_called()
 
 
 def test_read_post_allows_non_editor_and_streams_sse(
@@ -536,7 +499,7 @@ def test_read_post_allows_non_editor_and_streams_sse(
     )
     forward = MagicMock(return_value=_upstream(upstream, "stream"))
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         forward,
     )
     _set_current_workspace(monkeypatch, editor=False)
@@ -572,7 +535,7 @@ def test_unconsumed_sse_response_closes_upstream(
         headers={"Content-Type": "text/event-stream"},
     )
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         MagicMock(return_value=_upstream(upstream, "stream")),
     )
     _set_current_workspace(monkeypatch, editor=False)
@@ -597,19 +560,8 @@ def test_sse_response_uses_the_generated_operation_limit(
         headers={"Content-Type": "text/event-stream"},
     )
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
-        MagicMock(return_value=_upstream(upstream, "stream")),
-    )
-    operation = MagicMock(
-        access="read",
-        rbac_permission="dataset_readonly",
-        max_response_bytes=1,
-        request_headers=(),
-        response_headers=(),
-    )
-    monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.get_knowledge_fs_operation",
-        lambda _method, _path: operation,
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
+        MagicMock(return_value=_upstream(upstream, "stream", max_response_bytes=1)),
     )
     _set_current_workspace(monkeypatch, editor=False)
     _bypass_policy_wrappers(monkeypatch)
@@ -634,7 +586,7 @@ def test_sse_transport_failure_is_visible_to_the_client(
         headers={"Content-Type": "text/event-stream"},
     )
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         MagicMock(return_value=_upstream(upstream, "stream")),
     )
     _set_current_workspace(monkeypatch, editor=False)
@@ -653,7 +605,7 @@ def test_sse_transport_failure_is_visible_to_the_client(
 def test_generic_post_rejects_oversized_body(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     forward = MagicMock()
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         forward,
     )
     _set_current_workspace(monkeypatch)
@@ -679,7 +631,7 @@ def test_server_credential_rejection_is_not_exposed_as_browser_auth_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         MagicMock(
             return_value=_upstream(
                 httpx.Response(
@@ -703,7 +655,7 @@ def test_resource_authorization_rejection_is_exposed_as_forbidden(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         MagicMock(
             return_value=_upstream(
                 httpx.Response(
@@ -746,7 +698,7 @@ def test_contract_response_headers_are_deduplicated_case_insensitively() -> None
 
 def test_configuration_error_is_reported_as_unavailable(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         MagicMock(side_effect=KnowledgeFSConfigurationError("missing token")),
     )
     _set_current_workspace(monkeypatch)
@@ -759,7 +711,7 @@ def test_configuration_error_is_reported_as_unavailable(app: Flask, monkeypatch:
 
 def test_disallowed_kfs_route_is_hidden_as_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        "controllers.console.knowledge_fs_proxy.proxy_knowledge_fs_request",
         MagicMock(side_effect=KnowledgeFSRouteNotAllowedError("blocked")),
     )
     _set_current_workspace(monkeypatch)
