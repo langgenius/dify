@@ -1,12 +1,12 @@
-"""Testcontainers integration tests for password reset authentication flows."""
+"""Unit tests for password reset controller flows."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
 
 from controllers.console.auth.error import (
     EmailCodeError,
@@ -21,16 +21,35 @@ from controllers.console.auth.forgot_password import (
     ForgotPasswordSendEmailApi,
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
-from tests.test_containers_integration_tests.controllers.console.helpers import ensure_dify_setup
+from models.account import Account
+from models.engine import db
+from services.feature_service import SystemFeatureModel
+
+
+@pytest.fixture
+def database_app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        Account.__table__.create(db.engine)
+        yield app
+
+
+@pytest.fixture(autouse=True)
+def enable_password_login_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep endpoint decorators deterministic without requiring the configured app database."""
+
+    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "CLOUD")
+    monkeypatch.setattr(
+        "controllers.console.wraps.FeatureService.get_system_features",
+        lambda: SystemFeatureModel(enable_email_password_login=True),
+    )
 
 
 class TestForgotPasswordSendEmailApi:
     """Test cases for sending password reset emails."""
-
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
-        ensure_dify_setup(db_session_with_containers)
-        return flask_app_with_containers
 
     @pytest.fixture
     def mock_account(self):
@@ -140,11 +159,6 @@ class TestForgotPasswordSendEmailApi:
 
 class TestForgotPasswordCheckApi:
     """Test cases for verifying password reset codes."""
-
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
-        ensure_dify_setup(db_session_with_containers)
-        return flask_app_with_containers
 
     @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
@@ -326,11 +340,6 @@ class TestForgotPasswordResetApi:
     """Test cases for resetting password with verified token."""
 
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
-        ensure_dify_setup(db_session_with_containers)
-        return flask_app_with_containers
-
-    @pytest.fixture
     def mock_account(self):
         """Create mock account object."""
         account = MagicMock()
@@ -341,17 +350,14 @@ class TestForgotPasswordResetApi:
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.forgot_password.db")
     @patch("controllers.console.auth.forgot_password.TenantService.get_join_tenants")
     def test_reset_password_success(
         self,
         mock_get_tenants,
-        mock_db,
         mock_get_account,
         mock_revoke_token,
         mock_get_data,
-        app: Flask,
-        mock_account,
+        database_app: Flask,
     ):
         """
         Test successful password reset.
@@ -362,13 +368,17 @@ class TestForgotPasswordResetApi:
         - Success response is returned
         """
         # Arrange
+        account = Account(name="Test User", email="test@example.com")
+        db.session.add(account)
+        db.session.commit()
+        account_id = account.id
+
         mock_get_data.return_value = {"email": "test@example.com", "phase": "reset"}
-        mock_get_account.return_value = mock_account
-        mock_db.session.merge.return_value = mock_account
+        mock_get_account.return_value = account
         mock_get_tenants.return_value = [MagicMock()]
 
         # Act
-        with app.test_request_context(
+        with database_app.test_request_context(
             "/forgot-password/resets",
             method="POST",
             json={"token": "valid_token", "new_password": "NewPass123!", "password_confirm": "NewPass123!"},
@@ -379,6 +389,10 @@ class TestForgotPasswordResetApi:
         # Assert
         assert response["result"] == "success"
         mock_revoke_token.assert_called_once_with("valid_token")
+        updated_account = db.session.get(Account, account_id)
+        assert updated_account is not None
+        assert updated_account.password is not None
+        assert updated_account.password_salt is not None
 
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     def test_reset_password_mismatch(self, mock_get_data, app: Flask):

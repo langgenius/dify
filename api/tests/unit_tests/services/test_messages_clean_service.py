@@ -685,3 +685,56 @@ class TestMessagesCleanServiceRun:
             service.run()
         assert len(completion_calls) == 1
         assert completion_calls[0]["status"] == "failed"
+
+
+class TestMessagesCleanServiceConstruction:
+    """Verify constructor helpers without exercising database cleanup."""
+
+    def test_from_time_range_validation(self) -> None:
+        policy = MagicMock(spec=BillingDisabledPolicy)
+        now = datetime.datetime.now()
+
+        with pytest.raises(ValueError, match="start_from .* must be less than end_before"):
+            MessagesCleanService.from_time_range(policy, now, now)
+        with pytest.raises(ValueError, match="batch_size .* must be greater than 0"):
+            MessagesCleanService.from_time_range(policy, now - datetime.timedelta(days=1), now, batch_size=0)
+
+    def test_from_time_range_success(self) -> None:
+        policy = MagicMock(spec=BillingDisabledPolicy)
+        start = datetime.datetime(2024, 1, 1)
+        end = datetime.datetime(2024, 2, 1)
+
+        service = MessagesCleanService.from_time_range(policy, start, end)
+
+        assert service._start_from == start
+        assert service._end_before == end
+
+    def test_from_days_validation(self) -> None:
+        policy = MagicMock(spec=BillingDisabledPolicy)
+
+        with pytest.raises(ValueError, match="days .* must be greater than or equal to 0"):
+            MessagesCleanService.from_days(policy, days=-1)
+        with pytest.raises(ValueError, match="batch_size .* must be greater than 0"):
+            MessagesCleanService.from_days(policy, days=30, batch_size=0)
+
+    def test_from_days_success(self) -> None:
+        policy = MagicMock(spec=BillingDisabledPolicy)
+        fixed_now = datetime.datetime(2024, 6, 1)
+
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now", return_value=fixed_now):
+            service = MessagesCleanService.from_days(policy, days=10)
+
+        assert service._start_from is None
+        assert service._end_before == fixed_now - datetime.timedelta(days=10)
+
+    def test_run_calls_clean_messages(self) -> None:
+        service = MessagesCleanService(
+            policy=MagicMock(spec=BillingDisabledPolicy),
+            end_before=datetime.datetime.now(),
+            batch_size=10,
+        )
+        with patch.object(service, "_clean_messages_by_time_range", return_value={"total_deleted": 5}) as mock_clean:
+            result = service.run()
+
+        assert result == {"total_deleted": 5}
+        mock_clean.assert_called_once_with()
