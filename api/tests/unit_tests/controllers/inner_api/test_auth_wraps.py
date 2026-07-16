@@ -2,10 +2,12 @@
 Unit tests for inner_api auth decorators
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException
 
 from configs import dify_config
@@ -16,7 +18,12 @@ from controllers.inner_api.wraps import (
     inner_api_only,
     plugin_inner_api_only,
 )
+from models.enums import EndUserType
 from models.model import EndUser
+
+
+def _stable_uuid(value: str) -> str:
+    return str(uuid5(NAMESPACE_URL, value))
 
 
 class TestBillingInnerApiOnly:
@@ -270,14 +277,13 @@ class TestEnterpriseInnerApiUserAuth:
             headers={"Authorization": "Bearer user123:wrong_signature", "X-Inner-Api-Key": "valid_key"}
         ):
             with patch.object(dify_config, "INNER_API", True):
-                with patch("controllers.inner_api.wraps.session_factory.create_session") as mock_create_session:
-                    result = protected_view()
+                result = protected_view()
 
         # Assert
         assert result == "no_user"
-        mock_create_session.assert_not_called()
 
-    def test_should_inject_user_when_hmac_signature_valid(self, app: Flask):
+    @pytest.mark.parametrize("sqlite_session", [(EndUser,)], indirect=True)
+    def test_should_inject_user_when_hmac_signature_valid(self, app: Flask, sqlite_session: Session):
         """Test that user is injected when HMAC signature is valid"""
         # Arrange
         from base64 import b64encode
@@ -289,19 +295,25 @@ class TestEnterpriseInnerApiUserAuth:
             return kwargs.get("user")
 
         # Calculate valid HMAC signature
-        user_id = "user123"
+        user_id = _stable_uuid("end-user:user123")
         inner_api_key = "valid_key"
         data_to_sign = f"DIFY {user_id}"
         signature = hmac_new(inner_api_key.encode("utf-8"), data_to_sign.encode("utf-8"), sha1)
         valid_signature = b64encode(signature.digest()).decode("utf-8")
 
-        # Create mock user
-        mock_user = MagicMock()
-        mock_user.id = user_id
-        mock_session = MagicMock()
-        mock_session.get.return_value = mock_user
-        mock_session_context = MagicMock()
-        mock_session_context.__enter__.return_value = mock_session
+        end_user = EndUser(
+            id=user_id,
+            tenant_id=_stable_uuid("tenant:inner-api"),
+            type=EndUserType.BROWSER,
+            name="Inner API User",
+            session_id="inner-api-session",
+        )
+        sqlite_session.add(end_user)
+        sqlite_session.commit()
+        database_session_factory = sessionmaker(
+            bind=sqlite_session.get_bind(),
+            expire_on_commit=False,
+        )
 
         # Act
         with app.test_request_context(
@@ -310,14 +322,15 @@ class TestEnterpriseInnerApiUserAuth:
             with patch.object(dify_config, "INNER_API", True):
                 with patch(
                     "controllers.inner_api.wraps.session_factory.create_session",
-                    return_value=mock_session_context,
-                ) as mock_create_session:
+                    database_session_factory,
+                ):
                     result = protected_view()
 
         # Assert
-        assert result == mock_user
-        mock_create_session.assert_called_once_with()
-        mock_session.get.assert_called_once_with(EndUser, user_id)
+        assert isinstance(result, EndUser)
+        assert result.id == end_user.id
+        assert result.tenant_id == end_user.tenant_id
+        assert result.session_id == "inner-api-session"
 
 
 class TestPluginInnerApiOnly:
