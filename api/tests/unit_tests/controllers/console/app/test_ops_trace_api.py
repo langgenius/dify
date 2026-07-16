@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from controllers.common import wraps as common_wraps
@@ -15,6 +16,7 @@ from controllers.console.app import ops_trace as ops_trace_module
 from controllers.console.app import wraps as app_wraps
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
+from models.model import App, AppMode, IconType
 
 
 def _make_account(role: TenantAccountRole) -> Account:
@@ -129,6 +131,7 @@ def test_trace_config_mutations_require_edit_permission(
         ),
     ],
 )
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_trace_config_mutations_require_rbac_permission(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
@@ -137,11 +140,33 @@ def test_trace_config_mutations_require_rbac_permission(
     payload: dict[str, object] | None,
     service_method_name: str,
     service_result: object,
+    sqlite_session: Session,
 ) -> None:
     app.config.setdefault("RESTX_MASK_HEADER", "X-Fields")
     account = _make_account(TenantAccountRole.NORMAL)
     _patch_console_guards(monkeypatch, account, _make_app(), rbac_enabled=True)
-    monkeypatch.setattr(common_wraps.db, "session", SimpleNamespace(scalar=lambda _stmt: "other-account"))
+    owned_app = App()
+    owned_app.id = "app-123"
+    owned_app.tenant_id = "tenant-123"
+    owned_app.name = "Trace app"
+    owned_app.description = ""
+    owned_app.mode = AppMode.CHAT
+    owned_app.icon_type = IconType.EMOJI
+    owned_app.icon = "robot"
+    owned_app.icon_background = "#ffffff"
+    owned_app.enable_site = False
+    owned_app.enable_api = False
+    owned_app.api_rpm = 0
+    owned_app.api_rph = 0
+    owned_app.is_demo = False
+    owned_app.is_public = False
+    owned_app.is_universal = False
+    owned_app.max_active_requests = None
+    owned_app.maintainer = "other-account"
+    owned_app.use_icon_as_answer_icon = False
+    sqlite_session.add(owned_app)
+    sqlite_session.commit()
+    monkeypatch.setattr(common_wraps.db, "session", sqlite_session)
     monkeypatch.setattr(common_wraps.RBACService.CheckAccess, "check", MagicMock(return_value=False))
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(ops_trace_module.OpsService, service_method_name, service_mock)
