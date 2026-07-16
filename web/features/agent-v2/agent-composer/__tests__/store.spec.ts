@@ -12,6 +12,40 @@ import {
 } from '../store'
 
 describe('agent composer store conversions', () => {
+  it('should hydrate missing file and skill references from API config', () => {
+    const formState = agentSoulConfigToFormState({
+      config_files: [
+        {
+          file_id: 'missing-file-id',
+          file_kind: 'upload_file',
+          is_missing: true,
+          name: 'missing.pdf',
+        },
+      ],
+      config_skills: [
+        {
+          file_id: 'missing-skill-id',
+          file_kind: 'tool_file',
+          is_missing: true,
+          name: 'Missing Skill',
+        },
+      ],
+    } as unknown as AgentSoulConfig)
+
+    expect(formState.files).toEqual([
+      expect.objectContaining({
+        isMissing: true,
+        name: 'missing.pdf',
+      }),
+    ])
+    expect(formState.skills).toEqual([
+      expect.objectContaining({
+        isMissing: true,
+        name: 'Missing Skill',
+      }),
+    ])
+  })
+
   it('rebases draft baselines through the composer state action', () => {
     const store = createStore()
     const nextDraft = {

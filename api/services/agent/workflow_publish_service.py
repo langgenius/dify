@@ -200,8 +200,8 @@ class WorkflowAgentPublishService:
         from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
 
         del session
-        configured_skill_names = {item.name for item in agent_soul.config_skills}
-        configured_file_names = {item.name for item in agent_soul.config_files}
+        configured_skill_names = {item.name for item in agent_soul.config_skills if not item.is_missing}
+        configured_file_names = {item.name for item in agent_soul.config_files if not item.is_missing}
         missing_refs: list[str] = []
         for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
             if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:

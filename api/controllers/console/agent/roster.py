@@ -177,7 +177,7 @@ class AgentLogsQuery(BaseModel):
         default_factory=list,
         description=(
             "Filter by one or more source IDs, e.g. webapp:<app_id> "
-            "or workflow:<app_id>:<workflow_id>:<version>:<node_id>"
+            "or workflow:<app_id>. Exact workflow:<app_id>:<workflow_id>:<version>:<node_id> IDs remain supported."
         ),
     )
     sort_by: str = Field(default="updated_at", description="Sort by created_at or updated_at")
@@ -221,7 +221,10 @@ class AgentLogsQuery(BaseModel):
 class AgentStatisticsQuery(BaseModel):
     source: str | None = Field(
         default=None,
-        description="Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger",
+        description=(
+            "Filter by a structured webapp:<app_id> or workflow:<app_id> source ID. "
+            "Legacy invoke sources and exact workflow version/node source IDs remain supported."
+        ),
     )
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
     end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
@@ -241,6 +244,7 @@ class AgentAppPartial(GenericAppPartial):
     debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
+    reference_count: int | None = None
     published_reference_count: int = 0
     published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
 
@@ -427,6 +431,10 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
         tenant_id=tenant_id,
         agent_ids=[agent.id for agent in agents_by_app_id.values()],
     )
+    reference_counts_by_agent_id = roster_service.load_reference_counts_by_agent_id(
+        tenant_id=tenant_id,
+        agent_ids=[agent.id for agent in agents_by_app_id.values()],
+    )
     debug_conversation_ids_by_agent_id = roster_service.load_or_create_agent_app_debug_conversation_ids_by_agent_id(
         tenant_id=tenant_id,
         agents=list(agents_by_app_id.values()),
@@ -449,6 +457,7 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
+            item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)
             published_references = published_references_by_agent_id.get(agent.id, [])
             item["published_reference_count"] = len(published_references)
             item["published_references"] = [

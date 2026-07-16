@@ -4,7 +4,7 @@ PROTO_SRC := ../dify-agent/proto/dify/agent/stub/v1/agent_stub.proto
 PROTO_OUT := gen
 AGENT_CLI_HELP_JSON := ../dify-agent/src/dify_agent/layers/_agent_cli_help.json
 
-build: $(BIN_DIR)/shellctl $(BIN_DIR)/shellctl-sanitize-pty $(BIN_DIR)/shellctl-runner-exit $(BIN_DIR)/dify-agent gen-cli-help
+build: $(BIN_DIR)/shellctl $(BIN_DIR)/shellctl-sanitize-pty $(BIN_DIR)/shellctl-runner-exit $(BIN_DIR)/shellctl-runner $(BIN_DIR)/dify-agent gen-cli-help
 
 $(BIN_DIR)/shellctl: $(shell find cmd/shellctl internal -name '*.go')
 	go build -o $@ ./cmd/shellctl
@@ -14,6 +14,10 @@ $(BIN_DIR)/shellctl-sanitize-pty: $(shell find cmd/sanitize-pty internal/sanitiz
 
 $(BIN_DIR)/shellctl-runner-exit: $(shell find cmd/runner-exit internal/runner_exit -name '*.go')
 	go build -o $@ ./cmd/runner-exit
+
+$(BIN_DIR)/shellctl-runner: $(shell find cmd/runner internal/landlock internal/cmdutil -name '*.go')
+	go build -o $@ ./cmd/runner
+
 
 $(BIN_DIR)/dify-agent: $(shell find cmd/dify-agent-cli internal/agentcli internal/stubclient -name '*.go') $(shell find gen -name '*.go' 2>/dev/null)
 	go build -o $@ ./cmd/dify-agent-cli
@@ -83,12 +87,39 @@ integration-up:
 		fi; \
 		sleep 2; \
 	done
+	$(eval CONTAINER_NAME_NOISO := sandbox-rt-noiso-$(TEST_ID))
+	$(eval HOST_PORT_NOISO := $(shell python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()'))
+	$(eval AUTH_TOKEN_NOISO := test-token-noiso-$(TEST_ID))
+	@echo "Starting no-isolation container $(CONTAINER_NAME_NOISO) on port $(HOST_PORT_NOISO)..."
+	docker run -d --name $(CONTAINER_NAME_NOISO) \
+		-p $(HOST_PORT_NOISO):5004 \
+		-e SHELLCTL_AUTH_TOKEN=$(AUTH_TOKEN_NOISO) \
+		-e ENABLE_PATH_ISOLATION=false \
+		$(IMAGE_NAME)
+	@echo 'CONTAINER_NAME_NOISO=$(CONTAINER_NAME_NOISO)' >> $(STATE_FILE)
+	@echo 'HOST_PORT_NOISO=$(HOST_PORT_NOISO)' >> $(STATE_FILE)
+	@echo 'AUTH_TOKEN_NOISO=$(AUTH_TOKEN_NOISO)' >> $(STATE_FILE)
+	@for i in $$(seq 1 30); do \
+		if curl -sf http://localhost:$(HOST_PORT_NOISO)/healthz > /dev/null 2>&1; then \
+			echo "No-isolation runtime is ready on port $(HOST_PORT_NOISO)"; \
+			break; \
+		fi; \
+		if [ "$$i" -eq 30 ]; then \
+			echo "ERROR: no-isolation runtime not ready after 60s" >&2; \
+			docker logs $(CONTAINER_NAME_NOISO); \
+			docker rm -f $(CONTAINER_NAME_NOISO) 2>/dev/null; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
 
 integration-test:
 	@test -f $(STATE_FILE) || { echo "ERROR: run 'make integration-up' first" >&2; exit 1; }
 	@. ./$(STATE_FILE); \
 	SHELLCTL_GO_URL=http://localhost:$$HOST_PORT \
 	SHELLCTL_TEST_TOKEN=$$AUTH_TOKEN \
+	SHELLCTL_GO_URL_NO_ISOLATION=http://localhost:$$HOST_PORT_NOISO \
+	SHELLCTL_TEST_TOKEN_NO_ISOLATION=$$AUTH_TOKEN_NOISO \
 	go test -tags=integration -v -count=1 -timeout=300s ./tests/...
 
 integration-logs:
@@ -99,6 +130,7 @@ integration-down:
 	@if [ -f $(STATE_FILE) ]; then \
 		. ./$(STATE_FILE); \
 		docker rm -f $$CONTAINER_NAME 2>/dev/null || true; \
+		docker rm -f $$CONTAINER_NAME_NOISO 2>/dev/null || true; \
 		rm -f $(STATE_FILE); \
 	fi
 

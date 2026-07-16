@@ -1,6 +1,6 @@
 # Frontend Testing Guide
 
-This document is the single source of truth for automated frontend tests under `web/`. Tests should protect product behavior and make refactoring safer. They are not a file-by-file completion exercise.
+This document is the single source of truth for automated frontend tests under `web/` and `packages/dify-ui/`. Tests should protect product behavior and make refactoring safer. They are not a file-by-file completion exercise.
 
 ## Testing Mindset
 
@@ -57,17 +57,18 @@ Prefer selectors in this order:
 
 1. `getByRole` with an accessible name.
 1. `getByLabelText` for labeled form controls.
-1. Scoped semantic queries with `within`.
+1. Scoped semantic queries with `within` in React Testing Library or locator chaining in Browser Mode.
 1. `getByText`, `getByPlaceholderText`, or other user-visible queries when appropriate.
 1. `getByTestId` only for boundaries with no useful DOM semantics, such as canvas output, editor shims, or mocked non-visual integrations.
 
 If an interactive control cannot be found semantically, first check whether the production markup needs a real button, link, label, landmark, or accessible name.
 
-- Prefer a `userEvent.setup()` instance created inside the test for realistic interaction sequences. Use `fireEvent` for a specific low-level event that `userEvent` does not express.
+- In React Testing Library tests, use a `userEvent.setup()` instance inside the test. Use `fireEvent` only when the low-level event itself is the contract.
+- In Browser Mode, interact through awaited locators. Use `.element()` only for DOM APIs that locators do not expose.
 - Test keyboard and focus behavior when they are part of the interaction contract.
 - Assert accessible names and ARIA state when they communicate product state.
 - Exact copy assertions are valid when the copy or translation key is the contract; otherwise prefer a semantic query or resilient match.
-- Use `queryBy*` for absence and `findBy*` for asynchronously appearing elements.
+- In React Testing Library, use `queryBy*` for absence and `findBy*` for asynchronously appearing elements. In Browser Mode, use `expect.element` for eventual assertions.
 
 ## Mock at Real Boundaries
 
@@ -88,7 +89,7 @@ Mocks must preserve the public contract needed by the test. Do not replace Dify 
 
 ## Async, Time, and Isolation
 
-- Await `userEvent`, promises, `findBy*`, and `waitFor`.
+- Await user interactions, promises, `findBy*`, and `waitFor`.
 - Use `findBy*` for an element that appears asynchronously and `waitFor` for an eventually true external assertion.
 - Use fake timers only when timer behavior is part of the contract. Restore real timers after the test.
 - Control time, randomness, network responses, and shared stores so tests are deterministic.
@@ -97,7 +98,8 @@ Mocks must preserve the public contract needed by the test. Do not replace Dify 
 
 ## Dify Test Setup
 
-- Vitest runs in `happy-dom` through `web/vite.config.ts` and loads `web/vitest.setup.ts`.
+- Tests under `web/` run in `happy-dom` through `web/vite.config.ts` and load `web/vitest.setup.ts`.
+- Tests under `packages/dify-ui/` use separate Vitest Browser Mode projects: unit specs load the package styles through `vitest.setup.ts`, while Storybook tests run stories through `@storybook/addon-vitest`.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
 - The shared `react-i18next` mock is loaded globally. Use `createReactI18nextMock` from `web/test/i18n-mock` only when a test needs custom translations.
 - For `nuqs` behavior, use the helpers in `web/test/nuqs-testing.tsx` and assert URL updates. Mock `nuqs` only when URL synchronization is explicitly outside the test contract.
@@ -145,13 +147,19 @@ vp test run --coverage path/to/spec-or-directory
 ## References
 
 - [Vitest documentation]
+- [Vitest Browser Mode documentation]
+- [Vitest Browser Mode locators]
+- [Storybook Vitest addon]
 - [Testing Library guiding principles]
 - [React Testing Library documentation]
 - [Testing Library query guidance]
 - [Testing Library user-event guidance]
 
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
+[Storybook Vitest addon]: https://storybook.js.org/docs/writing-tests/integrations/vitest-addon
 [Testing Library guiding principles]: https://testing-library.com/docs/guiding-principles
 [Testing Library query guidance]: https://testing-library.com/docs/queries/about
 [Testing Library user-event guidance]: https://testing-library.com/docs/user-event/intro
+[Vitest Browser Mode documentation]: https://vitest.dev/guide/browser
+[Vitest Browser Mode locators]: https://vitest.dev/api/browser/locators
 [Vitest documentation]: https://vitest.dev/guide

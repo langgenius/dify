@@ -9,12 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
+import { exportAppConfig } from '@/service/apps'
+import { downloadBlob } from '@/utils/download'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
 import { DeleteAgentDialog } from './delete-agent-dialog'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
@@ -103,6 +106,7 @@ function AgentRosterPlaceholderState({ title }: { title: string }) {
 function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation('app')
   const { formatTime } = useTimestamp()
   const nameId = useId()
   const descriptionId = useId()
@@ -134,6 +138,26 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const handleDuplicateOpen = () => {
     setDuplicateSessionKey((key) => key + 1)
     setIsDuplicateOpen(true)
+  }
+
+  const handleExport = async () => {
+    if (!agent.app_id) {
+      toast.error(tApp(($) => $.exportFailed))
+      return
+    }
+
+    try {
+      const { data } = await exportAppConfig({
+        appID: agent.app_id,
+        include: false,
+      })
+      downloadBlob({
+        data: new Blob([data], { type: 'application/yaml' }),
+        fileName: `${agent.name}.yml`,
+      })
+    } catch {
+      toast.error(tApp(($) => $.exportFailed))
+    }
   }
 
   return (
@@ -227,6 +251,10 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                 className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
               />
               <span>{tCommon(($) => $['operation.duplicate'])}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2" onClick={handleExport}>
+              <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
+              <span>{tApp(($) => $.export)}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

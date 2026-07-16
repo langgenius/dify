@@ -2284,6 +2284,7 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch):
         lambda version_ids: {"version-1": version, "version-2": unconfigured_version},
     )
     monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
+    monkeypatch.setattr(service, "_load_reference_counts_by_agent_id", lambda **kwargs: {"agent-1": 1})
 
     listed = service.list_roster_agents(tenant_id="tenant-1", page=1, limit=20)
     invited = service.list_invite_options(tenant_id="tenant-1", page=1, limit=20, app_id="app-1")
@@ -2297,6 +2298,7 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch):
     assert listed["data"][0]["updated_at"] == int(updated_at.timestamp())
     assert listed["data"][0]["active_config_snapshot"]["created_at"] == int(version_created_at.timestamp())
     assert listed["data"][0]["active_config_is_published"] is True
+    assert listed["data"][0]["reference_count"] == 1
     assert listed["data"][1]["active_config_is_published"] is False
     assert invited["data"][0]["is_in_current_workflow"] is True
     assert invited["data"][0]["existing_node_ids"] == ["node-1"]
@@ -2327,6 +2329,7 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPa
         },
     )
     monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
+    monkeypatch.setattr(service, "_load_reference_counts_by_agent_id", lambda **kwargs: {})
 
     result = service.list_invite_options(tenant_id="tenant-1", page=1, limit=1)
 
@@ -2496,6 +2499,43 @@ def test_published_references_include_app_display_fields_and_sort_by_updated_at(
     assert references[0]["app_icon_background"] == "#E0F2FE"
     assert references[0]["app_updated_at"] == int(recent_updated_at.timestamp())
     assert references[0]["workflow_version"] == "published-recent"
+
+
+def test_reference_counts_include_draft_and_published_bindings_once_per_app():
+    bindings = [
+        SimpleNamespace(
+            agent_id="agent-1",
+            app_id="app-1",
+            workflow_id="workflow-draft",
+            workflow_version=Workflow.VERSION_DRAFT,
+        ),
+        SimpleNamespace(
+            agent_id="agent-1",
+            app_id="app-1",
+            workflow_id="workflow-published",
+            workflow_version="v1",
+        ),
+        SimpleNamespace(
+            agent_id="agent-1",
+            app_id="app-2",
+            workflow_id="workflow-stale",
+            workflow_version="old-version",
+        ),
+    ]
+    apps = [
+        SimpleNamespace(id="app-1", workflow_id="workflow-published"),
+        SimpleNamespace(id="app-2", workflow_id="workflow-stale"),
+    ]
+    workflows = [
+        SimpleNamespace(id="workflow-draft", app_id="app-1", version=Workflow.VERSION_DRAFT),
+        SimpleNamespace(id="workflow-published", app_id="app-1", version="v1"),
+        SimpleNamespace(id="workflow-stale", app_id="app-2", version="current-version"),
+    ]
+    service = AgentRosterService(FakeSession(scalars=[bindings, apps, workflows]))
+
+    result = service._load_reference_counts_by_agent_id(tenant_id="tenant-1", agent_ids=["agent-1"])
+
+    assert result == {"agent-1": 1}
 
 
 def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPatch):
@@ -3932,6 +3972,28 @@ class TestWorkflowAgentDraftBindingSync:
                 session=session,
                 draft_workflow=self._agent_workflow(),
             )
+
+    def test_publish_validation_rejects_missing_config_assets(self):
+        payload = ComposerSavePayload.model_validate(
+            {
+                "variant": "agent_app",
+                "save_strategy": "save_as_new_version",
+                "agent_soul": {
+                    "config_skills": [{"name": "research", "file_id": "", "is_missing": True}],
+                    "config_files": [
+                        {
+                            "name": "guide.txt",
+                            "file_kind": "upload_file",
+                            "file_id": "",
+                            "is_missing": True,
+                        }
+                    ],
+                },
+            }
+        )
+
+        with pytest.raises(InvalidComposerConfigError, match="config_asset_missing.*skill:research.*file:guide.txt"):
+            ComposerConfigValidator.validate_publish_payload(payload)
 
     def test_projects_binding_declared_outputs_to_draft_graph_response(self):
         workflow = Workflow(

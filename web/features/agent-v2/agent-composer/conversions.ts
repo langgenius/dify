@@ -495,12 +495,16 @@ const toConfigFileConfigs = (
   })
 }
 
+const isConfigReferenceMissing = (reference: object) =>
+  'is_missing' in reference && reference.is_missing === true
+
 const toSkillFormState = (config?: AgentSoulConfig): AgentSkill[] => {
   return (config?.config_skills ?? []).map((skill) => ({
     id: skill.name,
     name: skill.name,
     description: skill.description ?? undefined,
     fileId: skill.file_id,
+    isMissing: isConfigReferenceMissing(skill) || undefined,
     size: skill.size ?? undefined,
     hash: skill.hash ?? undefined,
     mimeType: skill.mime_type ?? undefined,
@@ -513,6 +517,7 @@ const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => {
     name: file.name,
     icon: getFileIconType(file.name, file.mime_type ?? undefined),
     fileId: file.file_id,
+    isMissing: isConfigReferenceMissing(file) || undefined,
     configName: file.name,
     size: file.size ?? undefined,
     hash: file.hash ?? undefined,

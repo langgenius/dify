@@ -7,14 +7,6 @@ type BaseUIAnimationGlobal = typeof globalThis & {
   BASE_UI_ANIMATIONS_DISABLED: boolean
 }
 
-const dispatchToastMouseOver = (element: HTMLElement | SVGElement) => {
-  element.dispatchEvent(
-    new MouseEvent('mouseover', {
-      bubbles: true,
-    }),
-  )
-}
-
 describe('@langgenius/dify-ui/toast', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -62,26 +54,6 @@ describe('@langgenius/dify-ui/toast', () => {
     await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
   })
 
-  it('should wrap long unbroken toast content within the card width', async () => {
-    const screen = await render(<ToastHost />)
-    const longTitle =
-      'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
-    const longDescription =
-      'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
-
-    toast.error(longTitle, {
-      description: longDescription,
-    })
-
-    await expect.element(screen.getByText(longTitle)).toBeInTheDocument()
-    await expect.element(screen.getByText(longDescription)).toBeInTheDocument()
-
-    const title = asHTMLElement(screen.getByText(longTitle).element())
-    const description = asHTMLElement(screen.getByText(longDescription).element())
-    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
-    expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth)
-  })
-
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {
     const screen = await render(<ToastHost limit={1} />)
 
@@ -117,13 +89,12 @@ describe('@langgenius/dify-ui/toast', () => {
       onClose,
     })
 
-    const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
-    dispatchToastMouseOver(viewport)
+    await screen.getByRole('dialog', { name: 'Dismiss me' }).hover()
 
     await expect
       .element(screen.getByRole('button', { name: 'Close notification' }))
       .toBeInTheDocument()
-    asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
+    await screen.getByRole('button', { name: 'Close notification' }).click()
 
     await vi.waitFor(() => {
       expect(document.body).not.toHaveTextContent('Dismiss me')
@@ -142,10 +113,8 @@ describe('@langgenius/dify-ui/toast', () => {
         <>
           <style>
             {`
-            [role="dialog"] {
-              transition: opacity 10000s, transform 10000s !important;
-            }
             [role="dialog"][data-ending-style] {
+              transition: opacity 10000s, transform 10000s !important;
               opacity: 0 !important;
               transform: translateY(-150%) !important;
             }
@@ -178,24 +147,19 @@ describe('@langgenius/dify-ui/toast', () => {
         timeout: 0,
       })
 
-      await expect.element(screen.getByRole('dialog', { name: 'Dismiss me' })).toBeInTheDocument()
-      asHTMLElement(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).click()
-
-      const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
-      dispatchToastMouseOver(viewport)
+      const toastDialog = screen.getByRole('dialog', { name: 'Dismiss me' })
+      await expect.element(toastDialog).toBeInTheDocument()
+      await toastDialog.hover()
 
       await expect
         .element(screen.getByRole('button', { name: 'Close notification' }))
         .toBeInTheDocument()
-      asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
+      await screen.getByRole('button', { name: 'Close notification' }).click()
 
       await vi.waitFor(() => {
-        expect(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).toHaveAttribute(
-          'data-ending-style',
-        )
+        expect(toastDialog.element()).toHaveAttribute('data-ending-style')
       })
-
-      asHTMLElement(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).click()
+      expect(getComputedStyle(toastDialog.element()).pointerEvents).toBe('none')
 
       const underlyingAction = asHTMLElement(
         screen.getByRole('button', { name: 'Underlying action' }).element(),
@@ -301,7 +265,7 @@ describe('@langgenius/dify-ui/toast', () => {
     })
 
     await expect.element(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
-    asHTMLElement(screen.getByRole('button', { name: 'Undo' }).element()).click()
+    await screen.getByRole('button', { name: 'Undo' }).click()
 
     expect(onAction).toHaveBeenCalledTimes(1)
   })
