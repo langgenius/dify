@@ -421,6 +421,25 @@ def test_binary_response_rejects_uncontracted_media_types(
     assert response.is_closed
 
 
+def test_buffered_response_rejects_non_empty_body_without_content_type(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_config(monkeypatch)
+    response = httpx.Response(200, content=b"<script>alert('unexpected html')</script>")
+    monkeypatch.setattr(
+        "services.knowledge_fs_proxy.ssrf_proxy.make_request",
+        MagicMock(return_value=response),
+    )
+
+    with pytest.raises(KnowledgeFSTransportError, match="unsupported media type"):
+        forward_knowledge_fs_request(
+            account_id="account-dev",
+            method="GET",
+            path="knowledge-spaces",
+            tenant_id="tenant-dev",
+        )
+
+    assert response.is_closed
+
+
 def test_binary_response_larger_than_json_limit_remains_callable(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
     payload = b"x" * (2 * 1024 * 1024)

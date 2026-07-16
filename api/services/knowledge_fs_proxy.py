@@ -262,6 +262,9 @@ def _forward_knowledge_fs_request(
             else _MAX_BUFFERED_RESPONSE_BYTES
         )
         buffered_response = ssrf_proxy.buffer_response(response, max_response_bytes=max_response_bytes)
+        if buffered_response.content and not buffered_response.headers.get("content-type", "").strip():
+            buffered_response.close()
+            raise KnowledgeFSTransportError("KnowledgeFS buffered response used an unsupported media type")
         return KnowledgeFSUpstreamResponse(buffered_response, response_kind, operation)
     except ssrf_proxy.ResponseLimitError as exc:
         raise KnowledgeFSTransportError("KnowledgeFS response violated the proxy limit") from exc

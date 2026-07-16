@@ -208,6 +208,8 @@ function requiredAccess(operation) {
   const scope = operation['x-knowledge-fs-required-scope']
   if (scope === 'knowledge-spaces:read') return 'read'
   if (scope === 'knowledge-spaces:write') return 'write'
+  // Console proxy routes remain authenticated even when the upstream operation is anonymous.
+  if (Array.isArray(operation.security) && operation.security.length === 0) return 'read'
   throw new Error(`KnowledgeFS operation has no supported required scope: ${scope}`)
 }
 
