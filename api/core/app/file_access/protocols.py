@@ -30,12 +30,14 @@ class FileAccessControllerProtocol(Protocol):
         self,
         stmt: Select[tuple[UploadFile]],
         *,
+        fallback_tenant_id: str | None = None,
         scope: FileAccessScope | None = None,
     ) -> Select[tuple[UploadFile]]:
         """Return an upload-file query constrained by the supplied access scope.
 
         The returned statement must preserve the caller's existing predicates and
-        append only access-control conditions.
+        append only access-control conditions. ``fallback_tenant_id`` is used
+        when no execution scope is active.
         """
         ...
 

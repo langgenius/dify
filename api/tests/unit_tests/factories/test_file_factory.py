@@ -7,8 +7,9 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from extensions.storage.storage_type import StorageType
-from factories.file_factory import builders
+from factories.file_factory import StorageKeyLoader, builders
 from factories.file_factory.remote import extract_filename, get_remote_file_info
 from graphon.file import FileTransferMethod
 from models import UploadFile
@@ -359,7 +360,7 @@ class TestBuildFromDatasourceFile:
         self._bind_session_factory(monkeypatch, sqlite_engine)
 
         access_controller = MagicMock()
-        access_controller.apply_upload_file_filters = lambda stmt: stmt
+        access_controller.apply_upload_file_filters = lambda stmt, **_kwargs: stmt
 
         file = builders._build_from_datasource_file(
             mapping={"datasource_file_id": datasource_file.id, "transfer_method": "datasource_file"},
@@ -394,7 +395,7 @@ class TestBuildFromDatasourceFile:
         self._bind_session_factory(monkeypatch, sqlite_engine)
 
         access_controller = MagicMock()
-        access_controller.apply_upload_file_filters = lambda stmt: stmt
+        access_controller.apply_upload_file_filters = lambda stmt, **_kwargs: stmt
 
         file = builders._build_from_datasource_file(
             mapping={"datasource_file_id": datasource_file.id, "transfer_method": "datasource_file"},
@@ -415,8 +416,7 @@ class TestBuildFromDatasourceFile:
         sqlite_session.commit()
         self._bind_session_factory(monkeypatch, sqlite_engine)
 
-        access_controller = MagicMock()
-        access_controller.apply_upload_file_filters = lambda stmt: stmt
+        access_controller = DatabaseFileAccessController()
 
         with pytest.raises(ValueError, match=f"DatasourceFile {datasource_file.id} not found"):
             builders._build_from_datasource_file(
@@ -425,3 +425,17 @@ class TestBuildFromDatasourceFile:
                 transfer_method=FileTransferMethod.DATASOURCE_FILE,
                 access_controller=access_controller,
             )
+
+
+def test_storage_key_loader_delegates_upload_file_tenant_scope() -> None:
+    tenant_id = str(uuid4())
+    access_controller = MagicMock()
+    access_controller.apply_upload_file_filters.side_effect = lambda stmt, **_kwargs: stmt
+    session = MagicMock()
+    session.scalars.return_value = []
+
+    StorageKeyLoader(session, tenant_id, access_controller)._load_upload_files([uuid4()])
+
+    stmt = access_controller.apply_upload_file_filters.call_args.args[0]
+    assert "upload_files.tenant_id" not in str(stmt.whereclause)
+    assert access_controller.apply_upload_file_filters.call_args.kwargs == {"fallback_tenant_id": tenant_id}
