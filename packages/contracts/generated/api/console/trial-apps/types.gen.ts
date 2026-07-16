@@ -111,7 +111,7 @@ export type TextToSpeechRequest = {
 export type AudioBinaryResponse = Blob | File
 
 export type TrialWorkflowResponse = {
-  conversation_variables?: Array<JsonObject2>
+  conversation_variables?: Array<WorkflowConversationVariableResponse>
   created_at?: number | null
   created_by?: TrialSimpleAccount | null
   environment_variables?: Array<JsonObject2>
@@ -242,14 +242,22 @@ export type SystemParameters = {
   workflow_file_upload_limit: number
 }
 
-export type JsonObject2 = {
-  [key: string]: unknown
+export type WorkflowConversationVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
 }
 
 export type TrialSimpleAccount = {
   email?: string | null
   id: string
   name?: string | null
+}
+
+export type JsonObject2 = {
+  [key: string]: unknown
 }
 
 export type TrialAppAgentMode = {

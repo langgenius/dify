@@ -55,6 +55,7 @@ class QuotaBalanceResult(TypedDict):
     reserved: int
     quota: int
     usage: int
+    exhausted_at: NotRequired[int]
 
 
 class QuotaConsumeCappedResult(TypedDict):

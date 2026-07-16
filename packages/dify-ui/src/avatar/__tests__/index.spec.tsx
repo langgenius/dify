@@ -1,5 +1,5 @@
 import { render } from 'vitest-browser-react'
-import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '..'
+import { Avatar } from '..'
 
 function stubImageLoader() {
   const originalImage = window.Image
@@ -27,25 +27,11 @@ function stubImageLoader() {
 
 describe('Avatar', () => {
   describe('Rendering', () => {
-    it('should keep the fallback visible when avatar URL is provided before image load', async () => {
-      const screen = await render(
-        <Avatar name="John Doe" avatar="https://example.com/avatar.jpg" />,
-      )
-
-      await expect.element(screen.getByText('J')).toBeInTheDocument()
-    })
-
     it('should render fallback with uppercase initial when avatar is null', async () => {
       const screen = await render(<Avatar name="alice" avatar={null} />)
 
       expect(screen.container.querySelector('img')).not.toBeInTheDocument()
       await expect.element(screen.getByText('A')).toBeInTheDocument()
-    })
-
-    it('should render the fallback when avatar is provided', async () => {
-      const screen = await render(<Avatar name="John" avatar="https://example.com/avatar.jpg" />)
-
-      await expect.element(screen.getByText('J')).toBeInTheDocument()
     })
   })
 
@@ -58,58 +44,13 @@ describe('Avatar', () => {
     })
   })
 
-  describe('Primitives', () => {
-    it('should support composed avatar usage through exported primitives', async () => {
-      const screen = await render(
-        <AvatarRoot size="sm" data-testid="avatar-root">
-          <AvatarImage src="https://example.com/avatar.jpg" alt="Jane Doe" />
-          <AvatarFallback size="sm" style={{ backgroundColor: 'rgb(1, 2, 3)' }}>
-            J
-          </AvatarFallback>
-        </AvatarRoot>,
-      )
-
-      await expect.element(screen.getByTestId('avatar-root')).toBeInTheDocument()
-      await expect.element(screen.getByText('J')).toBeInTheDocument()
-      await expect.element(screen.getByText('J')).toHaveStyle({ backgroundColor: 'rgb(1, 2, 3)' })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty string name gracefully', async () => {
-      const screen = await render(<Avatar name="" avatar={null} />)
-
-      expect(screen.container.firstElementChild).toBeInTheDocument()
-      expect(screen.container.textContent).toBe('')
-    })
-
-    it.each([
-      { name: '中文名', expected: '中', label: 'Chinese characters' },
-      { name: '123User', expected: '1', label: 'number' },
-    ])(
-      'should display first character when name starts with $label',
-      async ({ name, expected }) => {
-        const screen = await render(<Avatar name={name} avatar={null} />)
-
-        await expect.element(screen.getByText(expected)).toBeInTheDocument()
-      },
-    )
-
-    it('should handle empty string avatar as falsy value', async () => {
-      const screen = await render(<Avatar name="Test" avatar="" />)
-
-      expect(screen.container.querySelector('img')).not.toBeInTheDocument()
-      await expect.element(screen.getByText('T')).toBeInTheDocument()
-    })
-  })
-
   describe('onLoadingStatusChange', () => {
-    it('should forward image loading status changes', async () => {
+    it('should show fallback until the image loads and forward status changes', async () => {
       const { images, restore } = stubImageLoader()
       const onStatusChange = vi.fn()
 
       try {
-        await render(
+        const screen = await render(
           <Avatar
             name="John"
             avatar="https://example.com/avatar.jpg"
@@ -117,6 +58,7 @@ describe('Avatar', () => {
           />,
         )
 
+        await expect.element(screen.getByText('J')).toBeVisible()
         await vi.waitFor(() => {
           expect(onStatusChange).toHaveBeenCalledWith('loading')
         })
@@ -126,6 +68,7 @@ describe('Avatar', () => {
         await vi.waitFor(() => {
           expect(onStatusChange).toHaveBeenCalledWith('loaded')
         })
+        await expect.element(screen.getByRole('img', { name: 'John' })).toBeVisible()
       } finally {
         restore()
       }

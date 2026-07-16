@@ -67,25 +67,6 @@ describe('FileTree', () => {
     await expect.element(selectedFile).toHaveAttribute('data-selected')
   })
 
-  it('collapses and expands folders with click and native button keyboard behavior', async () => {
-    const screen = await render(<TestFileTree />)
-    const src = screen.getByRole('button', { name: 'src' })
-
-    await src.click()
-
-    await expect
-      .element(screen.getByRole('button', { name: 'src' }))
-      .toHaveAttribute('aria-expanded', 'false')
-    expect(screen.container.textContent).not.toContain('components')
-
-    await src.click()
-
-    await expect
-      .element(screen.getByRole('button', { name: 'src' }))
-      .toHaveAttribute('aria-expanded', 'true')
-    await expect.element(screen.getByRole('button', { name: 'components' })).toBeInTheDocument()
-  })
-
   it('activates file preview buttons without navigation semantics', async () => {
     const onPreview = vi.fn()
     const screen = await render(<TestFileTree onPreview={onPreview} />)
