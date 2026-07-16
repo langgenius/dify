@@ -1,22 +1,38 @@
 import json
 from types import SimpleNamespace
-from typing import cast
-from unittest.mock import MagicMock, patch
+from typing import Any, cast
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from services.retention.workflow_run.bundle_archive_maintenance import (
+    ARCHIVED_TABLES,
     ArchiveBundleCatalogEntry,
     BundleManifest,
     BundleOperationResult,
     BundleReference,
     WorkflowRunBundleArchiveMaintenance,
 )
-from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
+from services.retention.workflow_run.constants import (
+    ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME,
+    ARCHIVE_BUNDLE_DELETED_MARKER_NAME,
+    ARCHIVE_BUNDLE_FORMAT,
+    ARCHIVE_BUNDLE_RESTORE_STARTED_MARKER_NAME,
+    ARCHIVE_BUNDLE_RESTORED_MARKER_NAME,
+    ARCHIVE_BUNDLE_SCHEMA_VERSION,
+)
 
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
 CATALOG_ID = "019f63b7-5ca4-7681-9ce0-800283608f39"
 BUNDLE_ID = "bundle-a"
+
+
+def _table_records(
+    **overrides: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    records = {table_name: [] for table_name in ARCHIVED_TABLES}
+    records.update(overrides)
+    return records
 
 
 def _catalog_entry(*, catalog_id: str = CATALOG_ID) -> ArchiveBundleCatalogEntry:
@@ -33,11 +49,17 @@ def _catalog_entry(*, catalog_id: str = CATALOG_ID) -> ArchiveBundleCatalogEntry
     )
 
 
-def _manifest(entry: ArchiveBundleCatalogEntry, *, bundle_id: str = BUNDLE_ID) -> bytes:
+def _manifest(
+    entry: ArchiveBundleCatalogEntry,
+    *,
+    bundle_id: str = BUNDLE_ID,
+    table_records: dict[str, list[dict[str, Any]]] | None = None,
+) -> bytes:
     object_prefix = WorkflowRunBundleArchiveMaintenance._catalog_object_prefix(entry)
+    records = table_records or _table_records()
     tables = {
         table_name: {
-            "row_count": 0,
+            "row_count": len(records[table_name]),
             "checksum": "",
             "size_bytes": 0,
             "object_key": f"{object_prefix}/{table_name}.parquet",
@@ -63,10 +85,10 @@ def _manifest(entry: ArchiveBundleCatalogEntry, *, bundle_id: str = BUNDLE_ID) -
             "shard": entry.shard,
             "bundle_id": bundle_id,
             "object_prefix": object_prefix,
-            "workflow_run_count": 0,
-            "workflow_node_execution_count": 0,
+            "workflow_run_count": len(records["workflow_runs"]),
+            "workflow_node_execution_count": len(records["workflow_node_executions"]),
             "tables": tables,
-            "run_ids": [],
+            "run_ids": [str(record["id"]) for record in records["workflow_runs"]],
         }
     ).encode()
 
@@ -77,14 +99,45 @@ def _session_factory(session: MagicMock) -> MagicMock:
     return factory
 
 
-def _bundle_reference(entry: ArchiveBundleCatalogEntry) -> BundleReference:
-    manifest = cast(BundleManifest, json.loads(_manifest(entry)))
+def _bundle_reference(
+    entry: ArchiveBundleCatalogEntry,
+    *,
+    table_records: dict[str, list[dict[str, Any]]] | None = None,
+) -> BundleReference:
+    manifest = cast(BundleManifest, json.loads(_manifest(entry, table_records=table_records)))
     return BundleReference(
         catalog=entry,
         object_prefix=manifest["object_prefix"],
         manifest_key=f"{manifest['object_prefix']}/manifest.json",
         manifest_size_bytes=0,
         manifest=manifest,
+    )
+
+
+def _sample_archive_records() -> dict[str, list[dict[str, Any]]]:
+    return _table_records(
+        workflow_runs=[
+            {"id": "run-1", "status": "succeeded"},
+            {"id": "run-2", "status": "failed"},
+        ],
+        workflow_app_logs=[
+            {"id": "app-log-1", "workflow_run_id": "run-1"},
+        ],
+        workflow_node_executions=[
+            {"id": "node-1", "workflow_run_id": "run-1"},
+        ],
+        workflow_node_execution_offload=[
+            {"id": "offload-1", "node_execution_id": "node-1"},
+        ],
+        workflow_pauses=[
+            {"id": "pause-1", "workflow_run_id": "run-1"},
+        ],
+        workflow_pause_reasons=[
+            {"id": "reason-1", "pause_id": "pause-1"},
+        ],
+        workflow_trigger_logs=[
+            {"id": "trigger-1", "workflow_run_id": "run-1"},
+        ],
     )
 
 
@@ -182,6 +235,20 @@ def test_catalog_manifest_identity_mismatch_fails_closed() -> None:
         maintenance._build_bundle_reference(cast(MagicMock, storage), entry)
 
 
+def test_bundle_maintenance_locks_the_existing_catalog_row() -> None:
+    entry = _catalog_entry()
+    session = MagicMock()
+    session.scalar.return_value = entry.catalog_id
+
+    WorkflowRunBundleArchiveMaintenance._lock_catalog_entry(session, entry)
+
+    statement = session.scalar.call_args.args[0]
+    rendered = str(statement)
+    assert "workflow_run_archive_bundles.id" in rendered
+    assert "workflow_run_archive_bundles.tenant_id" in rendered
+    assert "FOR UPDATE" in rendered
+
+
 def test_failure_and_dry_run_do_not_return_a_persistable_cursor() -> None:
     entry = _catalog_entry()
     session = MagicMock()
@@ -243,6 +310,261 @@ def test_failure_and_dry_run_do_not_return_a_persistable_cursor() -> None:
     assert dry_run_summary.preview_next_catalog_id == entry.catalog_id
 
 
+def test_live_archive_subset_accepts_full_partial_and_absent_live_data() -> None:
+    archive_records = _sample_archive_records()
+    manifest = _bundle_reference(_catalog_entry(), table_records=archive_records).manifest
+    partial_records = _table_records(
+        workflow_node_execution_offload=archive_records["workflow_node_execution_offload"],
+        workflow_pause_reasons=archive_records["workflow_pause_reasons"],
+    )
+
+    for live_records in (archive_records, partial_records, _table_records()):
+        WorkflowRunBundleArchiveMaintenance._validate_live_archive_subset(
+            manifest,
+            archive_records,
+            live_records,
+        )
+
+
+def test_live_archive_subset_rejects_extra_rows() -> None:
+    archive_records = _sample_archive_records()
+    manifest = _bundle_reference(_catalog_entry(), table_records=archive_records).manifest
+    live_records = _table_records(
+        workflow_app_logs=[
+            {"id": "extra-app-log", "workflow_run_id": "run-1"},
+        ]
+    )
+
+    with pytest.raises(ValueError, match="rows missing from archive for workflow_app_logs"):
+        WorkflowRunBundleArchiveMaintenance._validate_live_archive_subset(
+            manifest,
+            archive_records,
+            live_records,
+        )
+
+
+def test_live_archive_subset_rejects_content_mismatch() -> None:
+    archive_records = _sample_archive_records()
+    manifest = _bundle_reference(_catalog_entry(), table_records=archive_records).manifest
+    live_records = _table_records(
+        workflow_runs=[
+            {"id": "run-1", "status": "failed"},
+        ]
+    )
+
+    with pytest.raises(ValueError, match="subset content checksum mismatch for workflow_runs"):
+        WorkflowRunBundleArchiveMaintenance._validate_live_archive_subset(
+            manifest,
+            archive_records,
+            live_records,
+        )
+
+
+def test_live_bundle_scope_includes_archived_ids_and_indirect_children() -> None:
+    archive_records = _sample_archive_records()
+    manifest = _bundle_reference(_catalog_entry(), table_records=archive_records).manifest
+    session = MagicMock()
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    def select_live_parent_ids(_session, model, _run_ids):
+        if model.__tablename__ == "workflow_node_executions":
+            return ["live-node"]
+        if model.__tablename__ == "workflow_pauses":
+            return ["live-pause"]
+        raise AssertionError(f"unexpected model: {model}")
+
+    with (
+        patch.object(maintenance, "_select_ids_by_run_ids", side_effect=select_live_parent_ids),
+        patch.object(maintenance, "_load_records_by_column", return_value=[]) as load_records,
+    ):
+        maintenance._load_live_bundle_records(
+            session,
+            manifest,
+            archive_records,
+            lock=True,
+        )
+
+    queries = [
+        (
+            call.args[1].__tablename__,
+            call.args[2].key,
+            set(call.args[3]),
+            call.kwargs["lock"],
+        )
+        for call in load_records.call_args_list
+    ]
+    assert ("workflow_pause_reasons", "pause_id", {"pause-1", "live-pause"}, True) in queries
+    assert ("workflow_pause_reasons", "id", {"reason-1"}, True) in queries
+    assert ("workflow_node_execution_offload", "node_execution_id", {"node-1", "live-node"}, True) in queries
+    assert ("workflow_node_execution_offload", "id", {"offload-1"}, True) in queries
+    assert ("workflow_app_logs", "workflow_run_id", {"run-1", "run-2"}, True) in queries
+    assert ("workflow_app_logs", "id", {"app-log-1"}, True) in queries
+
+
+def test_delete_bundle_accepts_matching_partial_rows_and_deletes_only_that_subset() -> None:
+    entry = _catalog_entry()
+    archive_records = _sample_archive_records()
+    bundle_ref = _bundle_reference(entry, table_records=archive_records)
+    partial_records = _table_records(
+        workflow_node_execution_offload=archive_records["workflow_node_execution_offload"],
+        workflow_pause_reasons=archive_records["workflow_pause_reasons"],
+    )
+    expected_deleted_counts = {table_name: len(partial_records[table_name]) for table_name in ARCHIVED_TABLES}
+    session = MagicMock()
+    storage = MagicMock()
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    with (
+        patch.object(maintenance, "_is_restore_started", return_value=False),
+        patch.object(maintenance, "_is_deleted", return_value=False),
+        patch.object(
+            maintenance,
+            "_validate_archive_object",
+            return_value=(bundle_ref.manifest, archive_records, 123),
+        ),
+        patch.object(
+            maintenance,
+            "_load_live_bundle_records",
+            side_effect=[partial_records, _table_records()],
+        ),
+        patch.object(
+            maintenance,
+            "_delete_bundle_rows",
+            return_value=expected_deleted_counts,
+        ) as delete_bundle_rows,
+        patch.object(maintenance, "_put_marker"),
+        patch.object(maintenance, "_mark_deleted") as mark_deleted,
+        patch.object(maintenance, "_delete_marker"),
+    ):
+        result = maintenance._delete_bundle(session, storage, bundle_ref)
+
+    assert result.success
+    delete_bundle_rows.assert_called_once_with(session, partial_records)
+    session.commit.assert_called_once_with()
+    session.rollback.assert_not_called()
+    mark_deleted.assert_called_once_with(storage, bundle_ref.object_prefix)
+
+
+def test_delete_bundle_marks_an_already_absent_source_without_deleting_rows() -> None:
+    entry = _catalog_entry()
+    archive_records = _sample_archive_records()
+    bundle_ref = _bundle_reference(entry, table_records=archive_records)
+    session = MagicMock()
+    storage = MagicMock()
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    with (
+        patch.object(maintenance, "_is_restore_started", return_value=False),
+        patch.object(maintenance, "_is_deleted", return_value=False),
+        patch.object(
+            maintenance,
+            "_validate_archive_object",
+            return_value=(bundle_ref.manifest, archive_records, 123),
+        ),
+        patch.object(maintenance, "_load_live_bundle_records", return_value=_table_records()),
+        patch.object(maintenance, "_delete_bundle_rows") as delete_bundle_rows,
+        patch.object(maintenance, "_mark_deleted") as mark_deleted,
+        patch.object(maintenance, "_delete_marker") as delete_marker,
+    ):
+        result = maintenance._delete_bundle(session, storage, bundle_ref)
+
+    assert result.success
+    delete_bundle_rows.assert_not_called()
+    session.commit.assert_not_called()
+    session.rollback.assert_not_called()
+    mark_deleted.assert_called_once_with(storage, bundle_ref.object_prefix)
+    assert delete_marker.call_count == 2
+
+
+def test_delete_bundle_with_deleted_marker_rejects_remaining_orphan_children() -> None:
+    entry = _catalog_entry()
+    archive_records = _sample_archive_records()
+    bundle_ref = _bundle_reference(entry, table_records=archive_records)
+    live_records = _table_records(
+        workflow_node_execution_offload=archive_records["workflow_node_execution_offload"],
+    )
+    session = MagicMock()
+    storage = MagicMock()
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    with (
+        patch.object(maintenance, "_is_restore_started", return_value=False),
+        patch.object(maintenance, "_is_deleted", return_value=True),
+        patch.object(
+            maintenance,
+            "_validate_archive_object",
+            return_value=(bundle_ref.manifest, archive_records, 123),
+        ),
+        patch.object(maintenance, "_load_live_bundle_records", return_value=live_records),
+        patch.object(maintenance, "_delete_bundle_rows") as delete_bundle_rows,
+    ):
+        result = maintenance._delete_bundle(session, storage, bundle_ref)
+
+    assert not result.success
+    assert "Live rows exist for bundle with deleted marker" in result.error
+    delete_bundle_rows.assert_not_called()
+    session.commit.assert_not_called()
+    session.rollback.assert_called_once_with()
+
+
+def test_delete_bundle_rejects_an_in_progress_restore() -> None:
+    entry = _catalog_entry()
+    bundle_ref = _bundle_reference(entry)
+    session = MagicMock()
+    storage = MagicMock()
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    with (
+        patch.object(maintenance, "_is_restore_started", return_value=True),
+        patch.object(maintenance, "_validate_archive_object") as validate_archive,
+    ):
+        result = maintenance._delete_bundle(session, storage, bundle_ref)
+
+    assert not result.success
+    assert "reconcile restore before delete" in result.error
+    validate_archive.assert_not_called()
+    session.commit.assert_not_called()
+    session.rollback.assert_called_once_with()
+
+
+def test_delete_bundle_rows_use_only_verified_primary_keys() -> None:
+    live_records = _sample_archive_records()
+    session = MagicMock()
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    with patch.object(
+        maintenance,
+        "_delete_by_column",
+        side_effect=lambda _session, _model, _column, values: len(values),
+    ) as delete_by_column:
+        deleted_counts = maintenance._delete_bundle_rows(session, live_records)
+
+    expected_table_order = [
+        "workflow_pause_reasons",
+        "workflow_node_execution_offload",
+        "workflow_trigger_logs",
+        "workflow_app_logs",
+        "workflow_node_executions",
+        "workflow_pauses",
+        "workflow_runs",
+    ]
+    assert [call.args[1].__tablename__ for call in delete_by_column.call_args_list] == expected_table_order
+    assert all(call.args[2].key == "id" for call in delete_by_column.call_args_list)
+    assert deleted_counts == {table_name: len(live_records[table_name]) for table_name in ARCHIVED_TABLES}
+
+
 def test_restore_does_not_skip_an_interrupted_delete_without_deleted_marker() -> None:
     entry = _catalog_entry()
     session = MagicMock()
@@ -288,3 +610,49 @@ def test_restore_does_not_skip_missing_source_rows_without_deleted_marker() -> N
     assert "source rows are missing" in result.error
     validate_live_counts.assert_called_once_with(session, bundle_ref.manifest, expected_present=True)
     session.commit.assert_not_called()
+
+
+def test_restore_reconciles_a_started_marker_after_the_source_commit() -> None:
+    entry = _catalog_entry()
+    session = MagicMock()
+    storage = MagicMock()
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        storage=cast(MagicMock, storage),
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+    bundle_ref = _bundle_reference(entry)
+
+    with (
+        patch.object(maintenance, "_is_deleted", return_value=False),
+        patch.object(maintenance, "_is_delete_started", return_value=False),
+        patch.object(maintenance, "_is_restore_started", return_value=True),
+        patch.object(maintenance, "_validate_live_counts") as validate_live_counts,
+        patch.object(maintenance, "_mark_restored") as mark_restored,
+    ):
+        result = maintenance._restore_bundle(session, storage, bundle_ref)
+
+    assert result.success
+    validate_live_counts.assert_called_once_with(session, bundle_ref.manifest, expected_present=True)
+    mark_restored.assert_called_once_with(storage, bundle_ref.object_prefix)
+    session.commit.assert_not_called()
+
+
+def test_mark_restored_clears_stale_delete_marker_before_releasing_restore_fence() -> None:
+    storage = MagicMock()
+    object_prefix = "bundle-prefix"
+    operations = MagicMock()
+
+    with (
+        patch.object(WorkflowRunBundleArchiveMaintenance, "_delete_marker") as delete_marker,
+        patch.object(WorkflowRunBundleArchiveMaintenance, "_put_marker") as put_marker,
+    ):
+        operations.attach_mock(delete_marker, "delete")
+        operations.attach_mock(put_marker, "put")
+        WorkflowRunBundleArchiveMaintenance._mark_restored(storage, object_prefix)
+
+    assert operations.mock_calls == [
+        call.delete(storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME),
+        call.put(storage, object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME),
+        call.delete(storage, object_prefix, ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME),
+        call.delete(storage, object_prefix, ARCHIVE_BUNDLE_RESTORE_STARTED_MARKER_NAME),
+    ]

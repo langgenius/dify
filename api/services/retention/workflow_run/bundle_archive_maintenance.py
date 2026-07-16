@@ -201,15 +201,30 @@ RESTORE_ORDER = [
     "workflow_trigger_logs",
 ]
 
+DELETE_ORDER = [
+    "workflow_pause_reasons",
+    "workflow_node_execution_offload",
+    "workflow_trigger_logs",
+    "workflow_app_logs",
+    "workflow_node_executions",
+    "workflow_pauses",
+    "workflow_runs",
+]
+
 
 class WorkflowRunBundleArchiveMaintenance:
     """
     Delete and restore V2 workflow-run archive bundles.
 
+    Delete accepts already-missing source rows only when every remaining row in the bundle scope is an unchanged
+    archive subset. It then removes only those verified primary keys, so unrelated or unarchived rows fail closed.
+    Non-dry-run delete and restore serialize on the existing archive catalog row before checking markers or changing
+    source rows.
+
     Args:
         dry_run: Validate and report counts without changing source rows or object-store markers.
-        strict_content_validation: Compare source-table content checksums against Parquet content before destructive
-            delete and after restore. Keep enabled for real maintenance.
+        strict_content_validation: Compare restored source-table content checksums against Parquet content. Delete
+            always validates that every remaining live row belongs to and matches the archive before removing it.
         storage: Optional archive storage implementation. Tests may provide an in-memory implementation.
         session_factory: Optional session factory. Each candidate is processed in its own transaction.
 
@@ -472,42 +487,58 @@ class WorkflowRunBundleArchiveMaintenance:
         result = self._new_result(bundle_ref.manifest, bundle_ref.catalog.catalog_id)
         try:
             validation_start = time.time()
-            if self._is_deleted(storage, bundle_ref.object_prefix):
-                self._validate_live_counts(session, bundle_ref.manifest, expected_present=False)
-                result.validation_time = time.time() - validation_start
-                result.success = True
-                result.elapsed_time = time.time() - start_time
-                return result
+            if not self.dry_run:
+                self._lock_catalog_entry(session, bundle_ref.catalog)
+            if self._is_restore_started(storage, bundle_ref.object_prefix):
+                raise ValueError("restore started marker exists; reconcile restore before delete")
 
+            deleted_marker_exists = self._is_deleted(storage, bundle_ref.object_prefix)
             manifest, table_records, archive_bytes = self._validate_archive_object(storage, bundle_ref)
             result.table_counts = self._manifest_table_counts(manifest)
             result.archive_bytes = archive_bytes
 
-            self._lock_workflow_runs(session, manifest["run_ids"])
-            if self._is_delete_started(storage, bundle_ref.object_prefix) and self._live_counts_match(
-                session, manifest, expected_present=False
-            ):
-                result.validation_time = time.time() - validation_start
+            live_records = self._load_live_bundle_records(
+                session,
+                manifest,
+                table_records,
+                lock=not self.dry_run,
+            )
+            if deleted_marker_exists:
+                live_counts = {table_name: len(live_records[table_name]) for table_name in ARCHIVED_TABLES}
+                if any(live_counts.values()):
+                    raise ValueError(f"Live rows exist for bundle with deleted marker: {live_counts}")
                 if not self.dry_run:
-                    self._mark_deleted(storage, bundle_ref.object_prefix)
                     self._delete_marker(storage, bundle_ref.object_prefix, ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME)
+                    self._delete_marker(storage, bundle_ref.object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME)
+                result.validation_time = time.time() - validation_start
                 result.success = True
                 result.elapsed_time = time.time() - start_time
                 return result
 
-            self._validate_live_counts(session, manifest, expected_present=True)
-            if self.strict_content_validation:
-                self._validate_live_content(session, table_records)
+            self._validate_live_archive_subset(manifest, table_records, live_records)
             result.validation_time = time.time() - validation_start
+
+            if not any(live_records[table_name] for table_name in ARCHIVED_TABLES):
+                if not self.dry_run:
+                    self._mark_deleted(storage, bundle_ref.object_prefix)
+                    self._delete_marker(storage, bundle_ref.object_prefix, ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME)
+                    self._delete_marker(storage, bundle_ref.object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME)
+                result.success = True
+                result.elapsed_time = time.time() - start_time
+                return result
 
             if not self.dry_run:
                 self._put_marker(storage, bundle_ref.object_prefix, ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME)
-                deleted_counts = self._delete_bundle_rows(session, table_records)
-                if deleted_counts != result.table_counts:
+                expected_deleted_counts = {table_name: len(live_records[table_name]) for table_name in ARCHIVED_TABLES}
+                deleted_counts = self._delete_bundle_rows(session, live_records)
+                if deleted_counts != expected_deleted_counts:
                     raise ValueError(
-                        f"Deleted row count mismatch: expected={result.table_counts}, actual={deleted_counts}"
+                        f"Deleted row count mismatch: expected={expected_deleted_counts}, actual={deleted_counts}"
                     )
-                self._validate_live_counts(session, manifest, expected_present=False)
+                remaining_records = self._load_live_bundle_records(session, manifest, table_records, lock=True)
+                remaining_counts = {table_name: len(remaining_records[table_name]) for table_name in ARCHIVED_TABLES}
+                if any(remaining_counts.values()):
+                    raise ValueError(f"Live rows remain after bundle delete: {remaining_counts}")
                 session.commit()
                 self._mark_deleted(storage, bundle_ref.object_prefix)
                 self._delete_marker(storage, bundle_ref.object_prefix, ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME)
@@ -530,13 +561,18 @@ class WorkflowRunBundleArchiveMaintenance:
         result = self._new_result(bundle_ref.manifest, bundle_ref.catalog.catalog_id)
         try:
             validation_start = time.time()
+            if not self.dry_run:
+                self._lock_catalog_entry(session, bundle_ref.catalog)
             if not self._is_deleted(storage, bundle_ref.object_prefix):
                 # A committed delete may be interrupted before `.deleted` is written. Do not let restore advance its
                 # cursor over that state: retry delete to reconcile it, or investigate source-row drift first.
                 if self._is_delete_started(storage, bundle_ref.object_prefix):
                     raise ValueError("delete started marker exists without a deleted marker; reconcile delete first")
+                restore_started = self._is_restore_started(storage, bundle_ref.object_prefix)
                 self._validate_live_counts(session, bundle_ref.manifest, expected_present=True)
                 result.validation_time = time.time() - validation_start
+                if restore_started and not self.dry_run:
+                    self._mark_restored(storage, bundle_ref.object_prefix)
                 result.success = True
                 result.elapsed_time = time.time() - start_time
                 return result
@@ -597,6 +633,19 @@ class WorkflowRunBundleArchiveMaintenance:
             tenant_id=catalog_entry.tenant_id,
             object_prefix=object_prefix,
         )
+
+    @staticmethod
+    def _lock_catalog_entry(session: Session, catalog_entry: ArchiveBundleCatalogEntry) -> None:
+        locked_catalog_id = session.scalar(
+            select(WorkflowRunArchiveBundle.id)
+            .where(
+                WorkflowRunArchiveBundle.id == catalog_entry.catalog_id,
+                WorkflowRunArchiveBundle.tenant_id == catalog_entry.tenant_id,
+            )
+            .with_for_update()
+        )
+        if locked_catalog_id is None:
+            raise ValueError("archive catalog row disappeared before bundle maintenance")
 
     def _validate_archive_object(
         self,
@@ -700,6 +749,110 @@ class WorkflowRunBundleArchiveMaintenance:
         table = pq.read_table(io.BytesIO(payload))
         return table.to_pylist()
 
+    def _load_live_bundle_records(
+        self,
+        session: Session,
+        manifest: BundleManifest,
+        table_records: dict[str, list[dict[str, Any]]],
+        *,
+        lock: bool,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Load the complete live scope for a bundle, including archived rows whose relationship fields drifted."""
+        run_ids = manifest["run_ids"]
+        archive_ids = {
+            table_name: [str(record["id"]) for record in table_records[table_name]] for table_name in ARCHIVED_TABLES
+        }
+        live_node_ids = self._select_ids_by_run_ids(session, WorkflowNodeExecutionModel, run_ids)
+        live_pause_ids = self._select_ids_by_run_ids(session, WorkflowPause, run_ids)
+        node_ids = sorted(set(archive_ids["workflow_node_executions"]) | set(live_node_ids))
+        pause_ids = sorted(set(archive_ids["workflow_pauses"]) | set(live_pause_ids))
+
+        def load_scope(
+            table_name: str,
+            model: Any,
+            scope_column: Any,
+            scope_ids: Sequence[str],
+        ) -> list[dict[str, Any]]:
+            return self._merge_records_by_id(
+                self._load_records_by_column(session, model, scope_column, scope_ids, lock=lock),
+                self._load_records_by_column(session, model, model.id, archive_ids[table_name], lock=lock),
+            )
+
+        return {
+            "workflow_pause_reasons": load_scope(
+                "workflow_pause_reasons", WorkflowPauseReason, WorkflowPauseReason.pause_id, pause_ids
+            ),
+            "workflow_node_execution_offload": load_scope(
+                "workflow_node_execution_offload",
+                WorkflowNodeExecutionOffload,
+                WorkflowNodeExecutionOffload.node_execution_id,
+                node_ids,
+            ),
+            "workflow_trigger_logs": load_scope(
+                "workflow_trigger_logs", WorkflowTriggerLog, WorkflowTriggerLog.workflow_run_id, run_ids
+            ),
+            "workflow_app_logs": load_scope(
+                "workflow_app_logs", WorkflowAppLog, WorkflowAppLog.workflow_run_id, run_ids
+            ),
+            "workflow_node_executions": load_scope(
+                "workflow_node_executions",
+                WorkflowNodeExecutionModel,
+                WorkflowNodeExecutionModel.workflow_run_id,
+                run_ids,
+            ),
+            "workflow_pauses": load_scope("workflow_pauses", WorkflowPause, WorkflowPause.workflow_run_id, run_ids),
+            "workflow_runs": self._load_records_by_column(
+                session,
+                WorkflowRun,
+                WorkflowRun.id,
+                sorted(set(run_ids) | set(archive_ids["workflow_runs"])),
+                lock=lock,
+            ),
+        }
+
+    @classmethod
+    def _validate_live_archive_subset(
+        cls,
+        manifest: BundleManifest,
+        table_records: dict[str, list[dict[str, Any]]],
+        live_records: dict[str, list[dict[str, Any]]],
+    ) -> None:
+        """Require every live row in the bundle scope to exist unchanged in the validated archive."""
+        manifest_run_ids = {str(run_id) for run_id in manifest["run_ids"]}
+        if len(manifest_run_ids) != len(manifest["run_ids"]):
+            raise ValueError("archive manifest contains duplicate workflow run IDs")
+
+        archive_records_by_id: dict[str, dict[str, dict[str, Any]]] = {}
+        for table_name in ARCHIVED_TABLES:
+            records_by_id = {str(record["id"]): record for record in table_records[table_name]}
+            if len(records_by_id) != len(table_records[table_name]):
+                raise ValueError(f"archive contains duplicate row IDs for {table_name}")
+            archive_records_by_id[table_name] = records_by_id
+
+        if set(archive_records_by_id["workflow_runs"]) != manifest_run_ids:
+            raise ValueError("archive workflow run IDs do not match manifest run_ids")
+
+        for table_name in ARCHIVED_TABLES:
+            live_ids = [str(record["id"]) for record in live_records[table_name]]
+            if len(set(live_ids)) != len(live_ids):
+                raise ValueError(f"live scope contains duplicate row IDs for {table_name}")
+
+            archive_by_id = archive_records_by_id[table_name]
+            extra_ids = sorted(set(live_ids) - set(archive_by_id))
+            if extra_ids:
+                raise ValueError(
+                    f"Live bundle scope contains rows missing from archive for {table_name}: {extra_ids[:10]}"
+                )
+
+            archive_subset = [archive_by_id[row_id] for row_id in live_ids]
+            live_checksum = cls._records_checksum(live_records[table_name])
+            archive_checksum = cls._records_checksum(archive_subset)
+            if live_checksum != archive_checksum:
+                raise ValueError(
+                    f"Live/archive subset content checksum mismatch for {table_name}: "
+                    f"expected={archive_checksum}, actual={live_checksum}"
+                )
+
     def _validate_live_counts(
         self,
         session: Session,
@@ -778,26 +931,13 @@ class WorkflowRunBundleArchiveMaintenance:
     def _delete_bundle_rows(
         self,
         session: Session,
-        table_records: dict[str, list[dict[str, Any]]],
+        live_records: dict[str, list[dict[str, Any]]],
     ) -> dict[str, int]:
-        run_ids = [str(record["id"]) for record in table_records["workflow_runs"]]
-        node_ids = [str(record["id"]) for record in table_records["workflow_node_executions"]]
-        pause_ids = [str(record["id"]) for record in table_records["workflow_pauses"]]
-
         deleted_counts = dict.fromkeys(ARCHIVED_TABLES, 0)
-        deleted_counts["workflow_pause_reasons"] = self._delete_by_column(
-            session, WorkflowPauseReason, WorkflowPauseReason.pause_id, pause_ids
-        )
-        deleted_counts["workflow_node_execution_offload"] = self._delete_by_column(
-            session, WorkflowNodeExecutionOffload, WorkflowNodeExecutionOffload.node_execution_id, node_ids
-        )
-        deleted_counts["workflow_trigger_logs"] = self._delete_by_run_ids(session, WorkflowTriggerLog, run_ids)
-        deleted_counts["workflow_app_logs"] = self._delete_by_run_ids(session, WorkflowAppLog, run_ids)
-        deleted_counts["workflow_node_executions"] = self._delete_by_run_ids(
-            session, WorkflowNodeExecutionModel, run_ids
-        )
-        deleted_counts["workflow_pauses"] = self._delete_by_run_ids(session, WorkflowPause, run_ids)
-        deleted_counts["workflow_runs"] = self._delete_by_run_ids(session, WorkflowRun, run_ids)
+        for table_name in DELETE_ORDER:
+            model = TABLE_MODELS[table_name]
+            row_ids = [str(record["id"]) for record in live_records[table_name]]
+            deleted_counts[table_name] = self._delete_by_column(session, model, model.id, row_ids)
         return deleted_counts
 
     def _restore_bundle_rows(
@@ -870,11 +1010,6 @@ class WorkflowRunBundleArchiveMaintenance:
         return ArchiveStorage.compute_checksum(payload.encode("utf-8"))
 
     @staticmethod
-    def _lock_workflow_runs(session: Session, run_ids: Sequence[str]) -> None:
-        for chunk in WorkflowRunBundleArchiveMaintenance._chunks(run_ids, _CHUNK_SIZE):
-            list(session.scalars(select(WorkflowRun.id).where(WorkflowRun.id.in_(chunk)).with_for_update()))
-
-    @staticmethod
     def _select_ids_by_run_ids(
         session: Session,
         model: Any,
@@ -918,8 +1053,16 @@ class WorkflowRunBundleArchiveMaintenance:
         session: Session,
         model: Any,
         run_ids: Sequence[str],
+        *,
+        lock: bool = False,
     ) -> list[dict[str, Any]]:
-        return self._load_records_by_column(session, model, self._run_id_column(model), run_ids)
+        return self._load_records_by_column(
+            session,
+            model,
+            self._run_id_column(model),
+            run_ids,
+            lock=lock,
+        )
 
     def _load_records_by_column(
         self,
@@ -927,23 +1070,23 @@ class WorkflowRunBundleArchiveMaintenance:
         model: Any,
         column: Any,
         values: Sequence[str],
+        *,
+        lock: bool = False,
     ) -> list[dict[str, Any]]:
         if not values:
             return []
         rows: list[Any] = []
         for chunk in self._chunks(values, _CHUNK_SIZE):
-            rows.extend(session.scalars(select(model).where(column.in_(chunk))))
+            statement = select(model).where(column.in_(chunk)).order_by(model.id.asc())
+            if lock:
+                statement = statement.with_for_update()
+            rows.extend(session.scalars(statement))
         return [self._row_to_dict(row) for row in rows]
 
     @staticmethod
-    def _delete_by_run_ids(
-        session: Session,
-        model: Any,
-        run_ids: Sequence[str],
-    ) -> int:
-        return WorkflowRunBundleArchiveMaintenance._delete_by_column(
-            session, model, WorkflowRunBundleArchiveMaintenance._run_id_column(model), run_ids
-        )
+    def _merge_records_by_id(*record_groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        records_by_id = {str(record["id"]): record for record_group in record_groups for record in record_group}
+        return [records_by_id[row_id] for row_id in sorted(records_by_id)]
 
     @staticmethod
     def _run_id_column(model: Any) -> Any:
@@ -975,16 +1118,23 @@ class WorkflowRunBundleArchiveMaintenance:
         return storage.object_exists(f"{object_prefix}/{ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME}")
 
     @staticmethod
+    def _is_restore_started(storage: ArchiveStorage, object_prefix: str) -> bool:
+        return storage.object_exists(f"{object_prefix}/{ARCHIVE_BUNDLE_RESTORE_STARTED_MARKER_NAME}")
+
+    @staticmethod
     def _mark_deleted(storage: ArchiveStorage, object_prefix: str) -> None:
         WorkflowRunBundleArchiveMaintenance._put_marker(storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME)
 
     @staticmethod
     def _mark_restored(storage: ArchiveStorage, object_prefix: str) -> None:
         WorkflowRunBundleArchiveMaintenance._delete_marker(storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME)
+        WorkflowRunBundleArchiveMaintenance._put_marker(storage, object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME)
+        WorkflowRunBundleArchiveMaintenance._delete_marker(
+            storage, object_prefix, ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME
+        )
         WorkflowRunBundleArchiveMaintenance._delete_marker(
             storage, object_prefix, ARCHIVE_BUNDLE_RESTORE_STARTED_MARKER_NAME
         )
-        WorkflowRunBundleArchiveMaintenance._put_marker(storage, object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME)
 
     @staticmethod
     def _put_marker(storage: ArchiveStorage, object_prefix: str, marker_name: str) -> None:
