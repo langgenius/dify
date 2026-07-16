@@ -471,6 +471,7 @@
   "operation.log": "Nhật ký",
   "operation.more": "Hơn",
   "operation.moreActions": "Thêm hành động",
+  "operation.moreActionsFor": "Thêm hành động cho {{name}}",
   "operation.no": "Không",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Không tìm thấy {{content}} nào",

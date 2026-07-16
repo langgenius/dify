@@ -471,6 +471,7 @@
   "operation.log": "ログ",
   "operation.more": "もっと",
   "operation.moreActions": "その他の操作",
+  "operation.moreActionsFor": "{{name}} のその他の操作",
   "operation.no": "いいえ",
   "operation.noSearchCount": "0件の{{content}}",
   "operation.noSearchResults": "{{content}}は見つかりませんでした",

@@ -471,6 +471,7 @@
   "operation.log": "Log",
   "operation.more": "Mais",
   "operation.moreActions": "Mais ações",
+  "operation.moreActionsFor": "Mais ações para {{name}}",
   "operation.no": "Não",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Nenhum {{content}} foi encontrado",

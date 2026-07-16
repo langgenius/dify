@@ -471,6 +471,7 @@
   "operation.log": "log",
   "operation.more": "Daha fazla",
   "operation.moreActions": "Daha fazla işlem",
+  "operation.moreActionsFor": "{{name}} için daha fazla işlem",
   "operation.no": "Hayır",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Hiç {{content}} bulunamadı",
