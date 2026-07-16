@@ -3,6 +3,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.plugin.impl.model import PluginModelClient
@@ -23,6 +25,33 @@ from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.variables.segments import ArrayObjectSegment, StringSegment
+from models.base import TypeBase
+from models.model import AppMode, Conversation, ConversationFromSource
+
+
+@pytest.fixture
+def memory_session_maker(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> sessionmaker[Session]:
+    """Bind node memory lookup to an explicit SQLite session factory."""
+
+    TypeBase.metadata.create_all(sqlite_engine, tables=[Conversation.__table__])
+    session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(node_factory.session_factory, "create_session", session_maker)
+    return session_maker
+
+
+def _persist_conversation(session_maker: sessionmaker[Session]) -> None:
+    with session_maker.begin() as session:
+        session.add(
+            Conversation(
+                id="conversation-id",
+                app_id="app-id",
+                mode=AppMode.ADVANCED_CHAT,
+                name="Conversation",
+                _inputs={},
+                from_source=ConversationFromSource.API,
+                from_end_user_id="end-user-id",
+            )
+        )
 
 
 def _assert_constructor_node_data(data, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
@@ -134,27 +163,7 @@ class TestFetchMemory:
 
         assert result is None
 
-    def test_returns_none_when_conversation_does_not_exist(self, monkeypatch: pytest.MonkeyPatch):
-        class FakeSelect:
-            def where(self, *_args):
-                return self
-
-        class FakeSession:
-            def __init__(self, *_args, **_kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_args):
-                return False
-
-            def scalar(self, _stmt):
-                return None
-
-        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
-        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-
+    def test_returns_none_when_conversation_does_not_exist(self, memory_session_maker: sessionmaker[Session]):
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
             app_id="app-id",
@@ -164,30 +173,12 @@ class TestFetchMemory:
 
         assert result is None
 
-    def test_builds_token_buffer_memory_for_existing_conversation(self, monkeypatch: pytest.MonkeyPatch):
-        conversation = sentinel.conversation
+    def test_builds_token_buffer_memory_for_existing_conversation(
+        self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
+    ):
         memory = sentinel.memory
-
-        class FakeSelect:
-            def where(self, *_args):
-                return self
-
-        class FakeSession:
-            def __init__(self, *_args, **_kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_args):
-                return False
-
-            def scalar(self, _stmt):
-                return conversation
-
+        _persist_conversation(memory_session_maker)
         token_buffer_memory = MagicMock(return_value=memory)
-        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
-        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
         monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
         result = node_factory.fetch_memory(
@@ -198,35 +189,22 @@ class TestFetchMemory:
         )
 
         assert result is memory
-        token_buffer_memory.assert_called_once_with(
-            conversation=conversation,
-            model_instance=sentinel.model_instance,
-        )
+        loaded_conversation = token_buffer_memory.call_args.kwargs["conversation"]
+        assert isinstance(loaded_conversation, Conversation)
+        assert loaded_conversation.id == "conversation-id"
+        assert token_buffer_memory.call_args.kwargs["model_instance"] is sentinel.model_instance
 
-    def test_uses_configured_session_factory_without_flask_app_context(self, monkeypatch: pytest.MonkeyPatch):
-        class FakeSelect:
-            def where(self, *_args):
-                return self
-
-        class FakeSession:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_args):
-                return False
-
-            def scalar(self, _stmt):
-                return sentinel.conversation
-
+    def test_uses_configured_session_factory_without_flask_app_context(
+        self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
+    ):
         class RaisingDB:
             @property
             def engine(self):
                 raise RuntimeError("Working outside of application context.")
 
         token_buffer_memory = MagicMock(return_value=sentinel.memory)
+        _persist_conversation(memory_session_maker)
         monkeypatch.setattr(node_factory, "db", RaisingDB(), raising=False)
-        monkeypatch.setattr(node_factory, "session_factory", SimpleNamespace(create_session=FakeSession))
-        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
         monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
         result = node_factory.fetch_memory(
