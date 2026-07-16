@@ -156,6 +156,29 @@ describe('InputMail Form', () => {
       expect(mockOnSuccess).not.toHaveBeenCalled()
     })
 
+    // Regression for #39011: the email input is type="email", so the browser
+    // runs native constraint validation on submit. For a value it rejects (e.g.
+    // "abc", no "@") it blocks submit and shows its own message in the browser's
+    // language before handleSubmit — and the app's translated error.emailInValid
+    // — can run. fireEvent.submit bypasses native validation, so this asserts on
+    // the input's own validity and requires the form to opt out via noValidate.
+    it('should disable native validation so localized errors can fire', () => {
+      const { container } = renderForm()
+      const form = container.querySelector('form')
+      const input = screen.getByLabelText('login.email') as HTMLInputElement
+
+      fireEvent.change(input, { target: { value: 'abc' } })
+
+      // The browser considers this invalid for type="email"...
+      expect(input.checkValidity()).toBe(false)
+      expect(input.validity.valid).toBe(false)
+
+      // ...so the form must opt out of native validation, otherwise the browser
+      // preempts submit and reports the error itself, ignoring the app language.
+      expect(form).not.toBeNull()
+      expect((form as HTMLFormElement).noValidate).toBe(true)
+    })
+
     it('should not call onSuccess when mutation does not succeed', async () => {
       mockSubmitMail.mockResolvedValue({ result: 'failed', data: 'token' })
       renderForm()
