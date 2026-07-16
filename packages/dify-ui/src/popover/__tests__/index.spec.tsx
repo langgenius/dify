@@ -1,16 +1,9 @@
 import type * as React from 'react'
 import { render } from 'vitest-browser-react'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '..'
+import { Popover, PopoverContent, PopoverTrigger } from '..'
 
-const renderWithSafeViewport = (ui: React.ReactNode) => render(
-  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
-    {ui}
-  </div>,
-)
+const renderWithSafeViewport = (ui: React.ReactNode) =>
+  render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
 describe('PopoverContent', () => {
   describe('Placement', () => {
@@ -19,17 +12,23 @@ describe('PopoverContent', () => {
         <Popover open>
           <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
           <PopoverContent
-            positionerProps={{ 'role': 'group', 'aria-label': 'default positioner' }}
-            popupProps={{ 'role': 'dialog', 'aria-label': 'default popover' }}
+            positionerProps={{ role: 'group', 'aria-label': 'default positioner' }}
+            popupProps={{ role: 'dialog', 'aria-label': 'default popover' }}
           >
             <span>Default content</span>
           </PopoverContent>
         </Popover>,
       )
 
-      await expect.element(screen.getByRole('group', { name: 'default positioner' })).toHaveAttribute('data-side', 'bottom')
-      await expect.element(screen.getByRole('group', { name: 'default positioner' })).toHaveAttribute('data-align', 'center')
-      await expect.element(screen.getByRole('dialog', { name: 'default popover' })).toHaveTextContent('Default content')
+      await expect
+        .element(screen.getByRole('group', { name: 'default positioner' }))
+        .toHaveAttribute('data-side', 'bottom')
+      await expect
+        .element(screen.getByRole('group', { name: 'default positioner' }))
+        .toHaveAttribute('data-align', 'center')
+      await expect
+        .element(screen.getByRole('dialog', { name: 'default popover' }))
+        .toHaveTextContent('Default content')
     })
 
     it('should apply parsed custom placement and custom offsets when placement props are provided', async () => {
@@ -40,17 +39,23 @@ describe('PopoverContent', () => {
             placement="top-end"
             sideOffset={14}
             alignOffset={6}
-            positionerProps={{ 'role': 'group', 'aria-label': 'custom positioner' }}
-            popupProps={{ 'role': 'dialog', 'aria-label': 'custom popover' }}
+            positionerProps={{ role: 'group', 'aria-label': 'custom positioner' }}
+            popupProps={{ role: 'dialog', 'aria-label': 'custom popover' }}
           >
             <span>Custom placement content</span>
           </PopoverContent>
         </Popover>,
       )
 
-      await expect.element(screen.getByRole('group', { name: 'custom positioner' })).toHaveAttribute('data-side', 'top')
-      await expect.element(screen.getByRole('group', { name: 'custom positioner' })).toHaveAttribute('data-align', 'end')
-      await expect.element(screen.getByRole('dialog', { name: 'custom popover' })).toHaveTextContent('Custom placement content')
+      await expect
+        .element(screen.getByRole('group', { name: 'custom positioner' }))
+        .toHaveAttribute('data-side', 'top')
+      await expect
+        .element(screen.getByRole('group', { name: 'custom positioner' }))
+        .toHaveAttribute('data-align', 'end')
+      await expect
+        .element(screen.getByRole('dialog', { name: 'custom popover' }))
+        .toHaveTextContent('Custom placement content')
     })
   })
 
@@ -63,15 +68,15 @@ describe('PopoverContent', () => {
           <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
           <PopoverContent
             positionerProps={{
-              'role': 'group',
+              role: 'group',
               'aria-label': 'popover positioner',
-              'id': 'popover-positioner-id',
+              id: 'popover-positioner-id',
             }}
             popupProps={{
-              'id': 'popover-popup-id',
-              'role': 'dialog',
+              id: 'popover-popup-id',
+              role: 'dialog',
               'aria-label': 'popover content',
-              'onClick': onPopupClick,
+              onClick: onPopupClick,
             }}
           >
             <span>Popover body</span>
@@ -82,7 +87,9 @@ describe('PopoverContent', () => {
       const popup = screen.getByRole('dialog', { name: 'popover content' })
       await popup.click()
 
-      await expect.element(screen.getByRole('group', { name: 'popover positioner' })).toHaveAttribute('id', 'popover-positioner-id')
+      await expect
+        .element(screen.getByRole('group', { name: 'popover positioner' }))
+        .toHaveAttribute('id', 'popover-positioner-id')
       await expect.element(popup).toHaveAttribute('id', 'popover-popup-id')
       expect(onPopupClick).toHaveBeenCalledTimes(1)
     })

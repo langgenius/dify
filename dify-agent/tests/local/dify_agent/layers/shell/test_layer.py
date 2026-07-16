@@ -4,6 +4,7 @@ import asyncio
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -245,10 +246,17 @@ class FakeProvider(ShellProviderProtocol):
 
 
 def _layer(
-    *, commands: FakeCommands, config: DifyShellLayerConfig | None = None
+    *,
+    commands: FakeCommands,
+    config: DifyShellLayerConfig | None = None,
+    shell_home_root: str = "/home",
 ) -> tuple[DifyShellLayer, FakeProvider]:
     provider = FakeProvider(resource=FakeResource(commands=commands))
-    layer = DifyShellLayer.from_config_with_settings(config or DifyShellLayerConfig(), shell_provider=provider)
+    layer = DifyShellLayer.from_config_with_settings(
+        config or DifyShellLayerConfig(),
+        shell_provider=provider,
+        shell_home_root=shell_home_root,
+    )
     return layer, provider
 
 
@@ -385,6 +393,44 @@ def test_shell_layer_uses_agent_specific_home_and_workspace_cwd(
     assert layer.runtime_state.workspace_cwd == "~/workspace/abc12ff"
     assert layer.runtime_state.job_ids == ["user-job"]
     assert [call.job_id for call in commands.delete_calls] == ["mkdir-job"]
+
+
+def test_shell_layer_uses_configured_home_root_for_local_development(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(shell_layer_module.time, "time", lambda: int("abc12", 16))
+    monkeypatch.setattr(shell_layer_module.secrets, "token_hex", lambda _nbytes: "ff")
+
+    shell_home_root = tmp_path / "shell-home"
+    expected_home = f"{shell_home_root}/agent-1"
+    expected_workspace_cwd = f"{expected_home}/workspace/abc12ff"
+
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        del timeout
+        if script.startswith('mkdir -p "$HOME/workspace";'):
+            assert cwd is None
+            assert env == {"HOME": expected_home}
+            return _command_result("mkdir-job", status="exited", done=True, exit_code=0)
+        if script == "pwd":
+            assert cwd == expected_workspace_cwd
+            assert env == {"HOME": expected_home}
+            return _command_result("user-job", status="exited", done=True, exit_code=0, output=expected_home, offset=13)
+        raise AssertionError(f"Unexpected script: {script!r}")
+
+    layer, _provider = _layer(commands=FakeCommands(run_handler=run_handler), shell_home_root=f"{shell_home_root}/")
+    _bind_execution_context(layer)
+    tools = {tool.name: tool for tool in layer.tools}
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            await layer.on_context_create()
+            await tools["shell_run"].function_schema.call({"script": "pwd"}, None)  # pyright: ignore[reportArgumentType]
+
+    asyncio.run(scenario())
+
+    assert layer.shell_home_root == str(shell_home_root)
+    assert layer.runtime_state.workspace_cwd == "~/workspace/abc12ff"
 
 
 def test_shell_layer_suspend_does_not_close_before_resource_context_exits() -> None:

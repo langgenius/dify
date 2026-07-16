@@ -6,7 +6,6 @@
  * raw API data → form schemas → form values → configured values.
  */
 import { describe, expect, it } from 'vitest'
-
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils/index'
 import {
   addDefaultValue,
@@ -48,7 +47,9 @@ describe('Tool Data Processing Pipeline Integration', () => {
         },
       ]
 
-      const formSchemas = toolParametersToFormSchemas(rawParameters as unknown as Parameters<typeof toolParametersToFormSchemas>[0])
+      const formSchemas = toolParametersToFormSchemas(
+        rawParameters as unknown as Parameters<typeof toolParametersToFormSchemas>[0],
+      )
       expect(formSchemas).toHaveLength(2)
       expect(formSchemas[0]!.variable).toBe('query')
       expect(formSchemas[0]!.required).toBe(true)
@@ -81,7 +82,9 @@ describe('Tool Data Processing Pipeline Integration', () => {
         },
       ]
 
-      const credentialSchemas = toolCredentialToFormSchemas(rawCredentials as Parameters<typeof toolCredentialToFormSchemas>[0])
+      const credentialSchemas = toolCredentialToFormSchemas(
+        rawCredentials as Parameters<typeof toolCredentialToFormSchemas>[0],
+      )
       expect(credentialSchemas).toHaveLength(1)
       expect(credentialSchemas[0]!.variable).toBe('api_key')
       expect(credentialSchemas[0]!.required).toBe(true)
@@ -105,7 +108,9 @@ describe('Tool Data Processing Pipeline Integration', () => {
         },
       ]
 
-      const schemas = triggerEventParametersToFormSchemas(rawParams as unknown as Parameters<typeof triggerEventParametersToFormSchemas>[0])
+      const schemas = triggerEventParametersToFormSchemas(
+        rawParams as unknown as Parameters<typeof triggerEventParametersToFormSchemas>[0],
+      )
       expect(schemas).toHaveLength(1)
       expect(schemas[0]!.name).toBe('event_type')
       expect(schemas[0]!.type).toBe('select')
@@ -166,9 +171,7 @@ describe('Tool Data Processing Pipeline Integration', () => {
     })
 
     it('preserves existing values in getConfiguredValue', () => {
-      const formSchemas = [
-        { variable: 'query', type: 'text-input', default: 'default-query' },
-      ]
+      const formSchemas = [{ variable: 'query', type: 'text-input', default: 'default-query' }]
 
       const configured = getConfiguredValue({ query: 'my-existing-query' }, formSchemas)
       expect(configured.query).toBe('my-existing-query')
@@ -228,9 +231,7 @@ describe('Tool Data Processing Pipeline Integration', () => {
     })
 
     it('handles boolean type conversion in defaults', () => {
-      const schemas = [
-        { variable: 'enabled', type: 'boolean', default: 'true', name: 'enabled' },
-      ]
+      const schemas = [{ variable: 'enabled', type: 'boolean', default: 'true', name: 'enabled' }]
 
       const result = addDefaultValue({ enabled: 'true' }, schemas)
       expect(result.enabled).toBe(true)

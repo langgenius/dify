@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComboboxRootChangeEventDetails, Placement } from '@langgenius/dify-ui/combobox'
+import type { ComboboxChangeEventDetails, Placement } from '@langgenius/dify-ui/combobox'
 import type { BuiltInMetadataItem, MetadataItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -28,7 +28,7 @@ const PickerView = {
   create: 'create',
 } as const
 
-type PickerView = typeof PickerView[keyof typeof PickerView]
+type PickerView = (typeof PickerView)[keyof typeof PickerView]
 
 export type DatasetMetadataPickerProps = {
   datasetId: string
@@ -79,18 +79,15 @@ export function DatasetMetadataPicker({
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
-    if (!nextOpen)
-      resetPicker()
+    if (!nextOpen) resetPicker()
   }
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
-    if (details.reason !== 'item-press')
-      setQuery(inputValue)
+  const handleInputValueChange = (inputValue: string, details: ComboboxChangeEventDetails) => {
+    if (details.reason !== 'item-press') setQuery(inputValue)
   }
 
   const handleMetadataChange = (metadata: MetadataItem | null) => {
-    if (!metadata)
-      return
+    if (!metadata) return
 
     onSelectMetadata({
       id: metadata.id,
@@ -105,8 +102,7 @@ export function DatasetMetadataPicker({
     try {
       await onCreateMetadata(metadata)
       resetPicker()
-    }
-    catch {
+    } catch {
       // Keep the create view open so callers can surface validation feedback and the user can correct the input.
     }
   }
@@ -118,24 +114,26 @@ export function DatasetMetadataPicker({
   }
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        render={(
+        render={
           <button
             type="button"
-            aria-label={t($ => $['metadata.addMetadata'], { ns: 'dataset' })}
+            aria-label={t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
             aria-expanded={open}
             className="flex h-6 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-components-button-tertiary-bg px-2 py-0 text-xs font-medium text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover focus-visible:bg-components-button-tertiary-bg-hover"
           >
             <span className="flex min-w-0 items-center justify-center gap-1">
-              <span className="i-ri-add-line size-3.5 shrink-0 text-components-button-tertiary-text" aria-hidden="true" />
-              <span className="truncate text-components-button-tertiary-text">{t($ => $['metadata.addMetadata'], { ns: 'dataset' })}</span>
+              <span
+                className="i-ri-add-line size-3.5 shrink-0 text-components-button-tertiary-text"
+                aria-hidden="true"
+              />
+              <span className="truncate text-components-button-tertiary-text">
+                {t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
+              </span>
             </span>
           </button>
-        )}
+        }
       />
       <PopoverContent
         placement={placement}
@@ -143,37 +141,35 @@ export function DatasetMetadataPicker({
         alignOffset={alignOffset}
         popupClassName="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
       >
-        {view === PickerView.select
-          ? (
-              <Combobox<MetadataItem>
-                value={null}
-                items={metadataItems}
-                inputValue={query}
-                onInputValueChange={handleInputValueChange}
-                onValueChange={handleMetadataChange}
-                itemToStringLabel={getMetadataLabel}
-                itemToStringValue={getMetadataValue}
-                isItemEqualToValue={isSameMetadata}
-                filter={metadataFilter}
-              >
-                <MetadataPickerSelectPanel
-                  query={query}
-                  onNewMetadata={() => {
-                    setView(PickerView.create)
-                    setQuery('')
-                  }}
-                  onOpenMetadataManagement={handleOpenManagement}
-                />
-              </Combobox>
-            )
-          : (
-              <CreateContent
-                onSave={handleCreateMetadata}
-                hasBack
-                onBack={resetPicker}
-                onClose={resetPicker}
-              />
-            )}
+        {view === PickerView.select ? (
+          <Combobox<MetadataItem>
+            value={null}
+            items={metadataItems}
+            inputValue={query}
+            onInputValueChange={handleInputValueChange}
+            onValueChange={handleMetadataChange}
+            itemToStringLabel={getMetadataLabel}
+            itemToStringValue={getMetadataValue}
+            isItemEqualToValue={isSameMetadata}
+            filter={metadataFilter}
+          >
+            <MetadataPickerSelectPanel
+              query={query}
+              onNewMetadata={() => {
+                setView(PickerView.create)
+                setQuery('')
+              }}
+              onOpenMetadataManagement={handleOpenManagement}
+            />
+          </Combobox>
+        ) : (
+          <CreateContent
+            onSave={handleCreateMetadata}
+            hasBack
+            onBack={resetPicker}
+            onClose={resetPicker}
+          />
+        )}
       </PopoverContent>
     </Popover>
   )
@@ -194,27 +190,22 @@ function MetadataPickerSelectPanel({
     <>
       <div className="p-2 pb-1">
         <ComboboxInputGroup>
-          <span className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span
+            className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+            aria-hidden="true"
+          />
           <ComboboxInput
-            aria-label={t($ => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
-            placeholder={t($ => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
+            aria-label={t(($) => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
+            placeholder={t(($) => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
             className="pl-2"
           />
-          {query && (
-            <ComboboxClear
-              aria-label={t($ => $['operation.clear'], { ns: 'common' })}
-            />
-          )}
+          {query && <ComboboxClear aria-label={t(($) => $['operation.clear'], { ns: 'common' })} />}
         </ComboboxInputGroup>
       </div>
       <ComboboxList>
-        {(metadata: MetadataItem) => (
-          <MetadataOption key={metadata.id} metadata={metadata} />
-        )}
+        {(metadata: MetadataItem) => <MetadataOption key={metadata.id} metadata={metadata} />}
       </ComboboxList>
-      <ComboboxEmpty>
-        {t($ => $.noData, { ns: 'common' })}
-      </ComboboxEmpty>
+      <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>
       <ComboboxSeparator />
       <MetadataPickerActions
         onNewMetadata={onNewMetadata}
@@ -224,11 +215,7 @@ function MetadataPickerSelectPanel({
   )
 }
 
-function MetadataOption({
-  metadata,
-}: {
-  metadata: MetadataItem
-}) {
+function MetadataOption({ metadata }: { metadata: MetadataItem }) {
   const iconClassName = getIconClassName(metadata.type)
 
   return (
@@ -237,9 +224,7 @@ function MetadataOption({
         <span className={cn(iconClassName, 'size-3.5 shrink-0')} aria-hidden="true" />
         <span className="min-w-0 grow truncate">{metadata.name}</span>
       </ComboboxItemText>
-      <span className="shrink-0 system-xs-regular text-text-tertiary">
-        {metadata.type}
-      </span>
+      <span className="shrink-0 system-xs-regular text-text-tertiary">{metadata.type}</span>
     </ComboboxItem>
   )
 }
@@ -264,7 +249,9 @@ function MetadataPickerActions({
         onClick={onNewMetadata}
       >
         <span className="i-ri-add-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
-        <span className="truncate system-sm-medium">{t($ => $[`${i18nPrefix}.newAction`], { ns: 'dataset' })}</span>
+        <span className="truncate system-sm-medium">
+          {t(($) => $[`${i18nPrefix}.newAction`], { ns: 'dataset' })}
+        </span>
       </button>
       <div className="flex h-8 shrink-0 items-center text-text-secondary">
         <div className="mx-1 h-3 w-px bg-divider-regular" />
@@ -276,8 +263,13 @@ function MetadataPickerActions({
           )}
           onClick={onOpenMetadataManagement}
         >
-          <span className="system-sm-medium">{t($ => $[`${i18nPrefix}.manageAction`], { ns: 'dataset' })}</span>
-          <span className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="system-sm-medium">
+            {t(($) => $[`${i18nPrefix}.manageAction`], { ns: 'dataset' })}
+          </span>
+          <span
+            className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
+            aria-hidden="true"
+          />
         </button>
       </div>
     </div>

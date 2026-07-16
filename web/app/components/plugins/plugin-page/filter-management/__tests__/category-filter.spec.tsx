@@ -95,7 +95,9 @@ describe('CategoriesFilter', () => {
     render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
 
     fireEvent.click(screen.getByTestId('popover-trigger'))
-    fireEvent.change(screen.getByPlaceholderText('plugin.searchCategories'), { target: { value: 'mod' } })
+    fireEvent.change(screen.getByPlaceholderText('plugin.searchCategories'), {
+      target: { value: 'mod' },
+    })
 
     expect(screen.queryByText('Tool')).not.toBeInTheDocument()
     expect(screen.getByText('Model')).toBeInTheDocument()

@@ -21,16 +21,16 @@ const EmptyElement: FC<EmptyElementProps> = ({ canAdd = false, onClick, type = '
           {type === 'upload' ? <FolderPlusIcon /> : <NotionIcon />}
         </div>
         <span className={s.emptyTitle}>
-          {t($ => $['list.empty.title'], { ns: 'datasetDocuments' })}
+          {t(($) => $['list.empty.title'], { ns: 'datasetDocuments' })}
           <ThreeDotsIcon className="relative -top-3 -left-1.5 inline" />
         </span>
         <div className={s.emptyTip}>
-          {t($ => $[`list.empty.${type}.tip`], { ns: 'datasetDocuments' })}
+          {t(($) => $[`list.empty.${type}.tip`], { ns: 'datasetDocuments' })}
         </div>
         {type === 'upload' && canAdd && (
           <Button onClick={onClick} className={s.addFileBtn} variant="secondary-accent">
             <PlusIcon className={s.plusIcon} />
-            {t($ => $['list.addFile'], { ns: 'datasetDocuments' })}
+            {t(($) => $['list.addFile'], { ns: 'datasetDocuments' })}
           </Button>
         )}
       </div>

@@ -3,11 +3,13 @@ import * as info from '@/version/info'
 import * as probe from '@/version/probe'
 import Version, { COMPAT_FAIL_EXIT_CODE } from './index'
 
-function fakeReport(overrides: {
-  channel?: probe.VersionReport['client']['channel']
-  reachable?: boolean
-  status?: probe.VersionReport['compat']['status']
-} = {}): probe.VersionReport {
+function fakeReport(
+  overrides: {
+    channel?: probe.VersionReport['client']['channel']
+    reachable?: boolean
+    status?: probe.VersionReport['compat']['status']
+  } = {},
+): probe.VersionReport {
   return {
     client: {
       version: '0.1.0-rc.1',
@@ -17,9 +19,15 @@ function fakeReport(overrides: {
       platform: 'darwin',
       arch: 'arm64',
     },
-    server: overrides.reachable === false
-      ? { endpoint: '', reachable: false }
-      : { endpoint: 'https://cloud.dify.ai', reachable: true, version: '1.6.4', edition: 'CLOUD' },
+    server:
+      overrides.reachable === false
+        ? { endpoint: '', reachable: false }
+        : {
+            endpoint: 'https://cloud.dify.ai',
+            reachable: true,
+            version: '1.6.4',
+            edition: 'CLOUD',
+          },
     compat: {
       minDify: '1.6.0',
       maxDify: '1.7.0',
@@ -41,8 +49,7 @@ describe('Version command', () => {
   it('emits formatted text output by default with three blocks', async () => {
     const output = await new Version().run([])
     expect(output?.kind).toBe('formatted')
-    if (output?.kind !== 'formatted')
-      throw new Error('expected formatted output')
+    if (output?.kind !== 'formatted') throw new Error('expected formatted output')
 
     const text = output.data.text()
     expect(text).toContain('Client:')
@@ -53,8 +60,7 @@ describe('Version command', () => {
   it('emits the canonical envelope when -o json is passed', async () => {
     const output = await new Version().run(['-o', 'json'])
     expect(output?.kind).toBe('formatted')
-    if (output?.kind !== 'formatted')
-      throw new Error('expected formatted output')
+    if (output?.kind !== 'formatted') throw new Error('expected formatted output')
 
     const payload = output.data.json() as probe.VersionReport
     expect(payload).toHaveProperty('client')
@@ -69,8 +75,7 @@ describe('Version command', () => {
   it('threads -o yaml through formatted output (envelope, not text)', async () => {
     const output = await new Version().run(['-o', 'yaml'])
     expect(output?.kind).toBe('formatted')
-    if (output?.kind !== 'formatted')
-      throw new Error('expected formatted output')
+    if (output?.kind !== 'formatted') throw new Error('expected formatted output')
     expect(output.format).toBe('yaml')
     // The same envelope drives json + yaml — assert the shape via the json
     // facet (stringifyOutput uses js-yaml.dump on this object).
@@ -85,18 +90,18 @@ describe('Version command', () => {
     try {
       const output = await new Version().run(['--short'])
       expect(output?.kind).toBe('raw')
-      if (output?.kind !== 'raw')
-        throw new Error('expected raw output')
+      if (output?.kind !== 'raw') throw new Error('expected raw output')
 
       expect(output.data).toBe('0.2.0\n')
-    }
-    finally {
+    } finally {
       Object.assign(info.versionInfo, { version: orig })
     }
   })
 
   it('passes skipServer=true to the probe when --client is set', async () => {
-    const spy = vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(fakeReport({ reachable: false, status: 'unknown' }))
+    const spy = vi
+      .spyOn(probe, 'runVersionProbe')
+      .mockResolvedValue(fakeReport({ reachable: false, status: 'unknown' }))
     await new Version().run(['--client'])
     expect(spy).toHaveBeenCalledWith({ skipServer: true })
   })
@@ -129,14 +134,16 @@ describe('Version command', () => {
     // stdout must receive a parseable JSON envelope so pipelines like
     //   `difyctl version -o json --check-compat | jq` still work on failure.
     expect(stdoutSpy).toHaveBeenCalled()
-    const written = stdoutSpy.mock.calls.map(c => String(c[0])).join('')
+    const written = stdoutSpy.mock.calls.map((c) => String(c[0])).join('')
     const parsed = JSON.parse(written) as { compat: { status: string } }
     expect(parsed.compat.status).toBe('too_new')
     expect(exitSpy).toHaveBeenCalledWith(COMPAT_FAIL_EXIT_CODE)
   })
 
   it('--check-compat exits 64 when compat is unknown (no server)', async () => {
-    vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(fakeReport({ reachable: false, status: 'unknown' }))
+    vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(
+      fakeReport({ reachable: false, status: 'unknown' }),
+    )
     const exitSpy = stubProcessExit()
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
@@ -155,8 +162,7 @@ describe('Version command', () => {
   it('renders RC warning in text output when channel is rc', async () => {
     vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(fakeReport({ channel: 'rc' }))
     const output = await new Version().run([])
-    if (output?.kind !== 'formatted')
-      throw new Error('expected formatted output')
+    if (output?.kind !== 'formatted') throw new Error('expected formatted output')
 
     expect(output.data.text()).toContain('WARNING: This build is a(n) rc release')
   })

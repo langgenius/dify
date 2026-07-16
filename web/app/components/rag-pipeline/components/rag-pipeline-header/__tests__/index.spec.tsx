@@ -2,12 +2,11 @@ import type { PropsWithChildren, ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-
 import RagPipelineHeader from '../index'
 import InputFieldButton from '../input-field-button'
 import Publisher from '../publisher'
-import Popup from '../publisher/popup'
-import RunMode from '../run-mode'
+import { Popup } from '../publisher/popup'
+import { RunMode } from '../run-mode'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -51,7 +50,9 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: <T,>(selector: (state: { accessControl: { canRun: boolean, canReleaseAndVersion: boolean } }) => T): T =>
+  useHooksStore: <T,>(
+    selector: (state: { accessControl: { canRun: boolean; canReleaseAndVersion: boolean } }) => T,
+  ): T =>
     selector({
       accessControl: {
         canRun: true,
@@ -81,8 +82,11 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/header', () => ({
-  default: ({ normal, viewHistory }: {
-    normal?: { components?: { left?: ReactNode, middle?: ReactNode }, runAndHistoryProps?: unknown }
+  default: ({
+    normal,
+    viewHistory,
+  }: {
+    normal?: { components?: { left?: ReactNode; middle?: ReactNode }; runAndHistoryProps?: unknown }
     viewHistory?: { viewHistoryProps?: unknown }
   }) => (
     <div data-testid="workflow-header">
@@ -102,7 +106,9 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: PropsWithChildren<{ href: string }>) => (
-    <a href={href} {...props}>{children}</a>
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }))
 
@@ -138,13 +144,14 @@ let mockCurrentUserId = 'user-1'
 let mockIsLoadingWorkspacePermissionKeys = false
 let mockWorkspacePermissionKeys: string[] = []
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    dataset: {
-      permission_keys: mockDatasetPermissionKeys,
-      maintainer: mockDatasetMaintainer,
-    },
-    mutateDatasetRes: mockMutateDatasetRes,
-  }),
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      dataset: {
+        permission_keys: mockDatasetPermissionKeys,
+        maintainer: mockDatasetMaintainer,
+      },
+      mutateDatasetRes: mockMutateDatasetRes,
+    }),
 }))
 
 vi.mock('@/context/account-state', async (importOriginal) => {
@@ -204,7 +211,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -217,8 +225,9 @@ vi.mock('@/context/modal-context', () => ({
 let mockProviderContextValue = createMockProviderContextValue()
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderContextValue,
-  useProviderContextSelector: <T,>(selector: (s: ReturnType<typeof createMockProviderContextValue>) => T): T =>
-    selector(mockProviderContextValue),
+  useProviderContextSelector: <T,>(
+    selector: (s: ReturnType<typeof createMockProviderContextValue>) => T,
+  ): T => selector(mockProviderContextValue),
 }))
 
 const mockEventEmitter = {
@@ -254,10 +263,18 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -269,23 +286,39 @@ vi.mock('ahooks', () => ({
     return [
       value,
       {
-        setTrue: vi.fn(() => { value = true }),
-        setFalse: vi.fn(() => { value = false }),
-        toggle: vi.fn(() => { value = !value }),
+        setTrue: vi.fn(() => {
+          value = true
+        }),
+        setFalse: vi.fn(() => {
+          value = false
+        }),
+        toggle: vi.fn(() => {
+          value = !value
+        }),
       },
     ]
   },
 }))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
-  default: ({ onConfirm, onCancel }: {
+  default: ({
+    onConfirm,
+    onCancel,
+  }: {
     onConfirm: (name: string, icon: unknown, description?: string) => void
     onCancel: () => void
     confirmDisabled?: boolean
   }) => (
     <div data-testid="publish-as-pipeline-modal">
-      <button data-testid="modal-confirm" onClick={() => onConfirm('test-name', { type: 'emoji', emoji: '📦' }, 'test-description')}>Confirm</button>
-      <button data-testid="modal-cancel" onClick={onCancel}>Cancel</button>
+      <button
+        data-testid="modal-confirm"
+        onClick={() => onConfirm('test-name', { type: 'emoji', emoji: '📦' }, 'test-description')}
+      >
+        Confirm
+      </button>
+      <button data-testid="modal-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
@@ -407,7 +440,8 @@ describe('InputFieldButton', () => {
 
   describe('Edge Cases', () => {
     it('should handle undefined setShowInputFieldPanel gracefully', () => {
-      mockStoreState.setShowInputFieldPanel = undefined as unknown as typeof mockSetShowInputFieldPanel
+      mockStoreState.setShowInputFieldPanel =
+        undefined as unknown as typeof mockSetShowInputFieldPanel
 
       render(<InputFieldButton />)
 
@@ -436,7 +470,9 @@ describe('Publisher', () => {
 
     it('should render publish trigger button', () => {
       render(<Publisher />)
-      expect(screen.getByRole('button', { name: /workflow\.common\.publish/i }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflow\.common\.publish/i }),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -596,7 +632,9 @@ describe('Popup', () => {
       const button = screen.getByText(/pipeline.common.goToAddDocuments/i).closest('button')!
       fireEvent.click(button)
 
-      expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/documents/create-from-pipeline')
+      expect(mockPush).toHaveBeenCalledWith(
+        '/datasets/test-dataset-id/documents/create-from-pipeline',
+      )
     })
 
     it('should show pricing modal when clicking publish as template without permission', () => {
@@ -899,9 +937,11 @@ describe('RunMode', () => {
       }
 
       let subscriptionCallback: ((v: { type: string }) => void) | null = null
-      mockEventEmitter.useSubscription.mockImplementation((callback: (v: { type: string }) => void) => {
-        subscriptionCallback = callback
-      })
+      mockEventEmitter.useSubscription.mockImplementation(
+        (callback: (v: { type: string }) => void) => {
+          subscriptionCallback = callback
+        },
+      )
 
       render(<RunMode />)
 
@@ -918,9 +958,11 @@ describe('RunMode', () => {
       }
 
       let subscriptionCallback: ((v: { type: string }) => void) | null = null
-      mockEventEmitter.useSubscription.mockImplementation((callback: (v: { type: string }) => void) => {
-        subscriptionCallback = callback
-      })
+      mockEventEmitter.useSubscription.mockImplementation(
+        (callback: (v: { type: string }) => void) => {
+          subscriptionCallback = callback
+        },
+      )
 
       render(<RunMode />)
 
@@ -1036,12 +1078,6 @@ describe('RunMode', () => {
       expect(wrapper)!.toHaveClass('gap-x-px')
       expect(wrapper)!.toHaveClass('flex')
       expect(wrapper)!.toHaveClass('items-center')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be wrapped in React.memo', () => {
-      expect((RunMode as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 })

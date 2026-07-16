@@ -7,30 +7,26 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import Operation from '../operation'
 
-const {
-  mockSetShowAnnotationFullModal,
-  mockProviderContext,
-  mockT,
-  mockAddAnnotation,
-} = vi.hoisted(() => {
-  return {
-    mockAddAnnotation: vi.fn(),
-    mockSetShowAnnotationFullModal: vi.fn(),
-    mockT: vi.fn((key: string): string => key),
-    mockProviderContext: {
-      plan: {
-        usage: { annotatedResponse: 0 },
-        total: { annotatedResponse: 100 },
+const { mockSetShowAnnotationFullModal, mockProviderContext, mockT, mockAddAnnotation } =
+  vi.hoisted(() => {
+    return {
+      mockAddAnnotation: vi.fn(),
+      mockSetShowAnnotationFullModal: vi.fn(),
+      mockT: vi.fn((key: string): string => key),
+      mockProviderContext: {
+        plan: {
+          usage: { annotatedResponse: 0 },
+          total: { annotatedResponse: 100 },
+        },
+        enableBilling: false,
       },
-      enableBilling: false,
-    },
-  }
-})
+    }
+  })
 
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  default: { notify: vi.fn() },
+  toast: { success: vi.fn() },
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -59,56 +55,89 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
 }))
 
 vi.mock('@/app/components/app/annotation/edit-annotation-modal', () => ({
-  default: ({ isShow, onHide, onEdited, onAdded, onRemove }: {
+  default: ({
+    isShow,
+    onHide,
+    onEdited,
+    onAdded,
+    onRemove,
+  }: {
     isShow: boolean
     onHide: () => void
     onEdited: (q: string, a: string) => void
     onAdded: (id: string, name: string, q: string, a: string) => void
     onRemove: () => void
   }) =>
-    isShow
-      ? (
-          <div data-testid="edit-reply-modal">
-            <button data-testid="modal-hide" onClick={onHide}>Close</button>
-            <button data-testid="modal-edit" onClick={() => onEdited('eq', 'ea')}>Edit</button>
-            <button data-testid="modal-add" onClick={() => onAdded('a1', 'author', 'eq', 'ea')}>Add</button>
-            <button data-testid="modal-remove" onClick={onRemove}>Remove</button>
-          </div>
-        )
-      : null,
+    isShow ? (
+      <div data-testid="edit-reply-modal">
+        <button data-testid="modal-hide" onClick={onHide}>
+          Close
+        </button>
+        <button data-testid="modal-edit" onClick={() => onEdited('eq', 'ea')}>
+          Edit
+        </button>
+        <button data-testid="modal-add" onClick={() => onAdded('a1', 'author', 'eq', 'ea')}>
+          Add
+        </button>
+        <button data-testid="modal-remove" onClick={onRemove}>
+          Remove
+        </button>
+      </div>
+    ) : null,
 }))
 
-vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button', () => ({
-  default: function AnnotationCtrlMock({ onAdded, onEdit, cached }: {
-    onAdded: (id: string, authorName: string) => void
-    onEdit: () => void
-    cached: boolean
-  }) {
-    const { setShowAnnotationFullModal } = useModalContext()
-    const { plan, enableBilling } = useProviderContext()
-    const handleAdd = () => {
-      if (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse) {
-        setShowAnnotationFullModal()
-        return
+vi.mock(
+  '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button',
+  () => ({
+    default: function AnnotationCtrlMock({
+      onAdded,
+      onEdit,
+      cached,
+    }: {
+      onAdded: (id: string, authorName: string) => void
+      onEdit: () => void
+      cached: boolean
+    }) {
+      const { setShowAnnotationFullModal } = useModalContext()
+      const { plan, enableBilling } = useProviderContext()
+      const handleAdd = () => {
+        if (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse) {
+          setShowAnnotationFullModal()
+          return
+        }
+        onAdded('ann-new', 'Test User')
       }
-      onAdded('ann-new', 'Test User')
-    }
-    return (
-      <div data-testid="annotation-ctrl">
-        {cached
-          ? (<button data-testid="annotation-edit-btn" onClick={onEdit}>Edit</button>)
-          : (<button data-testid="annotation-add-btn" onClick={handleAdd}>Add</button>)}
-      </div>
-    )
-  },
-}))
+      return (
+        <div data-testid="annotation-ctrl">
+          {cached ? (
+            <button data-testid="annotation-edit-btn" onClick={onEdit}>
+              Edit
+            </button>
+          ) : (
+            <button data-testid="annotation-add-btn" onClick={handleAdd}>
+              Add
+            </button>
+          )}
+        </div>
+      )
+    },
+  }),
+)
 
 vi.mock('@/app/components/base/new-audio-button', () => ({
-  default: () => <button data-testid="audio-btn">Play</button>,
+  default: ({ value }: { value: string }) => (
+    <button data-testid="audio-btn" data-value={value}>
+      Play
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/base/chat/chat/log', () => ({
-  default: () => <button data-testid="log-btn"><div className="i-ri-file-list-3-line" /></button>,
+  default: () => (
+    <button data-testid="log-btn">
+      <div className="i-ri-file-list-3-line" />
+    </button>
+  ),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -116,31 +145,32 @@ vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(() => '/apps/test-app'),
 }))
 
-const makeChatConfig = (overrides: Partial<ChatConfig> = {}): ChatConfig => ({
-  opening_statement: '',
-  pre_prompt: '',
-  prompt_type: 'simple' as ChatConfig['prompt_type'],
-  user_input_form: [],
-  dataset_query_variable: '',
-  more_like_this: { enabled: false },
-  suggested_questions_after_answer: { enabled: false },
-  speech_to_text: { enabled: false },
-  text_to_speech: { enabled: false },
-  retriever_resource: { enabled: false },
-  sensitive_word_avoidance: { enabled: false },
-  agent_mode: { enabled: false, tools: [] },
-  dataset_configs: { retrieval_model: 'single' } as ChatConfig['dataset_configs'],
-  system_parameters: {
-    audio_file_size_limit: 10,
-    file_size_limit: 10,
-    image_file_size_limit: 10,
-    video_file_size_limit: 10,
-    workflow_file_upload_limit: 10,
-  },
-  supportFeedback: false,
-  supportAnnotation: false,
-  ...overrides,
-} as ChatConfig)
+const makeChatConfig = (overrides: Partial<ChatConfig> = {}): ChatConfig =>
+  ({
+    opening_statement: '',
+    pre_prompt: '',
+    prompt_type: 'simple' as ChatConfig['prompt_type'],
+    user_input_form: [],
+    dataset_query_variable: '',
+    more_like_this: { enabled: false },
+    suggested_questions_after_answer: { enabled: false },
+    speech_to_text: { enabled: false },
+    text_to_speech: { enabled: false },
+    retriever_resource: { enabled: false },
+    sensitive_word_avoidance: { enabled: false },
+    agent_mode: { enabled: false, tools: [] },
+    dataset_configs: { retrieval_model: 'single' } as ChatConfig['dataset_configs'],
+    system_parameters: {
+      audio_file_size_limit: 10,
+      file_size_limit: 10,
+      image_file_size_limit: 10,
+      video_file_size_limit: 10,
+      workflow_file_upload_limit: 10,
+    },
+    supportFeedback: false,
+    supportAnnotation: false,
+    ...overrides,
+  }) as ChatConfig
 
 const mockContextValue: ChatContextValue = {
   chatList: [],
@@ -159,11 +189,11 @@ vi.mock('../../context', () => ({
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => ({
       t: withSelectorKey(mockT),
     }),
-  })
+  }
 })
 
 type OperationProps = {
@@ -181,6 +211,29 @@ const baseItem: ChatItem = {
   id: 'msg-1',
   content: 'Hello world',
   isAnswer: true,
+}
+
+const createInterruptedItem = (messages: string[]): ChatItem => {
+  const thought = {
+    id: '1',
+    thought: 'internal thought should not be used',
+    tool: '',
+    tool_input: '',
+    observation: '',
+    message_id: '',
+    conversation_id: '',
+    position: 0,
+  }
+
+  return {
+    ...baseItem,
+    content: '',
+    agent_response_parts: [
+      { type: 'thought', thought },
+      ...messages.map((content) => ({ type: 'message' as const, content })),
+    ],
+    agent_thoughts: [thought],
+  }
 }
 
 const baseProps: OperationProps = {
@@ -242,17 +295,47 @@ describe('Operation', () => {
     it('should show annotation button when config supports it', () => {
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
       })
       renderOperation()
       expect(screen.getByTestId('annotation-ctrl'))!.toBeInTheDocument()
+    })
+
+    it('should hide content-dependent actions for an interrupted response without public content', () => {
+      mockContextValue.config = makeChatConfig({
+        text_to_speech: { enabled: true },
+        supportAnnotation: true,
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
+      })
+
+      renderOperation({ ...baseProps, item: createInterruptedItem([]) })
+
+      expect(screen.queryByTestId('audio-btn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'operation.copy' })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'operation.regenerate' })).toBeInTheDocument()
     })
 
     it('should hide annotation button when chat is readonly', () => {
       mockContextValue.readonly = true
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
       })
 
       renderOperation()
@@ -264,7 +347,12 @@ describe('Operation', () => {
       mockContextValue.onAnnotationEdited = undefined
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
       })
 
       renderOperation()
@@ -280,8 +368,12 @@ describe('Operation', () => {
     it('should keep hover-only controls visible when a descendant popup is open', () => {
       renderOperation({ ...baseProps, showPromptLog: true })
 
-      expect(screen.getByTestId('operation-actions')).toHaveClass('group-has-[[data-popup-open]]:flex')
-      expect(screen.getByTestId('log-btn').parentElement).toHaveClass('group-has-[[data-popup-open]]:block')
+      expect(screen.getByTestId('operation-actions')).toHaveClass(
+        'group-has-[[data-popup-open]]:flex',
+      )
+      expect(screen.getByTestId('log-btn').parentElement).toHaveClass(
+        'group-has-[[data-popup-open]]:block',
+      )
     })
 
     it('should not show prompt log for opening statements', () => {
@@ -299,19 +391,69 @@ describe('Operation', () => {
       expect(copy).toHaveBeenCalledWith('Hello world')
     })
 
-    it('should aggregate agent_thoughts for copy content', async () => {
+    it('should copy the visible answer instead of agent thought summaries', async () => {
       const user = userEvent.setup()
       const item: ChatItem = {
         ...baseItem,
-        content: 'ignored',
+        content: 'Final answer',
         agent_thoughts: [
-          { id: '1', thought: 'Hello ', tool: '', tool_input: '', observation: '', message_id: '', conversation_id: '', position: 0 },
-          { id: '2', thought: 'World', tool: '', tool_input: '', observation: '', message_id: '', conversation_id: '', position: 1 },
+          {
+            id: '1',
+            thought: 'Hello ',
+            tool: '',
+            tool_input: '',
+            observation: '',
+            message_id: '',
+            conversation_id: '',
+            position: 0,
+          },
+          {
+            id: '2',
+            thought: 'World',
+            tool: '',
+            tool_input: '',
+            observation: '',
+            message_id: '',
+            conversation_id: '',
+            position: 1,
+          },
         ],
       }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Hello World')
+      expect(copy).toHaveBeenCalledWith('Final answer')
+    })
+
+    it('should copy public response parts after an interrupted response', async () => {
+      const user = userEvent.setup()
+      const item = createInterruptedItem(['First public update', 'Second public update'])
+      renderOperation({ ...baseProps, item })
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
+      expect(copy).toHaveBeenCalledWith('First public update\n\nSecond public update')
+    })
+
+    it('should copy public thought answers for legacy messages without content', async () => {
+      const user = userEvent.setup()
+      const item: ChatItem = {
+        ...baseItem,
+        content: '',
+        agent_thoughts: [
+          {
+            id: '1',
+            thought: 'internal thought should not be copied',
+            answer: 'Public legacy answer',
+            tool: '',
+            tool_input: '',
+            observation: '',
+            message_id: '',
+            conversation_id: '',
+            position: 0,
+          },
+        ],
+      }
+      renderOperation({ ...baseProps, item })
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
+      expect(copy).toHaveBeenCalledWith('Public legacy answer')
     })
   })
 
@@ -330,7 +472,12 @@ describe('Operation', () => {
         supportFeedback: false,
         text_to_speech: { enabled: true },
         supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
       })
       const item = { ...baseItem, humanInputFormDataList: [{}] } as ChatItem
       renderOperation({ ...baseProps, item })
@@ -355,15 +502,24 @@ describe('Operation', () => {
     it('should call onFeedback with like on like click', async () => {
       const user = userEvent.setup()
       renderOperation()
-      const thumbUp = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line')!.closest('button')!
+      const thumbUp = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-up-line')!
+        .closest('button')!
       await user.click(thumbUp)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: 'like', content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: 'like',
+        content: undefined,
+      })
     })
 
     it('should open feedback modal on dislike click', async () => {
       const user = userEvent.setup()
       renderOperation()
-      const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      const thumbDown = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-down-line')!
+        .closest('button')!
       await user.click(thumbDown)
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
@@ -371,19 +527,28 @@ describe('Operation', () => {
     it('should submit dislike feedback from modal', async () => {
       const user = userEvent.setup()
       renderOperation()
-      const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      const thumbDown = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-down-line')!
+        .closest('button')!
       await user.click(thumbDown)
       const textarea = screen.getByRole('textbox')
       await user.type(textarea, 'Bad response')
       const confirmBtn = screen.getByText(/submit/i)
       await user.click(confirmBtn)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: 'dislike', content: 'Bad response' })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: 'dislike',
+        content: 'Bad response',
+      })
     })
 
     it('should cancel feedback modal', async () => {
       const user = userEvent.setup()
       renderOperation()
-      const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      const thumbDown = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-down-line')!
+        .closest('button')!
       await user.click(thumbDown)
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       const cancelBtn = screen.getByText(/cancel/i)
@@ -395,47 +560,83 @@ describe('Operation', () => {
       const user = userEvent.setup()
       const item = { ...baseItem, feedback: { rating: 'like' as const } }
       renderOperation({ ...baseProps, item })
-      const thumbUp = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line')!.closest('button')!
+      const thumbUp = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-up-line')!
+        .closest('button')!
       await user.click(thumbUp)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: null,
+        content: undefined,
+      })
     })
 
     it('should show existing dislike feedback and allow undo', async () => {
       const user = userEvent.setup()
       const item = { ...baseItem, feedback: { rating: 'dislike' as const, content: 'bad' } }
       renderOperation({ ...baseProps, item })
-      const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      const thumbDown = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-down-line')!
+        .closest('button')!
       await user.click(thumbDown)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: null,
+        content: undefined,
+      })
     })
 
     it('should undo like when already liked', async () => {
       const user = userEvent.setup()
       renderOperation()
       // First click to like
-      const thumbUp = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line')!.closest('button')!
+      const thumbUp = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-up-line')!
+        .closest('button')!
       await user.click(thumbUp)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: 'like', content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: 'like',
+        content: undefined,
+      })
 
       // Second click to undo - re-query as it might be a different node
-      const thumbUpUndo = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line')!.closest('button')!
+      const thumbUpUndo = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-up-line')!
+        .closest('button')!
       await user.click(thumbUpUndo)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: null,
+        content: undefined,
+      })
     })
 
     it('should undo dislike when already disliked', async () => {
       const user = userEvent.setup()
       renderOperation()
-      const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      const thumbDown = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-down-line')!
+        .closest('button')!
       await user.click(thumbDown)
       const submitBtn = screen.getByText(/submit/i)
       await user.click(submitBtn)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: 'dislike', content: '' })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: 'dislike',
+        content: '',
+      })
 
       // Re-query for undo
-      const thumbDownUndo = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      const thumbDownUndo = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-down-line')!
+        .closest('button')!
       await user.click(thumbDownUndo)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: null,
+        content: undefined,
+      })
     })
 
     it('should show tooltip with dislike and content', () => {
@@ -455,13 +656,17 @@ describe('Operation', () => {
     it('should not show feedback bar for opening statements', () => {
       const item = { ...baseItem, isOpeningStatement: true }
       renderOperation({ ...baseProps, item })
-      expect(screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line')).not.toBeInTheDocument()
+      expect(
+        screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line'),
+      ).not.toBeInTheDocument()
     })
 
     it('should not show user feedback bar when humanInputFormDataList is present', () => {
       const item = { ...baseItem, humanInputFormDataList: [{}] } as ChatItem
       renderOperation({ ...baseProps, item })
-      expect(screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line')).not.toBeInTheDocument()
+      expect(
+        screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line'),
+      ).not.toBeInTheDocument()
     })
 
     it('should not call feedback when supportFeedback is disabled', async () => {
@@ -476,11 +681,14 @@ describe('Operation', () => {
       const user = userEvent.setup()
       mockT.mockImplementation((_key: string): string => '')
       renderOperation()
-      const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      const thumbDown = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-down-line')!
+        .closest('button')!
       await user.click(thumbDown)
       expect(screen.getByRole('dialog', { name: 'Provide Feedback' }))!.toBeInTheDocument()
       expect(screen.getByLabelText('Feedback Content'))!.toBeInTheDocument()
-      mockT.mockImplementation(key => key)
+      mockT.mockImplementation((key) => key)
     })
   })
 
@@ -502,7 +710,10 @@ describe('Operation', () => {
       const thumbs = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line')
       const adminThumb = thumbs[thumbs.length - 1]!.closest('button')!
       await user.click(adminThumb)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: 'like', content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: 'like',
+        content: undefined,
+      })
     })
 
     it('should open feedback modal on admin dislike click', async () => {
@@ -532,18 +743,30 @@ describe('Operation', () => {
       const user = userEvent.setup()
       const item = { ...baseItem, adminFeedback: { rating: 'like' as const } }
       renderOperation({ ...baseProps, item })
-      const thumbUp = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line')!.closest('button')!
+      const thumbUp = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-up-line')!
+        .closest('button')!
       await user.click(thumbUp)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: null,
+        content: undefined,
+      })
     })
 
     it('should show existing admin dislike and allow undo', async () => {
       const user = userEvent.setup()
       const item = { ...baseItem, adminFeedback: { rating: 'dislike' as const } }
       renderOperation({ ...baseProps, item })
-      const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      const thumbDown = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-down-line')!
+        .closest('button')!
       await user.click(thumbDown)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: null,
+        content: undefined,
+      })
     })
 
     it('should undo admin like when already liked', async () => {
@@ -552,12 +775,18 @@ describe('Operation', () => {
       const thumbs = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line')
       const adminThumb = thumbs[thumbs.length - 1]!.closest('button')!
       await user.click(adminThumb)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: 'like', content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: 'like',
+        content: undefined,
+      })
 
       const thumbsUndo = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line')
       const adminThumbUndo = thumbsUndo[thumbsUndo.length - 1]!.closest('button')!
       await user.click(adminThumbUndo)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: null,
+        content: undefined,
+      })
     })
 
     it('should undo admin dislike when already disliked', async () => {
@@ -569,16 +798,23 @@ describe('Operation', () => {
       const submitBtn = screen.getByText(/submit/i)
       await user.click(submitBtn)
 
-      const thumbsUndo = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-down-line')
+      const thumbsUndo = screen
+        .getByTestId('operation-bar')
+        .querySelectorAll('.i-ri-thumb-down-line')
       const adminThumbUndo = thumbsUndo[thumbsUndo.length - 1]!.closest('button')!
       await user.click(adminThumbUndo)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: null,
+        content: undefined,
+      })
     })
 
     it('should not show admin feedback bar when humanInputFormDataList is present', () => {
       const item = { ...baseItem, humanInputFormDataList: [{}] } as ChatItem
       renderOperation({ ...baseProps, item })
-      expect(screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line').length).toBe(0)
+      expect(
+        screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line').length,
+      ).toBe(0)
     })
 
     it('should render action buttons with Default state when feedback rating is undefined', () => {
@@ -620,10 +856,19 @@ describe('Operation', () => {
       mockContextValue.config = makeChatConfig({
         text_to_speech: { enabled: true },
         supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
         supportFeedback: true,
       })
-      const item = { ...baseItem, feedback: { rating: 'like' as const }, adminFeedback: { rating: 'dislike' as const } }
+      const item = {
+        ...baseItem,
+        feedback: { rating: 'like' as const },
+        adminFeedback: { rating: 'dislike' as const },
+      }
       renderOperation({ ...baseProps, item, showPromptLog: true })
       const bar = screen.getByTestId('operation-bar')
       expect(bar)!.toBeInTheDocument()
@@ -640,8 +885,7 @@ describe('Operation', () => {
     it('should handle missing translation fallbacks in buildFeedbackTooltip', () => {
       // Mock t to return null for specific keys
       mockT.mockImplementation((key: string): string => {
-        if (key.includes('Rate') || key.includes('like'))
-          return '' // Safe string fallback
+        if (key.includes('Rate') || key.includes('like')) return '' // Safe string fallback
 
         return key
       })
@@ -650,23 +894,27 @@ describe('Operation', () => {
       expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
 
       // Reset to default behavior
-      mockT.mockImplementation(key => key)
+      mockT.mockImplementation((key) => key)
     })
 
     it('should handle buildFeedbackTooltip with empty translation fallbacks', () => {
       // Mock t to return empty string for 'like' and 'dislike' to hit fallback branches:
       mockT.mockImplementation((key: string): string => {
-        if (key.includes('operation.like'))
-          return ''
-        if (key.includes('operation.dislike'))
-          return ''
+        if (key.includes('operation.like')) return ''
+        if (key.includes('operation.dislike')) return ''
         return key
       })
-      const itemLike = { ...baseItem, feedback: { rating: 'like' as const, content: 'test content' } }
+      const itemLike = {
+        ...baseItem,
+        feedback: { rating: 'like' as const, content: 'test content' },
+      }
       const { rerender } = renderOperation({ ...baseProps, item: itemLike })
       expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
 
-      const itemDislike = { ...baseItem, feedback: { rating: 'dislike' as const, content: 'test content' } }
+      const itemDislike = {
+        ...baseItem,
+        feedback: { rating: 'dislike' as const, content: 'test content' },
+      }
       rerender(
         <div className="group">
           <Operation {...baseProps} item={itemDislike} />
@@ -674,12 +922,15 @@ describe('Operation', () => {
       )
       expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
 
-      mockT.mockImplementation(key => key)
+      mockT.mockImplementation((key) => key)
     })
 
     it('should handle buildFeedbackTooltip without rating', () => {
       // Mock tooltip display without rating to hit: 'if (!feedbackData?.rating) return label'
-      const item = { ...baseItem, feedback: { rating: null } as unknown as Record<string, unknown> } as unknown as ChatItem
+      const item = {
+        ...baseItem,
+        feedback: { rating: null } as unknown as Record<string, unknown>,
+      } as unknown as ChatItem
       renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
       expect(bar)!.toBeInTheDocument()
@@ -692,7 +943,10 @@ describe('Operation', () => {
       mockContextValue.onFeedback = vi.fn()
       const { rerender } = renderOperation()
 
-      const thumbUp = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line')!.closest('button')!
+      const thumbUp = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-up-line')!
+        .closest('button')!
 
       // Then, disable the context callback to hit the `if (!onFeedback) return` early exit internally upon rerender/click
       mockContextValue.onFeedback = undefined
@@ -712,7 +966,12 @@ describe('Operation', () => {
     beforeEach(() => {
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
         appId: 'test-app',
       })
     })
@@ -722,7 +981,29 @@ describe('Operation', () => {
       renderOperation()
       const addBtn = screen.getByTestId('annotation-add-btn')
       await user.click(addBtn)
-      expect(mockContextValue.onAnnotationAdded).toHaveBeenCalledWith('ann-new', 'Test User', 'What is this?', 'Hello world', 0)
+      expect(mockContextValue.onAnnotationAdded).toHaveBeenCalledWith(
+        'ann-new',
+        'Test User',
+        'What is this?',
+        'Hello world',
+        0,
+      )
+    })
+
+    it('should annotate public response parts instead of internal thoughts', async () => {
+      const user = userEvent.setup()
+      const item = createInterruptedItem(['Public interrupted answer'])
+
+      renderOperation({ ...baseProps, item })
+      await user.click(screen.getByTestId('annotation-add-btn'))
+
+      expect(mockContextValue.onAnnotationAdded).toHaveBeenCalledWith(
+        'ann-new',
+        'Test User',
+        'What is this?',
+        'Public interrupted answer',
+        0,
+      )
     })
 
     it('should show annotation full modal when limit reached', async () => {
@@ -738,7 +1019,10 @@ describe('Operation', () => {
 
     it('should open edit reply modal when cached annotation exists', async () => {
       const user = userEvent.setup()
-      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } }
+      const item = {
+        ...baseItem,
+        annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' },
+      }
       renderOperation({ ...baseProps, item })
       const editBtn = screen.getByTestId('annotation-edit-btn')
       await user.click(editBtn)
@@ -747,7 +1031,10 @@ describe('Operation', () => {
 
     it('should call onAnnotationEdited from edit reply modal', async () => {
       const user = userEvent.setup()
-      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } }
+      const item = {
+        ...baseItem,
+        annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' },
+      }
       renderOperation({ ...baseProps, item })
       const editBtn = screen.getByTestId('annotation-edit-btn')
       await user.click(editBtn)
@@ -757,7 +1044,10 @@ describe('Operation', () => {
 
     it('should call onAnnotationAdded from edit reply modal', async () => {
       const user = userEvent.setup()
-      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } }
+      const item = {
+        ...baseItem,
+        annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' },
+      }
       renderOperation({ ...baseProps, item })
       const editBtn = screen.getByTestId('annotation-edit-btn')
       await user.click(editBtn)
@@ -767,7 +1057,10 @@ describe('Operation', () => {
 
     it('should call onAnnotationRemoved from edit reply modal', async () => {
       const user = userEvent.setup()
-      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } }
+      const item = {
+        ...baseItem,
+        annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' },
+      }
       renderOperation({ ...baseProps, item })
       const editBtn = screen.getByTestId('annotation-edit-btn')
       await user.click(editBtn)
@@ -777,7 +1070,10 @@ describe('Operation', () => {
 
     it('should close edit reply modal via onHide', async () => {
       const user = userEvent.setup()
-      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } }
+      const item = {
+        ...baseItem,
+        annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' },
+      }
       renderOperation({ ...baseProps, item })
       const editBtn = screen.getByTestId('annotation-edit-btn')
       await user.click(editBtn)
@@ -789,12 +1085,25 @@ describe('Operation', () => {
 
   describe('TTS audio button', () => {
     beforeEach(() => {
-      mockContextValue.config = makeChatConfig({ text_to_speech: { enabled: true, voice: 'test-voice' } })
+      mockContextValue.config = makeChatConfig({
+        text_to_speech: { enabled: true, voice: 'test-voice' },
+      })
     })
 
     it('should show audio play button when TTS enabled', () => {
       renderOperation()
       expect(screen.getByTestId('audio-btn'))!.toBeInTheDocument()
+    })
+
+    it('should send public response parts to TTS instead of internal thoughts', () => {
+      const item = createInterruptedItem(['Public interrupted answer'])
+
+      renderOperation({ ...baseProps, item })
+
+      expect(screen.getByTestId('audio-btn')).toHaveAttribute(
+        'data-value',
+        'Public interrupted answer',
+      )
     })
 
     it('should not show audio button for humanInputFormDataList', () => {
@@ -809,13 +1118,19 @@ describe('Operation', () => {
       const user = userEvent.setup()
       mockContextValue.config = makeChatConfig({ supportFeedback: true })
       renderOperation()
-      const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      const thumbDown = screen
+        .getByTestId('operation-bar')
+        .querySelector('.i-ri-thumb-down-line')!
+        .closest('button')!
       await user.click(thumbDown)
       const textarea = screen.getByRole('textbox')
       await user.type(textarea, '   ')
       const confirmBtn = screen.getByText(/submit/i)
       await user.click(confirmBtn)
-      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: 'dislike', content: '   ' })
+      expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', {
+        rating: 'dislike',
+        content: '   ',
+      })
     })
 
     it('should handle missing onFeedback callback gracefully', async () => {
@@ -838,10 +1153,22 @@ describe('Operation', () => {
       mockContextValue.readonly = true
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
         appId: 'test-app',
       })
-      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
+      const item = {
+        ...baseItem,
+        annotation: {
+          id: 'ann-1',
+          created_at: 123,
+          authorName: 'test author',
+        } as unknown as Record<string, unknown>,
+      } as unknown as ChatItem
 
       renderOperation({ ...baseProps, item })
 
@@ -852,11 +1179,23 @@ describe('Operation', () => {
     it('should hide cached annotation edit controls when mutation callbacks are missing', () => {
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
         appId: 'test-app',
       })
       mockContextValue.onAnnotationRemoved = undefined
-      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
+      const item = {
+        ...baseItem,
+        annotation: {
+          id: 'ann-1',
+          created_at: 123,
+          authorName: 'test author',
+        } as unknown as Record<string, unknown>,
+      } as unknown as ChatItem
 
       renderOperation({ ...baseProps, item })
 

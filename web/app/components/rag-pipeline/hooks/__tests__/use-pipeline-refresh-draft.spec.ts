@@ -1,7 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { usePipelineRefreshDraft } from '../use-pipeline-refresh-draft'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -92,7 +91,9 @@ describe('usePipelineRefreshDraft', () => {
         result.current.handleRefreshWorkflowDraft()
       })
 
-      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/rag/pipelines/test-pipeline-id/workflows/draft')
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
+        '/rag/pipelines/test-pipeline-id/workflows/draft',
+      )
     })
 
     it('should update workflow canvas with response data', async () => {
@@ -138,7 +139,9 @@ describe('usePipelineRefreshDraft', () => {
       })
 
       await waitFor(() => {
-        expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([{ variable: 'query', type: 'text-input' }])
+        expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([
+          { variable: 'query', type: 'text-input' },
+        ])
       })
     })
 

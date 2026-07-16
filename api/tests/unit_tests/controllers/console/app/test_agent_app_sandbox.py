@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from inspect import unwrap
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
@@ -123,8 +124,10 @@ def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
 
 def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _AgentAppService()
+    session = MagicMock()
+    resolver = MagicMock(return_value=_app_model())
     monkeypatch.setattr(module, "AgentAppSandboxService", lambda: service)
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda *, tenant_id, agent_id: _app_model())
+    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", resolver)
     monkeypatch.setattr(
         module,
         "query_params_from_request",
@@ -136,10 +139,10 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
         SimpleNamespace(get_json=lambda silent=True: {"conversation_id": "conv-1", "path": "report.txt"}),
     )
 
-    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), "tenant-1", "agent-1")
-    listing = unwrap(module.AgentAppSandboxListResource.get)(object(), "tenant-1", "agent-1")
-    preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), "tenant-1", "agent-1")
-    upload = unwrap(module.AgentAppSandboxUploadResource.post)(object(), "tenant-1", "agent-1")
+    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, "tenant-1", "agent-1")
+    listing = unwrap(module.AgentAppSandboxListResource.get)(object(), session, "tenant-1", "agent-1")
+    preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), session, "tenant-1", "agent-1")
+    upload = unwrap(module.AgentAppSandboxUploadResource.post)(object(), session, "tenant-1", "agent-1")
 
     assert info == {"session_id": "abc1234", "workspace_cwd": "~/workspace/abc1234"}
     assert listing["path"] == "sub/report.txt"
@@ -151,6 +154,7 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
         ("read", "tenant-1", "app-1", "conv-1", "sub/report.txt"),
         ("upload", "tenant-1", "app-1", "conv-1", "report.txt"),
     ]
+    assert all(call.kwargs["session"] is session for call in resolver.call_args_list)
 
 
 def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -162,16 +166,17 @@ def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytes
             raise AgentSandboxInspectorError("no_active_session", "no active session", status_code=404)
 
     monkeypatch.setattr(module, "AgentAppSandboxService", FailingService)
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda *, tenant_id, agent_id: _app_model())
+    session = MagicMock()
+    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", MagicMock(return_value=_app_model()))
     monkeypatch.setattr(
         module, "query_params_from_request", lambda model: SimpleNamespace(conversation_id="conv-1", path=".")
     )
 
-    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), "tenant-1", "agent-1") == (
+    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, "tenant-1", "agent-1") == (
         {"code": "no_active_session", "message": "no active session"},
         404,
     )
-    assert unwrap(module.AgentAppSandboxListResource.get)(object(), "tenant-1", "agent-1") == (
+    assert unwrap(module.AgentAppSandboxListResource.get)(object(), session, "tenant-1", "agent-1") == (
         {"code": "no_active_session", "message": "no active session"},
         404,
     )

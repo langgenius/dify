@@ -365,7 +365,8 @@ describe('CrawledResult', () => {
   })
 
   const getSelectAllCheckbox = () => screen.getByRole('checkbox', { name: /selectAll|resetAll/ })
-  const getItemCheckbox = (index: number) => screen.getByRole('checkbox', { name: new RegExp(`Page ${index + 1}`) })
+  const getItemCheckbox = (index: number) =>
+    screen.getByRole('checkbox', { name: new RegExp(`Page ${index + 1}`) })
 
   describe('Rendering', () => {
     it('should render all items in list', () => {

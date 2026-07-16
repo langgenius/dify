@@ -1,4 +1,4 @@
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -21,28 +21,23 @@ type KeyWordNumberProps = {
   onKeywordNumberChange: (value: number) => void
 }
 
-const KeyWordNumber = ({
-  keywordNumber,
-  onKeywordNumberChange,
-}: KeyWordNumberProps) => {
+const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberProps) => {
   const { t } = useTranslation()
-  const label = t($ => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
+  const label = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
 
-  const handleInputChange = useCallback((value: number | null) => {
-    onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)
-  }, [onKeywordNumberChange])
+  const handleInputChange = useCallback(
+    (value: number | null) => {
+      onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)
+    },
+    [onKeywordNumberChange],
+  )
 
   return (
-    <FieldsetRoot className="flex items-center gap-x-1">
+    <Fieldset className="flex items-center gap-x-1">
       <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex grow items-center gap-x-0.5">
-        <div className="truncate system-xs-medium text-text-secondary">
-          {label}
-        </div>
-        <Infotip
-          aria-label={label}
-          className="size-3.5"
-        >
+        <div className="truncate system-xs-medium text-text-secondary">{label}</div>
+        <Infotip aria-label={label} className="size-3.5">
           {label}
         </Infotip>
       </div>
@@ -69,7 +64,7 @@ const KeyWordNumber = ({
           </NumberFieldControls>
         </NumberFieldGroup>
       </NumberField>
-    </FieldsetRoot>
+    </Fieldset>
   )
 }
 

@@ -23,27 +23,33 @@ describe('app-publisher utils', () => {
 
   describe('getPublisherAppUrl', () => {
     it('should build the published app url from site info', () => {
-      expect(getPublisherAppUrl({
-        appBaseUrl: 'https://example.com',
-        accessToken: 'token-1',
-        mode: AppModeEnum.CHAT,
-      })).toBe(`https://example.com${basePath}/chat/token-1`)
+      expect(
+        getPublisherAppUrl({
+          appBaseUrl: 'https://example.com',
+          accessToken: 'token-1',
+          mode: AppModeEnum.CHAT,
+        }),
+      ).toBe(`https://example.com${basePath}/chat/token-1`)
     })
   })
 
   describe('isPublisherAccessConfigured', () => {
     it('should require members or groups for specific access mode', () => {
-      expect(isPublisherAccessConfigured(
-        { access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-        { groups: [], members: [] },
-      )).toBe(false)
+      expect(
+        isPublisherAccessConfigured(
+          { access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
+          { groups: [], members: [] },
+        ),
+      ).toBe(false)
     })
 
     it('should treat public access as configured', () => {
-      expect(isPublisherAccessConfigured(
-        { access_mode: AccessMode.PUBLIC },
-        { groups: [], members: [] },
-      )).toBe(true)
+      expect(
+        isPublisherAccessConfigured(
+          { access_mode: AccessMode.PUBLIC },
+          { groups: [], members: [] },
+        ),
+      ).toBe(true)
     })
   })
 
@@ -51,21 +57,25 @@ describe('app-publisher utils', () => {
     const t = withSelectorKey((key: string) => key, 'app') as unknown as TFunction
 
     it('should prioritize the unpublished hint', () => {
-      expect(getDisabledFunctionTooltip({
-        t,
-        publishedAt: undefined,
-        missingStartNode: false,
-        noAccessPermission: false,
-      })).toBe('notPublishedYet')
+      expect(
+        getDisabledFunctionTooltip({
+          t,
+          publishedAt: undefined,
+          missingStartNode: false,
+          noAccessPermission: false,
+        }),
+      ).toBe('notPublishedYet')
     })
 
     it('should return the access error when the app is published but blocked', () => {
-      expect(getDisabledFunctionTooltip({
-        t,
-        publishedAt: Date.now(),
-        missingStartNode: false,
-        noAccessPermission: true,
-      })).toBe('noAccessPermission')
+      expect(
+        getDisabledFunctionTooltip({
+          t,
+          publishedAt: Date.now(),
+          missingStartNode: false,
+          noAccessPermission: true,
+        }),
+      ).toBe('noAccessPermission')
     })
   })
 })

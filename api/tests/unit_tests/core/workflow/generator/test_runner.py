@@ -8,10 +8,12 @@ readable error envelope.
 """
 
 import json
+from copy import deepcopy
 from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
+from jinja2 import Template
 
 from core.workflow.generator.runner import WorkflowGenerator
 from core.workflow.generator.types import GraphDict
@@ -1382,6 +1384,253 @@ class TestWorkflowGeneratorVariableReferences:
         assert start["data"]["variables"] == []
         assert result["error"] == ""
 
+    @pytest.mark.parametrize(
+        ("mode", "terminal_type", "expected_selector", "expected_start_variables"),
+        [
+            ("advanced-chat", "answer", ["sys", "query"], []),
+            ("workflow", "end", ["node1", "query"], ["query"]),
+        ],
+    )
+    def test_normalizes_malformed_sys_query_selector(
+        self,
+        mode,
+        terminal_type,
+        expected_selector,
+        expected_start_variables,
+    ):
+        terminal_data = {"type": terminal_type, "title": "Terminal"}
+        if terminal_type == "answer":
+            terminal_data["answer"] = "{{#node2.result#}}"
+        else:
+            terminal_data["outputs"] = [{"variable": "result", "value_selector": ["node2", "result"]}]
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start", "variables": []},
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "code",
+                            "title": "Code",
+                            "variables": [{"variable": "query", "value_selector": ["sys,query"]}],
+                            "outputs": {"result": {"type": "string"}},
+                        },
+                    },
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": terminal_data,
+                    },
+                ],
+                "edges": [
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "e2", "source": "node2", "target": "node3", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        result = WorkflowGenerator._postprocess_graph(graph=graph, mode=mode)
+
+        start_node = next(node for node in result["nodes"] if node["id"] == "node1")
+        code_node = next(node for node in result["nodes"] if node["id"] == "node2")
+        assert code_node["data"]["variables"][0]["value_selector"] == expected_selector
+        assert [variable["variable"] for variable in start_node["data"]["variables"]] == expected_start_variables
+        assert WorkflowGenerator._validate_structure(graph=result, mode=mode) == []
+
+    @pytest.mark.parametrize(
+        "consumer_data",
+        [
+            {
+                "type": "llm",
+                "prompt_template": [{"role": "user", "text": "Question: {{#sys,query#}}"}],
+            },
+            {"type": "question-classifier", "query_variable_selector": ["sys.query"]},
+            {"type": "knowledge-retrieval", "query_variable_selector": "sys.query"},
+            {
+                "type": "if-else",
+                "cases": [{"conditions": [{"variable_selector": ["sys,query"]}]}],
+            },
+            {"type": "parameter-extractor", "query": [["sys", "query"]]},
+            {"type": "variable-aggregator", "variables": [["sys.query"]]},
+            {
+                "type": "tool",
+                "tool_parameters": {"query": {"type": "variable", "value": ["sys,query"]}},
+            },
+        ],
+    )
+    @pytest.mark.parametrize(("mode", "expected_node_id"), [("advanced-chat", "sys"), ("workflow", "node1")])
+    def test_normalizes_sys_query_references_across_node_types(self, consumer_data, mode, expected_node_id):
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [],
+                            # These are literals, not selectors, even though
+                            # their values happen to resemble one.
+                            "options": ["sys", "query"],
+                        },
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"title": "Consumer", **deepcopy(consumer_data)},
+                    },
+                ],
+                "edges": [],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        result = WorkflowGenerator._postprocess_graph(graph=graph, mode=mode)
+
+        refs: set[tuple[str, str]] = set()
+        consumer = next(node for node in result["nodes"] if node["id"] == "node2")
+        WorkflowGenerator._collect_refs_in_data(consumer["data"], refs)
+        assert refs == {(expected_node_id, "query")}
+
+        start = next(node for node in result["nodes"] if node["id"] == "node1")
+        assert start["data"]["options"] == ["sys", "query"]
+        expected_start_variables = [] if mode == "advanced-chat" else ["query"]
+        assert [variable["variable"] for variable in start["data"]["variables"]] == expected_start_variables
+
+    def test_repairs_llm_that_uses_only_one_of_two_incoming_retrieval_results(self):
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [{"variable": "query", "type": "paragraph"}],
+                        },
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "knowledge-retrieval",
+                            "title": "Knowledge A",
+                            "query_variable_selector": ["node1", "query"],
+                        },
+                    },
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "knowledge-retrieval",
+                            "title": "Knowledge B",
+                            "query_variable_selector": ["node1", "query"],
+                        },
+                    },
+                    {
+                        "id": "node4",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "llm",
+                            "title": "Synthesize",
+                            "context": {"enabled": True, "variable_selector": ["node2", "result"]},
+                            "prompt_template": [
+                                {
+                                    "role": "user",
+                                    "text": "Answer using all retrieved knowledge.",
+                                }
+                            ],
+                        },
+                    },
+                    {
+                        "id": "node5",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [{"variable": "answer", "value_selector": ["node4", "text"]}],
+                        },
+                    },
+                ],
+                "edges": [
+                    {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "b", "source": "node1", "target": "node3", "type": "custom"},
+                    {"id": "c", "source": "node2", "target": "node4", "type": "custom"},
+                    {"id": "d", "source": "node3", "target": "node4", "type": "custom"},
+                    {"id": "e", "source": "node4", "target": "node5", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        result = WorkflowGenerator._postprocess_graph(graph=graph, mode="workflow")
+
+        llm = next(node for node in result["nodes"] if node["id"] == "node4")
+        template = next(node for node in result["nodes"] if node["data"]["type"] == "template-transform")
+
+        template_refs: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(template["data"], template_refs)
+        assert template_refs == {("node2", "result"), ("node3", "result")}
+        rendered_context = Template(template["data"]["template"]).render(
+            knowledge_1=[{"content": "Alpha result"}],
+            knowledge_2=[{"content": "Beta result"}],
+        )
+        assert "## Knowledge source 1\nAlpha result" in rendered_context
+        assert "## Knowledge source 2\nBeta result" in rendered_context
+        assert llm["data"]["context"] == {
+            "enabled": True,
+            "variable_selector": [template["id"], "output"],
+        }
+        assert llm["data"]["prompt_template"][0]["text"] == ("Answer using all retrieved knowledge.\n\n{{#context#}}")
+        assert {edge["source"] for edge in result["edges"] if edge["target"] == template["id"]} == {
+            "node2",
+            "node3",
+        }
+        assert {edge["source"] for edge in result["edges"] if edge["target"] == "node4"} == {template["id"]}
+        assert WorkflowGenerator._validate_structure(graph=result, mode="workflow") == []
+
+    def test_inserts_template_into_plan_with_two_retrievals_and_one_llm(self):
+        plan_nodes = [
+            {"label": "Start", "node_type": "start", "purpose": "Accept the query."},
+            {"label": "Knowledge A", "node_type": "knowledge-retrieval", "purpose": "Search source A."},
+            {"label": "Knowledge B", "node_type": "knowledge-retrieval", "purpose": "Search source B."},
+            {"label": "Synthesize", "node_type": "llm", "purpose": "Answer from both sources."},
+            {"label": "End", "node_type": "end", "purpose": "Return the answer."},
+        ]
+
+        WorkflowGenerator._insert_multi_retrieval_template_plan(plan_nodes)
+
+        assert [node["node_type"] for node in plan_nodes] == [
+            "start",
+            "knowledge-retrieval",
+            "knowledge-retrieval",
+            "template-transform",
+            "llm",
+            "end",
+        ]
+        assert plan_nodes[3]["label"] == "Combine Knowledge"
+
     def test_start_inputs_flow_into_builder_user_prompt(self):
         # The planner's ``start_inputs`` must be visible to the builder so
         # it can populate ``start.data.variables`` proactively. We sniff the
@@ -1944,11 +2193,10 @@ class TestWorkflowGeneratorStructuredErrors:
         codes = [e["code"] for e in result["errors"]]
         assert "MISSING_TERMINAL" in codes
 
-    def test_validator_emits_unresolved_reference_for_non_start_node(self):
-        # The LLM node tries to reference a key the CODE node never declares
-        # (its ``outputs`` dict only has ``summary``, not ``mystery``). The
-        # postprocess only auto-injects MISSING ``start`` vars, so the
-        # validator must surface non-start unresolved refs.
+    def test_repairs_unresolved_reference_when_source_has_one_output(self):
+        # The LLM node references a key the CODE node never declares, but the
+        # source exposes exactly one output. Postprocessing can therefore
+        # repair the selector without guessing or changing the graph shape.
         planner = self._planner(
             [
                 {"label": "Start", "node_type": "start", "purpose": "x"},
@@ -1987,7 +2235,11 @@ class TestWorkflowGeneratorStructuredErrors:
                     "id": "node4",
                     "type": "custom",
                     "position": {"x": 0, "y": 0},
-                    "data": {"type": "end", "title": "End"},
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [{"variable": "out", "value_selector": ["node2", "mystery"]}],
+                    },
                 },
             ],
             edges=[
@@ -2007,11 +2259,43 @@ class TestWorkflowGeneratorStructuredErrors:
             mode="workflow",
             instruction="x",
         )
-        codes = [e["code"] for e in result["errors"]]
-        assert "UNRESOLVED_REFERENCE" in codes
-        # Detail should mention the offending key so the user can find it.
-        unresolved = next(e for e in result["errors"] if e["code"] == "UNRESOLVED_REFERENCE")
-        assert "mystery" in unresolved["detail"]
+        assert result["error"] == ""
+        llm_node = next(node for node in result["graph"]["nodes"] if node["id"] == "node3")
+        assert llm_node["data"]["prompt_template"][0]["text"] == "Look at {{#node2.summary#}}."
+        end_node = next(node for node in result["graph"]["nodes"] if node["id"] == "node4")
+        assert end_node["data"]["outputs"][0]["value_selector"] == ["node2", "summary"]
+
+    def test_keeps_unresolved_reference_when_source_outputs_are_ambiguous(self):
+        nodes = [
+            {
+                "id": "node2",
+                "data": {
+                    "type": "code",
+                    "outputs": {
+                        "summary": {"type": "string"},
+                        "details": {"type": "string"},
+                    },
+                },
+            },
+            {
+                "id": "node3",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Look at {{#node2.mystery#}}."}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert errors == [
+            {
+                "code": "UNRESOLVED_REFERENCE",
+                "detail": "Reference {#node2.mystery#} not declared on node 'node2'",
+                "node_id": "node2",
+            }
+        ]
 
     def test_planner_json_failure_retries_once_then_recovers(self):
         # First planner response is non-JSON (the LLM wrapped the response in

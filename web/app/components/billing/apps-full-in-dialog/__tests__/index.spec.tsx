@@ -44,7 +44,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -77,7 +78,9 @@ const buildUsage = (overrides: Partial<UsagePlanInfo> = {}): UsagePlanInfo => ({
   ...overrides,
 })
 
-const buildProviderContext = (overrides: Partial<ProviderContextState> = {}): ProviderContextState => ({
+const buildProviderContext = (
+  overrides: Partial<ProviderContextState> = {},
+): ProviderContextState => ({
   ...baseProviderContextValue,
   plan: {
     ...baseProviderContextValue.plan,
@@ -92,7 +95,9 @@ const buildProviderContext = (overrides: Partial<ProviderContextState> = {}): Pr
   ...overrides,
 })
 
-const buildAppContext = (overrides: Partial<AppContextStateMockState> = {}): AppContextStateMockState => {
+const buildAppContext = (
+  overrides: Partial<AppContextStateMockState> = {},
+): AppContextStateMockState => {
   const userProfile: GetAccountProfileResponse = {
     id: 'user-id',
     name: 'Test User',
@@ -111,6 +116,7 @@ const buildAppContext = (overrides: Partial<AppContextStateMockState> = {}): App
     providers: [],
     trial_credits: 200,
     trial_credits_used: 0,
+    trial_credits_exhausted_at: 0,
     next_credit_reset_date: 0,
   }
   const langGeniusVersionInfo: LangGeniusVersionInfo = {
@@ -168,40 +174,47 @@ describe('AppsFull', () => {
 
   describe('Props', () => {
     it('should render team messaging and contact button for non-sandbox plans', () => {
-      ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.team,
-          usage: buildUsage({ buildApps: 8 }),
-          total: buildUsage({ buildApps: 10 }),
-          reset: {
-            apiRateLimit: null,
-            triggerEvents: null,
+      ;(useProviderContext as Mock).mockReturnValue(
+        buildProviderContext({
+          plan: {
+            ...baseProviderContextValue.plan,
+            type: Plan.team,
+            usage: buildUsage({ buildApps: 8 }),
+            total: buildUsage({ buildApps: 10 }),
+            reset: {
+              apiRateLimit: null,
+              triggerEvents: null,
+            },
           },
-        },
-      }))
+        }),
+      )
       render(<AppsFull loc="billing_dialog" />)
 
       expect(screen.getByText('billing.apps.fullTip2')).toBeInTheDocument()
       expect(screen.getByText('billing.apps.fullTip2des')).toBeInTheDocument()
       expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'billing.apps.contactUs' })).toHaveAttribute('href', 'mailto:support@example.com')
+      expect(screen.getByRole('link', { name: 'billing.apps.contactUs' })).toHaveAttribute(
+        'href',
+        'mailto:support@example.com',
+      )
       expect(mailToSupport).toHaveBeenCalledWith('user@example.com', Plan.team, '1.0.0')
     })
 
     it('should render upgrade button for professional plans', () => {
-      ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.professional,
-          usage: buildUsage({ buildApps: 4 }),
-          total: buildUsage({ buildApps: 10 }),
-          reset: {
-            apiRateLimit: null,
-            triggerEvents: null,
+      ;(useProviderContext as Mock).mockReturnValue(
+        buildProviderContext({
+          plan: {
+            ...baseProviderContextValue.plan,
+            type: Plan.professional,
+            usage: buildUsage({ buildApps: 4 }),
+            total: buildUsage({ buildApps: 10 }),
+            reset: {
+              apiRateLimit: null,
+              triggerEvents: null,
+            },
           },
-        },
-      }))
+        }),
+      )
 
       render(<AppsFull loc="billing_dialog" />)
 
@@ -211,24 +224,29 @@ describe('AppsFull', () => {
     })
 
     it('should render contact button for enterprise plans', () => {
-      ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.enterprise,
-          usage: buildUsage({ buildApps: 9 }),
-          total: buildUsage({ buildApps: 10 }),
-          reset: {
-            apiRateLimit: null,
-            triggerEvents: null,
+      ;(useProviderContext as Mock).mockReturnValue(
+        buildProviderContext({
+          plan: {
+            ...baseProviderContextValue.plan,
+            type: Plan.enterprise,
+            usage: buildUsage({ buildApps: 9 }),
+            total: buildUsage({ buildApps: 10 }),
+            reset: {
+              apiRateLimit: null,
+              triggerEvents: null,
+            },
           },
-        },
-      }))
+        }),
+      )
 
       render(<AppsFull loc="billing_dialog" />)
 
       expect(screen.getByText('billing.apps.fullTip1')).toBeInTheDocument()
       expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'billing.apps.contactUs' })).toHaveAttribute('href', 'mailto:support@example.com')
+      expect(screen.getByRole('link', { name: 'billing.apps.contactUs' })).toHaveAttribute(
+        'href',
+        'mailto:support@example.com',
+      )
       expect(mailToSupport).toHaveBeenCalledWith('user@example.com', Plan.enterprise, '1.0.0')
     })
   })
@@ -236,15 +254,17 @@ describe('AppsFull', () => {
   describe('Edge Cases', () => {
     it('applies neutral / warning / error tone at distinct usage levels', () => {
       const findToneClass = (used: number, total: number) => {
-        ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
-          plan: {
-            ...baseProviderContextValue.plan,
-            type: Plan.sandbox,
-            usage: buildUsage({ buildApps: used }),
-            total: buildUsage({ buildApps: total }),
-            reset: { apiRateLimit: null, triggerEvents: null },
-          },
-        }))
+        ;(useProviderContext as Mock).mockReturnValue(
+          buildProviderContext({
+            plan: {
+              ...baseProviderContextValue.plan,
+              type: Plan.sandbox,
+              usage: buildUsage({ buildApps: used }),
+              total: buildUsage({ buildApps: total }),
+              reset: { apiRateLimit: null, triggerEvents: null },
+            },
+          }),
+        )
         const { container, unmount } = render(<AppsFull loc="billing_dialog" />)
         const indicator = container.querySelector(
           '[class*="bg-components-progress-"]:not([class*="progress-bar-bg"])',

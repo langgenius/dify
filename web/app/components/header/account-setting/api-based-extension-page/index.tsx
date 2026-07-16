@@ -14,24 +14,30 @@ import { Empty } from './empty'
 import { Item } from './item'
 import { ApiBasedExtensionModal } from './modal'
 
-type ApiBasedExtensionDialogState = {
-  mode: 'create'
-} | {
-  mode: 'edit'
-  apiBasedExtension: ApiBasedExtensionResponse
-} | null
+type ApiBasedExtensionDialogState =
+  | {
+      mode: 'create'
+    }
+  | {
+      mode: 'edit'
+      apiBasedExtension: ApiBasedExtensionResponse
+    }
+  | null
 
 type ApiBasedExtensionPageProps = {
-  layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  layout?: (parts: { body: ReactNode; toolbar: ReactNode }) => ReactNode
 }
 
 function ApiBasedExtensionListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 2 }, (_, index) => (
-        <div key={index} className="rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs">
+        <div
+          key={index}
+          className="rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
+        >
           <SkeletonContainer className="h-16">
             <SkeletonRow>
               <SkeletonRectangle className="size-8 shrink-0 animate-pulse rounded-lg" />
@@ -48,40 +54,39 @@ function ApiBasedExtensionListSkeleton() {
   )
 }
 
-export function ApiBasedExtensionPage({
-  layout,
-}: ApiBasedExtensionPageProps = {}) {
+export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {}) {
   const { t } = useTranslation()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManage = hasPermission(workspacePermissionKeys, 'api_extension.manage')
-  const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(consoleQuery.apiBasedExtension.get.queryOptions())
+  const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(
+    consoleQuery.apiBasedExtension.get.queryOptions(),
+  )
   const [dialogState, setDialogState] = useState<ApiBasedExtensionDialogState>(null)
   const [keywords, setKeywords] = useState('')
 
   const filteredApiBasedExtensions = useMemo(() => {
     const query = keywords.trim().toLowerCase()
-    if (!query)
-      return apiBasedExtensions
+    if (!query) return apiBasedExtensions
 
     return apiBasedExtensions.filter((apiBasedExtension) => {
-      return apiBasedExtension.name.toLowerCase().includes(query)
-        || apiBasedExtension.api_endpoint.toLowerCase().includes(query)
+      return (
+        apiBasedExtension.name.toLowerCase().includes(query) ||
+        apiBasedExtension.api_endpoint.toLowerCase().includes(query)
+      )
     })
   }, [apiBasedExtensions, keywords])
   const hasApiBasedExtensions = apiBasedExtensions.length > 0
   const hasSearchKeywords = keywords.trim().length > 0
 
   const handleOpenApiBasedExtensionModal = () => {
-    if (!canManage)
-      return
+    if (!canManage) return
 
     setDialogState({
       mode: 'create',
     })
   }
   const handleEditApiBasedExtension = (apiBasedExtension: ApiBasedExtensionResponse) => {
-    if (!canManage)
-      return
+    if (!canManage) return
 
     setDialogState({
       mode: 'edit',
@@ -92,85 +97,62 @@ export function ApiBasedExtensionPage({
     setDialogState(null)
   }
   const handleApiBasedExtensionModalOpenChange = (open: boolean) => {
-    if (!open)
-      setDialogState(null)
+    if (!open) setDialogState(null)
   }
 
   const toolbar = (
     <div className="flex w-full items-center justify-between gap-2">
-      <SearchInput
-        className="w-[200px]"
-        value={keywords}
-        onValueChange={setKeywords}
-      />
-      <Button
-        variant="secondary"
-        disabled={!canManage}
-        onClick={handleOpenApiBasedExtensionModal}
-      >
+      <SearchInput className="w-[200px]" value={keywords} onValueChange={setKeywords} />
+      <Button variant="secondary" disabled={!canManage} onClick={handleOpenApiBasedExtensionModal}>
         <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
-        {t($ => $['apiBasedExtension.add'], { ns: 'common' })}
+        {t(($) => $['apiBasedExtension.add'], { ns: 'common' })}
       </Button>
     </div>
   )
 
   const body = (
     <>
-      {
-        isLoading && (
-          <ApiBasedExtensionListSkeleton />
-        )
-      }
-      {
-        !isLoading && !hasApiBasedExtensions && (
-          <Empty />
-        )
-      }
-      {
-        !isLoading && hasApiBasedExtensions && hasSearchKeywords && !filteredApiBasedExtensions.length && (
+      {isLoading && <ApiBasedExtensionListSkeleton />}
+      {!isLoading && !hasApiBasedExtensions && <Empty />}
+      {!isLoading &&
+        hasApiBasedExtensions &&
+        hasSearchKeywords &&
+        !filteredApiBasedExtensions.length && (
           <div className="py-10 text-center system-sm-regular text-text-tertiary">
-            {t($ => $['dataSource.notion.selector.noSearchResult'], { ns: 'common' })}
+            {t(($) => $['dataSource.notion.selector.noSearchResult'], { ns: 'common' })}
           </div>
-        )
-      }
-      {
-        !isLoading && !!filteredApiBasedExtensions.length && (
-          filteredApiBasedExtensions.map(item => (
-            <Item
-              key={item.id}
-              apiBasedExtension={item}
-              onEdit={handleEditApiBasedExtension}
-              canManage={canManage}
-            />
-          ))
-        )
-      }
-      {
-        dialogState?.mode === 'create' && (
-          <ApiBasedExtensionModal
-            open
-            mode="create"
-            onOpenChange={handleApiBasedExtensionModalOpenChange}
-            onSaved={handleApiBasedExtensionSaved}
+        )}
+      {!isLoading &&
+        !!filteredApiBasedExtensions.length &&
+        filteredApiBasedExtensions.map((item) => (
+          <Item
+            key={item.id}
+            apiBasedExtension={item}
+            onEdit={handleEditApiBasedExtension}
+            canManage={canManage}
           />
-        )
-      }
-      {
-        dialogState?.mode === 'edit' && (
-          <ApiBasedExtensionModal
-            open
-            mode="edit"
-            apiBasedExtension={dialogState.apiBasedExtension}
-            onOpenChange={handleApiBasedExtensionModalOpenChange}
-            onSaved={handleApiBasedExtensionSaved}
-          />
-        )
-      }
+        ))}
+      {dialogState?.mode === 'create' && (
+        <ApiBasedExtensionModal
+          open
+          mode="create"
+          onOpenChange={handleApiBasedExtensionModalOpenChange}
+          onSaved={handleApiBasedExtensionSaved}
+        />
+      )}
+      {dialogState?.mode === 'edit' && (
+        <ApiBasedExtensionModal
+          open
+          mode="edit"
+          apiBasedExtension={dialogState.apiBasedExtension}
+          onOpenChange={handleApiBasedExtensionModalOpenChange}
+          onSaved={handleApiBasedExtensionSaved}
+        />
+      )}
     </>
   )
 
-  if (layout)
-    return layout({ body, toolbar })
+  if (layout) return layout({ body, toolbar })
 
   return (
     <>

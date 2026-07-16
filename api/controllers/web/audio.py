@@ -16,6 +16,7 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from controllers.web.wraps import WebApiResource
@@ -31,6 +32,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -77,7 +79,12 @@ class AudioApi(WebApiResource):
         file = request.files["file"]
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.external_user_id)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=end_user.external_user_id,
+            )
 
             return dump_response(AudioToTextResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -91,6 +98,8 @@ class AudioApi(WebApiResource):
             raise UnsupportedAudioTypeError()
         except ProviderNotSupportSpeechToTextServiceError:
             raise ProviderNotSupportSpeechToTextError()
+        except SpeechToTextDisabledServiceError:
+            raise SpeechToTextDisabledError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

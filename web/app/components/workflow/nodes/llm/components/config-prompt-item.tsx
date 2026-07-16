@@ -13,9 +13,9 @@ import { useWorkflowStore } from '../../../store'
 import { EditionType } from '../../../types'
 
 const roleDescriptionSelectors: Record<PromptRole, SelectorParam<'workflow'>> = {
-  [PromptRole.system]: $ => $['nodes.llm.roleDescription.system'],
-  [PromptRole.user]: $ => $['nodes.llm.roleDescription.user'],
-  [PromptRole.assistant]: $ => $['nodes.llm.roleDescription.assistant'],
+  [PromptRole.system]: ($) => $['nodes.llm.roleDescription.system'],
+  [PromptRole.user]: ($) => $['nodes.llm.roleDescription.user'],
+  [PromptRole.assistant]: ($) => $['nodes.llm.roleDescription.assistant'],
 }
 
 type Props = Readonly<{
@@ -62,7 +62,7 @@ const roleOptions = [
   },
 ]
 
-const roleOptionsWithoutSystemRole = roleOptions.filter(item => item.value !== PromptRole.system)
+const roleOptionsWithoutSystemRole = roleOptions.filter((item) => item.value !== PromptRole.system)
 
 const ConfigPromptItem: FC<Props> = ({
   instanceId,
@@ -93,14 +93,15 @@ const ConfigPromptItem: FC<Props> = ({
     ? t(roleDescriptionSelectors[payload.role], { ns: 'workflow' })
     : undefined
   const workflowStore = useWorkflowStore()
-  const {
-    setControlPromptEditorRerenderKey,
-  } = workflowStore.getState()
+  const { setControlPromptEditorRerenderKey } = workflowStore.getState()
 
-  const handleGenerated = useCallback((prompt: string) => {
-    onPromptChange(prompt)
-    setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
-  }, [onPromptChange, setControlPromptEditorRerenderKey])
+  const handleGenerated = useCallback(
+    (prompt: string) => {
+      onPromptChange(prompt)
+      setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
+    },
+    [onPromptChange, setControlPromptEditorRerenderKey],
+  )
 
   return (
     <Editor
@@ -108,36 +109,31 @@ const ConfigPromptItem: FC<Props> = ({
       headerClassName={headerClassName}
       instanceId={instanceId}
       key={instanceId}
-      title={(
+      title={
         <div className="relative left-1 flex items-center">
-          {payload.role === PromptRole.system
-            ? (
-                <div className="relative left-[-4px] text-xs font-semibold text-text-secondary uppercase">
-                  SYSTEM
-                </div>
-              )
-            : (
-                <TypeSelector
-                  value={payload.role as string}
-                  allOptions={roleOptions}
-                  options={canNotChooseSystemRole ? roleOptionsWithoutSystemRole : roleOptions}
-                  onChange={handleChatModeMessageRoleChange}
-                  triggerClassName="text-xs font-semibold text-text-secondary uppercase"
-                  itemClassName="text-[13px] font-medium text-text-secondary"
-                />
-              )}
+          {payload.role === PromptRole.system ? (
+            <div className="relative left-[-4px] text-xs font-semibold text-text-secondary uppercase">
+              SYSTEM
+            </div>
+          ) : (
+            <TypeSelector
+              value={payload.role as string}
+              allOptions={roleOptions}
+              options={canNotChooseSystemRole ? roleOptionsWithoutSystemRole : roleOptions}
+              onChange={handleChatModeMessageRoleChange}
+              triggerClassName="text-xs font-semibold text-text-secondary uppercase"
+              itemClassName="text-[13px] font-medium text-text-secondary"
+            />
+          )}
 
           {roleDescription && (
-            <Infotip
-              aria-label={roleDescription}
-              popupClassName="w-[180px]"
-            >
+            <Infotip aria-label={roleDescription} popupClassName="w-[180px]">
               {roleDescription}
             </Infotip>
           )}
         </div>
-      )}
-      value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
+      }
+      value={payload.edition_type === EditionType.jinja2 ? payload.jinja2_text || '' : payload.text}
       onChange={onPromptChange}
       readOnly={readOnly}
       showRemove={canRemove}

@@ -5,6 +5,7 @@ import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
 import { cn } from '../cn'
+import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
 
 export const AlertDialog = BaseAlertDialog.Root
 export const AlertDialogTrigger = BaseAlertDialog.Trigger
@@ -28,16 +29,12 @@ export function AlertDialogContent({
     <BaseAlertDialog.Portal>
       <BaseAlertDialog.Backdrop
         {...backdropProps}
-        className={cn(
-          'absolute inset-0 z-50 bg-background-overlay',
-          'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
-          backdropClassName,
-        )}
+        className={cn(modalBackdropClassName, backdropClassName)}
       />
       <BaseAlertDialog.Popup
         className={cn(
           'fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-          'transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
+          modalPopupAnimationClassName,
           className,
         )}
       >
@@ -69,10 +66,7 @@ export function AlertDialogCancelButton({
   ...buttonProps
 }: AlertDialogCancelButtonProps) {
   return (
-    <BaseAlertDialog.Close
-      {...closeProps}
-      render={<Button {...buttonProps} />}
-    >
+    <BaseAlertDialog.Close {...closeProps} render={<Button {...buttonProps} />}>
       {children}
     </BaseAlertDialog.Close>
   )
@@ -85,11 +79,5 @@ export function AlertDialogConfirmButton({
   tone = 'destructive',
   ...props
 }: AlertDialogConfirmButtonProps) {
-  return (
-    <Button
-      variant={variant}
-      tone={tone}
-      {...props}
-    />
-  )
+  return <Button variant={variant} tone={tone} {...props} />
 }

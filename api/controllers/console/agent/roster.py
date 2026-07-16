@@ -4,6 +4,7 @@ from flask import abort, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import (
     query_params_from_model,
@@ -11,8 +12,8 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model, resolve_agent_runtime_app_model
 from controllers.console.apikey import ApiKeyItem, ApiKeyList, BaseApiKeyListResource, BaseApiKeyResource
 from controllers.console.app.app import (
     APP_LIST_QUERY_ARRAY_FIELDS,
@@ -42,7 +43,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from extensions.ext_database import db
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
@@ -177,7 +177,7 @@ class AgentLogsQuery(BaseModel):
         default_factory=list,
         description=(
             "Filter by one or more source IDs, e.g. webapp:<app_id> "
-            "or workflow:<app_id>:<workflow_id>:<version>:<node_id>"
+            "or workflow:<app_id>. Exact workflow:<app_id>:<workflow_id>:<version>:<node_id> IDs remain supported."
         ),
     )
     sort_by: str = Field(default="updated_at", description="Sort by created_at or updated_at")
@@ -221,7 +221,10 @@ class AgentLogsQuery(BaseModel):
 class AgentStatisticsQuery(BaseModel):
     source: str | None = Field(
         default=None,
-        description="Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger",
+        description=(
+            "Filter by a structured webapp:<app_id> or workflow:<app_id> source ID. "
+            "Legacy invoke sources and exact workflow version/node source IDs remain supported."
+        ),
     )
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
     end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
@@ -241,6 +244,7 @@ class AgentAppPartial(GenericAppPartial):
     debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
+    reference_count: int | None = None
     published_reference_count: int = 0
     published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
 
@@ -339,11 +343,13 @@ register_response_schema_models(
 )
 
 
-def _agent_roster_service() -> AgentRosterService:
-    return AgentRosterService(db.session)
+def _agent_roster_service(session: Session) -> AgentRosterService:
+    return AgentRosterService(session)
 
 
-def _serialize_agent_app_detail(app_model, *, current_user: Account, agent_id: str | None = None) -> dict:
+def _serialize_agent_app_detail(
+    session: Session, app_model, *, current_user: Account, agent_id: str | None = None
+) -> dict:
     """Serialize an Agent App detail using roster-only DTOs.
 
     `/agent` responses are roster-shaped rather than raw app-shaped: `id`
@@ -353,15 +359,19 @@ def _serialize_agent_app_detail(app_model, *, current_user: Account, agent_id: s
     roster persona fields without widening the shared /apps detail schema.
     """
 
-    app_model = AppService().get_app(app_model)
+    app_model = AppService().get_app(app_model, session=session)
     if FeatureService.get_system_features().webapp_auth.enabled:
         app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
-    roster_service = _agent_roster_service()
-    payload = AgentAppDetailWithSite.model_validate(app_model, from_attributes=True).model_dump(mode="json")
+    roster_service = _agent_roster_service(session)
+    payload = AgentAppDetailWithSite.model_validate(
+        app_model,
+        from_attributes=True,
+        context={"session": session},
+    ).model_dump(mode="json")
     agent = (
-        db.session.scalar(
+        session.scalar(
             select(Agent).where(
                 Agent.tenant_id == app_model.tenant_id,
                 Agent.id == agent_id,
@@ -382,6 +392,7 @@ def _serialize_agent_app_detail(app_model, *, current_user: Account, agent_id: s
         tenant_id=app_model.tenant_id,
         agent_id=agent.id,
         account_id=current_user.id,
+        commit=False,
     )
     message_count = roster_service.count_agent_app_debug_conversation_messages(
         conversation_id=debug_conversation_id,
@@ -397,7 +408,7 @@ def _serialize_agent_app_detail(app_model, *, current_user: Account, agent_id: s
     return payload
 
 
-def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str, current_user: Account) -> dict:
+def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_id: str, current_user: Account) -> dict:
     """Serialize Agent App lists with roster-shaped items.
 
     Each item starts from the shared App list shape, then drops
@@ -407,7 +418,7 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str, current_u
     """
 
     app_ids = [str(app.id) for app in app_pagination.items]
-    roster_service = _agent_roster_service()
+    roster_service = _agent_roster_service(session)
     agents_by_app_id = roster_service.load_app_backing_agents_by_app_id(
         tenant_id=tenant_id,
         app_ids=app_ids,
@@ -420,12 +431,20 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str, current_u
         tenant_id=tenant_id,
         agent_ids=[agent.id for agent in agents_by_app_id.values()],
     )
+    reference_counts_by_agent_id = roster_service.load_reference_counts_by_agent_id(
+        tenant_id=tenant_id,
+        agent_ids=[agent.id for agent in agents_by_app_id.values()],
+    )
     debug_conversation_ids_by_agent_id = roster_service.load_or_create_agent_app_debug_conversation_ids_by_agent_id(
         tenant_id=tenant_id,
         agents=list(agents_by_app_id.values()),
         account_id=current_user.id,
     )
-    payload = AgentAppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json")
+    payload = AgentAppPagination.model_validate(
+        app_pagination,
+        from_attributes=True,
+        context={"session": session},
+    ).model_dump(mode="json")
     for item in payload["data"]:
         app_id = item["id"]
         item.pop("bound_agent_id", None)
@@ -438,6 +457,7 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str, current_u
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
+            item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)
             published_references = published_references_by_agent_id.get(agent.id, [])
             item["published_reference_count"] = len(published_references)
             item["published_references"] = [
@@ -456,13 +476,17 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str, current_u
     )
 
 
-def _resolve_agent_app_model(*, tenant_id: str, agent_id: UUID):
-    return resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+def _resolve_agent_app_model(session: Session, *, tenant_id: str, agent_id: UUID) -> App:
+    return _agent_roster_service(session).get_agent_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
 
 
-def _agent_api_key_count(app_id: str) -> int:
+def _resolve_agent_runtime_app_model(session: Session, *, tenant_id: str, agent_id: UUID) -> App:
+    return _agent_roster_service(session).get_agent_runtime_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
+
+
+def _agent_api_key_count(session: Session, app_id: str) -> int:
     return (
-        db.session.scalar(
+        session.scalar(
             select(func.count(ApiToken.id)).where(
                 ApiToken.type == ApiTokenType.APP,
                 ApiToken.app_id == app_id,
@@ -472,7 +496,7 @@ def _agent_api_key_count(app_id: str) -> int:
     )
 
 
-def _serialize_agent_api_access(app_model: App) -> dict:
+def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
     base_url = app_model.api_base_url
     response = AgentApiAccessResponse(
         enabled=bool(app_model.enable_api),
@@ -487,13 +511,13 @@ def _serialize_agent_api_access(app_model: App) -> dict:
         meta_endpoint=f"{base_url}/meta",
         api_rpm=app_model.api_rpm or 0,
         api_rph=app_model.api_rph or 0,
-        api_key_count=_agent_api_key_count(str(app_model.id)),
+        api_key_count=_agent_api_key_count(session, str(app_model.id)),
     )
     return response.model_dump(mode="json")
 
 
-def _agent_observability_service() -> AgentObservabilityService:
-    return AgentObservabilityService(db.session)
+def _agent_observability_service(session: Session) -> AgentObservabilityService:
+    return AgentObservabilityService(session)
 
 
 def _parse_observability_time_range(start: str | None, end: str | None, account: Account):
@@ -520,7 +544,8 @@ class AgentAppListApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
+    @with_session
+    def get(self, session: Session, current_tenant_id: str, current_user: Account):
         args = query_params_from_request(AppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
         params = AppListParams(
             page=args.page,
@@ -534,12 +559,13 @@ class AgentAppListApi(Resource):
             status="normal",
         )
 
-        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, db.session())
+        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, session)
         if app_pagination is None:
             empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json")
 
         return _serialize_agent_app_pagination(
+            session,
             app_pagination,
             tenant_id=current_tenant_id,
             current_user=current_user,
@@ -555,7 +581,8 @@ class AgentAppListApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account):
         args = AgentAppCreatePayload.model_validate(console_ns.payload)
         params = CreateAppParams(
             name=args.name,
@@ -567,8 +594,8 @@ class AgentAppListApi(Resource):
             icon_background=args.icon_background,
         )
 
-        app = AppService().create_app(current_tenant_id, params, current_user, session=db.session())
-        return _serialize_agent_app_detail(app, current_user=current_user), 201
+        app = AppService().create_app(current_tenant_id, params, current_user, session=session)
+        return _serialize_agent_app_detail(session, app, current_user=current_user), 201
 
 
 @console_ns.route("/agent/<uuid:agent_id>")
@@ -580,9 +607,10 @@ class AgentAppApi(Resource):
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _serialize_agent_app_detail(app_model, current_user=current_user, agent_id=str(agent_id))
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        return _serialize_agent_app_detail(session, app_model, current_user=current_user, agent_id=str(agent_id))
 
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
     @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
@@ -594,8 +622,9 @@ class AgentAppApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def put(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session
+    def put(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         args = AgentAppUpdatePayload.model_validate(console_ns.payload)
         args_dict: AppService.ArgsDict = {
             "name": args.name,
@@ -607,8 +636,8 @@ class AgentAppApi(Resource):
             "max_active_requests": args.max_active_requests or 0,
             "role": args.role,
         }
-        updated = AppService().update_app(app_model, args_dict, session=db.session())
-        return _serialize_agent_app_detail(updated, current_user=current_user)
+        updated = AppService().update_app(app_model, args_dict, session=session)
+        return _serialize_agent_app_detail(session, updated, current_user=current_user)
 
     @console_ns.response(204, "Agent app deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
@@ -617,9 +646,10 @@ class AgentAppApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_tenant_id
-    def delete(self, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        AppService().delete_app(app_model, session=db.session())
+    @with_session
+    def delete(self, session: Session, tenant_id: str, agent_id: UUID):
+        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        AppService().delete_app(app_model, session=session)
         return "", 204
 
 
@@ -637,8 +667,9 @@ class AgentDebugConversationRefreshApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        debug_conversation_id = _agent_roster_service().refresh_agent_app_debug_conversation_id(
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+        debug_conversation_id = _agent_roster_service(session).refresh_agent_app_debug_conversation_id(
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
@@ -661,14 +692,15 @@ class AgentPublishApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         args = AgentPublishPayload.model_validate(console_ns.payload or {})
         return AgentComposerService.publish_agent_app_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
             version_note=args.version_note,
-            session=db.session(),
         )
 
 
@@ -682,14 +714,15 @@ class AgentBuildDraftCheckoutApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         args = AgentBuildDraftCheckoutPayload.model_validate(console_ns.payload or {})
         return AgentComposerService.checkout_agent_app_build_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
             force=args.force,
-            session=db.session(),
         )
 
 
@@ -702,12 +735,13 @@ class AgentBuildDraftApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return AgentComposerService.load_agent_app_build_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
-            session=db.session(),
         )
 
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
@@ -718,14 +752,15 @@ class AgentBuildDraftApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def put(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def put(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         return AgentComposerService.save_agent_app_build_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
             payload=payload,
-            session=db.session(),
         )
 
     @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
@@ -735,12 +770,13 @@ class AgentBuildDraftApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def delete(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return AgentComposerService.discard_agent_app_build_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
-            session=db.session(),
         )
 
 
@@ -753,12 +789,13 @@ class AgentBuildDraftApplyApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return AgentComposerService.apply_agent_app_build_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
-            session=db.session(),
         )
 
 
@@ -774,9 +811,10 @@ class AgentAppCopyApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         args = AgentAppCopyPayload.model_validate(console_ns.payload or {})
-        copied_app = _agent_roster_service().duplicate_agent_app(
+        copied_app = _agent_roster_service(session).duplicate_agent_app(
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account=current_user,
@@ -787,7 +825,7 @@ class AgentAppCopyApi(Resource):
             icon=args.icon,
             icon_background=args.icon_background,
         )
-        return _serialize_agent_app_detail(copied_app, current_user=current_user), 201
+        return _serialize_agent_app_detail(session, copied_app, current_user=current_user), 201
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-access")
@@ -797,9 +835,10 @@ class AgentApiAccessApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _serialize_agent_api_access(app_model)
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        return _serialize_agent_api_access(session, app_model)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-enable")
@@ -813,11 +852,12 @@ class AgentApiStatusApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @with_current_tenant_id
-    def post(self, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session
+    def post(self, session: Session, tenant_id: str, agent_id: UUID):
+        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         args = AgentApiStatusPayload.model_validate(console_ns.payload)
-        app_model = AppService().update_app_api_status(app_model, args.enable_api, session=db.session())
-        return _serialize_agent_api_access(app_model)
+        app_model = AppService().update_app_api_status(app_model, args.enable_api, session=session)
+        return _serialize_agent_api_access(session, app_model)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys")
@@ -829,18 +869,23 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
 
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID) -> dict[str, object]:
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id))
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
+        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id, session=session))
 
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @with_current_tenant_id
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    def post(self, tenant_id: str, agent_id: UUID) -> tuple[dict[str, object], int]:
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(ApiKeyItem, self._create_api_key(str(app_model.id), tenant_id)), 201
+    @with_session
+    def post(self, session: Session, tenant_id: str, agent_id: UUID) -> tuple[dict[str, object], int]:
+        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        return dump_response(
+            ApiKeyItem,
+            self._create_api_key(str(app_model.id), tenant_id, session=session),
+        ), 201
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>")
@@ -853,9 +898,17 @@ class AgentApiKeyApi(BaseApiKeyResource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    def delete(self, tenant_id: str, current_user: Account, agent_id: UUID, api_key_id: UUID) -> tuple[str, int]:
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user)
+    @with_session
+    def delete(
+        self,
+        session: Session,
+        tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+        api_key_id: UUID,
+    ) -> tuple[str, int]:
+        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user, session=session)
         return "", 204
 
 
@@ -867,11 +920,12 @@ class AgentInviteOptionsApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str):
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str):
         query = AgentInviteOptionsQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
             AgentInviteOptionsResponse,
-            _agent_roster_service().list_invite_options(
+            _agent_roster_service(session).list_invite_options(
                 tenant_id=tenant_id,
                 page=query.page,
                 limit=query.limit,
@@ -890,15 +944,16 @@ class AgentLogsApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
         query_data["sources"] = _query_values("sources", "source")
         query_data["statuses"] = _query_values("statuses", "status")
         query = AgentLogsQuery.model_validate(query_data)
         start, end = _parse_observability_time_range(query.start, query.end, current_user)
         try:
-            payload = _agent_observability_service().list_logs(
+            payload = _agent_observability_service(session).list_logs(
                 app=app_model,
                 agent_id=str(agent_id),
                 params=AgentLogQueryParams(
@@ -927,15 +982,16 @@ class AgentLogMessagesApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
+        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
         query_data["sources"] = _query_values("sources", "source")
         query_data["statuses"] = _query_values("statuses", "status")
         query = AgentLogsQuery.model_validate(query_data)
         start, end = _parse_observability_time_range(query.start, query.end, current_user)
         try:
-            payload = _agent_observability_service().list_log_messages(
+            payload = _agent_observability_service(session).list_log_messages(
                 app=app_model,
                 agent_id=str(agent_id),
                 conversation_id=str(conversation_id),
@@ -964,9 +1020,10 @@ class AgentLogSourcesApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        payload = _agent_observability_service().list_log_sources(app=app_model, agent_id=str(agent_id))
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
+        payload = _agent_observability_service(session).list_log_sources(app=app_model, agent_id=str(agent_id))
         return dump_response(AgentLogSourceListResponse, payload)
 
 
@@ -983,13 +1040,14 @@ class AgentStatisticsSummaryApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         query = AgentStatisticsQuery.model_validate(request.args.to_dict(flat=True))
         timezone = current_user.timezone or "UTC"
         start, end = _parse_observability_time_range(query.start, query.end, current_user)
         try:
-            payload = _agent_observability_service().get_statistics_summary(
+            payload = _agent_observability_service(session).get_statistics_summary(
                 app=app_model,
                 agent_id=str(agent_id),
                 params=AgentStatisticsQueryParams(source=query.source, start=start, end=end, timezone=timezone),
@@ -1006,10 +1064,11 @@ class AgentRosterVersionsApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
         return dump_response(
             AgentConfigSnapshotListResponse,
-            {"data": _agent_roster_service().list_agent_versions(tenant_id=tenant_id, agent_id=str(agent_id))},
+            {"data": _agent_roster_service(session).list_agent_versions(tenant_id=tenant_id, agent_id=str(agent_id))},
         )
 
 
@@ -1020,10 +1079,11 @@ class AgentRosterVersionDetailApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID, version_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID, version_id: UUID):
         return dump_response(
             AgentConfigSnapshotDetailResponse,
-            _agent_roster_service().get_agent_version_detail(
+            _agent_roster_service(session).get_agent_version_detail(
                 tenant_id=tenant_id,
                 agent_id=str(agent_id),
                 version_id=str(version_id),
@@ -1040,10 +1100,11 @@ class AgentRosterVersionRestoreApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID, version_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, version_id: UUID):
         return dump_response(
             AgentConfigSnapshotRestoreResponse,
-            _agent_roster_service().restore_agent_version(
+            _agent_roster_service(session).restore_agent_version(
                 tenant_id=tenant_id,
                 agent_id=str(agent_id),
                 version_id=str(version_id),

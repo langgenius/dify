@@ -10,11 +10,13 @@ describe('node sections', () => {
   it('should render loop and loading metadata in the header section', () => {
     render(
       <NodeHeaderMeta
-        data={{
-          type: BlockEnum.Loop,
-          _loopIndex: 2,
-          _runningStatus: NodeRunningStatus.Running,
-        } as never}
+        data={
+          {
+            type: BlockEnum.Loop,
+            _loopIndex: 2,
+            _runningStatus: NodeRunningStatus.Running,
+          } as never
+        }
         hasVarValue={false}
         isLoading
         loopIndex={<div>loop-index</div>}
@@ -28,10 +30,7 @@ describe('node sections', () => {
 
   it('should render the container node body and description branches', () => {
     const { rerender } = render(
-      <NodeBody
-        data={{ type: BlockEnum.Loop } as never}
-        child={<div>body-content</div>}
-      />,
+      <NodeBody data={{ type: BlockEnum.Loop } as never} child={<div>body-content</div>} />,
     )
 
     expect(screen.getByText('body-content').parentElement).toHaveClass('grow')
@@ -45,13 +44,15 @@ describe('node sections', () => {
 
     render(
       <NodeHeaderMeta
-        data={{
-          type: BlockEnum.Iteration,
-          is_parallel: true,
-          _iterationLength: 3,
-          _iterationIndex: 5,
-          _runningStatus: NodeRunningStatus.Running,
-        } as never}
+        data={
+          {
+            type: BlockEnum.Iteration,
+            is_parallel: true,
+            _iterationLength: 3,
+            _iterationIndex: 5,
+            _runningStatus: NodeRunningStatus.Running,
+          } as never
+        }
         hasVarValue={false}
         isLoading={false}
         loopIndex={null}
@@ -129,7 +130,11 @@ describe('node sections', () => {
     rerender(<NodeDescription data={{ type: BlockEnum.Loop, desc: 'hidden' } as never} />)
     expect(screen.queryByText('hidden')).not.toBeInTheDocument()
 
-    rerender(<NodeDescription data={{ type: BlockEnum.StartPlaceholder, desc: 'old placeholder description' } as never} />)
+    rerender(
+      <NodeDescription
+        data={{ type: BlockEnum.StartPlaceholder, desc: 'old placeholder description' } as never}
+      />,
+    )
     expect(screen.queryByText('old placeholder description')).not.toBeInTheDocument()
   })
 })

@@ -38,22 +38,20 @@ const ToolViewFlatView: FC<Props> = ({
   const firstLetterToolIds = useMemo(() => {
     const res: Record<string, string> = {}
     letters.forEach((letter) => {
-      const firstToolId = payload.find(tool => tool.letter === letter)?.id
-      if (firstToolId)
-        res[firstToolId] = letter
+      const firstToolId = payload.find((tool) => tool.letter === letter)?.id
+      if (firstToolId) res[firstToolId] = letter
     })
     return res
   }, [payload, letters])
   return (
     <div className="flex w-full">
       <div className="mr-1 grow">
-        {payload.map(tool => (
+        {payload.map((tool) => (
           <div
             key={tool.id}
             ref={(el) => {
               const letter = firstLetterToolIds[tool.id]
-              if (letter)
-                toolRefs.current[letter] = el
+              if (letter) toolRefs.current[letter] = el
             }}
           >
             <Tool

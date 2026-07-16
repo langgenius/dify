@@ -68,6 +68,7 @@ def create_default_layer_providers(
     inner_api_url: str = "http://localhost:5001",
     inner_api_key: str = "",
     shell_provider: ShellProviderProtocol | None = None,
+    shell_home_root: str = "/home",
     agent_stub_api_base_url: str | None = None,
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
@@ -92,6 +93,7 @@ def create_default_layer_providers(
             create=lambda config: DifyShellLayer.from_config_with_settings(
                 DifyShellLayerConfig.model_validate(config),
                 shell_provider=shell_provider,
+                shell_home_root=shell_home_root,
                 agent_stub_api_base_url=agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
             ),

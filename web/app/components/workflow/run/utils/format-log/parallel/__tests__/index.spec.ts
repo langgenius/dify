@@ -4,10 +4,8 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import formatParallel from '../index'
 
 const t = withSelectorKey((key: string, options?: Record<string, string>) => {
-  if (key === 'common.parallel')
-    return 'Parallel'
-  if (key === 'common.branch')
-    return 'Branch'
+  if (key === 'common.parallel') return 'Parallel'
+  if (key === 'common.branch') return 'Branch'
   return options?.ns ? `${options.ns}.${key}` : key
 }, 'workflow')
 
@@ -48,37 +46,40 @@ const createNodeTracing = (overrides: Partial<NodeTracing> = {}): NodeTracing =>
 
 describe('formatParallel', () => {
   it('groups parallel nodes into a titled tree and preserves branch titles', () => {
-    const result = formatParallel([
-      createNodeTracing({
-        id: 'parallel-start',
-        node_id: 'parallel-start',
-        title: 'Parallel Start',
-        parallel_id: 'parallel-1',
-        parallel_start_node_id: 'parallel-start',
-        parallelDetail: {
-          isParallelStartNode: true,
-          children: [],
-        },
-      }),
-      createNodeTracing({
-        id: 'branch-a',
-        node_id: 'branch-a',
-        title: 'Branch A',
-        parallel_id: 'parallel-1',
-        parallel_start_node_id: 'branch-a',
-      }),
-      createNodeTracing({
-        id: 'branch-child',
-        node_id: 'branch-child',
-        title: 'Branch Child',
-        parallel_id: 'parallel-1',
-        parallel_start_node_id: 'branch-a',
-      }),
-    ], t)
+    const result = formatParallel(
+      [
+        createNodeTracing({
+          id: 'parallel-start',
+          node_id: 'parallel-start',
+          title: 'Parallel Start',
+          parallel_id: 'parallel-1',
+          parallel_start_node_id: 'parallel-start',
+          parallelDetail: {
+            isParallelStartNode: true,
+            children: [],
+          },
+        }),
+        createNodeTracing({
+          id: 'branch-a',
+          node_id: 'branch-a',
+          title: 'Branch A',
+          parallel_id: 'parallel-1',
+          parallel_start_node_id: 'branch-a',
+        }),
+        createNodeTracing({
+          id: 'branch-child',
+          node_id: 'branch-child',
+          title: 'Branch Child',
+          parallel_id: 'parallel-1',
+          parallel_start_node_id: 'branch-a',
+        }),
+      ],
+      t,
+    )
 
     expect(result.length).toBeGreaterThan(0)
-    expect(result.some(node => !!node.parallelDetail)).toBe(true)
-    expect(result.some(node => node.parallelDetail?.children?.length)).toBe(true)
+    expect(result.some((node) => !!node.parallelDetail)).toBe(true)
+    expect(result.some((node) => node.parallelDetail?.children?.length)).toBe(true)
   })
 
   it('ignores nodes outside parallel groups', () => {

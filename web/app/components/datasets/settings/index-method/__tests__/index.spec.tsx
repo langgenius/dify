@@ -14,9 +14,10 @@ describe('IndexMethod', () => {
     vi.clearAllMocks()
   })
 
-  const getKeywordSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
-    selector: 'input[type="range"]',
-  })
+  const getKeywordSlider = () =>
+    screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
+      selector: 'input[type="range"]',
+    })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
@@ -58,7 +59,9 @@ describe('IndexMethod', () => {
     })
 
     it('should mark Economy as active when value is ECONOMICAL', () => {
-      const { container } = render(<IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} />)
+      const { container } = render(
+        <IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} />,
+      )
       const activeCards = container.querySelectorAll('.ring-\\[1px\\]')
       expect(activeCards).toHaveLength(1)
     })
@@ -67,7 +70,9 @@ describe('IndexMethod', () => {
   describe('User Interactions', () => {
     it('should call onChange with QUALIFIED when High Quality is clicked', () => {
       const handleChange = vi.fn()
-      render(<IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} onChange={handleChange} />)
+      render(
+        <IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} onChange={handleChange} />,
+      )
 
       // Find and click High Quality option
       const highQualityTitle = screen.getByText(/stepTwo\.qualified/)
@@ -79,7 +84,14 @@ describe('IndexMethod', () => {
 
     it('should call onChange with ECONOMICAL when Economy is clicked', () => {
       const handleChange = vi.fn()
-      render(<IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} onChange={handleChange} currentValue={IndexingType.ECONOMICAL} />)
+      render(
+        <IndexMethod
+          {...defaultProps}
+          value={IndexingType.QUALIFIED}
+          onChange={handleChange}
+          currentValue={IndexingType.ECONOMICAL}
+        />,
+      )
 
       // Find and click Economy option - use getAllByText and get the first one (title)
       const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
@@ -92,7 +104,9 @@ describe('IndexMethod', () => {
 
     it('should not call onChange when clicking already active option', () => {
       const handleChange = vi.fn()
-      render(<IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} onChange={handleChange} />)
+      render(
+        <IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} onChange={handleChange} />,
+      )
 
       const highQualityTitle = screen.getByText(/stepTwo\.qualified/)
       const card = highQualityTitle.closest('div')?.parentElement?.parentElement?.parentElement
@@ -111,7 +125,14 @@ describe('IndexMethod', () => {
 
     it('should disable Economy option when currentValue is QUALIFIED', () => {
       const handleChange = vi.fn()
-      render(<IndexMethod {...defaultProps} currentValue={IndexingType.QUALIFIED} onChange={handleChange} value={IndexingType.ECONOMICAL} />)
+      render(
+        <IndexMethod
+          {...defaultProps}
+          currentValue={IndexingType.QUALIFIED}
+          onChange={handleChange}
+          value={IndexingType.ECONOMICAL}
+        />,
+      )
 
       // Try to click Economy option - use getAllByText and get the first one (title)
       const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
@@ -184,12 +205,20 @@ describe('IndexMethod', () => {
 
   describe('Props', () => {
     it('should update active state when value prop changes', () => {
-      const { rerender, container } = render(<IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} />)
+      const { rerender, container } = render(
+        <IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} />,
+      )
 
       let activeCards = container.querySelectorAll('.ring-\\[1px\\]')
       expect(activeCards).toHaveLength(1)
 
-      rerender(<IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} currentValue={IndexingType.ECONOMICAL} />)
+      rerender(
+        <IndexMethod
+          {...defaultProps}
+          value={IndexingType.ECONOMICAL}
+          currentValue={IndexingType.ECONOMICAL}
+        />,
+      )
 
       activeCards = container.querySelectorAll('.ring-\\[1px\\]')
       expect(activeCards).toHaveLength(1)

@@ -1,15 +1,11 @@
-import type {
-  Dispatch,
-  RefObject,
-  SetStateAction,
-} from 'react'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { Plugin } from '../../plugins/types'
-import type {
-  BlockEnum,
-  ToolWithProvider,
-} from '../types'
+import type { BlockEnum, ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
-import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import type {
+  ListProps,
+  ListRef,
+} from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -33,7 +29,8 @@ import Tools from './tools'
 import { ToolTypeEnum } from './types'
 import ViewTypeSelect, { ViewType } from './view-type-select'
 
-const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
+const marketplaceFooterClassName =
+  'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 
 type AllToolsProps = {
   className?: string
@@ -90,13 +87,15 @@ const AllTools = ({
   const isMatchingKeywords = (text: string, keywords: string) => {
     return text.toLowerCase().includes(keywords.toLowerCase())
   }
-  const allProviders = useMemo(() => [...buildInTools, ...customTools, ...workflowTools, ...mcpTools], [buildInTools, customTools, workflowTools, mcpTools])
+  const allProviders = useMemo(
+    () => [...buildInTools, ...customTools, ...workflowTools, ...mcpTools],
+    [buildInTools, customTools, workflowTools, mcpTools],
+  )
   const providerMap = useMemo(() => {
     const map = new Map<string, ToolWithProvider>()
     allProviders.forEach((provider) => {
       const key = provider.plugin_id || provider.id
-      if (key)
-        map.set(key, provider)
+      if (key) map.set(key, provider)
     })
     return map
   }, [allProviders])
@@ -104,52 +103,42 @@ const AllTools = ({
     let mergedTools: ToolWithProvider[] = []
     if (activeTab === ToolTypeEnum.All)
       mergedTools = [...buildInTools, ...customTools, ...workflowTools, ...mcpTools]
-    if (activeTab === ToolTypeEnum.BuiltIn)
-      mergedTools = buildInTools
-    if (activeTab === ToolTypeEnum.Custom)
-      mergedTools = customTools
-    if (activeTab === ToolTypeEnum.Workflow)
-      mergedTools = workflowTools
-    if (activeTab === ToolTypeEnum.MCP)
-      mergedTools = mcpTools
+    if (activeTab === ToolTypeEnum.BuiltIn) mergedTools = buildInTools
+    if (activeTab === ToolTypeEnum.Custom) mergedTools = customTools
+    if (activeTab === ToolTypeEnum.Workflow) mergedTools = workflowTools
+    if (activeTab === ToolTypeEnum.MCP) mergedTools = mcpTools
 
     const normalizedSearch = trimmedSearchText.toLowerCase()
     const getLocalizedText = (text?: Record<string, string> | null) => {
-      if (!text)
-        return ''
+      if (!text) return ''
 
-      if (text[language])
-        return text[language]
+      if (text[language]) return text[language]
 
-      if (text['en-US'])
-        return text['en-US']
+      if (text['en-US']) return text['en-US']
 
       const firstValue = Object.values(text).find(Boolean)
       return firstValue || ''
     }
 
     if (!hasFilter || !normalizedSearch)
-      return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
+      return mergedTools.filter((toolWithProvider) => toolWithProvider.tools.length > 0)
 
     return mergedTools.reduce<ToolWithProvider[]>((acc, toolWithProvider) => {
       const providerLabel = getLocalizedText(toolWithProvider.label)
-      const providerMatches = [
-        toolWithProvider.name,
-        providerLabel,
-      ].some(text => isMatchingKeywords(text || '', normalizedSearch))
+      const providerMatches = [toolWithProvider.name, providerLabel].some((text) =>
+        isMatchingKeywords(text || '', normalizedSearch),
+      )
 
       if (providerMatches) {
-        if (toolWithProvider.tools.length > 0)
-          acc.push(toolWithProvider)
+        if (toolWithProvider.tools.length > 0) acc.push(toolWithProvider)
         return acc
       }
 
       const matchedTools = toolWithProvider.tools.filter((tool) => {
         const toolLabel = getLocalizedText(tool.label)
-        return [
-          tool.name,
-          toolLabel,
-        ].some(text => isMatchingKeywords(text || '', normalizedSearch))
+        return [tool.name, toolLabel].some((text) =>
+          isMatchingKeywords(text || '', normalizedSearch),
+        )
       })
 
       if (matchedTools.length > 0) {
@@ -161,21 +150,27 @@ const AllTools = ({
 
       return acc
     }, [])
-  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, trimmedSearchText, hasFilter, language])
+  }, [
+    activeTab,
+    buildInTools,
+    customTools,
+    workflowTools,
+    mcpTools,
+    trimmedSearchText,
+    hasFilter,
+    language,
+  ])
 
-  const {
-    queryPluginsWithDebounced: fetchPlugins,
-    plugins: notInstalledPlugins = [],
-  } = useMarketplacePlugins()
+  const { queryPluginsWithDebounced: fetchPlugins, plugins: notInstalledPlugins = [] } =
+    useMarketplacePlugins()
 
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
 
   useEffect(() => {
-    if (!enable_marketplace)
-      return
+    if (!enable_marketplace) return
     if (hasFilter) {
       fetchPlugins({
         query: searchText,
@@ -193,53 +188,48 @@ const AllTools = ({
   const hasToolsListContent = tools.length > 0 || isShowRAGRecommendations
   const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
   const shouldShowEmptyState = hasFilter && !hasToolsListContent && !hasPluginContent
-  const shouldShowFeatured = showFeatured
-    && enable_marketplace
-    && !isInRAGPipeline
-    && activeTab === ToolTypeEnum.All
-    && !hasFilter
+  const shouldShowFeatured =
+    showFeatured &&
+    enable_marketplace &&
+    !isInRAGPipeline &&
+    activeTab === ToolTypeEnum.All &&
+    !hasFilter
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
-  const handleRAGSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
-    if (!pluginDefaultValue)
-      return
-    onSelect(type, pluginDefaultValue as ToolDefaultValue)
-  }, [onSelect])
+  const handleRAGSelect = useCallback<OnSelectBlock>(
+    (type, pluginDefaultValue) => {
+      if (!pluginDefaultValue) return
+      onSelect(type, pluginDefaultValue as ToolDefaultValue)
+    },
+    [onSelect],
+  )
   const toolsListTitle = useMemo(() => {
-    if (activeTab === ToolTypeEnum.BuiltIn)
-      return t($ => $.allToolPlugins, { ns: 'tools' })
-    if (activeTab === ToolTypeEnum.Custom)
-      return t($ => $.allSwaggerAPIAsTool, { ns: 'tools' })
-    if (activeTab === ToolTypeEnum.Workflow)
-      return t($ => $.allWorkflowAsTool, { ns: 'tools' })
-    if (activeTab === ToolTypeEnum.MCP)
-      return t($ => $.allMCP, { ns: 'tools' })
-    return t($ => $.allTools, { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.BuiltIn) return t(($) => $.allToolPlugins, { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.Custom) return t(($) => $.allSwaggerAPIAsTool, { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.Workflow) return t(($) => $.allWorkflowAsTool, { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.MCP) return t(($) => $.allMCP, { ns: 'tools' })
+    return t(($) => $.allTools, { ns: 'tools' })
   }, [activeTab, t])
 
   return (
     <div className={cn('max-w-[500px]', className)}>
       <div className="flex items-center justify-between border-b border-divider-subtle px-3">
         <div className="flex h-8 items-center space-x-1">
-          {
-            tabs.map(tab => (
-              <div
-                className={cn(
-                  'flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover',
-                  'text-xs font-medium text-text-secondary',
-                  activeTab === tab.key && 'bg-state-base-hover-alt',
-                )}
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-              >
-                {tab.name}
-              </div>
-            ))
-          }
+          {tabs.map((tab) => (
+            <div
+              className={cn(
+                'flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover',
+                'text-xs font-medium text-text-secondary',
+                activeTab === tab.key && 'bg-state-base-hover-alt',
+              )}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.name}
+            </div>
+          ))}
         </div>
-        {isSupportGroupView && (
-          <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
-        )}
+        {isSupportGroupView && <ViewTypeSelect viewType={activeView} onChange={setActiveView} />}
       </div>
       <div className="flex max-h-[464px] flex-col">
         <div
@@ -308,7 +298,7 @@ const AllTools = ({
             <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
               <SearchMenu className="size-8 text-text-quaternary" />
               <div className="text-sm font-medium text-text-secondary">
-                {t($ => $['tabs.noPluginsFound'], { ns: 'workflow' })}
+                {t(($) => $['tabs.noPluginsFound'], { ns: 'workflow' })}
               </div>
               <Link
                 href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
@@ -319,7 +309,7 @@ const AllTools = ({
                   variant="secondary-accent"
                   className="h-6 cursor-pointer px-3 text-xs"
                 >
-                  {t($ => $['tabs.requestToCommunity'], { ns: 'workflow' })}
+                  {t(($) => $['tabs.requestToCommunity'], { ns: 'workflow' })}
                 </Button>
               </Link>
             </div>
@@ -331,7 +321,7 @@ const AllTools = ({
             href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
             target="_blank"
           >
-            <span>{t($ => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
+            <span>{t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
             <RiArrowRightUpLine className="ml-0.5 size-3" />
           </Link>
         )}

@@ -2,8 +2,7 @@ import type { DifyWorld } from '../../support/world'
 
 export const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)
-  if (!agentId)
-    throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
+  if (!agentId) throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
 
   return agentId
 }
@@ -31,8 +30,7 @@ export type AccessSurfaceName = 'Web app' | 'Backend service API'
 export const getAccessSurfaceCard = (world: DifyWorld, surface: AccessSurfaceName) =>
   getAccessRegion(world).getByRole('article', { name: surface }).first()
 
-export const getWebAppCard = (world: DifyWorld) =>
-  getAccessSurfaceCard(world, 'Web app')
+export const getWebAppCard = (world: DifyWorld) => getAccessSurfaceCard(world, 'Web app')
 
 export const getServiceApiCard = (world: DifyWorld) =>
   getAccessSurfaceCard(world, 'Backend service API')

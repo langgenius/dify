@@ -19,7 +19,9 @@ const createNoteData = (overrides: Partial<NoteNodeType> = {}): NoteNodeType => 
   ...overrides,
 })
 
-const createNoteProps = (overrides: Partial<React.ComponentProps<typeof NoteNode>> = {}): React.ComponentProps<typeof NoteNode> => ({
+const createNoteProps = (
+  overrides: Partial<React.ComponentProps<typeof NoteNode>> = {},
+): React.ComponentProps<typeof NoteNode> => ({
   id: 'note-node-1',
   type: 'note-node',
   selected: false,
@@ -41,9 +43,7 @@ describe('workflow preview note node', () => {
   // The preview node should expose the same readonly editor surface and metadata as the live note node.
   describe('Rendering', () => {
     it('should render the readonly note editor, author, and themed frame', () => {
-      const { container } = render(
-        <NoteNode {...createNoteProps()} />,
-      )
+      const { container } = render(<NoteNode {...createNoteProps()} />)
 
       const noteRoot = container.firstElementChild as HTMLElement
 
@@ -73,7 +73,10 @@ describe('workflow preview note node', () => {
 
       const noteRoot = container.firstElementChild as HTMLElement
 
-      expect(noteRoot).toHaveClass('bg-util-colors-pink-pink-50', 'border-util-colors-pink-pink-300')
+      expect(noteRoot).toHaveClass(
+        'bg-util-colors-pink-pink-50',
+        'border-util-colors-pink-pink-300',
+      )
       expect(container.querySelector('.cursor-text')).toBeInTheDocument()
       expect(container.querySelector('.nodrag.nopan.nowheel')).toBeInTheDocument()
       expect(screen.queryByText('Alice')).not.toBeInTheDocument()

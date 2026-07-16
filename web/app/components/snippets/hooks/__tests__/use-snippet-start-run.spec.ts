@@ -53,9 +53,11 @@ describe('useSnippetStartRun', () => {
   it('should open the debug panel and input form when snippet has input fields', () => {
     useSnippetDraftStore.getState().setInputFields(inputFields)
 
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()
@@ -69,9 +71,11 @@ describe('useSnippetStartRun', () => {
   })
 
   it('should run immediately when snippet has no input fields', () => {
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()
@@ -85,9 +89,11 @@ describe('useSnippetStartRun', () => {
   it('should use current snippet input fields from the store before starting a run', () => {
     useSnippetDraftStore.getState().setInputFields(inputFields)
 
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()
@@ -110,9 +116,11 @@ describe('useSnippetStartRun', () => {
       setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
     })
 
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()
@@ -137,9 +145,11 @@ describe('useSnippetStartRun', () => {
       setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
     })
 
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()

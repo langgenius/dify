@@ -14,6 +14,7 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
 )
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -21,10 +22,11 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from graphon.model_runtime.errors.invoke import InvokeError
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
+    SpeechToTextDisabledServiceError,
 )
 
 
@@ -43,6 +45,7 @@ def installed_app():
     app.app = MagicMock()
     app.app.id = "app-1"
     app.app.tenant_id = "tenant-1"
+    app.app_with_session.return_value = app.app
     return app
 
 
@@ -185,6 +188,22 @@ class TestChatAudioApi:
             with pytest.raises(audio_module.ProviderNotSupportSpeechToTextError):
                 self.method(installed_app)
 
+    def test_speech_to_text_disabled(self, app: Flask, installed_app, audio_file):
+        with (
+            app.test_request_context(
+                "/",
+                data={"file": audio_file},
+                content_type="multipart/form-data",
+            ),
+            patch.object(
+                audio_module.AudioService,
+                "transcript_asr",
+                side_effect=SpeechToTextDisabledServiceError(),
+            ),
+        ):
+            with pytest.raises(SpeechToTextDisabledError):
+                self.method(installed_app)
+
     def test_provider_not_initialized(self, app: Flask, installed_app, audio_file):
         with (
             app.test_request_context(
@@ -258,8 +277,7 @@ class TestChatTextApi:
 
         assert resp == {"audio": "ok"}
         assert transcript_tts.call_args.kwargs["message_ref"] == MessageRef(
-            tenant_id="tenant-1",
-            app_id="app-1",
+            app=AppRef(tenant_id="tenant-1", app_id="app-1"),
             message_id="m1",
             account_id="account-1",
         )

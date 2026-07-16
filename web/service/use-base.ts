@@ -9,8 +9,7 @@ import { useCallback } from 'react'
 export const useInvalid = (key?: QueryKey) => {
   const queryClient = useQueryClient()
   return useCallback(() => {
-    if (!key)
-      return
+    if (!key) return
     queryClient.invalidateQueries({ queryKey: key })
   }, [queryClient, key])
 }
@@ -22,8 +21,7 @@ export const useInvalid = (key?: QueryKey) => {
 export const useReset = (key?: QueryKey) => {
   const queryClient = useQueryClient()
   return useCallback(() => {
-    if (!key)
-      return
+    if (!key) return
     queryClient.resetQueries({ queryKey: key })
   }, [queryClient, key])
 }

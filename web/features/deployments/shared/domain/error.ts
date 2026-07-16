@@ -20,8 +20,7 @@ export type UnsupportedDslNodeError = {
 }
 
 function nonEmptyString(value: unknown) {
-  if (typeof value !== 'string')
-    return undefined
+  if (typeof value !== 'string') return undefined
 
   const trimmedValue = value.trim()
   return trimmedValue || undefined
@@ -35,8 +34,7 @@ function formatDeploymentError(data: DeploymentErrorPayload) {
   const message = nonEmptyString(data.message) ?? nonEmptyString(data.error)
   const reason = nonEmptyString(data.reason) ?? nonEmptyString(data.code)
 
-  if (message && reason)
-    return `${message} (${reason})`
+  if (message && reason) return `${message} (${reason})`
 
   return message ?? reason
 }
@@ -44,9 +42,8 @@ function formatDeploymentError(data: DeploymentErrorPayload) {
 async function deploymentErrorData(error: unknown) {
   if (error instanceof Response && !error.bodyUsed) {
     try {
-      return await error.clone().json() as DeploymentErrorPayload
-    }
-    catch {}
+      return (await error.clone().json()) as DeploymentErrorPayload
+    } catch {}
   }
 
   return undefined
@@ -57,8 +54,7 @@ function deploymentErrorReason(data: DeploymentErrorPayload) {
 }
 
 function unsupportedNodesPayload(data: DeploymentErrorPayload) {
-  if (isRecord(data.metadata))
-    return data.metadata.unsupported_nodes
+  if (isRecord(data.metadata)) return data.metadata.unsupported_nodes
 
   return data.unsupported_nodes
 }
@@ -66,20 +62,17 @@ function unsupportedNodesPayload(data: DeploymentErrorPayload) {
 function parsedJsonValue(value: string) {
   try {
     return JSON.parse(value) as unknown
-  }
-  catch {
+  } catch {
     return undefined
   }
 }
 
 function unsupportedDslNode(value: unknown) {
-  if (!isRecord(value))
-    return undefined
+  if (!isRecord(value)) return undefined
 
   const id = nonEmptyString(value.id)
   const type = nonEmptyString(value.type)
-  if (!id && !type)
-    return undefined
+  if (!id && !type) return undefined
 
   return {
     ...(id ? { id } : {}),
@@ -89,20 +82,17 @@ function unsupportedDslNode(value: unknown) {
 
 function unsupportedDslNodes(value: unknown) {
   const nodeList = typeof value === 'string' ? parsedJsonValue(value) : value
-  if (!Array.isArray(nodeList))
-    return []
+  if (!Array.isArray(nodeList)) return []
 
   const seen = new Set<string>()
   const nodes: UnsupportedDslNode[] = []
 
   nodeList.forEach((item) => {
     const node = unsupportedDslNode(item)
-    if (!node)
-      return
+    if (!node) return
 
     const key = `${node.id}\u0000${node.type}`
-    if (seen.has(key))
-      return
+    if (seen.has(key)) return
 
     seen.add(key)
     nodes.push(node)
@@ -111,13 +101,13 @@ function unsupportedDslNodes(value: unknown) {
   return nodes
 }
 
-export async function unsupportedDslNodeError(error: unknown): Promise<UnsupportedDslNodeError | undefined> {
+export async function unsupportedDslNodeError(
+  error: unknown,
+): Promise<UnsupportedDslNodeError | undefined> {
   const errorData = await deploymentErrorData(error)
-  if (!errorData)
-    return undefined
+  if (!errorData) return undefined
 
-  if (deploymentErrorReason(errorData) !== APP_DEPLOY_UNSUPPORTED_DSL_NODE_TYPE)
-    return undefined
+  if (deploymentErrorReason(errorData) !== APP_DEPLOY_UNSUPPORTED_DSL_NODE_TYPE) return undefined
 
   return {
     message: formatDeploymentError(errorData),
@@ -127,11 +117,9 @@ export async function unsupportedDslNodeError(error: unknown): Promise<Unsupport
 
 export async function deploymentErrorMessage(error: unknown) {
   const errorData = await deploymentErrorData(error)
-  if (errorData)
-    return formatDeploymentError(errorData)
+  if (errorData) return formatDeploymentError(errorData)
 
-  if (error instanceof Error)
-    return nonEmptyString(error.message)
+  if (error instanceof Error) return nonEmptyString(error.message)
 
   return undefined
 }

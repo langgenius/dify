@@ -172,7 +172,9 @@ class AppGenerateService:
         request_id: str,
     ):
         effective_mode = (
-            AppMode.AGENT_CHAT if app_model.is_agent and app_model.mode != AppMode.AGENT_CHAT else app_model.mode
+            AppMode.AGENT_CHAT
+            if app_model.is_agent_with_session(session=session) and app_model.mode != AppMode.AGENT_CHAT
+            else app_model.mode
         )
         match effective_mode:
             case AppMode.COMPLETION:
@@ -193,7 +195,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
                         AgentChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            session=session,
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id,
@@ -202,7 +209,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     AgentAppGenerator.convert_to_event_stream(
                         AgentAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            session=session,
+                            streaming=streaming,
                         ),
                     ),
                     request_id,
@@ -274,6 +286,7 @@ class AppGenerateService:
                             workflow_run_id=str(uuid.uuid4()),
                             streaming=False,
                             pause_state_config=pause_config,
+                            session=session,
                         )
                     ),
                     request_id=request_id,
@@ -379,6 +392,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.WORKFLOW:
@@ -391,6 +405,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.CHANNEL | AppMode.RAG_PIPELINE:
@@ -422,6 +437,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.WORKFLOW:
@@ -434,6 +450,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.CHANNEL | AppMode.RAG_PIPELINE:

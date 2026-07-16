@@ -6,7 +6,7 @@ const SCRIPT = fileURLToPath(new URL('./release-r2-publish.sh', import.meta.url)
 
 // Stub `aws` + `curl` + `node` as shell functions that just log action verbs to
 // $ORDER_LOG, then run the publish `main` and assert the order of operations.
-function runPublish(): { code: number, order: string[], stderr: string } {
+function runPublish(): { code: number; order: string[]; stderr: string } {
   const stub = [
     'ORDER_LOG="$(mktemp)"',
     'aws() {',
@@ -23,10 +23,10 @@ function runPublish(): { code: number, order: string[], stderr: string } {
     'node() {',
     '  case "$*" in',
     '    *release-naming.mjs*targets*)',
-    '      printf \'bun-linux-x64\\tlinux-x64\\t0\\nbun-linux-arm64\\tlinux-arm64\\t0\\nbun-darwin-x64\\tdarwin-x64\\t0\\nbun-darwin-arm64\\tdarwin-arm64\\t0\\nbun-windows-x64\\twindows-x64\\t1\\n\' ;;',
-    '    *release-naming.mjs*\' asset \'*)  printf \'difyctl-vX\\n\' ;;',
-    '    *release-r2-edge.mjs*\' index \'*)    echo \'{}\' ;;',
-    '    *release-r2-edge.mjs*\' manifest \'*) echo \'{}\' ;;',
+    "      printf 'bun-linux-x64\\tlinux-x64\\t0\\nbun-linux-arm64\\tlinux-arm64\\t0\\nbun-darwin-x64\\tdarwin-x64\\t0\\nbun-darwin-arm64\\tdarwin-arm64\\t0\\nbun-windows-x64\\twindows-x64\\t1\\n' ;;",
+    "    *release-naming.mjs*' asset '*)  printf 'difyctl-vX\\n' ;;",
+    "    *release-r2-edge.mjs*' index '*)    echo '{}' ;;",
+    "    *release-r2-edge.mjs*' manifest '*) echo '{}' ;;",
     '    *) : ;;',
     '  esac',
     '}',
@@ -49,7 +49,11 @@ function runPublish(): { code: number, order: string[], stderr: string } {
       DIST_DIR: '/tmp',
     },
   })
-  return { code: r.status ?? 1, order: (r.stdout ?? '').trim().split('\n').filter(Boolean), stderr: r.stderr ?? '' }
+  return {
+    code: r.status ?? 1,
+    order: (r.stdout ?? '').trim().split('\n').filter(Boolean),
+    stderr: r.stderr ?? '',
+  }
 }
 
 describe('release-r2-publish order', () => {

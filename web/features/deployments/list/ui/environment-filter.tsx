@@ -22,17 +22,19 @@ function EnvironmentOptionIcon() {
   return <span className="i-ri-server-line size-[14px]" />
 }
 
-function EnvironmentFilterOptionIcon({ option }: {
+function EnvironmentFilterOptionIcon({
+  option,
+}: {
   option: DeploymentsListEnvironmentFilterOption
 }) {
-  return option.kind === 'all'
-    ? <span className="i-ri-apps-2-line size-[14px]" />
-    : <EnvironmentOptionIcon />
+  return option.kind === 'all' ? (
+    <span className="i-ri-apps-2-line size-[14px]" />
+  ) : (
+    <EnvironmentOptionIcon />
+  )
 }
 
-export function EnvironmentFilter({ className }: {
-  className?: string
-}) {
+export function EnvironmentFilter({ className }: { className?: string }) {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
   const [_envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
@@ -41,7 +43,9 @@ export function EnvironmentFilter({ className }: {
   const activeFilter = selectedOption.value
 
   function optionText(option: DeploymentsListEnvironmentFilterOption) {
-    return option.kind === 'all' ? t($ => $['filter.allEnvs']) : option.displayName ?? option.value ?? ''
+    return option.kind === 'all'
+      ? t(($) => $['filter.allEnvs'])
+      : (option.displayName ?? option.value ?? '')
   }
 
   return (
@@ -60,7 +64,12 @@ export function EnvironmentFilter({ className }: {
           {optionText(selectedOption)}
         </div>
         <div className="shrink-0 p-px">
-          <span className={cn('i-ri-arrow-down-s-line size-3.5 text-text-tertiary transition-transform', open && 'rotate-180')} />
+          <span
+            className={cn(
+              'i-ri-arrow-down-s-line size-3.5 text-text-tertiary transition-transform',
+              open && 'rotate-180',
+            )}
+          />
         </div>
       </DropdownMenuTrigger>
       {open && (
@@ -70,7 +79,7 @@ export function EnvironmentFilter({ className }: {
           popupClassName="w-60 rounded-lg border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs"
         >
           <div className="max-h-72 overflow-auto p-1">
-            {filterOptions.map(option => (
+            {filterOptions.map((option) => (
               <DropdownMenuItem
                 key={option.value ?? 'all'}
                 onClick={() => {
@@ -85,7 +94,9 @@ export function EnvironmentFilter({ className }: {
                 <span className="shrink-0 text-text-tertiary">
                   <EnvironmentFilterOptionIcon option={option} />
                 </span>
-                <span className="grow truncate text-sm/5 text-text-tertiary">{optionText(option)}</span>
+                <span className="grow truncate text-sm/5 text-text-tertiary">
+                  {optionText(option)}
+                </span>
                 {option.value === activeFilter && (
                   <span className="i-custom-vender-line-general-check size-4 shrink-0 text-text-secondary" />
                 )}

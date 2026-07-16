@@ -7,12 +7,16 @@ import { SourceAppPicker } from '../source-app-picker'
 const mocks = vi.hoisted(() => {
   const sourceAppsQuery = {
     data: {
-      pages: [{
-        data: [{
-          id: 'app-1',
-          name: 'Workflow App',
-        }],
-      }],
+      pages: [
+        {
+          data: [
+            {
+              id: 'app-1',
+              name: 'Workflow App',
+            },
+          ],
+        },
+      ],
     },
     error: null,
     fetchNextPage: vi.fn(),
@@ -35,12 +39,16 @@ vi.mock('@/features/deployments/create-release/state', async () => {
   const { atom } = await import('jotai')
 
   return {
-    createReleaseSourceAppsAtom: atom(() => mocks.sourceAppsQuery.data.pages.flatMap(page => page.data)),
+    createReleaseSourceAppsAtom: atom(() =>
+      mocks.sourceAppsQuery.data.pages.flatMap((page) => page.data),
+    ),
     createReleaseSourceAppsErrorAtom: atom(() => mocks.sourceAppsQuery.error),
     createReleaseSourceAppsFetchNextPageAtom: atom(() => mocks.sourceAppsQuery.fetchNextPage),
     createReleaseSourceAppsHasNextPageAtom: atom(() => mocks.sourceAppsQuery.hasNextPage),
     createReleaseSourceAppsIsFetchingAtom: atom(() => mocks.sourceAppsQuery.isFetching),
-    createReleaseSourceAppsIsFetchingNextPageAtom: atom(() => mocks.sourceAppsQuery.isFetchingNextPage),
+    createReleaseSourceAppsIsFetchingNextPageAtom: atom(
+      () => mocks.sourceAppsQuery.isFetchingNextPage,
+    ),
     createReleaseSourceAppsIsLoadingAtom: atom(() => mocks.sourceAppsQuery.isLoading),
     createReleaseSourceAppSearchTextAtom: atom(''),
     createReleaseSourceAppsQueryAtom: atom(mocks.sourceAppsQuery),
@@ -76,12 +84,16 @@ describe('SourceAppPicker', () => {
     vi.clearAllMocks()
     Object.assign(mocks.sourceAppsQuery, {
       data: {
-        pages: [{
-          data: [{
-            id: 'app-1',
-            name: 'Workflow App',
-          }],
-        }],
+        pages: [
+          {
+            data: [
+              {
+                id: 'app-1',
+                name: 'Workflow App',
+              },
+            ],
+          },
+        ],
       },
       error: null,
       fetchNextPage: vi.fn(),
@@ -96,7 +108,9 @@ describe('SourceAppPicker', () => {
     renderSourceAppPicker(true)
 
     expect(screen.getByText('Workflow 1')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'deployments.versions.sourceAppOption' })).toBeDisabled()
+    expect(
+      screen.getByRole('combobox', { name: 'deployments.versions.sourceAppOption' }),
+    ).toBeDisabled()
   })
 
   it('should use infinite scroll to load more apps when the picker is open', async () => {
@@ -137,6 +151,8 @@ describe('SourceAppPicker', () => {
         }),
       )
     })
-    expect(screen.queryByRole('button', { name: /createModal\.loadMoreApps/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /createModal\.loadMoreApps/ }),
+    ).not.toBeInTheDocument()
   })
 })
