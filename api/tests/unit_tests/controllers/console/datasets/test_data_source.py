@@ -1,22 +1,22 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import Literal, cast
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import UUID
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets import data_source as module
 from controllers.console.datasets.data_source import DataSourceApi, DataSourceNotionListApi
 from models import Account, DataSourceOauthBinding
+from models.engine import db
 
 ControllerMethod = Callable[..., tuple[dict[str, object], int]]
 
@@ -26,10 +26,15 @@ def unwrap(func: object) -> ControllerMethod:
 
 
 @pytest.fixture
-def flask_app() -> Flask:
+def flask_app() -> Iterator[Flask]:
     app = Flask(__name__)
     app.config["TESTING"] = True
-    return app
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        DataSourceOauthBinding.__table__.create(db.engine)
+        yield app
 
 
 @pytest.fixture
@@ -43,11 +48,7 @@ TENANT_ID = "11111111-1111-1111-1111-111111111111"
 BINDING_ID = "22222222-2222-2222-2222-222222222222"
 
 
-def _route_database_to_sqlite(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session) -> None:
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine, session=sqlite_session))
-
-
-def _add_binding(sqlite_session: Session, *, disabled: bool) -> DataSourceOauthBinding:
+def _add_binding(session: Session, *, disabled: bool) -> DataSourceOauthBinding:
     binding = DataSourceOauthBinding(
         tenant_id=TENANT_ID,
         access_token="token",
@@ -71,20 +72,15 @@ def _add_binding(sqlite_session: Session, *, disabled: bool) -> DataSourceOauthB
     )
     binding.id = BINDING_ID
     binding.created_at = datetime(2026, 5, 25, 1, 2, 3, tzinfo=UTC)
-    sqlite_session.add(binding)
-    sqlite_session.commit()
+    session.add(binding)
+    session.commit()
     return binding
 
 
-@pytest.mark.parametrize("sqlite_session", [(DataSourceOauthBinding,)], indirect=True)
 def test_get_data_source_integrates_serializes_orm_binding(
     flask_app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
-    sqlite_session: Session,
 ) -> None:
-    _route_database_to_sqlite(monkeypatch, sqlite_engine, sqlite_session)
-    binding = _add_binding(sqlite_session, disabled=False)
+    binding = _add_binding(db.session, disabled=False)
     expected_created_at = int(binding.created_at.timestamp())
 
     with flask_app.test_request_context("/"):
@@ -120,15 +116,9 @@ def test_get_data_source_integrates_serializes_orm_binding(
     }
 
 
-@pytest.mark.parametrize("sqlite_session", [(DataSourceOauthBinding,)], indirect=True)
 def test_get_data_source_integrates_preserves_empty_list_when_no_binding(
     flask_app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
-    sqlite_session: Session,
 ) -> None:
-    _route_database_to_sqlite(monkeypatch, sqlite_engine, sqlite_session)
-
     with flask_app.test_request_context("/"):
         response, status = unwrap(DataSourceApi().get)(DataSourceApi(), TENANT_ID)
 
@@ -140,59 +130,53 @@ def test_get_data_source_integrates_preserves_empty_list_when_no_binding(
     ("disabled", "action", "expected_disabled"),
     [(True, "enable", False), (False, "disable", True)],
 )
-@pytest.mark.parametrize("sqlite_session", [(DataSourceOauthBinding,)], indirect=True)
 def test_patch_data_source_binding_updates_state(
     flask_app: Flask,
-    sqlite_session: Session,
     disabled: bool,
     action: str,
     expected_disabled: bool,
 ) -> None:
-    _add_binding(sqlite_session, disabled=disabled)
-    sqlite_session.expunge_all()
+    _add_binding(db.session, disabled=disabled)
+    db.session.expunge_all()
 
     with flask_app.test_request_context("/"):
         response, status = unwrap(DataSourceApi().patch)(
             DataSourceApi(),
-            sqlite_session,
+            db.session,
             TENANT_ID,
             UUID(BINDING_ID),
             cast(Literal["enable", "disable"], action),
         )
 
-    sqlite_session.flush()
-    sqlite_session.expire_all()
-    binding = sqlite_session.scalar(select(DataSourceOauthBinding).where(DataSourceOauthBinding.id == BINDING_ID))
+    db.session.flush()
+    db.session.expire_all()
+    binding = db.session.scalar(select(DataSourceOauthBinding).where(DataSourceOauthBinding.id == BINDING_ID))
     assert status == 200
     assert response == {"result": "success"}
     assert binding is not None
     assert binding.disabled is expected_disabled
 
 
-@pytest.mark.parametrize("sqlite_session", [(DataSourceOauthBinding,)], indirect=True)
 def test_patch_data_source_binding_rejects_unknown_binding(
     flask_app: Flask,
-    sqlite_session: Session,
 ) -> None:
     with flask_app.test_request_context("/"), pytest.raises(NotFound, match="Data source binding not found"):
-        unwrap(DataSourceApi().patch)(DataSourceApi(), sqlite_session, TENANT_ID, UUID(BINDING_ID), "enable")
+        unwrap(DataSourceApi().patch)(DataSourceApi(), db.session, TENANT_ID, UUID(BINDING_ID), "enable")
 
 
 @pytest.mark.parametrize(("disabled", "action"), [(False, "enable"), (True, "disable")])
-@pytest.mark.parametrize("sqlite_session", [(DataSourceOauthBinding,)], indirect=True)
 def test_patch_data_source_binding_rejects_current_state(
     flask_app: Flask,
-    sqlite_session: Session,
     disabled: bool,
     action: str,
 ) -> None:
-    _add_binding(sqlite_session, disabled=disabled)
-    sqlite_session.expunge_all()
+    _add_binding(db.session, disabled=disabled)
+    db.session.expunge_all()
 
     with flask_app.test_request_context("/"), pytest.raises(ValueError):
         unwrap(DataSourceApi().patch)(
             DataSourceApi(),
-            sqlite_session,
+            db.session,
             TENANT_ID,
             UUID(BINDING_ID),
             cast(Literal["enable", "disable"], action),
