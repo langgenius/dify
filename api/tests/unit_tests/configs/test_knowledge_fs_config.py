@@ -21,6 +21,22 @@ def test_knowledge_fs_config_normalizes_complete_connection() -> None:
     assert "server-token" not in config.model_dump_json()
 
 
+def test_knowledge_fs_config_accepts_production_jwt_connection() -> None:
+    config = KnowledgeFSConfig(
+        KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test/gateway",
+        KNOWLEDGE_FS_JWT_AUDIENCE=" knowledge-fs ",
+        KNOWLEDGE_FS_JWT_ISSUER=" dify ",
+        KNOWLEDGE_FS_JWT_SECRET="production-secret-with-at-least-32-bytes",
+    )
+
+    assert config.KNOWLEDGE_FS_JWT_SECRET is not None
+    assert config.KNOWLEDGE_FS_JWT_ISSUER == "dify"
+    assert config.KNOWLEDGE_FS_JWT_AUDIENCE == "knowledge-fs"
+    assert config.KNOWLEDGE_FS_JWT_TTL_SECONDS == 60
+    assert "production-secret" not in repr(config)
+    assert "production-secret" not in config.model_dump_json()
+
+
 def test_knowledge_fs_config_treats_blank_connection_as_disabled() -> None:
     config = KnowledgeFSConfig(
         KNOWLEDGE_FS_BASE_URL=" ",
@@ -59,6 +75,33 @@ def test_knowledge_fs_config_rejects_non_http_absolute_urls(base_url: str) -> No
             KNOWLEDGE_FS_BASE_URL=base_url,
             KNOWLEDGE_FS_API_TOKEN="server-token",
             KNOWLEDGE_FS_STATIC_TENANT_ID="tenant-dev",
+        )
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://user:password@knowledge-fs.test",
+        "https://knowledge-fs.test?region=us",
+        "https://knowledge-fs.test#gateway",
+    ],
+)
+def test_knowledge_fs_config_rejects_unsafe_base_url_components(base_url: str) -> None:
+    with pytest.raises(ValidationError, match="must not include credentials, query, or fragment"):
+        KnowledgeFSConfig(
+            KNOWLEDGE_FS_BASE_URL=base_url,
+            KNOWLEDGE_FS_API_TOKEN="server-token",
+            KNOWLEDGE_FS_STATIC_TENANT_ID="tenant-dev",
+        )
+
+
+def test_knowledge_fs_config_rejects_ambiguous_authentication() -> None:
+    with pytest.raises(ValidationError, match="authentication modes must not be configured together"):
+        KnowledgeFSConfig(
+            KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test",
+            KNOWLEDGE_FS_API_TOKEN="server-token",
+            KNOWLEDGE_FS_STATIC_TENANT_ID="tenant-dev",
+            KNOWLEDGE_FS_JWT_SECRET="production-secret-with-at-least-32-bytes",
         )
 
 

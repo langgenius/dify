@@ -22,7 +22,7 @@ Such a proxy must:
 
 - authenticate the Console caller and enforce the corresponding Dify RBAC permission before forwarding;
 - allowlist exact upstream method and path pairs before any network request;
-- use the SSRF-protected HTTP client with a fixed configured upstream origin;
+- use a dedicated client with a fixed configured upstream origin, environment proxies disabled, and redirects disabled;
 - bound request bodies and expose only explicitly allowlisted response headers;
 - preserve request and response payloads without parsing, reshaping, or documenting them as Dify schemas;
 - translate upstream credential failures so they cannot trigger browser-session authentication recovery; and
