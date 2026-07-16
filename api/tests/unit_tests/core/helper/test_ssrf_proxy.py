@@ -1,3 +1,4 @@
+import gzip
 from unittest.mock import ANY, MagicMock, call, patch
 
 import httpx
@@ -5,6 +6,7 @@ import pytest
 
 from core.helper.ssrf_proxy import (
     SSRF_DEFAULT_MAX_RETRIES,
+    ResponseTooLargeError,
     SSRFProxy,
     _build_ssrf_client,
     _get_user_provided_host_header,
@@ -27,6 +29,57 @@ def test_successful_request(mock_get_client):
     response = make_request("GET", "http://example.com")
     assert response.status_code == 200
     mock_client.request.assert_called_once()
+
+
+def test_request_rejects_response_exceeding_decoded_byte_limit() -> None:
+    payload = b"response-body"
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            content=gzip.compress(payload),
+            headers={"Content-Encoding": "gzip"},
+            request=request,
+        )
+    )
+
+    with (
+        httpx.Client(transport=transport) as client,
+        patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
+        pytest.raises(ResponseTooLargeError, match="response exceeded 8 bytes"),
+    ):
+        make_request(
+            "GET",
+            "http://example.com",
+            max_retries=0,
+            max_response_bytes=8,
+        )
+
+
+def test_request_returns_response_within_decoded_byte_limit() -> None:
+    payload = b"response-body"
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            content=gzip.compress(payload),
+            headers={"Content-Encoding": "gzip"},
+            request=request,
+        )
+    )
+
+    with (
+        httpx.Client(transport=transport) as client,
+        patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
+    ):
+        response = make_request(
+            "GET",
+            "http://example.com",
+            max_retries=0,
+            max_response_bytes=32,
+        )
+
+    assert response.content == payload
+    assert "Content-Encoding" not in response.headers
+    assert str(response.request.url) == "http://example.com"
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)

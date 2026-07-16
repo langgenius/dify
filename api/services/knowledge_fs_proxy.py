@@ -2,9 +2,8 @@
 
 KnowledgeFS owns the request and response contract. This module only binds a
 short-lived workspace identity and normalizes transport failures. The dedicated
-client may contact a private service because the origin is startup configuration,
-paths are exact allowlisted operations, environment proxies are disabled, and
-redirects are never followed.
+request path uses Dify's shared SSRF policy, accepts only exact allowlisted
+operations, never follows redirects, and bounds decoded upstream responses.
 """
 
 from __future__ import annotations
@@ -16,13 +15,15 @@ import httpx
 import jwt
 
 from configs import dify_config
-from core.helper.http_client_pooling import get_pooled_http_client
+from core.helper import ssrf_proxy
+from core.tools.errors import ToolSSRFError
 
 type KnowledgeFSMethod = Literal["GET", "POST"]
 
 _JWT_AUDIENCE = "knowledge-fs"
 _JWT_ISSUER = "dify"
 _JWT_TTL_SECONDS = 60
+_MAX_RESPONSE_BYTES = 1024 * 1024
 
 
 class _KnowledgeFSUpstreamOperation(NamedTuple):
@@ -34,14 +35,6 @@ _ALLOWED_OPERATIONS: dict[tuple[KnowledgeFSMethod, str], _KnowledgeFSUpstreamOpe
     ("GET", "knowledge-spaces"): _KnowledgeFSUpstreamOperation("GET", "knowledge-spaces"),
     ("POST", "knowledge-spaces"): _KnowledgeFSUpstreamOperation("POST", "knowledge-spaces"),
 }
-
-_HTTP_CLIENT = get_pooled_http_client(
-    "knowledge-fs",
-    lambda: httpx.Client(
-        limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
-        trust_env=False,
-    ),
-)
 
 
 class KnowledgeFSConfigurationError(RuntimeError):
@@ -78,7 +71,7 @@ def forward_knowledge_fs_request(
         body: Original JSON request body, when present.
 
     Returns:
-        The raw KnowledgeFS response after one fixed-origin outbound request.
+        The bounded KnowledgeFS response after one fixed-origin outbound request.
 
     Raises:
         KnowledgeFSConfigurationError: The connection is incomplete.
@@ -110,21 +103,31 @@ def forward_knowledge_fs_request(
         jwt_secret.get_secret_value(),
         algorithm="HS256",
     )
-    headers = {"Accept": "application/json", "Authorization": f"Bearer {token}"}
+    headers = {
+        "Accept": "application/json",
+        "Accept-Encoding": "identity",
+        "Authorization": f"Bearer {token}",
+    }
     if body is not None:
         headers["Content-Type"] = "application/json"
 
     try:
         upstream_url = httpx.URL(f"{base_url}/").join(operation.path)
-        return _HTTP_CLIENT.request(
-            operation.method,
-            upstream_url,
+        return ssrf_proxy.make_request(
+            method=operation.method,
+            url=str(upstream_url),
             params=query,
             content=body,
             headers=headers,
             timeout=dify_config.KNOWLEDGE_FS_TIMEOUT_SECONDS,
             follow_redirects=False,
+            max_retries=0,
+            max_response_bytes=_MAX_RESPONSE_BYTES,
         )
+    except ssrf_proxy.ResponseTooLargeError as exc:
+        raise KnowledgeFSTransportError("KnowledgeFS response exceeded the proxy limit") from exc
+    except ToolSSRFError as exc:
+        raise KnowledgeFSConfigurationError("KnowledgeFS origin was blocked by outbound policy") from exc
     except httpx.TimeoutException as exc:
         raise KnowledgeFSTimeoutError("KnowledgeFS request timed out") from exc
     except httpx.RequestError as exc:

@@ -4,9 +4,9 @@ These raw Blueprint routes deliberately stay outside Dify's OpenAPI surface:
 KnowledgeFS owns the wire contract consumed by the frontend. The catch-all path
 avoids resource-specific Dify controllers, while the forwarding module retains
 the explicit product-level operation allowlist. Console auth and method-specific
-dataset RBAC run before forwarding. Bodies are capped at 64 KiB, only safe
-response headers are exposed, and upstream 401/403 responses become 502 so they
-cannot trigger Dify browser-session recovery.
+dataset RBAC run before forwarding. Request bodies are capped at 64 KiB, upstream
+responses at 1 MiB, only safe response headers are exposed, and upstream 401/403
+responses become 502 so they cannot trigger Dify browser-session recovery.
 """
 
 from __future__ import annotations

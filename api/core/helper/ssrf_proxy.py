@@ -47,6 +47,12 @@ class MaxRetriesExceededError(ValueError):
     pass
 
 
+class ResponseTooLargeError(ValueError):
+    """Raised when a decoded response exceeds the configured byte limit."""
+
+    pass
+
+
 request_error = httpx.RequestError
 max_retries_exceeded_error = MaxRetriesExceededError
 
@@ -142,7 +148,21 @@ def _inject_trace_headers(headers: Headers | None) -> Headers:
     return headers
 
 
-def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+def make_request(
+    method: str,
+    url: str,
+    max_retries: int = SSRF_DEFAULT_MAX_RETRIES,
+    max_response_bytes: int | None = None,
+    **kwargs: Any,
+) -> httpx.Response:
+    """Send one SSRF-protected request with an optional decoded response-size limit.
+
+    When ``max_response_bytes`` is set, the response is read incrementally and
+    rejected before more than that many decoded bytes are retained in memory.
+    """
+    if max_response_bytes is not None and max_response_bytes <= 0:
+        raise ValueError("max_response_bytes must be positive")
+
     # Convert requests-style allow_redirects to httpx-style follow_redirects
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
@@ -185,7 +205,29 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
             if user_provided_host is not None:
                 headers["host"] = user_provided_host
             kwargs["headers"] = headers
-            response = client.request(method=method, url=url, **kwargs)
+            if max_response_bytes is None:
+                response = client.request(method=method, url=url, **kwargs)
+            else:
+                with client.stream(method=method, url=url, **kwargs) as streaming_response:
+                    content = bytearray()
+                    for chunk in streaming_response.iter_bytes():
+                        if len(content) + len(chunk) > max_response_bytes:
+                            raise ResponseTooLargeError(f"response exceeded {max_response_bytes} bytes")
+                        content.extend(chunk)
+                    decoded_headers = {
+                        name: value
+                        for name, value in streaming_response.headers.items()
+                        if name.lower() not in {"content-encoding", "content-length", "transfer-encoding"}
+                    }
+                    response = httpx.Response(
+                        streaming_response.status_code,
+                        headers=decoded_headers,
+                        content=bytes(content),
+                        request=streaming_response.request,
+                        extensions=streaming_response.extensions,
+                        history=streaming_response.history,
+                        default_encoding=streaming_response.default_encoding,
+                    )
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
