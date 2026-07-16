@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from http import HTTPStatus
 
 from flask import request
 from flask_restx import Resource, fields, marshal
@@ -47,6 +48,10 @@ logger = logging.getLogger(__name__)
 class WorkspaceListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999)
     limit: int = Field(default=20, ge=1, le=100)
+
+
+class CreateWorkspacePayload(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
 
 
 class SwitchWorkspacePayload(BaseModel):
@@ -157,6 +162,11 @@ class SwitchWorkspaceResponse(ResponseModel):
     new_tenant: TenantInfoResponse
 
 
+class CreateWorkspaceResponse(ResponseModel):
+    result: str
+    new_tenant: TenantInfoResponse
+
+
 class WorkspaceMutationResponse(ResponseModel):
     result: str
     tenant: TenantInfoResponse
@@ -176,6 +186,7 @@ register_schema_models(
     console_ns,
     WorkspaceListQuery,
     SwitchWorkspacePayload,
+    CreateWorkspacePayload,
     WorkspaceCustomConfigPayload,
     WorkspaceInfoPayload,
 )
@@ -185,6 +196,7 @@ register_response_schema_models(
     TenantListResponse,
     WorkspaceListResponse,
     SwitchWorkspaceResponse,
+    CreateWorkspaceResponse,
     WorkspaceMutationResponse,
     WorkspaceLogoUploadResponse,
     WorkspaceCustomConfigResponse,
@@ -335,6 +347,51 @@ class TenantApi(Resource):
                 raise Unauthorized("workspace is archived")
 
         return dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant)), 200
+
+
+@console_ns.route("/workspaces/create")
+class CreateWorkspaceApi(Resource):
+    """允许用户手动创建新的工作空间（社区版二开）。"""
+
+    @console_ns.expect(console_ns.models[CreateWorkspacePayload.__name__])
+    @console_ns.response(HTTPStatus.CREATED, "Created", console_ns.models[CreateWorkspaceResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    def post(self, current_user: Account):
+        # 检查是否允许创建工作空间
+        system_features = FeatureService.get_system_features()
+        if not system_features.is_allow_create_workspace:
+            from controllers.console.error import NotAllowedCreateWorkspace
+
+            raise NotAllowedCreateWorkspace()
+
+        if not system_features.license.workspaces.is_available():
+            from controllers.console.error import WorkspacesLimitExceeded
+
+            raise WorkspacesLimitExceeded()
+
+        # 限制每个用户最多拥有 10 个工作空间，防止滥用
+        MAX_WORKSPACES_PER_USER = 10
+        existing_tenants = TenantService.get_join_tenants(current_user, session=db.session)
+        if len(existing_tenants) >= MAX_WORKSPACES_PER_USER:
+            from controllers.console.error import WorkspacesLimitExceeded
+
+            raise WorkspacesLimitExceeded()
+
+        payload = CreateWorkspacePayload.model_validate(console_ns.payload or {})
+        new_tenant = TenantService.create_tenant(payload.name, session=db.session)
+        TenantService.create_tenant_member(new_tenant, current_user, db.session, role="owner")
+        TenantService.switch_tenant(current_user, new_tenant.id, session=db.session)
+
+        return (
+            CreateWorkspaceResponse(
+                result="success",
+                new_tenant=WorkspaceService.get_tenant_info(new_tenant),
+            ).model_dump(mode="json"),
+            HTTPStatus.CREATED,
+        )
 
 
 @console_ns.route("/workspaces/switch")

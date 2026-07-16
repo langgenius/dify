@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -20,8 +20,10 @@ import { IS_CLOUD_EDITION } from '@/config'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { post } from '@/service/base'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { formatCredits, getRemainingCredits } from '../utils'
@@ -233,9 +235,34 @@ export function WorkspaceCard() {
   const currentWorkspaceInList = workspaces?.find(workspace => workspace.current)
   const { enableBilling } = useProviderContext()
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const showCloudBilling = IS_CLOUD_EDITION && enableBilling
   const [open, setOpen] = useState(false)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [newWorkspaceName, setNewWorkspaceName] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+
+  const handleCreateWorkspace = useCallback(async () => {
+    const trimmedName = newWorkspaceName.trim()
+    if (!trimmedName || isCreating) return
+    setIsCreating(true)
+    try {
+      await post('/workspaces/create', { body: { name: trimmedName } })
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      setShowCreateDialog(false)
+      setNewWorkspaceName('')
+      setOpen(false)
+      // 切换到新工作空间后刷新页面
+      location.assign(`${location.origin}${basePath}`)
+    }
+    catch {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    }
+    finally {
+      setIsCreating(false)
+    }
+  }, [newWorkspaceName, isCreating, t])
 
   if (currentWorkspaceQuery.isPending || workspacesQuery.isPending || !currentWorkspace?.name || !currentWorkspace.role || !workspaces || !currentWorkspaceInList || !isWorkspacePlan(currentWorkspaceInList.plan)) {
     return (
@@ -316,6 +343,64 @@ export function WorkspaceCard() {
                   void handleSwitchWorkspace(workspaceId)
                 }}
               />
+            </div>
+          )}
+          {/* 创建工作空间按钮（社区版二开） */}
+          {systemFeatures?.is_allow_create_workspace && (
+            <div className="border-t border-divider-subtle px-3 py-2">
+              {!showCreateDialog
+                ? (
+                  <button
+                    type="button"
+                    className="flex h-8 w-full items-center gap-2 rounded-lg px-2 py-1 text-left outline-hidden hover:bg-state-base-hover"
+                    onClick={() => setShowCreateDialog(true)}
+                  >
+                    <span aria-hidden className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+                    <span className="system-md-regular text-text-secondary">
+                      {t(($) => $['mainNav.workspace.create'], { ns: 'common' })}
+                    </span>
+                  </button>
+                )
+                : (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      className="h-8 w-full rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2 text-[13px] text-text-secondary outline-hidden placeholder:text-text-placeholder"
+                      placeholder={t(($) => $['mainNav.workspace.createPlaceholder'], { ns: 'common' })}
+                      value={newWorkspaceName}
+                      onChange={e => setNewWorkspaceName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void handleCreateWorkspace()
+                        if (e.key === 'Escape') {
+                          setShowCreateDialog(false)
+                          setNewWorkspaceName('')
+                        }
+                      }}
+                      autoFocus
+                      maxLength={40}
+                    />
+                    <div className="flex justify-end gap-1">
+                      <button
+                        type="button"
+                        className="rounded-md px-2 py-1 text-xs text-text-tertiary hover:bg-state-base-hover"
+                        onClick={() => {
+                          setShowCreateDialog(false)
+                          setNewWorkspaceName('')
+                        }}
+                      >
+                        {t(($) => $['common.operation.cancel'], { ns: 'common' })}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-md bg-components-button-primary-bg px-2 py-1 text-xs text-components-button-primary-text hover:bg-components-button-primary-bg-hover disabled:opacity-50"
+                        disabled={!newWorkspaceName.trim() || isCreating}
+                        onClick={() => void handleCreateWorkspace()}
+                      >
+                        {t(($) => $['common.operation.create'], { ns: 'common' })}
+                      </button>
+                    </div>
+                  </div>
+                )}
             </div>
           )}
         </PopoverContent>

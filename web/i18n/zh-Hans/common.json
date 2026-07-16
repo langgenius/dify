@@ -212,6 +212,8 @@
   "mainNav.workspace.sort.createdTime": "创建时间",
   "mainNav.workspace.sort.lastOpened": "上次打开",
   "mainNav.workspace.sort.openMenu": "排序工作空间",
+  "mainNav.workspace.create": "新建工作空间",
+  "mainNav.workspace.createPlaceholder": "工作空间名称",
   "mcpPage.description": "连接并管理 MCP 服务器，让你的应用可以访问外部工具与服务。",
   "members.adminTip": "能够建立应用程序和管理团队设置",
   "members.alreadyInTeam": "已在团队中",

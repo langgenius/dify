@@ -212,6 +212,8 @@
   "mainNav.workspace.sort.createdTime": "Created time",
   "mainNav.workspace.sort.lastOpened": "Last opened",
   "mainNav.workspace.sort.openMenu": "Sort workspaces",
+  "mainNav.workspace.create": "New workspace",
+  "mainNav.workspace.createPlaceholder": "Workspace name",
   "mcpPage.description": "Connect and manage MCP servers to give your apps access to external tools and services.",
   "members.adminTip": "Can build apps & manage team settings",
   "members.alreadyInTeam": "Already in team",
