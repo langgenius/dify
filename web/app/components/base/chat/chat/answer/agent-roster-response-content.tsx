@@ -194,7 +194,15 @@ function ProcessShell({
   )
 }
 
-function ThoughtProcess({ thought, defaultOpen }: { thought: ThoughtItem; defaultOpen?: boolean }) {
+function ThoughtProcess({
+  thought,
+  defaultOpen,
+  responding,
+}: {
+  thought: ThoughtItem
+  defaultOpen?: boolean
+  responding?: boolean
+}) {
   const { t } = useTranslation()
   const thoughtTitle = t(($) => $['chat.thought'], { ns: 'common' })
   const summary = thought.thought.trim() || thoughtTitle
@@ -206,7 +214,7 @@ function ThoughtProcess({ thought, defaultOpen }: { thought: ThoughtItem; defaul
       expandedTitle={thoughtTitle.toUpperCase()}
       defaultOpen={defaultOpen}
     >
-      <Markdown content={summary} />
+      <Markdown content={summary} isAnimating={Boolean(responding)} />
     </ProcessShell>
   )
 }
@@ -275,7 +283,7 @@ function AgentThoughtsProcessList({ item, responding }: { item: ChatItem; respon
         <AgentThoughtProcessItem
           key={thought.id || `${thought.message_id}-${thought.position}`}
           thought={thought}
-          responding={responding}
+          responding={Boolean(responding && index === (item.agent_thoughts?.length ?? 0) - 1)}
           defaultOpen={index === 0}
         />
       ))}
@@ -302,10 +310,12 @@ function AgentThoughtProcessItem({
           className="px-2 py-2 body-md-regular text-text-primary"
           data-testid="agent-content-markdown"
         >
-          <Markdown content={thought.answer || ''} />
+          <Markdown content={thought.answer || ''} isAnimating={Boolean(responding)} />
         </div>
       )}
-      {!answer && thought.thought && <ThoughtProcess thought={thought} defaultOpen={defaultOpen} />}
+      {!answer && thought.thought && (
+        <ThoughtProcess thought={thought} defaultOpen={defaultOpen} responding={responding} />
+      )}
       {tools.map((tool) => (
         <ToolProcessCard key={`${thought.id}-${tool.name}`} tool={tool} />
       ))}
@@ -342,7 +352,12 @@ function AgentResponsePartList({ item, responding }: { item: ChatItem; respondin
               className="px-2 py-2 body-md-regular text-text-primary"
               data-testid="agent-content-markdown"
             >
-              <Markdown content={part.content} />
+              <Markdown
+                content={part.content}
+                isAnimating={Boolean(
+                  responding && index === (item.agent_response_parts?.length ?? 0) - 1,
+                )}
+              />
             </div>
           )
         }
@@ -351,7 +366,9 @@ function AgentResponsePartList({ item, responding }: { item: ChatItem; respondin
           <AgentThoughtProcessItem
             key={partKey}
             thought={part.thought}
-            responding={responding}
+            responding={Boolean(
+              responding && index === (item.agent_response_parts?.length ?? 0) - 1,
+            )}
             defaultOpen={index === 0}
           />
         )
@@ -430,7 +447,7 @@ export function AgentRosterResponseContent({
               className="px-2 py-2 body-md-regular text-text-primary"
               data-testid="agent-content-markdown"
             >
-              <Markdown content={content} />
+              <Markdown content={content} isAnimating={Boolean(responding)} />
             </div>
           )}
         </>

@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { ChatItem } from '../../types'
 import { memo } from 'react'
 import Thought from '@/app/components/base/chat/chat/thought'
@@ -11,7 +10,7 @@ type AgentContentProps = {
   responding?: boolean
   content?: string
 }
-const AgentContent: FC<AgentContentProps> = ({ item, responding, content }) => {
+function AgentContent({ item, responding, content }: AgentContentProps) {
   const { annotation, agent_thoughts } = item
 
   if (annotation?.logAnnotation) {
@@ -26,12 +25,20 @@ const AgentContent: FC<AgentContentProps> = ({ item, responding, content }) => {
   return (
     <div data-testid="agent-content-container">
       {content ? (
-        <Markdown content={content} data-testid="agent-content-markdown" />
+        <Markdown
+          content={content}
+          isAnimating={Boolean(responding)}
+          data-testid="agent-content-markdown"
+        />
       ) : (
         agent_thoughts?.map((thought, index) => (
           <div key={index} className="px-2 py-1" data-testid="agent-thought-item">
             {thought.thought && (
-              <Markdown content={thought.thought} data-testid="agent-thought-markdown" />
+              <Markdown
+                content={thought.thought}
+                isAnimating={Boolean(responding && index === agent_thoughts.length - 1)}
+                data-testid="agent-thought-markdown"
+              />
             )}
             {/* {item.tool} */}
             {/* perhaps not use tool */}

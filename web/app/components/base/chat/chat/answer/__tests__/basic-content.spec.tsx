@@ -5,8 +5,13 @@ import BasicContent from '../basic-content'
 
 // Mock Markdown component used only in tests
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content, className }: MarkdownProps) => (
-    <div data-testid="basic-content-markdown" data-content={String(content)} className={className}>
+  Markdown: ({ content, className, isAnimating }: MarkdownProps) => (
+    <div
+      data-testid="basic-content-markdown"
+      data-content={String(content)}
+      data-animating={String(Boolean(isAnimating))}
+      className={className}
+    >
       {String(content)}
     </div>
   ),
@@ -25,6 +30,14 @@ describe('BasicContent', () => {
     expect(markdown).toHaveAttribute('data-content', 'Hello World')
   })
 
+  it('enables streaming mode only while the answer is responding', () => {
+    const { rerender } = render(<BasicContent item={mockItem as ChatItem} responding />)
+    expect(screen.getByTestId('basic-content-markdown')).toHaveAttribute('data-animating', 'true')
+
+    rerender(<BasicContent item={mockItem as ChatItem} responding={false} />)
+    expect(screen.getByTestId('basic-content-markdown')).toHaveAttribute('data-animating', 'false')
+  })
+
   it('renders logAnnotation content if present', () => {
     const itemWithAnnotation = {
       ...mockItem,
@@ -37,6 +50,7 @@ describe('BasicContent', () => {
     render(<BasicContent item={itemWithAnnotation as ChatItem} />)
     const markdown = screen.getByTestId('basic-content-markdown')
     expect(markdown).toHaveAttribute('data-content', 'Annotated Content')
+    expect(markdown).toHaveAttribute('data-animating', 'false')
   })
 
   it('renders empty string if logAnnotation content is missing', () => {

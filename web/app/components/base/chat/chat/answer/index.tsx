@@ -263,7 +263,9 @@ const Answer: FC<AnswerProps> = ({
                   <LoadingAnim type="text" />
                 </div>
               )}
-              {!contentIsEmpty && !hasAgentContent && <BasicContent item={item} />}
+              {!contentIsEmpty && !hasAgentContent && (
+                <BasicContent item={item} responding={responding} />
+              )}
               {hasAgentContent && agentContentNode}
               {!!allFiles?.length && (
                 <FileList
@@ -350,7 +352,9 @@ const Answer: FC<AnswerProps> = ({
                   <LoadingAnim type="text" />
                 </div>
               )}
-              {!contentIsEmpty && !hasAgentContent && <BasicContent item={item} />}
+              {!contentIsEmpty && !hasAgentContent && (
+                <BasicContent item={item} responding={responding} />
+              )}
               {hasAgentContent && agentContentNode}
               {!!allFiles?.length && (
                 <FileList

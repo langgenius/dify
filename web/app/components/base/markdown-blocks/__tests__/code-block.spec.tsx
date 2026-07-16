@@ -4,8 +4,9 @@ import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
 import CodeBlock from '../code-block'
 
-const { mockHighlightCode } = vi.hoisted(() => ({
+const { mockHighlightCode, mockIsCodeFenceIncomplete } = vi.hoisted(() => ({
   mockHighlightCode: vi.fn(),
+  mockIsCodeFenceIncomplete: vi.fn(() => false),
 }))
 
 type UseThemeReturn = {
@@ -76,6 +77,10 @@ vi.mock('../shiki-highlight', () => ({
   highlightCode: mockHighlightCode,
 }))
 
+vi.mock('streamdown', () => ({
+  useIsCodeFenceIncomplete: mockIsCodeFenceIncomplete,
+}))
+
 vi.mock('echarts', () => ({
   getInstanceByDom: mockEcharts.getInstanceByDom,
 }))
@@ -142,6 +147,7 @@ const findEchartsInstance = async () => {
 describe('CodeBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsCodeFenceIncomplete.mockReturnValue(false)
     mockUseTheme.mockReturnValue({ theme: Theme.light })
     mockHighlightCode.mockImplementation(async ({ code, language }) => (
       <pre className="shiki">
@@ -218,14 +224,83 @@ describe('CodeBlock', () => {
     })
 
     it('should render syntax-highlighted output when language is standard', async () => {
-      render(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
+      const { container } = render(
+        <CodeBlock className="language-javascript">const x = 1;</CodeBlock>,
+      )
 
       expect(screen.getByText('JavaScript'))!.toBeInTheDocument()
+      expect(container.querySelector('button button')).toBeNull()
+      expect(container.querySelectorAll('button')).toHaveLength(1)
       await waitFor(() => {
         expect(document.querySelector('code.language-javascript')?.textContent).toContain(
           'const x = 1;',
         )
       })
+    })
+
+    it('should keep syntax highlighting visible while the code fence is incomplete', async () => {
+      mockIsCodeFenceIncomplete.mockReturnValue(true)
+
+      render(<CodeBlock className="language-javascript">const pending = true;</CodeBlock>)
+
+      await waitFor(() => {
+        expect(document.querySelector('code.language-javascript')?.textContent).toContain(
+          'const pending = true;',
+        )
+      })
+    })
+
+    it('should throttle streaming highlights and catch up to the latest code', async () => {
+      vi.useFakeTimers()
+      mockIsCodeFenceIncomplete.mockReturnValue(true)
+      const { rerender } = render(
+        <CodeBlock className="language-javascript">const value = 1;</CodeBlock>,
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(document.querySelector('code.language-javascript')?.textContent).toContain(
+        'const value = 1;',
+      )
+
+      rerender(<CodeBlock className="language-javascript">const value = 2;</CodeBlock>)
+      rerender(<CodeBlock className="language-javascript">const value = 3;</CodeBlock>)
+
+      expect(document.querySelector('code.language-javascript')?.textContent).toContain(
+        'const value = 1;',
+      )
+
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync()
+      })
+      expect(document.querySelector('code.language-javascript')?.textContent).toContain(
+        'const value = 3;',
+      )
+    })
+
+    it('should highlight the final code immediately when the fence closes', async () => {
+      vi.useFakeTimers()
+      mockIsCodeFenceIncomplete.mockReturnValue(true)
+      const { rerender } = render(
+        <CodeBlock className="language-javascript">const value = 1;</CodeBlock>,
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+      rerender(<CodeBlock className="language-javascript">const value = 2;</CodeBlock>)
+
+      mockIsCodeFenceIncomplete.mockReturnValue(false)
+      rerender(<CodeBlock className="language-javascript">{'const value = 2;\n'}</CodeBlock>)
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(document.querySelector('code.language-javascript')?.textContent).toContain(
+        'const value = 2;',
+      )
     })
 
     it('should format unknown language labels with capitalized fallback when language is not in map', () => {
@@ -245,6 +320,15 @@ describe('CodeBlock', () => {
 
       expect(screen.getByText('Mermaid'))!.toBeInTheDocument()
       expect(await screen.findByTestId('mock-mermaid'))!.toHaveTextContent('graph TD; A-->B;')
+    })
+
+    it('should defer mermaid rendering while the code fence is incomplete', () => {
+      mockIsCodeFenceIncomplete.mockReturnValue(true)
+
+      render(<CodeBlock className="language-mermaid">{'graph TD; A-->B;'}</CodeBlock>)
+
+      expect(screen.getByText('graph TD; A-->B;'))!.toBeInTheDocument()
+      expect(screen.queryByTestId('mock-mermaid')).not.toBeInTheDocument()
     })
 
     it('should render abc section header when language is abc', () => {

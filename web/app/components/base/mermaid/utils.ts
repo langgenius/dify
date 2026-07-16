@@ -1,3 +1,39 @@
+export class LruCache<K, V> {
+  private readonly entries = new Map<K, V>()
+  private readonly maxEntries: number
+
+  constructor(maxEntries: number) {
+    this.maxEntries = Math.max(1, maxEntries)
+  }
+
+  get size(): number {
+    return this.entries.size
+  }
+
+  get(key: K): V | undefined {
+    const value = this.entries.get(key)
+    if (value === undefined) return undefined
+
+    this.entries.delete(key)
+    this.entries.set(key, value)
+    return value
+  }
+
+  set(key: K, value: V): void {
+    this.entries.delete(key)
+    this.entries.set(key, value)
+
+    if (this.entries.size <= this.maxEntries) return
+
+    const oldestEntry = this.entries.keys().next()
+    if (!oldestEntry.done) this.entries.delete(oldestEntry.value)
+  }
+
+  clear(): void {
+    this.entries.clear()
+  }
+}
+
 export function cleanUpSvgCode(svgCode: string): string {
   return svgCode.replaceAll('<br>', '<br/>')
 }

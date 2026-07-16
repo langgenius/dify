@@ -133,6 +133,13 @@ describe('Markdown', () => {
     render(<Markdown content="content" isAnimating={true} />)
     const props = getLastWrapperProps()
     expect(props.isAnimating).toBe(true)
+    expect(props.mode).toBe('streaming')
+  })
+
+  it('should use static mode by default', () => {
+    render(<Markdown content="content" />)
+    const props = getLastWrapperProps()
+    expect(props.mode).toBe('static')
   })
 
   it('should pass mode through', () => {

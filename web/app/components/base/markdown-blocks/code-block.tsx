@@ -1,19 +1,30 @@
 import type { JSX } from 'react'
 import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
-import ReactEcharts from 'echarts-for-react'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import ActionButton from '@/app/components/base/action-button'
+import { useThrottle } from 'ahooks'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useIsCodeFenceIncomplete } from 'streamdown'
 import CopyIcon from '@/app/components/base/copy-icon'
-import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
 import SVGBtn from '@/app/components/base/svg'
 import useTheme from '@/hooks/use-theme'
 import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
-import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import { highlightCode } from './shiki-highlight'
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
+const ReactEcharts = dynamic(() => import('echarts-for-react'), { ssr: false })
+const MarkdownMusic = dynamic(() => import('@/app/components/base/markdown-blocks/music'), {
+  ssr: false,
+})
+const SVGRenderer = dynamic(() => import('../svg-gallery'), { ssr: false })
+
+const STREAMING_HIGHLIGHT_THROTTLE_OPTIONS = {
+  wait: 200,
+  leading: true,
+  trailing: true,
+} as const
+
+const DEFER_UNTIL_FENCE_COMPLETE = new Set(['mermaid', 'echarts', 'svg', 'abc'])
 
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
@@ -46,6 +57,23 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
 
+const plainCodeStyle = {
+  paddingLeft: 12,
+  borderBottomLeftRadius: '10px',
+  borderBottomRightRadius: '10px',
+  backgroundColor: 'var(--color-components-input-bg-normal)',
+  margin: 0,
+  overflow: 'auto',
+} as const
+
+function PlainCodeBlock({ code }: { code: string }) {
+  return (
+    <pre style={plainCodeStyle}>
+      <code>{code}</code>
+    </pre>
+  )
+}
+
 // **Add code block
 // Avoid error #185 (Maximum update depth exceeded.
 // This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate.
@@ -65,19 +93,23 @@ const ShikiCodeBlock = memo(
     language,
     theme,
     initial,
+    isStreaming,
   }: {
     code: string
     language: string
     theme: BundledTheme
     initial?: JSX.Element
+    isStreaming: boolean
   }) => {
     const [nodes, setNodes] = useState(initial)
+    const throttledCode = useThrottle(code, STREAMING_HIGHLIGHT_THROTTLE_OPTIONS)
+    const codeToHighlight = isStreaming ? throttledCode : code
 
-    useLayoutEffect(() => {
+    useEffect(() => {
       let cancelled = false
 
       void highlightCode({
-        code,
+        code: codeToHighlight,
         language: language as BundledLanguage,
         theme,
       })
@@ -92,24 +124,9 @@ const ShikiCodeBlock = memo(
       return () => {
         cancelled = true
       }
-    }, [code, language, theme])
+    }, [codeToHighlight, language, theme])
 
-    if (!nodes) {
-      return (
-        <pre
-          style={{
-            paddingLeft: 12,
-            borderBottomLeftRadius: '10px',
-            borderBottomRightRadius: '10px',
-            backgroundColor: 'var(--color-components-input-bg-normal)',
-            margin: 0,
-            overflow: 'auto',
-          }}
-        >
-          <code>{code}</code>
-        </pre>
-      )
-    }
+    if (!nodes) return <PlainCodeBlock code={code} />
 
     return (
       <div
@@ -139,14 +156,13 @@ type EChartsEventParams = {
 }
 
 const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
+  const isCodeFenceIncomplete = useIsCodeFenceIncomplete()
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
   const [finalChartOption, setFinalChartOption] = useState<any>(null)
-  const echartsRef = useRef<any>(null)
   const contentRef = useRef<string>('')
   const processedRef = useRef<boolean>(false) // Track if content was successfully processed
-  const isInitialRenderRef = useRef<boolean>(true) // Track if this is initial render
   const chartInstanceRef = useRef<any>(null) // Direct reference to ECharts instance
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null) // For debounce handling
   const chartReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -257,13 +273,12 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       clearResizeTimer()
       clearChartReadyTimer()
       chartInstanceRef.current = null
-      echartsRef.current = null
     }
   }, [clearResizeTimer, clearChartReadyTimer])
   // Process chart data when content changes
   useEffect(() => {
     // Only process echarts content
-    if (language !== 'echarts') return
+    if (language !== 'echarts' || isCodeFenceIncomplete) return
 
     // Reset state when new content is detected
     if (!contentRef.current) {
@@ -317,7 +332,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
           trimmedContent.split('{').length !== trimmedContent.split('}').length)) ||
       (trimmedContent.startsWith('[') &&
         (!trimmedContent.endsWith(']') ||
-          trimmedContent.split('[').length !== trimmedContent.split('}').length)) ||
+          trimmedContent.split('[').length !== trimmedContent.split(']').length)) ||
       trimmedContent.split('"').length % 2 !== 1 ||
       (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
 
@@ -342,11 +357,14 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         processedRef.current = true
       }
     }
-  }, [language, children])
+  }, [language, children, isCodeFenceIncomplete])
 
   // Cache rendered content to avoid unnecessary re-renders
   const renderCodeContent = useMemo(() => {
     const content = String(children).replace(/\n$/, '')
+    if (isCodeFenceIncomplete && DEFER_UNTIL_FENCE_COMPLETE.has(language || ''))
+      return <PlainCodeBlock code={content} />
+
     switch (language) {
       case 'mermaid':
         return <Flowchart PrimitiveCode={content} theme={theme as 'light' | 'dark'} />
@@ -441,12 +459,6 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
             >
               <ErrorBoundary>
                 <ReactEcharts
-                  ref={(e) => {
-                    if (e && isInitialRenderRef.current) {
-                      echartsRef.current = e
-                      isInitialRenderRef.current = false
-                    }
-                  }}
                   option={finalChartOption}
                   style={echartsStyle}
                   theme={isDarkMode ? 'dark' : undefined}
@@ -482,7 +494,6 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
           >
             <ErrorBoundary>
               <ReactEcharts
-                ref={echartsRef}
                 option={errorOption}
                 style={echartsStyle}
                 theme={isDarkMode ? 'dark' : undefined}
@@ -505,26 +516,26 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       case 'abc':
         return (
           <ErrorBoundary>
-            <MarkdownMusic children={content} />
+            <MarkdownMusic>{content}</MarkdownMusic>
           </ErrorBoundary>
         )
       default:
         return (
           <ShikiCodeBlock
             code={content}
-            language={match?.[1] || 'text'}
+            isStreaming={isCodeFenceIncomplete}
+            language={language || 'text'}
             theme={isDarkMode ? 'github-dark' : 'github-light'}
           />
         )
     }
   }, [
     children,
+    isCodeFenceIncomplete,
     language,
     isSVG,
     finalChartOption,
-    props,
     theme,
-    match,
     chartState,
     isDarkMode,
     echartsStyle,
@@ -546,9 +557,10 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
         <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-          <ActionButton>
-            <CopyIcon content={String(children).replace(/\n$/, '')} />
-          </ActionButton>
+          <CopyIcon
+            className="m-0 size-7 items-center justify-center rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            content={String(children).replace(/\n$/, '')}
+          />
         </div>
       </div>
       {renderCodeContent}

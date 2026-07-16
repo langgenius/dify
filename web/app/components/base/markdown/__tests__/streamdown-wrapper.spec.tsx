@@ -3,10 +3,14 @@ import { render, screen } from '@testing-library/react'
 import StreamdownWrapper from '../streamdown-wrapper'
 
 const TILDE_RANGE_RE = /0\.3~8mm/
+const { mockCodeBlock } = vi.hoisted(() => ({
+  mockCodeBlock: vi.fn(),
+}))
 
 vi.mock('@/app/components/base/markdown-blocks', () => ({
   AudioBlock: ({ children }: PropsWithChildren) => <div data-testid="audio-block">{children}</div>,
   Img: ({ alt }: { alt?: string }) => <span data-testid="img">{alt}</span>,
+  InlineCode: ({ children }: PropsWithChildren) => <code>{children}</code>,
   Link: ({ children, href }: { children?: ReactNode; href?: string }) => (
     <a href={href}>{children}</a>
   ),
@@ -23,7 +27,10 @@ vi.mock('@/app/components/base/markdown-blocks', () => ({
 }))
 
 vi.mock('@/app/components/base/markdown-blocks/code-block', () => ({
-  default: ({ children }: PropsWithChildren) => <code>{children}</code>,
+  default: ({ children }: PropsWithChildren) => {
+    mockCodeBlock({ children })
+    return <code>{children}</code>
+  },
 }))
 
 describe('StreamdownWrapper', () => {
@@ -138,6 +145,14 @@ describe('StreamdownWrapper', () => {
       // We mocked code block to return <code>{children}</code>
       const codeElement = await screen.findByText('console.log("hello")')
       expect(codeElement)!.toBeInTheDocument()
+      expect(mockCodeBlock).toHaveBeenCalled()
+    })
+
+    it('should render inline code without loading the block code renderer', () => {
+      render(<StreamdownWrapper latexContent="Use `inline` code" />)
+
+      expect(screen.getByText('inline'))!.toBeInTheDocument()
+      expect(mockCodeBlock).not.toHaveBeenCalled()
     })
   })
 

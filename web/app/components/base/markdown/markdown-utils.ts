@@ -9,26 +9,19 @@ import { ALLOW_UNSAFE_DATA_SCHEME } from '@/config'
 export const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string') return content
 
-  const codeBlockRegex = /```[\s\S]*?```/g
-  const codeBlocks = content.match(codeBlockRegex) || []
-  const escapeReplacement = (str: string) => str.replace(/\$/g, '_TMP_REPLACE_DOLLAR_')
-  let processedContent = content.replace(codeBlockRegex, 'CODE_BLOCK_PLACEHOLDER')
-
-  processedContent = flow([
+  const fencedCodeBlockRegex = /(```[\s\S]*?(?:```|$))/g
+  const preprocessText = flow([
     (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
     (str: string) => str.replace(/\\\[([\s\S]*?)\\\]/g, (_, equation) => `$$${equation}$$`),
     (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
     (str: string) =>
       str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
-  ])(processedContent)
+  ])
 
-  codeBlocks.forEach((block) => {
-    processedContent = processedContent.replace('CODE_BLOCK_PLACEHOLDER', escapeReplacement(block))
-  })
-
-  processedContent = processedContent.replace(/_TMP_REPLACE_DOLLAR_/g, '$')
-
-  return processedContent
+  return content
+    .split(fencedCodeBlockRegex)
+    .map((segment) => (segment.startsWith('```') ? segment : preprocessText(segment)))
+    .join('')
 }
 
 export const preprocessThinkTag = (content: string) => {

@@ -45,6 +45,7 @@ export const Markdown = memo((props: MarkdownProps) => {
     className,
   } = props
   const latexContent = useMemo(() => preprocess(content), [content])
+  const resolvedMode = mode ?? (isAnimating ? 'streaming' : 'static')
 
   return (
     <div
@@ -59,7 +60,7 @@ export const Markdown = memo((props: MarkdownProps) => {
         remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}
         isAnimating={isAnimating}
-        mode={mode}
+        mode={resolvedMode}
       />
     </div>
   )
