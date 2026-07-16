@@ -24,6 +24,12 @@ describe('KnowledgeFS generated contract', () => {
       true,
     )
     expect(zPostKnowledgeSpacesByIdDocumentsBulkBody.safeParse({ files: [] }).success).toBe(false)
+    expect(zPostKnowledgeSpacesByIdDocumentsBody.safeParse({ file: 'not-binary' }).success).toBe(
+      false,
+    )
+    expect(
+      zPostKnowledgeSpacesByIdDocumentsBulkBody.safeParse({ files: ['not-binary'] }).success,
+    ).toBe(false)
     expect(
       zPostKnowledgeSpacesByIdDocumentsBody.safeParse({ documentId: 'invalid', file }).success,
     ).toBe(false)

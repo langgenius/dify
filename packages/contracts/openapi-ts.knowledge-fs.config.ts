@@ -42,9 +42,18 @@ export default defineConfig({
       '~resolvers': {
         string: (context) => {
           if (context.schema.format !== 'binary') return
+          const isBinary = $.func()
+            .param('value')
+            .do(
+              $('Blob')
+                .attr('prototype')
+                .attr('isPrototypeOf')
+                .call($('Object').call($('value')))
+                .return(),
+            )
           return $(context.symbols.z)
             .attr('custom')
-            .call()
+            .call(isBinary)
             .generic($.type.or($.type('Blob'), $.type('File')))
         },
       },

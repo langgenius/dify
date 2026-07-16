@@ -25,6 +25,15 @@ from services.knowledge_fs_contract_routes import KNOWLEDGE_FS_CONTRACT_OPERATIO
 type KnowledgeFSMethod = Literal["DELETE", "GET", "PATCH", "POST", "PUT"]
 type KnowledgeFSResponseKind = Literal["binary", "buffered", "stream"]
 type KnowledgeFSAccess = Literal["read", "write"]
+type KnowledgeFSRBACPermission = Literal[
+    "dataset_access_config",
+    "dataset_api_key_manage",
+    "dataset_create_and_management",
+    "dataset_document_download",
+    "dataset_edit",
+    "dataset_external_connect",
+    "dataset_readonly",
+]
 
 _JWT_AUDIENCE = "knowledge-fs"
 _JWT_ISSUER = "dify"
@@ -37,6 +46,7 @@ class KnowledgeFSOperation(NamedTuple):
     path: str
     response_kind: KnowledgeFSResponseKind
     access: KnowledgeFSAccess
+    rbac_permission: KnowledgeFSRBACPermission
     max_response_bytes: int
     request_headers: tuple[str, ...]
     response_headers: tuple[str, ...]
@@ -150,7 +160,7 @@ def forward_knowledge_fs_request(
             if content_encoding not in {"", "identity"}:
                 response.close()
                 raise KnowledgeFSTransportError("KnowledgeFS streaming response used an unsupported encoding")
-            _set_response_read_timeout(response, dify_config.KNOWLEDGE_FS_STREAM_IDLE_TIMEOUT_SECONDS)
+            _set_response_read_timeout(response, None)
             return KnowledgeFSUpstreamResponse(response, response_kind)
 
         max_response_bytes = (
@@ -177,6 +187,7 @@ def get_knowledge_fs_operation(method: KnowledgeFSMethod, path: str) -> Knowledg
         template,
         response_kind,
         access,
+        rbac_permission,
         max_response_bytes,
         request_headers,
         response_headers,
@@ -187,6 +198,7 @@ def get_knowledge_fs_operation(method: KnowledgeFSMethod, path: str) -> Knowledg
                 path,
                 response_kind=cast(KnowledgeFSResponseKind, response_kind),
                 access=cast(KnowledgeFSAccess, access),
+                rbac_permission=cast(KnowledgeFSRBACPermission, rbac_permission),
                 max_response_bytes=max_response_bytes,
                 request_headers=request_headers,
                 response_headers=response_headers,
@@ -224,7 +236,7 @@ def _is_json_content_type(content_type: str) -> bool:
     return content_type == "application/json" or content_type.endswith("+json")
 
 
-def _set_response_read_timeout(response: httpx.Response, timeout_seconds: float) -> None:
+def _set_response_read_timeout(response: httpx.Response, timeout_seconds: float | None) -> None:
     """Set the body-read timeout after headers identify a valid SSE response."""
     try:
         request = response.request

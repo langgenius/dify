@@ -11,7 +11,6 @@ _REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 _KNOWLEDGE_FS_DOCKER_VARIABLES = (
     "KNOWLEDGE_FS_BASE_URL",
     "KNOWLEDGE_FS_JWT_SECRET",
-    "KNOWLEDGE_FS_STREAM_IDLE_TIMEOUT_SECONDS",
     "KNOWLEDGE_FS_TIMEOUT_SECONDS",
 )
 
@@ -37,12 +36,6 @@ def test_knowledge_fs_config_treats_blank_connection_as_disabled() -> None:
 
     assert config.KNOWLEDGE_FS_BASE_URL is None
     assert config.KNOWLEDGE_FS_JWT_SECRET is None
-
-
-def test_knowledge_fs_config_accepts_a_bounded_stream_idle_timeout() -> None:
-    config = KnowledgeFSConfig(KNOWLEDGE_FS_STREAM_IDLE_TIMEOUT_SECONDS=45.0)
-
-    assert config.KNOWLEDGE_FS_STREAM_IDLE_TIMEOUT_SECONDS == 45.0
 
 
 def test_knowledge_fs_docker_config_is_not_shadowed_by_root_env() -> None:
@@ -98,9 +91,3 @@ def test_knowledge_fs_config_rejects_unsafe_base_url_components(base_url: str) -
 def test_knowledge_fs_config_rejects_unbounded_timeouts(timeout_seconds: float) -> None:
     with pytest.raises(ValidationError):
         KnowledgeFSConfig(KNOWLEDGE_FS_TIMEOUT_SECONDS=timeout_seconds)
-
-
-@pytest.mark.parametrize("timeout_seconds", [float("inf"), float("nan"), 300.0001])
-def test_knowledge_fs_config_rejects_unbounded_stream_idle_timeouts(timeout_seconds: float) -> None:
-    with pytest.raises(ValidationError):
-        KnowledgeFSConfig(KNOWLEDGE_FS_STREAM_IDLE_TIMEOUT_SECONDS=timeout_seconds)

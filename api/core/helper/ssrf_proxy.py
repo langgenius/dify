@@ -231,12 +231,11 @@ def make_request(
     # When using a forward proxy, httpx may override the Host header based on the URL.
     # We extract and preserve any explicitly set Host header to support virtual hosting.
     user_provided_host = _get_user_provided_host_header(headers)
-    stream_send_kwargs: dict[str, Any] = {}
-    if stream_response:
-        if "auth" in kwargs:
-            stream_send_kwargs["auth"] = kwargs.pop("auth")
-        if "follow_redirects" in kwargs:
-            stream_send_kwargs["follow_redirects"] = kwargs.pop("follow_redirects")
+    send_kwargs: dict[str, Any] = {}
+    if "auth" in kwargs:
+        send_kwargs["auth"] = kwargs.pop("auth")
+    if "follow_redirects" in kwargs:
+        send_kwargs["follow_redirects"] = kwargs.pop("follow_redirects")
 
     retries = 0
     while retries <= max_retries:
@@ -247,14 +246,14 @@ def make_request(
             if user_provided_host is not None:
                 headers["host"] = user_provided_host
             kwargs["headers"] = headers
+            request = client.build_request(method=method, url=url, **kwargs)
             if stream_response:
-                request = client.build_request(method=method, url=url, **kwargs)
-                response = client.send(request, stream=True, **stream_send_kwargs)
+                response = client.send(request, stream=True, **send_kwargs)
             elif max_response_bytes is None:
-                response = client.request(method=method, url=url, **kwargs)
+                response = client.send(request, **send_kwargs)
             else:
-                with client.stream(method=method, url=url, **kwargs) as streaming_response:
-                    response = buffer_response(streaming_response, max_response_bytes=max_response_bytes)
+                streaming_response = client.send(request, stream=True, **send_kwargs)
+                response = buffer_response(streaming_response, max_response_bytes=max_response_bytes)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):

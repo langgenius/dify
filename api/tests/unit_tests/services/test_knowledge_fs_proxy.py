@@ -28,13 +28,11 @@ def _set_config(
     *,
     base_url: str | None = "http://knowledge-fs.test",
     timeout_seconds: float = 7.5,
-    stream_idle_timeout_seconds: float = 45.0,
     jwt_secret: str | None = _JWT_SECRET,
 ) -> None:
     values = {
         "KNOWLEDGE_FS_BASE_URL": base_url,
         "KNOWLEDGE_FS_TIMEOUT_SECONDS": timeout_seconds,
-        "KNOWLEDGE_FS_STREAM_IDLE_TIMEOUT_SECONDS": stream_idle_timeout_seconds,
         "KNOWLEDGE_FS_JWT_SECRET": SecretStr(jwt_secret) if jwt_secret is not None else None,
     }
     for name, value in values.items():
@@ -192,7 +190,35 @@ def test_generated_proxy_operations_preserve_transport_metadata() -> None:
     assert delete_space.request_headers == ("idempotency-key",)
     assert query.response_headers == ("x-query-run-id", "x-session-id", "x-trace-id")
     assert query.max_response_bytes == 64 * 1024 * 1024
-    assert parse_artifact.max_response_bytes == 64 * 1024 * 1024
+    assert parse_artifact.max_response_bytes == 1024 * 1024
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "expected_permission"),
+    [
+        ("GET", "knowledge-spaces", "dataset_readonly"),
+        ("POST", "knowledge-spaces", "dataset_create_and_management"),
+        ("DELETE", "knowledge-spaces/space-1", "dataset_edit"),
+        ("PATCH", "knowledge-spaces/space-1", "dataset_edit"),
+        ("POST", "knowledge-spaces/space-1/documents", "dataset_edit"),
+        ("PATCH", "knowledge-spaces/space-1/access-policy", "dataset_access_config"),
+        ("POST", "knowledge-spaces/space-1/api-keys", "dataset_api_key_manage"),
+        (
+            "GET",
+            "knowledge-spaces/space-1/documents/document-1/multimodal/item-1/asset",
+            "dataset_document_download",
+        ),
+        ("POST", "knowledge-spaces/space-1/source-connections", "dataset_external_connect"),
+    ],
+)
+def test_generated_proxy_operations_preserve_dify_permissions(
+    method: KnowledgeFSMethod,
+    path: str,
+    expected_permission: str,
+) -> None:
+    operation = get_knowledge_fs_operation(method, path)
+
+    assert operation.rbac_permission == expected_permission
 
 
 def test_binary_response_uses_the_runtime_asset_limit(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -237,7 +263,7 @@ def test_binary_response_larger_than_json_limit_remains_callable(monkeypatch: py
     assert result.response.content == payload
 
 
-def test_sse_response_uses_a_bounded_idle_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sse_response_disables_the_body_read_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
     upstream_request = httpx.Request(
         "POST",
@@ -262,7 +288,7 @@ def test_sse_response_uses_a_bounded_idle_timeout(monkeypatch: pytest.MonkeyPatc
     assert result.response is response
     assert result.response_kind == "stream"
     assert request.call_args.kwargs["timeout"] == 7.5
-    assert result.response.request.extensions["timeout"]["read"] == 45.0
+    assert result.response.request.extensions["timeout"]["read"] is None
     assert request.call_args.kwargs["stream_response"] is True
 
 
@@ -288,7 +314,7 @@ def test_sse_operation_buffers_json_errors(monkeypatch: pytest.MonkeyPatch) -> N
     assert result.response.is_closed
 
 
-def test_parse_artifact_uses_its_contract_response_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_parse_artifact_rejects_json_over_the_contract_response_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
     payload = b'{"text":"' + b"x" * (2 * 1024 * 1024) + b'"}'
     transport = httpx.MockTransport(
@@ -302,14 +328,12 @@ def test_parse_artifact_uses_its_contract_response_limit(monkeypatch: pytest.Mon
 
     with httpx.Client(transport=transport) as client:
         monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda _verify: client)
-        result = forward_knowledge_fs_request(
-            method="GET",
-            path="knowledge-spaces/space-1/documents/document-1/parse-artifacts/1",
-            tenant_id="tenant-dev",
-        )
-
-    assert result.response_kind == "buffered"
-    assert result.response.content == payload
+        with pytest.raises(KnowledgeFSTransportError, match="violated the proxy limit"):
+            forward_knowledge_fs_request(
+                method="GET",
+                path="knowledge-spaces/space-1/documents/document-1/parse-artifacts/1",
+                tenant_id="tenant-dev",
+            )
 
 
 def test_sse_response_rejects_compression_and_closes_the_stream(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -340,7 +364,7 @@ def test_sse_response_rejects_compression_and_closes_the_stream(monkeypatch: pyt
         ("PATCH", "knowledge-spaces/space-1", "knowledge-spaces:write"),
         ("POST", "queries", "knowledge-spaces:read"),
         ("POST", "research-tasks/plan", "knowledge-spaces:read"),
-        ("POST", "agent-workspace-snapshots/snapshot-1/replay", "knowledge-spaces:read"),
+        ("POST", "agent-workspace-snapshots/snapshot-1/replay", "knowledge-spaces:write"),
         ("POST", "knowledge-spaces", "knowledge-spaces:write"),
         ("PUT", "knowledge-spaces/space-1/retrieval-profile", "knowledge-spaces:write"),
     ],
@@ -386,11 +410,14 @@ def test_auth_signs_current_workspace_principal(
     [
         "queries",
         "research-tasks/plan",
-        "agent-workspace-snapshots/snapshot-1/replay",
     ],
 )
 def test_read_post_operations_are_generated_as_read_access(path: str) -> None:
     assert get_knowledge_fs_operation("POST", path).access == "read"
+
+
+def test_snapshot_replay_is_generated_as_write_access() -> None:
+    assert get_knowledge_fs_operation("POST", "agent-workspace-snapshots/snapshot-1/replay").access == "write"
 
 
 def test_timeout_is_normalized(monkeypatch: pytest.MonkeyPatch) -> None:

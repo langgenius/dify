@@ -25,7 +25,8 @@ from controllers.console.knowledge_fs_proxy import (
     proxy_knowledge_fs_get,
     proxy_knowledge_fs_write,
 )
-from controllers.console.wraps import RBACPermission
+from controllers.console.wraps import RBACPermission, RBACResourceScope
+from core.helper import ssrf_proxy
 from services.knowledge_fs_proxy import (
     KnowledgeFSConfigurationError,
     KnowledgeFSResponseKind,
@@ -49,10 +50,29 @@ class _EventStream(httpx.SyncByteStream):
         yield self._content
 
 
-def _set_current_workspace(monkeypatch: pytest.MonkeyPatch, *, editor: bool = True) -> None:
+class _FailingEventStream(httpx.SyncByteStream):
+    def __iter__(self) -> Iterator[bytes]:
+        yield b"event: delta\ndata: first\n\n"
+        request = httpx.Request("POST", "http://knowledge-fs.test/queries")
+        raise httpx.ReadTimeout("stream timed out", request=request)
+
+
+def _set_current_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    editor: bool = True,
+    has_edit_permission: bool = True,
+    admin_or_owner: bool = True,
+) -> None:
+    account = MagicMock(
+        id="account-1",
+        has_edit_permission=has_edit_permission,
+        is_admin_or_owner=admin_or_owner,
+        is_dataset_editor=editor,
+    )
     monkeypatch.setattr(
         "controllers.console.knowledge_fs_proxy.current_account_with_tenant",
-        lambda: (MagicMock(id="account-1", is_dataset_editor=editor), "tenant-1"),
+        lambda: (account, "tenant-1"),
     )
 
 
@@ -88,20 +108,45 @@ def test_console_blueprint_registers_generic_knowledge_fs_routes() -> None:
 
 
 @pytest.mark.parametrize(
-    ("route", "route_args", "unwrap_count", "permission"),
+    ("route", "method", "path", "permission"),
     [
-        (proxy_knowledge_fs_get, ("knowledge-spaces",), 4, RBACPermission.DATASET_READONLY),
+        (proxy_knowledge_fs_get, "GET", "knowledge-spaces", RBACPermission.DATASET_READONLY),
         (
-            _proxy_knowledge_fs_read_operation,
-            ("POST", "queries"),
-            0,
+            proxy_knowledge_fs_write,
+            "POST",
+            "queries",
             RBACPermission.DATASET_READONLY,
         ),
         (
-            _proxy_knowledge_fs_mutation,
-            ("knowledge-spaces",),
-            0,
+            proxy_knowledge_fs_write,
+            "POST",
+            "knowledge-spaces",
             RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        ),
+        (proxy_knowledge_fs_write, "DELETE", "knowledge-spaces/space-1", RBACPermission.DATASET_EDIT),
+        (
+            proxy_knowledge_fs_write,
+            "PATCH",
+            "knowledge-spaces/space-1/access-policy",
+            RBACPermission.DATASET_ACCESS_CONFIG,
+        ),
+        (
+            proxy_knowledge_fs_write,
+            "POST",
+            "knowledge-spaces/space-1/api-keys",
+            RBACPermission.DATASET_API_KEY_MANAGE,
+        ),
+        (
+            proxy_knowledge_fs_get,
+            "GET",
+            "knowledge-spaces/space-1/documents/document-1/multimodal/item-1/asset",
+            RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
+        ),
+        (
+            proxy_knowledge_fs_write,
+            "POST",
+            "knowledge-spaces/space-1/source-connections",
+            RBACPermission.DATASET_EXTERNAL_CONNECT,
         ),
     ],
 )
@@ -109,26 +154,33 @@ def test_generic_routes_enforce_contract_specific_workspace_rbac(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     route,
-    route_args: tuple[str, ...],
-    unwrap_count: int,
+    method: str,
+    path: str,
     permission: RBACPermission,
 ) -> None:
-    method = route
-    for _ in range(unwrap_count):
-        method = method.__wrapped__
-
-    monkeypatch.setattr("controllers.common.wraps.dify_config.RBAC_ENABLED", True)
-    monkeypatch.setattr(
-        "controllers.common.wraps.current_account_with_tenant",
-        lambda: (MagicMock(id="account-1"), "tenant-1"),
+    response_kind: KnowledgeFSResponseKind = (
+        "binary" if permission == RBACPermission.DATASET_DOCUMENT_DOWNLOAD else "buffered"
     )
-    enforce = MagicMock(side_effect=Forbidden())
-    monkeypatch.setattr("controllers.common.wraps.enforce_rbac_access", enforce)
+    upstream = httpx.Response(
+        200,
+        content=b"asset" if response_kind == "binary" else b"{}",
+        headers={"Content-Type": "application/octet-stream" if response_kind == "binary" else "application/json"},
+    )
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        MagicMock(return_value=_upstream(upstream, response_kind)),
+    )
+    enforce = MagicMock()
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.enforce_rbac_access", enforce)
+    _set_current_workspace(monkeypatch)
+    _bypass_policy_wrappers(monkeypatch)
+    raw_route = unwrap(route)
 
-    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces", method="POST"):
-        with pytest.raises(Forbidden):
-            method(*route_args)
+    with app.test_request_context(f"/console/api/knowledge-fs/{path}", method=method, data=b"{}"):
+        response = raw_route(path)
 
+    assert isinstance(response, Response)
+    assert enforce.call_args.kwargs["resource_type"] == RBACResourceScope.DATASET
     assert enforce.call_args.kwargs["scene"] == permission
     assert enforce.call_args.kwargs["resource_required"] is False
 
@@ -354,6 +406,70 @@ def test_generic_post_rejects_non_editor(app: Flask, monkeypatch: pytest.MonkeyP
     forward.assert_not_called()
 
 
+def test_api_key_mutation_requires_workspace_edit_permission(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    forward = MagicMock()
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request", forward)
+    _set_current_workspace(monkeypatch, has_edit_permission=False)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces/space-1/api-keys",
+        method="POST",
+        data=b"{}",
+        content_type="application/json",
+    ):
+        with pytest.raises(Forbidden):
+            route("knowledge-spaces/space-1/api-keys")
+
+    forward.assert_not_called()
+
+
+def test_api_key_deletion_requires_workspace_admin_or_owner(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    forward = MagicMock()
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request", forward)
+    _set_current_workspace(monkeypatch, admin_or_owner=False)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces/space-1/api-keys/key-1",
+        method="DELETE",
+    ):
+        with pytest.raises(Forbidden):
+            route("knowledge-spaces/space-1/api-keys/key-1")
+
+    forward.assert_not_called()
+
+
+def test_access_policy_mutation_requires_workspace_admin_or_owner(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    forward = MagicMock()
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request", forward)
+    _set_current_workspace(monkeypatch, admin_or_owner=False)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces/space-1/access-policy",
+        method="PATCH",
+        data=b"{}",
+        content_type="application/json",
+    ):
+        with pytest.raises(Forbidden):
+            route("knowledge-spaces/space-1/access-policy")
+
+    forward.assert_not_called()
+
+
 def test_read_post_allows_non_editor_and_streams_sse(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
@@ -436,6 +552,7 @@ def test_sse_response_uses_the_generated_operation_limit(
     )
     operation = MagicMock(
         access="read",
+        rbac_permission="dataset_readonly",
         max_response_bytes=1,
         request_headers=(),
         response_headers=(),
@@ -451,7 +568,34 @@ def test_sse_response_uses_the_generated_operation_limit(
     with app.test_request_context("/console/api/knowledge-fs/queries", method="POST", data=b"{}"):
         response = route("queries")
         assert isinstance(response, Response)
-        assert response.get_data() == b""
+        with pytest.raises(ssrf_proxy.ResponseTooLargeError, match="response exceeded 1 bytes"):
+            response.get_data()
+
+    assert upstream.is_closed
+
+
+def test_sse_transport_failure_is_visible_to_the_client(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    upstream = httpx.Response(
+        200,
+        stream=_FailingEventStream(),
+        headers={"Content-Type": "text/event-stream"},
+    )
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        MagicMock(return_value=_upstream(upstream, "stream")),
+    )
+    _set_current_workspace(monkeypatch, editor=False)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
+
+    with app.test_request_context("/console/api/knowledge-fs/queries", method="POST", data=b"{}"):
+        response = route("queries")
+        assert isinstance(response, Response)
+        with pytest.raises(httpx.ReadTimeout, match="stream timed out"):
+            response.get_data()
 
     assert upstream.is_closed
 

@@ -31,15 +31,16 @@ from werkzeug.exceptions import (
     ServiceUnavailable,
 )
 
+from controllers.common.wraps import enforce_rbac_access
 from controllers.console import api, bp
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
-    rbac_permission_required,
     setup_required,
 )
+from core.helper import ssrf_proxy
 from libs.login import current_account_with_tenant, login_required
 from services.knowledge_fs_proxy import (
     KnowledgeFSConfigurationError,
@@ -130,10 +131,8 @@ def _stream_response_body(
             total_bytes += len(chunk)
             if total_bytes > max_response_bytes:
                 logger.warning("KnowledgeFS stream exceeded the proxy limit for tenant_id=%s", tenant_id)
-                return
+                raise ssrf_proxy.ResponseTooLargeError(f"response exceeded {max_response_bytes} bytes")
             yield chunk
-    except httpx.RequestError:
-        logger.warning("KnowledgeFS stream disconnected for tenant_id=%s", tenant_id)
     finally:
         upstream.close()
 
@@ -198,8 +197,25 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     current_user, tenant_id = current_account_with_tenant()
     try:
         operation = get_knowledge_fs_operation(method, upstream_path)
+        permission = RBACPermission(operation.rbac_permission)
+        if permission == RBACPermission.DATASET_ACCESS_CONFIG and not current_user.is_admin_or_owner:
+            raise Forbidden()
+        if permission == RBACPermission.DATASET_API_KEY_MANAGE and (
+            (method == "DELETE" and not current_user.is_admin_or_owner)
+            or (method != "DELETE" and not current_user.has_edit_permission)
+        ):
+            raise Forbidden()
+        if permission == RBACPermission.DATASET_EXTERNAL_CONNECT and not current_user.has_edit_permission:
+            raise Forbidden()
         if operation.access == "write" and not current_user.is_dataset_editor:
             raise Forbidden()
+        enforce_rbac_access(
+            tenant_id=tenant_id,
+            account_id=current_user.id,
+            resource_type=RBACResourceScope.DATASET,
+            scene=permission,
+            resource_required=False,
+        )
         upstream = forward_knowledge_fs_request(
             method=method,
             path=upstream_path,
@@ -227,28 +243,18 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     )
 
 
-@rbac_permission_required(
-    RBACResourceScope.DATASET,
-    RBACPermission.DATASET_READONLY,
-    resource_required=False,
-)
 @cloud_edition_billing_rate_limit_check("knowledge")
 def _proxy_knowledge_fs_read_operation(
     method: KnowledgeFSMethod,
     upstream_path: str,
 ) -> ResponseReturnValue:
-    """Apply read RBAC and billing checks to contract-declared read-only non-GET operations."""
+    """Apply billing checks to contract-declared read-only non-GET operations."""
     return _proxy_request(method, upstream_path)
 
 
-@rbac_permission_required(
-    RBACResourceScope.DATASET,
-    RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
-    resource_required=False,
-)
 @cloud_edition_billing_rate_limit_check("knowledge")
 def _proxy_knowledge_fs_mutation(upstream_path: str) -> ResponseReturnValue:
-    """Apply mutation RBAC and billing checks to contract-declared writes."""
+    """Apply billing checks to contract-declared writes."""
     return _proxy_request(cast(KnowledgeFSMethod, request.method), upstream_path)
 
 
@@ -257,11 +263,6 @@ def _proxy_knowledge_fs_mutation(upstream_path: str) -> ResponseReturnValue:
 @setup_required
 @login_required
 @account_initialization_required
-@rbac_permission_required(
-    RBACResourceScope.DATASET,
-    RBACPermission.DATASET_READONLY,
-    resource_required=False,
-)
 def proxy_knowledge_fs_get(upstream_path: str) -> ResponseReturnValue:
     """Forward one authenticated, dataset-readable GET request.
 

@@ -2802,7 +2802,9 @@ export const zDeleteKnowledgeSpacesByIdDocumentsBulkPath = z.object({
 export const zDeleteKnowledgeSpacesByIdDocumentsBulkResponse = zDurableBulkDeletionAccepted
 
 export const zPostKnowledgeSpacesByIdDocumentsBulkBody = z.object({
-  files: z.array(z.custom<Blob | File>()).min(1),
+  files: z
+    .array(z.custom<Blob | File>((value) => Blob.prototype.isPrototypeOf(Object(value))))
+    .min(1),
   targets: z.string().optional(),
 })
 
@@ -3594,7 +3596,7 @@ export const zPostKnowledgeSpacesByIdDocumentsBody = z.object({
   documentId: z.uuid().optional(),
   expectedActiveRevision: z.union([z.int().gt(0), z.enum(['null'])]).optional(),
   expectedDocumentRowVersion: z.int().gte(0).nullish(),
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => Blob.prototype.isPrototypeOf(Object(value))),
   sourceId: z.uuid().optional(),
 })
 
@@ -3660,7 +3662,7 @@ export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdMultimodalByItemIdAsset
  */
 export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdMultimodalByItemIdAssetResponse = z.custom<
   Blob | File
->()
+>((value) => Blob.prototype.isPrototypeOf(Object(value)))
 
 export const zGetKnowledgeSpacesByIdLogicalDocumentsPath = z.object({
   id: z.uuid(),
