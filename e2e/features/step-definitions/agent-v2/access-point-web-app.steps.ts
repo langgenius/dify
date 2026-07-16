@@ -10,6 +10,11 @@ const WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS = 180_000
 
 const getWebAppMessageInput = (webAppPage: Page) => webAppPage.getByPlaceholder(/^Talk to /).last()
 
+const recordComposerDraftSnapshot = async (world: DifyWorld) => {
+  const draft = await getAgentComposerDraft(getCurrentAgentId(world))
+  world.agentBuilder.accessPoint.composerDraftSnapshot = JSON.stringify(draft.agent_soul ?? {})
+}
+
 Then('I should see the Agent v2 Web app access URL', async function (this: DifyWorld) {
   const webAppCard = getWebAppCard(this)
 
@@ -19,16 +24,8 @@ Then('I should see the Agent v2 Web app access URL', async function (this: DifyW
   await expect(webAppCard.getByRole('link', { name: 'Launch' })).toBeVisible()
 })
 
-Then(
-  'Agent v2 Web app access actions must preserve the current orchestration',
-  async function (this: DifyWorld) {
-    const draft = await getAgentComposerDraft(getCurrentAgentId(this))
-
-    this.agentBuilder.accessPoint.composerDraftSnapshot = JSON.stringify(draft.agent_soul ?? {})
-  },
-)
-
 When('I copy the Agent v2 Web app access URL', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   await getWebAppCard(this).getByLabel('Copy access URL').click()
 })
 
@@ -37,6 +34,7 @@ Then('the Agent v2 Web app access URL should show it was copied', async function
 })
 
 When('I launch the Agent v2 Web app', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   const launchLink = getWebAppCard(this).getByRole('link', { name: 'Launch' })
   const href = await launchLink.getAttribute('href')
   if (!href) throw new Error('Agent v2 Web app Launch link does not expose an href.')
@@ -127,6 +125,7 @@ When('I close the Agent v2 Web app', async function (this: DifyWorld) {
 })
 
 When('I open Agent v2 Embedded configuration', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   await getWebAppCard(this).getByRole('button', { name: 'Embedded' }).click()
 })
 
@@ -139,6 +138,7 @@ Then('I should see the Agent v2 Embedded configuration dialog', async function (
 })
 
 When('I open Agent v2 Web app customization', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   await getWebAppCard(this).getByRole('button', { name: 'Custom Frontend' }).click()
 })
 
@@ -151,6 +151,7 @@ Then('I should see the Agent v2 Web app customization dialog', async function (t
 })
 
 When('I open Agent v2 Web app settings', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   await getWebAppCard(this).getByRole('button', { name: 'Branding' }).click()
 })
 

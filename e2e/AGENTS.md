@@ -189,13 +189,8 @@ CI enables a JSON report gate after Cucumber exits. The gate asserts minimum sel
 scenario counts, maximum skipped counts, and zero unexplained skips. A skipped scenario counts as
 an explained blocked precondition only when its skipped step attaches a `Blocked precondition:`
 reason. This keeps feature-gated and preflight readiness reporting visible without allowing a
-zero-coverage or silently skipped CI run to pass. The thresholds are configured with:
-
-- `E2E_CUCUMBER_REPORT_PROFILE`
-- `E2E_CUCUMBER_MIN_SELECTED_SCENARIOS`
-- `E2E_CUCUMBER_MIN_PASSED_SCENARIOS`
-- `E2E_CUCUMBER_MAX_SKIPPED_SCENARIOS`
-- `E2E_CUCUMBER_MAX_UNEXPECTED_SKIPPED_SCENARIOS`
+zero-coverage or silently skipped CI run to pass. Set `E2E_CUCUMBER_REPORT_PROFILE` to select the
+checked-in `core`, `webkit-browser-smoke`, or `external` thresholds and allowed blocked tags.
 
 Open the HTML report locally with:
 

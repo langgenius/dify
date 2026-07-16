@@ -6,7 +6,7 @@ import {
   summarizeCucumberReport,
 } from '../support/cucumber-report'
 
-const step = (status: string, options: { blockedReason?: string; hidden?: boolean } = {}) => ({
+const step = (status?: string, options: { blockedReason?: string; hidden?: boolean } = {}) => ({
   ...(options.blockedReason
     ? {
         embeddings: [
@@ -18,12 +18,13 @@ const step = (status: string, options: { blockedReason?: string; hidden?: boolea
       }
     : {}),
   ...(options.hidden ? { hidden: true } : {}),
-  result: { status },
+  ...(status ? { result: { status } } : {}),
 })
 
-const scenario = (name: string, steps: ReturnType<typeof step>[]) => ({
+const scenario = (name: string, steps: ReturnType<typeof step>[], tags: string[] = []) => ({
   name,
   steps,
+  tags: tags.map((tag) => ({ name: tag })),
   type: 'scenario',
 })
 
@@ -33,7 +34,11 @@ describe('summarizeCucumberReport', () => {
       {
         elements: [
           scenario('passes', [step('passed')]),
-          scenario('blocked', [step('passed'), step('skipped', { blockedReason: 'fixture' })]),
+          scenario(
+            'blocked',
+            [step('passed'), step('skipped', { blockedReason: 'fixture' })],
+            ['@fixture'],
+          ),
           scenario('unexpected skip', [step('skipped')]),
         ],
         uri: 'features/example.feature',
@@ -41,6 +46,13 @@ describe('summarizeCucumberReport', () => {
     ])
 
     expect(summary).toEqual({
+      blockedScenarios: [
+        {
+          name: 'blocked',
+          tags: ['@fixture'],
+          uri: 'features/example.feature',
+        },
+      ],
       blockedSkipped: 1,
       failed: 0,
       other: 0,
@@ -62,11 +74,27 @@ describe('summarizeCucumberReport', () => {
     expect(summary.failed).toBe(1)
     expect(summary.passed).toBe(0)
   })
+
+  it('classifies a scenario with a missing step status as unclassified', () => {
+    const summary = summarizeCucumberReport([
+      {
+        elements: [scenario('missing status', [step('passed', { hidden: true }), step()])],
+        uri: 'features/example.feature',
+      },
+    ])
+
+    expect(summary.other).toBe(1)
+    expect(summary.passed).toBe(0)
+  })
 })
 
 describe('assertCucumberReport', () => {
   it('accepts an explicitly blocked readiness report within configured limits', () => {
     const summary = {
+      blockedScenarios: [
+        { name: 'fixture blocked', tags: ['@fixture'], uri: 'features/example.feature' },
+        { name: 'preflight blocked', tags: ['@preflight'], uri: 'features/example.feature' },
+      ],
       blockedSkipped: 2,
       failed: 0,
       other: 0,
@@ -78,6 +106,7 @@ describe('assertCucumberReport', () => {
 
     expect(() =>
       assertCucumberReport(summary, {
+        allowedBlockedTags: ['@fixture', '@preflight'],
         maxSkipped: 2,
         maxUnexpectedSkipped: 0,
         minPassed: 3,
@@ -89,6 +118,9 @@ describe('assertCucumberReport', () => {
 
   it('rejects zero coverage, all-skipped coverage, and unexplained skips', () => {
     const summary = {
+      blockedScenarios: [
+        { name: 'fixture blocked', tags: ['@fixture'], uri: 'features/example.feature' },
+      ],
       blockedSkipped: 1,
       failed: 0,
       other: 0,
@@ -100,6 +132,7 @@ describe('assertCucumberReport', () => {
 
     expect(() =>
       assertCucumberReport(summary, {
+        allowedBlockedTags: ['@fixture'],
         maxSkipped: 2,
         maxUnexpectedSkipped: 0,
         minPassed: 1,
@@ -115,6 +148,34 @@ describe('assertCucumberReport', () => {
       ].join('\n'),
     )
   })
+
+  it('rejects an explicitly blocked scenario outside the allowed dependency tags', () => {
+    const summary = {
+      blockedScenarios: [
+        { name: 'core regression', tags: ['@core'], uri: 'features/example.feature' },
+      ],
+      blockedSkipped: 1,
+      failed: 0,
+      other: 0,
+      passed: 1,
+      selected: 2,
+      skipped: 1,
+      unexpectedSkipped: 0,
+    }
+
+    expect(() =>
+      assertCucumberReport(summary, {
+        allowedBlockedTags: ['@fixture'],
+        maxSkipped: 1,
+        maxUnexpectedSkipped: 0,
+        minPassed: 1,
+        minSelected: 2,
+        profile: 'core',
+      }),
+    ).toThrow(
+      'blocked scenarios without an allowed dependency tag: features/example.feature: core regression',
+    )
+  })
 })
 
 describe('getCucumberReportGate', () => {
@@ -122,30 +183,26 @@ describe('getCucumberReportGate', () => {
     expect(getCucumberReportGate({})).toBeUndefined()
   })
 
-  it('reads configurable scenario thresholds', () => {
+  it('returns the checked-in gate for a known profile', () => {
     expect(
       getCucumberReportGate({
-        E2E_CUCUMBER_MAX_SKIPPED_SCENARIOS: '55',
-        E2E_CUCUMBER_MAX_UNEXPECTED_SKIPPED_SCENARIOS: '0',
-        E2E_CUCUMBER_MIN_PASSED_SCENARIOS: '60',
-        E2E_CUCUMBER_MIN_SELECTED_SCENARIOS: '110',
-        E2E_CUCUMBER_REPORT_PROFILE: 'core',
+        E2E_CUCUMBER_REPORT_PROFILE: 'webkit-browser-smoke',
       }),
     ).toEqual({
-      maxSkipped: 55,
+      allowedBlockedTags: [],
+      maxSkipped: 0,
       maxUnexpectedSkipped: 0,
-      minPassed: 60,
-      minSelected: 110,
-      profile: 'core',
+      minPassed: 4,
+      minSelected: 4,
+      profile: 'webkit-browser-smoke',
     })
   })
 
-  it('rejects invalid thresholds instead of silently weakening the gate', () => {
+  it('rejects an unknown profile instead of silently weakening the gate', () => {
     expect(() =>
       getCucumberReportGate({
-        E2E_CUCUMBER_MIN_SELECTED_SCENARIOS: '-1',
-        E2E_CUCUMBER_REPORT_PROFILE: 'core',
+        E2E_CUCUMBER_REPORT_PROFILE: 'custom',
       }),
-    ).toThrow('E2E_CUCUMBER_MIN_SELECTED_SCENARIOS must be a non-negative integer, got "-1".')
+    ).toThrow('Unknown Cucumber report gate profile "custom".')
   })
 })

@@ -643,7 +643,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
               onOpenChange={setIsOperationsMenuOpen}
             >
               <DropdownMenuTrigger
-                aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+                aria-label={`${t(($) => $['operation.more'], { ns: 'common' })}: ${app.name}`}
                 className={cn(
                   'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                   isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
@@ -1193,9 +1193,9 @@ export function AppCard({
 
   return (
     <>
-      <article aria-labelledby={appNameId} className="group relative col-span-1 h-41.5">
+      <div className="group relative col-span-1 h-41.5">
         {isPreviewOnly ? (
-          <div
+          <article
             role="button"
             tabIndex={0}
             aria-disabled="true"
@@ -1206,7 +1206,7 @@ export function AppCard({
             onKeyDown={handlePreviewOnlyCardKeyDown}
           >
             {appCardContent}
-          </div>
+          </article>
         ) : (
           <Link
             href={appHref}
@@ -1271,7 +1271,7 @@ export function AppCard({
                 onOpenChange={setIsOperationsMenuOpen}
               >
                 <DropdownMenuTrigger
-                  aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+                  aria-label={`${t(($) => $['operation.more'], { ns: 'common' })}: ${app.name}`}
                   className={cn(
                     'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                     isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
@@ -1335,7 +1335,7 @@ export function AppCard({
             )}
           </div>
         )}
-      </article>
+      </div>
       {showEditModal && (
         <EditAppModal
           isEditModal

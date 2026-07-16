@@ -17,10 +17,9 @@ When('I open the options menu for the last created E2E app', async function (thi
 
   const page = this.getPage()
   const appLink = page.getByRole('link', { name: appName, exact: true })
-  const appCard = page.getByRole('article', { name: appName, exact: true })
   await expect(appLink).toBeVisible()
-  await appCard.hover()
-  await appCard.getByRole('button', { name: 'More' }).click()
+  await appLink.hover()
+  await page.getByRole('button', { name: `More: ${appName}`, exact: true }).click()
 })
 
 When('I click {string} in the app options menu', async function (this: DifyWorld, label: string) {

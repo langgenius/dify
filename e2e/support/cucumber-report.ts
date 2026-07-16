@@ -15,7 +15,9 @@ type CucumberStep = {
 }
 
 type CucumberScenario = {
+  name?: string
   steps?: CucumberStep[]
+  tags?: { name?: string }[]
   type?: string
 }
 
@@ -25,6 +27,11 @@ export type CucumberReport = {
 }[]
 
 export type CucumberReportSummary = {
+  blockedScenarios: {
+    name: string
+    tags: string[]
+    uri: string
+  }[]
   blockedSkipped: number
   failed: number
   other: number
@@ -35,6 +42,7 @@ export type CucumberReportSummary = {
 }
 
 export type CucumberReportGate = {
+  allowedBlockedTags: string[]
   maxSkipped: number
   maxUnexpectedSkipped: number
   minPassed: number
@@ -42,26 +50,57 @@ export type CucumberReportGate = {
   profile: string
 }
 
-const readThreshold = (env: NodeJS.ProcessEnv, name: string, defaultValue: number) => {
-  const value = env[name]
-  if (value === undefined) return defaultValue
-
-  const parsed = Number(value)
-  if (!Number.isSafeInteger(parsed) || parsed < 0)
-    throw new Error(`${name} must be a non-negative integer, got "${value}".`)
-
-  return parsed
-}
+const reportGateProfiles = {
+  core: {
+    allowedBlockedTags: [
+      '@agent-v2-preflight',
+      '@feature-gated',
+      '@stable-model',
+      '@speech-to-text-model',
+      '@agent-decision-model',
+      '@broken-model',
+      '@tool-fixture',
+      '@skill-fixture',
+      '@knowledge-fixture',
+      '@full-config-agent',
+      '@tool-states-agent',
+      '@oauth-tool-agent',
+      '@dual-retrieval-fixture',
+      '@backend-api-access',
+      '@published-web-app',
+      '@workflow-reference',
+    ],
+    maxSkipped: 44,
+    maxUnexpectedSkipped: 0,
+    minPassed: 65,
+    minSelected: 109,
+  },
+  external: {
+    allowedBlockedTags: [],
+    maxSkipped: 0,
+    maxUnexpectedSkipped: 0,
+    minPassed: 11,
+    minSelected: 11,
+  },
+  'webkit-browser-smoke': {
+    allowedBlockedTags: [],
+    maxSkipped: 0,
+    maxUnexpectedSkipped: 0,
+    minPassed: 4,
+    minSelected: 4,
+  },
+} satisfies Record<string, Omit<CucumberReportGate, 'profile'>>
 
 export const getCucumberReportGate = (env: NodeJS.ProcessEnv): CucumberReportGate | undefined => {
   const profile = env.E2E_CUCUMBER_REPORT_PROFILE?.trim()
   if (!profile) return undefined
 
+  const gate = reportGateProfiles[profile as keyof typeof reportGateProfiles]
+  if (!gate) throw new Error(`Unknown Cucumber report gate profile "${profile}".`)
+
   return {
-    maxSkipped: readThreshold(env, 'E2E_CUCUMBER_MAX_SKIPPED_SCENARIOS', 0),
-    maxUnexpectedSkipped: readThreshold(env, 'E2E_CUCUMBER_MAX_UNEXPECTED_SKIPPED_SCENARIOS', 0),
-    minPassed: readThreshold(env, 'E2E_CUCUMBER_MIN_PASSED_SCENARIOS', 1),
-    minSelected: readThreshold(env, 'E2E_CUCUMBER_MIN_SELECTED_SCENARIOS', 1),
+    ...gate,
+    allowedBlockedTags: [...gate.allowedBlockedTags],
     profile,
   }
 }
@@ -80,6 +119,7 @@ const hasBlockedPrecondition = (steps: CucumberStep[]) =>
 
 export const summarizeCucumberReport = (report: CucumberReport): CucumberReportSummary => {
   const summary: CucumberReportSummary = {
+    blockedScenarios: [],
     blockedSkipped: 0,
     failed: 0,
     other: 0,
@@ -104,10 +144,21 @@ export const summarizeCucumberReport = (report: CucumberReport): CucumberReportS
         continue
       }
 
+      if (steps.length === 0 || statuses.length !== steps.length) {
+        summary.other += 1
+        continue
+      }
+
       if (statuses.includes('skipped')) {
         summary.skipped += 1
-        if (hasBlockedPrecondition(steps)) summary.blockedSkipped += 1
-        else summary.unexpectedSkipped += 1
+        if (hasBlockedPrecondition(steps)) {
+          summary.blockedSkipped += 1
+          summary.blockedScenarios.push({
+            name: scenario.name || '<unnamed scenario>',
+            tags: (scenario.tags || []).flatMap((tag) => (tag.name ? [tag.name] : [])),
+            uri: feature.uri || '<unknown feature>',
+          })
+        } else summary.unexpectedSkipped += 1
         continue
       }
 
@@ -131,6 +182,10 @@ export const readCucumberReportSummary = async (reportPath: string) => {
 
 export const assertCucumberReport = (summary: CucumberReportSummary, gate: CucumberReportGate) => {
   const errors: string[] = []
+  const allowedBlockedTags = new Set(gate.allowedBlockedTags)
+  const disallowedBlockedScenarios = summary.blockedScenarios.filter(
+    (scenario) => !scenario.tags.some((tag) => allowedBlockedTags.has(tag)),
+  )
 
   if (summary.selected < gate.minSelected)
     errors.push(`selected scenarios ${summary.selected} is below minimum ${gate.minSelected}`)
@@ -141,6 +196,13 @@ export const assertCucumberReport = (summary: CucumberReportSummary, gate: Cucum
   if (summary.unexpectedSkipped > gate.maxUnexpectedSkipped) {
     errors.push(
       `unexpected skipped scenarios ${summary.unexpectedSkipped} exceeds maximum ${gate.maxUnexpectedSkipped}`,
+    )
+  }
+  if (disallowedBlockedScenarios.length > 0) {
+    errors.push(
+      `blocked scenarios without an allowed dependency tag: ${disallowedBlockedScenarios
+        .map((scenario) => `${scenario.uri}: ${scenario.name}`)
+        .join(', ')}`,
     )
   }
   if (summary.failed > 0) errors.push(`failed scenarios ${summary.failed} exceeds maximum 0`)

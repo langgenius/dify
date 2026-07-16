@@ -7,8 +7,8 @@ import { e2eBrowser } from '../../../test-env'
 const getAccountMenuTrigger = (world: DifyWorld) =>
   world.getPage().getByRole('button', { name: 'Account' })
 
-const getBlankAppTrigger = (world: DifyWorld) =>
-  world.getPage().getByRole('main').getByRole('button', { name: 'Create from Blank' })
+const getCreateAppMenuTrigger = (world: DifyWorld) =>
+  world.getPage().getByRole('main').getByRole('button', { name: 'Create', exact: true })
 
 When(
   'I focus and activate the skip navigation link with the keyboard',
@@ -57,28 +57,26 @@ When('I open and close the account menu using the keyboard', async function (thi
   const page = this.getPage()
   const trigger = getAccountMenuTrigger(this)
 
-  await trigger.focus()
-  await page.keyboard.press('Enter')
-  await expect(page.getByRole('menu')).toBeVisible()
+  await trigger.press('Enter')
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('menu')).not.toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
 })
 
 Then('the account menu trigger should regain keyboard focus', async function (this: DifyWorld) {
   await expect(getAccountMenuTrigger(this)).toBeFocused()
 })
 
-When('I open and close the blank app dialog using the keyboard', async function (this: DifyWorld) {
+When('I open and close the create app menu using the keyboard', async function (this: DifyWorld) {
   const page = this.getPage()
-  const trigger = getBlankAppTrigger(this)
+  const trigger = getCreateAppMenuTrigger(this)
 
-  await trigger.focus()
-  await page.keyboard.press('Enter')
-  await expect(page.getByRole('dialog', { name: 'Create from Blank' })).toBeVisible()
+  await trigger.press('Enter')
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog', { name: 'Create from Blank' })).not.toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
 })
 
-Then('the blank app trigger should regain keyboard focus', async function (this: DifyWorld) {
-  await expect(getBlankAppTrigger(this)).toBeFocused()
+Then('the create app menu trigger should regain keyboard focus', async function (this: DifyWorld) {
+  await expect(getCreateAppMenuTrigger(this)).toBeFocused()
 })

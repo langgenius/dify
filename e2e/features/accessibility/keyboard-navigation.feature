@@ -23,8 +23,8 @@ Feature: Keyboard navigation
     Then the account menu trigger should regain keyboard focus
 
   @authenticated
-  Scenario: Closing the create app dialog restores focus to its trigger
+  Scenario: Closing the create app menu restores focus to its trigger
     Given I am signed in as the default E2E admin
     When I open the apps console
-    And I open and close the blank app dialog using the keyboard
-    Then the blank app trigger should regain keyboard focus
+    And I open and close the create app menu using the keyboard
+    Then the create app menu trigger should regain keyboard focus

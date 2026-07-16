@@ -16,7 +16,6 @@ Feature: Agent v2 Access Point
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Web app access URL
-    And Agent v2 Web app access actions must preserve the current orchestration
     When I copy the Agent v2 Web app access URL
     Then the Agent v2 Web app access URL should show it was copied
     And the current Agent v2 orchestration draft should be unchanged
@@ -30,7 +29,6 @@ Feature: Agent v2 Access Point
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Web app access URL
-    And Agent v2 Web app access actions must preserve the current orchestration
     When I launch the Agent v2 Web app
     Then the Agent v2 Web app should open in a new tab
     And the current Agent v2 orchestration draft should be unchanged
@@ -42,7 +40,6 @@ Feature: Agent v2 Access Point
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    And Agent v2 Web app access actions must preserve the current orchestration
     And I open Agent v2 Embedded configuration
     Then I should see the Agent v2 Embedded configuration dialog
     And the current Agent v2 orchestration draft should be unchanged
@@ -54,7 +51,6 @@ Feature: Agent v2 Access Point
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    And Agent v2 Web app access actions must preserve the current orchestration
     And I open Agent v2 Web app customization
     Then I should see the Agent v2 Web app customization dialog
     And the current Agent v2 orchestration draft should be unchanged
@@ -66,7 +62,6 @@ Feature: Agent v2 Access Point
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    And Agent v2 Web app access actions must preserve the current orchestration
     And I open Agent v2 Web app settings
     Then I should see the Agent v2 Web app settings dialog
     And the current Agent v2 orchestration draft should be unchanged
