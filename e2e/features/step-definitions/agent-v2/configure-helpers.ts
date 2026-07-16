@@ -174,8 +174,10 @@ export const openAgentAdvancedSettings = async (page: ReturnType<DifyWorld['getP
   return advancedSettings
 }
 
-export const getAgentEnvVariableRow = (advancedSettings: Locator, key: string) =>
-  advancedSettings.getByRole('row', { name: `Key: ${key}`, exact: true })
+export const getAgentEnvVariableRow = (advancedSettings: Locator, key: string) => {
+  const rowHeader = advancedSettings.getByRole('rowheader', { name: key, exact: true })
+  return advancedSettings.getByRole('row').filter({ has: rowHeader })
+}
 
 export const expectAgentEnvVariableRows = async (
   advancedSettings: Locator,

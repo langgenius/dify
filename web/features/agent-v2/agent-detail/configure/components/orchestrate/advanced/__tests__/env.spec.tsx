@@ -247,7 +247,7 @@ describe('AgentEnvEditor', () => {
       expect(screen.queryByDisplayValue('sk-original')).not.toBeInTheDocument()
     })
 
-    it('should expose each environment variable as a named table row', () => {
+    it('should expose each environment variable key as its row header', () => {
       render(
         <EnvVariablesTable
           editable
@@ -268,12 +268,12 @@ describe('AgentEnvEditor', () => {
       const table = screen.getByRole('table', {
         name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.label',
       })
-      const row = within(table).getByRole('row', {
-        name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.keyColumn: API_KEY',
-      })
+      const rowHeader = within(table).getByRole('rowheader', { name: 'API_KEY' })
+      const row = rowHeader.closest<HTMLElement>('[role="row"]')
 
-      expect(within(row).getByRole('textbox', { name: /keyColumn/ })).toHaveValue('API_KEY')
-      expect(within(row).getByRole('textbox', { name: /valueColumn/ })).toHaveValue('secret-value')
+      expect(row).not.toBeNull()
+      expect(within(row!).getByRole('textbox', { name: /keyColumn/ })).toHaveValue('API_KEY')
+      expect(within(row!).getByRole('textbox', { name: /valueColumn/ })).toHaveValue('secret-value')
     })
   })
 })

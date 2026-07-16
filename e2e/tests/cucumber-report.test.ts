@@ -106,7 +106,9 @@ describe('assertCucumberReport', () => {
 
     expect(() =>
       assertCucumberReport(summary, {
-        allowedBlockedTags: ['@fixture', '@preflight'],
+        allowedBlockedScenarios: {
+          'features/example.feature': ['fixture blocked', 'preflight blocked'],
+        },
         maxSkipped: 2,
         maxUnexpectedSkipped: 0,
         minPassed: 3,
@@ -132,7 +134,9 @@ describe('assertCucumberReport', () => {
 
     expect(() =>
       assertCucumberReport(summary, {
-        allowedBlockedTags: ['@fixture'],
+        allowedBlockedScenarios: {
+          'features/example.feature': ['fixture blocked'],
+        },
         maxSkipped: 2,
         maxUnexpectedSkipped: 0,
         minPassed: 1,
@@ -149,10 +153,10 @@ describe('assertCucumberReport', () => {
     )
   })
 
-  it('rejects an explicitly blocked scenario outside the allowed dependency tags', () => {
+  it('rejects a blocked scenario that replaces an allowed scenario with the same dependency tag', () => {
     const summary = {
       blockedScenarios: [
-        { name: 'core regression', tags: ['@core'], uri: 'features/example.feature' },
+        { name: 'core regression', tags: ['@fixture'], uri: 'features/example.feature' },
       ],
       blockedSkipped: 1,
       failed: 0,
@@ -165,7 +169,9 @@ describe('assertCucumberReport', () => {
 
     expect(() =>
       assertCucumberReport(summary, {
-        allowedBlockedTags: ['@fixture'],
+        allowedBlockedScenarios: {
+          'features/example.feature': ['fixture blocked'],
+        },
         maxSkipped: 1,
         maxUnexpectedSkipped: 0,
         minPassed: 1,
@@ -173,7 +179,7 @@ describe('assertCucumberReport', () => {
         profile: 'core',
       }),
     ).toThrow(
-      'blocked scenarios without an allowed dependency tag: features/example.feature: core regression',
+      'blocked scenarios not present in the checked-in allowlist: features/example.feature: core regression',
     )
   })
 })
@@ -189,7 +195,7 @@ describe('getCucumberReportGate', () => {
         E2E_CUCUMBER_REPORT_PROFILE: 'webkit-browser-smoke',
       }),
     ).toEqual({
-      allowedBlockedTags: [],
+      allowedBlockedScenarios: {},
       maxSkipped: 0,
       maxUnexpectedSkipped: 0,
       minPassed: 4,

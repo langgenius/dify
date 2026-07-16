@@ -208,22 +208,16 @@ function EnvEditorRow({
     : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
   const shouldMaskValue = variable.masked && !isValueRevealed
   const displayedValue = shouldMaskValue ? maskedEnvValue : variable.value
-  const keyColumnLabel = t(($) => $['agentDetail.configure.advancedSettings.envEditor.keyColumn'])
-  const keyPlaceholder = t(
-    ($) => $['agentDetail.configure.advancedSettings.envEditor.keyPlaceholder'],
-  )
-
   return (
     <div
       role="row"
-      aria-label={`${keyColumnLabel}: ${variable.key || keyPlaceholder}`}
       className={cn(
         'grid min-h-7 border-t border-divider-subtle',
         gridClassName,
         isHighlighted && 'bg-background-default-hover',
       )}
     >
-      <EnvEditorCell role="cell">
+      <EnvEditorCell role="rowheader">
         {editable ? (
           <EnvEditorInput
             aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.keyColumn'])}
@@ -328,8 +322,6 @@ function EnvEditorDraftRow({
   const valuePlaceholder = t(
     ($) => $['agentDetail.configure.advancedSettings.envEditor.valuePlaceholder'],
   )
-  const keyColumnLabel = t(($) => $['agentDetail.configure.advancedSettings.envEditor.keyColumn'])
-
   const renderDraftPlaceholder = (label: string) => (
     <span className="min-w-0 truncate px-3 system-xs-regular text-components-input-text-placeholder">
       {label}
@@ -352,12 +344,8 @@ function EnvEditorDraftRow({
   }
 
   return (
-    <div
-      role="row"
-      aria-label={`${keyColumnLabel}: ${keyPlaceholder}`}
-      className={cn('grid min-h-7 border-t border-divider-subtle', gridClassName)}
-    >
-      <EnvEditorCell role="cell">{renderDraftPlaceholder(keyPlaceholder)}</EnvEditorCell>
+    <div role="row" className={cn('grid min-h-7 border-t border-divider-subtle', gridClassName)}>
+      <EnvEditorCell role="rowheader">{renderDraftPlaceholder(keyPlaceholder)}</EnvEditorCell>
       <EnvEditorCell role="cell">{renderDraftValueCell()}</EnvEditorCell>
       {showScope && (
         <EnvEditorCell role="cell">

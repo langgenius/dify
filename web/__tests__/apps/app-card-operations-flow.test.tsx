@@ -281,7 +281,11 @@ const renderAppCard = (app?: Partial<App>) => {
 
 const openOperationsMenu = async (appName = 'Test Chat App') => {
   const user = userEvent.setup()
-  await user.click(screen.getByRole('button', { name: `common.operation.more: ${appName}` }))
+  await user.click(
+    screen.getByRole('button', {
+      name: `common.operation.moreActionsFor:{"name":"${appName}"}`,
+    }),
+  )
   return user
 }
 
@@ -396,7 +400,7 @@ describe('App Card Operations Flow', () => {
 
       expect(
         screen.queryByRole('button', {
-          name: 'common.operation.more: Readonly App',
+          name: /common\.operation\.moreActionsFor/,
         }),
       ).not.toBeInTheDocument()
     })
@@ -415,6 +419,7 @@ describe('App Card Operations Flow', () => {
       renderAppCard({ id: 'app-wf', mode: AppModeEnum.WORKFLOW, name: 'WF App' })
 
       await openOperationsMenu('WF App')
+      expect(await screen.findByRole('menu')).toBeVisible()
       expect(screen.queryByRole('menuitem', { name: 'app.switch' })).not.toBeInTheDocument()
     })
   })

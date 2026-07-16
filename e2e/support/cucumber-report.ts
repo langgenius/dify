@@ -42,7 +42,7 @@ export type CucumberReportSummary = {
 }
 
 export type CucumberReportGate = {
-  allowedBlockedTags: string[]
+  allowedBlockedScenarios: Record<string, string[]>
   maxSkipped: number
   maxUnexpectedSkipped: number
   minPassed: number
@@ -52,38 +52,82 @@ export type CucumberReportGate = {
 
 const reportGateProfiles = {
   core: {
-    allowedBlockedTags: [
-      '@agent-v2-preflight',
-      '@feature-gated',
-      '@stable-model',
-      '@speech-to-text-model',
-      '@agent-decision-model',
-      '@broken-model',
-      '@tool-fixture',
-      '@skill-fixture',
-      '@knowledge-fixture',
-      '@full-config-agent',
-      '@tool-states-agent',
-      '@oauth-tool-agent',
-      '@dual-retrieval-fixture',
-      '@backend-api-access',
-      '@published-web-app',
-      '@workflow-reference',
-    ],
+    allowedBlockedScenarios: {
+      'features/agent-v2/access-point.feature': ['Workflow access shows the referencing workflow'],
+      'features/agent-v2/advanced-settings.feature': [
+        'Content Moderation keyword preset replies are saved and restored',
+      ],
+      'features/agent-v2/agent-edit.feature': [
+        'Saved orchestration sections are visible on the Agent Edit page',
+        'Duplicated Agent inherits configuration without changing the original Agent',
+        'Tool states are visible on the Agent Edit page',
+        'Dual Knowledge Retrieval settings are visible on the Agent Edit page',
+        'Agent Edit opens the same Agent in Agent Console',
+      ],
+      'features/agent-v2/configure-persistence.feature': [
+        'Selecting a stable model in Configure persists after refresh',
+        'Persisted Agent v2 instructions remain visible after refresh',
+      ],
+      'features/agent-v2/knowledge.feature': [
+        'Agent decide Knowledge Retrieval settings are saved and restored',
+        'Custom query Knowledge Retrieval settings are saved and restored',
+        'Removing Knowledge Retrieval clears the saved dataset reference',
+      ],
+      'features/agent-v2/output-variables.feature': [
+        'Workflow Agent v2 output variables persist after refresh',
+        'Workflow Agent v2 nested object output variables persist after refresh',
+        'Workflow Agent v2 prompt output reference stays synced when renamed',
+      ],
+      'features/agent-v2/preflight.feature': [
+        'Stable chat model is available',
+        'Default speech-to-text model is available',
+        'Agent-decision chat model is available',
+        'Broken chat model is available for recovery scenarios',
+        'JSON Replace tool is available',
+        'Tavily Search tool is available',
+        'Agent knowledge base is available',
+        'Indexing knowledge base is available',
+        'Full config Agent is available',
+        'Full config Agent includes the summary Skill',
+        'Full config Agent includes core fixture configuration',
+        'Content Moderation Settings is enabled',
+        'Tool states Agent is available',
+        'Tool states Agent includes tool state fixture configuration',
+        'OAuth2 tool Agent includes credential fixture configuration',
+        'Dual retrieval Agent is available',
+        'Dual retrieval Agent includes dual retrieval fixture configuration',
+        'Published Web app Agent exposes Web app access',
+        'Backend API-enabled Agent is available',
+        'Backend API-enabled Agent exposes API access with a key',
+        'Workflow reference Agent is available',
+        'Reference workflow is available',
+        'Workflow reference Agent is used by the reference workflow',
+      ],
+      'features/agent-v2/publish.feature': [
+        'Publish a configured Agent v2 draft',
+        'Publish action follows unpublished changes',
+        'Published Agent v2 version remains isolated from draft edits',
+        'Restoring a published Agent v2 version shows the restored configuration in Builder',
+      ],
+      'features/agent-v2/tools.feature': [
+        'JSON Replace tool is saved after adding it from the Tools selector',
+        'OAuth2 tool credentials stay authorized after Configure autosaves',
+      ],
+    },
     maxSkipped: 44,
     maxUnexpectedSkipped: 0,
     minPassed: 65,
     minSelected: 109,
   },
   external: {
-    allowedBlockedTags: [],
+    allowedBlockedScenarios: {},
     maxSkipped: 0,
     maxUnexpectedSkipped: 0,
     minPassed: 11,
     minSelected: 11,
   },
   'webkit-browser-smoke': {
-    allowedBlockedTags: [],
+    allowedBlockedScenarios: {},
     maxSkipped: 0,
     maxUnexpectedSkipped: 0,
     minPassed: 4,
@@ -100,7 +144,9 @@ export const getCucumberReportGate = (env: NodeJS.ProcessEnv): CucumberReportGat
 
   return {
     ...gate,
-    allowedBlockedTags: [...gate.allowedBlockedTags],
+    allowedBlockedScenarios: Object.fromEntries(
+      Object.entries(gate.allowedBlockedScenarios).map(([uri, names]) => [uri, [...names]]),
+    ),
     profile,
   }
 }
@@ -182,9 +228,13 @@ export const readCucumberReportSummary = async (reportPath: string) => {
 
 export const assertCucumberReport = (summary: CucumberReportSummary, gate: CucumberReportGate) => {
   const errors: string[] = []
-  const allowedBlockedTags = new Set(gate.allowedBlockedTags)
+  const allowedBlockedScenarios = new Set(
+    Object.entries(gate.allowedBlockedScenarios).flatMap(([uri, names]) =>
+      names.map((name) => `${uri}\0${name}`),
+    ),
+  )
   const disallowedBlockedScenarios = summary.blockedScenarios.filter(
-    (scenario) => !scenario.tags.some((tag) => allowedBlockedTags.has(tag)),
+    (scenario) => !allowedBlockedScenarios.has(`${scenario.uri}\0${scenario.name}`),
   )
 
   if (summary.selected < gate.minSelected)
@@ -200,7 +250,7 @@ export const assertCucumberReport = (summary: CucumberReportSummary, gate: Cucum
   }
   if (disallowedBlockedScenarios.length > 0) {
     errors.push(
-      `blocked scenarios without an allowed dependency tag: ${disallowedBlockedScenarios
+      `blocked scenarios not present in the checked-in allowlist: ${disallowedBlockedScenarios
         .map((scenario) => `${scenario.uri}: ${scenario.name}`)
         .join(', ')}`,
     )
