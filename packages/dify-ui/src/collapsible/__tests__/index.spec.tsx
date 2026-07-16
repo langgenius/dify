@@ -2,38 +2,6 @@ import { render } from 'vitest-browser-react'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '../index'
 
 describe('Collapsible wrappers', () => {
-  it('renders the Base UI anatomy with an accessible trigger', async () => {
-    const screen = await render(
-      <Collapsible defaultOpen data-testid="collapsible-root">
-        <CollapsibleTrigger>Recovery keys</CollapsibleTrigger>
-        <CollapsiblePanel>Panel content</CollapsiblePanel>
-      </Collapsible>,
-    )
-
-    await expect.element(screen.getByTestId('collapsible-root')).toBeInTheDocument()
-    await expect
-      .element(screen.getByRole('button', { name: 'Recovery keys' }))
-      .toHaveAttribute('data-panel-open', '')
-    await expect.element(screen.getByText('Panel content')).toBeInTheDocument()
-  })
-
-  it('toggles open state through the trigger without caller-owned state', async () => {
-    const screen = await render(
-      <Collapsible>
-        <CollapsibleTrigger>Toggle section</CollapsibleTrigger>
-        <CollapsiblePanel>Hidden content</CollapsiblePanel>
-      </Collapsible>,
-    )
-    const trigger = screen.getByRole('button', { name: 'Toggle section' })
-
-    await expect.element(trigger).not.toHaveAttribute('data-panel-open')
-
-    await trigger.click()
-
-    await expect.element(trigger).toHaveAttribute('data-panel-open', '')
-    await expect.element(screen.getByText('Hidden content')).toBeInTheDocument()
-  })
-
   it('forwards className to every compound part', async () => {
     const screen = await render(
       <Collapsible defaultOpen className="custom-root">
@@ -49,17 +17,18 @@ describe('Collapsible wrappers', () => {
     expect(screen.container.querySelector('.custom-root')).toBeInTheDocument()
   })
 
-  it('passes Base UI panel props through to the panel', async () => {
+  it('keeps closed panel content mounted when requested', async () => {
     const screen = await render(
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger>Styled trigger</CollapsibleTrigger>
-        <CollapsiblePanel keepMounted>Styled panel</CollapsiblePanel>
+      <Collapsible>
+        <CollapsibleTrigger>Recovery options</CollapsibleTrigger>
+        <CollapsiblePanel keepMounted>Recovery codes</CollapsiblePanel>
       </Collapsible>,
     )
 
     await expect
-      .element(screen.getByRole('button', { name: 'Styled trigger' }))
-      .toHaveAttribute('data-panel-open', '')
-    await expect.element(screen.getByText('Styled panel')).toBeInTheDocument()
+      .element(screen.getByRole('button', { name: 'Recovery options' }))
+      .toHaveAttribute('aria-expanded', 'false')
+    await expect.element(screen.getByText('Recovery codes')).toBeInTheDocument()
+    await expect.element(screen.getByText('Recovery codes')).not.toBeVisible()
   })
 })

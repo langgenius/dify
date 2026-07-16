@@ -67,6 +67,9 @@ export const Default: Story = {
       await expect(dialog).toBeVisible()
     })
 
+    await userEvent.click(body.getByRole('button', { name: 'Delete' }))
+    await expect(dialog).toBeVisible()
+
     await userEvent.click(body.getByRole('button', { name: 'Cancel' }))
     await waitFor(async () => {
       await expect(
