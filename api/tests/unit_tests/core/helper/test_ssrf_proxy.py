@@ -1,3 +1,4 @@
+import gzip
 from unittest.mock import ANY, MagicMock, call, patch
 
 import httpx
@@ -5,10 +6,13 @@ import pytest
 
 from core.helper.ssrf_proxy import (
     SSRF_DEFAULT_MAX_RETRIES,
+    ResponseTooLargeError,
     SSRFProxy,
+    UnsupportedResponseEncodingError,
     _build_ssrf_client,
     _get_user_provided_host_header,
     _to_graphon_http_response,
+    buffer_response,
     graphon_ssrf_proxy,
     make_request,
     max_retries_exceeded_error,
@@ -21,12 +25,90 @@ def test_successful_request(mock_get_client):
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_client.request.return_value = mock_response
+    mock_client.send.return_value = mock_response
     mock_get_client.return_value = mock_client
 
     response = make_request("GET", "http://example.com")
     assert response.status_code == 200
-    mock_client.request.assert_called_once()
+    mock_client.build_request.assert_called_once()
+    mock_client.send.assert_called_once()
+
+
+def test_buffer_response_rejects_encoded_response_before_decoding() -> None:
+    payload = b"x" * (8 * 1024 * 1024)
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            content=gzip.compress(payload),
+            headers={"Content-Encoding": "gzip"},
+            request=request,
+        )
+    )
+
+    with httpx.Client(transport=transport) as client:
+        response = client.send(client.build_request("GET", "http://example.com"), stream=True)
+        with pytest.raises(UnsupportedResponseEncodingError, match="content encoding gzip"):
+            buffer_response(response, max_response_bytes=1024 * 1024)
+
+
+def test_buffer_response_returns_response_within_decoded_byte_limit() -> None:
+    payload = b"response-body"
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            content=payload,
+            request=request,
+        )
+    )
+
+    with httpx.Client(transport=transport) as client:
+        streaming_response = client.send(client.build_request("GET", "http://example.com"), stream=True)
+        response = buffer_response(streaming_response, max_response_bytes=32)
+
+    assert response.content == payload
+    assert str(response.request.url) == "http://example.com"
+
+
+def test_buffer_response_rejects_identity_response_exceeding_byte_limit() -> None:
+    payload = b"response-body"
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=payload, request=request))
+
+    with httpx.Client(transport=transport) as client:
+        response = client.send(client.build_request("GET", "http://example.com"), stream=True)
+        with pytest.raises(ResponseTooLargeError, match="response exceeded 8 bytes"):
+            buffer_response(response, max_response_bytes=8)
+
+
+def test_request_can_return_an_open_stream_the_caller_closes() -> None:
+    class EventStream(httpx.SyncByteStream):
+        def __iter__(self):
+            yield b"event: delta\ndata: first\n\n"
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            stream=EventStream(),
+            request=request,
+        )
+    )
+
+    with (
+        httpx.Client(transport=transport) as client,
+        patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
+    ):
+        response = make_request(
+            "GET",
+            "http://example.com/events",
+            max_retries=0,
+            stream_response=True,
+        )
+
+        assert response.is_stream_consumed is False
+        assert response.is_closed is False
+        assert b"".join(response.iter_bytes()) == b"event: delta\ndata: first\n\n"
+        response.close()
+
+    assert response.is_closed
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
@@ -34,7 +116,7 @@ def test_retry_exceed_max_retries(mock_get_client):
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 500
-    mock_client.request.return_value = mock_response
+    mock_client.send.return_value = mock_response
     mock_get_client.return_value = mock_client
 
     with pytest.raises(Exception) as e:
@@ -47,13 +129,13 @@ def test_force_list_response_returns_when_retries_disabled(mock_get_client):
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 500
-    mock_client.request.return_value = mock_response
+    mock_client.send.return_value = mock_response
     mock_get_client.return_value = mock_client
 
     response = make_request("GET", "http://example.com", max_retries=0)
 
     assert response is mock_response
-    mock_client.request.assert_called_once()
+    mock_client.send.assert_called_once()
 
 
 def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports():
@@ -126,15 +208,15 @@ def test_host_header_preservation_with_user_header(mock_get_client):
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_client.request.return_value = mock_response
+    mock_client.send.return_value = mock_response
     mock_get_client.return_value = mock_client
 
     custom_host = "custom.example.com:8080"
     response = make_request("GET", "http://example.com", headers={"Host": custom_host})
 
     assert response.status_code == 200
-    # Verify client.request was called with the host header preserved (lowercase)
-    call_kwargs = mock_client.request.call_args.kwargs
+    # Verify the request was built with the host header preserved (lowercase)
+    call_kwargs = mock_client.build_request.call_args.kwargs
     assert call_kwargs["headers"]["host"] == custom_host
 
 
@@ -145,36 +227,36 @@ def test_host_header_preservation_case_insensitive(mock_get_client, host_key):
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_client.request.return_value = mock_response
+    mock_client.send.return_value = mock_response
     mock_get_client.return_value = mock_client
 
     response = make_request("GET", "http://example.com", headers={host_key: "api.example.com"})
 
     assert response.status_code == 200
     # Host header should be normalized to lowercase "host"
-    call_kwargs = mock_client.request.call_args.kwargs
+    call_kwargs = mock_client.build_request.call_args.kwargs
     assert call_kwargs["headers"]["host"] == "api.example.com"
 
 
 class TestFollowRedirectsParameter:
     """Tests for follow_redirects parameter handling.
 
-    These tests verify that follow_redirects is correctly passed to client.request().
+    These tests verify that follow_redirects is correctly passed to client.send().
     """
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
     def test_follow_redirects_passed_to_request(self, mock_get_client):
-        """Verify follow_redirects IS passed to client.request()."""
+        """Verify follow_redirects IS passed to client.send()."""
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_client.request.return_value = mock_response
+        mock_client.send.return_value = mock_response
         mock_get_client.return_value = mock_client
 
         make_request("GET", "http://example.com", follow_redirects=True)
 
-        # Verify follow_redirects was passed to request
-        call_kwargs = mock_client.request.call_args.kwargs
+        # Verify follow_redirects was passed to send
+        call_kwargs = mock_client.send.call_args.kwargs
         assert call_kwargs.get("follow_redirects") is True
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
@@ -183,14 +265,14 @@ class TestFollowRedirectsParameter:
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_client.request.return_value = mock_response
+        mock_client.send.return_value = mock_response
         mock_get_client.return_value = mock_client
 
         # Use allow_redirects (requests-style parameter)
         make_request("GET", "http://example.com", allow_redirects=True)
 
         # Verify it was converted to follow_redirects
-        call_kwargs = mock_client.request.call_args.kwargs
+        call_kwargs = mock_client.send.call_args.kwargs
         assert call_kwargs.get("follow_redirects") is True
         assert "allow_redirects" not in call_kwargs
 
@@ -200,13 +282,13 @@ class TestFollowRedirectsParameter:
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_client.request.return_value = mock_response
+        mock_client.send.return_value = mock_response
         mock_get_client.return_value = mock_client
 
         make_request("GET", "http://example.com")
 
         # follow_redirects should not be in kwargs, letting httpx use its default
-        call_kwargs = mock_client.request.call_args.kwargs
+        call_kwargs = mock_client.send.call_args.kwargs
         assert "follow_redirects" not in call_kwargs
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
@@ -215,13 +297,13 @@ class TestFollowRedirectsParameter:
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_client.request.return_value = mock_response
+        mock_client.send.return_value = mock_response
         mock_get_client.return_value = mock_client
 
         # Both specified - follow_redirects should take precedence
         make_request("GET", "http://example.com", allow_redirects=False, follow_redirects=True)
 
-        call_kwargs = mock_client.request.call_args.kwargs
+        call_kwargs = mock_client.send.call_args.kwargs
         assert call_kwargs.get("follow_redirects") is True
 
 
