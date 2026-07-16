@@ -11,7 +11,6 @@ from configs import dify_config
 from constants.languages import languages
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
-from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
@@ -282,10 +281,7 @@ def _generate_account(
             if not FeatureService.get_system_features().is_allow_create_workspace:
                 raise WorkSpaceNotAllowedCreateError()
             else:
-                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session)
-                TenantService.create_tenant_member(new_tenant, account, db.session, role="owner")
-                account.current_tenant = new_tenant
-                tenant_was_created.send(new_tenant)
+                TenantService.create_owner_tenant(account, session=db.session())
 
     if not account:
         normalized_email = user_info.email.lower()

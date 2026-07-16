@@ -1553,16 +1553,9 @@ class TestRegisterService:
         with patch("services.account_service.AccountService.create_account") as mock_create_account:
             mock_create_account.return_value = mock_account
 
-            # Mock TenantService.create_tenant and create_tenant_member
             with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
+                patch("services.account_service.TenantService.create_owner_tenant") as mock_create_owner_tenant,
             ):
-                mock_tenant = MagicMock()
-                mock_tenant.id = "tenant-456"
-                mock_create_tenant.return_value = mock_tenant
-
                 # Execute test
                 result = RegisterService.register(
                     email="test@example.com",
@@ -1585,13 +1578,9 @@ class TestRegisterService:
                     timezone=None,
                     session=mock_db_dependencies["db"].session,
                 )
-                mock_create_tenant.assert_called_once_with(
-                    "Test User's Workspace", session=mock_db_dependencies["db"].session
+                mock_create_owner_tenant.assert_called_once_with(
+                    mock_account, session=mock_db_dependencies["db"].session
                 )
-                mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_account, mock_db_dependencies["db"].session, role="owner"
-                )
-                mock_event.send.assert_called_once_with(mock_tenant)
                 self._assert_database_operations_called(mock_db_dependencies["db"])
 
     def test_register_calls_default_workspace_join_when_enterprise_enabled(
