@@ -25,7 +25,6 @@ dependencies = [
     "sseclient-py>=1.8.0,<2.0.0",
     # Stable: production-proven, cap below the next major
     "aliyun-log-python-sdk==0.9.44",
-    "attrs>=25.4.0,<26.0.0",
     "azure-identity>=1.25.3,<2.0.0",
     "flask-compress>=1.24,<2.0.0",
     "flask-login==0.6.3",

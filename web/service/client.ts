@@ -1,7 +1,7 @@
 import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
+import type { consoleRouterContract } from '@dify/contracts/console'
 import type {
   GetReleaseResponse,
   ListReleasesResponse,

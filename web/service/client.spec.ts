@@ -358,6 +358,36 @@ describe('consoleQuery transport context', () => {
     )
     expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
   })
+
+  it('should route the KnowledgeFS contract through the Dify Console API', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ items: [], nextCursor: 'next-page' }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.knowledgeFs.listKnowledgeSpaces.queryOptions({
+      input: {
+        query: {
+          cursor: 'current-page',
+          limit: 30,
+        },
+      },
+    })
+
+    const result = await queryOptions.queryFn({
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    const requestedURL = new URL(request.mock.calls[0]![0])
+    expect(requestedURL.pathname).toBe('/console/api/knowledge-fs/knowledge-spaces')
+    expect(requestedURL.searchParams.get('cursor')).toBe('current-page')
+    expect(requestedURL.searchParams.get('limit')).toBe('30')
+    expect(result).toEqual({ items: [], nextCursor: 'next-page' })
+  })
 })
 
 // Scenario: console OpenAPI query arrays follow backend parser expectations.

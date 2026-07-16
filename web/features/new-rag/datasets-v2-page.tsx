@@ -1,6 +1,6 @@
 'use client'
 
-import type { KnowledgeSpaceResponse } from '@dify/contracts/api/console/knowledge-spaces/types.gen'
+import type { KnowledgeSpace } from '@dify/contracts/knowledge-fs/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
@@ -68,7 +68,7 @@ function PageState({
   )
 }
 
-function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: KnowledgeSpaceResponse }) {
+function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: KnowledgeSpace }) {
   return (
     <li className="min-h-44 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs shadow-shadow-shadow-3">
       <div className="flex items-start gap-3">
@@ -104,22 +104,20 @@ export function DatasetsV2Page() {
     isPending,
     refetch,
   } = useInfiniteQuery(
-    consoleQuery.knowledgeSpaces.get.infiniteOptions({
+    consoleQuery.knowledgeFs.listKnowledgeSpaces.infiniteOptions({
       input: (pageParam) => ({
         query: {
           limit: PAGE_SIZE,
           ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
         },
       }),
-      getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
       initialPageParam: null as string | null,
     }),
   )
 
-  const firstPage = data?.pages[0]
-  const enabled = firstPage?.enabled ?? true
   const isInitialError = Boolean(error && !data)
-  const knowledgeSpaces = data?.pages.flatMap((page) => page.data) ?? []
+  const knowledgeSpaces = data?.pages.flatMap((page) => page.items) ?? []
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
 
@@ -136,9 +134,7 @@ export function DatasetsV2Page() {
             {t(($) => $['newRag.badge'])}
           </span>
         </div>
-        {!isPending && !isInitialError && enabled && canCreateDataset && (
-          <CreateKnowledgeSpaceDialog />
-        )}
+        {!isPending && !isInitialError && canCreateDataset && <CreateKnowledgeSpaceDialog />}
       </header>
 
       <div className="px-8 pt-2 pb-8">
@@ -152,11 +148,6 @@ export function DatasetsV2Page() {
                 {tCommon(($) => $['operation.retry'])}
               </Button>
             }
-          />
-        ) : !enabled ? (
-          <PageState
-            title={t(($) => $.unavailable)}
-            description={t(($) => $['newRag.disabledDescription'])}
           />
         ) : knowledgeSpaces.length === 0 ? (
           <PageState

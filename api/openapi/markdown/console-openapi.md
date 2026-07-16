@@ -7465,36 +7465,23 @@ Get instruction generation template
 | 200 | Template retrieved successfully | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
 | 400 | Invalid request parameters |  |
 
-### [GET] /knowledge-spaces
-List Dataset 2.0 knowledge bases from KnowledgeFS
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| cursor | query |  | No | string |
-| limit | query |  | No | integer, <br>**Default:** 30 |
+### [GET] /knowledge-fs/knowledge-spaces
+Proxy the KnowledgeFS knowledge-space list operation
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [KnowledgeSpaceListResponse](#knowledgespacelistresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Proxied KnowledgeFS response |
 
-### [POST] /knowledge-spaces
-Create an empty Dataset 2.0 knowledge base in KnowledgeFS
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [CreateKnowledgeSpacePayload](#createknowledgespacepayload)<br> |
+### [POST] /knowledge-fs/knowledge-spaces
+Proxy the KnowledgeFS knowledge-space create operation
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Knowledge base created | **application/json**: [KnowledgeSpaceResponse](#knowledgespaceresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 201 | Proxied KnowledgeFS response |
 
 ### [POST] /login
 **Authenticate user and login**
@@ -16388,16 +16375,6 @@ Enum class for configurate method of provider model.
 | mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string | App name | Yes |
 
-#### CreateKnowledgeSpacePayload
-
-Dify-facing payload for creating an empty Dataset 2.0 knowledge base.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| idempotency_key | string |  | Yes |
-| name | string |  | Yes |
-
 #### CreateSnippetPayload
 
 Payload for creating a new snippet.
@@ -18676,38 +18653,6 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | publish_enabled | boolean |  | Yes |
-
-#### KnowledgeSpaceListQuery
-
-Cursor pagination accepted by the Dify Console boundary.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| cursor | string |  | No |
-| limit | integer, <br>**Default:** 30 |  | No |
-
-#### KnowledgeSpaceListResponse
-
-Feature availability and one real cursor page.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [KnowledgeSpaceResponse](#knowledgespaceresponse) ] |  | Yes |
-| enabled | boolean |  | Yes |
-| next_cursor | string |  | Yes |
-
-#### KnowledgeSpaceResponse
-
-Stable Dify-facing representation of a KnowledgeFS space.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | dateTime |  | Yes |
-| description | string |  | Yes |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| slug | string |  | Yes |
-| updated_at | dateTime |  | Yes |
 
 #### LLMMode
 

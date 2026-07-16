@@ -1,6 +1,7 @@
 # New RAG
 
-Dataset 2.0 knowledge-space listing and empty knowledge creation backed by the generated Console API contract.
+Dataset 2.0 knowledge-space listing and empty knowledge creation backed by the generated KnowledgeFS contract
+over the authenticated Console proxy.
 
 ## Internal Modules
 

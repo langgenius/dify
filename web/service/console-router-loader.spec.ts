@@ -6,6 +6,7 @@ import { notification } from '@dify/contracts/api/console/notification/orpc.gen'
 import { tags } from '@dify/contracts/api/console/tags/orpc.gen'
 import { workspaces } from '@dify/contracts/api/console/workspaces/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
+import { contract as knowledgeFsContract } from '@dify/contracts/knowledge-fs/orpc.gen'
 import { describe, expect, it } from 'vitest'
 import { loadConsoleContractForSegment } from './console-router-loader'
 
@@ -31,5 +32,11 @@ describe('loadConsoleContractForSegment', () => {
     const contract = await loadConsoleContractForSegment('enterprise')
 
     expect(contract).toHaveProperty('enterprise', enterpriseContract)
+  })
+
+  it('loads the KnowledgeFS contract through the Console client', async () => {
+    const contract = await loadConsoleContractForSegment('knowledgeFs')
+
+    expect(contract).toHaveProperty('knowledgeFs', knowledgeFsContract)
   })
 })

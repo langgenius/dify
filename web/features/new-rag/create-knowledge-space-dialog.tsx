@@ -1,6 +1,6 @@
 'use client'
 
-import type { CreateKnowledgeSpacePayload } from '@dify/contracts/api/console/knowledge-spaces/types.gen'
+import type { CreateKnowledgeSpace } from '@dify/contracts/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -46,7 +46,7 @@ export function CreateKnowledgeSpaceDialog() {
   const [description, setDescription] = useState('')
   const createAttemptRef = useRef<CreateKnowledgeSpaceAttempt | null>(null)
   const createKnowledgeSpaceMutation = useMutation(
-    consoleQuery.knowledgeSpaces.post.mutationOptions(),
+    consoleQuery.knowledgeFs.createKnowledgeSpace.mutationOptions(),
   )
 
   const resetForm = () => {
@@ -74,9 +74,9 @@ export function CreateKnowledgeSpaceDialog() {
 
     const body = {
       description,
-      idempotency_key: idempotencyKey,
+      idempotencyKey,
       name,
-    } satisfies CreateKnowledgeSpacePayload
+    } satisfies CreateKnowledgeSpace
 
     createKnowledgeSpaceMutation.mutate(
       { body },
@@ -88,7 +88,7 @@ export function CreateKnowledgeSpaceDialog() {
           toast.success(t(($) => $['newRag.createSuccess']))
           handleOpenChange(false)
           void queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeSpaces.get.key({ type: 'infinite' }),
+            queryKey: consoleQuery.knowledgeFs.listKnowledgeSpaces.key({ type: 'infinite' }),
           })
         },
       },

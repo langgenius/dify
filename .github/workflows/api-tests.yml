@@ -47,9 +47,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --project api --dev
 
-      - name: Verify KnowledgeFS generated client
-        run: uv run --project api python api/dev/generate_knowledge_fs_client.py --check
-
       - name: Run dify config tests
         run: uv run --project api pytest api/tests/unit_tests/configs/test_env_consistency.py
 

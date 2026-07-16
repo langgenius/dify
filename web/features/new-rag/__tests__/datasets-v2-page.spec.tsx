@@ -1,11 +1,11 @@
-import type { KnowledgeSpaceListResponse } from '@dify/contracts/api/console/knowledge-spaces/types.gen'
+import type { KnowledgeSpaceList } from '@dify/contracts/knowledge-fs/types.gen'
 import type { InfiniteData } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DatasetsV2Page } from '../datasets-v2-page'
 
 const queryMock = vi.hoisted(() => ({
-  data: undefined as InfiniteData<KnowledgeSpaceListResponse> | undefined,
+  data: undefined as InfiniteData<KnowledgeSpaceList> | undefined,
   error: null as Error | null,
   fetchNextPage: vi.fn(),
   hasNextPage: false,
@@ -72,17 +72,17 @@ vi.mock('@/hooks/use-document-title', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    knowledgeSpaces: {
-      get: {
+    knowledgeFs: {
+      listKnowledgeSpaces: {
         infiniteOptions: vi.fn(() => ({})),
         key: vi.fn(({ type }: { type?: 'infinite' | 'query' } = {}) => [
           'console',
-          'knowledgeSpaces',
-          'get',
+          'knowledgeFs',
+          'listKnowledgeSpaces',
           ...(type ? [type] : []),
         ]),
       },
-      post: {
+      createKnowledgeSpace: {
         mutationOptions: vi.fn(() => ({})),
       },
     },
@@ -90,21 +90,18 @@ vi.mock('@/service/client', () => ({
 }))
 
 function setResolvedPage({
-  data = [],
-  enabled = true,
+  items = [],
   hasMore = false,
 }: {
-  data?: NonNullable<typeof queryMock.data>['pages'][number]['data']
-  enabled?: boolean
+  items?: NonNullable<typeof queryMock.data>['pages'][number]['items']
   hasMore?: boolean
 } = {}) {
   queryMock.data = {
     pageParams: [null],
     pages: [
       {
-        data,
-        enabled,
-        next_cursor: hasMore ? 'next-page' : null,
+        items,
+        ...(hasMore ? { nextCursor: 'next-page' } : {}),
       },
     ],
   }
@@ -130,18 +127,6 @@ describe('DatasetsV2Page', () => {
     render(<DatasetsV2Page />)
 
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
-  })
-
-  it('explains that Dataset 2.0 is unavailable when KnowledgeFS is disabled', () => {
-    setResolvedPage({ enabled: false })
-
-    render(<DatasetsV2Page />)
-
-    expect(screen.getByText('dataset.unavailable')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newRag.disabledDescription')).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'common.operation.create' }),
-    ).not.toBeInTheDocument()
   })
 
   it('lets the user retry after the list request fails', async () => {
@@ -185,14 +170,16 @@ describe('DatasetsV2Page', () => {
   it('renders knowledge-space cards and loads the next cursor page', async () => {
     const user = userEvent.setup()
     setResolvedPage({
-      data: [
+      items: [
         {
-          created_at: '2026-07-15T00:00:00Z',
+          createdAt: '2026-07-15T00:00:00Z',
           description: 'Support materials',
           id: 'space-1',
           name: 'Support knowledge',
+          revision: 1,
           slug: 'support-knowledge',
-          updated_at: '2026-07-15T00:00:00Z',
+          tenantId: 'tenant-1',
+          updatedAt: '2026-07-15T00:00:00Z',
         },
       ],
       hasMore: true,
@@ -212,14 +199,16 @@ describe('DatasetsV2Page', () => {
   it('keeps loaded cards visible and retries locally when the next page fails', async () => {
     const user = userEvent.setup()
     setResolvedPage({
-      data: [
+      items: [
         {
-          created_at: '2026-07-15T00:00:00Z',
+          createdAt: '2026-07-15T00:00:00Z',
           description: 'Support materials',
           id: 'space-1',
           name: 'Support knowledge',
+          revision: 1,
           slug: 'support-knowledge',
-          updated_at: '2026-07-15T00:00:00Z',
+          tenantId: 'tenant-1',
+          updatedAt: '2026-07-15T00:00:00Z',
         },
       ],
       hasMore: true,
@@ -266,7 +255,7 @@ describe('DatasetsV2Page', () => {
       {
         body: {
           description: 'Answers for customers',
-          idempotency_key: expect.any(String),
+          idempotencyKey: expect.any(String),
           name: '产品知识库',
         },
       },
@@ -280,7 +269,7 @@ describe('DatasetsV2Page', () => {
 
     expect(toastMock.success).toHaveBeenCalledWith('dataset.newRag.createSuccess')
     expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['console', 'knowledgeSpaces', 'get', 'infinite'],
+      queryKey: ['console', 'knowledgeFs', 'listKnowledgeSpaces', 'infinite'],
     })
     await waitFor(() => {
       expect(
@@ -313,8 +302,8 @@ describe('DatasetsV2Page', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
     expect(mutationMock.mutate).toHaveBeenCalledTimes(2)
-    const firstKey = mutationMock.mutate.mock.calls[0]?.[0].body.idempotency_key
-    const retryKey = mutationMock.mutate.mock.calls[1]?.[0].body.idempotency_key
+    const firstKey = mutationMock.mutate.mock.calls[0]?.[0].body.idempotencyKey
+    const retryKey = mutationMock.mutate.mock.calls[1]?.[0].body.idempotencyKey
     expect(firstKey).toEqual(expect.any(String))
     expect(retryKey).toBe(firstKey)
   })
@@ -342,8 +331,8 @@ describe('DatasetsV2Page', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
     expect(mutationMock.mutate).toHaveBeenCalledTimes(2)
-    const firstKey = mutationMock.mutate.mock.calls[0]?.[0].body.idempotency_key
-    const editedKey = mutationMock.mutate.mock.calls[1]?.[0].body.idempotency_key
+    const firstKey = mutationMock.mutate.mock.calls[0]?.[0].body.idempotencyKey
+    const editedKey = mutationMock.mutate.mock.calls[1]?.[0].body.idempotencyKey
     expect(editedKey).toEqual(expect.any(String))
     expect(editedKey).not.toBe(firstKey)
   })
@@ -382,8 +371,8 @@ describe('DatasetsV2Page', () => {
     )
 
     expect(mutationMock.mutate).toHaveBeenCalledTimes(2)
-    const firstKey = mutationMock.mutate.mock.calls[0]?.[0].body.idempotency_key
-    const reopenedKey = mutationMock.mutate.mock.calls[1]?.[0].body.idempotency_key
+    const firstKey = mutationMock.mutate.mock.calls[0]?.[0].body.idempotencyKey
+    const reopenedKey = mutationMock.mutate.mock.calls[1]?.[0].body.idempotencyKey
     expect(reopenedKey).toEqual(expect.any(String))
     expect(reopenedKey).not.toBe(firstKey)
   })

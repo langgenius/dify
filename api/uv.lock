@@ -1335,7 +1335,6 @@ version = "1.16.0rc1"
 source = { virtual = "." }
 dependencies = [
     { name = "aliyun-log-python-sdk" },
-    { name = "attrs" },
     { name = "azure-identity" },
     { name = "bleach" },
     { name = "boto3" },
@@ -1620,7 +1619,6 @@ vdb-xinference = [
 [package.metadata]
 requires-dist = [
     { name = "aliyun-log-python-sdk", specifier = "==0.9.44" },
-    { name = "attrs", specifier = ">=25.4.0,<26.0.0" },
     { name = "azure-identity", specifier = ">=1.25.3,<2.0.0" },
     { name = "bleach", specifier = ">=6.4.0,<7.0.0" },
     { name = "boto3", specifier = ">=1.43.46,<2.0.0" },

@@ -8,6 +8,10 @@
       "types": "./marketplace.ts",
       "import": "./marketplace.ts"
     },
+    "./console": {
+      "types": "./console.ts",
+      "import": "./console.ts"
+    },
     "./api/*": {
       "types": "./generated/api/*.ts",
       "import": "./generated/api/*.ts"
@@ -15,11 +19,16 @@
     "./enterprise/*": {
       "types": "./generated/enterprise/*.ts",
       "import": "./generated/enterprise/*.ts"
+    },
+    "./knowledge-fs/*": {
+      "types": "./generated/knowledge-fs/*.ts",
+      "import": "./generated/knowledge-fs/*.ts"
     }
   },
   "scripts": {
     "gen-api-contract": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi && uv run --project ../../api ../../api/dev/generate_fastopenapi_specs.py --output-dir openapi && node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && vp fmt generated/api",
     "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts",
+    "gen-knowledge-fs-contract": "openapi-ts -f openapi-ts.knowledge-fs.config.ts && vp fmt generated/knowledge-fs",
     "test": "vp test openapi-yaml.test.ts",
     "type-check": "tsc"
   },
