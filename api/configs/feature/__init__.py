@@ -284,6 +284,33 @@ class PluginConfig(BaseSettings):
     def NEW_USER_DEFAULT_PLUGIN_ID_LIST(self) -> list[str]:
         return [item.strip() for item in self.NEW_USER_DEFAULT_PLUGIN_IDS.split(",") if item.strip()]
 
+    NEW_USER_DEFAULT_MODELS: str = Field(
+        description=("Comma-separated default models for new users in 'model_type:provider:model' format"),
+        default="",
+    )
+
+    @property
+    def NEW_USER_DEFAULT_MODEL_LIST(self) -> list[tuple[str, str, str]]:
+        default_models: list[tuple[str, str, str]] = []
+        configured_model_types: set[str] = set()
+
+        for item in self.NEW_USER_DEFAULT_MODELS.split(","):
+            if not item.strip():
+                continue
+
+            parts = tuple(part.strip() for part in item.split(":", 2))
+            if len(parts) != 3 or not all(parts):
+                raise ValueError("NEW_USER_DEFAULT_MODELS entries must use 'model_type:provider:model' format")
+
+            model_type, provider, model = parts
+            if model_type in configured_model_types:
+                raise ValueError(f"NEW_USER_DEFAULT_MODELS contains duplicate model type: {model_type}")
+
+            configured_model_types.add(model_type)
+            default_models.append((model_type, provider, model))
+
+        return default_models
+
 
 class MarketplaceConfig(BaseSettings):
     """

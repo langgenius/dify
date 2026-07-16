@@ -104,6 +104,39 @@ def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.Mon
     ]
 
 
+def test_new_user_default_models_are_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv(
+        "NEW_USER_DEFAULT_MODELS",
+        (
+            "llm:langgenius/openai/openai:gpt-4o-mini, "
+            "text-embedding:langgenius/openai/openai:text-embedding-3-small, "
+            "rerank:langgenius/ollama/ollama:reranker:latest"
+        ),
+    )
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.NEW_USER_DEFAULT_MODEL_LIST == [
+        ("llm", "langgenius/openai/openai", "gpt-4o-mini"),
+        ("text-embedding", "langgenius/openai/openai", "text-embedding-3-small"),
+        ("rerank", "langgenius/ollama/ollama", "reranker:latest"),
+    ]
+
+
+def test_new_user_default_models_reject_duplicate_model_types(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv(
+        "NEW_USER_DEFAULT_MODELS",
+        "llm:langgenius/openai/openai:gpt-4o-mini,llm:langgenius/anthropic/anthropic:claude-sonnet-4",
+    )
+
+    config = DifyConfig(_env_file=None)
+
+    with pytest.raises(ValueError, match="duplicate model type: llm"):
+        _ = config.NEW_USER_DEFAULT_MODEL_LIST
+
+
 def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     """Test that HTTP timeout defaults are correctly set"""
     # clear system environment variables
