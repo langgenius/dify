@@ -7465,24 +7465,6 @@ Get instruction generation template
 | 200 | Template retrieved successfully | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
 | 400 | Invalid request parameters |  |
 
-### [GET] /knowledge-fs/knowledge-spaces
-Proxy the KnowledgeFS knowledge-space list operation
-
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Proxied KnowledgeFS response |
-
-### [POST] /knowledge-fs/knowledge-spaces
-Proxy the KnowledgeFS knowledge-space create operation
-
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 201 | Proxied KnowledgeFS response |
-
 ### [POST] /login
 **Authenticate user and login**
 

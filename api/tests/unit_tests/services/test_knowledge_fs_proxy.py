@@ -9,6 +9,8 @@ from pydantic import SecretStr
 from core.tools.errors import ToolSSRFError
 from services.knowledge_fs_proxy import (
     KnowledgeFSConfigurationError,
+    KnowledgeFSMethod,
+    KnowledgeFSRouteNotAllowedError,
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,
     forward_knowledge_fs_request,
@@ -39,7 +41,7 @@ def test_unconfigured_kfs_is_rejected_before_external_io(monkeypatch: pytest.Mon
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
     with pytest.raises(KnowledgeFSConfigurationError, match="incomplete"):
-        forward_knowledge_fs_request(method="GET", tenant_id="tenant-dev")
+        forward_knowledge_fs_request(method="GET", path="knowledge-spaces", tenant_id="tenant-dev")
 
     request.assert_not_called()
 
@@ -50,7 +52,7 @@ def test_partial_configuration_is_rejected_before_external_io(monkeypatch: pytes
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
     with pytest.raises(KnowledgeFSConfigurationError, match="incomplete"):
-        forward_knowledge_fs_request(method="GET", tenant_id="tenant-dev")
+        forward_knowledge_fs_request(method="GET", path="knowledge-spaces", tenant_id="tenant-dev")
 
     request.assert_not_called()
 
@@ -63,6 +65,7 @@ def test_get_forwards_raw_query_with_server_credential(monkeypatch: pytest.Monke
 
     result = forward_knowledge_fs_request(
         method="GET",
+        path="knowledge-spaces",
         tenant_id="tenant-dev",
         query=b"limit=20&cursor=first&cursor=second",
     )
@@ -88,7 +91,12 @@ def test_post_forwards_raw_json_without_parsing(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
     body = b'{"idempotencyKey":"create-product-docs","name":"Product docs"}'
 
-    result = forward_knowledge_fs_request(method="POST", tenant_id="tenant-dev", body=body)
+    result = forward_knowledge_fs_request(
+        method="POST",
+        path="knowledge-spaces",
+        tenant_id="tenant-dev",
+        body=body,
+    )
 
     assert result is response
     request.assert_called_once_with(
@@ -114,7 +122,7 @@ def test_static_tenant_mismatch_fails_before_external_io(monkeypatch: pytest.Mon
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
     with pytest.raises(KnowledgeFSConfigurationError, match="current Dify workspace"):
-        forward_knowledge_fs_request(method="GET", tenant_id="another-tenant")
+        forward_knowledge_fs_request(method="GET", path="knowledge-spaces", tenant_id="another-tenant")
 
     request.assert_not_called()
 
@@ -126,7 +134,7 @@ def test_timeout_is_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
     with pytest.raises(KnowledgeFSTimeoutError):
-        forward_knowledge_fs_request(method="GET", tenant_id="tenant-dev")
+        forward_knowledge_fs_request(method="GET", path="knowledge-spaces", tenant_id="tenant-dev")
 
 
 def test_transport_error_is_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -136,7 +144,7 @@ def test_transport_error_is_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
     with pytest.raises(KnowledgeFSTransportError):
-        forward_knowledge_fs_request(method="GET", tenant_id="tenant-dev")
+        forward_knowledge_fs_request(method="GET", path="knowledge-spaces", tenant_id="tenant-dev")
 
 
 def test_ssrf_rejection_is_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -145,4 +153,27 @@ def test_ssrf_rejection_is_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
     with pytest.raises(KnowledgeFSTransportError):
-        forward_knowledge_fs_request(method="GET", tenant_id="tenant-dev")
+        forward_knowledge_fs_request(method="GET", path="knowledge-spaces", tenant_id="tenant-dev")
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "openapi.json"),
+        ("GET", "knowledge-spaces/../health"),
+        ("POST", "knowledge-spaces/fs/write"),
+    ],
+)
+def test_disallowed_route_is_rejected_before_external_io(
+    monkeypatch: pytest.MonkeyPatch,
+    method: KnowledgeFSMethod,
+    path: str,
+) -> None:
+    _set_config(monkeypatch)
+    request = MagicMock()
+    monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
+
+    with pytest.raises(KnowledgeFSRouteNotAllowedError):
+        forward_knowledge_fs_request(method=method, path=path, tenant_id="tenant-dev")
+
+    request.assert_not_called()

@@ -17,6 +17,13 @@ from core.tools.errors import ToolSSRFError
 
 type KnowledgeFSMethod = Literal["GET", "POST"]
 
+_ALLOWED_OPERATIONS: frozenset[tuple[KnowledgeFSMethod, str]] = frozenset(
+    {
+        ("GET", "knowledge-spaces"),
+        ("POST", "knowledge-spaces"),
+    }
+)
+
 
 class KnowledgeFSConfigurationError(RuntimeError):
     """KnowledgeFS is partially configured or bound to another workspace."""
@@ -30,9 +37,14 @@ class KnowledgeFSTransportError(RuntimeError):
     """KnowledgeFS could not be reached."""
 
 
+class KnowledgeFSRouteNotAllowedError(RuntimeError):
+    """The requested path is outside the Console-visible KnowledgeFS surface."""
+
+
 def forward_knowledge_fs_request(
     *,
     method: KnowledgeFSMethod,
+    path: str,
     tenant_id: str,
     query: bytes | None = None,
     body: bytes | None = None,
@@ -41,6 +53,7 @@ def forward_knowledge_fs_request(
 
     Args:
         method: Allowlisted upstream HTTP method.
+        path: Relative KnowledgeFS path under an allowlisted product surface.
         tenant_id: Current Dify workspace, which must match the static KFS binding.
         query: Original encoded query string from the Console request.
         body: Original JSON request body, when present.
@@ -50,11 +63,14 @@ def forward_knowledge_fs_request(
 
     Raises:
         KnowledgeFSConfigurationError: The connection is incomplete or the workspace does not match.
+        KnowledgeFSRouteNotAllowedError: The path is outside the allowlisted product surface.
         KnowledgeFSTimeoutError: KnowledgeFS exceeds the configured timeout.
         KnowledgeFSTransportError: The request fails or SSRF protection blocks it.
 
     The configured bearer token is trusted to belong to the configured static tenant.
     """
+    if (method, path) not in _ALLOWED_OPERATIONS:
+        raise KnowledgeFSRouteNotAllowedError("KnowledgeFS route is not allowed")
     base_url = dify_config.KNOWLEDGE_FS_BASE_URL
     api_token = dify_config.KNOWLEDGE_FS_API_TOKEN
     expected_tenant_id = dify_config.KNOWLEDGE_FS_STATIC_TENANT_ID
@@ -71,7 +87,7 @@ def forward_knowledge_fs_request(
     try:
         return ssrf_proxy.make_request(
             method,
-            f"{base_url}/knowledge-spaces",
+            f"{base_url}/{path}",
             max_retries=0,
             params=query,
             content=body,
