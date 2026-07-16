@@ -177,16 +177,29 @@ export const openAgentAdvancedSettings = async (page: ReturnType<DifyWorld['getP
 export const getAgentEnvVariableRow = (advancedSettings: Locator, key: string) =>
   advancedSettings.getByRole('row', { name: `Key: ${key}`, exact: true })
 
+export const expectAgentEnvVariableRows = async (
+  advancedSettings: Locator,
+  key: string,
+  value: string,
+) => {
+  const variableRows = getAgentEnvVariableRow(advancedSettings, key)
+
+  await expect(variableRows).not.toHaveCount(0, { timeout: 30_000 })
+  for (const variableRow of await variableRows.all()) {
+    await expect(variableRow.getByRole('textbox', { name: 'Key' })).toHaveValue(key)
+    await expect(variableRow.getByRole('textbox', { name: 'Value' })).toHaveValue(value)
+    await expect(variableRow.getByText('Plain', { exact: true })).toBeVisible()
+  }
+}
+
 export const expectAgentEnvVariableVisible = async (
   world: DifyWorld,
   key: string,
   value: string,
 ) => {
   const advancedSettings = await openAgentAdvancedSettings(world.getPage())
-  const variableRow = getAgentEnvVariableRow(advancedSettings, key)
 
-  await expect(variableRow).toContainText(value, { timeout: 30_000 })
-  await expect(variableRow.getByText('Plain', { exact: true })).toBeVisible()
+  await expectAgentEnvVariableRows(advancedSettings, key, value)
 }
 
 export const expectAgentEnvVariableHidden = async (world: DifyWorld, key: string) => {

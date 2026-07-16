@@ -6,6 +6,7 @@ import { agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-re
 import { getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import {
   expectAgentEnvVariableHidden,
+  expectAgentEnvVariableRows,
   expectAgentEnvVariableVisible,
   getAgentEnvVariableRow,
   getAgentEnvVariables,
@@ -230,12 +231,16 @@ Then(
   async function (this: DifyWorld) {
     const advancedSettings = await openAgentAdvancedSettings(this.getPage())
 
-    await expect(
-      getAgentEnvVariableRow(advancedSettings, agentBuilderFixedInputs.envPlainKey),
-    ).toContainText(agentBuilderFixedInputs.envPlainValue, { timeout: 30_000 })
-    await expect(
-      getAgentEnvVariableRow(advancedSettings, agentBuilderFixedInputs.envModeKey),
-    ).toContainText(agentBuilderFixedInputs.envModeValue, { timeout: 30_000 })
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envPlainKey,
+      agentBuilderFixedInputs.envPlainValue,
+    )
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envModeKey,
+      agentBuilderFixedInputs.envModeValue,
+    )
     await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
   },
 )
@@ -245,9 +250,11 @@ Then(
   async function (this: DifyWorld) {
     const advancedSettings = await openAgentAdvancedSettings(this.getPage())
 
-    await expect(
-      getAgentEnvVariableRow(advancedSettings, agentBuilderFixedInputs.envModeKey),
-    ).toContainText(agentBuilderFixedInputs.envModeValue, { timeout: 30_000 })
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envModeKey,
+      agentBuilderFixedInputs.envModeValue,
+    )
     await expect(
       getAgentEnvVariableRow(advancedSettings, agentBuilderFixedInputs.envPlainKey),
     ).toHaveCount(0)
@@ -300,12 +307,16 @@ Then(
     const page = this.getPage()
     const advancedSettings = await openAgentAdvancedSettings(page)
 
-    await expect(
-      getAgentEnvVariableRow(advancedSettings, agentBuilderFixedInputs.envPlainKey),
-    ).toContainText(agentBuilderFixedInputs.envPlainValue, { timeout: 30_000 })
-    await expect(
-      getAgentEnvVariableRow(advancedSettings, agentBuilderFixedInputs.envAfterInvalidImportKey),
-    ).toContainText(agentBuilderFixedInputs.envAfterInvalidImportValue, { timeout: 30_000 })
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envPlainKey,
+      agentBuilderFixedInputs.envPlainValue,
+    )
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envAfterInvalidImportKey,
+      agentBuilderFixedInputs.envAfterInvalidImportValue,
+    )
     await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
   },
 )
