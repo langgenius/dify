@@ -365,7 +365,14 @@ KNOWLEDGE_FS_CONTRACT_OPERATIONS: Final[tuple[ContractOperation, ...]] = (
         "dataset_document_download",
         26214400,
         (),
-        ("cache-control", "content-disposition", "content-security-policy", "x-content-type-options", "x-document-multimodal-asset-variant", "x-document-multimodal-item-id"),
+        (
+            "cache-control",
+            "content-disposition",
+            "content-security-policy",
+            "x-content-type-options",
+            "x-document-multimodal-asset-variant",
+            "x-document-multimodal-item-id",
+        ),
         ("application/octet-stream", "image/gif", "image/jpeg", "image/png", "image/webp"),
     ),
     (
