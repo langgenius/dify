@@ -23,7 +23,6 @@ import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import {
   WorkflowInlineAgentConfigureWorkspace,
   WorkflowRosterAgentOrchestratePanelContent,
@@ -703,7 +702,6 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onOutputsChange={handleDeclaredOutputsChange}
           />
         </div>
-        <AgentAdvancedSettings />
         <div>
           <AgentOutputVariables
             collapsed={isOutputVariablesCollapsed}
