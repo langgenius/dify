@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from pydantic import SecretStr, ValidationError
 
 from configs.extra.knowledge_fs_config import KnowledgeFSConfig
+
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
+_KNOWLEDGE_FS_DOCKER_VARIABLES = (
+    "KNOWLEDGE_FS_BASE_URL",
+    "KNOWLEDGE_FS_JWT_SECRET",
+    "KNOWLEDGE_FS_TIMEOUT_SECONDS",
+)
 
 
 def test_knowledge_fs_config_normalizes_complete_connection() -> None:
@@ -29,16 +38,28 @@ def test_knowledge_fs_config_treats_blank_connection_as_disabled() -> None:
     assert config.KNOWLEDGE_FS_JWT_SECRET is None
 
 
+def test_knowledge_fs_docker_config_is_not_shadowed_by_root_env() -> None:
+    root_env_example = (_REPOSITORY_ROOT / "docker/.env.example").read_text(encoding="utf-8")
+    api_env_example = (_REPOSITORY_ROOT / "docker/envs/core-services/api.env.example").read_text(encoding="utf-8")
+
+    for variable in _KNOWLEDGE_FS_DOCKER_VARIABLES:
+        assert f"{variable}=" not in root_env_example
+        assert f"{variable}=" in api_env_example
+
+
 @pytest.mark.parametrize(
-    "overrides",
+    ("base_url", "jwt_secret"),
     [
-        {"KNOWLEDGE_FS_BASE_URL": "https://knowledge-fs.test"},
-        {"KNOWLEDGE_FS_JWT_SECRET": "production-secret-with-at-least-32-bytes"},
+        ("https://knowledge-fs.test", None),
+        (None, "production-secret-with-at-least-32-bytes"),
     ],
 )
-def test_knowledge_fs_config_rejects_partial_connection(overrides: dict[str, object]) -> None:
+def test_knowledge_fs_config_rejects_partial_connection(base_url: str | None, jwt_secret: str | None) -> None:
     with pytest.raises(ValidationError, match="must be configured together"):
-        KnowledgeFSConfig(**overrides)
+        KnowledgeFSConfig(
+            KNOWLEDGE_FS_BASE_URL=base_url,
+            KNOWLEDGE_FS_JWT_SECRET=jwt_secret,
+        )
 
 
 @pytest.mark.parametrize("base_url", ["knowledge-fs.test", "ftp://knowledge-fs.test", "http:///missing-host"])

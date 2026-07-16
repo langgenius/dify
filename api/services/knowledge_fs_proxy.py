@@ -10,7 +10,7 @@ redirects are never followed.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import Literal
+from typing import Literal, NamedTuple
 
 import httpx
 import jwt
@@ -24,12 +24,16 @@ _JWT_AUDIENCE = "knowledge-fs"
 _JWT_ISSUER = "dify"
 _JWT_TTL_SECONDS = 60
 
-_ALLOWED_OPERATIONS: frozenset[tuple[KnowledgeFSMethod, str]] = frozenset(
-    {
-        ("GET", "knowledge-spaces"),
-        ("POST", "knowledge-spaces"),
-    }
-)
+
+class _KnowledgeFSUpstreamOperation(NamedTuple):
+    method: KnowledgeFSMethod
+    path: str
+
+
+_ALLOWED_OPERATIONS: dict[tuple[KnowledgeFSMethod, str], _KnowledgeFSUpstreamOperation] = {
+    ("GET", "knowledge-spaces"): _KnowledgeFSUpstreamOperation("GET", "knowledge-spaces"),
+    ("POST", "knowledge-spaces"): _KnowledgeFSUpstreamOperation("POST", "knowledge-spaces"),
+}
 
 _HTTP_CLIENT = get_pooled_http_client(
     "knowledge-fs",
@@ -84,7 +88,8 @@ def forward_knowledge_fs_request(
 
     Each request is bound to a stable Dify workspace principal with a short expiration.
     """
-    if (method, path) not in _ALLOWED_OPERATIONS:
+    operation = _ALLOWED_OPERATIONS.get((method, path))
+    if operation is None:
         raise KnowledgeFSRouteNotAllowedError("KnowledgeFS route is not allowed")
     base_url = dify_config.KNOWLEDGE_FS_BASE_URL
     jwt_secret = dify_config.KNOWLEDGE_FS_JWT_SECRET
@@ -110,14 +115,14 @@ def forward_knowledge_fs_request(
         headers["Content-Type"] = "application/json"
 
     try:
-        upstream_url = httpx.URL(f"{base_url}/").join(path)
+        upstream_url = httpx.URL(f"{base_url}/").join(operation.path)
         return _HTTP_CLIENT.request(
-            method,
+            operation.method,
             upstream_url,
             params=query,
             content=body,
             headers=headers,
-            timeout=float(dify_config.KNOWLEDGE_FS_TIMEOUT_SECONDS),
+            timeout=dify_config.KNOWLEDGE_FS_TIMEOUT_SECONDS,
             follow_redirects=False,
         )
     except httpx.TimeoutException as exc:
