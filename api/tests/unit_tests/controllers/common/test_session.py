@@ -1,107 +1,100 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+from unittest.mock import patch
+
 import pytest
-from sqlalchemy import Engine, literal, select
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine, event, literal, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common import session as session_module
+from models import Tenant
 
 
-class FakeSession:
-    committed: bool
-    rolled_back: bool
-    closed: bool
-
-    def __init__(self) -> None:
-        self.committed = False
-        self.rolled_back = False
-        self.closed = False
-
-    def commit(self) -> None:
-        self.committed = True
-
-    def rollback(self) -> None:
-        self.rolled_back = True
+@contextmanager
+def _bind_session_factory(session: Session):
+    database_session_factory = sessionmaker(
+        bind=session.get_bind(),
+        expire_on_commit=False,
+    )
+    with patch("core.db.session_factory._session_maker", database_session_factory):
+        yield
 
 
-class FakeSessionContext:
-    session: FakeSession
-    entered: bool
-    exited: bool
-    exc_type: object | None
-
-    def __init__(self, session: FakeSession) -> None:
-        self.session = session
-        self.entered = False
-        self.exited = False
-        self.exc_type = None
-
-    def __enter__(self) -> FakeSession:
-        self.entered = True
-        return self.session
-
-    def __exit__(self, exc_type: object | None, *_args: object) -> None:
-        self.exited = True
-        self.exc_type = exc_type
-        self.session.closed = True
+def _tenant_names(session: Session) -> list[str]:
+    session.expire_all()
+    return list(session.scalars(select(Tenant.name).order_by(Tenant.name)).all())
 
 
-def test_with_session_write_commits_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = FakeSession()
-    session_context = FakeSessionContext(session)
-    monkeypatch.setattr(session_module.session_factory, "create_session", lambda: session_context)
+@pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
+def test_with_session_write_commits_on_success(sqlite_session: Session) -> None:
+    commit_observed = False
+    injected_session: Session | None = None
 
     class Handler:
         @session_module.with_session(write=True)
-        def post(self, injected_session):
-            assert injected_session is session
+        def post(self, session: Session):
+            nonlocal commit_observed, injected_session
+            injected_session = session
+
+            def observe_commit(_session: Session) -> None:
+                nonlocal commit_observed
+                commit_observed = True
+
+            event.listen(session, "after_commit", observe_commit)
+            session.add(Tenant(name="committed tenant"))
             return "ok"
 
-    assert Handler().post() == "ok"
+    with _bind_session_factory(sqlite_session):
+        assert Handler().post() == "ok"
 
-    assert session.closed
-    assert session.committed
-    assert not session.rolled_back
-    assert session_context.entered
-    assert session_context.exited
-    assert session_context.exc_type is None
+    assert commit_observed
+    assert injected_session is not None
+    assert not injected_session.in_transaction()
+    assert _tenant_names(sqlite_session) == ["committed tenant"]
 
 
-def test_with_session_default_write_commits_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = FakeSession()
-    session_context = FakeSessionContext(session)
-    monkeypatch.setattr(session_module.session_factory, "create_session", lambda: session_context)
-
+@pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
+def test_with_session_default_write_commits_on_success(sqlite_session: Session) -> None:
     class Handler:
         @session_module.with_session
-        def post(self, injected_session):
-            assert injected_session is session
+        def post(self, session: Session):
+            session.add(Tenant(name="default write tenant"))
             return "ok"
 
-    assert Handler().post() == "ok"
-    assert session.committed
-    assert not session.rolled_back
+    with _bind_session_factory(sqlite_session):
+        assert Handler().post() == "ok"
+
+    assert _tenant_names(sqlite_session) == ["default write tenant"]
 
 
-def test_with_session_write_rolls_back_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = FakeSession()
-    session_context = FakeSessionContext(session)
-    monkeypatch.setattr(session_module.session_factory, "create_session", lambda: session_context)
+@pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
+def test_with_session_write_rolls_back_on_error(sqlite_session: Session) -> None:
+    rollback_observed = False
+    injected_session: Session | None = None
 
     class Handler:
         @session_module.with_session(write=True)
-        def get(self, _session):
+        def get(self, session: Session):
+            nonlocal rollback_observed, injected_session
+            injected_session = session
+
+            def observe_rollback(_session: Session) -> None:
+                nonlocal rollback_observed
+                rollback_observed = True
+
+            event.listen(session, "after_rollback", observe_rollback)
+            session.add(Tenant(name="rolled back tenant"))
+            session.flush()
             raise RuntimeError("boom")
 
-    with pytest.raises(RuntimeError, match="boom"):
+    with _bind_session_factory(sqlite_session), pytest.raises(RuntimeError, match="boom"):
         Handler().get()
 
-    assert session.closed
-    assert not session.committed
-    assert session.rolled_back
-    assert session_context.entered
-    assert session_context.exited
-    assert session_context.exc_type is RuntimeError
+    assert rollback_observed
+    assert injected_session is not None
+    assert not injected_session.in_transaction()
+    assert _tenant_names(sqlite_session) == []
 
 
 def test_with_session_write_allows_commit_then_more_database_work(
@@ -118,35 +111,31 @@ def test_with_session_write_allows_commit_then_more_database_work(
     assert Handler().post() == 1
 
 
-def test_with_session_read_mode_does_not_commit(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = FakeSession()
-    session_context = FakeSessionContext(session)
-    monkeypatch.setattr(session_module.session_factory, "create_session", lambda: session_context)
+@pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
+def test_with_session_read_mode_does_not_commit(sqlite_session: Session) -> None:
+    injected_session: Session | None = None
 
     class Handler:
         @session_module.with_session(write=False)
-        def get(self, injected_session):
-            assert injected_session is session
+        def get(self, session: Session):
+            nonlocal injected_session
+            injected_session = session
+            session.add(Tenant(name="uncommitted read tenant"))
+            session.flush()
             return "ok"
 
-    assert Handler().get() == "ok"
+    with _bind_session_factory(sqlite_session):
+        assert Handler().get() == "ok"
 
-    assert session.closed
-    assert not session.committed
-    assert not session.rolled_back
-    assert session_context.entered
-    assert session_context.exited
-    assert session_context.exc_type is None
+    assert injected_session is not None
+    assert not injected_session.in_transaction()
+    assert _tenant_names(sqlite_session) == []
 
 
-def test_with_session_preserves_wrapped_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = FakeSession()
-    session_context = FakeSessionContext(session)
-    monkeypatch.setattr(session_module.session_factory, "create_session", lambda: session_context)
-
+def test_with_session_preserves_wrapped_metadata() -> None:
     class Handler:
         @session_module.with_session
-        def get(self, _session):
+        def get(self, _session: Session):
             """handler docs"""
             return "ok"
 
