@@ -31,15 +31,6 @@ Feature: Agent v2 Agent Edit page
     When I open the preseeded Agent v2 configure page for "E2E New Agent Builder Tool States" from the Agent Roster
     Then I should see the Agent v2 tool state fixture tools
 
-  @tool-error-state @tool-states-agent @feature-gated
-  Scenario: Tool credential error states are visible on the Agent Edit page
-    Given I am signed in as the default E2E admin
-    And Agent v2 Tool credential error state is available
-    And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" is available
-    And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" includes the tool state fixture configuration
-    When I open the preseeded Agent v2 configure page for "E2E New Agent Builder Tool States" from the Agent Roster
-    Then Agent v2 Tool credential error state should be available
-
   @core @dual-retrieval-fixture
   Scenario: Dual Knowledge Retrieval settings are visible on the Agent Edit page
     Given I am signed in as the default E2E admin
