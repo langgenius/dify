@@ -1,443 +1,330 @@
-"""
-Test suite for account activation flows.
+"""SQLite-backed tests for account invitation and activation flows."""
 
-This module tests the account activation mechanism including:
-- Invitation token validation
-- Account activation with user preferences
-- Workspace member onboarding
-- Initial login after activation
-"""
+from __future__ import annotations
 
-from unittest.mock import ANY, MagicMock, patch
+from collections.abc import Iterator
+from dataclasses import dataclass
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine, func, select
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
+from controllers.console.auth import activate as activate_module
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.auth.error import InvitationAccountMismatchError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
-from models.account import AccountStatus, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.base import TypeBase
+
+
+@dataclass(frozen=True)
+class Database:
+    """Typed SQLite binding matching Flask-SQLAlchemy's callable session API."""
+
+    engine: Engine
+    session: scoped_session[Session]
+
+
+@pytest.fixture
+def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Database]:
+    TypeBase.metadata.create_all(
+        sqlite_engine,
+        tables=[Account.__table__, Tenant.__table__, TenantAccountJoin.__table__],
+    )
+    session_registry = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    database = Database(engine=sqlite_engine, session=session_registry)
+    monkeypatch.setattr(activate_module, "db", database)
+    try:
+        yield database
+    finally:
+        session_registry.remove()
+
+
+@pytest.fixture
+def app(database: Database) -> Flask:
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    return app
+
+
+@pytest.fixture
+def invitation(database: Database) -> dict[str, object]:
+    session = database.session()
+    account = Account(name="Invited user", email="invitee@example.com", status=AccountStatus.PENDING)
+    account.id = "account-123"
+    tenant = Tenant(name="Test Workspace")
+    tenant.id = "workspace-123"
+    session.add_all([account, tenant])
+    session.commit()
+    return {
+        "data": {"email": account.email},
+        "tenant": tenant,
+        "account": account,
+    }
+
+
+@pytest.fixture
+def switch_tenant(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    switch = Mock()
+    monkeypatch.setattr(activate_module.TenantService, "switch_tenant", switch)
+    return switch
+
+
+def _post(app: Flask, payload: dict[str, object]) -> dict[str, str]:
+    with app.test_request_context("/activate", method="POST", json=payload):
+        return ActivateApi().post()
+
+
+def _setup_payload(**overrides: object) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "workspace_id": "workspace-123",
+        "email": "invitee@example.com",
+        "token": "valid_token",
+        "name": "John Doe",
+        "interface_language": "en-US",
+        "timezone": "UTC",
+    }
+    payload.update(overrides)
+    return payload
 
 
 class TestActivateCheckApi:
-    """Test cases for checking activation token validity."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
-
-    @pytest.fixture
-    def mock_invitation(self):
-        """Create mock invitation object."""
-        tenant = MagicMock()
-        tenant.id = "workspace-123"
-        tenant.name = "Test Workspace"
-
-        return {
-            "data": {"email": "invitee@example.com"},
-            "tenant": tenant,
-        }
-
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_valid_invitation_token(self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock):
-        """
-        Test checking valid invitation token.
-
-        Verifies that:
-        - Valid token returns invitation data
-        - Workspace information is included
-        - Invitee email is returned
-        """
-        # Arrange
-        mock_get_invitation.return_value = mock_invitation
-
-        # Act
-        with app.test_request_context(
-            "/activate/check?workspace_id=workspace-123&email=invitee@example.com&token=valid_token"
+    def test_check_valid_invitation_token(self, app: Flask, invitation: dict[str, object]) -> None:
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            app.test_request_context(
+                "/activate/check?workspace_id=workspace-123&email=invitee@example.com&token=valid_token"
+            ),
         ):
-            api = ActivateCheckApi()
-            response = api.get()
+            response = ActivateCheckApi().get()
 
-        # Assert
         assert response["is_valid"] is True
         assert response["data"]["workspace_name"] == "Test Workspace"
         assert response["data"]["workspace_id"] == "workspace-123"
         assert response["data"]["email"] == "invitee@example.com"
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_valid_invitation_token_includes_account_status(
-        self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock
-    ):
-        mock_account = MagicMock()
-        mock_account.status = AccountStatus.ACTIVE
-        mock_invitation["account"] = mock_account
-        mock_get_invitation.return_value = mock_invitation
+    def test_check_includes_persisted_account_status(self, app: Flask, invitation: dict[str, object]) -> None:
+        account = invitation["account"]
+        assert isinstance(account, Account)
+        account.status = AccountStatus.ACTIVE
 
-        with app.test_request_context("/activate/check?email=invitee@example.com&token=valid_token"):
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            app.test_request_context("/activate/check?email=invitee@example.com&token=valid_token"),
+        ):
             response = ActivateCheckApi().get()
 
-        assert response["is_valid"] is True
         assert response["data"]["account_status"] == AccountStatus.ACTIVE
         assert response["data"]["requires_setup"] is False
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_invalid_invitation_token(self, mock_get_invitation, app: Flask):
-        """
-        Test checking invalid invitation token.
-
-        Verifies that:
-        - Invalid token returns is_valid as False
-        - No data is returned for invalid tokens
-        """
-        # Arrange
-        mock_get_invitation.return_value = None
-
-        # Act
-        with app.test_request_context(
-            "/activate/check?workspace_id=workspace-123&email=test@example.com&token=invalid_token"
+    def test_check_invalid_invitation_token(self, app: Flask) -> None:
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=None,
+            ),
+            app.test_request_context("/activate/check?email=test@example.com&token=invalid_token"),
         ):
-            api = ActivateCheckApi()
-            response = api.get()
+            assert ActivateCheckApi().get() == {"is_valid": False}
 
-        # Assert
-        assert response["is_valid"] is False
-
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_token_without_workspace_id(
-        self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock
-    ):
-        """
-        Test checking token without workspace ID.
-
-        Verifies that:
-        - Token can be checked without workspace_id parameter
-        - System handles None workspace_id gracefully
-        """
-        # Arrange
-        mock_get_invitation.return_value = mock_invitation
-
-        # Act
-        with app.test_request_context("/activate/check?email=invitee@example.com&token=valid_token"):
-            api = ActivateCheckApi()
-            response = api.get()
-
-        # Assert
-        assert response["is_valid"] is True
-        mock_get_invitation.assert_called_once_with(None, "invitee@example.com", "valid_token", session=ANY)
-
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_token_without_email(self, mock_get_invitation: MagicMock, app: Flask, mock_invitation):
-        """
-        Test checking token without email parameter.
-
-        Verifies that:
-        - Token can be checked without email parameter
-        - System handles None email gracefully
-        """
-        # Arrange
-        mock_get_invitation.return_value = mock_invitation
-
-        # Act
-        with app.test_request_context("/activate/check?workspace_id=workspace-123&token=valid_token"):
-            api = ActivateCheckApi()
-            response = api.get()
-
-        # Assert
-        assert response["is_valid"] is True
-        mock_get_invitation.assert_called_once_with("workspace-123", None, "valid_token", session=ANY)
-
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_token_normalizes_email_to_lowercase(
-        self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock
-    ):
-        """Ensure token validation uses lowercase emails."""
-        mock_get_invitation.return_value = mock_invitation
-
-        with app.test_request_context(
-            "/activate/check?workspace_id=workspace-123&email=Invitee@Example.com&token=valid_token"
+    @pytest.mark.parametrize(
+        ("query", "workspace_id", "email"),
+        [
+            ("email=invitee@example.com&token=valid_token", None, "invitee@example.com"),
+            ("workspace_id=workspace-123&token=valid_token", "workspace-123", None),
+            (
+                "workspace_id=workspace-123&email=Invitee@Example.com&token=valid_token",
+                "workspace-123",
+                "Invitee@Example.com",
+            ),
+        ],
+    )
+    def test_check_forwards_optional_lookup_fields(
+        self,
+        app: Flask,
+        invitation: dict[str, object],
+        query: str,
+        workspace_id: str | None,
+        email: str | None,
+    ) -> None:
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ) as lookup,
+            app.test_request_context(f"/activate/check?{query}"),
         ):
-            api = ActivateCheckApi()
-            response = api.get()
+            assert ActivateCheckApi().get()["is_valid"] is True
 
-        assert response["is_valid"] is True
-        mock_get_invitation.assert_called_once_with("workspace-123", "Invitee@Example.com", "valid_token", session=ANY)
+        lookup.assert_called_once_with(workspace_id, email, "valid_token", session=ANY)
+        assert isinstance(lookup.call_args.kwargs["session"], Session)
 
 
 class TestActivateApi:
-    """Test cases for account activation endpoint."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
-
-    @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
-        account.id = "account-123"
-        account.email = "invitee@example.com"
-        account.status = AccountStatus.PENDING
-        return account
-
-    @pytest.fixture
-    def mock_invitation(self, mock_account):
-        """Create mock invitation with account."""
-        tenant = MagicMock()
-        tenant.id = "workspace-123"
-        tenant.name = "Test Workspace"
-
-        return {
-            "data": {"email": "invitee@example.com"},
-            "tenant": tenant,
-            "account": mock_account,
-        }
-
-    @pytest.fixture(autouse=True)
-    def mock_switch_tenant(self):
-        with patch("controllers.console.auth.activate.TenantService.switch_tenant") as mock:
-            yield mock
-
-    @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.current_account_with_tenant")
-    @patch("controllers.console.auth.activate.extract_access_token", return_value="access-token")
-    @patch("controllers.console.auth.activate.db")
     def test_activation_rejects_invitation_for_different_authenticated_account(
         self,
-        mock_db: MagicMock,
-        mock_extract_access_token: MagicMock,
-        mock_current_account_with_tenant: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
-        mock_create_tenant_member: MagicMock,
+        database: Database,
         app: Flask,
-        mock_invitation: MagicMock,
-        mock_account: MagicMock,
-        mock_switch_tenant: MagicMock,
-    ):
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+    ) -> None:
         """A logged-in account cannot consume another account's invitation token."""
-        current_account = MagicMock()
-        current_account.id = "current-account-id"
-        mock_account.id = "invited-account-id"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_invitation["data"]["requires_setup"] = False
-        mock_get_invitation.return_value = mock_invitation
-        mock_current_account_with_tenant.return_value = (current_account, "current-workspace-id")
+        invited_account = invitation["account"]
+        assert isinstance(invited_account, Account)
+        invited_account.status = AccountStatus.ACTIVE
+        data = invitation["data"]
+        assert isinstance(data, dict)
+        data["requires_setup"] = False
+        database.session().commit()
+        current_account = Mock(id="current-account-id")
 
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "token": "valid_token",
-            },
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(
+                activate_module,
+                "current_account_with_tenant",
+                return_value=(current_account, "current-workspace-id"),
+            ),
+            patch.object(activate_module, "extract_access_token", return_value="access-token") as extract_access_token,
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+            patch.object(activate_module.TenantService, "create_tenant_member") as create_tenant_member,
+            pytest.raises(InvitationAccountMismatchError),
         ):
-            with pytest.raises(InvitationAccountMismatchError):
-                ActivateApi().post()
+            _post(app, {"token": "valid_token"})
 
-        mock_extract_access_token.assert_called_once()
-        mock_revoke_token.assert_not_called()
-        mock_create_tenant_member.assert_not_called()
-        mock_switch_tenant.assert_not_called()
-        mock_db.session.scalar.assert_not_called()
+        extract_access_token.assert_called_once()
+        revoke_token.assert_not_called()
+        create_tenant_member.assert_not_called()
+        switch_tenant.assert_not_called()
+        assert database.session().scalar(select(func.count(TenantAccountJoin.id))) == 0
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_successful_account_activation(
+    def test_successful_account_activation_persists_membership(
         self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
+        database: Database,
         app: Flask,
-        mock_invitation: MagicMock,
-        mock_account,
-    ):
-        """
-        Test successful account activation.
-
-        Verifies that:
-        - Account is activated with user preferences
-        - Account status is set to ACTIVE
-        - Invitation token is revoked
-        """
-        # Arrange
-        mock_get_invitation.return_value = mock_invitation
-
-        # Act
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "valid_token",
-                "name": "John Doe",
-                "interface_language": "en-US",
-                "timezone": "UTC",
-            },
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+    ) -> None:
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
         ):
-            api = ActivateApi()
-            response = api.post()
+            response = _post(app, _setup_payload())
 
-        # Assert
-        assert response["result"] == "success"
-        assert mock_account.name == "John Doe"
-        assert mock_account.interface_language == "en-US"
-        assert mock_account.timezone == "UTC"
-        assert mock_account.status == AccountStatus.ACTIVE
-        assert mock_account.initialized_at is not None
-        mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+        session = database.session()
+        account = invitation["account"]
+        tenant = invitation["tenant"]
+        assert isinstance(account, Account)
+        assert isinstance(tenant, Tenant)
+        membership = session.scalar(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.account_id == account.id,
+                TenantAccountJoin.tenant_id == tenant.id,
+            )
+        )
+        assert membership is not None
+        assert membership.role == TenantAccountRole.NORMAL
+        assert response == {"result": "success"}
+        assert account.name == "John Doe"
+        assert account.interface_language == "en-US"
+        assert account.timezone == "UTC"
+        assert account.interface_theme == "light"
+        assert account.status == AccountStatus.ACTIVE
+        assert account.initialized_at is not None
+        revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+        switch_tenant.assert_called_once_with(account, tenant.id, session=ANY)
+        assert isinstance(switch_tenant.call_args.kwargs["session"], Session)
 
-    @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_activation_rejects_missing_setup_fields_before_consuming_invitation(
+    def test_missing_setup_fields_does_not_consume_invitation_or_create_membership(
         self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
-        mock_create_tenant_member,
+        database: Database,
         app: Flask,
-        mock_invitation,
-        mock_switch_tenant,
-    ):
-        mock_invitation["data"]["requires_setup"] = True
-        mock_get_invitation.return_value = mock_invitation
-        mock_db.session.scalar.return_value = None
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+    ) -> None:
+        data = invitation["data"]
+        assert isinstance(data, dict)
+        data["requires_setup"] = True
 
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "valid_token",
-            },
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+            pytest.raises(AlreadyActivateError),
         ):
-            with pytest.raises(AlreadyActivateError):
-                ActivateApi().post()
+            _post(app, _setup_payload(name=None, interface_language=None, timezone=None))
 
-        mock_revoke_token.assert_not_called()
-        mock_create_tenant_member.assert_not_called()
-        mock_switch_tenant.assert_not_called()
+        assert database.session().scalar(select(func.count(TenantAccountJoin.id))) == 0
+        revoke_token.assert_not_called()
+        switch_tenant.assert_not_called()
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_activation_with_invalid_token(self, mock_get_invitation, app: Flask):
-        """
-        Test account activation with invalid token.
-
-        Verifies that:
-        - AlreadyActivateError is raised for invalid tokens
-        - No account changes are made
-        """
-        # Arrange
-        mock_get_invitation.return_value = None
-
-        # Act & Assert
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "invalid_token",
-                "name": "John Doe",
-                "interface_language": "en-US",
-                "timezone": "UTC",
-            },
+    def test_activation_with_invalid_token(self, app: Flask, switch_tenant: Mock) -> None:
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=None,
+            ),
+            pytest.raises(AlreadyActivateError),
         ):
-            api = ActivateApi()
-            with pytest.raises(AlreadyActivateError):
-                api.post()
+            _post(app, _setup_payload(token="invalid_token"))
+        switch_tenant.assert_not_called()
 
-    @patch("controllers.console.auth.activate.dify_config.BILLING_ENABLED", True)
-    @patch("controllers.console.auth.activate.BillingService.is_email_in_freeze")
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_activation_rejects_account_in_billing_freeze(
+    def test_billing_freeze_leaves_persisted_account_pending(
         self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
-        mock_is_email_in_freeze,
+        database: Database,
         app: Flask,
-        mock_invitation,
-        mock_account,
-    ):
-        """Frozen deleted-account emails cannot be reactivated through invitation links."""
-        mock_account.email = "Invitee@Example.com"
-        mock_get_invitation.return_value = mock_invitation
-        mock_is_email_in_freeze.return_value = True
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        account = invitation["account"]
+        assert isinstance(account, Account)
+        account.email = "Invitee@Example.com"
+        database.session().commit()
+        monkeypatch.setattr(activate_module.dify_config, "BILLING_ENABLED", True)
 
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "valid_token",
-                "name": "John Doe",
-                "interface_language": "en-US",
-                "timezone": "UTC",
-            },
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+            patch.object(activate_module.BillingService, "is_email_in_freeze", return_value=True) as is_frozen,
+            pytest.raises(AccountInFreezeError),
         ):
-            api = ActivateApi()
-            with pytest.raises(AccountInFreezeError):
-                api.post()
+            _post(app, _setup_payload())
 
-        mock_is_email_in_freeze.assert_called_once_with("Invitee@Example.com")
-        mock_revoke_token.assert_not_called()
-        mock_db.session.commit.assert_not_called()
-        assert mock_account.status == AccountStatus.PENDING
-
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_activation_sets_interface_theme(
-        self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
-        app: Flask,
-        mock_invitation,
-        mock_account,
-    ):
-        """
-        Test that activation sets default interface theme.
-
-        Verifies that:
-        - Interface theme is set to 'light' by default
-        """
-        # Arrange
-        mock_get_invitation.return_value = mock_invitation
-
-        # Act
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "valid_token",
-                "name": "John Doe",
-                "interface_language": "en-US",
-                "timezone": "UTC",
-            },
-        ):
-            api = ActivateApi()
-            api.post()
-
-        # Assert
-        assert mock_account.interface_theme == "light"
+        database.session().refresh(account)
+        assert account.status == AccountStatus.PENDING
+        assert database.session().scalar(select(func.count(TenantAccountJoin.id))) == 0
+        is_frozen.assert_called_once_with("Invitee@Example.com")
+        revoke_token.assert_not_called()
+        switch_tenant.assert_not_called()
 
     @pytest.mark.parametrize(
         ("language", "timezone"),
@@ -448,236 +335,136 @@ class TestActivateApi:
             ("es-ES", "Europe/Madrid"),
         ],
     )
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
     def test_activation_with_different_locales(
         self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
         app: Flask,
-        mock_invitation,
-        mock_account,
-        language,
-        timezone,
-    ):
-        """
-        Test account activation with various language and timezone combinations.
-
-        Verifies that:
-        - Different languages are accepted
-        - Different timezones are accepted
-        - User preferences are properly stored
-        """
-        # Arrange
-        mock_get_invitation.return_value = mock_invitation
-
-        # Act
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "valid_token",
-                "name": "Test User",
-                "interface_language": language,
-                "timezone": timezone,
-            },
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+        language: str,
+        timezone: str,
+    ) -> None:
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(activate_module.RegisterService, "revoke_token"),
         ):
-            api = ActivateApi()
-            response = api.post()
+            assert _post(app, _setup_payload(interface_language=language, timezone=timezone)) == {"result": "success"}
 
-        # Assert
-        assert response["result"] == "success"
-        assert mock_account.interface_language == language
-        assert mock_account.timezone == timezone
+        account = invitation["account"]
+        assert isinstance(account, Account)
+        assert account.interface_language == language
+        assert account.timezone == timezone
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_activation_returns_success_response(
+    def test_activation_without_workspace_id_revokes_normalized_email(
         self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
         app: Flask,
-        mock_invitation: MagicMock,
-    ):
-        """
-        Test that activation returns a success response without authentication tokens.
-
-        Verifies that:
-        - Response contains a success result
-        - No token data is returned
-        """
-        # Arrange
-        mock_get_invitation.return_value = mock_invitation
-
-        # Act
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "valid_token",
-                "name": "John Doe",
-                "interface_language": "en-US",
-                "timezone": "UTC",
-            },
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+    ) -> None:
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ) as lookup,
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
         ):
-            api = ActivateApi()
-            response = api.post()
+            response = _post(
+                app,
+                _setup_payload(workspace_id=None, email="Invitee@Example.com"),
+            )
 
-        # Assert
         assert response == {"result": "success"}
+        lookup.assert_called_once_with(None, "Invitee@Example.com", "valid_token", session=ANY)
+        revoke_token.assert_called_once_with(None, "invitee@example.com", "valid_token")
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_activation_without_workspace_id(
+    def test_existing_active_account_gets_tenant_scoped_admin_membership(
         self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
+        database: Database,
         app: Flask,
-        mock_invitation: MagicMock,
-    ):
-        """
-        Test account activation without workspace_id.
-
-        Verifies that:
-        - Activation can proceed without workspace_id
-        - Token revocation handles None workspace_id
-        """
-        # Arrange
-        mock_get_invitation.return_value = mock_invitation
-
-        # Act
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "email": "invitee@example.com",
-                "token": "valid_token",
-                "name": "John Doe",
-                "interface_language": "en-US",
-                "timezone": "UTC",
-            },
-        ):
-            api = ActivateApi()
-            response = api.post()
-
-        # Assert
-        assert response["result"] == "success"
-        mock_revoke_token.assert_called_once_with(None, "invitee@example.com", "valid_token")
-
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_activation_normalizes_email_before_lookup(
-        self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
-        app: Flask,
-        mock_invitation: MagicMock,
-        mock_account: MagicMock,
-    ):
-        """Ensure uppercase emails are normalized before lookup and revocation."""
-        mock_get_invitation.return_value = mock_invitation
-
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "Invitee@Example.com",
-                "token": "valid_token",
-                "name": "John Doe",
-                "interface_language": "en-US",
-                "timezone": "UTC",
-            },
-        ):
-            api = ActivateApi()
-            response = api.post()
-
-        assert response["result"] == "success"
-        mock_get_invitation.assert_called_once_with("workspace-123", "Invitee@Example.com", "valid_token", session=ANY)
-        mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
-
-    @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_activation_for_existing_active_account_creates_membership_on_acceptance(
-        self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
-        mock_create_tenant_member: MagicMock,
-        app: Flask,
-        mock_invitation: MagicMock,
-        mock_account: MagicMock,
-        mock_switch_tenant: MagicMock,
-    ):
-        mock_account.status = AccountStatus.ACTIVE
-        mock_invitation["data"]["role"] = "admin"
-        mock_invitation["data"]["requires_setup"] = False
-        mock_get_invitation.return_value = mock_invitation
-        mock_db.session.scalar.return_value = None
-
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "valid_token",
-            },
-        ):
-            response = ActivateApi().post()
-
-        assert response["result"] == "success"
-        mock_create_tenant_member.assert_called_once_with(
-            mock_invitation["tenant"], mock_account, mock_db.session(), role=TenantAccountRole.ADMIN
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+    ) -> None:
+        session = database.session()
+        account = invitation["account"]
+        tenant = invitation["tenant"]
+        data = invitation["data"]
+        assert isinstance(account, Account)
+        assert isinstance(tenant, Tenant)
+        assert isinstance(data, dict)
+        account.status = AccountStatus.ACTIVE
+        data.update({"role": "admin", "requires_setup": False})
+        other_tenant = Tenant(name="Other Workspace")
+        other_tenant.id = "workspace-456"
+        session.add(other_tenant)
+        session.flush()
+        session.add(
+            TenantAccountJoin(
+                tenant_id=other_tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.NORMAL,
+            )
         )
-        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=ANY)
-        mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+        session.commit()
 
-    @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_activation_legacy_active_member_invitation_does_not_require_setup(
-        self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
-        mock_create_tenant_member: MagicMock,
-        app: Flask,
-        mock_invitation: MagicMock,
-        mock_account: MagicMock,
-        mock_switch_tenant: MagicMock,
-    ):
-        mock_account.status = AccountStatus.ACTIVE
-        mock_get_invitation.return_value = mock_invitation
-        mock_db.session.scalar.return_value = "membership-id"
-
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "valid_token",
-            },
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(activate_module.RegisterService, "revoke_token"),
         ):
-            response = ActivateApi().post()
+            assert _post(
+                app,
+                {"workspace_id": tenant.id, "email": account.email, "token": "valid_token"},
+            ) == {"result": "success"}
 
-        assert response["result"] == "success"
-        mock_create_tenant_member.assert_not_called()
-        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=ANY)
-        mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+        memberships = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account.id)).all()
+        assert {(row.tenant_id, row.role) for row in memberships} == {
+            (other_tenant.id, TenantAccountRole.NORMAL),
+            (tenant.id, TenantAccountRole.ADMIN),
+        }
+
+    def test_existing_membership_is_not_duplicated(
+        self,
+        database: Database,
+        app: Flask,
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+    ) -> None:
+        session = database.session()
+        account = invitation["account"]
+        tenant = invitation["tenant"]
+        assert isinstance(account, Account)
+        assert isinstance(tenant, Tenant)
+        account.status = AccountStatus.ACTIVE
+        session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.EDITOR,
+            )
+        )
+        session.commit()
+
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(activate_module.RegisterService, "revoke_token"),
+        ):
+            assert _post(
+                app,
+                {"workspace_id": tenant.id, "email": account.email, "token": "valid_token"},
+            ) == {"result": "success"}
+
+        assert session.scalar(select(func.count(TenantAccountJoin.id))) == 1
+        membership = session.scalar(select(TenantAccountJoin))
+        assert membership is not None
+        assert membership.role == TenantAccountRole.EDITOR
