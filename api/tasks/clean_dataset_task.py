@@ -4,6 +4,7 @@ import time
 import click
 from celery import shared_task
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -29,7 +30,6 @@ from tasks.refresh_billing_vector_space_task import schedule_billing_vector_spac
 logger = logging.getLogger(__name__)
 
 
-# Add import statement for ValueError
 @shared_task(queue="dataset")
 def clean_dataset_task(
     dataset_id: str,
@@ -39,6 +39,8 @@ def clean_dataset_task(
     collection_binding_id: str,
     doc_form: str,
     pipeline_id: str | None = None,
+    *,
+    session_maker: sessionmaker[Session] | None = None,
 ):
     """
     Clean dataset when dataset deleted.
@@ -48,6 +50,7 @@ def clean_dataset_task(
     :param index_struct: index struct dict
     :param collection_binding_id: collection binding id
     :param doc_form: dataset form
+    :param session_maker: optional session factory for the task-owned transaction
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
@@ -55,7 +58,8 @@ def clean_dataset_task(
     start_at = time.perf_counter()
     vector_cleanup_succeeded = False
 
-    with session_factory.create_session() as session:
+    resolved_session_maker = session_maker or session_factory.get_session_maker()
+    with resolved_session_maker() as session:
         try:
             dataset = Dataset(
                 id=dataset_id,
