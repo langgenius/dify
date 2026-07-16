@@ -193,6 +193,10 @@ export const env = createEnv({
      * The timeout for the text generation in millisecond
      */
     TEXT_GENERATION_TIMEOUT_MS: coercedNumber.default(60000),
+    /**
+     * The timeout for the cmd+k workflow generation in millisecond
+     */
+    WORKFLOW_GENERATION_TIMEOUT_MS: coercedNumber.default(180000),
   },
   client: clientSchema,
   experimental__runtimeEnv: {
