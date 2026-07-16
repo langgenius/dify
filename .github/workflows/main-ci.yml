@@ -72,6 +72,7 @@ jobs:
               - 'docker/volumes/sandbox/conf/**'
             cli:
               - 'cli/**'
+              - 'packages/contracts/**'
               - 'packages/tsconfig/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
