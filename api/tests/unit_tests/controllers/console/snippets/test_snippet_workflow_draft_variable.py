@@ -7,6 +7,7 @@ from flask import Flask
 
 from controllers.console.snippets import snippet_workflow_draft_variable as module
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from graphon.variables.types import SegmentType
 from models.account import Account, AccountStatus
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
 
@@ -241,7 +242,7 @@ def test_environment_variables_returns_workflow_environment_variables(app: Flask
         name="API_KEY",
         description="secret",
         selector=["env", "API_KEY"],
-        value_type=SimpleNamespace(exposed_type=Mock(return_value=SimpleNamespace(value="secret"))),
+        value_type=SegmentType.SECRET,
         value="sk-test",
     )
     monkeypatch.setattr(
