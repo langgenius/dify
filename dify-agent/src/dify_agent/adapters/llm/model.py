@@ -268,13 +268,18 @@ def _map_messages_to_prompt_messages(
         if part.content.strip()
     ]
     if instruction_messages:
-        insert_at = next(
-            (index for index, message in enumerate(prompt_messages) if not isinstance(message, SystemPromptMessage)),
-            len(prompt_messages),
-        )
-        prompt_messages[insert_at:insert_at] = instruction_messages
+        prompt_messages = _order_system_messages_first(prompt_messages, instruction_messages)
 
     return prompt_messages
+
+
+def _order_system_messages_first(
+    prompt_messages: Sequence[PromptMessage],
+    instruction_messages: Sequence[SystemPromptMessage],
+) -> list[PromptMessage]:
+    system_messages = [m for m in prompt_messages if isinstance(m, SystemPromptMessage)]
+    non_system_messages = [m for m in prompt_messages if not isinstance(m, SystemPromptMessage)]
+    return [*system_messages, *instruction_messages, *non_system_messages]
 
 
 def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptMessage]:
