@@ -1,7 +1,8 @@
 """Transport-only forwarding for the allowlisted KnowledgeFS Console routes.
 
-KnowledgeFS owns the request and response contract. This module only binds a
-short-lived workspace identity and normalizes transport failures. The dedicated
+KnowledgeFS owns the request and response contract. This module binds short-lived
+account and workspace identities, enforces Dify's coarse workspace policy, and
+normalizes transport failures. The dedicated
 request path uses Dify's shared SSRF policy, accepts only exact contract
 operations, never follows redirects, bounds buffered identity responses, and
 rejects compressed responses.
@@ -19,7 +20,10 @@ import jwt
 
 from configs import dify_config
 from core.helper import ssrf_proxy
+from core.rbac import RBACPermission, RBACResourceScope
 from core.tools.errors import ToolSSRFError
+from models import Account
+from services.enterprise.rbac_service import RBACService
 from services.knowledge_fs_contract_routes import KNOWLEDGE_FS_CONTRACT_OPERATIONS
 
 type KnowledgeFSMethod = Literal["DELETE", "GET", "PATCH", "POST", "PUT"]
@@ -50,6 +54,7 @@ class KnowledgeFSOperation(NamedTuple):
     max_response_bytes: int
     request_headers: tuple[str, ...]
     response_headers: tuple[str, ...]
+    response_media_types: tuple[str, ...]
 
 
 class KnowledgeFSUpstreamResponse(NamedTuple):
@@ -73,8 +78,52 @@ class KnowledgeFSRouteNotAllowedError(RuntimeError):
     """The requested path is outside the Console-visible KnowledgeFS surface."""
 
 
+class KnowledgeFSAccessDeniedError(RuntimeError):
+    """The Dify account lacks the workspace permission required by the operation."""
+
+
+def authorize_knowledge_fs_request(
+    *,
+    account: Account,
+    tenant_id: str,
+    method: KnowledgeFSMethod,
+    operation: KnowledgeFSOperation,
+) -> None:
+    """Enforce Dify's workspace policy before KFS performs resource authorization.
+
+    Args:
+        account: Authenticated Dify account with its current workspace role.
+        tenant_id: Current Dify workspace identifier.
+        method: Allowlisted upstream HTTP method.
+        operation: Generated KnowledgeFS operation metadata.
+
+    Raises:
+        KnowledgeFSAccessDeniedError: The account lacks a required legacy or enterprise permission.
+    """
+    permission = RBACPermission(operation.rbac_permission)
+    if permission == RBACPermission.DATASET_ACCESS_CONFIG and not account.is_admin_or_owner:
+        raise KnowledgeFSAccessDeniedError("KnowledgeFS access-policy changes require a workspace administrator")
+    if permission == RBACPermission.DATASET_API_KEY_MANAGE and (
+        (method == "DELETE" and not account.is_admin_or_owner)
+        or (method != "DELETE" and not account.has_edit_permission)
+    ):
+        raise KnowledgeFSAccessDeniedError("KnowledgeFS API-key changes require elevated workspace access")
+    if permission == RBACPermission.DATASET_EXTERNAL_CONNECT and not account.has_edit_permission:
+        raise KnowledgeFSAccessDeniedError("KnowledgeFS connections require workspace edit access")
+    if operation.access == "write" and not account.is_dataset_editor:
+        raise KnowledgeFSAccessDeniedError("KnowledgeFS mutations require dataset edit access")
+    if not RBACService.CheckAccess.check(
+        tenant_id,
+        account.id,
+        scene=permission.value,
+        resource_type=RBACResourceScope.DATASET.value,
+    ):
+        raise KnowledgeFSAccessDeniedError("KnowledgeFS operation is denied by workspace RBAC")
+
+
 def forward_knowledge_fs_request(
     *,
+    account_id: str,
     method: KnowledgeFSMethod,
     path: str,
     tenant_id: str,
@@ -87,6 +136,7 @@ def forward_knowledge_fs_request(
     """Forward one fixed-route request without parsing its KnowledgeFS payload.
 
     Args:
+        account_id: Current Dify account used as the KFS member identity.
         method: Allowlisted upstream HTTP method.
         path: Relative KnowledgeFS path under an allowlisted product surface.
         tenant_id: Current Dify workspace used as the KFS tenant identity.
@@ -105,7 +155,7 @@ def forward_knowledge_fs_request(
         KnowledgeFSTimeoutError: KnowledgeFS exceeds the configured timeout.
         KnowledgeFSTransportError: The request fails or its response cannot be safely bounded.
 
-    Each request is bound to a stable Dify workspace principal with a short expiration.
+    Each request is bound to stable Dify account and workspace principals with a short expiration.
     """
     operation = get_knowledge_fs_operation(method, path)
     base_url = dify_config.KNOWLEDGE_FS_BASE_URL
@@ -117,6 +167,7 @@ def forward_knowledge_fs_request(
         {
             "aud": _JWT_AUDIENCE,
             "caller_kind": "interactive",
+            "dify_account_id": f"dify-account:{account_id}",
             "exp": now + timedelta(seconds=_JWT_TTL_SECONDS),
             "iat": now,
             "iss": _JWT_ISSUER,
@@ -160,7 +211,7 @@ def forward_knowledge_fs_request(
             if content_encoding not in {"", "identity"}:
                 response.close()
                 raise KnowledgeFSTransportError("KnowledgeFS streaming response used an unsupported encoding")
-            _set_response_read_timeout(response, None)
+            _set_response_read_timeout(response, dify_config.KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS)
             return KnowledgeFSUpstreamResponse(response, response_kind)
 
         max_response_bytes = (
@@ -191,6 +242,7 @@ def get_knowledge_fs_operation(method: KnowledgeFSMethod, path: str) -> Knowledg
         max_response_bytes,
         request_headers,
         response_headers,
+        response_media_types,
     ) in KNOWLEDGE_FS_CONTRACT_OPERATIONS:
         if method == allowed_method and _matches_route_template(template, path):
             return KnowledgeFSOperation(
@@ -202,6 +254,7 @@ def get_knowledge_fs_operation(method: KnowledgeFSMethod, path: str) -> Knowledg
                 max_response_bytes=max_response_bytes,
                 request_headers=request_headers,
                 response_headers=response_headers,
+                response_media_types=response_media_types,
             )
     raise KnowledgeFSRouteNotAllowedError("KnowledgeFS route is not allowed")
 
@@ -222,7 +275,7 @@ def _classify_response(operation: KnowledgeFSOperation, response: httpx.Response
             raise KnowledgeFSTransportError("KnowledgeFS stream response used an unsupported media type")
         return "stream"
     if operation.response_kind == "binary":
-        if not content_type or _is_json_content_type(content_type):
+        if content_type not in operation.response_media_types:
             response.close()
             raise KnowledgeFSTransportError("KnowledgeFS binary response used an unsupported media type")
         return "binary"

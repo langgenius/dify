@@ -1,7 +1,7 @@
 {
-  "commit": "dc98ac988b1ad340be543f7702261a0dbb5d59b3",
-  "generatedSha256": "c609b5d67100ab168a1ac0ec3351ee1c9138263e276188b6ee4ebf77c83344d0",
-  "openapiSha256": "5f1c79b243a0454f758d5ed7d9362c2a47061ffbc0a580a54d1c5a6b9ace17db",
-  "proxyRoutesSha256": "657fdd4d3afbe23f1e38b77fc829a7253ed1757781e43125552f32de0bbf1466",
+  "commit": "65f2bf9c2e15a4ee02972361d90d711db40bb31f",
+  "generatedSha256": "d9a6feebb30b271d70994be2e36331b71ad26247c9dd2de07af17f87e41a64b9",
+  "openapiSha256": "86e64eceb808ee0d9211a11aa80253aa648c86cc7748cf16286aee17a648618f",
+  "proxyRoutesSha256": "ce41ba698f5af14bd19fa8d6afd949799c8cfff51cf5b93f643d72d9ed54fd83",
   "repository": "https://github.com/langgenius/knowledge-fs"
 }

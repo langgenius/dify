@@ -11,6 +11,7 @@ _REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 _KNOWLEDGE_FS_DOCKER_VARIABLES = (
     "KNOWLEDGE_FS_BASE_URL",
     "KNOWLEDGE_FS_JWT_SECRET",
+    "KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS",
     "KNOWLEDGE_FS_TIMEOUT_SECONDS",
 )
 
@@ -26,6 +27,7 @@ def test_knowledge_fs_config_normalizes_complete_connection() -> None:
     assert config.KNOWLEDGE_FS_JWT_SECRET.get_secret_value() == "production-secret-with-at-least-32-bytes"
     assert "production-secret" not in repr(config)
     assert "production-secret" not in config.model_dump_json()
+    assert config.KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS == 300.0
 
 
 def test_knowledge_fs_config_treats_blank_connection_as_disabled() -> None:
@@ -91,3 +93,9 @@ def test_knowledge_fs_config_rejects_unsafe_base_url_components(base_url: str) -
 def test_knowledge_fs_config_rejects_unbounded_timeouts(timeout_seconds: float) -> None:
     with pytest.raises(ValidationError):
         KnowledgeFSConfig(KNOWLEDGE_FS_TIMEOUT_SECONDS=timeout_seconds)
+
+
+@pytest.mark.parametrize("timeout_seconds", [float("inf"), float("nan"), 3600.0001])
+def test_knowledge_fs_config_rejects_unbounded_sse_read_timeouts(timeout_seconds: float) -> None:
+    with pytest.raises(ValidationError):
+        KnowledgeFSConfig(KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS=timeout_seconds)

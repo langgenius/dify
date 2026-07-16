@@ -15,6 +15,7 @@ class KnowledgeFSConfig(BaseSettings):
         min_length=32,
         description="Shared secret used to sign short-lived KnowledgeFS service JWTs.",
     )
+    KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS: PositiveFloat = Field(default=300.0, le=3600.0, allow_inf_nan=False)
     KNOWLEDGE_FS_TIMEOUT_SECONDS: PositiveFloat = Field(default=10.0, le=60.0, allow_inf_nan=False)
 
     @field_validator(

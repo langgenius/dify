@@ -3832,6 +3832,11 @@ export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId
 export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
   zDocumentProcessingTask
 
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders =
+  z.object({
+    'last-event-id': z.string().optional(),
+  })
+
 export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath =
   z.object({
     documentId: z.uuid(),

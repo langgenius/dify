@@ -6,9 +6,9 @@ avoids resource-specific Dify controllers, while the forwarding module consumes
 the exact operation templates generated from the pinned KnowledgeFS contract.
 Console auth and contract-specific dataset RBAC run before forwarding. Request
 bodies are capped at 64 MiB, JSON and binary responses have separate bounds,
-SSE responses remain streaming, only safe response headers are exposed, and
-upstream 401/403 responses become 502 so they cannot trigger Dify browser-session
-recovery.
+SSE responses remain streaming with a bounded idle read timeout, and only safe
+response headers are exposed. Upstream 401 responses become 502 so they cannot
+trigger Dify browser-session recovery; resource-level 403 responses remain 403.
 """
 
 from __future__ import annotations
@@ -31,11 +31,8 @@ from werkzeug.exceptions import (
     ServiceUnavailable,
 )
 
-from controllers.common.wraps import enforce_rbac_access
 from controllers.console import api, bp
 from controllers.console.wraps import (
-    RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     setup_required,
@@ -43,12 +40,14 @@ from controllers.console.wraps import (
 from core.helper import ssrf_proxy
 from libs.login import current_account_with_tenant, login_required
 from services.knowledge_fs_proxy import (
+    KnowledgeFSAccessDeniedError,
     KnowledgeFSConfigurationError,
     KnowledgeFSMethod,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,
     KnowledgeFSUpstreamResponse,
+    authorize_knowledge_fs_request,
     forward_knowledge_fs_request,
     get_knowledge_fs_operation,
 )
@@ -99,6 +98,8 @@ def _translate_proxy_error(exc: Exception, *, tenant_id: str) -> NoReturn:
     """Map forwarding failures to the stable Console HTTP error surface."""
     if isinstance(exc, KnowledgeFSRouteNotAllowedError):
         raise NotFound() from exc
+    if isinstance(exc, KnowledgeFSAccessDeniedError):
+        raise Forbidden() from exc
     if isinstance(exc, KnowledgeFSConfigurationError):
         logger.error("KnowledgeFS request was blocked by invalid configuration for tenant_id=%s", tenant_id)
         raise ServiceUnavailable("KnowledgeFS integration is misconfigured") from exc
@@ -148,9 +149,10 @@ def _proxy_response(
 
     Raises:
         BadGateway: KnowledgeFS rejects the configured server credential.
+        Forbidden: KnowledgeFS denies the account access to the requested resource.
     """
     upstream = upstream_result.response
-    if upstream.status_code in {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN}:
+    if upstream.status_code == HTTPStatus.UNAUTHORIZED:
         upstream.close()
         logger.error(
             "KnowledgeFS rejected the Dify server credential with HTTP %s for tenant_id=%s",
@@ -158,12 +160,17 @@ def _proxy_response(
             tenant_id,
         )
         raise BadGateway("KnowledgeFS authentication failed")
+    if upstream.status_code == HTTPStatus.FORBIDDEN:
+        upstream.close()
+        raise Forbidden()
 
-    allowed_header_names = dict.fromkeys((*_RESPONSE_HEADER_ALLOWLIST, *contract_response_headers))
+    allowed_header_names = dict.fromkeys(
+        name.lower() for name in (*_RESPONSE_HEADER_ALLOWLIST, *contract_response_headers)
+    )
     headers = {
         name: value
         for name in allowed_header_names
-        if name.lower() not in _RESPONSE_HEADER_DENYLIST
+        if name not in _RESPONSE_HEADER_DENYLIST
         if (value := upstream.headers.get(name)) is not None
     }
     if upstream_result.response_kind == "stream":
@@ -197,26 +204,14 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     current_user, tenant_id = current_account_with_tenant()
     try:
         operation = get_knowledge_fs_operation(method, upstream_path)
-        permission = RBACPermission(operation.rbac_permission)
-        if permission == RBACPermission.DATASET_ACCESS_CONFIG and not current_user.is_admin_or_owner:
-            raise Forbidden()
-        if permission == RBACPermission.DATASET_API_KEY_MANAGE and (
-            (method == "DELETE" and not current_user.is_admin_or_owner)
-            or (method != "DELETE" and not current_user.has_edit_permission)
-        ):
-            raise Forbidden()
-        if permission == RBACPermission.DATASET_EXTERNAL_CONNECT and not current_user.has_edit_permission:
-            raise Forbidden()
-        if operation.access == "write" and not current_user.is_dataset_editor:
-            raise Forbidden()
-        enforce_rbac_access(
+        authorize_knowledge_fs_request(
+            account=current_user,
             tenant_id=tenant_id,
-            account_id=current_user.id,
-            resource_type=RBACResourceScope.DATASET,
-            scene=permission,
-            resource_required=False,
+            method=method,
+            operation=operation,
         )
         upstream = forward_knowledge_fs_request(
+            account_id=current_user.id,
             method=method,
             path=upstream_path,
             tenant_id=tenant_id,
@@ -230,6 +225,7 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
         )
     except (
         KnowledgeFSConfigurationError,
+        KnowledgeFSAccessDeniedError,
         KnowledgeFSRouteNotAllowedError,
         KnowledgeFSTimeoutError,
         KnowledgeFSTransportError,

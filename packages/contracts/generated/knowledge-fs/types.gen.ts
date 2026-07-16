@@ -5015,6 +5015,9 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRe
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsData = {
   body?: never
+  headers?: {
+    'last-event-id'?: string
+  }
   path: {
     documentId: string
     id: string

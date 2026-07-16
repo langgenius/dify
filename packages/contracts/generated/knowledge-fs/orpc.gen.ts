@@ -75,6 +75,7 @@ import {
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdParseArtifactsByVersionPath,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdParseArtifactsByVersionResponse,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdPath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath,
@@ -1820,6 +1821,8 @@ export const getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdE
   })
   .input(
     z.object({
+      headers:
+        zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders.optional(),
       params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath,
     }),
   )

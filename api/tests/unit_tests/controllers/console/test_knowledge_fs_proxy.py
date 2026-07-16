@@ -25,7 +25,7 @@ from controllers.console.knowledge_fs_proxy import (
     proxy_knowledge_fs_get,
     proxy_knowledge_fs_write,
 )
-from controllers.console.wraps import RBACPermission, RBACResourceScope
+from controllers.console.wraps import RBACPermission
 from core.helper import ssrf_proxy
 from services.knowledge_fs_proxy import (
     KnowledgeFSConfigurationError,
@@ -170,8 +170,8 @@ def test_generic_routes_enforce_contract_specific_workspace_rbac(
         "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
         MagicMock(return_value=_upstream(upstream, response_kind)),
     )
-    enforce = MagicMock()
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.enforce_rbac_access", enforce)
+    authorize = MagicMock()
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.authorize_knowledge_fs_request", authorize)
     _set_current_workspace(monkeypatch)
     _bypass_policy_wrappers(monkeypatch)
     raw_route = unwrap(route)
@@ -180,9 +180,9 @@ def test_generic_routes_enforce_contract_specific_workspace_rbac(
         response = raw_route(path)
 
     assert isinstance(response, Response)
-    assert enforce.call_args.kwargs["resource_type"] == RBACResourceScope.DATASET
-    assert enforce.call_args.kwargs["scene"] == permission
-    assert enforce.call_args.kwargs["resource_required"] is False
+    assert authorize.call_args.kwargs["tenant_id"] == "tenant-1"
+    assert authorize.call_args.kwargs["method"] == method
+    assert authorize.call_args.kwargs["operation"].rbac_permission == permission.value
 
 
 def test_read_post_applies_knowledge_rate_limit_once(
@@ -248,6 +248,7 @@ def test_generic_get_forwards_path_query_and_raw_response(
         response = route("knowledge-spaces")
 
     forward.assert_called_once_with(
+        account_id="account-1",
         method="GET",
         path="knowledge-spaces",
         tenant_id="tenant-1",
@@ -310,6 +311,7 @@ def test_generic_write_forwards_path_raw_body_and_current_tenant(
         response = route(path)
 
     forward.assert_called_once_with(
+        account_id="account-1",
         method=method,
         path=path,
         tenant_id="tenant-1",
@@ -356,6 +358,32 @@ def test_generic_write_forwards_contract_declared_request_headers(
     assert forward.call_args.kwargs["request_headers"] == {"idempotency-key": "delete-space-1"}
 
 
+def test_processing_events_forwards_last_event_id(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    upstream = httpx.Response(
+        200,
+        stream=_EventStream(b"event: done\ndata: {}\n\n"),
+        headers={"Content-Type": "text/event-stream"},
+    )
+    forward = MagicMock(return_value=_upstream(upstream, "stream"))
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request", forward)
+    _set_current_workspace(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_get)
+    path = "knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events"
+
+    with app.test_request_context(
+        f"/console/api/knowledge-fs/{path}",
+        headers={"Last-Event-ID": "42"},
+    ):
+        response = route(path)
+        assert isinstance(response, Response)
+        response.close()
+
+    assert forward.call_args.kwargs["request_headers"] == {"last-event-id": "42"}
+
+
 def test_contract_response_headers_cannot_bypass_the_proxy_denylist() -> None:
     denied_headers = (
         "connection",
@@ -382,6 +410,28 @@ def test_contract_response_headers_cannot_bypass_the_proxy_denylist() -> None:
 
     for name in denied_headers:
         assert name not in response.headers
+
+
+def test_contract_response_headers_forward_binary_hardening_headers() -> None:
+    upstream = httpx.Response(
+        200,
+        content=b"asset",
+        headers={
+            "Content-Security-Policy": "sandbox; default-src 'none'",
+            "Content-Type": "image/png",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+    response = _proxy_response(
+        _upstream(upstream, "binary"),
+        tenant_id="tenant-1",
+        contract_response_headers=("content-security-policy", "x-content-type-options"),
+        max_response_bytes=25 * 1024 * 1024,
+    )
+
+    assert response.headers["Content-Security-Policy"] == "sandbox; default-src 'none'"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
 
 
 def test_generic_post_rejects_non_editor(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -624,18 +674,16 @@ def test_generic_post_rejects_oversized_body(app: Flask, monkeypatch: pytest.Mon
     forward.assert_not_called()
 
 
-@pytest.mark.parametrize("status_code", [401, 403])
 def test_server_credential_rejection_is_not_exposed_as_browser_auth_failure(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    status_code: int,
 ) -> None:
     monkeypatch.setattr(
         "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
         MagicMock(
             return_value=_upstream(
                 httpx.Response(
-                    status_code,
+                    401,
                     content=b'{"error":"invalid server credential"}',
                     headers={"Content-Type": "application/json", "WWW-Authenticate": "Bearer"},
                 )
@@ -648,6 +696,52 @@ def test_server_credential_rejection_is_not_exposed_as_browser_auth_failure(
     with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"):
         with pytest.raises(BadGateway, match="authentication failed"):
             route("knowledge-spaces")
+
+
+def test_resource_authorization_rejection_is_exposed_as_forbidden(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        MagicMock(
+            return_value=_upstream(
+                httpx.Response(
+                    403,
+                    content=b'{"error":"resource access denied"}',
+                    headers={"Content-Type": "application/json"},
+                )
+            )
+        ),
+    )
+    _set_current_workspace(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_get)
+
+    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"):
+        with pytest.raises(Forbidden):
+            route("knowledge-spaces")
+
+
+def test_contract_response_headers_are_deduplicated_case_insensitively() -> None:
+    upstream = httpx.Response(
+        200,
+        content=b"asset",
+        headers={
+            "Cache-Control": "private",
+            "Content-Disposition": 'inline; filename="asset.png"',
+            "Content-Type": "image/png",
+        },
+    )
+
+    response = _proxy_response(
+        _upstream(upstream, "binary"),
+        tenant_id="tenant-1",
+        contract_response_headers=("cache-control", "content-disposition"),
+        max_response_bytes=25 * 1024 * 1024,
+    )
+
+    assert response.headers.getlist("Cache-Control") == ["private"]
+    assert response.headers.getlist("Content-Disposition") == ['inline; filename="asset.png"']
 
 
 def test_configuration_error_is_reported_as_unavailable(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
