@@ -19,24 +19,21 @@ export type AgentServiceApiChatResult = {
 async function parseServiceApiChatResponse(response: Response) {
   const contentType = response.headers.get('content-type') ?? ''
 
-  if (contentType.includes('text/event-stream'))
-    return consumeServiceApiSse(response.body)
+  if (contentType.includes('text/event-stream')) return consumeServiceApiSse(response.body)
 
   const text = await response.text().catch(() => '')
 
   if (contentType.includes('application/json')) {
     try {
       return JSON.parse(text) as unknown
-    }
-    catch {
+    } catch {
       return { message: text }
     }
   }
 
   try {
     return JSON.parse(text) as unknown
-  }
-  catch {
+  } catch {
     return { message: text }
   }
 }
@@ -47,8 +44,7 @@ export async function setAgentSiteAccessAndGetURL(
 ): Promise<string> {
   const agent = await getTestAgent(agentId)
   const appId = agent.app_id ?? agent.backing_app_id
-  if (!appId)
-    throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
+  if (!appId) throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
 
   const appDetail = await setAppSiteEnabled(appId, enabled)
   const token = agent.site?.access_token ?? agent.site?.code ?? appDetail.site.access_token
@@ -71,8 +67,7 @@ export async function setAgentApiAccess(
       `${enabled ? 'Enable' : 'Disable'} Agent v2 API access for ${agentId}`,
     )
     return (await response.json()) as AgentApiAccessResponse
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -83,8 +78,7 @@ export async function createAgentApiKey(agentId: string): Promise<ApiKeyItem> {
     const response = await ctx.post(`/console/api/agent/${agentId}/api-keys`)
     await expectApiResponseOK(response, `Create Agent v2 API key for ${agentId}`)
     return (await response.json()) as ApiKeyItem
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -110,8 +104,8 @@ export async function sendAgentServiceApiChatMessage({
     const response = await fetch(`${serviceApiBaseURL.replace(/\/$/, '')}/chat-messages`, {
       body: JSON.stringify(body),
       headers: {
-        'Accept': 'text/event-stream',
-        'Authorization': `Bearer ${apiKey}`,
+        Accept: 'text/event-stream',
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       method: 'POST',
@@ -124,8 +118,7 @@ export async function sendAgentServiceApiChatMessage({
       ok: response.ok,
       status: response.status,
     }
-  }
-  catch (error) {
+  } catch (error) {
     if (signal.aborted) {
       throw new Error(
         `Agent v2 Service API stream timed out after ${SERVICE_API_STREAM_TIMEOUT_MS}ms.`,

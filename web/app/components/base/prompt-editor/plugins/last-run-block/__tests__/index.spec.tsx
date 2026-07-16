@@ -16,16 +16,11 @@ import {
   LastRunBlockNode,
 } from '../index'
 
-const renderLastRunBlock = (props?: {
-  onInsert?: () => void
-  onDelete?: () => void
-}) => {
+const renderLastRunBlock = (props?: { onInsert?: () => void; onDelete?: () => void }) => {
   return renderLexicalEditor({
     namespace: 'last-run-block-plugin-test',
     nodes: [CustomTextNode, LastRunBlockNode],
-    children: (
-      <LastRunBlock {...(props ?? {})} />
-    ),
+    children: <LastRunBlock {...(props ?? {})} />,
   })
 }
 

@@ -20,13 +20,16 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/utils/create-app-tracking', () => ({
-  rememberCreateAppExternalAttribution: (...args: unknown[]) => mockRememberCreateAppExternalAttribution(...args),
+  rememberCreateAppExternalAttribution: (...args: unknown[]) =>
+    mockRememberCreateAppExternalAttribution(...args),
 }))
 
 const mockUseSearchParams = vi.mocked(useSearchParams)
 
 const setSearchParams = (search = '') => {
-  mockUseSearchParams.mockReturnValue(new URLSearchParams(search) as unknown as ReturnType<typeof useSearchParams>)
+  mockUseSearchParams.mockReturnValue(
+    new URLSearchParams(search) as unknown as ReturnType<typeof useSearchParams>,
+  )
 }
 
 const getUtmInfoCookie = () => {
@@ -59,7 +62,9 @@ describe('ExternalAttributionRecorder', () => {
   })
 
   it('seeds attribution from the redirect_url when auth redirects away from the landing url', async () => {
-    setSearchParams(`redirect_url=${encodeURIComponent('/apps?utm_source=dify_blog&slug=buildaisupportassistantwithdify')}`)
+    setSearchParams(
+      `redirect_url=${encodeURIComponent('/apps?utm_source=dify_blog&slug=buildaisupportassistantwithdify')}`,
+    )
 
     render(<ExternalAttributionRecorder />)
 
@@ -85,7 +90,9 @@ describe('ExternalAttributionRecorder', () => {
   })
 
   it('does nothing for cross-origin redirect_url attribution params', () => {
-    setSearchParams(`redirect_url=${encodeURIComponent('https://example.com/apps?utm_source=dify_blog&slug=get-started-with-dify')}`)
+    setSearchParams(
+      `redirect_url=${encodeURIComponent('https://example.com/apps?utm_source=dify_blog&slug=get-started-with-dify')}`,
+    )
 
     render(<ExternalAttributionRecorder />)
 

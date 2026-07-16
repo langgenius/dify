@@ -153,8 +153,8 @@ class AppMCPServerController(Resource):
             select(AppMCPServer)
             .where(
                 AppMCPServer.id == server_ref.server_id,
-                AppMCPServer.tenant_id == server_ref.tenant_id,
-                AppMCPServer.app_id == server_ref.app_id,
+                AppMCPServer.tenant_id == server_ref.app.tenant_id,
+                AppMCPServer.app_id == server_ref.app.app_id,
             )
             .limit(1)
         )

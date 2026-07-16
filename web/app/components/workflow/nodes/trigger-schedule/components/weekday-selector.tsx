@@ -22,7 +22,7 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
   const handleDaySelect = (dayKey: string) => {
     const current = selectedDays || []
     const newSelected = current.includes(dayKey)
-      ? current.filter(d => d !== dayKey)
+      ? current.filter((d) => d !== dayKey)
       : [...current, dayKey]
     onChange(newSelected.length > 0 ? newSelected : [dayKey])
   }
@@ -32,10 +32,10 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
   return (
     <div className="space-y-2">
       <label className="mb-2 block text-xs font-medium text-text-tertiary">
-        {t($ => $['nodes.triggerSchedule.weekdays'], { ns: 'workflow' })}
+        {t(($) => $['nodes.triggerSchedule.weekdays'], { ns: 'workflow' })}
       </label>
       <div className="flex gap-1.5">
-        {weekdays.map(day => (
+        {weekdays.map((day) => (
           <button
             key={day.key}
             type="button"

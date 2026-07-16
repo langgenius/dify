@@ -2,7 +2,7 @@
 
 Shell command execution requires a bound execution-context layer with a safe
 ``agent_id``. The layer uses the current bound execution context to run
-commands with ``HOME=/home/<agent_id>`` and a home-rooted workspace path. The
+commands with ``HOME=<shell_home_root>/<agent_id>`` and a home-rooted workspace path. The
 persisted runtime state intentionally keeps the historical
 ``~/workspace/<session>`` identity so existing session snapshots stay
 compatible while live command execution no longer depends on the sandbox user's
@@ -250,6 +250,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
 
     config: DifyShellLayerConfig
     shell_provider: ShellProviderProtocol
+    shell_home_root: str = "/home"
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     _shell_resource: ShellResourceProtocol | None = None
@@ -267,6 +268,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         config: DifyShellLayerConfig,
         *,
         shell_provider: ShellProviderProtocol | None,
+        shell_home_root: str = "/home",
         agent_stub_api_base_url: str | None = None,
         agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
     ) -> Self:
@@ -275,6 +277,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         layer = cls(
             config=config,
             shell_provider=shell_provider,
+            shell_home_root=_normalize_shell_home_root(shell_home_root),
             agent_stub_api_base_url=agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
         )
@@ -673,7 +676,10 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         self.runtime_state.job_ids = []
 
     def _shell_home_dir(self) -> str:
-        return _shell_home_dir_for_agent_id(self._require_current_execution_agent_id())
+        return _shell_home_dir_for_agent_id(
+            self._require_current_execution_agent_id(),
+            shell_home_root=self.shell_home_root,
+        )
 
     def _current_execution_agent_id(self) -> str | None:
         execution_context_layer = self.deps.execution_context
@@ -890,10 +896,19 @@ def _workspace_cwd(session_id: str) -> str:
     return f"{_WORKSPACE_ROOT}/{_validated_session_id(session_id)}"
 
 
-def _shell_home_dir_for_agent_id(agent_id: str | None) -> str:
+def _normalize_shell_home_root(shell_home_root: str) -> str:
+    stripped = shell_home_root.strip().rstrip("/")
+    if not stripped:
+        raise ValueError("shell_home_root must not be empty")
+    if not stripped.startswith("/"):
+        raise ValueError("shell_home_root must be an absolute path")
+    return stripped
+
+
+def _shell_home_dir_for_agent_id(agent_id: str | None, *, shell_home_root: str = "/home") -> str:
     if agent_id is None:
         raise ValueError("ShellLayer command execution requires execution_context.agent_id.")
-    return f"/home/{_validated_agent_home_segment(agent_id)}"
+    return f"{_normalize_shell_home_root(shell_home_root)}/{_validated_agent_home_segment(agent_id)}"
 
 
 def _validated_agent_home_segment(agent_id: str) -> str:

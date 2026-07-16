@@ -1,7 +1,5 @@
 'use client'
-import type {
-  MCPServerDetail,
-} from '@/app/components/tools/types'
+import type { MCPServerDetail } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -34,14 +32,7 @@ type MCPServerParam = {
   type?: string
 }
 
-const MCPServerModal = ({
-  appID,
-  latestParams = [],
-  data,
-  show,
-  onHide,
-  appInfo,
-}: ModalProps) => {
+const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo }: ModalProps) => {
   const { t } = useTranslation()
   const { mutateAsync: createMCPServer, isPending: creating } = useCreateMCPServer()
   const { mutateAsync: updateMCPServer, isPending: updating } = useUpdateMCPServer()
@@ -52,7 +43,7 @@ const MCPServerModal = ({
   const [params, setParams] = React.useState<Record<string, string>>(data?.parameters || {})
 
   const handleParamChange = (variable: string, value: string) => {
-    setParams(prev => ({
+    setParams((prev) => ({
       ...prev,
       [variable]: value,
     }))
@@ -61,20 +52,17 @@ const MCPServerModal = ({
   const getParamValue = () => {
     const res: Record<string, string> = {}
     latestParams.forEach((param) => {
-      if (!param.variable)
-        return
+      if (!param.variable) return
 
       const value = params[param.variable]
-      if (value !== undefined)
-        res[param.variable] = value
+      if (value !== undefined) res[param.variable] = value
     })
     return res
   }
 
   const emitMcpServerUpdate = (action: 'created' | 'updated') => {
     const socket = webSocketClient.getSocket(appID)
-    if (!socket)
-      return
+    if (!socket) return
 
     const timestamp = Date.now()
     socket.emit('collaboration_event', {
@@ -98,15 +86,13 @@ const MCPServerModal = ({
         parameters: getParamValue(),
       }
 
-      if (description.trim())
-        payload.description = description
+      if (description.trim()) payload.description = description
 
       await createMCPServer(payload)
       invalidateMCPServerDetail(appID)
       emitMcpServerUpdate('created')
       onHide()
-    }
-    else {
+    } else {
       const payload: {
         appID: string
         id: string
@@ -130,49 +116,57 @@ const MCPServerModal = ({
     <Dialog
       open={show}
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px]! flex-col overflow-hidden! border-none p-0! text-left align-middle transition-all duration-100 ease-in">
         <button
           type="button"
-          aria-label={t($ => $['operation.close'], { ns: 'common' })}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onHide}
         >
           <RiCloseLine className="size-5 text-text-tertiary" aria-hidden="true" />
         </button>
         <div className="relative shrink-0 p-6 pr-12 pb-3 title-2xl-semi-bold text-xl wrap-break-word text-text-primary">
-          {!data ? t($ => $['mcp.server.modal.addTitle'], { ns: 'tools' }) : t($ => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
+          {!data
+            ? t(($) => $['mcp.server.modal.addTitle'], { ns: 'tools' })
+            : t(($) => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
         </div>
         <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
           <div className="min-w-0 space-y-5 px-6 py-3">
             <div className="space-y-0.5">
               <div className="flex h-6 items-center gap-1">
-                <div className="system-sm-medium text-text-secondary">{t($ => $['mcp.server.modal.description'], { ns: 'tools' })}</div>
+                <div className="system-sm-medium text-text-secondary">
+                  {t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
+                </div>
                 <div className="system-xs-regular text-text-destructive-secondary">*</div>
               </div>
               <Textarea
-                aria-label={t($ => $['mcp.server.modal.description'], { ns: 'tools' })}
+                aria-label={t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
                 className="h-[96px] resize-none"
                 value={description}
-                placeholder={t($ => $['mcp.server.modal.descriptionPlaceholder'], { ns: 'tools' })}
-                onValueChange={value => setDescription(value)}
+                placeholder={t(($) => $['mcp.server.modal.descriptionPlaceholder'], {
+                  ns: 'tools',
+                })}
+                onValueChange={(value) => setDescription(value)}
               />
             </div>
 
             {latestParams.length > 0 && (
               <div className="min-w-0">
                 <div className="mb-1 flex items-center gap-2">
-                  <div className="shrink-0 system-xs-medium-uppercase text-text-primary">{t($ => $['mcp.server.modal.parameters'], { ns: 'tools' })}</div>
+                  <div className="shrink-0 system-xs-medium-uppercase text-text-primary">
+                    {t(($) => $['mcp.server.modal.parameters'], { ns: 'tools' })}
+                  </div>
                   <Divider type="horizontal" className="m-0! h-px! grow bg-divider-subtle" />
                 </div>
-                <div className="mb-2 body-xs-regular text-text-tertiary">{t($ => $['mcp.server.modal.parametersTip'], { ns: 'tools' })}</div>
+                <div className="mb-2 body-xs-regular text-text-tertiary">
+                  {t(($) => $['mcp.server.modal.parametersTip'], { ns: 'tools' })}
+                </div>
                 <div className="min-w-0 space-y-3">
                   {latestParams.map((paramItem) => {
-                    if (!paramItem.variable)
-                      return null
+                    if (!paramItem.variable) return null
 
                     const { variable } = paramItem
 
@@ -181,7 +175,7 @@ const MCPServerModal = ({
                         key={variable}
                         data={paramItem}
                         value={params[variable] || ''}
-                        onChange={value => handleParamChange(variable, value)}
+                        onChange={(value) => handleParamChange(variable, value)}
                       />
                     )
                   })}
@@ -191,8 +185,16 @@ const MCPServerModal = ({
           </div>
         </div>
         <div className="flex shrink-0 flex-row-reverse flex-wrap gap-2 p-6 pt-5">
-          <Button disabled={!description || creating || updating} variant="primary" onClick={submit}>{data ? t($ => $['mcp.modal.save'], { ns: 'tools' }) : t($ => $['mcp.server.modal.confirm'], { ns: 'tools' })}</Button>
-          <Button onClick={onHide}>{t($ => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
+          <Button
+            disabled={!description || creating || updating}
+            variant="primary"
+            onClick={submit}
+          >
+            {data
+              ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
+              : t(($) => $['mcp.server.modal.confirm'], { ns: 'tools' })}
+          </Button>
+          <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
         </div>
       </DialogContent>
     </Dialog>

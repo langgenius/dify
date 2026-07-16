@@ -26,16 +26,18 @@ vi.mock('@/config', async (importOriginal) => {
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    modelProviders: [{
-      provider: 'openai',
-      label: { en_US: 'OpenAI' },
-      custom_configuration: { status: CustomConfigurationStatusEnum.active },
-      system_configuration: {
-        enabled: false,
-        current_quota_type: CurrentSystemQuotaTypeEnum.free,
-        quota_configurations: [mockQuotaConfig],
+    modelProviders: [
+      {
+        provider: 'openai',
+        label: { en_US: 'OpenAI' },
+        custom_configuration: { status: CustomConfigurationStatusEnum.active },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.free,
+          quota_configurations: [mockQuotaConfig],
+        },
       },
-    }],
+    ],
   }),
 }))
 
@@ -135,7 +137,15 @@ vi.mock('@/service/client', async (importOriginal) => {
                     ids: {
                       post: {
                         queryOptions: () => ({
-                          queryKey: ['workspaces', 'current', 'plugin', 'list', 'installations', 'ids', 'post'],
+                          queryKey: [
+                            'workspaces',
+                            'current',
+                            'plugin',
+                            'list',
+                            'installations',
+                            'ids',
+                            'post',
+                          ],
                           queryFn: () => new Promise(() => {}),
                         }),
                       },
@@ -144,7 +154,14 @@ vi.mock('@/service/client', async (importOriginal) => {
                   latestVersions: {
                     post: {
                       queryOptions: () => ({
-                        queryKey: ['workspaces', 'current', 'plugin', 'list', 'latestVersions', 'post'],
+                        queryKey: [
+                          'workspaces',
+                          'current',
+                          'plugin',
+                          'list',
+                          'latestVersions',
+                          'post',
+                        ],
                         queryFn: () => new Promise(() => {}),
                       }),
                     },

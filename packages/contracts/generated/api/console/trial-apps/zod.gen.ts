@@ -217,7 +217,16 @@ export const zParameters = z.object({
   user_input_form: z.array(zJsonObject),
 })
 
-export const zJsonObject2 = z.record(z.string(), z.unknown())
+/**
+ * WorkflowConversationVariableResponse
+ */
+export const zWorkflowConversationVariableResponse = z.object({
+  description: z.string(),
+  id: z.string(),
+  name: z.string(),
+  value: z.unknown(),
+  value_type: z.string(),
+})
 
 /**
  * TrialSimpleAccount
@@ -228,11 +237,13 @@ export const zTrialSimpleAccount = z.object({
   name: z.string().nullish(),
 })
 
+export const zJsonObject2 = z.record(z.string(), z.unknown())
+
 /**
  * TrialWorkflowResponse
  */
 export const zTrialWorkflowResponse = z.object({
-  conversation_variables: z.array(zJsonObject2).optional(),
+  conversation_variables: z.array(zWorkflowConversationVariableResponse).optional(),
   created_at: z.int().nullish(),
   created_by: zTrialSimpleAccount.nullish(),
   environment_variables: z.array(zJsonObject2).optional(),
@@ -411,8 +422,8 @@ export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.o
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = zSuggestedQuestionsResponse
+export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  zSuggestedQuestionsResponse
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
   app_id: z.uuid(),

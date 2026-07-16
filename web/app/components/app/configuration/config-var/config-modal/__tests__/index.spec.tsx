@@ -64,11 +64,14 @@ describe('ConfigModal', () => {
     fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated default' } })
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
-      default: 'updated default',
-      label: 'Question',
-      variable: 'question',
-    }), undefined)
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        default: 'updated default',
+        label: 'Question',
+        variable: 'question',
+      }),
+      undefined,
+    )
   })
 
   it('should keep scrolling inside the form body so scrollbars do not cover dialog corners', () => {

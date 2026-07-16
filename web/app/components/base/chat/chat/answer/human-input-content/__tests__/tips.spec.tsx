@@ -35,7 +35,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -47,13 +48,7 @@ describe('Tips', () => {
   })
 
   it('should render email tip in normal mode', () => {
-    render(
-      <Tips
-        showEmailTip={true}
-        isEmailDebugMode={false}
-        showDebugModeTip={false}
-      />,
-    )
+    render(<Tips showEmailTip={true} isEmailDebugMode={false} showDebugModeTip={false} />)
 
     expect(screen.getByText('workflow.common.humanInputEmailTip')).toBeInTheDocument()
     expect(screen.queryByText('common.humanInputEmailTipInDebugMode')).not.toBeInTheDocument()
@@ -61,26 +56,14 @@ describe('Tips', () => {
   })
 
   it('should render email tip in debug mode', () => {
-    render(
-      <Tips
-        showEmailTip={true}
-        isEmailDebugMode={true}
-        showDebugModeTip={false}
-      />,
-    )
+    render(<Tips showEmailTip={true} isEmailDebugMode={true} showDebugModeTip={false} />)
 
     expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
     expect(screen.queryByText('workflow.common.humanInputEmailTip')).not.toBeInTheDocument()
   })
 
   it('should render debug mode tip', () => {
-    render(
-      <Tips
-        showEmailTip={false}
-        isEmailDebugMode={false}
-        showDebugModeTip={true}
-      />,
-    )
+    render(<Tips showEmailTip={false} isEmailDebugMode={false} showDebugModeTip={true} />)
 
     expect(screen.getByText('workflow.common.humanInputWebappTip')).toBeInTheDocument()
     expect(screen.queryByText('workflow.common.humanInputEmailTip')).not.toBeInTheDocument()
@@ -88,11 +71,7 @@ describe('Tips', () => {
 
   it('should render nothing when all flags are false', () => {
     const { container } = render(
-      <Tips
-        showEmailTip={false}
-        isEmailDebugMode={false}
-        showDebugModeTip={false}
-      />,
+      <Tips showEmailTip={false} isEmailDebugMode={false} showDebugModeTip={false} />,
     )
 
     expect(screen.queryByTestId('tips')).toBeEmptyDOMElement()

@@ -20,10 +20,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.http'
 
-const Panel: FC<NodePanelProps<HttpNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
 
   const {
@@ -51,38 +48,47 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     handleSSLVerifyChange,
   } = useConfig(id, data)
   // To prevent prompt editor in body not update data.
-  if (!isDataReady)
-    return null
+  if (!isDataReady) return null
 
   return (
     <div className="pt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t($ => $[`${i18nPrefix}.api`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.api`], { ns: 'workflow' })}
           required
-          operations={(
+          operations={
             <div className="flex">
               <div
                 onClick={showAuthorization}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
+                className={cn(
+                  !readOnly && 'cursor-pointer hover:bg-state-base-hover',
+                  'flex h-6 items-center space-x-1 rounded-md px-2',
+                )}
               >
                 {!readOnly && <Settings01 className="size-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
-                  {t($ => $[`${i18nPrefix}.authorization.authorization`], { ns: 'workflow' })}
-                  <span className="ml-1 text-text-secondary">{t($ => $[`${i18nPrefix}.authorization.${inputs.authorization.type}`], { ns: 'workflow' })}</span>
+                  {t(($) => $[`${i18nPrefix}.authorization.authorization`], { ns: 'workflow' })}
+                  <span className="ml-1 text-text-secondary">
+                    {t(($) => $[`${i18nPrefix}.authorization.${inputs.authorization.type}`], {
+                      ns: 'workflow',
+                    })}
+                  </span>
                 </div>
               </div>
               <div
                 onClick={showCurlPanel}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
+                className={cn(
+                  !readOnly && 'cursor-pointer hover:bg-state-base-hover',
+                  'flex h-6 items-center space-x-1 rounded-md px-2',
+                )}
               >
                 {!readOnly && <FileArrow01 className="size-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
-                  {t($ => $[`${i18nPrefix}.curl.title`], { ns: 'workflow' })}
+                  {t(($) => $[`${i18nPrefix}.curl.title`], { ns: 'workflow' })}
                 </div>
               </div>
             </div>
-          )}
+          }
         >
           <ApiInput
             nodeId={id}
@@ -93,9 +99,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             onUrlChange={handleUrlChange}
           />
         </Field>
-        <Field
-          title={t($ => $[`${i18nPrefix}.headers`], { ns: 'workflow' })}
-        >
+        <Field title={t(($) => $[`${i18nPrefix}.headers`], { ns: 'workflow' })}>
           <KeyValue
             nodeId={id}
             list={headers}
@@ -104,9 +108,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             readonly={readOnly}
           />
         </Field>
-        <Field
-          title={t($ => $[`${i18nPrefix}.params`], { ns: 'workflow' })}
-        >
+        <Field title={t(($) => $[`${i18nPrefix}.params`], { ns: 'workflow' })}>
           <KeyValue
             nodeId={id}
             list={params}
@@ -115,39 +117,25 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             readonly={readOnly}
           />
         </Field>
-        <Field
-          title={t($ => $[`${i18nPrefix}.body`], { ns: 'workflow' })}
-          required
-        >
-          <EditBody
-            nodeId={id}
-            readonly={readOnly}
-            payload={inputs.body}
-            onChange={setBody}
-          />
+        <Field title={t(($) => $[`${i18nPrefix}.body`], { ns: 'workflow' })} required>
+          <EditBody nodeId={id} readonly={readOnly} payload={inputs.body} onChange={setBody} />
         </Field>
         <Field
-          title={t($ => $[`${i18nPrefix}.verifySSL.title`], { ns: 'workflow' })}
-          tooltip={t($ => $[`${i18nPrefix}.verifySSL.warningTooltip`], { ns: 'workflow' })}
-          operations={(
+          title={t(($) => $[`${i18nPrefix}.verifySSL.title`], { ns: 'workflow' })}
+          tooltip={t(($) => $[`${i18nPrefix}.verifySSL.warningTooltip`], { ns: 'workflow' })}
+          operations={
             <Switch
               checked={!!inputs.ssl_verify}
               onCheckedChange={handleSSLVerifyChange}
               size="md"
               disabled={readOnly}
             />
-          )}
-        >
-        </Field>
+          }
+        ></Field>
       </div>
       <Split />
-      <Timeout
-        nodeId={id}
-        readonly={readOnly}
-        payload={inputs.timeout}
-        onChange={setTimeout}
-      />
-      {(isShowAuthorization && !readOnly) && (
+      <Timeout nodeId={id} readonly={readOnly} payload={inputs.timeout} onChange={setTimeout} />
+      {isShowAuthorization && !readOnly && (
         <AuthorizationModal
           nodeId={id}
           isShow
@@ -163,33 +151,28 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             <VarItem
               name="body"
               type="string"
-              description={t($ => $[`${i18nPrefix}.outputVars.body`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.body`], { ns: 'workflow' })}
             />
             <VarItem
               name="status_code"
               type="number"
-              description={t($ => $[`${i18nPrefix}.outputVars.statusCode`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.statusCode`], { ns: 'workflow' })}
             />
             <VarItem
               name="headers"
               type="object"
-              description={t($ => $[`${i18nPrefix}.outputVars.headers`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.headers`], { ns: 'workflow' })}
             />
             <VarItem
               name="files"
               type="Array[File]"
-              description={t($ => $[`${i18nPrefix}.outputVars.files`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.files`], { ns: 'workflow' })}
             />
           </>
         </OutputVars>
       </div>
-      {(isShowCurlPanel && !readOnly) && (
-        <CurlPanel
-          nodeId={id}
-          isShow
-          onHide={hideCurlPanel}
-          handleCurlImport={handleCurlImport}
-        />
+      {isShowCurlPanel && !readOnly && (
+        <CurlPanel nodeId={id} isShow onHide={hideCurlPanel} handleCurlImport={handleCurlImport} />
       )}
     </div>
   )

@@ -3,11 +3,7 @@ import type {
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import {
-  memo,
-  useCallback,
-  useState,
-} from 'react'
+import { memo, useCallback, useState } from 'react'
 import { useStoreApi } from 'reactflow'
 import { DSL_EXPORT_CHECK, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import {
@@ -34,9 +30,12 @@ const Features = dynamic(() => import('@/app/components/workflow/features'), {
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
   ssr: false,
 })
-const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), {
-  ssr: false,
-})
+const DSLExportConfirmModal = dynamic(
+  () => import('@/app/components/workflow/dsl-export-confirm-modal'),
+  {
+    ssr: false,
+  },
+)
 const WorkflowOnboardingModal = dynamic(() => import('./workflow-onboarding-modal'), {
   ssr: false,
 })
@@ -69,30 +68,24 @@ const getTriggerPluginNodeData = (
 const WorkflowChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
-  const showFeaturesPanel = useStore(s => s.showFeaturesPanel)
-  const showImportDSLModal = useStore(s => s.showImportDSLModal)
-  const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
-  const showOnboarding = useStore(s => s.showOnboarding)
-  const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
-  const canEdit = useHooksStore(s => s.accessControl.canEdit)
-  const setShowOnboarding = useStore(s => s.setShowOnboarding)
-  const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
-  const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
+  const showFeaturesPanel = useStore((s) => s.showFeaturesPanel)
+  const showImportDSLModal = useStore((s) => s.showImportDSLModal)
+  const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
+  const showOnboarding = useStore((s) => s.showOnboarding)
+  const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
+  const setShowOnboarding = useStore((s) => s.setShowOnboarding)
+  const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
+  const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
   const reactFlowStore = useStoreApi()
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleOnboardingClose } = useAutoOnboarding()
-  const {
-    handlePaneContextmenuCancel,
-  } = usePanelInteractions()
-  const {
-    exportCheck,
-    handleExportDSL,
-  } = useDSL()
+  const { handlePaneContextmenuCancel } = usePanelInteractions()
+  const { exportCheck, handleExportDSL } = useDSL()
 
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === DSL_EXPORT_CHECK)
-      setSecretEnvList(v.payload.data as EnvironmentVariable[])
+    if (v.type === DSL_EXPORT_CHECK) setSecretEnvList(v.payload.data as EnvironmentVariable[])
   })
 
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
@@ -101,98 +94,100 @@ const WorkflowChildren = () => {
     handleOnboardingClose()
   }, [handleOnboardingClose])
 
-  const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => {
-    if (!canEdit)
-      return
+  const handleSelectStartNode = useCallback(
+    (nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => {
+      if (!canEdit) return
 
-    const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
-    if (!nodeDefault?.defaultValue)
-      return
+      const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
+      if (!nodeDefault?.defaultValue) return
 
-    const baseNodeData = { ...nodeDefault.defaultValue }
+      const baseNodeData = { ...nodeDefault.defaultValue }
 
-    const mergedNodeData = (() => {
-      if (nodeType !== BlockEnum.TriggerPlugin || !toolConfig) {
+      const mergedNodeData = (() => {
+        if (nodeType !== BlockEnum.TriggerPlugin || !toolConfig) {
+          return {
+            ...baseNodeData,
+            ...toolConfig,
+          }
+        }
+
+        const triggerNodeData = getTriggerPluginNodeData(
+          toolConfig as TriggerDefaultValue,
+          baseNodeData.title,
+          baseNodeData.desc,
+        )
+
         return {
           ...baseNodeData,
-          ...toolConfig,
+          ...triggerNodeData,
+          config: {
+            ...(baseNodeData as { config?: Record<string, any> }).config,
+            ...triggerNodeData.config,
+          },
         }
-      }
+      })()
 
-      const triggerNodeData = getTriggerPluginNodeData(
-        toolConfig as TriggerDefaultValue,
-        baseNodeData.title,
-        baseNodeData.desc,
-      )
+      const { newNode } = generateNewNode({
+        data: {
+          ...mergedNodeData,
+        } as any,
+        position: START_INITIAL_POSITION,
+      })
 
-      return {
-        ...baseNodeData,
-        ...triggerNodeData,
-        config: {
-          ...(baseNodeData as { config?: Record<string, any> }).config,
-          ...triggerNodeData.config,
+      const { setNodes, setEdges } = reactFlowStore.getState()
+      setNodes([newNode])
+      setEdges([])
+
+      setShowOnboarding?.(false)
+      setHasSelectedStartNode?.(true)
+      setShouldAutoOpenStartNodeSelector?.(true)
+
+      handleSyncWorkflowDraft(true, false, {
+        onSuccess: () => {
+          autoGenerateWebhookUrl(newNode.id)
         },
-      }
-    })()
-
-    const { newNode } = generateNewNode({
-      data: {
-        ...mergedNodeData,
-      } as any,
-      position: START_INITIAL_POSITION,
-    })
-
-    const { setNodes, setEdges } = reactFlowStore.getState()
-    setNodes([newNode])
-    setEdges([])
-
-    setShowOnboarding?.(false)
-    setHasSelectedStartNode?.(true)
-    setShouldAutoOpenStartNodeSelector?.(true)
-
-    handleSyncWorkflowDraft(true, false, {
-      onSuccess: () => {
-        autoGenerateWebhookUrl(newNode.id)
-      },
-      onError: () => {
-        console.error('Failed to save node to draft')
-      },
-    })
-  }, [availableNodesMetaData, autoGenerateWebhookUrl, canEdit, handleSyncWorkflowDraft, reactFlowStore, setHasSelectedStartNode, setShouldAutoOpenStartNodeSelector, setShowOnboarding])
+        onError: () => {
+          console.error('Failed to save node to draft')
+        },
+      })
+    },
+    [
+      availableNodesMetaData,
+      autoGenerateWebhookUrl,
+      canEdit,
+      handleSyncWorkflowDraft,
+      reactFlowStore,
+      setHasSelectedStartNode,
+      setShouldAutoOpenStartNodeSelector,
+      setShowOnboarding,
+    ],
+  )
 
   return (
     <>
       <PluginDependency />
-      {
-        showFeaturesPanel && <Features />
-      }
-      {
-        canEdit && showOnboarding && (
-          <WorkflowOnboardingModal
-            isShow={showOnboarding}
-            onClose={handleCloseOnboarding}
-            onSelectStartNode={handleSelectStartNode}
-          />
-        )
-      }
-      {
-        canImportExportDSL && showImportDSLModal && (
-          <UpdateDSLModal
-            onCancel={() => setShowImportDSLModal(false)}
-            onBackup={exportCheck!}
-            onImport={handlePaneContextmenuCancel}
-          />
-        )
-      }
-      {
-        canImportExportDSL && secretEnvList.length > 0 && (
-          <DSLExportConfirmModal
-            envList={secretEnvList}
-            onConfirm={handleExportDSL!}
-            onClose={() => setSecretEnvList([])}
-          />
-        )
-      }
+      {showFeaturesPanel && <Features />}
+      {canEdit && showOnboarding && (
+        <WorkflowOnboardingModal
+          isShow={showOnboarding}
+          onClose={handleCloseOnboarding}
+          onSelectStartNode={handleSelectStartNode}
+        />
+      )}
+      {canImportExportDSL && showImportDSLModal && (
+        <UpdateDSLModal
+          onCancel={() => setShowImportDSLModal(false)}
+          onBackup={exportCheck!}
+          onImport={handlePaneContextmenuCancel}
+        />
+      )}
+      {canImportExportDSL && secretEnvList.length > 0 && (
+        <DSLExportConfirmModal
+          envList={secretEnvList}
+          onConfirm={handleExportDSL!}
+          onClose={() => setSecretEnvList([])}
+        />
+      )}
       <WorkflowHeader />
       <WorkflowPanel />
     </>

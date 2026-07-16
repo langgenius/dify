@@ -70,8 +70,7 @@ describe('AccessChannelsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAtomValue.mockImplementation((atom) => {
-      if (atom === deploymentRouteAppInstanceIdAtom)
-        return 'app-instance-1'
+      if (atom === deploymentRouteAppInstanceIdAtom) return 'app-instance-1'
       if (atom === accessSettingsAtom) {
         return {
           accessChannels: createAccessChannels(),
@@ -79,10 +78,8 @@ describe('AccessChannelsSection', () => {
           cliEndpoint: createEndpoint('https://cli.example.com/entry'),
         }
       }
-      if (atom === accessSettingsIsLoadingAtom)
-        return false
-      if (atom === accessSettingsIsErrorAtom)
-        return false
+      if (atom === accessSettingsIsLoadingAtom) return false
+      if (atom === accessSettingsIsErrorAtom) return false
       return undefined
     })
   })

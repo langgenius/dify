@@ -74,9 +74,7 @@ describe('loop use-config helpers', () => {
   })
 
   it('should add, update and remove break conditions for regular and file attributes', () => {
-    mockUuid
-      .mockReturnValueOnce('condition-1')
-      .mockReturnValueOnce('condition-2')
+    mockUuid.mockReturnValueOnce('condition-1').mockReturnValueOnce('condition-2')
 
     const withBooleanCondition = addBreakCondition({
       inputs: createInputs({ break_conditions: undefined }),
@@ -108,74 +106,93 @@ describe('loop use-config helpers', () => {
         value: 'false',
       }),
     ])
-    expect(withFileCondition.break_conditions?.[1]).toEqual(expect.objectContaining({
-      id: 'condition-2',
-      varType: VarType.file,
-      comparison_operator: ComparisonOperator.in,
-      value: '',
-    }))
-    expect(updated.break_conditions?.[1]).toEqual(expect.objectContaining({
-      comparison_operator: ComparisonOperator.notIn,
-      value: [VarType.file],
-    }))
-    expect(removed.break_conditions).toEqual([
-      expect.objectContaining({ id: 'condition-2' }),
-    ])
+    expect(withFileCondition.break_conditions?.[1]).toEqual(
+      expect.objectContaining({
+        id: 'condition-2',
+        varType: VarType.file,
+        comparison_operator: ComparisonOperator.in,
+        value: '',
+      }),
+    )
+    expect(updated.break_conditions?.[1]).toEqual(
+      expect.objectContaining({
+        comparison_operator: ComparisonOperator.notIn,
+        value: [VarType.file],
+      }),
+    )
+    expect(removed.break_conditions).toEqual([expect.objectContaining({ id: 'condition-2' })])
   })
 
   it('should manage nested sub-variable conditions and ignore missing targets', () => {
-    mockUuid
-      .mockReturnValueOnce('sub-condition-1')
-      .mockReturnValueOnce('sub-condition-2')
+    mockUuid.mockReturnValueOnce('sub-condition-1').mockReturnValueOnce('sub-condition-2')
 
     const inputs = createInputs({
-      break_conditions: [{
-        id: 'condition-1',
-        varType: VarType.file,
-        key: 'name',
-        variable_selector: ['tool-node', 'file'],
-        comparison_operator: ComparisonOperator.contains,
-        value: '',
-      }],
+      break_conditions: [
+        {
+          id: 'condition-1',
+          varType: VarType.file,
+          key: 'name',
+          variable_selector: ['tool-node', 'file'],
+          comparison_operator: ComparisonOperator.contains,
+          value: '',
+        },
+      ],
     })
 
     const untouched = addSubVariableCondition(inputs, 'missing-condition')
     const withKeyedSubCondition = addSubVariableCondition(inputs, 'condition-1', 'transfer_method')
     const withDefaultKeySubCondition = addSubVariableCondition(withKeyedSubCondition, 'condition-1')
-    const updated = updateSubVariableCondition(withDefaultKeySubCondition, 'condition-1', 'sub-condition-1', {
-      id: 'sub-condition-1',
-      key: 'transfer_method',
-      varType: VarType.string,
-      comparison_operator: ComparisonOperator.notIn,
-      value: ['remote_url'],
-    })
+    const updated = updateSubVariableCondition(
+      withDefaultKeySubCondition,
+      'condition-1',
+      'sub-condition-1',
+      {
+        id: 'sub-condition-1',
+        key: 'transfer_method',
+        varType: VarType.string,
+        comparison_operator: ComparisonOperator.notIn,
+        value: ['remote_url'],
+      },
+    )
     const toggled = toggleSubVariableConditionOperator(updated, 'condition-1')
     const removed = removeSubVariableCondition(toggled, 'condition-1', 'sub-condition-1')
-    const unchangedAfterMissingRemove = removeSubVariableCondition(removed, 'missing-condition', 'sub-condition-2')
+    const unchangedAfterMissingRemove = removeSubVariableCondition(
+      removed,
+      'missing-condition',
+      'sub-condition-2',
+    )
 
     expect(untouched).toEqual(inputs)
     expect(withKeyedSubCondition.break_conditions?.[0]!.sub_variable_condition).toEqual({
       logical_operator: LogicalOperator.and,
-      conditions: [{
-        id: 'sub-condition-1',
-        key: 'transfer_method',
-        varType: VarType.string,
-        comparison_operator: ComparisonOperator.in,
-        value: '',
-      }],
+      conditions: [
+        {
+          id: 'sub-condition-1',
+          key: 'transfer_method',
+          varType: VarType.string,
+          comparison_operator: ComparisonOperator.in,
+          value: '',
+        },
+      ],
     })
-    expect(withDefaultKeySubCondition.break_conditions?.[0]!.sub_variable_condition?.conditions[1]).toEqual({
+    expect(
+      withDefaultKeySubCondition.break_conditions?.[0]!.sub_variable_condition?.conditions[1],
+    ).toEqual({
       id: 'sub-condition-2',
       key: '',
       varType: VarType.string,
       comparison_operator: undefined,
       value: '',
     })
-    expect(updated.break_conditions?.[0]!.sub_variable_condition?.conditions[0]).toEqual(expect.objectContaining({
-      comparison_operator: ComparisonOperator.notIn,
-      value: ['remote_url'],
-    }))
-    expect(toggled.break_conditions?.[0]!.sub_variable_condition?.logical_operator).toBe(LogicalOperator.or)
+    expect(updated.break_conditions?.[0]!.sub_variable_condition?.conditions[0]).toEqual(
+      expect.objectContaining({
+        comparison_operator: ComparisonOperator.notIn,
+        value: ['remote_url'],
+      }),
+    )
+    expect(toggled.break_conditions?.[0]!.sub_variable_condition?.logical_operator).toBe(
+      LogicalOperator.or,
+    )
     expect(removed.break_conditions?.[0]!.sub_variable_condition?.conditions).toEqual([
       expect.objectContaining({ id: 'sub-condition-2' }),
     ])
@@ -195,20 +212,24 @@ describe('loop use-config helpers', () => {
     const unchanged = updateLoopVariable(updated, 'missing-loop-variable', { label: 'ignored' })
     const removed = removeLoopVariable(unchanged, 'loop-variable-1')
 
-    expect(added.loop_variables).toEqual([{
-      id: 'loop-variable-1',
-      label: '',
-      var_type: VarType.string,
-      value_type: ValueType.constant,
-      value: '',
-    }])
-    expect(updated.loop_variables).toEqual([{
-      id: 'loop-variable-1',
-      label: 'Loop Value',
-      var_type: VarType.string,
-      value_type: ValueType.variable,
-      value: ['tool-node', 'result'],
-    }])
+    expect(added.loop_variables).toEqual([
+      {
+        id: 'loop-variable-1',
+        label: '',
+        var_type: VarType.string,
+        value_type: ValueType.constant,
+        value: '',
+      },
+    ])
+    expect(updated.loop_variables).toEqual([
+      {
+        id: 'loop-variable-1',
+        label: 'Loop Value',
+        var_type: VarType.string,
+        value_type: ValueType.variable,
+        value: ['tool-node', 'result'],
+      },
+    ])
     expect(unchanged).toEqual(updated)
     expect(removed.loop_variables).toEqual([])
     expect(inputs.loop_variables).toBeUndefined()

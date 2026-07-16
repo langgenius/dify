@@ -5,7 +5,7 @@ from threading import Thread
 from typing import Any, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -44,15 +44,15 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
-from core.app.task_pipeline.message_file_utils import MessageFileInfoDict, prepare_file_dict
+from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.db.session_factory import session_factory
 from core.model_manager import ModelInstance
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
-from extensions.ext_database import db
 from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -269,8 +269,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
             match event:
                 case QueueErrorEvent():
-                    with sessionmaker(bind=db.engine).begin() as session:
+                    with session_factory.create_session() as session:
                         err = self.handle_error(event=event, session=session, message_id=self._message_id)
+                        session.commit()
                     yield self.error_to_stream_response(err)
                     break
                 case QueueStopEvent() | QueueMessageEndEvent():
@@ -290,17 +291,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                             answer=output_moderation_answer
                         )
 
-                    with sessionmaker(bind=db.engine).begin() as session:
+                    with session_factory.create_session() as session:
                         # Save message
                         self._save_message(session=session, trace_manager=trace_manager)
+                        session.commit()
                     message_end_resp = self._message_end_to_stream_response()
                     yield message_end_resp
                 case QueueRetrieverResourcesEvent():
                     self._message_cycle_manager.handle_retriever_resources(event)
                 case QueueAnnotationReplyEvent():
-                    annotation = self._message_cycle_manager.handle_annotation_reply(event)
-                    if annotation:
-                        self._task_state.llm_result.message.content = annotation.content
+                    annotation_content = None
+                    with session_factory.create_session() as session:
+                        annotation = self._message_cycle_manager.handle_annotation_reply(event, session)
+                        if annotation:
+                            annotation_content = annotation.content
+                    if annotation_content:
+                        self._task_state.llm_result.message.content = annotation_content
                 case QueueAgentThoughtEvent():
                     agent_thought_response = self._agent_thought_to_stream_response(event)
                     if agent_thought_response is not None:
@@ -477,8 +483,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         metadata_dict = self._task_state.metadata.model_dump(exclude_none=True)
 
         # Fetch files associated with this message
-        files: list[MessageFileInfoDict] = []
-        with Session(db.engine, expire_on_commit=False) as session:
+        files: Sequence[Mapping[str, Any]] = []
+        with session_factory.create_session() as session:
             message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
 
             if message_files:
@@ -500,13 +506,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     file_dict = prepare_file_dict(message_file, upload_files_map)
                     files_list.append(file_dict)
 
-                files = files_list
+                files = cast(Sequence[Mapping[str, Any]], files_list)
 
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,
             metadata=metadata_dict,
-            files=cast(Sequence[Mapping[str, Any]], files),
+            files=files,
         )
 
     def _agent_message_to_stream_response(self, answer: str, message_id: str) -> AgentMessageStreamResponse:
@@ -526,7 +532,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         :param event: agent thought event
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             agent_thought: MessageAgentThought | None = session.scalar(
                 select(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).limit(1)
             )

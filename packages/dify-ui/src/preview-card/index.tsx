@@ -4,6 +4,7 @@ import type * as React from 'react'
 import type { Placement } from '../placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
 import { cn } from '../cn'
+import { floatingPopupAnimationClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 export type { Placement }
@@ -37,10 +38,7 @@ type PreviewCardContentProps = {
     BasePreviewCard.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
-  popupProps?: Omit<
-    BasePreviewCard.Popup.Props,
-    'children' | 'className'
-  >
+  popupProps?: Omit<BasePreviewCard.Popup.Props, 'children' | 'className'>
 }
 
 export function PreviewCardContent({
@@ -68,7 +66,7 @@ export function PreviewCardContent({
         <BasePreviewCard.Popup
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
+            floatingPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}

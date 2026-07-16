@@ -25,7 +25,8 @@ const MarketplaceTrigger = ({
     <div
       className={cn(
         'flex h-8 cursor-pointer items-center rounded-lg px-2 py-1 text-text-tertiary select-none',
-        !!selectedTagsLength && 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3',
+        !!selectedTagsLength &&
+          'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3',
         open && !selectedTagsLength && 'bg-state-base-hover',
       )}
     >
@@ -33,40 +34,30 @@ const MarketplaceTrigger = ({
         <RiFilter3Line className={cn('size-4', !!selectedTagsLength && 'text-text-secondary')} />
       </div>
       <div className="flex items-center gap-x-1 p-1 system-sm-medium">
-        {
-          !selectedTagsLength && <span>{t($ => $.allTags, { ns: 'pluginTags' })}</span>
-        }
-        {
-          !!selectedTagsLength && (
-            <span className="text-text-secondary">
-              {tags.map(tag => tagsMap[tag]!.label).slice(0, 2).join(',')}
-            </span>
-          )
-        }
-        {
-          selectedTagsLength > 2 && (
-            <div className="system-xs-medium text-text-tertiary">
-              +
-              {selectedTagsLength - 2}
-            </div>
-          )
-        }
+        {!selectedTagsLength && <span>{t(($) => $.allTags, { ns: 'pluginTags' })}</span>}
+        {!!selectedTagsLength && (
+          <span className="text-text-secondary">
+            {tags
+              .map((tag) => tagsMap[tag]!.label)
+              .slice(0, 2)
+              .join(',')}
+          </span>
+        )}
+        {selectedTagsLength > 2 && (
+          <div className="system-xs-medium text-text-tertiary">+{selectedTagsLength - 2}</div>
+        )}
       </div>
-      {
-        !!selectedTagsLength && (
-          <RiCloseCircleFill
-            className="size-4 text-text-quaternary"
-            onClick={() => onTagsChange([])}
-          />
-        )
-      }
-      {
-        !selectedTagsLength && (
-          <div className="p-0.5">
-            <RiArrowDownSLine className="size-4 text-text-tertiary" />
-          </div>
-        )
-      }
+      {!!selectedTagsLength && (
+        <RiCloseCircleFill
+          className="size-4 text-text-quaternary"
+          onClick={() => onTagsChange([])}
+        />
+      )}
+      {!selectedTagsLength && (
+        <div className="p-0.5">
+          <RiArrowDownSLine className="size-4 text-text-tertiary" />
+        </div>
+      )}
     </div>
   )
 }

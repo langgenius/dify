@@ -22,11 +22,13 @@ const ErrorNode = ({ id, data }: NodeProps<CommonNodeType>) => (
 
 const renderErrorNode = (data: CommonNodeType) =>
   renderWorkflowFlowComponent(<div />, {
-    nodes: [createNode({
-      id: 'node-1',
-      type: 'errorNode',
-      data,
-    })],
+    nodes: [
+      createNode({
+        id: 'node-1',
+        type: 'errorNode',
+        data,
+      }),
+    ],
     edges: [],
     reactFlowProps: {
       nodeTypes: { errorNode: ErrorNode },
@@ -48,28 +50,47 @@ describe('ErrorHandleOnNode', () => {
 
       await waitFor(() => expect(screen.getByText('workflow.common.onFailure')).toBeInTheDocument())
       expect(screen.getByText('workflow.common.onFailure')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.common.errorHandle.defaultValue.output')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.nodes.common.errorHandle.defaultValue.output'),
+      ).toBeInTheDocument()
     })
   })
 
   // Fail-branch behavior and warning styling.
   describe('Effects', () => {
     it('should render the fail-branch source handle', async () => {
-      const { container } = renderErrorNode(createNodeData({ error_strategy: ErrorHandleTypeEnum.failBranch }))
+      const { container } = renderErrorNode(
+        createNodeData({ error_strategy: ErrorHandleTypeEnum.failBranch }),
+      )
 
-      await waitFor(() => expect(screen.getByText('workflow.nodes.common.errorHandle.failBranch.title')).toBeInTheDocument())
-      expect(screen.getByText('workflow.nodes.common.errorHandle.failBranch.title')).toBeInTheDocument()
-      expect(container.querySelector('.react-flow__handle')).toHaveAttribute('data-handleid', ErrorHandleTypeEnum.failBranch)
+      await waitFor(() =>
+        expect(
+          screen.getByText('workflow.nodes.common.errorHandle.failBranch.title'),
+        ).toBeInTheDocument(),
+      )
+      expect(
+        screen.getByText('workflow.nodes.common.errorHandle.failBranch.title'),
+      ).toBeInTheDocument()
+      expect(container.querySelector('.react-flow__handle')).toHaveAttribute(
+        'data-handleid',
+        ErrorHandleTypeEnum.failBranch,
+      )
     })
 
     it('should add warning styles when the node is in exception status', async () => {
-      const { container } = renderErrorNode(createNodeData({
-        error_strategy: ErrorHandleTypeEnum.defaultValue,
-        _runningStatus: NodeRunningStatus.Exception,
-      }))
+      const { container } = renderErrorNode(
+        createNodeData({
+          error_strategy: ErrorHandleTypeEnum.defaultValue,
+          _runningStatus: NodeRunningStatus.Exception,
+        }),
+      )
 
-      await waitFor(() => expect(container.querySelector('.bg-state-warning-hover')).toBeInTheDocument())
-      expect(container.querySelector('.bg-state-warning-hover')).toHaveClass('border-components-badge-status-light-warning-halo')
+      await waitFor(() =>
+        expect(container.querySelector('.bg-state-warning-hover')).toBeInTheDocument(),
+      )
+      expect(container.querySelector('.bg-state-warning-hover')).toHaveClass(
+        'border-components-badge-status-light-warning-halo',
+      )
       expect(container.querySelector('.text-text-warning')).toBeInTheDocument()
     })
   })

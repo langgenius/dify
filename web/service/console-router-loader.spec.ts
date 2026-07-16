@@ -18,11 +18,14 @@ describe('loadConsoleContractForSegment', () => {
     ['notification', 'notification', notification],
     ['tags', 'tags', tags],
     ['workspaces', 'workspaces', workspaces],
-  ] as const)('loads the generated %s contract when generated types are usable', async (segment, contractKey, generatedContract) => {
-    const contract = await loadConsoleContractForSegment(segment)
+  ] as const)(
+    'loads the generated %s contract when generated types are usable',
+    async (segment, contractKey, generatedContract) => {
+      const contract = await loadConsoleContractForSegment(segment)
 
-    expect(contract).toHaveProperty(contractKey, generatedContract)
-  })
+      expect(contract).toHaveProperty(contractKey, generatedContract)
+    },
+  )
 
   it('loads the generated enterprise contract independently', async () => {
     const contract = await loadConsoleContractForSegment('enterprise')

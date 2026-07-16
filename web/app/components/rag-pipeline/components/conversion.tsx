@@ -26,68 +26,78 @@ import PipelineScreenShot from './screenshot'
 const Conversion = () => {
   const { t } = useTranslation()
   const { datasetId } = useParams()
-  const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
+  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const { mutateAsync: convert, isPending } = useConvertDatasetToPipeline()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, datasetId])
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset?.maintainer,
-    workspacePermissionKeys,
-  }), [currentUserId, dataset?.maintainer, dataset?.permission_keys, workspacePermissionKeys])
+  const datasetACLCapabilities = React.useMemo(
+    () =>
+      getDatasetACLCapabilities(dataset?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: dataset?.maintainer,
+        workspacePermissionKeys,
+      }),
+    [currentUserId, dataset?.maintainer, dataset?.permission_keys, workspacePermissionKeys],
+  )
   const canConvertDataset = datasetACLCapabilities.canEdit
   const handleConvert = useCallback(() => {
-    if (!canConvertDataset || !datasetId)
-      return
+    if (!canConvertDataset || !datasetId) return
 
     convert(datasetId as string, {
       onSuccess: (res) => {
         if (res.status === 'success') {
-          toast.success(t($ => $['conversion.successMessage'], { ns: 'datasetPipeline' }))
+          toast.success(t(($) => $['conversion.successMessage'], { ns: 'datasetPipeline' }))
           setShowConfirmModal(false)
           invalidDatasetDetail()
-        }
-        else if (res.status === 'failed') {
-          toast.error(t($ => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
+        } else if (res.status === 'failed') {
+          toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
         }
       },
       onError: () => {
-        toast.error(t($ => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
+        toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
       },
     })
   }, [canConvertDataset, convert, datasetId, invalidDatasetDetail, t])
   const handleShowConfirmModal = useCallback(() => {
-    if (!canConvertDataset)
-      return
+    if (!canConvertDataset) return
 
     setShowConfirmModal(true)
   }, [canConvertDataset])
   const handleCancelConversion = useCallback(() => {
     setShowConfirmModal(false)
   }, [])
-  const confirmTitle = t($ => $['conversion.confirm.title'], { ns: 'datasetPipeline' })
-  const confirmContent = t($ => $['conversion.confirm.content'], { ns: 'datasetPipeline' })
+  const confirmTitle = t(($) => $['conversion.confirm.title'], { ns: 'datasetPipeline' })
+  const confirmContent = t(($) => $['conversion.confirm.content'], { ns: 'datasetPipeline' })
   return (
     <div className="flex size-full items-center justify-center bg-background-body p-6 pb-16">
       <div className="flex rounded-2xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-sm shadow-shadow-shadow-4">
         <div className="flex max-w-[480px] flex-col justify-between p-10">
           <div className="flex flex-col gap-y-2.5">
             <div className="title-4xl-semi-bold text-text-primary">
-              {t($ => $['conversion.title'], { ns: 'datasetPipeline' })}
+              {t(($) => $['conversion.title'], { ns: 'datasetPipeline' })}
             </div>
             <div className="body-md-medium">
-              <span className="text-text-secondary">{t($ => $['conversion.descriptionChunk1'], { ns: 'datasetPipeline' })}</span>
-              <span className="text-text-tertiary">{t($ => $['conversion.descriptionChunk2'], { ns: 'datasetPipeline' })}</span>
+              <span className="text-text-secondary">
+                {t(($) => $['conversion.descriptionChunk1'], { ns: 'datasetPipeline' })}
+              </span>
+              <span className="text-text-tertiary">
+                {t(($) => $['conversion.descriptionChunk2'], { ns: 'datasetPipeline' })}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-x-4">
-            <Button variant="primary" className="w-32" disabled={!canConvertDataset} onClick={handleShowConfirmModal}>
-              {t($ => $['operations.convert'], { ns: 'datasetPipeline' })}
+            <Button
+              variant="primary"
+              className="w-32"
+              disabled={!canConvertDataset}
+              onClick={handleShowConfirmModal}
+            >
+              {t(($) => $['operations.convert'], { ns: 'datasetPipeline' })}
             </Button>
             <span className="system-xs-regular text-text-warning">
-              {t($ => $['conversion.warning'], { ns: 'datasetPipeline' })}
+              {t(($) => $['conversion.warning'], { ns: 'datasetPipeline' })}
             </span>
           </div>
         </div>
@@ -99,7 +109,10 @@ const Conversion = () => {
           </div>
         </div>
       </div>
-      <AlertDialog open={showConfirmModal} onOpenChange={open => !open && handleCancelConversion()}>
+      <AlertDialog
+        open={showConfirmModal}
+        onOpenChange={(open) => !open && handleCancelConversion()}
+      >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
@@ -111,10 +124,14 @@ const Conversion = () => {
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t($ => $['operation.cancel'], { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={isPending} disabled={isPending || !canConvertDataset} onClick={handleConvert}>
-              {t($ => $['operation.confirm'], { ns: 'common' })}
+            <AlertDialogConfirmButton
+              loading={isPending}
+              disabled={isPending || !canConvertDataset}
+              onClick={handleConvert}
+            >
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

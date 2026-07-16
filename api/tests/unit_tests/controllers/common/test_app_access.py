@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from controllers.common.app_access import (
@@ -108,7 +110,7 @@ class TestResolveAppAccessFilter:
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
         permissions = _permissions(app_default_keys=["app.preview"])
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", permissions=permissions)
+        flt = resolve_app_access_filter("tenant-1", "acc-1", session=MagicMock(), permissions=permissions)
 
         assert flt.accessible_app_ids is None
         assert flt.can_manage_own_apps is False
@@ -119,7 +121,7 @@ class TestResolveAppAccessFilter:
             workspace_keys=["app.full_access", "app.create_and_management"],
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", permissions=permissions)
+        flt = resolve_app_access_filter("tenant-1", "acc-1", session=MagicMock(), permissions=permissions)
 
         # Workspace-level preview grant defeats the whitelist restriction.
         assert flt.accessible_app_ids is None
@@ -134,7 +136,7 @@ class TestResolveAppAccessFilter:
             ],
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", permissions=permissions)
+        flt = resolve_app_access_filter("tenant-1", "acc-1", session=MagicMock(), permissions=permissions)
 
         assert flt.accessible_app_ids == {"app-1"}
 
@@ -144,18 +146,26 @@ class TestResolveAppAccessFilter:
             app_overrides=[ResourcePermissionKeys(resource_id="app-1", permission_keys=["app.acl.preview"])],
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", permissions=permissions)
+        flt = resolve_app_access_filter("tenant-1", "acc-1", session=MagicMock(), permissions=permissions)
 
         assert flt.accessible_app_ids == {"app-1", "app-5"}
 
     def test_fetches_permissions_when_not_supplied(self, monkeypatch: pytest.MonkeyPatch):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=[]))
+        session = MagicMock()
+        captured: dict[str, object] = {}
+
+        def get_permissions(tenant_id: str, account_id: str, *, session: object):
+            captured.update(tenant_id=tenant_id, account_id=account_id, session=session)
+            return _permissions(workspace_keys=["app.create_and_management"])
+
         monkeypatch.setattr(
             f"{_RBAC_MODULE}.RBACService.MyPermissions.get",
-            lambda tenant_id, account_id, session: _permissions(workspace_keys=["app.create_and_management"]),
+            get_permissions,
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1")
+        flt = resolve_app_access_filter("tenant-1", "acc-1", session=session)
 
         assert flt.accessible_app_ids == set()
         assert flt.can_manage_own_apps is True
+        assert captured == {"tenant_id": "tenant-1", "account_id": "acc-1", "session": session}

@@ -10,13 +10,18 @@ function ev(name: string, data: object): SseEvent {
   return { name, data: enc.encode(JSON.stringify(data)) }
 }
 
-function captures(): { out: PassThrough, err: PassThrough, outBuf: () => string, errBuf: () => string } {
+function captures(): {
+  out: PassThrough
+  err: PassThrough
+  outBuf: () => string
+  errBuf: () => string
+} {
   const out = new PassThrough()
   const err = new PassThrough()
   const oc: Buffer[] = []
-  out.on('data', d => oc.push(d as Buffer))
+  out.on('data', (d) => oc.push(d as Buffer))
   const ec: Buffer[] = []
-  err.on('data', d => ec.push(d as Buffer))
+  err.on('data', (d) => ec.push(d as Buffer))
   return {
     out,
     err,
@@ -38,7 +43,9 @@ describe('streamPrinterFor — chat', () => {
 })
 
 function reasoningEvent(reasoning: string, isFinal: boolean) {
-  return ev('reasoning_chunk', { data: { message_id: 'm1', reasoning, node_id: 'llm-1', is_final: isFinal } })
+  return ev('reasoning_chunk', {
+    data: { message_id: 'm1', reasoning, node_id: 'llm-1', is_final: isFinal },
+  })
 }
 
 describe('streamPrinterFor — chat separated reasoning', () => {
@@ -114,7 +121,11 @@ describe('streamPrinterFor — workflow think filtering', () => {
   it('think: false (default) strips <think> from string outputs, nothing to stderr', () => {
     const sp = streamPrinterFor('workflow')
     const cap = captures()
-    sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: { text: '<think>hidden</think>\nresult' } } }))
+    sp.onEvent(
+      cap.out,
+      cap.err,
+      ev('workflow_finished', { data: { outputs: { text: '<think>hidden</think>\nresult' } } }),
+    )
     sp.onEnd(cap.out, cap.err)
     const parsed = JSON.parse(cap.outBuf().trim()) as { text: string }
     expect(parsed.text).toBe('result')
@@ -124,7 +135,11 @@ describe('streamPrinterFor — workflow think filtering', () => {
   it('think: true strips <think> from string outputs and routes thinking to stderr', () => {
     const sp = streamPrinterFor('workflow', true)
     const cap = captures()
-    sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: { text: '<think>reasoning</think>\nresult' } } }))
+    sp.onEvent(
+      cap.out,
+      cap.err,
+      ev('workflow_finished', { data: { outputs: { text: '<think>reasoning</think>\nresult' } } }),
+    )
     sp.onEnd(cap.out, cap.err)
     const parsed = JSON.parse(cap.outBuf().trim()) as { text: string }
     expect(parsed.text).toBe('result')
@@ -154,7 +169,11 @@ describe('streamPrinterFor — workflow separated reasoning', () => {
     sp.onEvent(cap.out, cap.err, wfReasoning('pon', 'llm-1', false))
     sp.onEvent(cap.out, cap.err, wfReasoning('dering', 'llm-1', false))
     sp.onEvent(cap.out, cap.err, wfReasoning('', 'llm-1', true))
-    sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: { result: 'clean answer' } } }))
+    sp.onEvent(
+      cap.out,
+      cap.err,
+      ev('workflow_finished', { data: { outputs: { result: 'clean answer' } } }),
+    )
     sp.onEnd(cap.out, cap.err)
     // node title precedes the reasoning block for attribution
     expect(cap.errBuf()).toContain('→ LLM')
@@ -203,7 +222,7 @@ describe('streamPrinterFor — unknown mode', () => {
   })
 })
 
-function capture(): { stream: Writable, buf: () => string } {
+function capture(): { stream: Writable; buf: () => string } {
   const chunks: Buffer[] = []
   const stream = new Writable({
     write(chunk, _enc, cb) {
@@ -234,7 +253,9 @@ describe('streamPrinterFor — HITL events', () => {
         expiration_time: 999,
       },
     }
-    expect(() => sp.onEvent(stream, stream, ev('human_input_required', hitl))).toThrow(HitlPauseError)
+    expect(() => sp.onEvent(stream, stream, ev('human_input_required', hitl))).toThrow(
+      HitlPauseError,
+    )
   })
 })
 
@@ -256,7 +277,11 @@ describe('streamPrinterFor — think: false strips think blocks from streamed an
   it('chat: strips think block from live answer chunk', () => {
     const sp = streamPrinterFor('chat', false)
     const cap = captures()
-    sp.onEvent(cap.out, cap.err, ev('message', { conversation_id: 'c1', answer: '<think>reasoning</think>\nhello' }))
+    sp.onEvent(
+      cap.out,
+      cap.err,
+      ev('message', { conversation_id: 'c1', answer: '<think>reasoning</think>\nhello' }),
+    )
     sp.onEnd(cap.out, cap.err)
     expect(cap.outBuf()).toBe('hello\n')
     expect(cap.errBuf()).not.toContain('reasoning')
@@ -284,7 +309,11 @@ describe('streamPrinterFor — think: true routes thinking to stderr', () => {
   it('chat: routes think block to stderr', () => {
     const sp = streamPrinterFor('chat', true)
     const cap = captures()
-    sp.onEvent(cap.out, cap.err, ev('message', { answer: '<think>my reasoning</think>\nanswer text' }))
+    sp.onEvent(
+      cap.out,
+      cap.err,
+      ev('message', { answer: '<think>my reasoning</think>\nanswer text' }),
+    )
     sp.onEnd(cap.out, cap.err)
     expect(cap.outBuf()).toBe('answer text\n')
     expect(cap.errBuf()).toContain('my reasoning')

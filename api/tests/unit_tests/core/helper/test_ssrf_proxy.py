@@ -42,6 +42,20 @@ def test_retry_exceed_max_retries(mock_get_client):
     assert str(e.value) == f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com"
 
 
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_force_list_response_returns_when_retries_disabled(mock_get_client):
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_client.request.return_value = mock_response
+    mock_get_client.return_value = mock_client
+
+    response = make_request("GET", "http://example.com", max_retries=0)
+
+    assert response is mock_response
+    mock_client.request.assert_called_once()
+
+
 def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports():
     mock_client = MagicMock()
     http_transport = MagicMock()

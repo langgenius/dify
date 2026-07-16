@@ -111,7 +111,7 @@ export type TextToSpeechRequest = {
 export type AudioBinaryResponse = Blob | File
 
 export type TrialWorkflowResponse = {
-  conversation_variables?: Array<JsonObject2>
+  conversation_variables?: Array<WorkflowConversationVariableResponse>
   created_at?: number | null
   created_by?: TrialSimpleAccount | null
   environment_variables?: Array<JsonObject2>
@@ -242,14 +242,22 @@ export type SystemParameters = {
   workflow_file_upload_limit: number
 }
 
-export type JsonObject2 = {
-  [key: string]: unknown
+export type WorkflowConversationVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
 }
 
 export type TrialSimpleAccount = {
   email?: string | null
   id: string
   name?: string | null
+}
+
+export type JsonObject2 = {
+  [key: string]: unknown
 }
 
 export type TrialAppAgentMode = {
@@ -295,8 +303,8 @@ export type GetTrialAppsByAppIdResponses = {
   200: TrialAppDetailResponse
 }
 
-export type GetTrialAppsByAppIdResponse
-  = GetTrialAppsByAppIdResponses[keyof GetTrialAppsByAppIdResponses]
+export type GetTrialAppsByAppIdResponse =
+  GetTrialAppsByAppIdResponses[keyof GetTrialAppsByAppIdResponses]
 
 export type PostTrialAppsByAppIdAudioToTextData = {
   body?: never
@@ -311,8 +319,8 @@ export type PostTrialAppsByAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
 }
 
-export type PostTrialAppsByAppIdAudioToTextResponse
-  = PostTrialAppsByAppIdAudioToTextResponses[keyof PostTrialAppsByAppIdAudioToTextResponses]
+export type PostTrialAppsByAppIdAudioToTextResponse =
+  PostTrialAppsByAppIdAudioToTextResponses[keyof PostTrialAppsByAppIdAudioToTextResponses]
 
 export type PostTrialAppsByAppIdChatMessagesData = {
   body: ChatRequest
@@ -329,8 +337,8 @@ export type PostTrialAppsByAppIdChatMessagesResponses = {
   }
 }
 
-export type PostTrialAppsByAppIdChatMessagesResponse
-  = PostTrialAppsByAppIdChatMessagesResponses[keyof PostTrialAppsByAppIdChatMessagesResponses]
+export type PostTrialAppsByAppIdChatMessagesResponse =
+  PostTrialAppsByAppIdChatMessagesResponses[keyof PostTrialAppsByAppIdChatMessagesResponses]
 
 export type PostTrialAppsByAppIdCompletionMessagesData = {
   body: CompletionRequest
@@ -347,8 +355,8 @@ export type PostTrialAppsByAppIdCompletionMessagesResponses = {
   }
 }
 
-export type PostTrialAppsByAppIdCompletionMessagesResponse
-  = PostTrialAppsByAppIdCompletionMessagesResponses[keyof PostTrialAppsByAppIdCompletionMessagesResponses]
+export type PostTrialAppsByAppIdCompletionMessagesResponse =
+  PostTrialAppsByAppIdCompletionMessagesResponses[keyof PostTrialAppsByAppIdCompletionMessagesResponses]
 
 export type GetTrialAppsByAppIdDatasetsData = {
   body?: never
@@ -367,8 +375,8 @@ export type GetTrialAppsByAppIdDatasetsResponses = {
   200: TrialDatasetListResponse
 }
 
-export type GetTrialAppsByAppIdDatasetsResponse
-  = GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
+export type GetTrialAppsByAppIdDatasetsResponse =
+  GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
 
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
@@ -384,8 +392,8 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses = 
   200: SuggestedQuestionsResponse
 }
 
-export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses]
+export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses]
 
 export type GetTrialAppsByAppIdParametersData = {
   body?: never
@@ -400,8 +408,8 @@ export type GetTrialAppsByAppIdParametersResponses = {
   200: Parameters
 }
 
-export type GetTrialAppsByAppIdParametersResponse
-  = GetTrialAppsByAppIdParametersResponses[keyof GetTrialAppsByAppIdParametersResponses]
+export type GetTrialAppsByAppIdParametersResponse =
+  GetTrialAppsByAppIdParametersResponses[keyof GetTrialAppsByAppIdParametersResponses]
 
 export type GetTrialAppsByAppIdSiteData = {
   body?: never
@@ -416,8 +424,8 @@ export type GetTrialAppsByAppIdSiteResponses = {
   200: Site
 }
 
-export type GetTrialAppsByAppIdSiteResponse
-  = GetTrialAppsByAppIdSiteResponses[keyof GetTrialAppsByAppIdSiteResponses]
+export type GetTrialAppsByAppIdSiteResponse =
+  GetTrialAppsByAppIdSiteResponses[keyof GetTrialAppsByAppIdSiteResponses]
 
 export type PostTrialAppsByAppIdTextToAudioData = {
   body: TextToSpeechRequest
@@ -432,8 +440,8 @@ export type PostTrialAppsByAppIdTextToAudioResponses = {
   200: AudioBinaryResponse
 }
 
-export type PostTrialAppsByAppIdTextToAudioResponse
-  = PostTrialAppsByAppIdTextToAudioResponses[keyof PostTrialAppsByAppIdTextToAudioResponses]
+export type PostTrialAppsByAppIdTextToAudioResponse =
+  PostTrialAppsByAppIdTextToAudioResponses[keyof PostTrialAppsByAppIdTextToAudioResponses]
 
 export type GetTrialAppsByAppIdWorkflowsData = {
   body?: never
@@ -448,8 +456,8 @@ export type GetTrialAppsByAppIdWorkflowsResponses = {
   200: TrialWorkflowResponse
 }
 
-export type GetTrialAppsByAppIdWorkflowsResponse
-  = GetTrialAppsByAppIdWorkflowsResponses[keyof GetTrialAppsByAppIdWorkflowsResponses]
+export type GetTrialAppsByAppIdWorkflowsResponse =
+  GetTrialAppsByAppIdWorkflowsResponses[keyof GetTrialAppsByAppIdWorkflowsResponses]
 
 export type PostTrialAppsByAppIdWorkflowsRunData = {
   body: WorkflowRunRequest
@@ -466,8 +474,8 @@ export type PostTrialAppsByAppIdWorkflowsRunResponses = {
   }
 }
 
-export type PostTrialAppsByAppIdWorkflowsRunResponse
-  = PostTrialAppsByAppIdWorkflowsRunResponses[keyof PostTrialAppsByAppIdWorkflowsRunResponses]
+export type PostTrialAppsByAppIdWorkflowsRunResponse =
+  PostTrialAppsByAppIdWorkflowsRunResponses[keyof PostTrialAppsByAppIdWorkflowsRunResponses]
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopData = {
   body?: never
@@ -483,5 +491,5 @@ export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse
-  = PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses[keyof PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses]
+export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse =
+  PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses[keyof PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses]

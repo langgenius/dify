@@ -6,9 +6,7 @@ type ToolsPageProps = {
   searchParams?: Promise<LegacyToolsSearchParams>
 }
 
-const ToolsPage = async ({
-  searchParams,
-}: ToolsPageProps) => {
+const ToolsPage = async ({ searchParams }: ToolsPageProps) => {
   const resolvedSearchParams = await searchParams
 
   redirect(getIntegrationRedirectPathByLegacyToolsSearchParams(resolvedSearchParams))

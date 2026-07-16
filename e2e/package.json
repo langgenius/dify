@@ -1,7 +1,7 @@
 {
   "name": "dify-e2e",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "e2e": "tsx ./scripts/run-cucumber.ts",
     "e2e:external": "tsx ./scripts/run-external-runtime.ts",

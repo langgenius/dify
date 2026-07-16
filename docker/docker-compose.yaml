@@ -533,7 +533,14 @@ services:
     image: langgenius/dify-agent-local-sandbox:1.16.0-rc1
     restart: always
     environment:
-      SHELLCTL_AUTH_TOKEN: ${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}
+      - SHELLCTL_AUTH_TOKEN=${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}
+      # Landlock path isolation. SHELLCTL_ENABLE_PATH_ISOLATION defaults to true in the runtime.
+      - SHELLCTL_ENABLE_PATH_ISOLATION=${SHELLCTL_ENABLE_PATH_ISOLATION:-true}
+      # Passed through only when set (uncommented) in .env; leaving them unset keeps
+      # the runtime's built-in defaults. Setting them to empty removes all default paths.
+      - SHELLCTL_LANDLOCK_RW_PATHS
+      - SHELLCTL_LANDLOCK_RO_PATHS
+      - SHELLCTL_LANDLOCK_RW_DEV_PATHS
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
       interval: 30s

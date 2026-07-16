@@ -6,7 +6,9 @@ describe('RoleBadges', () => {
     it('should expose visible role names as badge titles', () => {
       render(<RoleBadges roleNames={['Very long custom role name', 'Admin']} />)
 
-      expect(screen.getByTitle('Very long custom role name'))!.toHaveTextContent('Very long custom role name')
+      expect(screen.getByTitle('Very long custom role name'))!.toHaveTextContent(
+        'Very long custom role name',
+      )
       expect(screen.getByTitle('Admin'))!.toHaveTextContent('Admin')
     })
 

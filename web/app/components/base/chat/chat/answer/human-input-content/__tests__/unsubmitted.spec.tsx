@@ -10,31 +10,30 @@ describe('UnsubmittedHumanInputContent Integration', () => {
   const user = userEvent.setup()
 
   // Helper to create valid form data
-  const createMockFormData = (overrides = {}): HumanInputFormData => ({
-    form_id: 'form_123',
-    node_id: 'node_456',
-    node_title: 'Input Form',
-    form_content: 'Fill this out: {{#$output.user_name#}}',
-    inputs: [
-      {
-        type: 'paragraph' as InputVarType,
-        output_variable_name: 'user_name',
-        default: {
-          type: 'constant',
-          value: 'Default value',
-          selector: [],
+  const createMockFormData = (overrides = {}): HumanInputFormData =>
+    ({
+      form_id: 'form_123',
+      node_id: 'node_456',
+      node_title: 'Input Form',
+      form_content: 'Fill this out: {{#$output.user_name#}}',
+      inputs: [
+        {
+          type: 'paragraph' as InputVarType,
+          output_variable_name: 'user_name',
+          default: {
+            type: 'constant',
+            value: 'Default value',
+            selector: [],
+          },
         },
-      },
-    ],
-    actions: [
-      { id: 'btn_1', title: 'Submit', button_style: UserActionButtonType.Primary },
-    ],
-    form_token: 'token_123',
-    resolved_default_values: {},
-    expiration_time: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-    display_in_ui: true,
-    ...overrides,
-  } as unknown as HumanInputFormData)
+      ],
+      actions: [{ id: 'btn_1', title: 'Submit', button_style: UserActionButtonType.Primary }],
+      form_token: 'token_123',
+      resolved_default_values: {},
+      expiration_time: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+      display_in_ui: true,
+      ...overrides,
+    }) as unknown as HumanInputFormData
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -131,9 +130,12 @@ describe('UnsubmittedHumanInputContent Integration', () => {
 
     it('should handle loading state during submission', async () => {
       let resolveSubmit: (value: void | PromiseLike<void>) => void
-      const handleSubmit = vi.fn().mockImplementation(() => new Promise<void>((resolve) => {
-        resolveSubmit = resolve
-      }))
+      const handleSubmit = vi.fn().mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSubmit = resolve
+          }),
+      )
       const data = createMockFormData()
 
       render(<UnsubmittedHumanInputContent formData={data} onSubmit={handleSubmit} />)
@@ -164,7 +166,9 @@ describe('UnsubmittedHumanInputContent Integration', () => {
         form_content: '{{#$output.unknown_field#}}',
         inputs: [],
       })
-      const { container } = render(<UnsubmittedHumanInputContent formData={data} onSubmit={vi.fn()} />)
+      const { container } = render(
+        <UnsubmittedHumanInputContent formData={data} onSubmit={vi.fn()} />,
+      )
       // The form will be empty (except for buttons) because unknown_field is not in inputs
       expect(container.querySelector('textarea')).not.toBeInTheDocument()
     })

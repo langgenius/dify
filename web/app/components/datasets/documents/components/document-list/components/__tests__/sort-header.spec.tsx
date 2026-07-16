@@ -40,9 +40,7 @@ describe('SortHeader', () => {
 
   describe('active state', () => {
     it('should have tertiary text color when active', () => {
-      const { container } = render(
-        <SortHeader {...defaultProps} currentSortField="created_at" />,
-      )
+      const { container } = render(<SortHeader {...defaultProps} currentSortField="created_at" />)
       const icon = container.querySelector('button span')
       expect(icon).toHaveClass('text-text-tertiary')
     })

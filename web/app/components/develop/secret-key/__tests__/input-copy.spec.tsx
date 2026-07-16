@@ -56,7 +56,9 @@ describe('InputCopy', () => {
 
   describe('styling', () => {
     it('should apply custom className', async () => {
-      const { container } = await renderAndFlush(<InputCopy value="test" className="custom-class" />)
+      const { container } = await renderAndFlush(
+        <InputCopy value="test" className="custom-class" />,
+      )
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper.className).toContain('custom-class')
     })

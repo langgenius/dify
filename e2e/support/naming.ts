@@ -4,8 +4,7 @@ export const createE2EResourceName = (resource: string, qualifier?: string) => {
 }
 
 export function assertE2EResourceName(name: string, resource: string) {
-  if (name.startsWith('E2E '))
-    return
+  if (name.startsWith('E2E ')) return
 
   throw new Error(`${resource} test resources must use an "E2E " name prefix: ${name}`)
 }

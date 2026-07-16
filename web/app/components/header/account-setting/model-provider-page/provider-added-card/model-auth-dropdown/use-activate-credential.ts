@@ -17,22 +17,27 @@ export function useActivateCredential(provider: ModelProvider) {
   selectedIdRef.current = selectedCredentialId
   const supportedModelTypesRef = useRef(provider.supported_model_types)
   supportedModelTypesRef.current = provider.supported_model_types
-  const activate = useCallback((credential: Credential) => {
-    if (credential.credential_id === selectedIdRef.current)
-      return
-    setOptimisticId(credential.credential_id)
-    mutate({ credential_id: credential.credential_id }, {
-      onSuccess: () => {
-        toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
-        updateModelProviders()
-        supportedModelTypesRef.current.forEach(type => updateModelList(type))
-      },
-      onError: () => {
-        setOptimisticId(undefined)
-        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-      },
-    })
-  }, [mutate, t, updateModelProviders, updateModelList])
+  const activate = useCallback(
+    (credential: Credential) => {
+      if (credential.credential_id === selectedIdRef.current) return
+      setOptimisticId(credential.credential_id)
+      mutate(
+        { credential_id: credential.credential_id },
+        {
+          onSuccess: () => {
+            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+            updateModelProviders()
+            supportedModelTypesRef.current.forEach((type) => updateModelList(type))
+          },
+          onError: () => {
+            setOptimisticId(undefined)
+            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+          },
+        },
+      )
+    },
+    [mutate, t, updateModelProviders, updateModelList],
+  )
   return {
     selectedCredentialId,
     isActivating: isPending,

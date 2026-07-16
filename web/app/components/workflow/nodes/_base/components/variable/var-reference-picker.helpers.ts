@@ -1,10 +1,25 @@
 'use client'
 
 import type { VarType as VarKindType } from '../../../tool/types'
-import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CommonNodeType, Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import type {
+  CredentialFormSchema,
+  FormOption,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  CommonNodeType,
+  Node,
+  NodeOutPutVar,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
-import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from './utils'
+import {
+  getNodeInfoById,
+  isConversationVar,
+  isENV,
+  isGlobalVar,
+  isRagVariableVar,
+  isSystemVar,
+} from './utils'
 
 type DynamicSchemaParams = {
   dynamicOptions: FormOption[] | null
@@ -34,10 +49,10 @@ type OutputVarNodeParams = {
   value: ValueSelector | string
 }
 
-export const getVarKindOptions = (variableLabel = 'Variable', constantLabel = 'Constant') => ([
+export const getVarKindOptions = (variableLabel = 'Variable', constantLabel = 'Constant') => [
   { label: variableLabel, value: 'variable' as VarKindType },
   { label: constantLabel, value: 'constant' as VarKindType },
-])
+]
 
 export const getHasValue = (isConstant: boolean, value: ValueSelector | string) =>
   !isConstant && value.length > 0
@@ -47,8 +62,7 @@ export const getIsIterationVar = (
   value: ValueSelector | string,
   parentId?: string,
 ) => {
-  if (!isInIteration || !Array.isArray(value))
-    return false
+  if (!isInIteration || !Array.isArray(value)) return false
   return value[0] === parentId && ['item', 'index'].includes(value[1]!)
 }
 
@@ -57,8 +71,7 @@ export const getIsLoopVar = (
   value: ValueSelector | string,
   parentId?: string,
 ) => {
-  if (!isInLoop || !Array.isArray(value))
-    return false
+  if (!isInLoop || !Array.isArray(value)) return false
   return value[0] === parentId && ['item', 'index'].includes(value[1]!)
 }
 
@@ -74,21 +87,16 @@ export const getOutputVarNode = ({
   startNode,
   value,
 }: OutputVarNodeParams) => {
-  if (!hasValue || isConstant)
-    return null
+  if (!hasValue || isConstant) return null
 
-  if (isIterationVar)
-    return iterationNode?.data ?? null
+  if (isIterationVar) return iterationNode?.data ?? null
 
-  if (isLoopVar)
-    return loopNode?.data ?? null
+  if (isLoopVar) return loopNode?.data ?? null
 
-  if (isSystemVar(value as ValueSelector))
-    return startNode?.data ?? null
+  if (isSystemVar(value as ValueSelector)) return startNode?.data ?? null
 
   const node = getNodeInfoById(availableNodes, outputVarNodeId)?.data
-  if (!node)
-    return null
+  if (!node) return null
 
   return {
     ...node,
@@ -96,16 +104,11 @@ export const getOutputVarNode = ({
   }
 }
 
-export const getVarDisplayName = (
-  hasValue: boolean,
-  value: ValueSelector | string,
-) => {
-  if (!hasValue || !Array.isArray(value))
-    return ''
+export const getVarDisplayName = (hasValue: boolean, value: ValueSelector | string) => {
+  if (!hasValue || !Array.isArray(value)) return ''
 
   const showName = VAR_SHOW_NAME_MAP[value.join('.')]
-  if (showName)
-    return showName
+  if (showName) return showName
 
   const isSystem = isSystemVar(value)
   const varName = value[value.length - 1] ?? ''
@@ -126,9 +129,12 @@ export const getVariableMeta = (
   const isGlobal = isSelectorValue && isGlobalVar(selector)
   const isRagVar = isSelectorValue && isRagVariableVar(selector)
   const isSpecialVar = isEnv || isChatVar || isRagVar
-  const hasAvailableSpecialVar = !canValidateSpecialVars || !isSelectorValue || availableVars.some(nodeWithVars =>
-    nodeWithVars.vars.some(variable => variable.variable === selector.join('.')),
-  )
+  const hasAvailableSpecialVar =
+    !canValidateSpecialVars ||
+    !isSelectorValue ||
+    availableVars.some((nodeWithVars) =>
+      nodeWithVars.vars.some((variable) => variable.variable === selector.join('.')),
+    )
   const isValidVar = Boolean(outputVarNode) || isGlobal || (isSpecialVar && hasAvailableSpecialVar)
   return {
     isChatVar,
@@ -147,16 +153,11 @@ export const getVariableCategory = ({
   isLoopVar,
   isRagVar,
 }: VariableCategoryParams) => {
-  if (isEnv)
-    return 'environment'
-  if (isChatVar)
-    return 'conversation'
-  if (isGlobal)
-    return 'global'
-  if (isLoopVar)
-    return 'loop'
-  if (isRagVar)
-    return 'rag'
+  if (isEnv) return 'environment'
+  if (isChatVar) return 'conversation'
+  if (isGlobal) return 'global'
+  if (isLoopVar) return 'loop'
+  if (isRagVar) return 'rag'
   return 'system'
 }
 
@@ -171,11 +172,12 @@ export const getWidthAllocations = (
   const priorityWidth = nodeTitle ? 15 : 0
   const minVarNameWidth = varName ? 16 : 0
   return {
-    maxNodeNameWidth: priorityWidth + Math.floor(nodeTitle.length / totalTextLength * availableWidth),
-    maxTypeWidth: Math.floor(type.length / totalTextLength * availableWidth),
+    maxNodeNameWidth:
+      priorityWidth + Math.floor((nodeTitle.length / totalTextLength) * availableWidth),
+    maxTypeWidth: Math.floor((type.length / totalTextLength) * availableWidth),
     maxVarNameWidth: Math.max(
       minVarNameWidth,
-      -priorityWidth + Math.floor(varName.length / totalTextLength * availableWidth),
+      -priorityWidth + Math.floor((varName.length / totalTextLength) * availableWidth),
     ),
   }
 }
@@ -186,8 +188,7 @@ export const getDynamicSelectSchema = ({
   schema,
   value,
 }: DynamicSchemaParams) => {
-  if (schema?.type !== 'dynamic-select')
-    return schema
+  if (schema?.type !== 'dynamic-select') return schema
 
   if (dynamicOptions) {
     return {
@@ -199,11 +200,13 @@ export const getDynamicSelectSchema = ({
   if (isLoading && value && typeof value === 'string') {
     return {
       ...schema,
-      options: [{
-        value,
-        label: { en_US: value, zh_Hans: value },
-        show_on: [],
-      }],
+      options: [
+        {
+          value,
+          label: { en_US: value, zh_Hans: value },
+          show_on: [],
+        },
+      ],
     }
   }
 
@@ -213,15 +216,9 @@ export const getDynamicSelectSchema = ({
   }
 }
 
-export const getTooltipContent = (
-  hasValue: boolean,
-  isShowAPart: boolean,
-  isValidVar: boolean,
-) => {
-  if (isValidVar && isShowAPart)
-    return 'full-path'
-  if (!isValidVar && hasValue)
-    return 'invalid-variable'
+export const getTooltipContent = (hasValue: boolean, isShowAPart: boolean, isValidVar: boolean) => {
+  if (isValidVar && isShowAPart) return 'full-path'
+  if (!isValidVar && hasValue) return 'invalid-variable'
   return null
 }
 

@@ -6,7 +6,12 @@ import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 
 type Status = 'not-installed' | 'not-authorized' | undefined
@@ -24,7 +29,12 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const { data: mcpTools } = useAllMCPTools()
   const isDataReady = !!buildInTools && !!customTools && !!workflowTools && !!mcpTools
   const currentProvider = useMemo(() => {
-    const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || []), ...(mcpTools || [])]
+    const mergedTools = [
+      ...(buildInTools || []),
+      ...(customTools || []),
+      ...(workflowTools || []),
+      ...(mcpTools || []),
+    ]
     return mergedTools.find((toolWithProvider) => {
       return toolWithProvider.name === providerName || toolWithProvider.id === providerName
     })
@@ -34,32 +44,27 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const author = providerNameParts[0]
   const name = providerNameParts[1]
   const icon = useMemo(() => {
-    if (!isDataReady)
-      return ''
-    if (currentProvider)
-      return currentProvider.icon
+    if (!isDataReady) return ''
+    if (currentProvider) return currentProvider.icon
     const iconFromMarketPlace = getIconFromMarketPlace(`${author}/${name}`)
     return iconFromMarketPlace
   }, [author, currentProvider, name, isDataReady])
   const status: Status = useMemo(() => {
-    if (!isDataReady)
-      return undefined
-    if (!currentProvider)
-      return 'not-installed'
-    if (currentProvider.is_team_authorization === false)
-      return 'not-authorized'
+    if (!isDataReady) return undefined
+    if (!currentProvider) return 'not-installed'
+    if (currentProvider.is_team_authorization === false) return 'not-authorized'
     return undefined
   }, [currentProvider, isDataReady])
-  const indicator = status === 'not-installed' ? 'error' : status === 'not-authorized' ? 'warning' : undefined
+  const indicator =
+    status === 'not-installed' ? 'error' : status === 'not-authorized' ? 'warning' : undefined
   const notSuccess = (['not-installed', 'not-authorized'] as Array<Status>).includes(status)
   const { t } = useTranslation()
   const tooltip = useMemo(() => {
-    if (!notSuccess)
-      return undefined
+    if (!notSuccess) return undefined
     if (status === 'not-installed')
-      return t($ => $['nodes.agent.toolNotInstallTooltip'], { ns: 'workflow', tool: name })
+      return t(($) => $['nodes.agent.toolNotInstallTooltip'], { ns: 'workflow', tool: name })
     if (status === 'not-authorized')
-      return t($ => $['nodes.agent.toolNotAuthorizedTooltip'], { ns: 'workflow', tool: name })
+      return t(($) => $['nodes.agent.toolNotAuthorizedTooltip'], { ns: 'workflow', tool: name })
     throw new Error('Unknown status')
   }, [name, notSuccess, status, t])
   const [iconFetchError, setIconFetchError] = useState(false)
@@ -75,8 +80,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
           onError={() => setIconFetchError(true)}
         />
       )
-    }
-    else if (typeof icon === 'object') {
+    } else if (typeof icon === 'object') {
       iconContent = (
         <AppIcon
           className={cn('size-3.5 size-full object-cover', notSuccess && 'opacity-50')}
@@ -88,11 +92,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   }
 
   const iconNode = (
-    <div
-      aria-label={tooltip}
-      className={cn('relative')}
-      ref={containerRef}
-    >
+    <div aria-label={tooltip} className={cn('relative')} ref={containerRef}>
       <div className="flex size-5 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
         {iconContent}
       </div>
@@ -100,8 +100,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
     </div>
   )
 
-  if (!notSuccess || !tooltip)
-    return iconNode
+  if (!notSuccess || !tooltip) return iconNode
 
   return (
     <Tooltip>
