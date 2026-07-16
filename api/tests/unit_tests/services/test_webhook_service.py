@@ -41,7 +41,7 @@ class TestWebhookServiceUnit:
             ),
         ):
             with pytest.raises(QuotaExceededError) as exc_info:
-                WebhookService.trigger_webwork_execution(
+                WebhookService.trigger_workflow_execution(
                     webhook_trigger,
                     {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
                     workflow,
