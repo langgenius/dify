@@ -81,13 +81,15 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
         "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
     )
     monkeypatch.setattr("core.app.apps.workflow.app_generator.TraceQueueManager", MagicMock())
+    workflow_execution_factory = MagicMock(return_value=MagicMock())
+    workflow_node_execution_factory = MagicMock(return_value=MagicMock())
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
-        MagicMock(return_value=MagicMock()),
+        workflow_execution_factory,
     )
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-        MagicMock(return_value=MagicMock()),
+        workflow_node_execution_factory,
     )
     monkeypatch.setattr("core.app.apps.workflow.app_generator.db", SimpleNamespace(engine=MagicMock()))
     monkeypatch.setattr(generator, "_prepare_user_inputs", lambda *, user_inputs, **kwargs: user_inputs)
@@ -134,6 +136,8 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
         "parent_node_execution_id": "outer-node-execution-1",
     }
     assert extras["trace_session_id"] == "session-1"
+    assert workflow_execution_factory.call_args.kwargs["tenant_id"] == "tenant-1"
+    assert workflow_node_execution_factory.call_args.kwargs["tenant_id"] == "tenant-1"
 
 
 def test_resume_delegates_to_generate(mocker: MockerFixture):
