@@ -1023,6 +1023,37 @@ describe('agent/panel', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('shows a retry action when loading the inline agent composer fails', () => {
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: undefined,
+      isError: true,
+      isFetching: false,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
+
+    const { container } = render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'agentV2.roster.nodeSelector.createInlineFailed',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(mockWorkflowInlineAgentDetailRefetch).toHaveBeenCalledTimes(1)
+  })
+
   it('recovers the inline setup panel open state from the node open marker', () => {
     mockUseWorkflowInlineAgentDetail.mockReturnValue({ data: undefined })
 
