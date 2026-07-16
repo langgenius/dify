@@ -1,16 +1,45 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from controllers.console.app import generator as generator_module
 from controllers.console.app.error import ProviderNotInitializeError
 from core.errors.error import ProviderTokenNotInitError
+from models.base import TypeBase
+from models.model import App, AppMode
+
+
+@pytest.fixture
+def orm_session(sqlite_engine: Engine) -> Iterator[Session]:
+    """Yield a real SQLite session containing only the app table."""
+    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[App.__tablename__]])
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        yield session
+
+
+def _persist_app(session: Session, *, tenant_id: str = "t1") -> App:
+    app_model = App(
+        id="app-1",
+        tenant_id=tenant_id,
+        name="Workflow App",
+        description="",
+        mode=AppMode.WORKFLOW,
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=None,
+    )
+    session.add(app_model)
+    session.commit()
+    return app_model
 
 
 def _model_config_payload():
@@ -66,12 +95,10 @@ def test_rule_code_generate_maps_token_error(app: Flask, monkeypatch: pytest.Mon
             method(api, "t1")
 
 
-def test_instruction_generate_app_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_instruction_generate_app_not_found(app: Flask, orm_session: Session) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
-
-    session = MagicMock()
-    session.scalar.return_value = None
+    _persist_app(orm_session, tenant_id="other-tenant")
 
     with app.test_request_context(
         "/console/api/instruction-generate",
@@ -83,25 +110,20 @@ def test_instruction_generate_app_not_found(app: Flask, monkeypatch: pytest.Monk
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method(api, session, "t1")
+        response, status = method(api, orm_session, "t1")
 
     assert status == 400
     assert response["error"] == "app app-1 not found"
-    stmt = session.scalar.call_args.args[0]
-    compiled = stmt.compile()
-    statement = str(compiled)
-    assert "apps.id" in statement
-    assert "apps.tenant_id" in statement
-    assert "app-1" in compiled.params.values()
-    assert "t1" in compiled.params.values()
+    assert orm_session.get(App, "app-1") is not None
 
 
-def test_instruction_generate_workflow_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_instruction_generate_workflow_not_found(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
+) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = SimpleNamespace(id="app-1")
-    session = SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model)
+    app_model = _persist_app(orm_session)
     _install_workflow_service(monkeypatch, workflow=None)
 
     with app.test_request_context(
@@ -114,18 +136,17 @@ def test_instruction_generate_workflow_not_found(app: Flask, monkeypatch: pytest
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method(api, session, "t1")
+        response, status = method(api, orm_session, "t1")
 
     assert status == 400
     assert response["error"] == "workflow app-1 not found"
 
 
-def test_instruction_generate_node_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_instruction_generate_node_missing(app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = SimpleNamespace(id="app-1")
-    session = SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model)
+    app_model = _persist_app(orm_session)
 
     workflow = SimpleNamespace(graph_dict={"nodes": []})
     _install_workflow_service(monkeypatch, workflow=workflow)
@@ -140,18 +161,17 @@ def test_instruction_generate_node_missing(app: Flask, monkeypatch: pytest.Monke
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method(api, session, "t1")
+        response, status = method(api, orm_session, "t1")
 
     assert status == 400
     assert response["error"] == "node node-1 not found"
 
 
-def test_instruction_generate_code_node(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_instruction_generate_code_node(app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = SimpleNamespace(id="app-1")
-    session = SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model)
+    app_model = _persist_app(orm_session)
 
     workflow = SimpleNamespace(
         graph_dict={
@@ -173,18 +193,16 @@ def test_instruction_generate_code_node(app: Flask, monkeypatch: pytest.MonkeyPa
             "model_config": _model_config_payload(),
         },
     ):
-        response = method(api, session, "t1")
+        response = method(api, orm_session, "t1")
 
     assert response == {"code": "x"}
     assert workflow_service.app_model is app_model
-    assert workflow_service.session is session
+    assert workflow_service.session is orm_session
 
 
-def test_instruction_generate_legacy_modify(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_instruction_generate_legacy_modify(app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
-    session = SimpleNamespace()
-
     monkeypatch.setattr(
         generator_module.LLMGenerator,
         "instruction_modify_legacy",
@@ -202,16 +220,14 @@ def test_instruction_generate_legacy_modify(app: Flask, monkeypatch: pytest.Monk
             "model_config": _model_config_payload(),
         },
     ):
-        response = method(api, session, "t1")
+        response = method(api, orm_session, "t1")
 
     assert response == {"instruction": "ok"}
 
 
-def test_instruction_generate_incompatible_params(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_instruction_generate_incompatible_params(app: Flask, orm_session: Session) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
-    session = SimpleNamespace()
-
     with app.test_request_context(
         "/console/api/instruction-generate",
         method="POST",
@@ -223,7 +239,7 @@ def test_instruction_generate_incompatible_params(app: Flask, monkeypatch: pytes
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method(api, session, "t1")
+        response, status = method(api, orm_session, "t1")
 
     assert status == 400
     assert response["error"] == "incompatible parameters"

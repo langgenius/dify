@@ -1,11 +1,51 @@
+"""Unit tests for Notion extraction, HTTP parsing, and persisted metadata updates."""
+
+import json
+import uuid
+from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest import mock
 
 import httpx
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.extractor import notion_extractor
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from models.base import TypeBase
+from models.dataset import Document as DocumentModel
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+
+
+@pytest.fixture
+def persisted_document(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+) -> Iterator[tuple[sessionmaker[Session], DocumentModel]]:
+    """Persist a Notion document and bind the extractor's ``db.session`` to SQLite."""
+    TypeBase.metadata.create_all(sqlite_engine, tables=[DocumentModel.__table__])
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    document = DocumentModel(
+        id=str(uuid.uuid4()),
+        tenant_id=str(uuid.uuid4()),
+        dataset_id=str(uuid.uuid4()),
+        position=1,
+        data_source_type=DataSourceType.NOTION_IMPORT,
+        data_source_info=json.dumps({"source": "notion", "last_edited_time": "2025-01-01T00:00:00.000Z"}),
+        batch="batch",
+        name="Notion page",
+        created_from=DocumentCreatedFrom.API,
+        created_by=str(uuid.uuid4()),
+        indexing_status=IndexingStatus.COMPLETED,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
+    with session_maker() as sqlite_session:
+        sqlite_session.add(document)
+        sqlite_session.commit()
+        monkeypatch.setattr(notion_extractor, "db", SimpleNamespace(session=sqlite_session))
+        yield session_maker, document
 
 
 def _mock_response(data, status_code: int = 200, text: str = ""):
@@ -394,7 +434,11 @@ class TestNotionMetadataAndCredentialMethods:
 
         assert extractor.update_last_edited_time(None) is None
 
-    def test_update_last_edited_time_updates_document_and_commits(self, monkeypatch: pytest.MonkeyPatch):
+    def test_update_last_edited_time_updates_document_and_commits(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        persisted_document: tuple[sessionmaker[Session], DocumentModel],
+    ):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -402,40 +446,18 @@ class TestNotionMetadataAndCredentialMethods:
             tenant_id="tenant",
             notion_access_token="token",
         )
-
-        class FakeDocumentModel:
-            data_source_info = "data_source_info"
-            id = "id"
-
-        execute_calls = []
-
-        class FakeUpdateStmt:
-            def where(self, *args):
-                return self
-
-            def values(self, **kwargs):
-                return self
-
-        class FakeSession:
-            committed = False
-
-            def execute(self, stmt):
-                execute_calls.append(stmt)
-
-            def commit(self):
-                self.committed = True
-
-        fake_db = SimpleNamespace(session=FakeSession())
-        monkeypatch.setattr(notion_extractor, "DocumentModel", FakeDocumentModel)
-        monkeypatch.setattr(notion_extractor, "update", lambda model: FakeUpdateStmt())
-        monkeypatch.setattr(notion_extractor, "db", fake_db)
         monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
+        session_maker, document = persisted_document
 
-        doc_model = SimpleNamespace(id="doc-1", data_source_info_dict={"source": "notion"})
-        extractor.update_last_edited_time(doc_model)
+        extractor.update_last_edited_time(document)
 
-        assert execute_calls
-        assert fake_db.session.committed is True
+        with session_maker() as verification_session:
+            stored_document = verification_session.get(DocumentModel, document.id)
+            assert stored_document is not None
+            assert stored_document.data_source_info_dict == {
+                "source": "notion",
+                "last_edited_time": "2026-01-01T00:00:00.000Z",
+            }
 
     def test_get_notion_last_edited_time_uses_page_and_database_urls(self, mocker: MockerFixture):
         extractor_page = notion_extractor.NotionExtractor(
