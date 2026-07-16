@@ -55,13 +55,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         .map((node) => node.id),
     )
     const [x, y, zoom] = transform
-    const {
-      appId,
-      conversationVariables,
-      environmentVariables,
-      syncWorkflowDraftHash,
-      isWorkflowDataLoaded,
-    } = workflowStore.getState()
+    const { appId, conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
+      workflowStore.getState()
 
     if (!appId || !isWorkflowDataLoaded) return null
 
@@ -114,13 +109,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           },
         },
         features: featuresPayload,
-        environment_variables: environmentVariables,
         conversation_variables: conversationVariables,
         hash: syncWorkflowDraftHash,
-        ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
       },
     }
-  }, [store, featuresStore, workflowStore, isCollaborationEnabled])
+  }, [store, featuresStore, workflowStore])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return

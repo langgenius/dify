@@ -25,7 +25,6 @@ let workflowStoreState: {
   appId: string
   isWorkflowDataLoaded: boolean
   syncWorkflowDraftHash: string | null
-  environmentVariables: Array<Record<string, unknown>>
   conversationVariables: Array<Record<string, unknown>>
   setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
   setDraftUpdatedAt: typeof mockSetDraftUpdatedAt
@@ -118,7 +117,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       appId: 'app-1',
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: 'hash-123',
-      environmentVariables: [],
       conversationVariables: [],
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
@@ -267,7 +265,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     workflowStoreState = {
       ...workflowStoreState,
       syncWorkflowDraftHash: 'latest-hash',
-      environmentVariables: [{ id: 'env-1', value: 'env' }],
       conversationVariables: [{ id: 'conversation-1', value: 'conversation' }],
     }
     featuresState = {
@@ -314,7 +311,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
           sensitive_word_avoidance: { enabled: false },
           file_upload: { enabled: true },
         },
-        environment_variables: [{ id: 'env-1', value: 'env' }],
         conversation_variables: [{ id: 'conversation-1', value: 'conversation' }],
         hash: 'latest-hash',
       },
@@ -327,10 +323,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
   })
 
   it('should include an environment variable patch in a full draft sync', async () => {
-    workflowStoreState = {
-      ...workflowStoreState,
-      environmentVariables: [{ id: 'env-existing', value: 'keep' }],
-    }
     const environmentVariablePatch: EnvironmentVariablePatch = {
       environmentVariables: [
         {
@@ -356,7 +348,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
       expect.objectContaining({
         params: expect.objectContaining({
-          environment_variables: [{ id: 'env-existing', value: 'keep' }],
           environment_variable_patch: {
             environment_variables: environmentVariablePatch.environmentVariables,
             deleted_environment_variable_ids:
@@ -455,7 +446,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     }
     workflowStoreState = {
       ...workflowStoreState,
-      environmentVariables: [{ id: 'env-1' }],
       conversationVariables: [{ id: 'conversation-1' }],
     }
 

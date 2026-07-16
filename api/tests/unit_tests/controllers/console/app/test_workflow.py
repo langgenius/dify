@@ -146,7 +146,8 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
         workflow_module.variable_factory, "build_conversation_variable_from_mapping", lambda *_args: "conv"
     )
 
-    service = SimpleNamespace(sync_draft_workflow=lambda **_kwargs: workflow)
+    sync_draft_workflow = Mock(return_value=workflow)
+    service = SimpleNamespace(sync_draft_workflow=sync_draft_workflow)
     monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
 
     api = workflow_module.DraftWorkflowApi()
@@ -160,11 +161,11 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
         response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert response["result"] == "success"
+    assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
+    assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
 
 
-def test_sync_draft_workflow_passes_collaborative_environment_patch(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_sync_draft_workflow_passes_environment_patch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = SimpleNamespace(
         unique_hash="next-hash",
         updated_at=None,
@@ -198,7 +199,6 @@ def test_sync_draft_workflow_passes_collaborative_environment_patch(
             "graph": {},
             "features": {},
             "hash": "current-hash",
-            "_is_collaborative": True,
             "environment_variable_patch": {
                 "environment_variables": [
                     {
@@ -231,6 +231,17 @@ def test_sync_draft_workflow_rejects_overlapping_environment_patch_ids() -> None
                     "environment_variables": [{"id": "env-model"}],
                     "deleted_environment_variable_ids": ["env-model"],
                 },
+            }
+        )
+
+
+def test_sync_draft_workflow_rejects_legacy_environment_variables() -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        workflow_module.SyncDraftWorkflowPayload.model_validate(
+            {
+                "graph": {},
+                "features": {},
+                "environment_variables": [],
             }
         )
 

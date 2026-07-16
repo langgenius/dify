@@ -136,13 +136,11 @@ class SyncEnvironmentVariablePatchPayload(BaseModel):
 
 
 class SyncDraftWorkflowPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
-    is_collaborative: bool = Field(default=False, validation_alias="_is_collaborative")
-    environment_variables: list[dict[str, Any]] = Field(
-        default_factory=list,
-    )
     environment_variable_patch: SyncEnvironmentVariablePatchPayload | None = None
     conversation_variables: list[dict[str, Any]] = Field(
         default_factory=list,
@@ -634,46 +632,37 @@ class DraftWorkflowApi(Resource):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-        args = args_model.model_dump()
         workflow_service = WorkflowService()
 
         try:
-            environment_variables_list = Workflow.normalize_environment_variable_mappings(
-                args.get("environment_variables") or [],
-            )
-            environment_variables = [
-                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-            ]
-            environment_variable_patch = args.get("environment_variable_patch")
+            environment_variable_patch = args_model.environment_variable_patch
             environment_variable_upserts: list[VariableBase] | None = None
             deleted_environment_variable_ids: list[str] = []
             if environment_variable_patch is not None:
                 environment_variable_upsert_mappings = Workflow.normalize_environment_variable_mappings(
-                    environment_variable_patch.get("environment_variables") or [],
+                    environment_variable_patch.environment_variables,
                 )
                 environment_variable_upserts = [
                     variable_factory.build_environment_variable_from_mapping(obj)
                     for obj in environment_variable_upsert_mappings
                 ]
-                deleted_environment_variable_ids = (
-                    environment_variable_patch.get("deleted_environment_variable_ids") or []
-                )
-            conversation_variables_list = args.get("conversation_variables") or []
+                deleted_environment_variable_ids = environment_variable_patch.deleted_environment_variable_ids
             conversation_variables = [
-                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
+                variable_factory.build_conversation_variable_from_mapping(obj)
+                for obj in args_model.conversation_variables
             ]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,
-                graph=args["graph"],
-                features=args["features"],
-                unique_hash=args.get("hash"),
+                graph=args_model.graph,
+                features=args_model.features,
+                unique_hash=args_model.hash,
                 account=current_user,
-                environment_variables=environment_variables,
+                environment_variables=[],
                 conversation_variables=conversation_variables,
                 session=db.session(),
                 environment_variable_upserts=environment_variable_upserts,
                 deleted_environment_variable_ids=deleted_environment_variable_ids,
-                preserve_environment_variables=args.get("is_collaborative", False),
+                preserve_environment_variables=True,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
