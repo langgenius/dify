@@ -91,22 +91,26 @@ HITL 节点中的静态通知对象 MUST 支持两类配置：从当前 workspac
 
 #### Scenario: 统一 recipient picker 仍保留联系人分组语义
 - **WHEN** a workflow editor searches recipients from the unified recipient picker
-- **THEN** 系统 MUST 仍然提供 `All`、`Workspace`、`Organization` 和 `External` 这类联系人分组语义，且 MUST NOT 把 `Platform contact` 与 `External contact` 混成同一搜索结果含义
+- **THEN** 系统 MUST 仍然提供 `All`、`Workspace`、`Organization` 和 `External` 这类联系人分组语义，其中 `Organization` MUST 表示当前 `Organization` 内的 `organization contact` 集合；只有在 EE 中，该分组里才 MAY 出现当前 workspace 之外的 `Platform contact`；系统并 MUST NOT 把 `Platform contact` 与 `External contact` 混成同一搜索结果含义
 
 ### Requirement: Message Template 必须承担 Email 与 IM fallback 的消息文案职责
-系统 MUST 将 `Message Template` 作为 Email 投递与 IM fallback message 的统一文案来源。对于能够完整映射表单内容的 IM provider，系统 MAY 直接发送 IM card；对于不能完整映射的 IM provider，系统 MUST 回退到 `Message Template` + request URL 的组合。Web 独立页面 MUST 继续作为完整表单详情入口，而不是由 `Message Template` 承载全部表单内容。
+系统 MUST 将 `Message Template` 作为 Email 投递与 IM fallback message 的统一文案来源。Email 与 IM fallback 中 request URL / fallback link 的呈现方式、位置和 surrounding copy MUST 由 `Message Template` / DSL 决定，而不是额外的硬编码字段清单。对于能够完整映射表单内容的 IM provider，系统 MAY 直接发送 IM card，但该 IM card MUST 至少包含 App 名称、节点名称和渲染后的 `form_content`。对于不能完整映射的 IM provider，系统 MUST 回退到基于 `Message Template` 的 message surface。Web 独立页面 MUST 继续完整渲染 `Form Content`，并与现有 standalone form 实现保持一致，而不是由 `Message Template` 承载全部表单内容。
 
 #### Scenario: Email 总是使用 Message Template
 - **WHEN** the system delivers a HITL request by email
-- **THEN** 系统 MUST 使用 `Message Template` 生成 email subject / body，并 MUST 提供跳转到完整表单详情页的 request URL
+- **THEN** 系统 MUST 使用 `Message Template` 生成 email subject / body，并 MUST 让 request URL / fallback link 的呈现方式遵循该模板 DSL
 
 #### Scenario: IM 能完整映射表单时优先发送 IM card
 - **WHEN** the selected IM provider can represent the configured form as a complete IM card
-- **THEN** 系统 MAY 直接发送 IM card，而不必退回到 `Message Template` 文案
+- **THEN** 系统 MAY 直接发送 IM card，而不必退回到 `Message Template` 文案；该 IM card MUST 至少展示 App 名称、节点名称和渲染后的 `form_content`
 
 #### Scenario: IM 不能完整映射表单时回退到 Message Template
 - **WHEN** the selected IM provider cannot represent the configured form as a complete IM card
-- **THEN** 系统 MUST 使用 `Message Template` 作为 IM fallback message 文案，并 MUST 附带跳转到完整表单详情页的 request URL
+- **THEN** 系统 MUST 使用 `Message Template` 作为 IM fallback message 文案，并 MUST 让 request URL / fallback link 的呈现方式遵循该模板 DSL
+
+#### Scenario: Web 独立页继续完整渲染 Form Content
+- **WHEN** an approver opens the standalone web approval page
+- **THEN** 系统 MUST 完整渲染 `Form Content`，并 MUST 与现有 standalone form implementation 保持一致
 
 ### Requirement: Message Template 必须支持发送测试邮件
 系统 MUST 在 `Message Template` 编辑能力中提供发送测试邮件的能力，以便管理员或 workflow editor 在不触发真实 HITL task 的前提下验证 Email 文案和基础投递配置。该能力 MUST 被视为产品级规则，而不是仅存在于设计稿的临时交互。
@@ -134,4 +138,5 @@ HITL 节点中的静态通知对象 MUST 支持两类配置：从当前 workspac
 | Dynamic Email 校验与升级 | 必须覆盖命中 Contact 升级、未命中走 one-time Email、非法 email 被跳过、unsupported type 直接失败四类路径 | Backend HITL Runtime + QA |
 | canonicalization 与去重 | 必须覆盖“static recipient + current initiator 命中同一人”与“相同 normalized email 重复命中”两类归并场景，并证明只保留一个 allowed approver | Backend HITL Runtime |
 | 双渠道投递 | 必须覆盖“IM + Email 并行发送”“无 IM binding 仅发 Email”“所有 recipient 无渠道时节点失败”三类路径 | Backend HITL Runtime + Notification QA |
+| Message Template 与 surface rendering | 必须覆盖“Email 通过模板 DSL 控制 fallback link 呈现”“IM card 至少展示 App 名称 / 节点名称 / 渲染后的 `form_content`”“Web 独立页完整渲染 `Form Content` 且与现有实现一致”三类路径 | Backend HITL Runtime + Web Workflow |
 | Debug override | 必须覆盖 debug run 替换实际通知对象且不改写正式运行配置 | Backend HITL Runtime + Web Workflow |

@@ -1,8 +1,8 @@
 ## 1. 收敛仍未确认的业务规则
 
-- [ ] 1.1 与产品 / 设计确认 IM、Email、Web 三个入口必须展示的最小任务上下文字段
+- [x] 1.1 与产品 / 设计确认 IM、Email、Web 三个入口必须展示的最小任务上下文与展示面规则（见 `design.md` §2 事实 `#48-#50`、`§4`、`§12` `R-1`）
 - [x] 1.2 与安全确认 raw dynamic Email、form snapshot、submission content 在日志、Last Run 和审计中的可见范围与脱敏规则（见 `design.md` §12 `R-2` 与 repo-local review materials）
-- [ ] 1.3 与产品 / RBAC 确认跨 workspace Contact 搜索的完整权限矩阵
+- [x] 1.3 与产品 / RBAC 确认 `Platform contact` 搜索与 `Organization` 边界的完整权限矩阵（见 `design.md` §2 事实 `#21a`、`§7.1` `CDG-5`、`§12` `R-3`）
 - [ ] 1.4 与 SaaS 团队确认 abuse guardrails，包括 dynamic Email、OTP、收件人数和发送量阈值
 
 ## 2. 冻结安全与风控边界

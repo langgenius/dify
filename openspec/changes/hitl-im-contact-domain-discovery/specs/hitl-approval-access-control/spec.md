@@ -24,7 +24,7 @@
 - **THEN** 系统 MUST 拒绝将 current initiator 作为审批主体，并 MUST 使节点直接报错
 
 ### Requirement: Web 与 IM 审批必须按审批主体选择鉴权链路
-系统 MUST 按审批主体类型决定审批鉴权链路。以 Dify 登录身份承载的 workspace contact 与 Platform contact MUST 使用 Dify 登录；不具备 Dify 登录身份的 external contact、one-time Email 和未命中 Contact 的 dynamic Email MUST 使用 Email OTP；IM 卡片内审批 MUST 通过 IM identity 映射到当前有效 Contact 后再校验 allowed approver。
+系统 MUST 按审批主体类型决定审批鉴权链路。以 Dify 登录身份承载的 `organization contact` 子类，即 `workspace contact` 与 `Platform contact`，MUST 使用 Dify 登录；不具备 Dify 登录身份的 `External contact`、one-time Email 和未命中 Contact 的 dynamic Email MUST 使用 Email OTP；IM 卡片内审批 MUST 通过 IM identity 映射到当前有效 Contact 后再校验 allowed approver。
 
 #### Scenario: Platform contact 通过 Web 审批
 - **WHEN** a platform contact opens the standalone approval page

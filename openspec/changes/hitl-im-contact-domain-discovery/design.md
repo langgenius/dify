@@ -7,7 +7,7 @@
 | 参与者 | 目标 | 追溯来源 |
 | --- | --- | --- |
 | Organization 管理员 | 管理 Organization 级 Contact Directory、配置唯一 IM 渠道、测试连接、查看连接状态；其具体身份随部署形态变化：EE 为企业管理员，在 EE 后台管理；CE / SaaS 为 workspace owner / admin，在 workspace 内管理。 | PRD §5.1、§5.2、§6.2、§18.4；用户澄清 2026-07-13 |
-| Workspace 管理员 | 管理当前 workspace 的 Contact、添加 Platform contact 或 External contact、处理成员移除后的联系人去留、配置 workspace IM override | PRD §5.3、§6.5、§7.2、§7.3、§18.2 |
+| Workspace 管理员 | 管理当前 workspace 的 Contact、添加 organization contact 或 External contact、处理成员移除后的联系人去留、配置 workspace IM override；在 EE 中，从当前 Organization 引入其他 workspace 成员时，该对象会落成为 `Platform contact` | PRD §5.3、§6.5、§7.2、§7.3、§18.2 |
 | Workflow editor | 在 HITL 节点中配置静态通知对象、动态邮箱、一次性邮箱、是否允许 current initiator 审批、调试时仅通知自己 | PRD §5.4、§8.1-§8.6、§18.8 |
 | Workflow 发起者 / current initiator | 在开启 `Allow Current Initiator to Approve` 且身份可解析时，作为额外审批主体参与审批 | PRD §8.5、§18.6 |
 | Workspace contact / Platform contact | 接收通知、在命中 allowed approver 时通过 IM 或 Web 完成审批 | PRD §3.1、§7.4、§9.1-§9.4、§17.3-§17.5 |
@@ -28,8 +28,8 @@
 
 | # | 明确事实 | 追溯来源 |
 | --- | --- | --- |
-| 1 | 本期 Contact 类型收敛为 `workspace contact`、`Platform contact`、`External contact` 三类。 | PRD §3.1 |
-| 2 | 其他 workspace 的 member 不应被视为 external contact，而应视为 Platform contact。 | PRD §3.1、§18.1 |
+| 1 | 本期联系人先按来源区分为 `organization contact` 与 `External contact`；凡属于当前 `Organization` 的成员，对应的联系人都属于 `organization contact`。 | PRD §3.1、§3.3、§18.1；基于当前变更内澄清重述 |
+| 2 | `organization contact` 在当前 workspace 内的正式类型是 `workspace contact`；同一 `Organization` 内但不属于当前 workspace 的正式类型是 `Platform contact`。其他 workspace 的 member 不应被视为 `External contact`。 | PRD §3.1、§18.1；基于当前变更内澄清重述 |
 | 3 | HITL 节点的静态通知对象包含两类：`Contact recipient` 和 `one-time Email`。其中 `Contact recipient` 只从当前 workspace 的 Contact 中选择。 | PRD §3.2、§8.2、§8.4 |
 | 4 | CE / SaaS 中当前 workspace 即 Organization；EE 中整个部署内所有 workspace 共同属于同一个 Organization。 | PRD §3.3、§18.4 |
 | 5 | External contact 不属于 Dify Account，且只归属当前 workspace。 | PRD §3.4、§18.1 |
@@ -43,12 +43,13 @@
 | 13 | IM 连接状态至少有 `Not configured`、`Configured`、`Connected`、`Permission issue`、`Callback error`、`Connection error` 六种。 | PRD §6.2 |
 | 14 | 一期 IM identity 不采用手工输入 IM user ID，而是基于手动 IM 同步结果，由管理员从同步得到的 IM contact 中进行搜索和选择；搜索需要支持按 IM user ID 查询。 | PRD §6.3、§6.4、§14；用户澄清 2026-07-13、diff comment 2026-07-13 |
 | 15 | IM 同步由 Organization 管理员手动触发：IM 配置完成后手动同步，后续如需刷新仍由管理员 / owner 手动发起，不做自动同步。 | PRD §6.4；用户澄清 2026-07-13 |
-| 16 | IM 同步时，系统必须先按 IM 平台 user ID 匹配现有联系人；若未命中，再按 Email 匹配当前审批域内可解释的 `Contact / Platform contact`。若两者都未命中，该对象必须进入 unmatched list，等待管理员手动处理；系统不得自动将其创建为 external contact。 | PRD §6.4、§18.7；用户澄清 2026-07-13 |
+| 16 | IM 同步时，系统必须先按 IM 平台 user ID 匹配现有联系人；若未命中，再按 Email 匹配当前 `Organization` 内可解释的 `organization contact`。若两者都未命中，该对象必须进入 unmatched list，等待管理员手动处理；系统不得自动将其创建为 `External contact`。 | PRD §6.4、§18.7；用户澄清 2026-07-13、2026-07-16 |
 | 17 | Workspace IM override 只影响当前 workspace 的联系人 IM 身份 / 通知行为，不覆盖 IM Integration 凭据。 | PRD §6.5、§18.4 |
 | 18 | Workspace IM override 的运行时优先级高于全局 IM identity，高于 Email fallback。 | PRD §6.5 |
 | 19 | external contact 创建、旧 Email recipient 迁移、dynamic Email 匹配和 recipient 去重统一使用“整条 email lower-case 后完全相等”的规则。 | PRD §7.5、§8.3、§11.3、§18.6 |
 | 20 | external contact 的创建 / 编辑受 Contact 编辑权限约束；默认只有 owner / admin 可以创建或编辑 Contact，workflow editor 不能直接创建 external contact。 | PRD §7.3、§14、§18.10；用户澄清 2026-07-13 |
 | 21 | 普通 member 不能查看完整 Contact，只能访问分配给自己的 HITL task。 | PRD §14、§18.10；用户澄清 2026-07-13 |
+| 21a | 任何情况下都不允许跨 `Organization` 搜索 Contact。只有 EE 存在 `Platform contact` 搜索场景：owner / admin 可以在同一 `Organization` 内搜索当前 workspace 之外的成员。CE / SaaS 中 `Organization = workspace`，因此不存在 `Platform contact` 搜索。 | 用户澄清 2026-07-16 |
 | 22 | Dynamic Email 本期只支持 string；array、object、number、boolean 都属于 `unsupported_type`。 | PRD §8.3、§10.3 |
 | 23 | Dynamic Email 命中已有 Contact 后，需要升级为 Contact recipient，并按该 Contact 的可通知渠道发送。 | PRD §8.3、§18.6 |
 | 24 | Dynamic Email 未命中 Contact 时，作为 one-time Email recipient 发送。 | PRD §8.3 |
@@ -64,17 +65,20 @@
 | 34 | 当 notified recipients 为空且 current initiator 不可用时，节点应直接报错，不创建可等待的 HITL task。 | PRD §10.4 |
 | 35 | HITL 节点配置中的静态 `Contact recipient` 存储联系人 ID；`one-time Email` 直接存储在当前节点配置中，不写入 Contact。 | PRD §8.2、§8.4、§11.1 |
 | 36 | 导入导出 / DSL ID-Email 转换不在本期范围；本期只保留与兼容性直接相关的迁移。 | PRD §11.2、§15；用户澄清 2026-07-13 |
-| 37 | 旧 Email recipient 迁移时，能匹配到当前审批域内 `Contact / Platform contact` 的对象不应迁移为 external contact。 | PRD §11.3、§18.7 |
+| 37 | 旧 Email recipient 迁移时，能匹配到当前 `Organization` 内 `organization contact` 的对象不应迁移为 `External contact`。 | PRD §11.3、§18.7；基于当前变更内澄清重述 |
 | 38 | 本期不支持群聊通知，member 审批人的通知中心接口也不进入本期范围。 | PRD §2、§12.0、§12.3、§15；用户澄清 2026-07-13 |
 | 39 | HITL 节点继续沿用 `Human Input` 作为节点名称。 | PRD §5.0；用户澄清 2026-07-13 |
 | 40 | 成员从 CE / SaaS workspace 被移除时，不转为 external contact，而是遵守 §18.2 的成员移除补充规则。 | PRD §4.2、§18.2；用户澄清 2026-07-13 |
 | 41 | 审计日志本期无 UI，只要求后端保留可通过数据库查询的审计数据。 | PRD §16.1、§16.2 |
-| 42 | Web 独立页面审批按审批主体鉴权：具备 Dify 登录身份的 workspace contact / Platform contact 走 Dify 登录；不具备 Dify 登录身份的 external contact、one-time Email、未命中 Contact 的 dynamic Email 走 Email OTP。 | PRD §17.3、§17.5 |
+| 42 | Web 独立页面审批按审批主体鉴权：具备 Dify 登录身份的 `organization contact` 子类，即 `workspace contact` 与 `Platform contact`，走 Dify 登录；不具备 Dify 登录身份的 `External contact`、one-time Email、未命中 Contact 的 dynamic Email 走 Email OTP。 | PRD §17.3、§17.5；基于当前变更内澄清重述 |
 | 43 | OTP 规则已明确：10 分钟有效、60 秒重发间隔、单 task 单 recipient 最多 5 次发送、单 OTP 最多 5 次尝试、验证成功即失效。 | PRD §17.5 |
 | 44 | external contact 通过 Email 审批时，OTP 验证和表单提交可以在同一个请求里完成，但提交时仍需执行完整的 task 与 allowed approver 校验。 | PRD §17.5；用户澄清 2026-07-13 |
 | 45 | task 创建时会冻结 `RecipientSpecification`、`ApprovalPrincipal` 和 `DeliveryEndpoint` 快照，用于历史展示、审计和排错；提交授权仍以提交当时的当前身份链路、Contact 状态和 IM Binding 状态为准，而不是历史 snapshot。 | PRD §17.2、§17.4、§18.9；基于本 change 术语边界重述 |
 | 46 | 成员退出 workspace、账号被禁用、external contact 被删除、contact email 被修改、IM Binding 被修改后，历史 snapshot 要保留，但 pending task 的提交权限需要重新校验。 | PRD §18.2、§18.9；用户澄清 2026-07-14 |
 | 47 | recipient canonicalization 以 Contact 为中心，同一人从多个来源命中时只保留一个 allowed approver，并保留多来源命中与多渠道投递记录。 | PRD §18.6 |
+| 48 | `Message Template` 决定 Email 与 IM fallback message 的文案，以及 fallback link 的呈现方式与位置；具体链接文案遵循 DSL 模板，而不是额外的硬编码字段清单。 | 用户澄清 2026-07-16 |
+| 49 | 当 IM provider 可完整映射表单时，IM card 至少需要展示 App 名称、节点名称和渲染后的 `form_content`。 | 用户澄清 2026-07-16 |
+| 50 | Web 独立审批页继续完整渲染 `Form Content`，并与现有 standalone form 实现保持一致。 | 用户澄清 2026-07-16 |
 
 ## Goals / Non-Goals
 
@@ -105,21 +109,18 @@
 | --- | --- | --- | --- |
 | 1 | raw dynamic Email、form snapshot、submission content 本期保留原值，不做额外 HITL 级脱敏。产品运行记录面按现有权限原样展示；对应底层存储的直接查询同样可见原值；审计查询面也不额外做 HITL 级脱敏。 | 用户澄清 2026-07-14 | PRD §16.4；用户澄清 2026-07-14 |
 | 2 | SaaS abuse guardrails 的具体阈值和触发规则不在本 PRD 内部定义。 | PRD 把该主题留给 SaaS 团队单独确认。 | PRD §4.1、§14、§19 |
-| 3 | 跨 workspace Contact 搜索的权限模型只有“拥有 Manage contacts 权限的人可搜索”的粗口径，没有完整权限矩阵。 | PRD 只给出最小口径，未说明更多角色差异。 | PRD §14、§18.10 |
 
 ### 4. 相互冲突或语义不完整的需求
 
 | # | 问题 | 冲突 / 缺口说明 | 追溯来源 |
 | --- | --- | --- | --- |
-| 1 | IM 消息最小上下文与消息内容列表存在张力 | §9.2 前半段要求提供 App、Workflow、节点、来源、有效期等最小上下文；后半段 IM 消息内容列表又把多项具体字段划掉，导致最终消息体边界不清。 | PRD §9.2 |
+| 1 | IM / Email / Web 三个展示面的最小上下文在上游 PRD 中仍未完全同步 | 本地已确认规则是：`Message Template` 负责 Email 与 IM fallback 的文案和 fallback link；IM card 至少展示 App 名称、节点名称、渲染后的 `form_content`；Web 独立页继续完整渲染 `Form Content`。当前剩余差异主要是上游 PRD 尚未回写这一口径。 | PRD §9.2、§9.3；用户澄清 2026-07-16 |
 | 2 | 观测性与隐私边界同时被强调，但上游 PRD 尚未回写已确认口径 | 本地已确认运行记录、底层直接查询和审计查询都保留原值，不做额外 HITL 级脱敏；当前差异只剩上游 PRD 尚未同步。 | PRD §10.5、§16.4 |
 
 ### 5. 需要产品或架构人员回答的问题
 
 | # | 问题 | 为什么必须回答 | 追溯来源 |
 | --- | --- | --- | --- |
-| 1 | IM / Email 中最小任务上下文哪些字段必须展示，哪些可以只在审批页展示？ | 当前 PRD 对“必须提供上下文”和“消息体字段精简”同时给出信号。 | PRD §9.2、§9.3 |
-| 3 | 跨 workspace Contact 搜索的完整权限矩阵是什么？ | 当前只有“拥有 Manage contacts 权限的人可搜索”的粗粒度说法。 | PRD §14、§18.10 |
 | 4 | SaaS abuse guardrails 的具体阈值、拒绝策略和例外流程是什么？ | Dynamic Email、OTP 和多收件人通知都依赖这组限制。 | PRD §4.1、§14、§19 |
 
 ### 6. 至少 15 个具体业务场景
@@ -128,7 +129,7 @@
 | --- | --- | --- | --- |
 | 1 | SaaS / CE 上线后，现有 workspace members 被初始化到 Contact，并在后续新增 member 时自动加入。 | 正常 | PRD §4.1、§4.2、§7.1、§11.4 |
 | 2 | EE workspace admin 从 Organization 搜索并多选添加其他 workspace 的 member 进入当前 Contact。 | 正常 / 权限 | PRD §4.3、§7.2、§7.3 |
-| 3 | Workspace admin 尝试创建 external contact，但 Email 能匹配到当前审批域内的 Contact / Platform contact，因此创建被拒绝并要求按 Platform contact 处理。 | 失败 / 身份归类 | PRD §7.5、§18.1 |
+| 3 | Workspace admin 尝试创建 `External contact`，但 Email 能匹配到当前 `Organization` 内的 `organization contact`，因此创建被拒绝；若该对象不在当前 workspace，则应按 `Platform contact` 处理。 | 失败 / 身份归类 | PRD §7.5、§18.1；基于当前变更内澄清重述 |
 | 4 | Dynamic Email 变量解析出合法邮箱，且该邮箱命中已有 Contact，于是收件人被升级为 Contact recipient，并按 IM + Email 双渠道发送。 | 正常 / 身份归并 | PRD §8.3、§9.1、§18.6 |
 | 5 | Dynamic Email 变量解析出合法邮箱，但未命中任何 Contact，于是它作为 one-time Email recipient 发送。 | 正常 | PRD §8.3、§17.5 |
 | 6 | Dynamic Email 变量值不是 string，且没有其他有效 recipient，节点直接报错 `No valid recipients found`。 | 失败 | PRD §8.3、§10.3、§10.4 |
@@ -154,8 +155,8 @@
 
 ## Risks / Trade-offs
 
-- [消息上下文边界不清] -> 先产出统一“最小任务上下文”清单，再分别映射到 IM、Email 和 Web。
-- [跨 workspace Contact 搜索权限矩阵未细化] -> 在进入实现前补齐角色与搜索范围定义，避免把粗粒度权限直接落地成默认行为。
+- [Message Template / IM card / Web 三个展示面实现不一致] -> 在实现层共享一套 surface mapping 规则，确保 DSL 模板、IM card 最小字段和 Web 完整 `Form Content` 不发生语义漂移。
+- [Platform contact 搜索边界被误放大] -> 将搜索入口硬性限制为 EE owner / admin 且只限同一 Organization；任何部署形态都不允许跨 Organization 搜索；CE / SaaS 不存在 Platform contact 搜索。
 - [敏感信息边界待定] -> 在日志、Last Run 和审计落地前增加安全评审，明确保留期、可见范围和脱敏规则。
 - [SaaS abuse guardrails 缺失] -> 在开放 dynamic Email 与 OTP 之前先补齐阈值、告警和拒绝策略，否则容易把运行时风险留到上线后处理。
 
@@ -167,11 +168,11 @@
 
 | Backlog ID | 工作单元 | 覆盖规则 | 退出条件 | 依赖 |
 | --- | --- | --- | --- | --- |
-| `CDG-1` | 联系人分类与审批域作用域收敛 | `workspace contact`、`Platform contact`、`External contact` 分类；CE / SaaS / EE 作用域差异 | 新增与编辑流程都能区分三类联系人，且跨 workspace member 不会落成 `External contact` | 无 |
+| `CDG-1` | 联系人分类与审批域作用域收敛 | `organization contact` 与 `External contact` 的来源边界，以及 `workspace contact` / `Platform contact` 作为 `organization contact` 子类的分类规则；CE / SaaS / EE 作用域差异 | 新增与编辑流程都能区分 `organization contact` 与 `External contact`，并在 `organization contact` 内正确落成 `workspace contact` 或 `Platform contact` | 无 |
 | `CDG-2` | 成员生命周期与 pending task 重校验 | 成员移除、保留为 `Platform contact`、账号禁用 / 删除、历史 snapshot 保留 | 新配置选择资格和 pending task 提交资格均按当前成员状态重算，历史展示与审计仍能回溯 | 无 |
 | `CDG-3` | IM Integration 归属、workspace override 与优先级 | Organization 级唯一 IM channel、部署形态差异、workspace override 优先级 | Organization 级凭据与 workspace override 职责边界固定，运行时优先级可验证为 override > global identity > email fallback | 无 |
 | `CDG-4` | 手动 IM sync 与 unmatched 处理 | 手动同步、按 IM user ID / email 匹配、unmatched list、禁止自动 external contact | IM identity 只能从同步结果中选择；未命中对象进入 unmatched list；系统不会自动创建 `External contact` | 无 |
-| `CDG-5` | Contact 编辑权限与可见性限制 | owner / admin 可编辑、workflow editor 禁止创建 external contact、member 不可浏览完整 Contact | Contact 管理入口、workflow 配置入口和普通 member 访问入口都遵守同一权限边界 | `Q-3` |
+| `CDG-5` | Contact 编辑权限、可见性与 Platform contact 搜索限制 | owner / admin 可编辑、workflow editor 禁止创建 external contact、member 不可浏览完整 Contact、仅 EE owner / admin 可搜索 `Platform contact`、任何部署都禁止跨 Organization 搜索 | Contact 管理入口、workflow 配置入口、普通 member 访问入口和 `Platform contact` 搜索入口都遵守同一权限边界 | 无 |
 
 ### 7.2 `hitl-recipient-resolution` backlog
 
@@ -180,7 +181,7 @@
 | `HRR-1` | `RecipientSpecification` 配置边界固化 | 静态 Contact recipient、one-time Email、dynamic Email、current initiator 的配置态边界 | 节点配置只保存 specification，不把 delivery endpoint 或 proof 混进配置层 | 无 |
 | `HRR-2` | Dynamic Email 校验、canonicalization 与 Contact 升级 | string-only、normalized email、命中 Contact 升级、未命中走 one-time Email、非法值记录失败原因 | 运行时先校验再匹配 Contact，并对每个失败值留下可审计原因 | `Q-4` |
 | `HRR-3` | `ApprovalPrincipal` 归并与多来源命中记录 | static recipient、dynamic Email、current initiator、多渠道投递 | 同一人从多个来源命中时只保留一个 canonical principal，同时保留 source hit 和 delivery records | 无 |
-| `HRR-4` | 双渠道默认通知与无渠道失败 | IM + Email 并发发送、Email 必发、无可用渠道 fail fast | 有 IM binding 且有 email 的对象默认双发；所有 recipient 都无渠道时节点直接失败 | `Q-1`, `Q-4` |
+| `HRR-4` | 双渠道默认通知与无渠道失败 | IM + Email 并发发送、Email 必发、无可用渠道 fail fast | 有 IM binding 且有 email 的对象默认双发；所有 recipient 都无渠道时节点直接失败 | `Q-4` |
 | `HRR-5` | Debug-only recipient override 与无通知对象错误 | `Only notify me during debug`、`No notified recipients available` | 调试运行只影响 debug session；正式运行配置不被改写；空 recipient 场景有确定错误 | 无 |
 
 ### 7.3 `hitl-approval-access-control` backlog
@@ -188,7 +189,7 @@
 | Backlog ID | 工作单元 | 覆盖规则 | 退出条件 | 依赖 |
 | --- | --- | --- | --- | --- |
 | `HAC-1` | current initiator 解析与业务主体收敛 | WebApp、Service API request-scoped `end_user`、CLI resolvable / unavailable | current initiator 只能落在 `workspace user` 或 `end_user`，且 Service API / CLI 不会产生第三种主体 | 无 |
-| `HAC-2` | 审批鉴权链路按主体类型分流 | Dify 登录、Email OTP、IM identity 映射 | Web / IM / Email 三条鉴权链路都基于当前主体类型重校验，而不是历史 link | `Q-1` |
+| `HAC-2` | 审批鉴权链路按主体类型分流 | Dify 登录、Email OTP、IM identity 映射 | Web / IM / Email 三条鉴权链路都基于当前主体类型重校验，而不是历史 link | 无 |
 | `HAC-3` | snapshot 保留与当前状态重校验 | task snapshot、成员状态变化、contact email 变化、IM binding 变化 | 打开页面与提交表单都按当前 task / identity / contact 状态判定，snapshot 仅用于展示与审计 | 无 |
 | `HAC-4` | 并发提交的单次成功语义 | `first success wins`、后到请求返回已完成 | 多渠道、多入口并发提交下只有一个请求能成功完成 task | 无 |
 | `HAC-5` | 审计最小事实与拒绝原因保留 | 通知对象、delivery attempt、访问尝试、身份校验结果、拒绝原因 | 审计数据足以回答“通知给了谁、谁访问过、谁提交了、为什么被拒绝” | `Q-2` |
@@ -249,7 +250,7 @@
 | `C-2` | `6.3` 仍保留“具体参数待确定”，没有把 IM identity 明确收敛到“手动 IM sync 结果中搜索选择” | 用户已确认本地结论成立：一期不允许自由文本 IM user ID；只能从手动 sync 结果中搜索选择，且搜索至少支持 IM user ID。当前剩余差异仅是上游 PRD 尚未更新 | 若后续本地材料回退到“自由输入”，管理后台、workspace Contact、provider sync 与审计会再次分叉 | 已由用户拍板，本地保持一致即可 |
 | `C-3` | `8.5` 虽补了 API / CLI initiator 说明，但仍停留在“若调用方有明确身份”这类宽口径 | 用户已裁决为 4 条明确规则：`Service API` 必须显式提供 `user`；该 `user` 物化为 request-scoped `end_user`；`CLI` 只有在可解析为 `workspace user` / `end_user` 时 initiator 才可用；若 initiator 不可用且无其他 recipients，节点直接报错。审批主体仍只有 `workspace user` 与 `end_user` 两类 | 若本地材料不按四条规则统一，recipient canonicalization、审计、无 recipient 报错路径仍会各自发明 caller identity 规则 | 已由用户拍板，后续只需保持本地材料一致 |
 | `C-4` | `12.3` 仍写“可优先考虑提供审批人是 member 的通知中心接口” | 用户已裁决：通知中心不进入本期；完整站内通知中心与 CLI 待办后续专题讨论 | 若本地范围说明不收口，里程碑、后端 issue 拆分与 QA 范围会继续把通知中心误当成本期 deliverable | 已由用户拍板，后续只需保持本地材料一致 |
-| `C-5` | `18.10` 只有粗粒度 `Manage contacts` 口径，尚未固定最小可交付权限边界 | 用户已接受本地最小权限口径：owner / admin 默认可编辑 Contact；workflow editor 不能直接创建 external contact；regular member 不能查看完整 Contact | 若本地材料不保持一致，Contact 管理、节点配置、member 访问和跨 workspace 搜索范围会继续在实现层临时裁剪 | 已由用户拍板，后续只需保持本地材料一致 |
+| `C-5` | `18.10` 只有粗粒度 `Manage contacts` 口径，尚未固定最小可交付权限边界 | 用户已接受本地最小权限口径：owner / admin 默认可编辑 Contact；workflow editor 不能直接创建 `External contact`；regular member 不能查看完整 Contact；任何部署都禁止跨 `Organization` 搜索；只有 EE 存在 `Platform contact` 搜索，且仅开放给 owner / admin | 若本地材料不保持一致，Contact 管理、节点配置、member 访问和 `Platform contact` 搜索范围会继续在实现层临时裁剪 | 已由用户拍板，后续只需保持本地材料一致 |
 | `C-6` | `18.2` / `4.2` 仍保留 “member 离开后是否转 external contact” 的历史痕迹与分支文案 | 用户已裁决：removed member 不自动转 external contact；新的 HITL 节点配置不能再选择该成员；历史 workflow 引用与 task snapshot 保留；所有 pending task 在打开页面和提交表单时都必须重新校验当前 membership 与审批资格；若该成员已不属于当前 workspace，则旧 pending task 不允许继续审批或提交 | 若本地材料不统一到这套生命周期口径，审计解释和 pending task submit authorization 仍会在“内部成员”与“外部邮箱对象”之间混淆 | 已由用户拍板，后续只需保持本地材料一致 |
 
 推荐的最小决策顺序：
@@ -263,18 +264,17 @@
 
 | 走查项 | 关联规则 / 场景 | 主要 owner | 当前状态 | 需要确认的最小问题 |
 | --- | --- | --- | --- | --- |
-| `R-1` 最小任务上下文字段 | `Q-1`、事实 `#29`、场景 `4/9/10/16` | Product + Design | `partially_confirmed_by_user_pending_field_inventory` | 已确认渠道策略：`Email` 使用 `Message Template`；`IM` 在表单可完整映射到 IM 卡片时使用 IM 卡片，否则使用 `Message Template`；`Web` 始终提供完整表单详情入口。仍待明确“最小任务上下文字段”清单本身 |
+| `R-1` 通知与审批展示面规则 | 事实 `#29/#48/#49/#50`、场景 `4/9/10/16` | Product + Design | `confirmed_by_user_pending_material_sync` | 已确认：`Message Template` 决定 Email 与 IM fallback 的文案和 fallback link；IM card 至少展示 App 名称、节点名称、渲染后的 `form_content`；Web 独立页继续完整渲染 `Form Content` 并保持现有实现一致 |
 | `R-2` 敏感信息可见范围 | `Q-2`、冲突 `#2`、`A-5/A-6/A-8` | Security + Backend | `confirmed_by_user_pending_upstream_sync` | 已确认：对 `raw dynamic Email`、`form snapshot`、`submission content`，本期保留原值，不做额外 HITL 级脱敏。产品运行记录面按现有权限原样展示；对应底层存储的直接查询同样可见原值；审计查询面也不额外做 HITL 级脱敏 |
-| `R-3` Contact 最小权限边界 | `CDG-5`、`A-2`、冲突 `C-5` | Product + RBAC | `confirmed_by_user_pending_external_matrix` | 已接受“owner / admin 可编辑、workflow editor 不能建 external、member 不能看完整 Contact”的最小口径；仍待补跨 workspace 搜索的详细矩阵 |
+| `R-3` Contact 最小权限边界 | `CDG-5`、`A-2`、事实 `#21a`、冲突 `C-5` | Product + RBAC | `confirmed_by_user_pending_material_sync` | 已接受：owner / admin 可编辑 Contact；workflow editor 不能建 `External contact`；regular member 不能看完整 Contact；任何部署都禁止跨 `Organization` 搜索；只有 EE owner / admin 可搜索 `Platform contact`；CE / SaaS 因 `Organization = workspace` 不存在 `Platform contact` 搜索 |
 | `R-4` 手动 IM sync 与 IM identity 选择 | `CDG-4`、`A-1`、冲突 `C-2` | Product + Admin Console | `confirmed_by_user_pending_upstream_sync` | 已接受“手动 sync + 从 sync 结果搜索选择 IM identity + 禁止自由文本 IM user ID”；上游 PRD 尚未更新 |
 | `R-5` Current initiator 主体模型 | `HAC-1`、`A-3/A-4`、冲突 `C-3` | Product + Architecture | `confirmed_by_user_pending_upstream_sync` | 已接受四条明确规则：Service API 显式 `user`、物化为 request-scoped `end_user`、CLI 仅在可解析时可用、无 initiator 且无 recipients 直接报错 |
 | `R-6` removed member 生命周期 | `CDG-2`、真值表 `§9`、冲突 `C-6` | Product + Architecture | `confirmed_by_user_pending_upstream_sync` | 已接受：removed member 不自动转 external contact；新配置不可再选择；历史 workflow 引用与 task snapshot 保留；所有 pending task 在打开页面和提交表单时重新校验 membership 与审批资格；若该成员已不属于当前 workspace，则旧 pending task 不允许继续审批或提交 |
 | `R-7` 通知中心范围 | 冲突 `C-4`、PRD `12.3` | Product | `confirmed_by_user_pending_upstream_sync` | 已确认本期完全移出 member 通知中心接口、完整站内通知中心和 CLI 待办能力 |
 | `R-8` 节点策略 | 冲突 `C-1`、周边材料中的新节点口径 | User + Product + Architecture | `confirmed_by_user_pending_material_sync` | 已确认“双层口径”：代码实现用新节点 / 新 DSL；产品 UI 不同时展示新旧节点，沿用 `Human Input` 命名；迁移策略按用户给定方案执行 |
-| `R-9` abuse guardrails | `Q-4`、`A-5`、`BE-HITL-029` | SaaS + Security | `partially_confirmed_by_user_pending_numeric_constants` | 已确认第一步先做频率限制；具体阈值先以代码层常量落地。仍待补齐这些常量的具体数值，以及例外流程和拒绝策略 |
+| `R-9` abuse guardrails | `Q-4`、`A-5`、`BE-HITL-029` | SaaS + Security | `pending_external_owner_decision` | 当前本地不做决定，后续再补充。仍待 SaaS / Security 明确 dynamic Email、OTP、收件人数和发送量阈值，以及拒绝策略和例外流程 |
 
 建议的走查顺序：
 
-1. 先把已拍板的 `R-8`、`R-4`、`R-5`、`R-7`、`R-3`、`R-6` 同步到所有 repo-local review materials。
-2. 再收口 `R-1` 的字段清单，而不是继续停留在渠道路由层。
-3. 仍需补的只剩 `R-1` 的字段清单、`R-3` 的跨 workspace 搜索细节矩阵，以及 `R-9` 的第一版频率限制常量与拒绝策略。
+1. 先把已拍板的 `R-8`、`R-4`、`R-5`、`R-7`、`R-3`、`R-6`、`R-1` 同步到所有 repo-local review materials。
+2. 当前剩余未决项只剩 `R-9` 的 abuse guardrails。

@@ -1,25 +1,25 @@
 ## ADDED Requirements
 
 ### Requirement: Contact 类型与 Organization / Workspace 作用域
-系统 MUST 将 HITL 联系人区分为 `workspace contact`、`Platform contact` 和 `External contact`。系统 MUST 将同一 Organization 内但不属于当前 workspace 的 member 归类为 `Platform contact`，MUST NOT 将其归类为 `External contact`。
+系统 MUST 先将 HITL 联系人按来源区分为 `organization contact` 与 `External contact`。凡属于当前 `Organization` 的成员，对应的联系人都 MUST 视为 `organization contact`。`organization contact` 在当前 workspace 内的子类 MUST 是 `workspace contact`；同一 `Organization` 内但不属于当前 workspace 的子类 MUST 是 `Platform contact`。系统 MUST NOT 将任何 `organization contact` 归类为 `External contact`。
 
 #### Scenario: SaaS / CE member 自动进入 Contact
 - **WHEN** a workspace member exists or is newly added in SaaS or CE
-- **THEN** 系统 MUST 自动将该成员纳入当前 workspace Contact 列表，并将其类型标记为 `workspace contact`
+- **THEN** 系统 MUST 自动将该成员纳入当前 workspace Contact 列表，并将其视为 `organization contact` 下的 `workspace contact`
 
 #### Scenario: EE 添加跨 workspace 成员
 - **WHEN** a workspace admin adds a member from the same Organization but another workspace
-- **THEN** 系统 MUST 将该对象作为 `Platform contact` 加入当前 workspace Contact，而不是 `External contact`
+- **THEN** 系统 MUST 将该对象作为 `organization contact` 下的 `Platform contact` 加入当前 workspace Contact，而不是 `External contact`
 
 ### Requirement: External contact 准入规则
-系统 MUST 仅允许不属于当前审批域内任何 `workspace contact` 或 `Platform contact` 的对象成为 `External contact`。系统 MUST 要求 external contact 提供合法 Email，并 MUST 使用整条 email lower-case 后完全相等的规则做重复判断。
+系统 MUST 仅允许不属于当前 `Organization` 的对象成为 `External contact`。任何已属于当前 `Organization` 的成员，无论其最终落成 `workspace contact` 还是 `Platform contact`，都 MUST 视为 `organization contact` 而不是 `External contact`。系统 MUST 要求 external contact 提供合法 Email，并 MUST 使用整条 email lower-case 后完全相等的规则做重复判断。
 
 #### Scenario: 创建合法 external contact
 - **WHEN** a workspace admin submits a non-Dify email that is unique within the workspace
 - **THEN** 系统 MUST 允许创建 `External contact`，并要求后续仅通过 Email 触达该联系人
 
 #### Scenario: Email 命中内部联系人时拒绝创建 external contact
-- **WHEN** a workspace admin submits an email that matches an existing `Contact` or `Platform contact` in the current Organization scope
+- **WHEN** a workspace admin submits an email that matches any existing `organization contact` in the current Organization scope
 - **THEN** 系统 MUST 拒绝创建 `External contact`，并 MUST 提示该对象应按平台内联系人处理
 
 ### Requirement: Contact 生命周期随成员状态变化
@@ -36,6 +36,21 @@
 #### Scenario: 禁用账号不可再被新节点选择
 - **WHEN** a Dify Account becomes disabled or deleted
 - **THEN** 系统 MUST 禁止新的 HITL 节点选择该联系人，且 MUST 在 pending task 提交时拒绝该账号继续审批
+
+### Requirement: Organization 边界必须统一适用于 EE / CE / SaaS
+系统 MUST 在所有部署形态下维持同一条边界规则：任何 Contact 搜索、匹配和添加都 MUST 限制在当前 `Organization` 边界内，MUST NOT 跨 `Organization` 搜索或解析联系人。`Organization` 的具体作用域 MUST 随部署形态确定：EE 中一个部署对应一个 `Organization`；CE / SaaS 中一个 workspace 对应一个 `Organization`。
+
+#### Scenario: EE 的 Organization 覆盖同一部署下多个 workspace
+- **WHEN** the deployment shape is EE
+- **THEN** 系统 MUST 将同一部署下的多个 workspace 视为同一个 `Organization`，并 MAY 在该 `Organization` 内搜索其他 workspace 的 `organization contact`
+
+#### Scenario: CE / SaaS 的 Organization 等于当前 workspace
+- **WHEN** the deployment shape is CE or SaaS
+- **THEN** 系统 MUST 将当前 workspace 视为完整的 `Organization`，因此 MUST NOT 返回其他 workspace 的联系人结果
+
+#### Scenario: 任意部署形态都禁止跨 Organization 搜索
+- **WHEN** a user tries to search contacts outside the current `Organization`
+- **THEN** 系统 MUST 拒绝该搜索请求，并 MUST NOT 返回任何跨 `Organization` 的联系人结果
 
 ### Requirement: IM Integration、全局 IM identity 与 workspace override 归属
 系统 MUST 将 IM Integration 凭据归属到 Organization。系统 MUST 只允许一个 Organization 级 IM channel 生效。负责管理该 Organization 级 IM channel 的管理员身份 MUST 随部署形态确定：EE 中 MUST 由企业管理员在 EE 后台管理；CE / SaaS 中 MUST 由 workspace owner 或 workspace admin 在 workspace 内管理。workspace override MUST 只覆盖当前 workspace 内联系人的 IM identity 或通知行为，MUST NOT 覆盖 IM Integration 凭据。
@@ -57,7 +72,7 @@
 - **THEN** 系统 MUST 在该 workspace 后续运行时恢复使用全局 IM identity
 
 #### Scenario: IM sync 未命中时进入 unmatched list
-- **WHEN** IM sync cannot match a member by IM platform user ID and also cannot match that member to any `Contact` or `Platform contact` by email
+- **WHEN** IM sync cannot match a member by IM platform user ID and also cannot match that member to any `organization contact` by email
 - **THEN** 系统 MUST 将其放入 unmatched list，等待管理员手动处理，并 MUST NOT 自动创建 `External contact`
 
 ### Requirement: IM identity 必须基于手动同步结果选择
@@ -72,10 +87,10 @@
 - **THEN** 系统 MUST 提供基于同步 IM contacts 的搜索与选择能力，且该搜索 MUST 支持按 IM user ID 查询，并 MUST NOT 依赖手工输入自由文本 IM user ID
 
 ### Requirement: Sync details 必须表达一次 sync run 的 binding 对账结果
-系统 MUST 将 `Sync details` 建模为“一次 IM sync run 的 binding reconciliation result”，而不是联系人生命周期或 Contact 类型视图。`Added` MUST 表示本次 sync 为已匹配的 `Contact / Platform contact` 新建了 IM binding；`Not Matched` MUST 表示按 `provider_user_id` 与 email 都未命中当前可解释的 `Contact / Platform contact`，且 MUST 进入人工处理流、MUST NOT 自动创建 `External contact`；`Failed` MUST 表示理论上应能处理但本次同步处理失败，且 MUST 保留 failure reason；`Removed` MUST 仅表示本地既有 IM binding 在本次对账后被移除、失效或替换，MUST NOT 推导为 contact deletion、membership removal 或自动转换为 `External contact`；`Skipped` MUST 表示本次 sync 观察到该 identity 但按规则不做变更，且 MUST 保留 machine-readable skip reason。
+系统 MUST 将 `Sync details` 建模为“一次 IM sync run 的 binding reconciliation result”，而不是联系人生命周期或 Contact 类型视图。`Added` MUST 表示本次 sync 为已匹配的 `organization contact` 新建了 IM binding；`Not Matched` MUST 表示按 `provider_user_id` 与 email 都未命中当前可解释的 `organization contact`，且 MUST 进入人工处理流、MUST NOT 自动创建 `External contact`；`Failed` MUST 表示理论上应能处理但本次同步处理失败，且 MUST 保留 failure reason；`Removed` MUST 仅表示本地既有 IM binding 在本次对账后被移除、失效或替换，MUST NOT 推导为 contact deletion、membership removal 或自动转换为 `External contact`；`Skipped` MUST 表示本次 sync 观察到该 identity 但按规则不做变更，且 MUST 保留 machine-readable skip reason。
 
 #### Scenario: Not Matched 进入人工处理流
-- **WHEN** an IM identity from the provider matches neither an existing binding by `provider_user_id` nor any `Contact / Platform contact` by email
+- **WHEN** an IM identity from the provider matches neither an existing binding by `provider_user_id` nor any `organization contact` by email
 - **THEN** 系统 MUST 将其归入 `Not Matched` bucket，并 MUST 进入人工处理流，而 MUST NOT 自动创建 `External contact`
 
 #### Scenario: Removed 只表示 binding 对账结果
@@ -97,23 +112,38 @@
 - **WHEN** a regular member tries to browse the workspace Contact list
 - **THEN** 系统 MUST 拒绝其查看完整 Contact，并 MUST 仅允许其访问分配给自己的 HITL task
 
+### Requirement: Platform contact 搜索必须限制在 EE Organization 范围内的 owner / admin
+系统 MUST 仅在 EE 中提供 `Platform contact` 搜索。该能力 MUST 只开放给当前 `Organization` 内具备 owner / admin 权限的用户，且搜索范围 MUST 限制在同一 `Organization` 内、当前 workspace 之外的成员。CE / SaaS 中虽然仍然存在 `Organization` 概念，但由于 `Organization = workspace`，系统 MUST NOT 暴露 `Platform contact` 搜索，也 MUST NOT 返回当前 workspace 之外的联系人结果。
+
+#### Scenario: EE owner / admin 可以搜索 Platform contact
+- **WHEN** an EE owner or admin searches organization contacts outside the current workspace
+- **THEN** 系统 MUST 只返回同一 Organization 内其他 workspace 的可解释联系人，并 MUST 将这些结果视为 `organization contact` 下的 `Platform contact` 候选
+
+#### Scenario: EE 非 owner / admin 不能搜索 Platform contact
+- **WHEN** an EE user without owner / admin permission tries to search organization contacts outside the current workspace
+- **THEN** 系统 MUST 拒绝该 `Platform contact` 搜索请求
+
+#### Scenario: CE / SaaS 不暴露 Platform contact 搜索
+- **WHEN** the deployment shape is CE or SaaS
+- **THEN** 系统 MUST NOT 提供 `Platform contact` 搜索入口，也 MUST NOT 返回当前 workspace 之外的联系人结果
+
 ### Requirement: Contact 管理界面必须显式区分联系人分组与添加路径
-系统 MUST 在 Contact 管理界面中显式区分 `All`、`Workspace`、`Organization` 和 `External` 四类浏览视图，从而把 `workspace contact`、`Platform contact` 和 `External contact` 的来源差异直接暴露给管理员。系统 MUST 为 `Platform contact` 与 `External contact` 提供不同的添加入口，MUST NOT 把二者混成同一条创建路径。
+系统 MUST 在 Contact 管理界面中显式区分 `All`、`Workspace`、`Organization` 和 `External` 四类浏览视图。`Organization` 视图 MUST 表示当前 `Organization` 边界内的 `organization contact` 集合；在 EE 中该集合 MAY 同时包含当前 workspace 的 `workspace contact` 与其他 workspace 的 `Platform contact`，在 CE / SaaS 中该视图与当前 workspace 成员集合语义重合。系统 MUST 为 `Platform contact` 与 `External contact` 提供不同的添加入口，MUST NOT 把二者混成同一条创建路径。
 
 #### Scenario: 管理员按联系人分组浏览
 - **WHEN** a workspace admin opens the Contact management page
-- **THEN** 系统 MUST 允许其在 `All`、`Workspace`、`Organization` 和 `External` 视图之间切换，以区分当前 workspace 成员、同 Organization 其他成员和外部联系人
+- **THEN** 系统 MUST 允许其在 `All`、`Workspace`、`Organization` 和 `External` 视图之间切换，以区分当前 workspace 成员、当前 Organization 内成员和外部联系人
 
 #### Scenario: Add contact 菜单分离 Organization 与 External 路径
 - **WHEN** a workspace admin adds a new contact from the Contact management page
-- **THEN** 系统 MUST 将 `Platform contact / Organization contact` 添加路径与 `External contact` 添加路径分离，并 MUST 在进入 external contact 创建前继续执行内部联系人命中校验
+- **THEN** 系统 MUST 将 `organization contact` 添加路径与 `External contact` 添加路径分离；若当前部署形态为 EE，则该 `organization contact` 路径 MAY 进一步导向 `Platform contact` 搜索；系统并 MUST 在进入 external contact 创建前继续执行内部联系人命中校验
 
 ## Acceptance Coverage
 
 | 场景族 | 最小验收标准 | Primary owner |
 | --- | --- | --- |
-| 联系人分类与作用域 | 必须证明同 Organization 跨 workspace member 会落成 `Platform contact`，不会误分类成 `External contact` | Product + Backend Contact |
+| 联系人分类与作用域 | 必须证明 `organization contact` 是上位概念，且同 Organization 跨 workspace member 会落成 `Platform contact`，不会误分类成 `External contact` | Product + Backend Contact |
 | external contact 准入失败 | 必须覆盖“email 命中内部联系人时拒绝创建 external contact”与“workspace editor 无权限创建 external contact”两类失败路径 | Backend Contact + Web Console |
 | 成员生命周期与权限变化 | 必须覆盖 SaaS / CE 移除成员、EE `Keep as Platform contact`、账号禁用 / 删除后三类变化，并证明 pending task 权限与新配置选择资格都按当前状态重算 | Backend Contact |
-| IM sync 与 unmatched 处理 | 必须覆盖“手动 sync 后才能选择 IM identity”与“按 IM user ID / email 都未命中时进入 unmatched list”两类路径 | Backend Contact + Admin Console |
-| Contact 可见性 | 必须覆盖普通 member 无法浏览完整 Contact，只能访问分配给自己的 HITL task | Backend Contact + QA |
+| IM sync 与 unmatched 处理 | 必须覆盖“手动 sync 后才能选择 IM identity”与“按 IM user ID / email 都未命中任何 `organization contact` 时进入 unmatched list”两类路径 | Backend Contact + Admin Console |
+| Contact 可见性与 Platform contact 搜索 | 必须覆盖普通 member 无法浏览完整 Contact、EE owner / admin 可搜索 `Platform contact`、EE 非 owner / admin 被拒绝、CE / SaaS 不暴露 `Platform contact` 搜索，以及任意部署形态都不允许跨 `Organization` 搜索 | Backend Contact + QA |
