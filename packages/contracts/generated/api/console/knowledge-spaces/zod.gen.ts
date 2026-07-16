@@ -6,6 +6,9 @@ import * as z from 'zod'
  * CreateKnowledgeSpacePayload
  *
  * Dify-facing payload for creating an empty Dataset 2.0 knowledge base.
+ *
+ * Names are trimmed and must contain a visible character; these invariants
+ * are enforced at the server boundary instead of relying on the Console form.
  */
 export const zCreateKnowledgeSpacePayload = z.object({
   description: z.string().max(2000).nullish(),
