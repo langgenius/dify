@@ -6,6 +6,7 @@ import utc from 'dayjs/plugin/utc'
 import { useCallback } from 'react'
 import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useIsSharePage } from '@/hooks/use-is-share-page'
 import { formatToLocalTime } from '@/utils/format'
 
 dayjs.extend(utc)
@@ -23,10 +24,13 @@ const getIntlLocale = (locale: string) => locale.replace('_', '-')
 
 const useTimestamp = ({ timezone: timezoneOverride }: UseTimestampOptions = {}) => {
   const locale = useLocale()
+  const isSharePage = useIsSharePage()
   const { data: accountTimezone } = useQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.timezone ?? undefined,
-    enabled: timezoneOverride === undefined,
+    // 注：share 页面（chatbot/chat/completion/workflow）没有控制台登录态，
+    // 请求 /account/profile 会 401 并触发跳转 signin，因此禁用
+    enabled: timezoneOverride === undefined && !isSharePage,
   })
   const resolvedTimezone = timezoneOverride ?? accountTimezone ?? getBrowserTimezone()
 
