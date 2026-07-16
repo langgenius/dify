@@ -12,7 +12,7 @@ import {
   rosterKeywordQueryParser,
   rosterQueryParamNames,
 } from '../query-params'
-import { CreateAgentDialog } from './create-agent-dialog'
+import { RosterCreateMenu } from './roster-create-menu'
 import { RosterSortSelect } from './roster-sort-select'
 
 type RosterToolbarProps = {
@@ -122,7 +122,7 @@ export function RosterToolbar({ draftAgents, publishedAgents }: RosterToolbarPro
       <RosterCreatedByMeFilter />
       <div className="ml-auto flex shrink-0 items-center gap-2">
         <RosterSortSelect />
-        <CreateAgentDialog />
+        <RosterCreateMenu />
       </div>
     </div>
   )

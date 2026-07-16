@@ -1,6 +1,6 @@
 import { CodeGroup } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
-import WorkflowVersionApiUpgradeNotice from '../workflow-version-api-upgrade-notice.tsx'
+import { WorkflowVersionApiContent, WorkflowVersionApiUpgradeNotice } from '../workflow-version-api-upgrade-notice.tsx'
 
 # Workflow 应用 API
 
@@ -635,6 +635,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   name='#Execute-Specific-Workflow'
   titleAction={<WorkflowVersionApiUpgradeNotice />}
 />
+<WorkflowVersionApiContent>
 <Row>
   <Col>
     执行指定版本的工作流，通过路径参数指定工作流ID。
@@ -883,6 +884,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     </CodeGroup>
   </Col>
 </Row>
+</WorkflowVersionApiContent>
 
 ---
 

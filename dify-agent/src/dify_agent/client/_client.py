@@ -94,6 +94,48 @@ class _ReconnectableStreamError(Exception):
         super().__init__(str(error))
 
 
+class _SSELineDecoder:
+    """Split SSE text using only the line endings defined by the SSE specification."""
+
+    _buffer: str
+
+    def __init__(self) -> None:
+        self._buffer = ""
+
+    def decode(self, text: str) -> list[str]:
+        data = self._buffer + text
+        self._buffer = ""
+        lines: list[str] = []
+        start = 0
+        index = 0
+
+        while index < len(data):
+            char = data[index]
+            if char == "\n":
+                lines.append(data[start:index])
+                index += 1
+                start = index
+                continue
+            if char == "\r":
+                if index + 1 == len(data):
+                    break
+                lines.append(data[start:index])
+                index += 2 if data[index + 1] == "\n" else 1
+                start = index
+                continue
+            index += 1
+
+        self._buffer = data[start:]
+        return lines
+
+    def flush(self) -> list[str]:
+        if not self._buffer:
+            return []
+        line = self._buffer[:-1] if self._buffer.endswith("\r") else self._buffer
+        self._buffer = ""
+        return [line]
+
+
 class _SSEDecoder:
     """Incrementally decode SSE lines into typed run events.
 
@@ -624,7 +666,13 @@ class Client:
                     _ = await response.aread()
                 _raise_for_stream_status(response)
                 decoder = _SSEDecoder()
-                async for line in response.aiter_lines():
+                line_decoder = _SSELineDecoder()
+                async for text in response.aiter_text():
+                    for line in line_decoder.decode(text):
+                        event = decoder.feed_line(line)
+                        if event is not None:
+                            yield event
+                for line in line_decoder.flush():
                     event = decoder.feed_line(line)
                     if event is not None:
                         yield event
@@ -653,7 +701,13 @@ class Client:
                     _ = response.read()
                 _raise_for_stream_status(response)
                 decoder = _SSEDecoder()
-                for line in response.iter_lines():
+                line_decoder = _SSELineDecoder()
+                for text in response.iter_text():
+                    for line in line_decoder.decode(text):
+                        event = decoder.feed_line(line)
+                        if event is not None:
+                            yield event
+                for line in line_decoder.flush():
                     event = decoder.feed_line(line)
                     if event is not None:
                         yield event

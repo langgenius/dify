@@ -553,7 +553,7 @@ def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
 
     captured = {}
 
-    def fake_get_datasets_by_ids(ids, tenant_id):
+    def fake_get_datasets_by_ids(ids, tenant_id, *, session):
         captured["ids"] = ids
         captured["tenant_id"] = tenant_id
         return [], 0

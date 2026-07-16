@@ -72,6 +72,7 @@ import {
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
+import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
@@ -446,10 +447,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [handleSyncWorkflowDraftWhenPageClose, handleBeforeUnload])
 
     useEventListener('keydown', (e) => {
-      if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) e.preventDefault()
-      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) e.preventDefault()
-      if ((e.key === 'y' || e.key === 'Y') && (e.ctrlKey || e.metaKey)) e.preventDefault()
-      if ((e.key === 's' || e.key === 'S') && (e.ctrlKey || e.metaKey)) e.preventDefault()
+      if (shouldPreventWorkflowBrowserDefault(e)) e.preventDefault()
     })
     useEventListener('mousemove', (e) => {
       const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()

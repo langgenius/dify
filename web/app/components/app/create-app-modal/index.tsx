@@ -1,8 +1,10 @@
 'use client'
 
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -22,7 +24,6 @@ import {
   ListSparkle,
   Logic,
 } from '@/app/components/base/icons/src/vender/solid/communication'
-import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -46,6 +47,8 @@ type CreateAppProps = {
   onCreateFromTemplate?: () => void
   defaultAppMode?: AppModeEnum
 }
+
+const CREATE_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
   return (
@@ -152,7 +155,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useHotkey(
-    'Mod+Enter',
+    CREATE_APP_HOTKEY,
     () => {
       if (isAppsFull || !canCreateApp) return
       handleCreateApp()
@@ -348,7 +351,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 >
                   <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
                   <KbdGroup>
-                    {['Mod', 'Enter'].map((key) => (
+                    {CREATE_APP_HOTKEY.split('+').map((key) => (
                       <Kbd key={key} color="white">
                         {formatForDisplay(key)}
                       </Kbd>
@@ -434,9 +437,10 @@ type AppTypeCardProps = {
 }
 function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardProps) {
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        `relative box-content h-[84px] w-[191px] cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 shadow-xs hover:shadow-md`,
+        'relative box-content h-[84px] w-[191px] cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         active
           ? 'shadow-md outline-[1.5px] outline-components-option-card-option-selected-border outline-solid'
           : '',
@@ -448,7 +452,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
       <div className="line-clamp-2 system-xs-regular text-text-tertiary" title={description}>
         {description}
       </div>
-    </div>
+    </button>
   )
 }
 

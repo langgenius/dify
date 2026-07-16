@@ -36,18 +36,20 @@ const getAgentBackendURL = () => {
   return undefined
 }
 
-const checkRuntimeOpenApi = async ({
+const checkRuntimeEndpoint = async ({
+  path,
   remediation,
   title,
   url,
   world,
 }: {
+  path: string
   remediation: string
   title: string
   url: string
   world: DifyWorld
 }) => {
-  const healthURL = `${url}/openapi.json`
+  const healthURL = `${url}${path}`
   try {
     const response = await fetch(healthURL)
     if (response.ok) return undefined
@@ -85,7 +87,8 @@ export async function skipMissingAgentBackendRuntime(world: DifyWorld) {
     )
   }
 
-  const agentBackendBlock = await checkRuntimeOpenApi({
+  const agentBackendBlock = await checkRuntimeEndpoint({
+    path: '/openapi.json',
     remediation:
       'Start a healthy dify-agent server and make sure AGENT_BACKEND_BASE_URL points to it before running Agent v2 runtime scenarios.',
     title: 'Agent v2 runtime backend',
@@ -96,7 +99,8 @@ export async function skipMissingAgentBackendRuntime(world: DifyWorld) {
 
   const shellctlURL = getShellctlURL()
   if (shellctlURL) {
-    const shellctlBlock = await checkRuntimeOpenApi({
+    const shellctlBlock = await checkRuntimeEndpoint({
+      path: '/healthz',
       remediation:
         'Start the shellctl local sandbox, or run with E2E_START_AGENT_BACKEND=1 so E2E starts it together with dify-agent.',
       title: 'Agent v2 shellctl sandbox',

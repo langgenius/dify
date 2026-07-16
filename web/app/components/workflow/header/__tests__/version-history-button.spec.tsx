@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import VersionHistoryButton from '../version-history-button'
+import { VersionHistoryButton } from '../version-history-button'
 
 let mockTheme: 'light' | 'dark' = 'light'
 const hotkeyRegistrations = vi.hoisted(

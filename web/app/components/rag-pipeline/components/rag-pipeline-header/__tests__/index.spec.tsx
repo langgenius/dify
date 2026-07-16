@@ -5,8 +5,8 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import RagPipelineHeader from '../index'
 import InputFieldButton from '../input-field-button'
 import Publisher from '../publisher'
-import Popup from '../publisher/popup'
-import RunMode from '../run-mode'
+import { Popup } from '../publisher/popup'
+import { RunMode } from '../run-mode'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -1078,12 +1078,6 @@ describe('RunMode', () => {
       expect(wrapper)!.toHaveClass('gap-x-px')
       expect(wrapper)!.toHaveClass('flex')
       expect(wrapper)!.toHaveClass('items-center')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be wrapped in React.memo', () => {
-      expect((RunMode as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 })

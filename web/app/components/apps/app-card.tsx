@@ -643,7 +643,10 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
               onOpenChange={setIsOperationsMenuOpen}
             >
               <DropdownMenuTrigger
-                aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+                aria-label={t(($) => $['operation.moreActionsFor'], {
+                  ns: 'common',
+                  name: app.name,
+                })}
                 className={cn(
                   'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                   isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
@@ -1271,7 +1274,10 @@ export function AppCard({
                 onOpenChange={setIsOperationsMenuOpen}
               >
                 <DropdownMenuTrigger
-                  aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+                  aria-label={t(($) => $['operation.moreActionsFor'], {
+                    ns: 'common',
+                    name: app.name,
+                  })}
                   className={cn(
                     'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                     isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',

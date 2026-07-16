@@ -11,7 +11,8 @@ When('I create an Agent v2 test agent from the Agent Roster', async function (th
   const agentDescription = 'Created by Dify E2E through the Agent Roster UI.'
 
   await page.goto('/agents')
-  await page.getByRole('button', { name: 'Create agent' }).click()
+  await page.getByRole('button', { name: 'Create' }).click()
+  await page.getByRole('menuitem', { name: 'Create from Blank' }).click()
 
   const dialog = page.getByRole('dialog', { name: 'Create agent' })
   await expect(dialog).toBeVisible()

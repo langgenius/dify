@@ -714,6 +714,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(monk
         "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
         lambda **kwargs: MagicMock(),
     )
+    session = MagicMock()
 
     _resume_advanced_chat(
         app_model=SimpleNamespace(id="app-id"),
@@ -728,10 +729,12 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(monk
         pause_state_config=MagicMock(),
         workflow_run_id="workflow-run-id",
         workflow_run=SimpleNamespace(triggered_from="app_run"),
+        session=session,
     )
 
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
+    assert generator_instance.resume.call_args.kwargs["session"] is session
     publish_streaming_response.assert_called_once_with(
         response_stream,
         "workflow-run-id",

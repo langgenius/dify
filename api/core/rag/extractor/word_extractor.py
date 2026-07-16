@@ -18,6 +18,7 @@ from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.file import remote_fetcher
@@ -38,16 +39,19 @@ class WordExtractor(BaseExtractor):
 
     Args:
         file_path: Path to the file to load.
+        session: Session used to persist extracted images.
     """
 
     _closed: bool
+    _session: Session | None
 
-    def __init__(self, file_path: str, tenant_id: str, user_id: str):
+    def __init__(self, file_path: str, tenant_id: str, user_id: str, *, session: Session | None = None):
         """Initialize with file path."""
         self._closed = False
         self.file_path = file_path
         self.tenant_id = tenant_id
         self.user_id = user_id
+        self._session = session
 
         if "~" in self.file_path:
             self.file_path = os.path.expanduser(self.file_path)
@@ -112,8 +116,10 @@ class WordExtractor(BaseExtractor):
         return bool(parsed.netloc) and bool(parsed.scheme)
 
     def _extract_images_from_docx(self, doc):
+        session = self._session or db.session
         image_count = 0
         image_map = {}
+        upload_files: list[UploadFile] = []
         base_url = dify_config.FILES_URL
 
         for r_id, rel in doc.part.rels.items():
@@ -152,7 +158,7 @@ class WordExtractor(BaseExtractor):
                             used_by=self.user_id,
                             used_at=naive_utc_now(),
                         )
-                        db.session.add(upload_file)
+                        upload_files.append(upload_file)
                         image_map[r_id] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
                 else:
                     image_ext = rel.target_ref.split(".")[-1]
@@ -180,9 +186,12 @@ class WordExtractor(BaseExtractor):
                         used_by=self.user_id,
                         used_at=naive_utc_now(),
                     )
-                    db.session.add(upload_file)
+                    upload_files.append(upload_file)
                     image_map[rel.target_part] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
-        db.session.commit()
+        if upload_files:
+            session.add_all(upload_files)
+        if self._session is None:
+            session.commit()
         return image_map
 
     def _table_to_markdown(self, table, image_map):

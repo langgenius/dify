@@ -314,7 +314,7 @@ def _get_user(session: Session, workflow_run: WorkflowRun | WorkflowTriggerLog) 
     if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
         user = session.scalar(select(Account).where(Account.id == workflow_run.created_by))
         if user:
-            user.current_tenant = tenant
+            user.set_current_tenant_with_session(tenant, session=session)
     else:  # CreatorUserRole.END_USER
         user = session.scalar(select(EndUser).where(EndUser.id == workflow_run.created_by))
 

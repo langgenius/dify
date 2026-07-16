@@ -239,18 +239,14 @@ class TestDataSourceInfoSerialization:
             mock_runner = MagicMock()
             mock_runner_class.return_value = mock_runner
 
-            # DB session mock — shared across all ``session_factory.create_session()`` calls
+            # DB session mock — shared across all ``session_factory.create_session()`` calls.
             session = MagicMock()
             session.scalars.return_value.all.return_value = []
-            # All .first() calls are now session.scalar() — ordered by call sequence:
-            # session 1: document + dataset, session 2: dataset (clean), session 3: document (update),
-            # session 4: document (indexing)
             session.scalar.side_effect = [
                 mock_document,
                 mock_dataset,
+                mock_document,
                 mock_dataset,
-                mock_document,
-                mock_document,
             ]
 
             begin_cm = MagicMock()

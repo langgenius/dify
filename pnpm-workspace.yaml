@@ -142,7 +142,6 @@ catalog:
   class-variance-authority: 0.7.1
   cli-table3: 0.6.5
   clsx: 2.1.1
-  cmdk: 1.1.1
   code-inspector-plugin: 1.6.6
   concurrently: ^10.0.3
   copy-to-clipboard: 4.0.2

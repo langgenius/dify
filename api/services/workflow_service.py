@@ -320,9 +320,16 @@ class WorkflowService:
         environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
         session: Session,
+        commit: bool = True,
+        sync_agent_bindings: bool = True,
     ) -> Workflow:
         """
-        Sync draft workflow
+        Sync draft workflow.
+
+        DSL import disables the intermediate commit and Agent binding sync so
+        portable package references can be materialized atomically after the
+        draft workflow has received its target-workspace id.
+
         :raises WorkflowHashNotEqualError
         """
         # fetch draft workflow by app_model
@@ -363,21 +370,24 @@ class WorkflowService:
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
         session.flush()
-        WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-            session=session,
-            draft_workflow=workflow,
-            account_id=account.id,
-        )
-        WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-            session=session,
-            draft_workflow=workflow,
-        )
+        if sync_agent_bindings:
+            WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                session=session,
+                draft_workflow=workflow,
+                account_id=account.id,
+            )
+            WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                session=session,
+                draft_workflow=workflow,
+            )
 
         # commit db session changes
-        session.commit()
+        if commit:
+            session.commit()
 
         # trigger app workflow events
-        app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
+        if commit:
+            app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
 
         # return draft workflow
         return workflow
@@ -491,6 +501,16 @@ class WorkflowService:
 
         if is_new_draft:
             session.add(draft_workflow)
+
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        session.flush()
+        WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
+            session=session,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account_id=account.id,
+        )
 
         session.commit()
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)

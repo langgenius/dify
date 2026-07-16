@@ -95,14 +95,16 @@ export function Properties({ children }: IChildrenProps) {
 type IProperty = IChildrenProps & {
   name: string
   type: string
+  nameAction?: React.ReactNode
 }
-export function Property({ name, type, children }: IProperty) {
+export function Property({ name, type, nameAction, children }: IProperty) {
   return (
     <li className="m-0 px-0 py-4 first:pt-0 last:pb-0">
       <dl className="m-0 flex flex-wrap items-center gap-x-3 gap-y-2">
         <dt className="sr-only">Name</dt>
         <dd>
           <code>{name}</code>
+          {nameAction ? <span className="ml-2 inline-flex align-middle">{nameAction}</span> : null}
         </dd>
         <dt className="sr-only">Type</dt>
         <dd className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{type}</dd>

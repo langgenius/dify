@@ -1,15 +1,14 @@
 import logging
+from typing import cast
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from extensions.ext_database import db
-from models.dataset import Dataset, DatasetCollectionBinding
+from models.dataset import Dataset
 from models.enums import CollectionBindingType, ConversationFromSource
-from models.model import App, AppAnnotationSetting, Message, MessageAnnotation
+from models.model import AnnotationReplyEnabledConfig, App, Message, MessageAnnotation, load_annotation_reply_config
 from services.annotation_service import AppAnnotationService
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -25,34 +24,27 @@ class AnnotationReplyFeature:
         user_id: str,
         invoke_from: InvokeFrom,
         *,
-        session: Session | None = None,
+        session: Session,
     ) -> MessageAnnotation | None:
         """Return the closest annotation reply and record a hit in ``session``.
 
-        The caller may provide its transaction so the setting lookup, annotation
-        lookup, and hit-history write share one session. Runtime callers that do
-        not provide one continue to use Flask-SQLAlchemy's scoped session.
-        Vector-search failures are logged and return ``None``; transaction
-        cleanup remains the caller's responsibility.
+        The setting lookup, vector access, annotation lookup, and hit-history
+        write share the caller-owned session. Vector-search failures are logged
+        and return ``None``; transaction cleanup remains the caller's responsibility.
         """
-        if session is None:
-            session = db.session()
-
-        stmt = select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_record.id)
-        annotation_setting = session.scalar(stmt)
-
-        if not annotation_setting:
+        try:
+            annotation_reply_config = load_annotation_reply_config(session, app_record.id)
+        except ValueError:
             return None
 
-        collection_binding_detail = session.get(DatasetCollectionBinding, annotation_setting.collection_binding_id)
-
-        if not collection_binding_detail:
+        if not annotation_reply_config["enabled"]:
             return None
+        enabled_config = cast(AnnotationReplyEnabledConfig, annotation_reply_config)
 
         try:
-            score_threshold = annotation_setting.score_threshold or 1
-            embedding_provider_name = collection_binding_detail.provider_name
-            embedding_model_name = collection_binding_detail.model_name
+            score_threshold = enabled_config["score_threshold"] or 1
+            embedding_provider_name = enabled_config["embedding_model"]["embedding_provider_name"]
+            embedding_model_name = enabled_config["embedding_model"]["embedding_model_name"]
 
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
                 embedding_provider_name, embedding_model_name, session, CollectionBindingType.ANNOTATION
@@ -67,7 +59,7 @@ class AnnotationReplyFeature:
                 collection_binding_id=dataset_collection_binding.id,
             )
 
-            vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+            vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
 
             documents = vector.search_by_vector(
                 query=query, top_k=1, score_threshold=score_threshold, filter={"group_id": [dataset.id]}

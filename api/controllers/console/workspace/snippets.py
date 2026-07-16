@@ -14,6 +14,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.app.wraps import with_session
 from controllers.console.snippets.payloads import (
     CreateSnippetPayload,
     IncludeSecretQuery,
@@ -39,6 +40,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.snippet import SnippetType
+from services.entities.dsl_entities import DslImportWarning
 from services.snippet_dsl_service import ImportStatus, SnippetDslService
 from services.snippet_service import SnippetService
 
@@ -52,6 +54,7 @@ class SnippetImportResponse(ResponseModel):
     current_dsl_version: str
     imported_dsl_version: str
     error: str
+    warnings: list[DslImportWarning]
 
 
 class SnippetDependencyCheckResponse(ResponseModel):
@@ -256,8 +259,9 @@ class CustomizedSnippetDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
+    @with_current_user
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, snippet_id: str):
+    def delete(self, current_tenant_id: str, current_user: Account, snippet_id: str):
         """Delete customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
@@ -273,6 +277,7 @@ class CustomizedSnippetDetailApi(Resource):
             SnippetService.delete_snippet(
                 session=session,
                 snippet=snippet,
+                account_id=current_user.id,
             )
             session.commit()
 
@@ -343,22 +348,21 @@ class CustomizedSnippetImportApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     @with_current_user
-    def post(self, current_user: Account):
+    @with_session
+    def post(self, session: Session, current_user: Account):
         """Import snippet from DSL."""
         payload = SnippetImportPayload.model_validate(console_ns.payload or {})
 
-        with Session(db.engine) as session:
-            import_service = SnippetDslService(session)
-            result = import_service.import_snippet(
-                account=current_user,
-                import_mode=payload.mode,
-                yaml_content=payload.yaml_content,
-                yaml_url=payload.yaml_url,
-                snippet_id=payload.snippet_id,
-                name=payload.name,
-                description=payload.description,
-            )
-            session.commit()
+        import_service = SnippetDslService(session)
+        result = import_service.import_snippet(
+            account=current_user,
+            import_mode=payload.mode,
+            yaml_content=payload.yaml_content,
+            yaml_url=payload.yaml_url,
+            snippet_id=payload.snippet_id,
+            name=payload.name,
+            description=payload.description,
+        )
 
         # Return appropriate status code based on result
         status = result.status
@@ -384,12 +388,11 @@ class CustomizedSnippetImportConfirmApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     @with_current_user
-    def post(self, current_user: Account, import_id: str):
+    @with_session
+    def post(self, session: Session, current_user: Account, import_id: str):
         """Confirm a pending snippet import."""
-        with Session(db.engine) as session:
-            import_service = SnippetDslService(session)
-            result = import_service.confirm_import(import_id=import_id, account=current_user)
-            session.commit()
+        import_service = SnippetDslService(session)
+        result = import_service.confirm_import(import_id=import_id, account=current_user)
 
         if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400

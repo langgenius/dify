@@ -200,7 +200,7 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
                         f"The URL may point to a private or local network address. "
                     )
 
-            if response.status_code not in STATUS_FORCELIST:
+            if response.status_code not in STATUS_FORCELIST or max_retries == 0:
                 return response
             else:
                 logger.warning(

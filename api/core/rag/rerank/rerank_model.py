@@ -1,12 +1,13 @@
 import base64
 from typing import override
 
+from sqlalchemy.orm import Session
+
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
@@ -14,8 +15,11 @@ from models.model import UploadFile
 
 
 class RerankModelRunner(BaseRerankRunner):
-    def __init__(self, rerank_model_instance: ModelInstance):
+    _session: Session
+
+    def __init__(self, rerank_model_instance: ModelInstance, *, session: Session):
         self.rerank_model_instance = rerank_model_instance
+        self._session = session
 
     @override
     def run(
@@ -134,8 +138,7 @@ class RerankModelRunner(BaseRerankRunner):
                 and document.metadata["doc_id"] not in doc_ids
             ):
                 if document.metadata.get("doc_type") == DocType.IMAGE:
-                    # Query file info within db.session context to ensure thread-safe access
-                    upload_file = db.session.get(UploadFile, document.metadata["doc_id"])
+                    upload_file = self._session.get(UploadFile, document.metadata["doc_id"])
                     if upload_file:
                         blob = storage.load_once(upload_file.key)
                         document_file_base64 = base64.b64encode(blob).decode()
@@ -169,8 +172,7 @@ class RerankModelRunner(BaseRerankRunner):
             rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
             return rerank_result, unique_documents
         elif query_type == QueryType.IMAGE_QUERY:
-            # Query file info within db.session context to ensure thread-safe access
-            upload_file = db.session.get(UploadFile, query)
+            upload_file = self._session.get(UploadFile, query)
             if upload_file:
                 blob = storage.load_once(upload_file.key)
                 file_query = base64.b64encode(blob).decode()
