@@ -245,7 +245,13 @@ def encryption_mocks(monkeypatch: pytest.MonkeyPatch):
 @pytest.fixture
 def mock_db(monkeypatch: pytest.MonkeyPatch):
     session = MagicMock()
-    session.scalars.return_value.all.return_value = ["chat"]
+    # The message_trace path queries the Conversation table via db.session.execute(...)
+    # for (mode, app_id) and consumes the result via .all(). Return a single row that
+    # mimics a chat-based (e.g. agent-chat) conversation owned by "app-id".
+    conversation_result = MagicMock()
+    conversation_result.all.return_value = [("chat", "app-id")]
+    session.execute.return_value = conversation_result
+    session.scalars.return_value.all.return_value = [("chat", "app-id")]
     db_mock = MagicMock()
     db_mock.session = session
     db_mock.engine = MagicMock()
@@ -459,6 +465,27 @@ def test_trace_task_message_trace(trace_task_message, mock_db):
     task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE, message_id="msg-id")
     result = task.message_trace("msg-id")
     assert result.message_id == "msg-id"
+    # Regression for #38795: agent-chat (and other chat-based) message traces must
+    # include app_id in metadata so tracing integrations can identify the source app.
+    assert result.metadata["app_id"] == "app-id"
+
+
+def test_trace_task_message_trace_app_id_from_conversation(trace_task_message, mock_db):
+    """app_id must come from the Conversation lookup, even when message_data.app_id differs.
+
+    Reproduces #38795: tracing providers rely on app_id being present and accurate in
+    MessageTraceInfo metadata for agent-chat apps.
+    """
+    # Simulate a conversation owned by a different app than the (stale) message app_id.
+    conversation_result = MagicMock()
+    conversation_result.all.return_value = [("agent-chat", "conversation-app-id")]
+    mock_db.execute.return_value = conversation_result
+    mock_db.scalars.return_value.all.return_value = [("agent-chat", "conversation-app-id")]
+
+    task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE, message_id="msg-id")
+    result = task.message_trace("msg-id")
+    assert result.metadata["app_id"] == "conversation-app-id"
+    assert result.metadata["conversation_id"] == "conv-id"
 
 
 def test_trace_task_workflow_trace(workflow_repo_fixture, mock_db):

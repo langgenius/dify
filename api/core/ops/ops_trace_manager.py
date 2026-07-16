@@ -917,11 +917,17 @@ class TraceTask:
         message_data = get_message_data(message_id)
         if not message_data:
             return {}
-        conversation_mode_stmt = select(Conversation.mode).where(Conversation.id == message_data.conversation_id)
-        conversation_modes = db.session.scalars(conversation_mode_stmt).all()
-        if not conversation_modes or len(conversation_modes) == 0:
+        # Fetch both the conversation mode and its app_id. The conversation is the
+        # authoritative source of app_id for message traces (used by agent-chat and
+        # other chat-based app modes), so tracing integrations (Langfuse, LangSmith,
+        # Opik, etc.) can reliably identify which app produced a trace.
+        conversation_stmt = select(Conversation.mode, Conversation.app_id).where(
+            Conversation.id == message_data.conversation_id
+        )
+        conversation_rows = db.session.execute(conversation_stmt).all()
+        if not conversation_rows:
             return {}
-        conversation_mode = conversation_modes[0]
+        conversation_mode, conversation_app_id = conversation_rows[0]
         created_at = message_data.created_at
         inputs = message_data.message
 
@@ -959,7 +965,10 @@ class TraceTask:
             "from_source": message_data.from_source,
             "message_id": message_id,
             "tenant_id": tenant_id,
-            "app_id": message_data.app_id,
+            # Prefer the app_id from the Conversation lookup (authoritative for chat-based
+            # app modes such as agent-chat); fall back to the message's app_id when the
+            # conversation lookup did not yield one.
+            "app_id": conversation_app_id or message_data.app_id,
             "user_id": message_data.from_end_user_id or message_data.from_account_id,
             "app_name": app_name,
             "workspace_name": workspace_name,
