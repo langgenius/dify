@@ -1,606 +1,374 @@
-"""
-Unit tests for Service API App controllers
+"""SQLite-backed tests for Service API application controllers.
+
+The authentication decorator resolves the app, tenant, and tenant owner before
+the controller runs.  Controller/model code then reads configuration, workflow,
+tags, and author information through two additional references to the database
+extension.  Tests bind all of those references to one explicit scoped SQLite
+session and persist visibility and cross-tenant decoys instead of fabricating ORM
+lookup results.
 """
 
-import uuid
-from unittest.mock import ANY, Mock, patch
+import json
+from collections.abc import Iterator
+from dataclasses import dataclass
+from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from werkzeug.exceptions import Forbidden, Unauthorized
 
+from controllers.service_api.app import app as app_controller
 from controllers.service_api.app.app import AppInfoApi, AppMetaApi, AppParameterApi
 from controllers.service_api.app.error import AgentNotPublishedError, AppUnavailableError
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
-from models.account import TenantStatus
-from models.model import App, AppMode
-from tests.unit_tests.conftest import setup_mock_tenant_owner_execute_result
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.base import TypeBase
+from models.enums import EndUserType
+from models.model import (
+    App,
+    AppAnnotationSetting,
+    AppMode,
+    AppModelConfig,
+    CustomizeTokenStrategy,
+    EndUser,
+    Site,
+    Tag,
+    TagBinding,
+    TagType,
+)
+from models.workflow import Workflow, WorkflowType
 
 
-def _configure_current_app_mock(mock_current_app):
-    mock_current_app.login_manager = Mock()
-    mock_current_app._get_current_object = Mock(return_value=Mock())
+@dataclass(frozen=True)
+class _DatabaseBinding:
+    engine: Engine
+    session: scoped_session[Session]
 
 
-class TestAppParameterApi:
-    """Test suite for AppParameterApi"""
+@dataclass(frozen=True)
+class _Token:
+    app_id: str
+    tenant_id: str
 
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
 
-    @pytest.fixture
-    def mock_app_model(self):
-        """Create a mock App model."""
-        app = Mock(spec=App)
-        app.id = str(uuid.uuid4())
-        app.tenant_id = str(uuid.uuid4())
-        app.mode = AppMode.CHAT
-        app.status = "normal"
-        app.enable_api = True
-        app.app_model_config_with_session.return_value = None
-        app.workflow_with_session.return_value = None
-        return app
+@dataclass(frozen=True)
+class AppDatabase:
+    """Persisted application graph used by the decorated controller methods."""
 
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    def test_get_parameters_for_chat_app(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
-    ):
-        """Test retrieving parameters for a chat app."""
-        # Arrange
-        _configure_current_app_mock(mock_current_app)
+    session_maker: sessionmaker[Session]
+    registry: scoped_session[Session]
+    tenant_id: str
+    app_id: str
+    owner_id: str
+    config_id: str
+    workflow_id: str
 
-        mock_config = Mock()
-        mock_config.id = str(uuid.uuid4())
-        mock_config.to_dict.return_value = {
-            "user_input_form": [{"type": "text", "label": "Name", "variable": "name", "required": True}],
-            "suggested_questions": [],
-        }
-        mock_app_model.app_model_config = mock_config
-        mock_app_model.app_model_config_with_session.return_value = mock_config
-        mock_app_model.workflow = None
+    def update_app(self, **values: object) -> None:
+        with self.session_maker.begin() as session:
+            app = session.get_one(App, self.app_id)
+            for key, value in values.items():
+                setattr(app, key, value)
 
-        # Mock authentication
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app_model.id
-        mock_api_token.tenant_id = mock_app_model.tenant_id
-        mock_validate_token.return_value = mock_api_token
+    def update_tenant(self, **values: object) -> None:
+        with self.session_maker.begin() as session:
+            tenant = session.get_one(Tenant, self.tenant_id)
+            for key, value in values.items():
+                setattr(tenant, key, value)
 
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
+    def delete_row(self, model: type[object], object_id: str) -> None:
+        table = model.__table__  # type: ignore[attr-defined]
+        with self.session_maker.begin() as session:
+            session.execute(table.delete().where(table.c.id == object_id))
 
-        # Mock DB queries for app and tenant
-        mock_db.session.get.side_effect = [
-            mock_app_model,
-            mock_tenant,
-        ]
 
-        # Mock tenant owner info for login
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
+@pytest.fixture
+def flask_app() -> Flask:
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    return app
 
-        # Act
-        with (
-            app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}),
-            patch(
-                "controllers.service_api.app.app.load_annotation_reply_config",
-                return_value={"enabled": False},
-            ),
-        ):
-            api = AppParameterApi()
-            response = api.get()
 
-        # Assert
-        assert "opening_statement" in response
-        assert "suggested_questions" in response
-        assert "user_input_form" in response
+@pytest.fixture
+def app_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[AppDatabase]:
+    """Create the minimal controller/model schema and bind every DB reference explicitly."""
 
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    def test_get_parameters_for_workflow_app(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
-    ):
-        """Test retrieving parameters for a workflow app."""
-        # Arrange
-        _configure_current_app_mock(mock_current_app)
+    tables = [
+        Tenant.__table__,
+        Account.__table__,
+        TenantAccountJoin.__table__,
+        App.__table__,
+        AppModelConfig.__table__,
+        AppAnnotationSetting.__table__,
+        Workflow.__table__,
+        Tag.__table__,
+        TagBinding.__table__,
+        Site.__table__,
+        EndUser.__table__,
+    ]
+    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
+    maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    registry = scoped_session(maker)
+    binding = _DatabaseBinding(engine=sqlite_engine, session=registry)
+    monkeypatch.setattr("controllers.service_api.wraps.db", binding)
+    monkeypatch.setattr(app_controller, "db", binding)
+    monkeypatch.setattr("models.model.db", binding)
+    monkeypatch.setattr("models.account.db", binding)
 
-        mock_app_model.mode = AppMode.WORKFLOW
-        mock_workflow = Mock()
-        mock_workflow.features_dict = {"suggested_questions": []}
-        mock_workflow.user_input_form.return_value = [{"type": "text", "label": "Input", "variable": "input"}]
-        mock_app_model.workflow = mock_workflow
-        mock_app_model.workflow_with_session.return_value = mock_workflow
-        mock_app_model.app_model_config = None
-
-        # Mock authentication
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app_model.id
-        mock_api_token.tenant_id = mock_app_model.tenant_id
-        mock_validate_token.return_value = mock_api_token
-
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
-
-        mock_db.session.get.side_effect = [
-            mock_app_model,
-            mock_tenant,
-        ]
-
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
-
-        # Act
-        with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
-            api = AppParameterApi()
-            response = api.get()
-
-        # Assert
-        assert "user_input_form" in response
-        assert "opening_statement" in response
-
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    @patch("controllers.service_api.app.app._get_agent_app_feature_dict_and_user_input_form")
-    def test_get_parameters_for_agent_app(
-        self,
-        mock_get_agent_parameters,
-        mock_db,
-        mock_validate_token,
-        mock_current_app,
-        mock_user_logged_in,
-        app: Flask,
-        mock_app_model,
-    ):
-        """Test retrieving parameters for an Agent App from Agent Soul app variables."""
-        _configure_current_app_mock(mock_current_app)
-
-        mock_app_model.mode = AppMode.AGENT
-        mock_app_model.app_model_config = None
-        mock_app_model.workflow = None
-        mock_get_agent_parameters.return_value = (
-            {"opening_statement": "Hi from Agent"},
-            [{"text-input": {"label": "topic", "variable": "topic", "required": True}}],
+    tenant_id = str(uuid4())
+    app_id = str(uuid4())
+    owner_id = str(uuid4())
+    config_id = str(uuid4())
+    workflow_id = str(uuid4())
+    other_tenant_id = str(uuid4())
+    with maker.begin() as session:
+        tenant = Tenant(name="Visible tenant")
+        tenant.id = tenant_id
+        other_tenant = Tenant(name="Other tenant")
+        other_tenant.id = other_tenant_id
+        owner = Account(name="Test Author", email="owner@example.com")
+        owner.id = owner_id
+        app = App(
+            id=app_id,
+            tenant_id=tenant_id,
+            name="Test App",
+            description="A test application",
+            mode=AppMode.CHAT,
+            icon_type=None,
+            icon=None,
+            icon_background=None,
+            app_model_config_id=config_id,
+            workflow_id=workflow_id,
+            enable_site=True,
+            enable_api=True,
+            max_active_requests=None,
+            created_by=owner_id,
+        )
+        config = AppModelConfig(
+            app_id=app_id,
+            opening_statement="Hello",
+            suggested_questions=json.dumps(["Question?"]),
+            user_input_form=json.dumps([{"text-input": {"label": "Name", "variable": "name", "required": True}}]),
+        )
+        config.id = config_id
+        workflow = Workflow.new(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            type=WorkflowType.WORKFLOW.value,
+            version="1",
+            graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start", "variables": []}}]}),
+            features=json.dumps({"suggested_questions": []}),
+            created_by=owner_id,
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        workflow.id = workflow_id
+        target_tag = Tag(tenant_id=tenant_id, type=TagType.APP, name="test-tag", created_by=owner_id)
+        other_tag = Tag(tenant_id=other_tenant_id, type=TagType.APP, name="foreign-tag", created_by=owner_id)
+        session.add_all([tenant, other_tenant, owner, app, config, workflow, target_tag, other_tag])
+        session.flush()
+        session.add_all(
+            [
+                TenantAccountJoin(
+                    tenant_id=tenant_id,
+                    account_id=owner_id,
+                    current=True,
+                    role=TenantAccountRole.OWNER,
+                ),
+                TagBinding(
+                    tenant_id=tenant_id,
+                    tag_id=target_tag.id,
+                    target_id=app_id,
+                    created_by=owner_id,
+                ),
+                # Same target ID but another tenant: App.tags must exclude it.
+                TagBinding(
+                    tenant_id=other_tenant_id,
+                    tag_id=other_tag.id,
+                    target_id=app_id,
+                    created_by=owner_id,
+                ),
+                Site(
+                    app_id=app_id,
+                    title="Published site",
+                    icon_type=None,
+                    icon=None,
+                    icon_background=None,
+                    description="Site decoy",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.MUST,
+                    code="visible-site",
+                ),
+                EndUser(
+                    tenant_id=other_tenant_id,
+                    app_id=app_id,
+                    type=EndUserType.BROWSER,
+                    name="Cross-tenant visitor",
+                    is_anonymous=False,
+                    session_id="visitor-session",
+                ),
+            ]
         )
 
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app_model.id
-        mock_api_token.tenant_id = mock_app_model.tenant_id
-        mock_validate_token.return_value = mock_api_token
-
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
-        mock_db.session.get.side_effect = [mock_app_model, mock_tenant]
-
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
-
-        with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
-            api = AppParameterApi()
-            response = api.get()
-
-        assert response["opening_statement"] == "Hi from Agent"
-        assert response["user_input_form"] == [
-            {"text-input": {"label": "topic", "variable": "topic", "required": True}}
-        ]
-        mock_get_agent_parameters.assert_called_once_with(mock_app_model, session=ANY)
-
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    @patch(
-        "controllers.service_api.app.app.get_published_agent_app_feature_dict_and_user_input_form",
-        side_effect=AgentAppNotPublishedError("Agent has not been published"),
+    database = AppDatabase(
+        session_maker=maker,
+        registry=registry,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        owner_id=owner_id,
+        config_id=config_id,
+        workflow_id=workflow_id,
     )
-    def test_get_parameters_for_unpublished_agent_app_raises_friendly_error(
-        self,
-        mock_get_agent_parameters,
-        mock_db,
-        mock_validate_token,
-        mock_current_app,
-        mock_user_logged_in,
-        app: Flask,
-        mock_app_model,
-    ):
-        _configure_current_app_mock(mock_current_app)
-
-        mock_app_model.mode = AppMode.AGENT
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app_model.id
-        mock_api_token.tenant_id = mock_app_model.tenant_id
-        mock_validate_token.return_value = mock_api_token
-
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
-        mock_db.session.get.side_effect = [mock_app_model, mock_tenant]
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, Mock(current_tenant=mock_tenant))
-
-        with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
-            with pytest.raises(AgentNotPublishedError):
-                AppParameterApi().get()
-
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    def test_get_parameters_raises_error_when_chat_config_missing(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
-    ):
-        """Test that AppUnavailableError is raised when chat app has no config."""
-        # Arrange
-        _configure_current_app_mock(mock_current_app)
-
-        mock_app_model.app_model_config = None
-        mock_app_model.workflow = None
-
-        # Mock authentication
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app_model.id
-        mock_api_token.tenant_id = mock_app_model.tenant_id
-        mock_validate_token.return_value = mock_api_token
-
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
-
-        mock_db.session.get.side_effect = [
-            mock_app_model,
-            mock_tenant,
-        ]
-
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
-
-        # Act & Assert
-        with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
-            api = AppParameterApi()
-            with pytest.raises(AppUnavailableError):
-                api.get()
-
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    def test_get_parameters_raises_error_when_workflow_missing(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
-    ):
-        """Test that AppUnavailableError is raised when workflow app has no workflow."""
-        # Arrange
-        _configure_current_app_mock(mock_current_app)
-
-        mock_app_model.mode = AppMode.WORKFLOW
-        mock_app_model.workflow = None
-        mock_app_model.app_model_config = None
-
-        # Mock authentication
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app_model.id
-        mock_api_token.tenant_id = mock_app_model.tenant_id
-        mock_validate_token.return_value = mock_api_token
-
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
-
-        mock_db.session.get.side_effect = [
-            mock_app_model,
-            mock_tenant,
-        ]
-
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
-
-        # Act & Assert
-        with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
-            api = AppParameterApi()
-            with pytest.raises(AppUnavailableError):
-                api.get()
+    try:
+        yield database
+    finally:
+        registry.remove()
 
 
-class TestAppMetaApi:
-    """Test suite for AppMetaApi"""
+@pytest.fixture
+def authenticated_controller(app_db: AppDatabase, monkeypatch: pytest.MonkeyPatch) -> Iterator[AppDatabase]:
+    """Patch only token validation and Flask login signaling around real ORM auth."""
 
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
-
-    @pytest.fixture
-    def mock_app_model(self):
-        """Create a mock App model."""
-        app = Mock(spec=App)
-        app.id = str(uuid.uuid4())
-        app.status = "normal"
-        app.enable_api = True
-        return app
-
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    @patch("controllers.service_api.app.app.AppService")
-    def test_get_app_meta(
-        self,
-        mock_app_service,
-        mock_db,
-        mock_validate_token,
-        mock_current_app,
-        mock_user_logged_in,
-        app: Flask,
-        mock_app_model,
-    ):
-        """Test retrieving app metadata via AppService."""
-        # Arrange
-        _configure_current_app_mock(mock_current_app)
-
-        mock_service_instance = Mock()
-        mock_service_instance.get_app_meta.return_value = {
-            "tool_icons": {},
-            "AgentIcons": {},
-        }
-        mock_app_service.return_value = mock_service_instance
-
-        # Mock authentication
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app_model.id
-        mock_api_token.tenant_id = mock_app_model.tenant_id
-        mock_validate_token.return_value = mock_api_token
-
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
-
-        mock_db.session.get.side_effect = [
-            mock_app_model,
-            mock_tenant,
-        ]
-
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
-
-        # Act
-        with app.test_request_context("/meta", method="GET", headers={"Authorization": "Bearer test_token"}):
-            api = AppMetaApi()
-            response = api.get()
-
-        # Assert
-        mock_service_instance.get_app_meta.assert_called_once_with(mock_app_model, session=ANY)
-        assert response == {"tool_icons": {}, "AgentIcons": {}}
-
-
-class TestAppInfoApi:
-    """Test suite for AppInfoApi"""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
-
-    @pytest.fixture
-    def mock_app_model(self):
-        """Create a mock App model with all required attributes."""
-        app = Mock(spec=App)
-        app.id = str(uuid.uuid4())
-        app.tenant_id = str(uuid.uuid4())
-        app.name = "Test App"
-        app.description = "A test application"
-        app.mode = AppMode.CHAT
-        app.author_name = "Test Author"
-        app.status = "normal"
-        app.enable_api = True
-
-        # Mock tags relationship
-        mock_tag = Mock()
-        mock_tag.name = "test-tag"
-        app.tags = [mock_tag]
-
-        return app
-
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    def test_get_app_info(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
-    ):
-        """Test retrieving basic app information."""
-        _configure_current_app_mock(mock_current_app)
-
-        # Mock authentication
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app_model.id
-        mock_api_token.tenant_id = mock_app_model.tenant_id
-        mock_validate_token.return_value = mock_api_token
-
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
-
-        mock_db.session.get.side_effect = [
-            mock_app_model,
-            mock_tenant,
-        ]
-
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
-
-        # Act
-        with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
-            api = AppInfoApi()
-            response = api.get()
-
-        # Assert
-        assert response["name"] == "Test App"
-        assert response["description"] == "A test application"
-        assert response["tags"] == ["test-tag"]
-        assert response["mode"] == AppMode.CHAT
-        assert response["author_name"] == "Test Author"
-
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    def test_get_app_info_with_multiple_tags(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app
-    ):
-        """Test retrieving app info with multiple tags."""
-        # Arrange
-        _configure_current_app_mock(mock_current_app)
-
-        mock_app = Mock(spec=App)
-        mock_app.id = str(uuid.uuid4())
-        mock_app.tenant_id = str(uuid.uuid4())
-        mock_app.name = "Multi Tag App"
-        mock_app.description = "App with multiple tags"
-        mock_app.mode = AppMode.WORKFLOW
-        mock_app.author_name = "Author"
-        mock_app.status = "normal"
-        mock_app.enable_api = True
-
-        tag1, tag2, tag3 = Mock(), Mock(), Mock()
-        tag1.name = "tag-one"
-        tag2.name = "tag-two"
-        tag3.name = "tag-three"
-        mock_app.tags = [tag1, tag2, tag3]
-
-        # Mock authentication
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app.id
-        mock_api_token.tenant_id = mock_app.tenant_id
-        mock_validate_token.return_value = mock_api_token
-
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
-
-        mock_db.session.get.side_effect = [
-            mock_app,
-            mock_tenant,
-        ]
-
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
-
-        # Act
-        with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
-            api = AppInfoApi()
-            response = api.get()
-
-        # Assert
-        assert response["tags"] == ["tag-one", "tag-two", "tag-three"]
-
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    def test_get_app_info_with_no_tags(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask
-    ):
-        """Test retrieving app info when app has no tags."""
-        # Arrange
-        _configure_current_app_mock(mock_current_app)
-
-        mock_app = Mock(spec=App)
-        mock_app.id = str(uuid.uuid4())
-        mock_app.tenant_id = str(uuid.uuid4())
-        mock_app.name = "No Tags App"
-        mock_app.description = "App without tags"
-        mock_app.mode = AppMode.COMPLETION
-        mock_app.author_name = "Author"
-        mock_app.tags = []
-        mock_app.status = "normal"
-        mock_app.enable_api = True
-
-        # Mock authentication
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app.id
-        mock_api_token.tenant_id = mock_app.tenant_id
-        mock_validate_token.return_value = mock_api_token
-
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
-
-        mock_db.session.get.side_effect = [
-            mock_app,
-            mock_tenant,
-        ]
-
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
-
-        # Act
-        with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
-            api = AppInfoApi()
-            response = api.get()
-
-        # Assert
-        assert response["tags"] == []
-
-    @pytest.mark.parametrize(
-        "app_mode",
-        [AppMode.CHAT, AppMode.COMPLETION, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT],
+    monkeypatch.setattr(
+        "controllers.service_api.wraps.validate_and_get_api_token",
+        Mock(return_value=_Token(app_id=app_db.app_id, tenant_id=app_db.tenant_id)),
     )
-    @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.current_app")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.db")
-    def test_get_app_info_returns_correct_mode(
-        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, app_mode
-    ):
-        """Test that all app modes are correctly returned."""
-        # Arrange
-        _configure_current_app_mock(mock_current_app)
+    current_app = Mock()
+    current_app.login_manager = Mock()
+    current_app._get_current_object.return_value = Mock()
+    monkeypatch.setattr("controllers.service_api.wraps.current_app", current_app)
+    monkeypatch.setattr("controllers.service_api.wraps.user_logged_in", Mock())
+    return app_db
 
-        mock_app = Mock(spec=App)
-        mock_app.id = str(uuid.uuid4())
-        mock_app.tenant_id = str(uuid.uuid4())
-        mock_app.name = "Test"
-        mock_app.description = "Test"
-        mock_app.mode = app_mode
-        mock_app.author_name = "Test"
-        mock_app.tags = []
-        mock_app.status = "normal"
-        mock_app.enable_api = True
 
-        # Mock authentication
-        mock_api_token = Mock()
-        mock_api_token.app_id = mock_app.id
-        mock_api_token.tenant_id = mock_app.tenant_id
-        mock_validate_token.return_value = mock_api_token
+def test_get_parameters_for_persisted_chat_config(flask_app: Flask, authenticated_controller: AppDatabase) -> None:
+    with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
+        response = AppParameterApi().get()
 
-        mock_tenant = Mock()
-        mock_tenant.status = TenantStatus.NORMAL
+    assert response["opening_statement"] == "Hello"
+    assert response["suggested_questions"] == ["Question?"]
+    assert response["user_input_form"] == [{"text-input": {"label": "Name", "variable": "name", "required": True}}]
 
-        mock_db.session.get.side_effect = [
-            mock_app,
-            mock_tenant,
-        ]
 
-        mock_account = Mock()
-        mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
+def test_get_parameters_for_persisted_workflow(flask_app: Flask, authenticated_controller: AppDatabase) -> None:
+    authenticated_controller.update_app(mode=AppMode.WORKFLOW, app_model_config_id=None)
 
-        # Act
-        with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
-            api = AppInfoApi()
-            response = api.get()
+    with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
+        response = AppParameterApi().get()
 
-        # Assert
-        assert response["mode"] == app_mode
+    assert response["user_input_form"] == []
+    assert response["suggested_questions"] == []
+
+
+def test_get_parameters_for_agent_uses_persisted_app(
+    flask_app: Flask, authenticated_controller: AppDatabase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    authenticated_controller.update_app(mode=AppMode.AGENT, app_model_config_id=None, workflow_id=None)
+    agent_parameters = Mock(
+        return_value=(
+            {"opening_statement": "Hi from Agent"},
+            [{"text-input": {"label": "Topic", "variable": "topic", "required": True}}],
+        )
+    )
+    monkeypatch.setattr(app_controller, "_get_agent_app_feature_dict_and_user_input_form", agent_parameters)
+
+    with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
+        response = AppParameterApi().get()
+
+    assert response["opening_statement"] == "Hi from Agent"
+    assert response["user_input_form"][0]["text-input"]["variable"] == "topic"
+    assert agent_parameters.call_args.args[0].id == authenticated_controller.app_id
+
+
+def test_unpublished_agent_raises_friendly_error(
+    flask_app: Flask, authenticated_controller: AppDatabase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    authenticated_controller.update_app(mode=AppMode.AGENT)
+    monkeypatch.setattr(
+        app_controller,
+        "get_published_agent_app_feature_dict_and_user_input_form",
+        Mock(side_effect=AgentAppNotPublishedError("not published")),
+    )
+
+    with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
+        with pytest.raises(AgentNotPublishedError):
+            AppParameterApi().get()
+
+
+@pytest.mark.parametrize(
+    ("mode", "field"),
+    [(AppMode.CHAT, "app_model_config_id"), (AppMode.WORKFLOW, "workflow_id")],
+)
+def test_parameters_reject_missing_persisted_configuration(
+    flask_app: Flask,
+    authenticated_controller: AppDatabase,
+    mode: AppMode,
+    field: str,
+) -> None:
+    authenticated_controller.update_app(mode=mode, **{field: None})
+
+    with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
+        with pytest.raises(AppUnavailableError):
+            AppParameterApi().get()
+
+
+def test_get_meta_passes_real_session_and_app(
+    flask_app: Flask, authenticated_controller: AppDatabase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = Mock()
+    service.get_app_meta.return_value = {"tool_icons": {}}
+    monkeypatch.setattr(app_controller, "AppService", Mock(return_value=service))
+
+    with flask_app.test_request_context("/meta", headers={"Authorization": "Bearer token"}):
+        response = AppMetaApi().get()
+
+    (app_model,) = service.get_app_meta.call_args.args
+    assert app_model.id == authenticated_controller.app_id
+    assert isinstance(service.get_app_meta.call_args.kwargs["session"], Session)
+    assert response == {"tool_icons": {}}
+
+
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_get_info_reads_author_and_tenant_scoped_tags(
+    flask_app: Flask,
+    authenticated_controller: AppDatabase,
+    mode: AppMode,
+) -> None:
+    authenticated_controller.update_app(mode=mode)
+
+    with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):
+        response = AppInfoApi().get()
+
+    assert response == {
+        "name": "Test App",
+        "description": "A test application",
+        "tags": ["test-tag"],
+        "mode": mode,
+        "author_name": "Test Author",
+    }
+
+
+@pytest.mark.parametrize("state", ["missing", "disabled", "archived", "ownerless"])
+def test_authentication_rejects_empty_or_invisible_database_state(
+    flask_app: Flask,
+    authenticated_controller: AppDatabase,
+    state: str,
+) -> None:
+    expected_error: type[Exception] = Forbidden
+    if state == "missing":
+        authenticated_controller.delete_row(App, authenticated_controller.app_id)
+    elif state == "disabled":
+        authenticated_controller.update_app(enable_api=False)
+    elif state == "archived":
+        authenticated_controller.update_tenant(status=TenantStatus.ARCHIVE)
+    else:
+        with authenticated_controller.session_maker.begin() as session:
+            session.execute(TenantAccountJoin.__table__.delete())
+        expected_error = Unauthorized
+
+    with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):
+        with pytest.raises(expected_error):
+            AppInfoApi().get()
