@@ -1936,10 +1936,8 @@ export const zSyncEnvironmentVariablePatchPayload = z.object({
  * SyncDraftWorkflowPayload
  */
 export const zSyncDraftWorkflowPayload = z.object({
-  _is_collaborative: z.boolean().optional().default(false),
   conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   environment_variable_patch: zSyncEnvironmentVariablePatchPayload.nullish(),
-  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   features: z.record(z.string(), z.unknown()),
   graph: z.record(z.string(), z.unknown()),
   hash: z.string().nullish(),

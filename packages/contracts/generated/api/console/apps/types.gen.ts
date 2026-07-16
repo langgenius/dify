@@ -1003,14 +1003,10 @@ export type WorkflowResponse = {
 }
 
 export type SyncDraftWorkflowPayload = {
-  _is_collaborative?: boolean
   conversation_variables?: Array<{
     [key: string]: unknown
   }>
   environment_variable_patch?: SyncEnvironmentVariablePatchPayload | null
-  environment_variables?: Array<{
-    [key: string]: unknown
-  }>
   features: {
     [key: string]: unknown
   }
