@@ -43,7 +43,7 @@ class TestGetDynamicSelectOptionsTool:
         assert call_kwargs[0][5] == {}  # empty credentials
 
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
-    @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
+    @patch("services.plugin.plugin_parameter_service.create_provider_encrypter")
     @patch("services.plugin.plugin_parameter_service.ToolManager")
     def test_fetches_credentials_with_credential_id(
         self,
@@ -86,7 +86,7 @@ class TestGetDynamicSelectOptionsTool:
 
         assert result == ["opt1"]
 
-    @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
+    @patch("services.plugin.plugin_parameter_service.create_provider_encrypter")
     @patch("services.plugin.plugin_parameter_service.ToolManager")
     def test_raises_when_tool_provider_not_found(
         self,
