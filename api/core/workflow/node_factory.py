@@ -456,7 +456,7 @@ class DifyNodeFactory(NodeFactory):
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
-        constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
+        constructor_node_data = self._prepare_constructor_node_data(resolved_node_data)
         return node_class(
             node_id=node_id,
             data=constructor_node_data,
@@ -597,6 +597,44 @@ class DifyNodeFactory(NodeFactory):
     @staticmethod
     def _supports_plugin_llm_polling(model_instance: ModelInstance) -> bool:
         return model_instance.get_model_schema().support_polling
+
+    def _prepare_constructor_node_data(self, node_data: BaseNodeData) -> dict[str, object]:
+        """Serialize node data for constructors while preserving Jinja undefined semantics.
+
+        LLM prompt templates treat missing upstream variables as undefined so user-authored
+        `is defined` checks can decide the control flow. If a branch does not produce a variable,
+        omit it from the renderer inputs instead of materializing an empty string here.
+        """
+
+        prompt_config = getattr(node_data, "prompt_config", None)
+        if isinstance(prompt_config, Mapping):
+            jinja2_variables = prompt_config.get("jinja2_variables")
+        else:
+            jinja2_variables = getattr(prompt_config, "jinja2_variables", None)
+
+        if getattr(node_data, "type", None) == BuiltinNodeTypes.LLM and jinja2_variables:
+            filtered_variables = []
+            for variable_selector in jinja2_variables:
+                if isinstance(variable_selector, Mapping):
+                    value_selector = variable_selector.get("value_selector")
+                else:
+                    value_selector = getattr(variable_selector, "value_selector", None)
+                if value_selector is None:
+                    continue
+                if self.graph_runtime_state.variable_pool.get(value_selector) is not None:
+                    filtered_variables.append(variable_selector)
+
+            if len(filtered_variables) != len(jinja2_variables):
+                if isinstance(prompt_config, Mapping):
+                    updated_prompt_config: object = dict(prompt_config)
+                    updated_prompt_config["jinja2_variables"] = filtered_variables
+                else:
+                    updated_prompt_config = prompt_config.model_copy(  # type: ignore[union-attr]
+                        update={"jinja2_variables": filtered_variables}
+                    )
+                node_data = node_data.model_copy(update={"prompt_config": updated_prompt_config})
+
+        return node_data.model_dump(mode="python", by_alias=True)
 
     def _build_retriever_attachment_loader(self, node_data: LLMNodeData) -> DifyRetrieverAttachmentLoader:
         return DifyRetrieverAttachmentLoader(
