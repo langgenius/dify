@@ -8,6 +8,7 @@ from core.helper.ssrf_proxy import (
     SSRF_DEFAULT_MAX_RETRIES,
     ResponseTooLargeError,
     SSRFProxy,
+    UnsupportedResponseEncodingError,
     _build_ssrf_client,
     _get_user_provided_host_header,
     _to_graphon_http_response,
@@ -31,8 +32,8 @@ def test_successful_request(mock_get_client):
     mock_client.request.assert_called_once()
 
 
-def test_request_rejects_response_exceeding_decoded_byte_limit() -> None:
-    payload = b"response-body"
+def test_request_rejects_encoded_response_before_decoding() -> None:
+    payload = b"x" * (8 * 1024 * 1024)
     transport = httpx.MockTransport(
         lambda request: httpx.Response(
             200,
@@ -45,13 +46,13 @@ def test_request_rejects_response_exceeding_decoded_byte_limit() -> None:
     with (
         httpx.Client(transport=transport) as client,
         patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
-        pytest.raises(ResponseTooLargeError, match="response exceeded 8 bytes"),
+        pytest.raises(UnsupportedResponseEncodingError, match="content encoding gzip"),
     ):
         make_request(
             "GET",
             "http://example.com",
             max_retries=0,
-            max_response_bytes=8,
+            max_response_bytes=1024 * 1024,
         )
 
 
@@ -60,8 +61,7 @@ def test_request_returns_response_within_decoded_byte_limit() -> None:
     transport = httpx.MockTransport(
         lambda request: httpx.Response(
             200,
-            content=gzip.compress(payload),
-            headers={"Content-Encoding": "gzip"},
+            content=payload,
             request=request,
         )
     )
@@ -78,8 +78,24 @@ def test_request_returns_response_within_decoded_byte_limit() -> None:
         )
 
     assert response.content == payload
-    assert "Content-Encoding" not in response.headers
     assert str(response.request.url) == "http://example.com"
+
+
+def test_request_rejects_identity_response_exceeding_byte_limit() -> None:
+    payload = b"response-body"
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=payload, request=request))
+
+    with (
+        httpx.Client(transport=transport) as client,
+        patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
+        pytest.raises(ResponseTooLargeError, match="response exceeded 8 bytes"),
+    ):
+        make_request(
+            "GET",
+            "http://example.com",
+            max_retries=0,
+            max_response_bytes=8,
+        )
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)

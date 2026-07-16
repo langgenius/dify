@@ -3,7 +3,8 @@
 KnowledgeFS owns the request and response contract. This module only binds a
 short-lived workspace identity and normalizes transport failures. The dedicated
 request path uses Dify's shared SSRF policy, accepts only exact allowlisted
-operations, never follows redirects, and bounds decoded upstream responses.
+operations, never follows redirects, bounds identity responses, and rejects
+compressed responses.
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ _ALLOWED_OPERATIONS: dict[tuple[KnowledgeFSMethod, str], _KnowledgeFSUpstreamOpe
 
 
 class KnowledgeFSConfigurationError(RuntimeError):
-    """KnowledgeFS is not completely configured."""
+    """KnowledgeFS is incompletely configured or blocked by outbound policy."""
 
 
 class KnowledgeFSTimeoutError(RuntimeError):
@@ -46,7 +47,7 @@ class KnowledgeFSTimeoutError(RuntimeError):
 
 
 class KnowledgeFSTransportError(RuntimeError):
-    """KnowledgeFS could not be reached."""
+    """KnowledgeFS could not be reached or returned a response outside safety bounds."""
 
 
 class KnowledgeFSRouteNotAllowedError(RuntimeError):
@@ -74,10 +75,10 @@ def forward_knowledge_fs_request(
         The bounded KnowledgeFS response after one fixed-origin outbound request.
 
     Raises:
-        KnowledgeFSConfigurationError: The connection is incomplete.
+        KnowledgeFSConfigurationError: The connection is incomplete or blocked by outbound policy.
         KnowledgeFSRouteNotAllowedError: The path is outside the allowlisted product surface.
         KnowledgeFSTimeoutError: KnowledgeFS exceeds the configured timeout.
-        KnowledgeFSTransportError: The request fails.
+        KnowledgeFSTransportError: The request fails or its response cannot be safely bounded.
 
     Each request is bound to a stable Dify workspace principal with a short expiration.
     """
@@ -124,8 +125,8 @@ def forward_knowledge_fs_request(
             max_retries=0,
             max_response_bytes=_MAX_RESPONSE_BYTES,
         )
-    except ssrf_proxy.ResponseTooLargeError as exc:
-        raise KnowledgeFSTransportError("KnowledgeFS response exceeded the proxy limit") from exc
+    except ssrf_proxy.ResponseLimitError as exc:
+        raise KnowledgeFSTransportError("KnowledgeFS response violated the proxy limit") from exc
     except ToolSSRFError as exc:
         raise KnowledgeFSConfigurationError("KnowledgeFS origin was blocked by outbound policy") from exc
     except httpx.TimeoutException as exc:

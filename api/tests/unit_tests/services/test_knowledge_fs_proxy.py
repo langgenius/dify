@@ -178,7 +178,7 @@ def test_oversized_response_is_normalized(monkeypatch: pytest.MonkeyPatch) -> No
     request = MagicMock(side_effect=ssrf_proxy.ResponseTooLargeError("response exceeded 1048576 bytes"))
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
-    with pytest.raises(KnowledgeFSTransportError, match="response exceeded the proxy limit"):
+    with pytest.raises(KnowledgeFSTransportError, match="response violated the proxy limit"):
         forward_knowledge_fs_request(method="GET", path="knowledge-spaces", tenant_id="tenant-dev")
 
 

@@ -47,8 +47,20 @@ class MaxRetriesExceededError(ValueError):
     pass
 
 
-class ResponseTooLargeError(ValueError):
-    """Raised when a decoded response exceeds the configured byte limit."""
+class ResponseLimitError(ValueError):
+    """Base error for responses that cannot be safely bounded."""
+
+    pass
+
+
+class ResponseTooLargeError(ResponseLimitError):
+    """Raised when an identity response exceeds the configured byte limit."""
+
+    pass
+
+
+class UnsupportedResponseEncodingError(ResponseLimitError):
+    """Raised when response encoding prevents safe decoded-size enforcement."""
 
     pass
 
@@ -155,10 +167,29 @@ def make_request(
     max_response_bytes: int | None = None,
     **kwargs: Any,
 ) -> httpx.Response:
-    """Send one SSRF-protected request with an optional decoded response-size limit.
+    """Send one SSRF-protected request with an optional in-memory response-size limit.
 
-    When ``max_response_bytes`` is set, the response is read incrementally and
-    rejected before more than that many decoded bytes are retained in memory.
+    When ``max_response_bytes`` is set, identity responses are read incrementally
+    and rejected before more than that many bytes are retained in memory. Encoded
+    responses are rejected before body reads because their decoded size cannot be
+    bounded by httpx without first allocating a decoded chunk.
+
+    Args:
+        method: HTTP method sent through the configured SSRF client.
+        url: Absolute request URL.
+        max_retries: Number of retry attempts after the initial request.
+        max_response_bytes: Optional maximum bytes retained from an identity response.
+        **kwargs: Additional keyword arguments forwarded to ``httpx.Client``.
+
+    Returns:
+        A fully buffered response. Size-limited responses have decoded transfer headers removed.
+
+    Raises:
+        ResponseLimitError: The response exceeds the limit or uses a non-identity encoding.
+        ToolSSRFError: The configured SSRF proxy rejects the destination.
+        MaxRetriesExceededError: All configured request attempts fail.
+        httpx.RequestError: A request fails while retries are disabled.
+        ValueError: The response limit or request headers are invalid.
     """
     if max_response_bytes is not None and max_response_bytes <= 0:
         raise ValueError("max_response_bytes must be positive")
@@ -209,6 +240,11 @@ def make_request(
                 response = client.request(method=method, url=url, **kwargs)
             else:
                 with client.stream(method=method, url=url, **kwargs) as streaming_response:
+                    content_encoding = streaming_response.headers.get("content-encoding", "identity").strip().lower()
+                    if content_encoding not in {"", "identity"}:
+                        raise UnsupportedResponseEncodingError(
+                            f"content encoding {content_encoding} cannot be safely bounded"
+                        )
                     content = bytearray()
                     for chunk in streaming_response.iter_bytes():
                         if len(content) + len(chunk) > max_response_bytes:
