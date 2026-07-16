@@ -116,18 +116,6 @@ describe('CardWrapper', () => {
     expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
   })
 
-  it('shows loading instead of install while installation status is loading', () => {
-    renderCardWrapper({ showInstallButton: true, isInstallStatusLoading: true })
-
-    expect(screen.getByRole('button', { name: 'common.loading' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(
-      screen.queryByRole('button', { name: 'plugin.detailPanel.operation.install' }),
-    ).not.toBeInTheDocument()
-  })
-
   it('opens marketplace detail from the detail action', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
 

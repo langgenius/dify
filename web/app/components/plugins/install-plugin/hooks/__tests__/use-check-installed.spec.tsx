@@ -21,7 +21,6 @@ vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: ({ pluginIds, enabled }: { pluginIds: string[]; enabled: boolean }) => ({
     data: enabled && pluginIds.length > 0 ? { plugins: mockPlugins } : undefined,
     isLoading: false,
-    isFetching: false,
     error: null,
   }),
 }))
@@ -74,7 +73,7 @@ describe('useCheckInstalled', () => {
     expect(result.current.installedInfo).toBeUndefined()
   })
 
-  it('should return loading, fetching, and error states', () => {
+  it('should return isLoading and error states', () => {
     const { result } = renderHook(() =>
       useCheckInstalled({
         pluginIds: ['plugin-1'],
@@ -83,7 +82,6 @@ describe('useCheckInstalled', () => {
     )
 
     expect(result.current.isLoading).toBe(false)
-    expect(result.current.isFetching).toBe(false)
     expect(result.current.error).toBeNull()
   })
 })

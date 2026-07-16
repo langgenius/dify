@@ -46,7 +46,7 @@ const List = ({
 
   const shouldCheckInstalled =
     !!showInstallButton && canInstallPlugin && !cardRender && pluginIds.length > 0
-  const { installedInfo, isFetching: isInstallStatusLoading } = useCheckInstalled({
+  const { installedInfo } = useCheckInstalled({
     pluginIds,
     enabled: shouldCheckInstalled,
   })
@@ -66,7 +66,6 @@ const List = ({
           cardRender={cardRender}
           onCollectionMoreClick={onCollectionMoreClick}
           installedPluginIds={installedPluginIds}
-          isInstallStatusLoading={isInstallStatusLoading}
         />
       )}
       {plugins && !!plugins.length && (
@@ -80,7 +79,6 @@ const List = ({
                 plugin={plugin}
                 showInstallButton={showInstallButton}
                 isInstalled={installedPluginIds.has(plugin.plugin_id)}
-                isInstallStatusLoading={isInstallStatusLoading}
               />
             )
           })}

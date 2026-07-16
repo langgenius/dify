@@ -60,7 +60,6 @@ beforeEach(() => {
   mockUseCheckInstalled.mockReturnValue({
     installedInfo: undefined,
     isLoading: false,
-    isFetching: false,
     error: null,
   })
 })
@@ -1028,7 +1027,6 @@ describe('CardWrapper (via List integration)', () => {
           },
         },
         isLoading: false,
-        isFetching: false,
         error: null,
       })
 
@@ -1043,6 +1041,26 @@ describe('CardWrapper (via List integration)', () => {
 
       expect(screen.getAllByRole('button', { name: 'Installed' })).toHaveLength(2)
       expect(screen.getByRole('button', { name: 'Install' })).toBeInTheDocument()
+    })
+
+    it('should keep install available while installation status is pending', () => {
+      const plugin = createMockPlugin({ name: 'pending-status-plugin' })
+      mockUseCheckInstalled.mockReturnValue({
+        installedInfo: undefined,
+        isLoading: true,
+        error: null,
+      })
+
+      render(
+        <List
+          marketplaceCollections={[]}
+          marketplaceCollectionPluginsMap={{}}
+          plugins={[plugin]}
+          showInstallButton={true}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Install' })).not.toHaveAttribute('aria-disabled')
     })
 
     it('should call showInstallFromMarketplace when install button is clicked', () => {

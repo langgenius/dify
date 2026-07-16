@@ -39,7 +39,6 @@ type ListWithCollectionProps = {
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
   installedPluginIds?: ReadonlySet<string>
-  isInstallStatusLoading?: boolean
 }
 
 type PluginCardProps = {
@@ -47,25 +46,13 @@ type PluginCardProps = {
   showInstallButton?: boolean
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   isInstalled?: boolean
-  isInstallStatusLoading?: boolean
 }
 
-const PluginCard = ({
-  plugin,
-  showInstallButton,
-  cardRender,
-  isInstalled,
-  isInstallStatusLoading,
-}: PluginCardProps) => {
+const PluginCard = ({ plugin, showInstallButton, cardRender, isInstalled }: PluginCardProps) => {
   if (cardRender) return cardRender(plugin)
 
   return (
-    <CardWrapper
-      plugin={plugin}
-      showInstallButton={showInstallButton}
-      isInstalled={isInstalled}
-      isInstallStatusLoading={isInstallStatusLoading}
-    />
+    <CardWrapper plugin={plugin} showInstallButton={showInstallButton} isInstalled={isInstalled} />
   )
 }
 
@@ -77,7 +64,6 @@ const ListWithCollection = ({
   cardRender,
   onCollectionMoreClick,
   installedPluginIds,
-  isInstallStatusLoading,
 }: ListWithCollectionProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -163,7 +149,6 @@ const ListWithCollection = ({
                               showInstallButton={showInstallButton}
                               cardRender={cardRender}
                               isInstalled={installedPluginIds?.has(plugin.plugin_id)}
-                              isInstallStatusLoading={isInstallStatusLoading}
                             />
                           </div>
                         ))}
@@ -180,7 +165,6 @@ const ListWithCollection = ({
                       showInstallButton={showInstallButton}
                       cardRender={cardRender}
                       isInstalled={installedPluginIds?.has(plugin.plugin_id)}
-                      isInstallStatusLoading={isInstallStatusLoading}
                     />
                   ))}
                 </div>

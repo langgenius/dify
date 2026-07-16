@@ -17,13 +17,11 @@ type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
   isInstalled?: boolean
-  isInstallStatusLoading?: boolean
 }
 const CardWrapperComponent = ({
   plugin,
   showInstallButton,
   isInstalled = false,
-  isInstallStatusLoading = false,
 }: CardWrapperProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
@@ -78,14 +76,11 @@ const CardWrapperComponent = ({
             variant={isInstalled ? 'secondary' : 'primary'}
             className="min-w-0 flex-1 shadow-md"
             disabled={isInstalled}
-            loading={isInstallStatusLoading}
             onClick={isInstalled ? undefined : showInstallFromMarketplace}
           >
-            {isInstallStatusLoading
-              ? t(($) => $.loading, { ns: 'common' })
-              : isInstalled
-                ? t(($) => $['task.installed'], { ns: 'plugin' })
-                : t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
+            {isInstalled
+              ? t(($) => $['task.installed'], { ns: 'plugin' })
+              : t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
           <Button
             className="min-w-0 flex-1 gap-0.5 shadow-xs backdrop-blur-[5px]"
