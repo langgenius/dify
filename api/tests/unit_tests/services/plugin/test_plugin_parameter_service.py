@@ -1,4 +1,4 @@
-"""Tests for services.plugin.plugin_parameter_service.PluginParameterService.
+"""Unit tests for services.plugin.plugin_parameter_service.PluginParameterService.
 
 Covers: dynamic select options via tool and trigger credential paths,
 HIDDEN_VALUE replacement, and error handling for missing records.
@@ -7,15 +7,31 @@ HIDDEN_VALUE replacement, and error handling for missing records.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
+from models.engine import db
 from models.tools import BuiltinToolProvider
 from services.plugin.plugin_parameter_service import PluginParameterService
+
+
+@pytest.fixture
+def plugin_parameter_db() -> Iterator[Session]:
+    """Provide the production database extension with an isolated SQLite credential table."""
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        BuiltinToolProvider.__table__.create(db.engine)
+        with Session(db.engine, expire_on_commit=False) as session:
+            yield session
 
 
 class TestGetDynamicSelectOptionsTool:
@@ -50,9 +66,8 @@ class TestGetDynamicSelectOptionsTool:
         mock_tool_mgr: MagicMock,
         mock_encrypter_fn: MagicMock,
         mock_client_cls,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
-    ):
+        plugin_parameter_db: Session,
+    ) -> None:
         tenant_id = str(uuid4())
         provider_ctrl = MagicMock()
         provider_ctrl.need_credentials = True
@@ -70,8 +85,8 @@ class TestGetDynamicSelectOptionsTool:
             encrypted_credentials=json.dumps({"api_key": "encrypted"}),
             credential_type=CredentialType.API_KEY,
         )
-        db_session_with_containers.add(db_record)
-        db_session_with_containers.commit()
+        plugin_parameter_db.add(db_record)
+        plugin_parameter_db.commit()
 
         result = PluginParameterService.get_dynamic_select_options(
             tenant_id=tenant_id,
@@ -92,9 +107,8 @@ class TestGetDynamicSelectOptionsTool:
         self,
         mock_tool_mgr: MagicMock,
         mock_encrypter_fn: MagicMock,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
-    ):
+        plugin_parameter_db: Session,
+    ) -> None:
         provider_ctrl = MagicMock()
         provider_ctrl.need_credentials = True
         mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
