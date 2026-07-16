@@ -164,41 +164,27 @@ def make_request(
     method: str,
     url: str,
     max_retries: int = SSRF_DEFAULT_MAX_RETRIES,
-    max_response_bytes: int | None = None,
     stream_response: bool = False,
     **kwargs: Any,
 ) -> httpx.Response:
-    """Send one SSRF-protected request with optional buffering and size limits.
-
-    When ``max_response_bytes`` is set, identity responses are read incrementally
-    and rejected before more than that many bytes are retained in memory. Encoded
-    responses are rejected before body reads because their decoded size cannot be
-    bounded by httpx without first allocating a decoded chunk.
+    """Send one SSRF-protected request with optional streaming.
 
     Args:
         method: HTTP method sent through the configured SSRF client.
         url: Absolute request URL.
         max_retries: Number of retry attempts after the initial request.
-        max_response_bytes: Optional maximum bytes retained from an identity response.
         stream_response: Return an open streaming response that the caller must close.
         **kwargs: Additional keyword arguments forwarded to ``httpx.Client``.
 
     Returns:
         A buffered response, or an open response when ``stream_response`` is true.
-        Size-limited responses have decoded transfer headers removed.
 
     Raises:
-        ResponseLimitError: The response exceeds the limit or uses a non-identity encoding.
         ToolSSRFError: The configured SSRF proxy rejects the destination.
         MaxRetriesExceededError: All configured request attempts fail.
         httpx.RequestError: A request fails while retries are disabled.
-        ValueError: The response options, limit, or request headers are invalid.
+        ValueError: The SSL verification option or request headers are invalid.
     """
-    if max_response_bytes is not None and max_response_bytes <= 0:
-        raise ValueError("max_response_bytes must be positive")
-    if stream_response and max_response_bytes is not None:
-        raise ValueError("stream_response cannot be combined with max_response_bytes")
-
     # Convert requests-style allow_redirects to httpx-style follow_redirects
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
@@ -249,11 +235,8 @@ def make_request(
             request = client.build_request(method=method, url=url, **kwargs)
             if stream_response:
                 response = client.send(request, stream=True, **send_kwargs)
-            elif max_response_bytes is None:
-                response = client.send(request, **send_kwargs)
             else:
-                streaming_response = client.send(request, stream=True, **send_kwargs)
-                response = buffer_response(streaming_response, max_response_bytes=max_response_bytes)
+                response = client.send(request, **send_kwargs)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):

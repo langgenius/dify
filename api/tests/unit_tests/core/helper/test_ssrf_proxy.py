@@ -12,6 +12,7 @@ from core.helper.ssrf_proxy import (
     _build_ssrf_client,
     _get_user_provided_host_header,
     _to_graphon_http_response,
+    buffer_response,
     graphon_ssrf_proxy,
     make_request,
     max_retries_exceeded_error,
@@ -33,45 +34,7 @@ def test_successful_request(mock_get_client):
     mock_client.send.assert_called_once()
 
 
-@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_request_uses_the_preconfigured_client_send_path(mock_get_client) -> None:
-    """Keep all request modes on the preconfigured SSRF client's send path."""
-    mock_client = MagicMock()
-    request = httpx.Request("GET", "http://example.com")
-    response = httpx.Response(200, request=request)
-    mock_client.build_request.return_value = request
-    mock_client.send.return_value = response
-    mock_get_client.return_value = mock_client
-
-    result = make_request("GET", "http://example.com", max_retries=0)
-
-    assert result is response
-    mock_client.build_request.assert_called_once()
-    mock_client.send.assert_called_once_with(request)
-    mock_client.request.assert_not_called()
-    mock_client.stream.assert_not_called()
-
-
-@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_bounded_request_uses_the_preconfigured_client_send_path(mock_get_client) -> None:
-    """Keep bounded requests off direct URL request and stream helpers."""
-    mock_client = MagicMock()
-    request = httpx.Request("GET", "http://example.com")
-    response = httpx.Response(200, content=b"ok", request=request)
-    mock_client.build_request.return_value = request
-    mock_client.send.return_value = response
-    mock_get_client.return_value = mock_client
-
-    result = make_request("GET", "http://example.com", max_retries=0, max_response_bytes=8)
-
-    assert result.content == b"ok"
-    mock_client.build_request.assert_called_once()
-    mock_client.send.assert_called_once_with(request, stream=True)
-    mock_client.request.assert_not_called()
-    mock_client.stream.assert_not_called()
-
-
-def test_request_rejects_encoded_response_before_decoding() -> None:
+def test_buffer_response_rejects_encoded_response_before_decoding() -> None:
     payload = b"x" * (8 * 1024 * 1024)
     transport = httpx.MockTransport(
         lambda request: httpx.Response(
@@ -82,20 +45,13 @@ def test_request_rejects_encoded_response_before_decoding() -> None:
         )
     )
 
-    with (
-        httpx.Client(transport=transport) as client,
-        patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
-        pytest.raises(UnsupportedResponseEncodingError, match="content encoding gzip"),
-    ):
-        make_request(
-            "GET",
-            "http://example.com",
-            max_retries=0,
-            max_response_bytes=1024 * 1024,
-        )
+    with httpx.Client(transport=transport) as client:
+        response = client.send(client.build_request("GET", "http://example.com"), stream=True)
+        with pytest.raises(UnsupportedResponseEncodingError, match="content encoding gzip"):
+            buffer_response(response, max_response_bytes=1024 * 1024)
 
 
-def test_request_returns_response_within_decoded_byte_limit() -> None:
+def test_buffer_response_returns_response_within_decoded_byte_limit() -> None:
     payload = b"response-body"
     transport = httpx.MockTransport(
         lambda request: httpx.Response(
@@ -105,36 +61,22 @@ def test_request_returns_response_within_decoded_byte_limit() -> None:
         )
     )
 
-    with (
-        httpx.Client(transport=transport) as client,
-        patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
-    ):
-        response = make_request(
-            "GET",
-            "http://example.com",
-            max_retries=0,
-            max_response_bytes=32,
-        )
+    with httpx.Client(transport=transport) as client:
+        streaming_response = client.send(client.build_request("GET", "http://example.com"), stream=True)
+        response = buffer_response(streaming_response, max_response_bytes=32)
 
     assert response.content == payload
     assert str(response.request.url) == "http://example.com"
 
 
-def test_request_rejects_identity_response_exceeding_byte_limit() -> None:
+def test_buffer_response_rejects_identity_response_exceeding_byte_limit() -> None:
     payload = b"response-body"
     transport = httpx.MockTransport(lambda request: httpx.Response(200, content=payload, request=request))
 
-    with (
-        httpx.Client(transport=transport) as client,
-        patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
-        pytest.raises(ResponseTooLargeError, match="response exceeded 8 bytes"),
-    ):
-        make_request(
-            "GET",
-            "http://example.com",
-            max_retries=0,
-            max_response_bytes=8,
-        )
+    with httpx.Client(transport=transport) as client:
+        response = client.send(client.build_request("GET", "http://example.com"), stream=True)
+        with pytest.raises(ResponseTooLargeError, match="response exceeded 8 bytes"):
+            buffer_response(response, max_response_bytes=8)
 
 
 def test_request_can_return_an_open_stream_the_caller_closes() -> None:
@@ -167,16 +109,6 @@ def test_request_can_return_an_open_stream_the_caller_closes() -> None:
         response.close()
 
     assert response.is_closed
-
-
-def test_request_rejects_streaming_with_a_buffer_limit() -> None:
-    with pytest.raises(ValueError, match="stream_response cannot be combined"):
-        make_request(
-            "GET",
-            "http://example.com/events",
-            max_response_bytes=1024,
-            stream_response=True,
-        )
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)

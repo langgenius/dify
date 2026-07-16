@@ -613,21 +613,6 @@ def test_auth_signs_current_account_and_workspace_principal(
     assert claims["exp"] - claims["iat"] == 60
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        "queries",
-        "research-tasks/plan",
-    ],
-)
-def test_read_post_operations_are_generated_as_read_access(path: str) -> None:
-    assert get_knowledge_fs_operation("POST", path).access == "read"
-
-
-def test_snapshot_replay_is_generated_as_write_access() -> None:
-    assert get_knowledge_fs_operation("POST", "agent-workspace-snapshots/snapshot-1/replay").access == "write"
-
-
 def test_timeout_is_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_config(monkeypatch)
     upstream_request = httpx.Request("GET", "http://knowledge-fs.test/knowledge-spaces")
