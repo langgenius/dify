@@ -15,6 +15,7 @@ import {
   PluginParagraph,
   ThinkBlock,
   VideoBlock,
+  TableCopy,
 } from '@/app/components/base/markdown-blocks'
 import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
 import dynamic from '@/next/dynamic'
@@ -229,6 +230,10 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
       button: MarkdownButton,
       form: MarkdownForm as ComponentType,
       details: ThinkBlock as ComponentType,
+      // Issue #38790: dify-owned table renderer that adds a Markdown/CSV/TSV
+      // copy control with a `text/plain` clipboard fallback so the copied
+      // content also pastes into plain-text editors.
+      table: TableCopy as ComponentType,
       ...customComponents,
     }),
     [pluginInfo, customComponents],
