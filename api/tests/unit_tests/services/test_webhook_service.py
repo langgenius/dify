@@ -70,865 +70,541 @@ class TestWebhookServiceUnit:
             json={"message": "hello", "count": 42},
         ):
             webhook_trigger = MagicMock()
+            webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
-            with patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
+            assert webhook_data["method"] == "POST"
+            assert webhook_data["headers"]["Authorization"] == "Bearer token"
+            # Query params are now extracted as raw strings
+            assert webhook_data["query_params"]["version"] == "1"
+            assert webhook_data["query_params"]["format"] == "json"
+            assert webhook_data["body"]["message"] == "hello"
+            assert webhook_data["body"]["count"] == 42
+            assert webhook_data["files"] == {}
 
-    def test_extract_webhook_data_multipart(self):
-        """Test webhook data extraction from multipart form-data request."""
+    def test_extract_webhook_data_query_params_remain_strings(self):
+        """Query parameters should be extracted as raw strings without automatic conversion."""
         app = Flask(__name__)
-        data = {"field1": "value1", "field2": "value2"}
-        file_storage = FileStorage(stream=BytesIO(b"test content"), filename="test.txt", content_type="text/plain")
 
         with app.test_request_context(
             "/webhook",
-            method="POST",
-            headers={"Content-Type": "multipart/form-data"},
-            data={"field1": "value1", "field2": "value2", "file": file_storage},
+            method="GET",
+            headers={"Content-Type": "application/json"},
+            query_string="count=42&threshold=3.14&enabled=true&note=text",
         ):
             webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
+            webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
+            # After refactoring, raw extraction keeps query params as strings
+            assert webhook_data["query_params"]["count"] == "42"
+            assert webhook_data["query_params"]["threshold"] == "3.14"
+            assert webhook_data["query_params"]["enabled"] == "true"
+            assert webhook_data["query_params"]["note"] == "text"
 
     def test_extract_webhook_data_form_urlencoded(self):
-        """Test webhook data extraction from URL-encoded form request."""
+        """Test webhook data extraction from form URL encoded request."""
         app = Flask(__name__)
 
         with app.test_request_context(
             "/webhook",
             method="POST",
             headers={"Content-Type": "application/x-www-form-urlencoded"},
-            data="field1=value1&field2=value2",
+            data={"username": "test", "password": "secret"},
         ):
             webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
+            webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
+            assert webhook_data["method"] == "POST"
+            assert webhook_data["body"]["username"] == "test"
+            assert webhook_data["body"]["password"] == "secret"
 
-    def test_extract_webhook_data_unsupported_content_type(self):
-        """Test webhook data extraction with unsupported Content-Type."""
+    def test_extract_webhook_data_multipart_with_files(self):
+        """Test webhook data extraction from multipart form with files."""
         app = Flask(__name__)
 
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "application/xml"},
-            data="<root><item>value</item></root>",
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_get_webhook_trigger_returns_none_when_not_found(self):
-        """Test _get_webhook_trigger returns None when trigger not found."""
-        with patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None):
-            result = WebhookService._get_webhook_trigger("nonexistent")
-            assert result is None
-
-    def test_get_webhook_trigger_raises_when_method_not_allowed(self):
-        """Test _get_webhook_trigger raises when HTTP method not allowed."""
-        app = Flask(__name__)
-
-        with app.test_request_context("/webhook", method="GET"):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                with pytest.raises(Exception):
-                    WebhookService._get_webhook_trigger("webhook-123")
-
-    def test_validate_webhook_request_with_invalid_signature(self):
-        """Test webhook request validation with invalid signature."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={
-                "Content-Type": "application/json",
-                "X-Hub-Signature-256": "sha256=invalidsignature",
-            },
-            json={"message": "hello"},
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.secret = "my_secret"
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                with pytest.raises(Exception):
-                    WebhookService._get_webhook_trigger("webhook-123")
-
-    def test_validate_webhook_request_with_valid_signature(self):
-        """Test webhook request validation with valid signature."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={
-                "Content-Type": "application/json",
-                "X-Hub-Signature-256": "sha256=valid_signature",
-            },
-            json={"message": "hello"},
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.secret = "my_secret"
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_validate_webhook_request_without_signature(self):
-        """Test webhook request validation without signature header."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "application/json"},
-            json={"message": "hello"},
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.secret = None
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_validate_webhook_request_with_empty_body(self):
-        """Test webhook request validation with empty body."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={
-                "Content-Type": "application/json",
-                "X-Hub-Signature-256": "sha256=signature_for_empty_body",
-            },
-            data=b"",
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.secret = "my_secret"
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                with pytest.raises(Exception):
-                    WebhookService._get_webhook_trigger("webhook-123")
-
-    def test_webhook_data_extraction_with_files(self):
-        """Test webhook data extraction when files are uploaded."""
-        app = Flask(__name__)
+        # Create a mock file
+        file_content = b"test file content"
+        file_storage = FileStorage(stream=BytesIO(file_content), filename="test.txt", content_type="text/plain")
 
         with app.test_request_context(
             "/webhook",
             method="POST",
             headers={"Content-Type": "multipart/form-data"},
-            data={"file": (BytesIO(b"test content"), "test.txt")},
+            data={"message": "test", "file": file_storage},
         ):
             webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
+            webhook_trigger.tenant_id = "test_tenant"
 
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
+            with patch.object(WebhookService, "_process_file_uploads", autospec=True) as mock_process_files:
+                mock_process_files.return_value = {"file": "mocked_file_obj"}
 
-    def test_http_method_not_allowed(self):
-        """Test webhook trigger raises when HTTP method is not supported."""
-        app = Flask(__name__)
+                webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
-        with app.test_request_context("/webhook", method="DELETE"):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST", "GET"]
+                assert webhook_data["method"] == "POST"
+                assert webhook_data["body"]["message"] == "test"
+                assert webhook_data["files"]["file"] == "mocked_file_obj"
+                mock_process_files.assert_called_once()
 
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                with pytest.raises(Exception):
-                    WebhookService._get_webhook_trigger("webhook-123")
-
-    def test_http_method_allowed(self):
-        """Test webhook trigger works when HTTP method is supported."""
-        app = Flask(__name__)
-
-        with app.test_request_context("/webhook", method="GET"):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["GET", "POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_missing_content_type(self):
-        """Test webhook data extraction without Content-Type header."""
-        app = Flask(__name__)
-
-        with app.test_request_context("/webhook", method="POST", data="raw data"):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_query_params(self):
-        """Test webhook data extraction with query parameters."""
+    def test_extract_webhook_data_raw_text(self):
+        """Test webhook data extraction from raw text request."""
         app = Flask(__name__)
 
         with app.test_request_context(
-            "/webhook",
-            method="GET",
-            query_string="param1=value1&param2=value2",
+            "/webhook", method="POST", headers={"Content-Type": "text/plain"}, data="raw text content"
         ):
             webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["GET"]
+            webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
+            assert webhook_data["method"] == "POST"
+            assert webhook_data["body"]["raw"] == "raw text content"
 
-    def test_webhook_request_with_headers(self):
-        """Test webhook data extraction with custom headers."""
+    def test_extract_octet_stream_body_uses_detected_mime(self):
+        """Octet-stream uploads should rely on detected MIME type."""
         app = Flask(__name__)
+        binary_content = b"plain text data"
 
         with app.test_request_context(
-            "/webhook",
-            method="GET",
-            headers={"X-Custom-Header": "custom_value"},
+            "/webhook", method="POST", headers={"Content-Type": "application/octet-stream"}, data=binary_content
         ):
             webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["GET"]
+            mock_file = MagicMock()
+            mock_file.to_dict.return_value = {"file": "data"}
 
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_none_trigger(self):
-        """Test webhook request when trigger is None."""
-        with patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None):
-            result = WebhookService._get_webhook_trigger("webhook-123")
-            assert result is None
-
-    def test_webhook_request_with_empty_method_list(self):
-        """Test webhook request when supported methods list is empty."""
-        app = Flask(__name__)
-
-        with app.test_request_context("/webhook", method="POST"):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = []
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                with pytest.raises(Exception):
-                    WebhookService._get_webhook_trigger("webhook-123")
-
-    def test_webhook_request_with_multiple_query_params(self):
-        """Test webhook data extraction with multiple query parameters."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="GET",
-            query_string="a=1&b=2&c=3",
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["GET"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_no_query_params(self):
-        """Test webhook data extraction without query parameters."""
-        app = Flask(__name__)
-
-        with app.test_request_context("/webhook", method="GET"):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["GET"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_invalid_content_type(self):
-        """Test webhook data extraction with invalid Content-Type."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "invalid/content-type"},
-            data="raw data",
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_no_content_type(self):
-        """Test webhook data extraction with no Content-Type header."""
-        app = Flask(__name__)
-
-        with app.test_request_context("/webhook", method="POST", data="raw"):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_empty_body_in_post(self):
-        """Test webhook request with empty body in POST request."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "application/json"},
-            data=b"",
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_large_body(self):
-        """Test webhook request with large body."""
-        app = Flask(__name__)
-        large_body = "x" * 100000
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "text/plain"},
-            data=large_body,
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_special_chars_in_body(self):
-        """Test webhook request with special characters in body."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "text/plain"},
-            data="Hello\nWorld\r\nTest\tTab",
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_unicode_body(self):
-        """Test webhook request with Unicode body."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "text/plain; charset=utf-8"},
-            data="Hello 世界 🌍",
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_none_content_type(self):
-        """Test webhook request with None as Content-Type."""
-        app = Flask(__name__)
-
-        with app.test_request_context("/webhook", method="POST"):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_array_body(self):
-        """Test webhook request with array in request body."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "application/json"},
-            json=["item1", "item2", "item3"],
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_request_with_nested_json(self):
-        """Test webhook request with nested JSON in body."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "application/json"},
-            json={"outer": {"inner": "value"}},
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-class TestWebhookServiceIntegration:
-    """Integration tests for WebhookService with minimal mocking."""
-
-    def test_full_webhook_workflow_with_mocked_db(self):
-        """Test the complete webhook workflow with mocked database."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "application/json"},
-            json={"message": "hello"},
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.webhook_id = "webhook-123"
-            webhook_trigger.tenant_id = "tenant-123"
-            webhook_trigger.app_id = "app-123"
-            webhook_trigger.node_id = "node-123"
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                with patch("services.trigger.webhook_service.WebhookService.trigger_workflow_execution") as mock_trigger:
-                    result = WebhookService._get_webhook_trigger("webhook-123")
-                    assert result == webhook_trigger
-
-    def test_webhook_workflow_without_db(self):
-        """Test webhook workflow without database access."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "application/json"},
-            json={"message": "hello"},
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.webhook_id = "webhook-123"
-            webhook_trigger.tenant_id = "tenant-123"
-            webhook_trigger.app_id = "app-123"
-            webhook_trigger.node_id = "node-123"
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_trigger_with_invalid_data(self):
-        """Test webhook trigger with invalid input data."""
-        with pytest.raises(Exception):
-            WebhookService._get_webhook_trigger("")
-
-    def test_webhook_trigger_without_context(self):
-        """Test webhook trigger outside of request context."""
-        with pytest.raises(Exception):
-            WebhookService._get_webhook_trigger("webhook-123")
-
-    def test_webhook_trigger_with_multiple_files(self):
-        """Test webhook trigger with multiple file uploads."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "multipart/form-data"},
-            data={
-                "file1": (BytesIO(b"content1"), "file1.txt"),
-                "file2": (BytesIO(b"content2"), "file2.txt"),
-            },
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_trigger_with_file_and_fields(self):
-        """Test webhook trigger with file and form fields."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "multipart/form-data"},
-            data={
-                "field1": "value1",
-                "file": (BytesIO(b"content"), "file.txt"),
-            },
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_trigger_with_none_file(self):
-        """Test webhook trigger with None file storage."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "multipart/form-data"},
-            data={"file": None},
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_webhook_trigger_with_empty_file_list(self):
-        """Test webhook trigger with empty file list."""
-        app = Flask(__name__)
-
-        with app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "multipart/form-data"},
-            data={},
-        ):
-            webhook_trigger = MagicMock()
-            webhook_trigger.supported_http_methods = ["POST"]
-
-            with patch(
-                "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=webhook_trigger
-            ):
-                result = WebhookService._get_webhook_trigger("webhook-123")
-                assert result == webhook_trigger
-
-    def test_get_webhook_trigger_with_empty_id(self):
-        """Test get_webhook_trigger with empty ID."""
-        with pytest.raises(Exception):
-            WebhookService._get_webhook_trigger("")
-
-    def test_get_webhook_trigger_with_special_chars_id(self):
-        """Test get_webhook_trigger with special characters in ID."""
-        with patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None):
-            result = WebhookService._get_webhook_trigger("test@#$%")
-            assert result is None
-
-    def test_get_webhook_trigger_with_long_id(self):
-        """Test get_webhook_trigger with very long ID."""
-        long_id = "a" * 1000
-        with patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None):
-            result = WebhookService._get_webhook_trigger(long_id)
-            assert result is None
-
-    def test_get_webhook_trigger_with_whitespace_id(self):
-        """Test get_webhook_trigger with whitespace-only ID."""
-        with patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None):
-            result = WebhookService._get_webhook_trigger("   ")
-            assert result is None
-
-    def test_get_webhook_trigger_with_different_case(self):
-        """Test get_webhook_trigger with different case in ID."""
-        with patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None):
-            result = WebhookService._get_webhook_trigger("WEBHOOK-123")
-            assert result is None
-
-    def test_get_webhook_trigger_with_number_id(self):
-        """Test get_webhook_trigger with numeric ID."""
-        with patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None):
-            result = WebhookService._get_webhook_trigger("12345")
-            assert result is None
-
-    def test_get_webhook_trigger_with_uuid(self):
-        """Test get_webhook_trigger with UUID-like ID."""
-        with patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None):
-            result = WebhookService._get_webhook_trigger("550e8400-e29b-41d4-a716-446655440000")
-            assert result is None
-
-    def test_prepare_webhook_execution_with_debug_mode(self):
-        """Test prepare_webhook_execution in debug mode without DB access."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        mock_trigger = MagicMock()
-        mock_workflow = MagicMock()
-        mock_config = MagicMock()
-        mock_data = MagicMock()
-
-        with patch(
-            "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=mock_trigger
-        ):
-            with patch(
-                "services.trigger.webhook_service.Workflow.get_by_id", return_value=mock_workflow
-            ):
-                with patch(
-                    "services.trigger.webhook_service.WebhookConfig.get_by_webhook_id",
-                    return_value=mock_config,
-                ):
-                    with patch(
-                        "services.trigger.webhook_service.WebhookData.get_by_webhook_id",
-                        return_value=mock_data,
-                    ):
-                        result = _prepare_webhook_execution("test_webhook", is_debug=True)
-                        assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
-
-    def test_prepare_webhook_execution_without_debug_mode(self):
-        """Test prepare_webhook_execution without debug mode with DB access."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        mock_trigger = MagicMock()
-        mock_workflow = MagicMock()
-        mock_config = MagicMock()
-        mock_data = MagicMock()
-
-        with patch(
-            "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=mock_trigger
-        ):
-            with patch(
-                "services.trigger.webhook_service.Workflow.get_by_id", return_value=mock_workflow
-            ):
-                with patch(
-                    "services.trigger.webhook_service.WebhookConfig.get_by_webhook_id",
-                    return_value=mock_config,
-                ):
-                    with patch(
-                        "services.trigger.webhook_service.WebhookData.get_by_webhook_id",
-                        return_value=mock_data,
-                    ):
-                        result = _prepare_webhook_execution("test_webhook", is_debug=False)
-                        assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
-
-    def test_prepare_webhook_execution_with_none_results(self):
-        """Test prepare_webhook_execution when some results are None."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        with patch(
-            "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None
-        ):
-            result = _prepare_webhook_execution("nonexistent_webhook", is_debug=True)
-            assert result is None
-
-    def test_prepare_webhook_execution_with_all_mock_data(self):
-        """Test prepare_webhook_execution with all mocked data."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        mock_trigger = MagicMock()
-        mock_workflow = MagicMock()
-        mock_config = MagicMock()
-        mock_data = MagicMock()
-
-        with patch(
-            "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=mock_trigger
-        ):
-            with patch(
-                "services.trigger.webhook_service.Workflow.get_by_id", return_value=mock_workflow
-            ):
-                with patch(
-                    "services.trigger.webhook_service.WebhookConfig.get_by_webhook_id",
-                    return_value=mock_config,
-                ):
-                    with patch(
-                        "services.trigger.webhook_service.WebhookData.get_by_webhook_id",
-                        return_value=mock_data,
-                    ):
-                        result = _prepare_webhook_execution("test_webhook", is_debug=True)
-                        assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
-
-    def test_prepare_webhook_execution_with_exception(self):
-        """Test prepare_webhook_execution when exception occurs."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        with patch(
-            "services.trigger.webhook_service.WebhookTrigger.get_by_id",
-            side_effect=Exception("DB error"),
-        ):
-            with pytest.raises(Exception):
-                _prepare_webhook_execution("test_webhook", is_debug=True)
-
-    def test_prepare_webhook_execution_with_missing_trigger(self):
-        """Test prepare_webhook_execution with missing trigger."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        with patch(
-            "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=None
-        ):
-            result = _prepare_webhook_execution("test_webhook", is_debug=True)
-            assert result is None
-
-    def test_prepare_webhook_execution_with_missing_workflow(self):
-        """Test prepare_webhook_execution with missing workflow."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        mock_trigger = MagicMock()
-
-        with patch(
-            "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=mock_trigger
-        ):
-            with patch(
-                "services.trigger.webhook_service.Workflow.get_by_id", return_value=None
-            ):
-                result = _prepare_webhook_execution("test_webhook", is_debug=True)
-                assert result is None
-
-    def test_prepare_webhook_execution_with_missing_config(self):
-        """Test prepare_webhook_execution with missing config."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        mock_trigger = MagicMock()
-        mock_workflow = MagicMock()
-
-        with patch(
-            "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=mock_trigger
-        ):
-            with patch(
-                "services.trigger.webhook_service.Workflow.get_by_id", return_value=mock_workflow
-            ):
-                with patch(
-                    "services.trigger.webhook_service.WebhookConfig.get_by_webhook_id",
-                    return_value=None,
-                ):
-                    result = _prepare_webhook_execution("test_webhook", is_debug=True)
-                    assert result is None
-
-    def test_prepare_webhook_execution_with_missing_data(self):
-        """Test prepare_webhook_execution with missing data."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        mock_trigger = MagicMock()
-        mock_workflow = MagicMock()
-        mock_config = MagicMock()
-
-        with patch(
-            "services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=mock_trigger
-        ):
-            with patch(
-                "services.trigger.webhook_service.Workflow.get_by_id", return_value=mock_workflow
-            ):
-                with patch(
-                    "services.trigger.webhook_service.WebhookConfig.get_by_webhook_id",
-                    return_value=mock_config,
-                ):
-                    with patch(
-                        "services.trigger.webhook_service.WebhookData.get_by_webhook_id",
-                        return_value=None,
-                    ):
-                        with patch(
-                            "services.trigger.webhook_service.WebhookData.create",
-                            return_value=MagicMock(),
-                        ):
-                            result = _prepare_webhook_execution("test_webhook", is_debug=True)
-                            assert result is not None
-
-    def test_prepare_webhook_execution_multiple_calls(self):
-        """Test prepare_webhook_execution with multiple sequential calls."""
-        from services.trigger.webhook_service import _prepare_webhook_execution
-
-        mock_trigger = MagicMock()
-        mock_workflow = MagicMock()
-        mock_config = MagicMock()
-        mock_data = MagicMock()
-
-        patches = [
-            patch("services.trigger.webhook_service.WebhookTrigger.get_by_id", return_value=mock_trigger),
-            patch("services.trigger.webhook_service.Workflow.get_by_id", return_value=mock_workflow),
-            patch("services.trigger.webhook_service.WebhookConfig.get_by_webhook_id", return_value=mock_config),
-            patch("services.trigger.webhook_service.WebhookData.get_by_webhook_id", return_value=mock_data),
-        ]
-
-        for _ in range(3):
             with (
-                patches[0],
-                patches[1],
-                patches[2],
-                patches[3],
+                patch.object(
+                    WebhookService, "_detect_binary_mimetype", return_value="text/plain", autospec=True
+                ) as mock_detect,
+                patch.object(WebhookService, "_create_file_from_binary", autospec=True) as mock_create,
             ):
-                result = _prepare_webhook_execution("test_webhook", is_debug=True)
-                assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
+                mock_create.return_value = mock_file
+                body, files = WebhookService._extract_octet_stream_body(webhook_trigger)
+
+            assert body["raw"] == {"file": "data"}
+            assert files == {}
+            mock_detect.assert_called_once_with(binary_content)
+            mock_create.assert_called_once()
+            args = mock_create.call_args[0]
+            assert args[0] == binary_content
+            assert args[1] == "text/plain"
+            assert args[2] is webhook_trigger
+
+    def test_detect_binary_mimetype_uses_magic(self, monkeypatch: pytest.MonkeyPatch):
+        """python-magic output should be used when available."""
+        fake_magic = MagicMock()
+        fake_magic.from_buffer.return_value = "image/png"
+        monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
+
+        result = WebhookService._detect_binary_mimetype(b"binary data")
+
+        assert result == "image/png"
+        fake_magic.from_buffer.assert_called_once()
+
+    def test_detect_binary_mimetype_fallback_without_magic(self, monkeypatch: pytest.MonkeyPatch):
+        """Fallback MIME type should be used when python-magic is unavailable."""
+        monkeypatch.setattr("services.trigger.webhook_service.magic", None)
+
+        result = WebhookService._detect_binary_mimetype(b"binary data")
+
+        assert result == "application/octet-stream"
+
+    def test_detect_binary_mimetype_handles_magic_exception(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
+        """Fallback MIME type should be used when python-magic raises an exception."""
+        try:
+            import magic as real_magic
+        except ImportError:
+            pytest.skip("python-magic is not installed")
+
+        fake_magic = MagicMock()
+        fake_magic.from_buffer.side_effect = real_magic.MagicException("magic error")
+        monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
+        caplog.set_level(logging.DEBUG, logger="services.trigger.webhook_service")
+
+        result = WebhookService._detect_binary_mimetype(b"binary data")
+
+        assert result == "application/octet-stream"
+        assert "python-magic detection failed for octet-stream payload" in caplog.messages
+
+    def test_extract_webhook_data_invalid_json(self):
+        """Test webhook data extraction with invalid JSON."""
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "/webhook", method="POST", headers={"Content-Type": "application/json"}, data="invalid json"
+        ):
+            webhook_trigger = MagicMock()
+            with pytest.raises(ValueError, match="Invalid JSON body"):
+                WebhookService.extract_webhook_data(webhook_trigger)
+
+    def test_generate_webhook_response_default(self):
+        """Test webhook response generation with default values."""
+        node_config = {"data": {}}
+
+        response_data, status_code = WebhookService.generate_webhook_response(node_config)
+
+        assert status_code == 200
+        assert response_data["status"] == "success"
+        assert "Webhook processed successfully" in response_data["message"]
+
+    def test_generate_webhook_response_custom_json(self):
+        """Test webhook response generation with custom JSON response."""
+        node_config = {"data": {"status_code": 201, "response_body": '{"result": "created", "id": 123}'}}
+
+        response_data, status_code = WebhookService.generate_webhook_response(node_config)
+
+        assert status_code == 201
+        assert response_data["result"] == "created"
+        assert response_data["id"] == 123
+
+    def test_generate_webhook_response_custom_text(self):
+        """Test webhook response generation with custom text response."""
+        node_config = {"data": {"status_code": 202, "response_body": "Request accepted for processing"}}
+
+        response_data, status_code = WebhookService.generate_webhook_response(node_config)
+
+        assert status_code == 202
+        assert response_data["message"] == "Request accepted for processing"
+
+    def test_generate_webhook_response_invalid_json(self):
+        """Test webhook response generation with invalid JSON response."""
+        node_config = {"data": {"status_code": 400, "response_body": '{"invalid": json}'}}
+
+        response_data, status_code = WebhookService.generate_webhook_response(node_config)
+
+        assert status_code == 400
+        assert response_data["message"] == '{"invalid": json}'
+
+    def test_generate_webhook_response_empty_response_body(self):
+        """Test webhook response generation with empty response body."""
+        node_config = {"data": {"status_code": 204, "response_body": ""}}
+
+        response_data, status_code = WebhookService.generate_webhook_response(node_config)
+
+        assert status_code == 204
+        assert response_data["status"] == "success"
+        assert "Webhook processed successfully" in response_data["message"]
+
+    def test_generate_webhook_response_array_json(self):
+        """Test webhook response generation with JSON array response."""
+        node_config = {"data": {"status_code": 200, "response_body": '[{"id": 1}, {"id": 2}]'}}
+
+        response_data, status_code = WebhookService.generate_webhook_response(node_config)
+
+        assert status_code == 200
+        assert isinstance(response_data, list)
+        assert len(response_data) == 2
+        assert response_data[0]["id"] == 1
+        assert response_data[1]["id"] == 2
+
+    @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
+    @patch("services.trigger.webhook_service.file_factory", autospec=True)
+    def test_process_file_uploads_success(self, mock_file_factory, mock_tool_file_manager):
+        """Test successful file upload processing."""
+        # Mock ToolFileManager
+        mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
+        mock_tool_file = MagicMock()
+        mock_tool_file.id = "test_file_id"
+        mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
+
+        # Mock file factory
+        mock_file_obj = MagicMock()
+        mock_file_factory.build_from_mapping.return_value = mock_file_obj
+
+        # Create mock files
+        files = {
+            "file1": MagicMock(filename="test1.txt", content_type="text/plain"),
+            "file2": MagicMock(filename="test2.jpg", content_type="image/jpeg"),
+        }
+
+        # Mock file reads
+        files["file1"].stream.read.return_value = b"content1"
+        files["file2"].stream.read.return_value = b"content2"
+
+        webhook_trigger = MagicMock()
+        webhook_trigger.tenant_id = "test_tenant"
+
+        result = WebhookService._process_file_uploads(files, webhook_trigger)
+
+        assert len(result) == 2
+        assert "file1" in result
+        assert "file2" in result
+
+        # Verify file processing was called for each file
+        assert mock_tool_file_manager.call_count == 2
+        assert mock_file_factory.build_from_mapping.call_count == 2
+
+    @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
+    @patch("services.trigger.webhook_service.file_factory", autospec=True)
+    def test_process_file_uploads_with_errors(self, mock_file_factory, mock_tool_file_manager):
+        """Test file upload processing with errors."""
+        # Mock ToolFileManager
+        mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
+        mock_tool_file = MagicMock()
+        mock_tool_file.id = "test_file_id"
+        mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
+
+        # Mock file factory
+        mock_file_obj = MagicMock()
+        mock_file_factory.build_from_mapping.return_value = mock_file_obj
+
+        # Create mock files, one will fail
+        files = {
+            "good_file": MagicMock(filename="test.txt", content_type="text/plain"),
+            "bad_file": MagicMock(filename="test.bad", content_type="text/plain"),
+        }
+
+        files["good_file"].stream.read.return_value = b"content"
+        files["bad_file"].stream.read.side_effect = Exception("Read error")
+
+        webhook_trigger = MagicMock()
+        webhook_trigger.tenant_id = "test_tenant"
+
+        result = WebhookService._process_file_uploads(files, webhook_trigger)
+
+        # Should process the good file and skip the bad one
+        assert len(result) == 1
+        assert "good_file" in result
+        assert "bad_file" not in result
+
+    def test_process_file_uploads_empty_filename(self):
+        """Test file upload processing with empty filename."""
+        files = {
+            "no_filename": MagicMock(filename="", content_type="text/plain"),
+            "none_filename": MagicMock(filename=None, content_type="text/plain"),
+        }
+
+        webhook_trigger = MagicMock()
+        webhook_trigger.tenant_id = "test_tenant"
+
+        result = WebhookService._process_file_uploads(files, webhook_trigger)
+
+        # Should skip files without filenames
+        assert len(result) == 0
+
+    def test_validate_json_value_string(self):
+        """Test JSON value validation for string type."""
+        # Valid string
+        result = WebhookService._validate_json_value("name", "hello", "string")
+        assert result == "hello"
+
+        # Invalid string (number) - should raise ValueError
+        with pytest.raises(ValueError, match="Expected string, got int"):
+            WebhookService._validate_json_value("name", 123, "string")
+
+    def test_validate_json_value_number(self):
+        """Test JSON value validation for number type."""
+        # Valid integer
+        result = WebhookService._validate_json_value("count", 42, "number")
+        assert result == 42
+
+        # Valid float
+        result = WebhookService._validate_json_value("price", 19.99, "number")
+        assert result == 19.99
+
+        # Invalid number (string) - should raise ValueError
+        with pytest.raises(ValueError, match="Expected number, got str"):
+            WebhookService._validate_json_value("count", "42", "number")
+
+    def test_validate_json_value_bool(self):
+        """Test JSON value validation for boolean type."""
+        # Valid boolean
+        result = WebhookService._validate_json_value("enabled", True, "boolean")
+        assert result is True
+
+        result = WebhookService._validate_json_value("enabled", False, "boolean")
+        assert result is False
+
+        # Invalid boolean (string) - should raise ValueError
+        with pytest.raises(ValueError, match="Expected boolean, got str"):
+            WebhookService._validate_json_value("enabled", "true", "boolean")
+
+    def test_validate_json_value_object(self):
+        """Test JSON value validation for object type."""
+        # Valid object
+        result = WebhookService._validate_json_value("user", {"name": "John", "age": 30}, "object")
+        assert result == {"name": "John", "age": 30}
+
+        # Invalid object (string) - should raise ValueError
+        with pytest.raises(ValueError, match="Expected object, got str"):
+            WebhookService._validate_json_value("user", "not_an_object", "object")
+
+    def test_validate_json_value_array_string(self):
+        """Test JSON value validation for array[string] type."""
+        # Valid array of strings
+        result = WebhookService._validate_json_value("tags", ["tag1", "tag2", "tag3"], "array[string]")
+        assert result == ["tag1", "tag2", "tag3"]
+
+        # Invalid - not an array
+        with pytest.raises(ValueError, match="Expected array of strings, got str"):
+            WebhookService._validate_json_value("tags", "not_an_array", "array[string]")
+
+        # Invalid - array with non-strings
+        with pytest.raises(ValueError, match="Expected array of strings, got list"):
+            WebhookService._validate_json_value("tags", ["tag1", 123, "tag3"], "array[string]")
+
+    def test_validate_json_value_array_number(self):
+        """Test JSON value validation for array[number] type."""
+        # Valid array of numbers
+        result = WebhookService._validate_json_value("scores", [1, 2.5, 3, 4.7], "array[number]")
+        assert result == [1, 2.5, 3, 4.7]
+
+        # Invalid - array with non-numbers
+        with pytest.raises(ValueError, match="Expected array of numbers, got list"):
+            WebhookService._validate_json_value("scores", [1, "2", 3], "array[number]")
+
+    def test_validate_json_value_array_bool(self):
+        """Test JSON value validation for array[boolean] type."""
+        # Valid array of booleans
+        result = WebhookService._validate_json_value("flags", [True, False, True], "array[boolean]")
+        assert result == [True, False, True]
+
+        # Invalid - array with non-booleans
+        with pytest.raises(ValueError, match="Expected array of booleans, got list"):
+            WebhookService._validate_json_value("flags", [True, "false", True], "array[boolean]")
+
+    def test_validate_json_value_array_object(self):
+        """Test JSON value validation for array[object] type."""
+        # Valid array of objects
+        result = WebhookService._validate_json_value("users", [{"name": "John"}, {"name": "Jane"}], "array[object]")
+        assert result == [{"name": "John"}, {"name": "Jane"}]
+
+        # Invalid - array with non-objects
+        with pytest.raises(ValueError, match="Expected array of objects, got list"):
+            WebhookService._validate_json_value("users", [{"name": "John"}, "not_object"], "array[object]")
+
+    def test_convert_form_value_string(self):
+        """Test form value conversion for string type."""
+        result = WebhookService._convert_form_value("test", "hello", "string")
+        assert result == "hello"
+
+    def test_convert_form_value_number(self):
+        """Test form value conversion for number type."""
+        # Integer
+        result = WebhookService._convert_form_value("count", "42", "number")
+        assert result == 42
+
+        # Float
+        result = WebhookService._convert_form_value("price", "19.99", "number")
+        assert result == 19.99
+
+        # Invalid number
+        with pytest.raises(ValueError, match="Cannot convert 'not_a_number' to number"):
+            WebhookService._convert_form_value("count", "not_a_number", "number")
+
+    def test_convert_form_value_boolean(self):
+        """Test form value conversion for boolean type."""
+        # True values
+        assert WebhookService._convert_form_value("flag", "true", "boolean") is True
+        assert WebhookService._convert_form_value("flag", "1", "boolean") is True
+        assert WebhookService._convert_form_value("flag", "yes", "boolean") is True
+
+        # False values
+        assert WebhookService._convert_form_value("flag", "false", "boolean") is False
+        assert WebhookService._convert_form_value("flag", "0", "boolean") is False
+        assert WebhookService._convert_form_value("flag", "no", "boolean") is False
+
+        # Invalid boolean
+        with pytest.raises(ValueError, match="Cannot convert 'maybe' to boolean"):
+            WebhookService._convert_form_value("flag", "maybe", "boolean")
+
+    def test_extract_and_validate_webhook_data_success(self):
+        """Test successful unified data extraction and validation."""
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            query_string="count=42&enabled=true",
+            json={"message": "hello", "age": 25},
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "params": [
+                        {"name": "count", "type": "number", "required": True},
+                        {"name": "enabled", "type": "boolean", "required": True},
+                    ],
+                    "body": [
+                        {"name": "message", "type": "string", "required": True},
+                        {"name": "age", "type": "number", "required": True},
+                    ],
+                }
+            }
+
+            result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+
+            # Check that types are correctly converted
+            assert result["query_params"]["count"] == 42  # Converted to int
+            assert result["query_params"]["enabled"] is True  # Converted to bool
+            assert result["body"]["message"] == "hello"  # Already string
+            assert result["body"]["age"] == 25  # Already number
+
+    def test_extract_and_validate_webhook_data_invalid_json_error(self):
+        """Invalid JSON should bubble up as a ValueError with details."""
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data='{"invalid": }',
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                }
+            }
+
+            with pytest.raises(ValueError, match="Invalid JSON body"):
+                WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+
+    def test_extract_and_validate_webhook_data_validation_error(self):
+        """Test unified data extraction with validation error."""
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "/webhook",
+            method="GET",  # Wrong method
+            headers={"Content-Type": "application/json"},
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {
+                "data": {
+                    "method": "post",  # Expects POST
+                    "content_type": "application/json",
+                }
+            }
+
+            with pytest.raises(ValueError, match="HTTP method mismatch"):
+                WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+
+    def test_debug_mode_parameter_handling(self):
+        """Test that the debug mode parameter is properly handled in _prepare_webhook_execution."""
+        from controllers.trigger.webhook import _prepare_webhook_execution
+
+        # Mock the WebhookService methods
+        with (
+            patch.object(WebhookService, "get_webhook_trigger_and_workflow", autospec=True) as mock_get_trigger,
+            patch.object(WebhookService, "extract_and_validate_webhook_data", autospec=True) as mock_extract,
+        ):
+            mock_trigger = MagicMock()
+            mock_workflow = MagicMock()
+            mock_config = {"data": {"test": "config"}}
+            mock_data = {"test": "data"}
+
+            mock_get_trigger.return_value = (mock_trigger, mock_workflow, mock_config)
+            mock_extract.return_value = mock_data
+
+            result = _prepare_webhook_execution("test_webhook", is_debug=False)
+            assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
+
+            # Reset mock
+            mock_get_trigger.reset_mock()
+
+            result = _prepare_webhook_execution("test_webhook", is_debug=True)
+            assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
