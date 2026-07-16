@@ -907,6 +907,20 @@ class TestWorkflowEntryHelpers:
 
 
 class TestMappingUserInputsBranches:
+    @pytest.mark.parametrize("explicit_value", [False, 0, ""])
+    def test_preserves_explicit_falsy_user_input_values(self, explicit_value):
+        variable_pool = MagicMock()
+        variable_pool.get.return_value = None
+
+        workflow_entry.WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping={"node.input": ["target", "input"]},
+            user_inputs={"node.input": explicit_value},
+            variable_pool=variable_pool,
+            tenant_id="tenant-id",
+        )
+
+        variable_pool.add.assert_called_once_with(["target", "input"], explicit_value)
+
     def test_rejects_invalid_node_variable_key(self):
         class EmptySplitKey(UserString):
             def split(self, _sep=None):

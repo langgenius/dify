@@ -575,8 +575,11 @@ class WorkflowEntry:
             variable_key_list = list(variable_key_list)
 
             # get input value
-            input_value = user_inputs.get(node_variable)
-            if not input_value:
+            # Preserve explicit falsy values from the full key; only fall back to
+            # the short-key alias when the full key is absent.
+            if node_variable in user_inputs:
+                input_value = user_inputs[node_variable]
+            else:
                 input_value = user_inputs.get(node_variable_key)
             if input_value is None:
                 continue
