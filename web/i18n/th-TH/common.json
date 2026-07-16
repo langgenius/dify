@@ -471,6 +471,7 @@
   "operation.log": "ซุง",
   "operation.more": "มากขึ้น",
   "operation.moreActions": "การดำเนินการเพิ่มเติม",
+  "operation.moreActionsFor": "การดำเนินการเพิ่มเติมสำหรับ {{name}}",
   "operation.no": "ไม่",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "ไม่พบ {{content}}",

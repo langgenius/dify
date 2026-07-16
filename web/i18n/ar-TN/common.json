@@ -471,6 +471,7 @@
   "operation.log": "سجل",
   "operation.more": "المزيد",
   "operation.moreActions": "المزيد من الإجراءات",
+  "operation.moreActionsFor": "المزيد من الإجراءات لـ {{name}}",
   "operation.no": "لا",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "لم يتم العثور على {{content}}",

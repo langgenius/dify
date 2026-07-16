@@ -471,6 +471,7 @@
   "operation.log": "Журнал",
   "operation.more": "Більше",
   "operation.moreActions": "Більше дій",
+  "operation.moreActionsFor": "Більше дій для {{name}}",
   "operation.no": "Ні",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Жодного {{content}} не знайдено",

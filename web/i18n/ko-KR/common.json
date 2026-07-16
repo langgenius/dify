@@ -471,6 +471,7 @@
   "operation.log": "로그",
   "operation.more": "더 많은",
   "operation.moreActions": "추가 작업",
+  "operation.moreActionsFor": "{{name}}에 대한 추가 작업",
   "operation.no": "아니요",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "{{content}}가(이) 발견되지 않았습니다",
