@@ -1,11 +1,14 @@
 """Unit tests for workflow node execution conflict handling."""
 
-from unittest.mock import MagicMock, Mock
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
 
 import psycopg2.errors
 import pytest
+from sqlalchemy import Engine, event
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
@@ -16,196 +19,177 @@ from graphon.entities.workflow_node_execution import (
 )
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
-from models import Account, WorkflowNodeExecutionTriggeredFrom
+from models import Account, Tenant, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+
+
+@dataclass(frozen=True)
+class ConflictDatabase:
+    engine: Engine
+    session: Session
+    session_factory: sessionmaker[Session]
+
+
+@dataclass(frozen=True)
+class ConflictEvents:
+    insert_attempts: list[str]
+    rollbacks: list[bool]
+
+
+@pytest.fixture
+def conflict_database(sqlite_engine: Engine) -> Iterator[ConflictDatabase]:
+    """Create the execution table and real repository-owned sessions."""
+    WorkflowNodeExecutionModel.metadata.create_all(
+        sqlite_engine,
+        tables=[WorkflowNodeExecutionModel.__table__],
+    )
+    sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with sqlite_session_maker() as session:
+        yield ConflictDatabase(
+            engine=sqlite_engine,
+            session=session,
+            session_factory=sqlite_session_maker,
+        )
+
+
+def _account() -> Account:
+    tenant = Tenant(name="Conflict Tenant")
+    tenant.id = "test-tenant-id"
+    account = Account(name="Conflict User", email="conflict@example.com")
+    account.id = "test-user-id"
+    account._current_tenant = tenant
+    return account
+
+
+@pytest.fixture
+def repository(conflict_database: ConflictDatabase) -> SQLAlchemyWorkflowNodeExecutionRepository:
+    return SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=conflict_database.session_factory,
+        tenant_id="test-tenant-id",
+        user=_account(),
+        app_id="test-app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+
+
+def _execution(
+    *,
+    execution_id: str,
+    status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RUNNING,
+) -> WorkflowNodeExecution:
+    return WorkflowNodeExecution(
+        id=execution_id,
+        workflow_id="test-workflow-id",
+        workflow_execution_id="test-workflow-execution-id",
+        node_execution_id="test-node-execution-id",
+        node_id="test-node-id",
+        node_type=BuiltinNodeTypes.START,
+        title="Test Node",
+        index=1,
+        status=status,
+        created_at=naive_utc_now(),
+    )
+
+
+@contextmanager
+def _fail_inserts(
+    engine: Engine,
+    *,
+    failure_count: int,
+    duplicate: bool,
+) -> Iterator[ConflictEvents]:
+    insert_attempts: list[str] = []
+    rollbacks: list[bool] = []
+
+    def fail_insert(_connection, _cursor, statement, parameters, _context, _executemany) -> None:
+        if not statement.lstrip().upper().startswith("INSERT INTO WORKFLOW_NODE_EXECUTIONS"):
+            return
+        insert_attempts.append(statement)
+        if len(insert_attempts) > failure_count:
+            return
+        original_error = (
+            psycopg2.errors.UniqueViolation("forced duplicate key")
+            if duplicate
+            else RuntimeError("forced non-duplicate constraint failure")
+        )
+        raise IntegrityError(statement, parameters, original_error)
+
+    def record_rollback(_connection) -> None:
+        rollbacks.append(True)
+
+    event.listen(engine, "before_cursor_execute", fail_insert)
+    event.listen(engine, "rollback", record_rollback)
+    try:
+        yield ConflictEvents(insert_attempts=insert_attempts, rollbacks=rollbacks)
+    finally:
+        event.remove(engine, "before_cursor_execute", fail_insert)
+        event.remove(engine, "rollback", record_rollback)
 
 
 class TestWorkflowNodeExecutionConflictHandling:
     """Test cases for handling duplicate key conflicts in workflow node execution."""
 
-    def setup_method(self):
-        """Set up test fixtures."""
-        # Create a mock user with tenant_id
-        self.mock_user = Mock(spec=Account)
-        self.mock_user.id = "test-user-id"
-        self.mock_user.current_tenant_id = "test-tenant-id"
-
-        # Create mock session factory
-        self.mock_session_factory = Mock(spec=sessionmaker)
-
-        # Create repository instance
-        self.repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=self.mock_session_factory,
-            tenant_id="test-tenant-id",
-            user=self.mock_user,
-            app_id="test-app-id",
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        )
-
-    def test_save_with_duplicate_key_retries_with_new_uuid(self):
-        """Test that save retries with a new UUID v7 when encountering duplicate key error."""
-        # Create a mock session
-        mock_session = MagicMock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-        self.mock_session_factory.return_value = mock_session
-
-        # Mock session.get to return None (no existing record)
-        mock_session.get.return_value = None
-
-        # Create IntegrityError for duplicate key with proper psycopg2.errors.UniqueViolation
-        mock_unique_violation = Mock(spec=psycopg2.errors.UniqueViolation)
-        duplicate_error = IntegrityError(
-            "duplicate key value violates unique constraint",
-            params=None,
-            orig=mock_unique_violation,
-        )
-
-        # First call to session.add raises IntegrityError, second succeeds
-        mock_session.add.side_effect = [duplicate_error, None]
-        mock_session.commit.side_effect = [None, None]
-
-        # Create test execution
-        execution = WorkflowNodeExecution(
-            id="original-id",
-            workflow_id="test-workflow-id",
-            workflow_execution_id="test-workflow-execution-id",
-            node_execution_id="test-node-execution-id",
-            node_id="test-node-id",
-            node_type=BuiltinNodeTypes.START,
-            title="Test Node",
-            index=1,
-            status=WorkflowNodeExecutionStatus.RUNNING,
-            created_at=naive_utc_now(),
-        )
-
+    def test_save_with_duplicate_key_retries_with_new_uuid(
+        self,
+        repository: SQLAlchemyWorkflowNodeExecutionRepository,
+        conflict_database: ConflictDatabase,
+    ) -> None:
+        execution = _execution(execution_id="original-id")
         original_id = execution.id
 
-        # Save should succeed after retry
-        self.repository.save(execution)
+        with _fail_inserts(conflict_database.engine, failure_count=1, duplicate=True) as conflicts:
+            repository.save(execution)
 
-        # Verify that session.add was called twice (initial attempt + retry)
-        assert mock_session.add.call_count == 2
-
-        # Verify that the ID was changed (new UUID v7 generated)
+        assert len(conflicts.insert_attempts) == 2
+        assert len(conflicts.rollbacks) == 1
         assert execution.id != original_id
+        assert conflict_database.session.get(WorkflowNodeExecutionModel, original_id) is None
+        persisted = conflict_database.session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        assert persisted.node_execution_id == execution.node_execution_id
 
-    def test_save_with_existing_record_updates_instead_of_insert(self):
-        """Test that save updates existing record instead of inserting duplicate."""
-        # Create a mock session
-        mock_session = MagicMock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-        self.mock_session_factory.return_value = mock_session
+    def test_save_with_existing_record_updates_instead_of_insert(
+        self,
+        repository: SQLAlchemyWorkflowNodeExecutionRepository,
+        conflict_database: ConflictDatabase,
+    ) -> None:
+        execution = _execution(execution_id="existing-id")
+        repository.save(execution)
 
-        # Mock existing record
-        mock_existing = MagicMock()
-        mock_session.get.return_value = mock_existing
-        mock_session.commit.return_value = None
+        execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
+        repository.save(execution)
 
-        # Create test execution
-        execution = WorkflowNodeExecution(
-            id="existing-id",
-            workflow_id="test-workflow-id",
-            workflow_execution_id="test-workflow-execution-id",
-            node_execution_id="test-node-execution-id",
-            node_id="test-node-id",
-            node_type=BuiltinNodeTypes.START,
-            title="Test Node",
-            index=1,
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            created_at=naive_utc_now(),
-        )
+        conflict_database.session.expire_all()
+        persisted = conflict_database.session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        assert persisted.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert conflict_database.session.query(WorkflowNodeExecutionModel).count() == 1
 
-        # Save should update existing record
-        self.repository.save(execution)
+    def test_save_exceeds_max_retries_raises_error(
+        self,
+        repository: SQLAlchemyWorkflowNodeExecutionRepository,
+        conflict_database: ConflictDatabase,
+    ) -> None:
+        execution = _execution(execution_id="test-id")
 
-        # Verify that session.add was not called (update path)
-        mock_session.add.assert_not_called()
+        with _fail_inserts(conflict_database.engine, failure_count=3, duplicate=True) as conflicts:
+            with pytest.raises(IntegrityError):
+                repository.save(execution)
 
-        # Verify that session.commit was called
-        mock_session.commit.assert_called_once()
+        assert len(conflicts.insert_attempts) == 3
+        assert len(conflicts.rollbacks) == 3
+        assert conflict_database.session.query(WorkflowNodeExecutionModel).count() == 0
 
-    def test_save_exceeds_max_retries_raises_error(self):
-        """Test that save raises error after exceeding max retries."""
-        # Create a mock session
-        mock_session = MagicMock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-        self.mock_session_factory.return_value = mock_session
+    def test_save_non_duplicate_integrity_error_raises_immediately(
+        self,
+        repository: SQLAlchemyWorkflowNodeExecutionRepository,
+        conflict_database: ConflictDatabase,
+    ) -> None:
+        execution = _execution(execution_id="test-id")
 
-        # Mock session.get to return None (no existing record)
-        mock_session.get.return_value = None
+        with _fail_inserts(conflict_database.engine, failure_count=1, duplicate=False) as conflicts:
+            with pytest.raises(IntegrityError):
+                repository.save(execution)
 
-        # Create IntegrityError for duplicate key with proper psycopg2.errors.UniqueViolation
-        mock_unique_violation = Mock(spec=psycopg2.errors.UniqueViolation)
-        duplicate_error = IntegrityError(
-            "duplicate key value violates unique constraint",
-            params=None,
-            orig=mock_unique_violation,
-        )
-
-        # All attempts fail with duplicate error
-        mock_session.add.side_effect = duplicate_error
-
-        # Create test execution
-        execution = WorkflowNodeExecution(
-            id="test-id",
-            workflow_id="test-workflow-id",
-            workflow_execution_id="test-workflow-execution-id",
-            node_execution_id="test-node-execution-id",
-            node_id="test-node-id",
-            node_type=BuiltinNodeTypes.START,
-            title="Test Node",
-            index=1,
-            status=WorkflowNodeExecutionStatus.RUNNING,
-            created_at=naive_utc_now(),
-        )
-
-        # Save should raise IntegrityError after max retries
-        with pytest.raises(IntegrityError):
-            self.repository.save(execution)
-
-        # Verify that session.add was called 3 times (max_retries)
-        assert mock_session.add.call_count == 3
-
-    def test_save_non_duplicate_integrity_error_raises_immediately(self):
-        """Test that non-duplicate IntegrityErrors are raised immediately without retry."""
-        # Create a mock session
-        mock_session = MagicMock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-        self.mock_session_factory.return_value = mock_session
-
-        # Mock session.get to return None (no existing record)
-        mock_session.get.return_value = None
-
-        # Create IntegrityError for non-duplicate constraint
-        other_error = IntegrityError(
-            "null value in column violates not-null constraint",
-            params=None,
-            orig=None,
-        )
-
-        # First call raises non-duplicate error
-        mock_session.add.side_effect = other_error
-
-        # Create test execution
-        execution = WorkflowNodeExecution(
-            id="test-id",
-            workflow_id="test-workflow-id",
-            workflow_execution_id="test-workflow-execution-id",
-            node_execution_id="test-node-execution-id",
-            node_id="test-node-id",
-            node_type=BuiltinNodeTypes.START,
-            title="Test Node",
-            index=1,
-            status=WorkflowNodeExecutionStatus.RUNNING,
-            created_at=naive_utc_now(),
-        )
-
-        # Save should raise error immediately
-        with pytest.raises(IntegrityError):
-            self.repository.save(execution)
-
-        # Verify that session.add was called only once (no retry)
-        assert mock_session.add.call_count == 1
+        assert len(conflicts.insert_attempts) == 1
+        assert len(conflicts.rollbacks) == 1
+        assert conflict_database.session.get(WorkflowNodeExecutionModel, execution.id) is None
