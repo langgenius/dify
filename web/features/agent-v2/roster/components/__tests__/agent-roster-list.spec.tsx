@@ -129,6 +129,12 @@ describe('AgentRosterList', () => {
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
   })
 
+  it('exposes each agent card with the agent name', () => {
+    renderList([createAgent()])
+
+    expect(screen.getByRole('article', { name: 'Research Agent' })).toBeInTheDocument()
+  })
+
   it('uses the Figma-aligned card title and role typography', () => {
     renderList([createAgent()])
 

@@ -105,6 +105,7 @@ jobs:
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/envs/middleware.env.example'
               - '.github/workflows/web-e2e.yml'
+              - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
             vdb:
               - 'api/core/rag/datasource/**'

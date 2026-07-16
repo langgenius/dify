@@ -1,5 +1,5 @@
 import { toast } from '@langgenius/dify-ui/toast'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -245,6 +245,35 @@ describe('AgentEnvEditor', () => {
       )
 
       expect(screen.queryByDisplayValue('sk-original')).not.toBeInTheDocument()
+    })
+
+    it('should expose each environment variable as a named table row', () => {
+      render(
+        <EnvVariablesTable
+          editable
+          envVariables={[
+            {
+              id: 'env-1',
+              key: 'API_KEY',
+              value: 'secret-value',
+              scope: 'plain',
+            },
+          ]}
+          onDelete={vi.fn()}
+          onScopeChange={vi.fn()}
+          showDraftRow={false}
+        />,
+      )
+
+      const table = screen.getByRole('table', {
+        name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.label',
+      })
+      const row = within(table).getByRole('row', {
+        name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.keyColumn: API_KEY',
+      })
+
+      expect(within(row).getByRole('textbox', { name: /keyColumn/ })).toHaveValue('API_KEY')
+      expect(within(row).getByRole('textbox', { name: /valueColumn/ })).toHaveValue('secret-value')
     })
   })
 })

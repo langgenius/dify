@@ -144,13 +144,6 @@ Then(
   },
 )
 
-When('I close Agent v2 API key management', async function (this: DifyWorld) {
-  const apiKeyDialog = this.getPage().getByRole('dialog', { name: /API Secret key/i })
-
-  await apiKeyDialog.getByLabel('Close').click()
-  await expect(apiKeyDialog).not.toBeVisible()
-})
-
 When('I open the Agent v2 API Reference', async function (this: DifyWorld) {
   const page = this.getPage()
   const apiReferenceLink = page.getByRole('link', { name: 'API Reference' })

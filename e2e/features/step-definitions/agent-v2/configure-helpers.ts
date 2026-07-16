@@ -161,15 +161,21 @@ export const uploadSummaryConfigSkillForBuildDraft = async (world: DifyWorld) =>
 
 export const openAgentAdvancedSettings = async (page: ReturnType<DifyWorld['getPage']>) => {
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+  const trigger = advancedSettings
+    .getByRole('heading', { name: 'Advanced Settings' })
+    .getByRole('button')
   const envEditorHeading = advancedSettings.getByRole('heading', { name: 'Env Editor' })
 
-  if (!(await envEditorHeading.isVisible().catch(() => false)))
-    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
-
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await trigger.click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await expect(envEditorHeading).toBeVisible()
 
   return advancedSettings
 }
+
+export const getAgentEnvVariableRow = (advancedSettings: Locator, key: string) =>
+  advancedSettings.getByRole('row', { name: `Key: ${key}`, exact: true })
 
 export const expectAgentEnvVariableVisible = async (
   world: DifyWorld,
@@ -177,45 +183,16 @@ export const expectAgentEnvVariableVisible = async (
   value: string,
 ) => {
   const advancedSettings = await openAgentAdvancedSettings(world.getPage())
+  const variableRow = getAgentEnvVariableRow(advancedSettings, key)
 
-  await expect
-    .poll(
-      async () => {
-        const text = await advancedSettings.textContent()
-        const inputValues = await advancedSettings
-          .getByRole('textbox')
-          .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))
-
-        return {
-          hasKey: inputValues.includes(key) || !!text?.includes(key),
-          hasValue: inputValues.includes(value) || !!text?.includes(value),
-        }
-      },
-      { timeout: 30_000 },
-    )
-    .toEqual({
-      hasKey: true,
-      hasValue: true,
-    })
-  await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
+  await expect(variableRow).toContainText(value, { timeout: 30_000 })
+  await expect(variableRow.getByText('Plain', { exact: true })).toBeVisible()
 }
 
 export const expectAgentEnvVariableHidden = async (world: DifyWorld, key: string) => {
   const advancedSettings = await openAgentAdvancedSettings(world.getPage())
 
-  await expect
-    .poll(
-      async () => {
-        const text = await advancedSettings.textContent()
-        const inputValues = await advancedSettings
-          .getByRole('textbox')
-          .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))
-
-        return inputValues.includes(key) || !!text?.includes(key)
-      },
-      { timeout: 30_000 },
-    )
-    .toBe(false)
+  await expect(getAgentEnvVariableRow(advancedSettings, key)).toHaveCount(0)
 }
 
 export const expectNormalAgentPromptDraft = async (world: DifyWorld) => {
@@ -236,9 +213,11 @@ export const expectProviderToolActionVisible = async (
     name: tool.providerName,
   })
   await expect(provider).toBeVisible()
+  await expect(provider).toHaveAttribute('aria-expanded', 'false')
+  await provider.click()
+  await expect(provider).toHaveAttribute('aria-expanded', 'true')
 
   const action = toolsSection.getByText(tool.actionName, { exact: true })
-  if (!(await action.isVisible())) await provider.click()
   await expect(action).toBeVisible()
 
   return { action, tool }

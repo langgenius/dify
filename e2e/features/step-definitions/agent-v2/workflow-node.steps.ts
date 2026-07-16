@@ -36,8 +36,7 @@ Given(
 
 When('I open the Agent v2 workflow node panel', async function (this: DifyWorld) {
   const page = this.getPage()
-  const workflowCanvas = page.locator('#workflow-container')
-  const agentNode = workflowCanvas.getByRole('button', { name: 'Agent' }).first()
+  const agentNode = page.getByRole('button', { name: 'Agent', exact: true })
 
   await expect(agentNode).toBeVisible({ timeout: 30_000 })
   await agentNode.click()

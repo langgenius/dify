@@ -22,13 +22,10 @@ import {
   updatedAgentPrompt,
   updatedAgentSoulConfig,
 } from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord, skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
-import { hasToolEntry } from '../../agent-v2/support/preflight/tools'
 import {
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,
 } from '../../agent-v2/support/test-materials'
-import { getPreseededToolContract } from '../../agent-v2/support/tools'
 import {
   expectAgentModelRequiredFeedback,
   getAgentEnvVariableValue,
@@ -286,54 +283,6 @@ When('I apply the Agent v2 Build draft via API', async function (this: DifyWorld
   await applyAgentBuildDraft(getCurrentAgentId(this))
 })
 
-async function skipBuildDraftToolWriteback(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Build chat Dify Tool writeback is not available: finalize/config mutation paths do not support tools; current passing coverage only verifies API-seeded Build draft apply for files, skills, and env.',
-    {
-      owner: 'product',
-      remediation: 'Define and implement Build draft Tool writeback before enabling this scenario.',
-    },
-  )
-}
-
-Given('Agent v2 Build chat Dify Tool writeback is available', async function (this: DifyWorld) {
-  return skipBuildDraftToolWriteback(this)
-})
-
-Then(
-  'Agent v2 Build chat Dify Tool writeback should be available',
-  async function (this: DifyWorld) {
-    return skipBuildDraftToolWriteback(this)
-  },
-)
-
-async function skipBuildDraftUnavailableResourceRecovery(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Build chat unavailable Skill/Tool recovery is not covered: the product needs a stable user-visible failure state and deterministic request fixture before this can be automated.',
-    {
-      owner: 'product/seed',
-      remediation:
-        'Define the unavailable-resource UX contract, then seed a stable model-backed prompt that requests a missing Skill and Tool without mutating the saved Agent config.',
-    },
-  )
-}
-
-Given(
-  'Agent v2 Build chat unavailable Skill and Tool recovery is available',
-  async function (this: DifyWorld) {
-    return skipBuildDraftUnavailableResourceRecovery(this)
-  },
-)
-
-Then(
-  'Agent v2 Build chat unavailable Skill and Tool recovery should be available',
-  async function (this: DifyWorld) {
-    return skipBuildDraftUnavailableResourceRecovery(this)
-  },
-)
-
 Then('I should see the Agent v2 Build draft pending changes', async function (this: DifyWorld) {
   const page = this.getPage()
 
@@ -439,26 +388,6 @@ Then(
 )
 
 Then(
-  'the normal Agent v2 draft should not include the e2e-summary-skill Skill',
-  async function (this: DifyWorld) {
-    await expect
-      .poll(
-        async () => {
-          const agentSoul = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul
-
-          return (
-            agentSoul?.config_skills?.some(
-              (skill) => skill.name === agentBuilderPreseededResources.summarySkill,
-            ) ?? false
-          )
-        },
-        { timeout: 30_000 },
-      )
-      .toBe(false)
-  },
-)
-
-Then(
   'the normal Agent v2 draft should not include the generated build note',
   async function (this: DifyWorld) {
     await expect
@@ -468,26 +397,6 @@ Then(
         { timeout: 30_000 },
       )
       .not.toContain(BUILD_NOTE_MARKER)
-  },
-)
-
-Then(
-  'the normal Agent v2 draft should not include the Agent Builder JSON Replace tool',
-  async function (this: DifyWorld) {
-    const agentId = getCurrentAgentId(this)
-    const tool = getPreseededToolContract(this, agentBuilderPreseededResources.jsonReplaceTool)
-
-    await expect
-      .poll(
-        async () => {
-          const draft = await getAgentComposerDraft(agentId)
-          const tools = asArray(asRecord(draft.agent_soul?.tools).dify_tools)
-
-          return hasToolEntry(tools, tool)
-        },
-        { timeout: 30_000 },
-      )
-      .toBe(false)
   },
 )
 

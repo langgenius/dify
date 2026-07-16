@@ -1,10 +1,9 @@
 import type { DataTable } from '@cucumber/cucumber'
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentV2WorkflowOutputVariable, DifyWorld } from '../../support/world'
-import { Given, Then, When } from '@cucumber/cucumber'
+import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { getWorkflowDraft } from '../../../support/api'
-import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
 
 const agentV2WorkflowNodeId = 'agent-v2'
 const taskFileOutputName = 'e2e_report.pdf'
@@ -51,11 +50,12 @@ const waitForWorkflowDraftSave = (world: DifyWorld, appId: string) =>
 
 const openWorkflowOutputVariablesPanel = async (world: DifyWorld) => {
   const page = world.getPage()
+  const outputVariablesButton = page.getByRole('button', { name: 'Output Variables' })
   const newOutputButton = page.getByRole('button', { name: 'New output' })
 
-  if (!(await newOutputButton.isVisible().catch(() => false)))
-    await page.getByRole('button', { name: 'Output Variables' }).click()
-
+  await expect(outputVariablesButton).toHaveAttribute('aria-expanded', 'false')
+  await outputVariablesButton.click()
+  await expect(outputVariablesButton).toHaveAttribute('aria-expanded', 'true')
   await expect(newOutputButton).toBeVisible()
 }
 
@@ -345,29 +345,3 @@ async function expectAgentTaskOutputReference(
   await expect(page.getByText('file', { exact: true })).toBeVisible()
   if (unexpectedName) await expect(page.getByText(unexpectedName, { exact: true })).toHaveCount(0)
 }
-
-async function skipWorkflowTaskOutputReferenceDeletionConsistency(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Agent v2 workflow task output deletion consistency is not available: deleting an output from the list currently leaves the Prompt token without a stable user-visible invalid-reference state.',
-    {
-      owner: 'product',
-      remediation:
-        'Define whether deletion should sync the Prompt token, block deletion, or expose an invalid-reference state before enabling this scenario.',
-    },
-  )
-}
-
-Given(
-  'Agent v2 workflow task output reference deletion consistency is available',
-  async function (this: DifyWorld) {
-    return skipWorkflowTaskOutputReferenceDeletionConsistency(this)
-  },
-)
-
-Then(
-  'Agent v2 workflow task output reference deletion consistency should be available',
-  async function (this: DifyWorld) {
-    return skipWorkflowTaskOutputReferenceDeletionConsistency(this)
-  },
-)

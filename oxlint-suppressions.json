@@ -875,9 +875,6 @@
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
     },
-    "jsx_a11y/no-noninteractive-element-to-interactive-role": {
-      "count": 1
-    },
     "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }

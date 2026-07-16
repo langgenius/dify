@@ -628,9 +628,9 @@ describe('AppCard', () => {
       })
     })
 
-    it('should display app name', () => {
+    it('should expose the app card with its app name', () => {
       render(<AppCard app={mockApp} />)
-      expect(screen.getByText('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('article', { name: 'Test App' })).toBeInTheDocument()
     })
 
     it('should display app description', () => {

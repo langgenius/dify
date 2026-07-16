@@ -292,6 +292,8 @@ function AppCard({
 
   return (
     <div
+      role="region"
+      aria-label={basicName}
       className={`${isInPanel ? 'border-t border-l-[0.5px]' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
     >
       <div
@@ -364,6 +366,7 @@ function AppCard({
                   render={
                     <div>
                       <Switch
+                        aria-label={basicName}
                         checked={cardState.runningStatus}
                         onCheckedChange={onChangeStatus}
                         disabled={cardState.toggleDisabled}
@@ -381,6 +384,7 @@ function AppCard({
               </Popover>
             ) : (
               <Switch
+                aria-label={basicName}
                 checked={cardState.runningStatus}
                 onCheckedChange={onChangeStatus}
                 disabled={cardState.toggleDisabled}

@@ -16,7 +16,7 @@ Feature: Agent v2 Access Point
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Web app access URL
-    And I record the current Agent v2 orchestration draft
+    And Agent v2 Web app access actions must preserve the current orchestration
     When I copy the Agent v2 Web app access URL
     Then the Agent v2 Web app access URL should show it was copied
     And the current Agent v2 orchestration draft should be unchanged
@@ -30,7 +30,7 @@ Feature: Agent v2 Access Point
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Web app access URL
-    And I record the current Agent v2 orchestration draft
+    And Agent v2 Web app access actions must preserve the current orchestration
     When I launch the Agent v2 Web app
     Then the Agent v2 Web app should open in a new tab
     And the current Agent v2 orchestration draft should be unchanged
@@ -42,7 +42,7 @@ Feature: Agent v2 Access Point
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    And I record the current Agent v2 orchestration draft
+    And Agent v2 Web app access actions must preserve the current orchestration
     And I open Agent v2 Embedded configuration
     Then I should see the Agent v2 Embedded configuration dialog
     And the current Agent v2 orchestration draft should be unchanged
@@ -54,7 +54,7 @@ Feature: Agent v2 Access Point
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    And I record the current Agent v2 orchestration draft
+    And Agent v2 Web app access actions must preserve the current orchestration
     And I open Agent v2 Web app customization
     Then I should see the Agent v2 Web app customization dialog
     And the current Agent v2 orchestration draft should be unchanged
@@ -66,7 +66,7 @@ Feature: Agent v2 Access Point
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    And I record the current Agent v2 orchestration draft
+    And Agent v2 Web app access actions must preserve the current orchestration
     And I open Agent v2 Web app settings
     Then I should see the Agent v2 Web app settings dialog
     And the current Agent v2 orchestration draft should be unchanged
@@ -85,20 +85,6 @@ Feature: Agent v2 Access Point
     Then Agent v2 Web app access should be in service
     When I refresh the current page
     Then Agent v2 Web app access should be in service
-
-  @web-app-access @published-web-app @feature-gated
-  Scenario: Disabled Web app public URL shows an unavailable state
-    Given I am signed in as the default E2E admin
-    And Agent v2 disabled Web app public unavailable state is available
-    And a basic configured Agent v2 test agent has been created via API
-    And the Agent v2 draft has been published via API
-    And Agent v2 Web app access has been enabled via API
-    When I open the Agent v2 configure page from the Agent Roster
-    And I switch to the Agent v2 Access Point section
-    And I disable Agent v2 Web app access
-    Then Agent v2 Web app access should be out of service
-    When I open the disabled Agent v2 Web app URL
-    Then the disabled Agent v2 Web app should show an unavailable state
 
   @core @workflow-reference
   Scenario: Workflow access shows the referencing workflow

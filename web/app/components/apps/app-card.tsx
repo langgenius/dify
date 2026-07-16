@@ -1193,9 +1193,9 @@ export function AppCard({
 
   return (
     <>
-      <div className="group relative col-span-1 h-41.5">
+      <article aria-labelledby={appNameId} className="group relative col-span-1 h-41.5">
         {isPreviewOnly ? (
-          <article
+          <div
             role="button"
             tabIndex={0}
             aria-disabled="true"
@@ -1206,7 +1206,7 @@ export function AppCard({
             onKeyDown={handlePreviewOnlyCardKeyDown}
           >
             {appCardContent}
-          </article>
+          </div>
         ) : (
           <Link
             href={appHref}
@@ -1335,7 +1335,7 @@ export function AppCard({
             )}
           </div>
         )}
-      </div>
+      </article>
       {showEditModal && (
         <EditAppModal
           isEditModal

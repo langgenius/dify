@@ -64,6 +64,9 @@ pnpm -C e2e e2e:headed -- --tags @smoke
 
 # slow down browser actions for local debugging
 E2E_SLOW_MO=500 pnpm -C e2e e2e:headed -- --tags @smoke
+
+# focused keyboard and cross-browser smoke coverage
+E2E_BROWSER=webkit pnpm -C e2e e2e -- --tags @browser-smoke
 ```
 
 Frontend artifact behavior:
@@ -128,7 +131,11 @@ This removes:
 - `e2e/.auth`
 - `e2e/.logs`
 - `e2e/.logs-non-external`
+- `e2e/.logs-webkit`
 - `e2e/cucumber-report`
+- `e2e/cucumber-report-non-external`
+- `e2e/cucumber-report-webkit`
+- `e2e/seed-report`
 
 Start the full middleware stack:
 
@@ -170,9 +177,25 @@ Artifacts and diagnostics:
 - `cucumber-report/report.html`: HTML report
 - `cucumber-report/report.json`: JSON report
 - `cucumber-report/artifacts/`: failure screenshots and HTML captures
+- `cucumber-report-non-external/`: Chromium core report preserved before later CI lanes
+- `cucumber-report-webkit/`: focused WebKit keyboard/browser smoke report
 - `.logs/cucumber-api.log`: backend startup log
 - `.logs/cucumber-web.log`: frontend startup log
 - `.logs-non-external/`: non-external logs preserved before an external CI run
+- `.logs-webkit/`: focused WebKit lane logs
+- `seed-report/`: JSON readiness reports emitted by external runtime seed packs
+
+CI enables a JSON report gate after Cucumber exits. The gate asserts minimum selected and passed
+scenario counts, maximum skipped counts, and zero unexplained skips. A skipped scenario counts as
+an explained blocked precondition only when its skipped step attaches a `Blocked precondition:`
+reason. This keeps feature-gated and preflight readiness reporting visible without allowing a
+zero-coverage or silently skipped CI run to pass. The thresholds are configured with:
+
+- `E2E_CUCUMBER_REPORT_PROFILE`
+- `E2E_CUCUMBER_MIN_SELECTED_SCENARIOS`
+- `E2E_CUCUMBER_MIN_PASSED_SCENARIOS`
+- `E2E_CUCUMBER_MAX_SKIPPED_SCENARIOS`
+- `E2E_CUCUMBER_MAX_UNEXPECTED_SKIPPED_SCENARIOS`
 
 Open the HTML report locally with:
 
@@ -212,6 +235,7 @@ Feature: Create dataset
 - `@external-model` — scenario execution can call a real model provider. Use this only for runtime requests, not for scenarios that only require an active model fixture.
 - `@external-tool` — scenario execution can call a real third-party tool provider. Use this only for runtime tool execution, not for plugin installation, discovery, or local deterministic tools.
 - `@microphone` — runs the scenario in an isolated Chromium instance backed by the checked-in fake audio fixture and grants microphone permission only to that scenario context.
+- `@browser-smoke` — focused keyboard and navigation coverage that runs in Chromium with the core suite and again in WebKit on CI.
 - `@skip` — excluded from all runs
 
 External runtime commands are opt-in. `pnpm -C e2e e2e:external:prepare` reads `E2E_EXTERNAL_RUNTIME_SEED_SPECS`, defaulting to `agent-v2:external-runtime`, and runs the matching seed packs before the external suite. `pnpm -C e2e e2e:external` reads `E2E_EXTERNAL_RUNTIME_TAGS`, defaulting to `(@external-model or @external-tool) and not @feature-gated and not @skip and not @preview`.

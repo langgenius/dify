@@ -1,6 +1,13 @@
 import type { ManagedProcess } from '../support/process'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
+import { runCleanupTasks } from '../support/cleanup'
+import {
+  assertCucumberReport,
+  formatCucumberReportSummary,
+  getCucumberReportGate,
+  readCucumberReportSummary,
+} from '../support/cucumber-report'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
 import { startWebServer, stopWebServer } from '../support/web-server'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
@@ -150,19 +157,17 @@ const main = async () => {
   const cleanup = async () => {
     if (!cleanupPromise) {
       cleanupPromise = (async () => {
-        await stopWebServer()
-        await stopManagedProcess(celeryProcess)
-        await stopManagedProcess(apiProcess)
-        await stopManagedProcess(difyAgentProcess)
-        await stopManagedProcess(shellctlProcess)
+        const cleanupErrors = await runCleanupTasks([
+          { label: 'Stop web server', run: stopWebServer },
+          { label: 'Stop celery worker', run: () => stopManagedProcess(celeryProcess) },
+          { label: 'Stop API server', run: () => stopManagedProcess(apiProcess) },
+          { label: 'Stop agent backend', run: () => stopManagedProcess(difyAgentProcess) },
+          { label: 'Stop shellctl sandbox', run: () => stopManagedProcess(shellctlProcess) },
+          ...(startMiddlewareForRun ? [{ label: 'Stop middleware', run: stopMiddleware }] : []),
+        ])
 
-        if (startMiddlewareForRun) {
-          try {
-            await stopMiddleware()
-          } catch {
-            // Cleanup should continue even if middleware shutdown fails.
-          }
-        }
+        if (cleanupErrors.length > 0)
+          throw new Error(`E2E teardown errors:\n${cleanupErrors.join('\n')}`)
       })()
     }
 
@@ -170,9 +175,13 @@ const main = async () => {
   }
 
   const onTerminate = () => {
-    void cleanup().finally(() => {
-      process.exit(1)
-    })
+    void cleanup()
+      .catch((error) => {
+        console.error(error instanceof Error ? error.message : String(error))
+      })
+      .finally(() => {
+        process.exit(1)
+      })
   }
 
   process.once('SIGINT', onTerminate)
@@ -264,6 +273,16 @@ const main = async () => {
       cwd: e2eDir,
       env: cucumberEnv,
     })
+
+    const reportGate = getCucumberReportGate(cucumberEnv)
+    if (reportGate) {
+      const reportPath = path.join(cucumberReportDir, 'report.json')
+      const reportSummary = await readCucumberReportSummary(reportPath)
+      console.warn(
+        `[e2e] cucumber report ${reportGate.profile}: ${formatCucumberReportSummary(reportSummary)}`,
+      )
+      assertCucumberReport(reportSummary, reportGate)
+    }
 
     process.exitCode = result.exitCode
   } finally {
