@@ -140,7 +140,7 @@ type MockCreateSnippetDialogProps = {
 }
 
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  default: ({
+  CreateSnippetDialog: ({
     isOpen,
     title,
     confirmText,

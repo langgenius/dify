@@ -775,6 +775,59 @@ describe('AgentPreviewChat', () => {
     })
   })
 
+  it('should preserve tool labels when formatting chat history', async () => {
+    chatMessagesGetMock.mockResolvedValue({
+      data: [
+        {
+          id: 'message-with-tool-label',
+          conversation_id: 'conversation-1',
+          query: 'run pwd',
+          answer: '',
+          inputs: {},
+          message: [],
+          message_files: [],
+          agent_thoughts: [
+            {
+              id: 'thought-with-tool-label',
+              message_id: 'message-with-tool-label',
+              thought: '',
+              answer: '',
+              tool: 'shell_run',
+              tool_input: 'pwd',
+              tool_labels: {
+                shell_run: {
+                  en_US: 'Ran commands',
+                  zh_Hans: '运行了命令',
+                },
+              },
+              observation: '/workspace',
+              position: 1,
+            },
+          ],
+          feedbacks: [],
+          status: 'success',
+          from_source: 'console',
+        },
+      ],
+    })
+
+    renderPreviewChat({ conversationId: 'conversation-1' })
+
+    await waitFor(() => {
+      const formattedTree = useChatMock.mock.calls.find((call) => {
+        const chatTree = call[2]
+        return JSON.stringify(chatTree).includes('thought-with-tool-label')
+      })?.[2]
+
+      expect(formattedTree?.[0]?.children?.[0]?.agent_thoughts?.[0]?.tool_labels).toEqual({
+        shell_run: {
+          en_US: 'Ran commands',
+          zh_Hans: '运行了命令',
+        },
+      })
+    })
+  })
+
   it('should notify the owner when a send settles with an error', async () => {
     const onSendInterrupted = vi.fn()
     renderPreviewChat({

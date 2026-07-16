@@ -23,7 +23,6 @@ from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from libs.helper import extract_tenant_id
 from libs.uuid_utils import uuidv7
 from models import (
     Account,
@@ -63,6 +62,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
@@ -72,7 +72,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
-            user: Account or EndUser object containing tenant_id, user ID, and role information
+            tenant_id: Tenant that owns the workflow node execution
+            user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
         """
@@ -87,10 +88,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                     f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
                 )
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
+            raise ValueError("tenant_id is required")
         self._tenant_id = tenant_id
 
         # Store app context
@@ -299,6 +298,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             content=value_json.encode("utf-8"),
             mimetype="application/json",
             user=self._user,
+            tenant_id=self._tenant_id,
         )
         offload = WorkflowNodeExecutionOffload(
             id=uuidv7(),

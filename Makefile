@@ -2,6 +2,7 @@
 DOCKER_REGISTRY=langgenius
 WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
 API_IMAGE=$(DOCKER_REGISTRY)/dify-api
+SANDBOX_RUNTIME_IMAGE=$(DOCKER_REGISTRY)/dify-agent-local-sandbox
 VERSION=latest
 DOCKER_DIR=docker
 DOCKER_MIDDLEWARE_ENV=$(DOCKER_DIR)/middleware.env
@@ -160,6 +161,13 @@ build-api:
 	docker build -t $(API_IMAGE):$(VERSION) -f api/Dockerfile .
 	@echo "API Docker image built successfully: $(API_IMAGE):$(VERSION)"
 
+build-sandbox-runtime:
+	@echo "Building sandbox runtime Docker image: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)..."
+	docker build -t $(SANDBOX_RUNTIME_IMAGE):$(VERSION) \
+		-f dify-agent-runtime/docker/Dockerfile \
+		dify-agent-runtime
+	@echo "Sandbox runtime Docker image built successfully: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)"
+
 # Push Docker images
 push-web:
 	@echo "Pushing web Docker image: $(WEB_IMAGE):$(VERSION)..."
@@ -171,14 +179,20 @@ push-api:
 	docker push $(API_IMAGE):$(VERSION)
 	@echo "API Docker image pushed successfully: $(API_IMAGE):$(VERSION)"
 
+push-sandbox-runtime:
+	@echo "Pushing sandbox runtime Docker image: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)..."
+	docker push $(SANDBOX_RUNTIME_IMAGE):$(VERSION)
+	@echo "Sandbox runtime Docker image pushed successfully: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)"
+
 # Build all images
-build-all: build-web build-api
+build-all: build-web build-api build-sandbox-runtime
 
 # Push all images
-push-all: push-web push-api
+push-all: push-web push-api push-sandbox-runtime
 
 build-push-api: build-api push-api
 build-push-web: build-web push-web
+build-push-sandbox-runtime: build-sandbox-runtime push-sandbox-runtime
 
 # Build and push all images
 build-push-all: build-all push-all
@@ -206,9 +220,10 @@ help:
 	@echo "Docker Build Targets:"
 	@echo "  make build-web      - Build web Docker image"
 	@echo "  make build-api      - Build API Docker image"
+	@echo "  make build-sandbox-runtime - Build sandbox runtime Docker image"
 	@echo "  make build-all      - Build all Docker images"
 	@echo "  make push-all       - Push all Docker images"
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all
+.PHONY: build-web build-api build-sandbox-runtime push-web push-api push-sandbox-runtime build-all push-all build-push-all build-push-sandbox-runtime dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all

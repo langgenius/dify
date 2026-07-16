@@ -590,7 +590,9 @@ describe('AppCard', () => {
       expect(screen.queryByRole('link', { name: 'Preview Only App' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'app.studio.starApp' })).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.operation.more' }),
+        screen.queryByRole('button', {
+          name: /common\.operation\.moreActionsFor/,
+        }),
       ).not.toBeInTheDocument()
 
       fireEvent.click(tagSelector)
@@ -625,7 +627,9 @@ describe('AppCard', () => {
       ).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'app.studio.starApp' })).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.operation.more' }),
+        screen.queryByRole('button', {
+          name: /common\.operation\.moreActionsFor/,
+        }),
       ).not.toBeInTheDocument()
 
       fireEvent.click(card)

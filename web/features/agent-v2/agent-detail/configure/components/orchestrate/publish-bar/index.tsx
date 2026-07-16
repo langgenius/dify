@@ -5,7 +5,7 @@ import type {
   AgentReferencingWorkflowResponse,
   AgentReferencingWorkflowsResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -25,7 +25,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 
-const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
+const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
 
 type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 
@@ -45,6 +45,7 @@ type AgentConfigurePublishBarProps = {
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions?: () => void
+  onVersionRestored?: () => void | Promise<void>
 }
 
 function getPublishState({
@@ -99,6 +100,7 @@ export function AgentConfigurePublishBar({
   onPublish,
   onExitVersions,
   onOpenVersions,
+  onVersionRestored,
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -154,28 +156,31 @@ export function AgentConfigurePublishBar({
         },
       },
       {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-              input: {
-                params: {
-                  agent_id: agentId,
+        onSuccess: async () => {
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+                input: {
+                  params: {
+                    agent_id: agentId,
+                  },
                 },
-              },
+              }),
             }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.composer.get.queryKey({
-              input: {
-                params: {
-                  agent_id: agentId,
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.agent.byAgentId.composer.get.queryKey({
+                input: {
+                  params: {
+                    agent_id: agentId,
+                  },
                 },
-              },
+              }),
             }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-          })
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
+            }),
+          ])
+          await onVersionRestored?.()
           onExitVersions?.()
           toast.success(tCommon(($) => $['api.actionSuccess']))
         },

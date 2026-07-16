@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Popup from '../popup'
+import { Popup } from '../popup'
 
 vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
   AlertDialog: ({

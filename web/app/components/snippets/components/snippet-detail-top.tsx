@@ -6,19 +6,18 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
+import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import ToggleButton from '../../app-sidebar/toggle-button'
 
 type SnippetDetailTopProps = {
   expand?: boolean
   onToggle?: () => void
 }
 
-const SEARCH_SHORTCUT = ['Mod', 'K']
-
-const SnippetDetailTop = ({ expand = true, onToggle }: SnippetDetailTopProps) => {
+export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopProps) {
   const { t } = useTranslation()
   const router = useRouter()
 
@@ -26,9 +25,9 @@ const SnippetDetailTop = ({ expand = true, onToggle }: SnippetDetailTopProps) =>
     return (
       <div className="flex w-full items-center justify-center px-3 pt-2 pb-1">
         {onToggle && (
-          <ToggleButton
+          <DetailSidebarToggleButton
             expand={expand}
-            handleToggle={onToggle}
+            onToggle={onToggle}
             icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
             className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
           />
@@ -88,16 +87,16 @@ const SnippetDetailTop = ({ expand = true, onToggle }: SnippetDetailTopProps) =>
         >
           <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
           <KbdGroup>
-            {SEARCH_SHORTCUT.map((key) => (
+            {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
               <Kbd key={key}>{formatForDisplay(key)}</Kbd>
             ))}
           </KbdGroup>
         </TooltipContent>
       </Tooltip>
       {onToggle && (
-        <ToggleButton
+        <DetailSidebarToggleButton
           expand={expand}
-          handleToggle={onToggle}
+          onToggle={onToggle}
           icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
           className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
         />
@@ -105,5 +104,3 @@ const SnippetDetailTop = ({ expand = true, onToggle }: SnippetDetailTopProps) =>
     </div>
   )
 }
-
-export default SnippetDetailTop

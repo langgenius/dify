@@ -34,7 +34,7 @@ from controllers.service_api.app.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
@@ -167,6 +167,7 @@ class TestAudioServiceMockedBehavior:
         result = AudioService.transcript_asr(
             app_model=mock_app,
             file=mock_file,
+            session=Mock(),
             end_user="user_123",
         )
 
@@ -284,7 +285,7 @@ class TestTextApi:
             response = handler(api, app_model=app_model, end_user=end_user)
 
         assert response == {"audio": "ok"}
-        assert calls["message_ref"] == MessageRef("tenant-1", "a1", "message-1", end_user_id="end-user-1")
+        assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "a1"), "message-1", end_user_id="end-user-1")
 
     def test_error_mapping(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(

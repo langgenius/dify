@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
+import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
 import { useCreateSnippet } from '@/app/components/snippets/hooks/use-create-snippet'
 import ImportSnippetDSLDialog from '@/app/components/snippets/import-snippet-dsl-dialog'
 

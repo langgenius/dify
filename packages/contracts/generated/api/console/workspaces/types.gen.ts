@@ -19,6 +19,7 @@ export type TenantInfoResponse = {
   role?: string | null
   status?: string | null
   trial_credits?: number | null
+  trial_credits_exhausted_at?: number | null
   trial_credits_used?: number | null
   trial_end_reason?: string | null
 }
@@ -90,6 +91,7 @@ export type SnippetImportResponse = {
   imported_dsl_version: string
   snippet_id: string | null
   status: ImportStatus
+  warnings: Array<DslImportWarning>
 }
 
 export type UpdateSnippetPayload = {
@@ -1092,6 +1094,15 @@ export type SnippetTagResponse = {
 export type SnippetType = 'group' | 'node'
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type DslImportWarning = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  path: string
+}
 
 export type PluginDependency = {
   current_identifier?: string | null

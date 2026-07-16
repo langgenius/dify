@@ -4,6 +4,7 @@ import { PluginCategoryEnum } from '../../../types'
 
 // Mock invalidation / refresh functions
 const mockInvalidateInstalledPluginList = vi.fn()
+const mockInvalidateCheckInstalled = vi.fn()
 const mockRefetchLLMModelList = vi.fn()
 const mockRefetchEmbeddingModelList = vi.fn()
 const mockRefetchRerankModelList = vi.fn()
@@ -20,6 +21,7 @@ const mockInvalidateAllTriggerPlugins = vi.fn()
 const mockInvalidateRAGRecommendedPlugins = vi.fn()
 
 vi.mock('@/service/use-plugins', () => ({
+  useInvalidateCheckInstalled: () => mockInvalidateCheckInstalled,
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
 }))
 
@@ -80,12 +82,13 @@ describe('useRefreshPluginList', () => {
     vi.clearAllMocks()
   })
 
-  it('should always invalidate installed plugin list', () => {
+  it('should always invalidate installed plugin list and installation checks', () => {
     const { result } = renderHook(() => useRefreshPluginList())
 
     result.current.refreshPluginList()
 
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
+    expect(mockInvalidateCheckInstalled).toHaveBeenCalledTimes(1)
   })
 
   it('should refresh tool providers for tool category manifest', () => {

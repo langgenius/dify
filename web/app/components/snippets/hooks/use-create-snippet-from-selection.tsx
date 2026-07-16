@@ -2,7 +2,7 @@ import type { Edge, Node, ValueSelector } from '@/app/components/workflow/types'
 import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
 import { useCallback, useState } from 'react'
 import { getNodesBounds } from 'reactflow'
-import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
+import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippet } from './use-create-snippet'
 

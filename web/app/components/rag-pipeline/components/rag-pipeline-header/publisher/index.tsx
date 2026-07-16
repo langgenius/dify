@@ -17,7 +17,7 @@ import {
   usePublishAsCustomizedPipeline,
 } from '@/service/use-pipeline'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
-import Popup from './popup'
+import { Popup } from './popup'
 
 const Publisher = () => {
   const { t } = useTranslation()

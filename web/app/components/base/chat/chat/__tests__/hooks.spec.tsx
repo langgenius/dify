@@ -590,6 +590,39 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(false) // from onError
     })
 
+    it('should restore responding state when a paused human input workflow resumes', async () => {
+      let initialCallbacks: HookCallbacks
+      let resumedCallbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        initialCallbacks = options as HookCallbacks
+      })
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        resumedCallbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'human input test' }, {})
+      })
+      act(() => {
+        initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        initialCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      await act(async () => {
+        await initialCallbacks.onCompleted()
+      })
+
+      expect(result.current.isResponding).toBe(false)
+
+      act(() => {
+        resumedCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+      })
+
+      expect(result.current.isResponding).toBe(true)
+    })
+
     it('should handle file uploads in onFile', () => {
       let callbacks: HookCallbacks
 

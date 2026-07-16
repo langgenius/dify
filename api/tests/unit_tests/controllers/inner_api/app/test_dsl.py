@@ -145,7 +145,7 @@ class TestEnterpriseAppDSLImport:
         body, status_code = result
         assert status_code == 200
         assert body["status"] == "completed"
-        mock_account.set_tenant_id.assert_called_once_with("ws-123")
+        mock_account.set_tenant_id_with_session.assert_called_once_with("ws-123", session=self._mock_session)
         self._mock_session.commit.assert_called_once_with()
         self._mock_session.rollback.assert_not_called()
 

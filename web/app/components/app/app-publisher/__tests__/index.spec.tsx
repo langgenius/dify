@@ -285,7 +285,6 @@ describe('AppPublisher', () => {
         enabled: true,
       })
     })
-    expect(sectionProps.summary?.publishShortcut).toEqual(['Mod', 'Shift', 'P'])
     expect(mockRefetch).not.toHaveBeenCalled()
   })
 

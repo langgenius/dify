@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Publisher from '../index'
-import Popup from '../popup'
+import { Popup } from '../popup'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -968,13 +968,6 @@ describe('publisher', () => {
         await waitFor(() => {
           expect(mockPublishWorkflow).toHaveBeenCalled()
         })
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(Popup).toBeDefined()
-        expect((Popup as unknown as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
       })
     })
 
