@@ -3,25 +3,17 @@
 package landlock
 
 import (
-	"errors"
 	"os"
 
 	golandlock "github.com/landlock-lsm/go-landlock/landlock"
 )
 
-// ErrNotSupported is returned when the kernel does not support Landlock.
-var ErrNotSupported = errors.New("landlock: not supported by kernel")
-
 // Restrict applies Landlock V1 filesystem restrictions for the current process.
-//
-// It uses BestEffort mode so it works on any kernel with Landlock (≥ 5.13).
-// If the kernel has no Landlock at all, ErrNotSupported is returned so callers
-// can log a warning.
 func Restrict(cfg *Config) error {
 	rules := buildRules(cfg)
 
-	if err := golandlock.V1.BestEffort().RestrictPaths(rules...); err != nil {
-		return ErrNotSupported
+	if err := golandlock.V1.RestrictPaths(rules...); err != nil {
+		return err
 	}
 	return nil
 }
