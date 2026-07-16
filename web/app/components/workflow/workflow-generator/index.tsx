@@ -57,14 +57,6 @@ import {
 import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
-// Hard ceiling before we abort a hung request, configurable via
-// NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS (default 180s). Generous on
-// purpose: the backend runs a planner call plus parallel builder calls and may
-// retry a transient provider error (bounded backoff) or an unparseable
-// response (one extra call), so a slow-but-succeeding generation can
-// legitimately pass the one-minute mark. Aborting work that would have landed
-// is the worse failure mode.
-const FE_TIMEOUT_MS = WORKFLOW_GENERATION_TIMEOUT_MS
 // Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
 // keeping the limit client-side turns an opaque 400 into a visible input stop.
 const MAX_INSTRUCTION_LENGTH = 10_000
@@ -352,13 +344,17 @@ function WorkflowGeneratorModal() {
     setLoadingTrue()
 
     // Hard frontend timeout — aborts the request and surfaces a localised toast
-    // instead of a perpetual spinner if the backend hangs.
+    // instead of a perpetual spinner if the backend hangs. Generous on purpose
+    // (NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS, default 180s): the backend
+    // runs a planner call plus parallel builder calls and may retry transient
+    // errors, so aborting a slow-but-succeeding generation is the worse
+    // failure mode.
     timeoutRef.current = setTimeout(() => {
       abortRef.current?.abort()
       abortRef.current = null
       toast.error(t(($) => $['workflowGenerator.errors.timeout']))
       setLoadingFalse()
-    }, FE_TIMEOUT_MS)
+    }, WORKFLOW_GENERATION_TIMEOUT_MS)
 
     // Refine mode: pull the current draft so the backend amends it instead of
     // starting from scratch. The modal mounts outside the Studio's ReactFlow
