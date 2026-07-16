@@ -1,10 +1,46 @@
 import logging
+from collections.abc import Iterator
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
+from models.base import TypeBase
+from models.model import App, AppMode, IconType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import WorkflowCollaborationService
+
+
+@pytest.fixture
+def db_session(sqlite_engine: Engine) -> Iterator[Session]:
+    """Provide a real session for tenant-scoped workflow app access checks."""
+
+    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__])
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        yield session
+
+
+def _app(*, app_id: str, tenant_id: str) -> App:
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name="Workflow app",
+        description="",
+        mode=AppMode.WORKFLOW,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#ffffff",
+        enable_site=False,
+        enable_api=False,
+        api_rpm=0,
+        api_rph=0,
+        is_demo=False,
+        is_public=False,
+        is_universal=False,
+        max_active_requests=None,
+        use_icon_as_answer_icon=False,
+    )
 
 
 class TestWorkflowCollaborationService:
@@ -15,7 +51,7 @@ class TestWorkflowCollaborationService:
         return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
 
     def test_authorize_and_join_workflow_room_returns_leader_status(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
     ) -> None:
         # Arrange
         collaboration_service, repository, socketio = service
@@ -32,7 +68,7 @@ class TestWorkflowCollaborationService:
             patch.object(collaboration_service, "broadcast_online_users"),
         ):
             # Act
-            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=Mock())
+            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         # Assert
         assert result == ("u-1", True)
@@ -45,25 +81,25 @@ class TestWorkflowCollaborationService:
         socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_user(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
     ) -> None:
         # Arrange
         collaboration_service, _repository, socketio = service
         socketio.get_session.return_value = {}
 
         # Act
-        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=Mock())
+        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         # Assert
         assert result is None
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_tenant(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
     ) -> None:
         collaboration_service, repository, socketio = service
         socketio.get_session.return_value = {"user_id": "u-1", "username": "Jane", "avatar": None}
 
-        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=Mock())
+        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         assert result is None
         repository.set_session_info.assert_not_called()
@@ -71,7 +107,7 @@ class TestWorkflowCollaborationService:
         socketio.emit.assert_not_called()
 
     def test_authorize_and_join_workflow_room_returns_none_when_workflow_is_not_accessible(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
     ) -> None:
         collaboration_service, repository, socketio = service
         socketio.get_session.return_value = {
@@ -82,7 +118,7 @@ class TestWorkflowCollaborationService:
         }
 
         with patch.object(collaboration_service, "_can_access_workflow", return_value=False):
-            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=Mock())
+            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         assert result is None
         repository.set_session_info.assert_not_called()
@@ -106,15 +142,23 @@ class TestWorkflowCollaborationService:
             {"user_id": "u-1", "username": "Jane", "avatar": "avatar.png", "tenant_id": "t-1"},
         )
 
-    def test_can_access_workflow_uses_session(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
+    def test_can_access_workflow_uses_session(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
+    ) -> None:
         collaboration_service, _repository, _socketio = service
-        session = Mock()
-        session.scalar.return_value = "wf-1"
+        db_session.add_all(
+            [
+                _app(app_id="wf-1", tenant_id="tenant-1"),
+                _app(app_id="wf-other", tenant_id="tenant-other"),
+            ]
+        )
+        db_session.commit()
 
-        result = collaboration_service._can_access_workflow("wf-1", "tenant-1", session=session)
+        result = collaboration_service._can_access_workflow("wf-1", "tenant-1", session=db_session)
 
         assert result is True
-        session.scalar.assert_called_once()
+        assert collaboration_service._can_access_workflow("wf-1", "tenant-other", session=db_session) is False
+        assert collaboration_service._can_access_workflow("wf-other", "tenant-other", session=db_session) is True
 
     def test_relay_collaboration_event_unauthorized(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]
