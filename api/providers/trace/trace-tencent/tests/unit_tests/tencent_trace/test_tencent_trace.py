@@ -1,11 +1,15 @@
+"""Unit tests for Tencent tracing, including SQLite-backed account resolution."""
+
 import gc
 import logging
 import warnings
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from dify_trace_tencent.config import TencentConfig
 from dify_trace_tencent.tencent_trace import TencentDataTrace
+from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -18,7 +22,9 @@ from core.ops.entities.trace_entity import (
 )
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes
-from models import Account, App
+from models import Account, App, Tenant, TenantAccountJoin
+from models.account import TenantAccountRole
+from models.model import AppMode, IconType
 
 logger = logging.getLogger(__name__)
 
@@ -412,59 +418,102 @@ class TestTencentDataTrace:
         assert result is None
         assert len([r for r in caplog.records if r.levelno == logging.DEBUG]) >= 1
 
-    def test_get_workflow_node_executions(self, tencent_data_trace):
+    @pytest.mark.parametrize(
+        "sqlite3_session",
+        [(Account, App, Tenant, TenantAccountJoin)],
+        indirect=True,
+    )
+    def test_get_workflow_node_executions(
+        self,
+        tencent_data_trace,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite3_session: Session,
+    ) -> None:
+        account = Account(name="Trace User", email="trace-user@example.com")
+        tenant = Tenant(name="Trace Tenant")
+        sqlite3_session.add_all([account, tenant])
+        sqlite3_session.flush()
+        app = App(
+            id="app-1",
+            tenant_id=tenant.id,
+            name="Trace App",
+            description="",
+            mode=AppMode.WORKFLOW,
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#FFFFFF",
+            enable_site=False,
+            enable_api=False,
+            created_by=account.id,
+            max_active_requests=0,
+        )
+        tenant_join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            current=True,
+            role=TenantAccountRole.OWNER,
+        )
+        sqlite3_session.add_all([app, tenant_join])
+        sqlite3_session.commit()
+
         trace_info = MagicMock(spec=WorkflowTraceInfo)
-        trace_info.metadata = {"app_id": "app-1"}
+        trace_info.metadata = {"app_id": app.id}
         trace_info.workflow_run_id = "run-1"
-
-        app = MagicMock(spec=App)
-        app.id = "app-1"
-        app.created_by = "user-1"
-        app.tenant_id = "tenant-1"
-
-        account = MagicMock(spec=Account)
-        account.id = "user-1"
+        database = SimpleNamespace(engine=sqlite3_session.get_bind())
+        monkeypatch.setattr("dify_trace_tencent.tencent_trace.db", database)
+        monkeypatch.setattr("models.account.db", database)
 
         mock_executions = [MagicMock()]
+        with patch("dify_trace_tencent.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository") as mock_repo:
+            mock_repo.return_value.get_by_workflow_execution.return_value = mock_executions
+            results = tencent_data_trace._get_workflow_node_executions(trace_info)
 
-        with patch("dify_trace_tencent.tencent_trace.db") as mock_db:
-            mock_db.engine = "engine"
-            with patch("dify_trace_tencent.tencent_trace.Session") as mock_session_ctx:
-                session = mock_session_ctx.return_value.__enter__.return_value
-                session.scalar.side_effect = [app, account]
+        assert results == mock_executions
+        service_account = mock_repo.call_args.kwargs["user"]
+        assert isinstance(service_account, Account)
+        assert service_account.id == account.id
+        assert service_account.current_tenant_id == tenant.id
+        assert mock_repo.call_args.kwargs["tenant_id"] == tenant.id
 
-                with patch("dify_trace_tencent.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository") as mock_repo:
-                    mock_repo.return_value.get_by_workflow_execution.return_value = mock_executions
-
-                    results = tencent_data_trace._get_workflow_node_executions(trace_info)
-
-                    assert results == mock_executions
-                    assert mock_repo.call_args.kwargs["tenant_id"] == "tenant-1"
-
-    def test_get_workflow_node_executions_no_app_id(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
+    @pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+    def test_get_workflow_node_executions_no_app_id(
+        self,
+        tencent_data_trace,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite3_session: Session,
+    ) -> None:
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         trace_info.metadata = {}
+        monkeypatch.setattr(
+            "dify_trace_tencent.tencent_trace.db",
+            SimpleNamespace(engine=sqlite3_session.get_bind()),
+        )
 
         with caplog.at_level(logging.ERROR):
             results = tencent_data_trace._get_workflow_node_executions(trace_info)
         assert results == []
         assert len([r for r in caplog.records if r.levelno == logging.ERROR]) >= 1
 
-    def test_get_workflow_node_executions_app_not_found(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
+    @pytest.mark.parametrize("sqlite3_session", [(App,)], indirect=True)
+    def test_get_workflow_node_executions_app_not_found(
+        self,
+        tencent_data_trace,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite3_session: Session,
+    ) -> None:
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         trace_info.metadata = {"app_id": "app-1"}
+        monkeypatch.setattr(
+            "dify_trace_tencent.tencent_trace.db",
+            SimpleNamespace(engine=sqlite3_session.get_bind()),
+        )
 
-        with patch("dify_trace_tencent.tencent_trace.db") as mock_db:
-            mock_db.init_app = MagicMock()  # Ensure init_app is mocked
-            mock_db.engine = "engine"
-            with patch("dify_trace_tencent.tencent_trace.Session") as mock_session_ctx:
-                session = mock_session_ctx.return_value.__enter__.return_value
-                session.scalar.return_value = None
-
-                with caplog.at_level(logging.ERROR):
-                    results = tencent_data_trace._get_workflow_node_executions(trace_info)
-                assert results == []
-                assert len([r for r in caplog.records if r.levelno == logging.ERROR]) >= 1
+        with caplog.at_level(logging.ERROR):
+            results = tencent_data_trace._get_workflow_node_executions(trace_info)
+        assert results == []
+        assert len([r for r in caplog.records if r.levelno == logging.ERROR]) >= 1
 
     def test_get_user_id_workflow(self, tencent_data_trace):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
