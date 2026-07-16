@@ -471,6 +471,7 @@
   "operation.log": "Protokoll",
   "operation.more": "Mehr",
   "operation.moreActions": "Weitere Aktionen",
+  "operation.moreActionsFor": "Weitere Aktionen für {{name}}",
   "operation.no": "Nein",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Es wurden keine {{content}} gefunden",

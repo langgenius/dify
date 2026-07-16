@@ -471,6 +471,7 @@
   "operation.log": "Journal",
   "operation.more": "Plus",
   "operation.moreActions": "Plus d'actions",
+  "operation.moreActionsFor": "Plus d'actions pour {{name}}",
   "operation.no": "Non",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Aucun {{content}} n'a été trouvé",

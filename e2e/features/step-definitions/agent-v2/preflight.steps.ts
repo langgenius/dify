@@ -17,7 +17,6 @@ import {
 } from '../../agent-v2/support/preflight/agents'
 import {
   skipMissingIndexingPreseededDataset,
-  skipMissingPreseededDataset,
   skipMissingReadyPreseededDataset,
 } from '../../agent-v2/support/preflight/datasets'
 import {
@@ -75,16 +74,6 @@ Given(
   'the Agent Builder preseeded workflow {string} is available',
   async function (this: DifyWorld, resourceName: string) {
     const resource = await skipMissingPreseededWorkflow(this, resourceName)
-    if (resource === 'skipped') return resource
-
-    this.agentBuilder.preflight.preseededResources[resourceName] = resource
-  },
-)
-
-Given(
-  'the Agent Builder preseeded dataset {string} is available',
-  async function (this: DifyWorld, resourceName: string) {
-    const resource = await skipMissingPreseededDataset(this, resourceName)
     if (resource === 'skipped') return resource
 
     this.agentBuilder.preflight.preseededResources[resourceName] = resource

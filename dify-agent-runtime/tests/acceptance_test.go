@@ -622,7 +622,7 @@ func TestLandlockCannotReadOtherAgentHome(t *testing.T) {
 // --- Landlock Disable / Bypass Tests ---
 
 // TestLandlockDisabledAllowsWriteOutsideHome uses the pre-started no-isolation
-// container (ENABLE_PATH_ISOLATION=false) and verifies that isolation is off.
+// container (SHELLCTL_ENABLE_PATH_ISOLATION=false) and verifies that isolation is off.
 func TestLandlockDisabledAllowsWriteOutsideHome(t *testing.T) {
 	tgt, ok := noIsolationTarget()
 	if !ok {
@@ -645,7 +645,7 @@ func TestLandlockDisabledAllowsWriteOutsideHome(t *testing.T) {
 }
 
 // TestLandlockEnvBypassBlocked verifies that a caller cannot set
-// ENABLE_PATH_ISOLATION=false in job env to escape the sandbox.
+// SHELLCTL_ENABLE_PATH_ISOLATION=false in job env to escape the sandbox.
 func TestLandlockEnvBypassBlocked(t *testing.T) {
 	for _, tgt := range targets() {
 		t.Run(tgt.name, func(t *testing.T) {
@@ -653,8 +653,8 @@ func TestLandlockEnvBypassBlocked(t *testing.T) {
 			result := runJob(t, tgt, map[string]any{
 				"script": "touch /opt/landlock-bypass-test 2>&1; echo exit=$?",
 				"env": map[string]string{
-					"HOME":                  "/home/dify",
-					"ENABLE_PATH_ISOLATION": "false",
+					"HOME":                           "/home/dify",
+					"SHELLCTL_ENABLE_PATH_ISOLATION": "false",
 				},
 				"timeout": 10,
 			})
@@ -662,7 +662,7 @@ func TestLandlockEnvBypassBlocked(t *testing.T) {
 			output := result["output"].(string)
 			// The write should still be denied despite the env override attempt.
 			if strings.Contains(output, "exit=0") {
-				t.Errorf("expected write to /opt to be DENIED even with ENABLE_PATH_ISOLATION=false in job env, but it succeeded: %q", output)
+				t.Errorf("expected write to /opt to be DENIED even with SHELLCTL_ENABLE_PATH_ISOLATION=false in job env, but it succeeded: %q", output)
 			}
 		})
 	}

@@ -471,6 +471,7 @@
   "operation.log": "گزارش",
   "operation.more": "بیشتر",
   "operation.moreActions": "اقدامات بیشتر",
+  "operation.moreActionsFor": "اقدامات بیشتر برای {{name}}",
   "operation.no": "نه",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "هیچ {{content}} یافت نشد",

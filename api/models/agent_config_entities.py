@@ -188,6 +188,14 @@ def validate_config_skill_name(name: str) -> str:
     return normalized
 
 
+def _normalize_legacy_missing_asset_file_id(value: Any) -> Any:
+    """Canonicalize the null placeholder emitted by early portable Agent DSLs."""
+
+    if isinstance(value, dict) and value.get("is_missing") is True and value.get("file_id") is None:
+        return {**value, "file_id": ""}
+    return value
+
+
 class AgentConfigFileRefConfig(BaseModel):
     """Stable Agent Soul reference to one config file payload."""
 
@@ -200,6 +208,11 @@ class AgentConfigFileRefConfig(BaseModel):
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_legacy_file_id(cls, value: Any) -> Any:
+        return _normalize_legacy_missing_asset_file_id(value)
 
     @field_validator("name")
     @classmethod
@@ -230,6 +243,11 @@ class AgentConfigSkillRefConfig(BaseModel):
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = "application/zip"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_legacy_file_id(cls, value: Any) -> Any:
+        return _normalize_legacy_missing_asset_file_id(value)
 
     @field_validator("name")
     @classmethod

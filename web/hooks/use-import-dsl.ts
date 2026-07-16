@@ -143,9 +143,22 @@ export const useImportDSL = () => {
         const { status, app_id, app_mode, permission_keys } = response
         if (!app_id) return
 
-        if (status === DSLImportStatus.COMPLETED) {
+        if (
+          status === DSLImportStatus.COMPLETED ||
+          status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+        ) {
           onSuccess?.(response)
-          toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
+          const message = t(
+            ($) => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'],
+            { ns: 'app' },
+          )
+          const description =
+            status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+              ? t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
+              : undefined
+
+          if (status === DSLImportStatus.COMPLETED) toast.success(message)
+          else toast.warning(message, { description })
           await handleCheckPluginDependencies(app_id)
           setNeedRefresh('1')
           invalidateAppList()
