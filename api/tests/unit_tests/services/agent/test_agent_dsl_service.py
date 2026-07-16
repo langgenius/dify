@@ -159,9 +159,7 @@ def test_agent_package_normalizes_legacy_null_missing_asset_file_ids() -> None:
         AgentSoulConfig.model_validate(
             {
                 "config_skills": [{"name": "research", "file_id": "skill-file"}],
-                "config_files": [
-                    {"name": "guide.md", "file_kind": "tool_file", "file_id": "config-file"}
-                ],
+                "config_files": [{"name": "guide.md", "file_kind": "tool_file", "file_id": "config-file"}],
             }
         ),
     ).model_dump(mode="json")
