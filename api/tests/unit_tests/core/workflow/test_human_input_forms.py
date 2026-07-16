@@ -1,8 +1,6 @@
-from collections.abc import Iterator
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core.workflow.human_input_forms import (
@@ -17,17 +15,6 @@ from core.workflow.human_input_policy import (
 from models.human_input import HumanInputFormRecipient, RecipientType
 
 TABLES = (HumanInputFormRecipient,)
-
-
-@pytest.fixture
-def form_session(sqlite_engine: Engine) -> Iterator[Session]:
-    """Yield a real SQLite session containing only the recipient table."""
-    HumanInputFormRecipient.metadata.create_all(
-        sqlite_engine,
-        tables=[model.__table__ for model in TABLES],
-    )
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
 
 
 def _recipient(form_id: str, recipient_type: RecipientType, access_token: str) -> HumanInputFormRecipient:
@@ -54,9 +41,10 @@ def _persist_recipients(session: Session, recipients: list[HumanInputFormRecipie
         (HumanInputSurface.SERVICE_API, "web-token"),
     ],
 )
-def test_load_form_tokens_picks_token_for_surface(surface, expected_token, form_session: Session) -> None:
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_load_form_tokens_picks_token_for_surface(surface, expected_token, sqlite_session: Session) -> None:
     _persist_recipients(
-        form_session,
+        sqlite_session,
         [
             _recipient("form-1", RecipientType.STANDALONE_WEB_APP, "web-token"),
             _recipient("form-1", RecipientType.CONSOLE, "console-token"),
@@ -65,24 +53,28 @@ def test_load_form_tokens_picks_token_for_surface(surface, expected_token, form_
         ],
     )
 
-    assert load_form_tokens_by_form_id(["form-1"], session=form_session, surface=surface) == {"form-1": expected_token}
+    assert load_form_tokens_by_form_id(["form-1"], session=sqlite_session, surface=surface) == {
+        "form-1": expected_token
+    }
 
 
-def test_load_form_tokens_drops_forms_without_actionable_token(form_session: Session) -> None:
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_load_form_tokens_drops_forms_without_actionable_token(sqlite_session: Session) -> None:
     _persist_recipients(
-        form_session,
+        sqlite_session,
         [
             _recipient("form-1", RecipientType.EMAIL_MEMBER, "email-token"),
             _recipient("form-1", RecipientType.CONSOLE, ""),
         ],
     )
 
-    assert load_form_tokens_by_form_id(["form-1"], session=form_session) == {}
+    assert load_form_tokens_by_form_id(["form-1"], session=sqlite_session) == {}
 
 
-def test_load_form_tokens_service_api_surface_uses_web_token(form_session: Session) -> None:
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_load_form_tokens_service_api_surface_uses_web_token(sqlite_session: Session) -> None:
     _persist_recipients(
-        form_session,
+        sqlite_session,
         [
             _recipient("form-1", RecipientType.STANDALONE_WEB_APP, "web-token"),
             _recipient("form-1", RecipientType.CONSOLE, "console-token"),
@@ -90,32 +82,34 @@ def test_load_form_tokens_service_api_surface_uses_web_token(form_session: Sessi
         ],
     )
 
-    assert load_form_tokens_by_form_id(["form-1"], session=form_session, surface=HumanInputSurface.SERVICE_API) == {
+    assert load_form_tokens_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.SERVICE_API) == {
         "form-1": "web-token"
     }
 
 
-def test_load_dispositions_openapi_webapp_form_is_resumable(form_session: Session) -> None:
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_load_dispositions_openapi_webapp_form_is_resumable(sqlite_session: Session) -> None:
     _persist_recipients(
-        form_session,
+        sqlite_session,
         [
             _recipient("form-1", RecipientType.STANDALONE_WEB_APP, "web-token"),
             _recipient("form-1", RecipientType.BACKSTAGE, "backstage-token"),
         ],
     )
 
-    assert load_form_dispositions_by_form_id(["form-1"], session=form_session, surface=HumanInputSurface.OPENAPI) == {
+    assert load_form_dispositions_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.OPENAPI) == {
         "form-1": FormDisposition(form_token="web-token", approval_channels=["console"])
     }
 
 
-def test_load_dispositions_openapi_backstage_only_form_yields_channels_not_token(form_session: Session) -> None:
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_load_dispositions_openapi_backstage_only_form_yields_channels_not_token(sqlite_session: Session) -> None:
     _persist_recipients(
-        form_session,
+        sqlite_session,
         [_recipient("form-1", RecipientType.BACKSTAGE, "backstage-token")],
     )
 
-    assert load_form_dispositions_by_form_id(["form-1"], session=form_session, surface=HumanInputSurface.OPENAPI) == {
+    assert load_form_dispositions_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.OPENAPI) == {
         "form-1": FormDisposition(form_token=None, approval_channels=["console"])
     }
 

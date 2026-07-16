@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Actualiza para subir varios documentos a la vez",
   "upgrade.workflowRestore.description": "La restauración de versiones del flujo de trabajo no está disponible en tu plan actual.",
   "upgrade.workflowRestore.title": "Actualiza para restaurar versiones del flujo de trabajo",
+  "upgrade.workflowVersionRun.description": "Ejecutar una versión específica del flujo de trabajo mediante su ID no está disponible en tu plan actual.",
+  "upgrade.workflowVersionRun.title": "Actualiza para ejecutar versiones específicas del flujo de trabajo",
   "upgradeBtn.encourage": "Actualizar Ahora",
   "upgradeBtn.encourageShort": "Actualizar",
   "upgradeBtn.plain": "Actualizar Plan",

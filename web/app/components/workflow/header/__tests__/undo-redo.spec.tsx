@@ -5,7 +5,9 @@ const mockUnsubscribe = vi.fn()
 const mockHandleUndo = vi.fn()
 const mockHandleRedo = vi.fn()
 
-let latestTemporalListener: ((state: { pastStates: unknown[], futureStates: unknown[] }) => void) | undefined
+let latestTemporalListener:
+  | ((state: { pastStates: unknown[]; futureStates: unknown[] }) => void)
+  | undefined
 let mockNodesReadOnly = false
 
 vi.mock('@/app/components/workflow/header/view-workflow-history', () => ({
@@ -22,7 +24,9 @@ vi.mock('@/app/components/workflow/workflow-history-store', () => ({
   useWorkflowHistoryStore: () => ({
     store: {
       temporal: {
-        subscribe: (listener: (state: { pastStates: unknown[], futureStates: unknown[] }) => void) => {
+        subscribe: (
+          listener: (state: { pastStates: unknown[]; futureStates: unknown[] }) => void,
+        ) => {
           latestTemporalListener = listener
           return mockUnsubscribe
         },

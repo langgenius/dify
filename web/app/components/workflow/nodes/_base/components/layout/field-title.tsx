@@ -1,9 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-  useState,
-} from 'react'
+import { memo, useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 
 export type FieldTitleProps = {
@@ -17,40 +14,40 @@ export type FieldTitleProps = {
   collapsed?: boolean
   onCollapse?: (collapsed: boolean) => void
 }
-export const FieldTitle = memo(({
-  title,
-  operation,
-  subTitle,
-  tooltip,
-  warningDot,
-  showArrow,
-  disabled,
-  collapsed,
-  onCollapse,
-}: FieldTitleProps) => {
-  const [collapsedLocal, setCollapsedLocal] = useState(true)
-  const collapsedMerged = collapsed !== undefined ? collapsed : collapsedLocal
+export const FieldTitle = memo(
+  ({
+    title,
+    operation,
+    subTitle,
+    tooltip,
+    warningDot,
+    showArrow,
+    disabled,
+    collapsed,
+    onCollapse,
+  }: FieldTitleProps) => {
+    const [collapsedLocal, setCollapsedLocal] = useState(true)
+    const collapsedMerged = collapsed !== undefined ? collapsed : collapsedLocal
 
-  return (
-    <div className={cn('mb-0.5', !!subTitle && 'mb-1')}>
-      <div
-        className="group/collapse flex items-center justify-between py-1"
-        onClick={() => {
-          if (!disabled) {
-            setCollapsedLocal(!collapsedMerged)
-            onCollapse?.(!collapsedMerged)
-          }
-        }}
-      >
-        <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
-          <span className="relative">
-            {warningDot && (
-              <span className="absolute top-1/2 left-[-9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
-            )}
-            {title}
-          </span>
-          {
-            showArrow && (
+    return (
+      <div className={cn('mb-0.5', !!subTitle && 'mb-1')}>
+        <div
+          className="group/collapse flex items-center justify-between py-1"
+          onClick={() => {
+            if (!disabled) {
+              setCollapsedLocal(!collapsedMerged)
+              onCollapse?.(!collapsedMerged)
+            }
+          }}
+        >
+          <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
+            <span className="relative">
+              {warningDot && (
+                <span className="absolute top-1/2 left-[-9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+              )}
+              {title}
+            </span>
+            {showArrow && (
               <span
                 aria-hidden
                 className={cn(
@@ -58,21 +55,17 @@ export const FieldTitle = memo(({
                   collapsedMerged && 'rotate-270',
                 )}
               />
-            )
-          }
-          {
-            tooltip && (
+            )}
+            {tooltip && (
               <Infotip aria-label={tooltip} className="ml-1">
                 {tooltip}
               </Infotip>
-            )
-          }
+            )}
+          </div>
+          {operation}
         </div>
-        {operation}
+        {subTitle}
       </div>
-      {
-        subTitle
-      }
-    </div>
-  )
-})
+    )
+  },
+)

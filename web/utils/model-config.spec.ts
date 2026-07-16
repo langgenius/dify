@@ -20,15 +20,13 @@ import {
 } from './model-config'
 
 const getTextInput = (item: UserInputFormItem | undefined) => {
-  if (!item || !('text-input' in item))
-    throw new Error('Expected text-input user input form item')
+  if (!item || !('text-input' in item)) throw new Error('Expected text-input user input form item')
 
   return item['text-input']
 }
 
 const getSelectInput = (item: UserInputFormItem | undefined) => {
-  if (!item || !('select' in item))
-    throw new Error('Expected select user input form item')
+  if (!item || !('select' in item)) throw new Error('Expected select user input form item')
 
   return item.select
 }

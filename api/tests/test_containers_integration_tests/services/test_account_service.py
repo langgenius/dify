@@ -17,6 +17,7 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    SeatsLimitExceededError,
     TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
@@ -470,6 +471,32 @@ class TestAccountService:
 
         with pytest.raises(WorkspacesLimitExceededError):
             AccountService.create_account_and_tenant(
+                email=email,
+                name=name,
+                interface_language="en-US",
+                password=password,
+                session=db_session_with_containers,
+            )
+
+    def test_create_account_seats_limit_exceeded(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test account creation when the licensed seats limit is exceeded.
+        """
+        fake = Faker()
+        email = fake.email()
+        name = fake.name()
+        password = generate_valid_password(fake)
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.license.seats.is_available.return_value = False
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        with pytest.raises(SeatsLimitExceededError):
+            AccountService.create_account(
                 email=email,
                 name=name,
                 interface_language="en-US",

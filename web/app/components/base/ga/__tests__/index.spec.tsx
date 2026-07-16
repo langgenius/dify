@@ -11,10 +11,10 @@ type GoogleAnalyticsScriptsRenderFn = () => Promise<ReactNode>
 const { mockHeaders, mockHeadersGet, configState } = vi.hoisted(() => ({
   mockHeaders: vi.fn(),
   mockHeadersGet: vi.fn(),
-  configState: ({
+  configState: {
     isCloudEdition: true,
     isProd: true,
-  }) as ConfigState,
+  } as ConfigState,
 }))
 
 vi.mock('@/config', () => ({
@@ -66,8 +66,7 @@ const loadComponent = async () => {
 const renderGoogleAnalyticsScripts = async () => {
   const { renderer } = await loadComponent()
   const element = await renderer()
-  if (!element)
-    return { element }
+  if (!element) return { element }
 
   render(element as ReactElement)
   return { element }
@@ -81,7 +80,7 @@ describe('GA', () => {
     configState.isCloudEdition = true
     configState.isProd = true
 
-    mockHeadersGet.mockImplementation((name: string) => name === 'x-nonce' ? 'test-nonce' : null)
+    mockHeadersGet.mockImplementation((name: string) => (name === 'x-nonce' ? 'test-nonce' : null))
     mockHeaders.mockResolvedValue({
       get: mockHeadersGet,
     })
@@ -115,20 +114,35 @@ describe('GA', () => {
 
       expect(scripts[0]).toHaveAttribute('data-id', 'google-consent-defaults')
       expect(scripts[0]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[0]).toHaveAttribute('data-inline', expect.stringContaining(`window.gtag('consent', 'default'`))
-      expect(scripts[0]).toHaveAttribute('data-inline', expect.stringContaining(`analytics_storage: 'denied'`))
+      expect(scripts[0]).toHaveAttribute(
+        'data-inline',
+        expect.stringContaining(`window.gtag('consent', 'default'`),
+      )
+      expect(scripts[0]).toHaveAttribute(
+        'data-inline',
+        expect.stringContaining(`analytics_storage: 'denied'`),
+      )
 
       expect(scripts[1]).toHaveAttribute('data-id', 'cookieyes')
       expect(scripts[1]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[1]).toHaveAttribute('data-src', 'https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js')
+      expect(scripts[1]).toHaveAttribute(
+        'data-src',
+        'https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js',
+      )
 
       expect(scripts[2]).toHaveAttribute('data-id', 'google-analytics')
       expect(scripts[2]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[2]).toHaveAttribute('data-src', 'https://www.googletagmanager.com/gtag/js?id=G-DM9497FN4V')
+      expect(scripts[2]).toHaveAttribute(
+        'data-src',
+        'https://www.googletagmanager.com/gtag/js?id=G-DM9497FN4V',
+      )
 
       expect(scripts[3]).toHaveAttribute('data-id', 'google-analytics-init')
       expect(scripts[3]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[3]).toHaveAttribute('data-inline', expect.stringContaining(`window.gtag('config', 'G-DM9497FN4V');`))
+      expect(scripts[3]).toHaveAttribute(
+        'data-inline',
+        expect.stringContaining(`window.gtag('config', 'G-DM9497FN4V');`),
+      )
 
       scripts.forEach((script) => {
         expect(script).toHaveAttribute('data-nonce', 'test-nonce')

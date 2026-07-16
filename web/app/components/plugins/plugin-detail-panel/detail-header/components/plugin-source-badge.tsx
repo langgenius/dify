@@ -20,19 +20,24 @@ type PluginSourceBadgeProps = {
 const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
   [PluginSource.marketplace]: {
     icon: <BoxSparkleFill className="size-3.5 text-text-tertiary hover:text-text-accent" />,
-    tipSelector: $ => $['detailPanel.categoryTip.marketplace'],
+    tipSelector: ($) => $['detailPanel.categoryTip.marketplace'],
   },
   [PluginSource.github]: {
     icon: <Github className="size-3.5 text-text-secondary hover:text-text-primary" />,
-    tipSelector: $ => $['detailPanel.categoryTip.github'],
+    tipSelector: ($) => $['detailPanel.categoryTip.github'],
   },
   [PluginSource.local]: {
     icon: <span aria-hidden className="i-ri-hard-drive-3-line size-3.5 text-text-tertiary" />,
-    tipSelector: $ => $['detailPanel.categoryTip.local'],
+    tipSelector: ($) => $['detailPanel.categoryTip.local'],
   },
   [PluginSource.debugging]: {
-    icon: <span aria-hidden className="i-ri-bug-line size-3.5 text-text-tertiary hover:text-text-warning" />,
-    tipSelector: $ => $['detailPanel.categoryTip.debugging'],
+    icon: (
+      <span
+        aria-hidden
+        className="i-ri-bug-line size-3.5 text-text-tertiary hover:text-text-warning"
+      />
+    ),
+    tipSelector: ($) => $['detailPanel.categoryTip.debugging'],
   },
 }
 
@@ -40,8 +45,7 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
   const { t } = useTranslation()
 
   const config = SOURCE_CONFIG_MAP[source]
-  if (!config)
-    return null
+  if (!config) return null
   const tip = t(config.tipSelector, { ns: 'plugin' })
 
   return (
@@ -49,15 +53,13 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
       <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
       <Tooltip>
         <TooltipTrigger
-          render={(
+          render={
             <span aria-label={tip} className="inline-flex">
               {config.icon}
             </span>
-          )}
+          }
         />
-        <TooltipContent>
-          {tip}
-        </TooltipContent>
+        <TooltipContent>{tip}</TooltipContent>
       </Tooltip>
     </>
   )

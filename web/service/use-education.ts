@@ -1,8 +1,5 @@
 import type { EducationAddParams } from '@/app/education-apply/types'
-import {
-  useMutation,
-  useQuery,
-} from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { get, post } from './base'
 import { useInvalid } from './use-base'
 
@@ -17,11 +14,7 @@ export const useEducationVerify = () => {
   })
 }
 
-export const useEducationAdd = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
+export const useEducationAdd = ({ onSuccess }: { onSuccess?: () => void }) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'education-add'],
     mutationFn: (params: EducationAddParams) => {
@@ -41,12 +34,10 @@ type SearchParams = {
 export const useEducationAutocomplete = () => {
   return useMutation({
     mutationFn: (searchParams: SearchParams) => {
-      const {
-        keywords = '',
-        page = 0,
-        limit = 40,
-      } = searchParams
-      return get<{ data: string[], has_next: boolean, curr_page: number }>(`/account/education/autocomplete?keywords=${keywords}&page=${page}&limit=${limit}`)
+      const { keywords = '', page = 0, limit = 40 } = searchParams
+      return get<{ data: string[]; has_next: boolean; curr_page: number }>(
+        `/account/education/autocomplete?keywords=${keywords}&page=${page}&limit=${limit}`,
+      )
     },
   })
 }
@@ -56,7 +47,9 @@ export const useEducationStatus = (disable?: boolean) => {
     enabled: !disable,
     queryKey: [NAME_SPACE, 'education-status'],
     queryFn: () => {
-      return get<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null }>('/account/education')
+      return get<{ is_student: boolean; allow_refresh: boolean; expire_at: number | null }>(
+        '/account/education',
+      )
     },
     retry: false,
     staleTime: 0, // Data expires immediately, ensuring fresh data on refetch

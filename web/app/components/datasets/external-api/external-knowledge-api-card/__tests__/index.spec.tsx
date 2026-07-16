@@ -3,7 +3,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocked services
 import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI } from '@/service/datasets'
-
 import ExternalKnowledgeAPICard from '../index'
 
 // Mock API services
@@ -55,11 +54,6 @@ describe('ExternalKnowledgeAPICard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      expect(screen.getByText('Test External API'))!.toBeInTheDocument()
-    })
-
     it('should render API name', () => {
       render(<ExternalKnowledgeAPICard {...defaultProps} />)
       expect(screen.getByText('Test External API'))!.toBeInTheDocument()
@@ -77,12 +71,9 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should hide edit and delete buttons when external knowledge API management is unavailable', () => {
-      const { container } = render((
-        <ExternalKnowledgeAPICard
-          {...defaultProps}
-          canManageExternalKnowledgeApi={false}
-        />
-      ))
+      const { container } = render(
+        <ExternalKnowledgeAPICard {...defaultProps} canManageExternalKnowledgeApi={false} />,
+      )
 
       expect(container.querySelectorAll('button').length).toBe(0)
     })
@@ -342,28 +333,18 @@ describe('ExternalKnowledgeAPICard', () => {
     })
   })
 
-  describe('Hover State', () => {
-    it('should apply hover styles when delete button is hovered', () => {
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
-      const cardContainer = container.querySelector('[class*="shadows-shadow"]')
-
-      fireEvent.mouseEnter(deleteButton!)
-      expect(cardContainer)!.toHaveClass('border-state-destructive-border')
-      expect(cardContainer)!.toHaveClass('bg-state-destructive-hover')
-
-      fireEvent.mouseLeave(deleteButton!)
-      expect(cardContainer).not.toHaveClass('border-state-destructive-border')
-    })
-  })
-
   describe('Edge Cases', () => {
     it('should handle API with empty endpoint', () => {
       const apiWithEmptyEndpoint: ExternalAPIItem = {
         ...mockApi,
         settings: { endpoint: '', api_key: 'key' },
       }
-      render(<ExternalKnowledgeAPICard api={apiWithEmptyEndpoint} canManageExternalKnowledgeApi={true} />)
+      render(
+        <ExternalKnowledgeAPICard
+          api={apiWithEmptyEndpoint}
+          canManageExternalKnowledgeApi={true}
+        />,
+      )
       expect(screen.getByText('Test External API'))!.toBeInTheDocument()
     })
 

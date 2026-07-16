@@ -18,36 +18,56 @@ vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/st
   useDataSourceStore: () => mockUseDataSourceStore(),
 }))
 
-vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider', () => ({
-  __esModule: true,
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
+vi.mock(
+  '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider',
+  () => ({
+    __esModule: true,
+    default: ({ children }: { children: ReactNode }) => <>{children}</>,
+  }),
+)
 
 vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/local-file', () => ({
   __esModule: true,
-  default: ({ allowedExtensions }: { allowedExtensions: string[] }) => <div>{allowedExtensions.join(',')}</div>,
-}))
-
-vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents', () => ({
-  __esModule: true,
-  default: ({ onCredentialChange }: { onCredentialChange: (credentialId: string) => void }) => (
-    <button type="button" onClick={() => onCredentialChange('credential-doc')}>online-documents</button>
+  default: ({ allowedExtensions }: { allowedExtensions: string[] }) => (
+    <div>{allowedExtensions.join(',')}</div>
   ),
 }))
 
-vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl', () => ({
-  __esModule: true,
-  default: ({ onCredentialChange }: { onCredentialChange: (credentialId: string) => void }) => (
-    <button type="button" onClick={() => onCredentialChange('credential-site')}>website-crawl</button>
-  ),
-}))
+vi.mock(
+  '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents',
+  () => ({
+    __esModule: true,
+    default: ({ onCredentialChange }: { onCredentialChange: (credentialId: string) => void }) => (
+      <button type="button" onClick={() => onCredentialChange('credential-doc')}>
+        online-documents
+      </button>
+    ),
+  }),
+)
 
-vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive', () => ({
-  __esModule: true,
-  default: ({ onCredentialChange }: { onCredentialChange: (credentialId: string) => void }) => (
-    <button type="button" onClick={() => onCredentialChange('credential-drive')}>online-drive</button>
-  ),
-}))
+vi.mock(
+  '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl',
+  () => ({
+    __esModule: true,
+    default: ({ onCredentialChange }: { onCredentialChange: (credentialId: string) => void }) => (
+      <button type="button" onClick={() => onCredentialChange('credential-site')}>
+        website-crawl
+      </button>
+    ),
+  }),
+)
+
+vi.mock(
+  '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive',
+  () => ({
+    __esModule: true,
+    default: ({ onCredentialChange }: { onCredentialChange: (credentialId: string) => void }) => (
+      <button type="button" onClick={() => onCredentialChange('credential-drive')}>
+        online-drive
+      </button>
+    ),
+  }),
+)
 
 vi.mock('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks', () => ({
   useOnlineDocument: () => ({ clearOnlineDocumentData: mockClearOnlineDocumentData }),
@@ -57,10 +77,20 @@ vi.mock('@/app/components/rag-pipeline/components/panel/test-run/preparation/hoo
 
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/panel-wrap', () => ({
   __esModule: true,
-  default: ({ nodeName, onHide, children }: { nodeName: string, onHide: () => void, children: ReactNode }) => (
+  default: ({
+    nodeName,
+    onHide,
+    children,
+  }: {
+    nodeName: string
+    onHide: () => void
+    children: ReactNode
+  }) => (
     <div>
       <div>{nodeName}</div>
-      <button type="button" onClick={onHide}>hide-panel</button>
+      <button type="button" onClick={onHide}>
+        hide-panel
+      </button>
       {children}
     </div>
   ),
@@ -156,7 +186,11 @@ describe('data-source/before-run-form', () => {
       startRunBtnDisabled: true,
     })
 
-    render(<BeforeRunForm {...createProps({ payload: createData({ provider_type: DatasourceType.onlineDocument }) })} />)
+    render(
+      <BeforeRunForm
+        {...createProps({ payload: createData({ provider_type: DatasourceType.onlineDocument }) })}
+      />,
+    )
 
     await user.click(screen.getByRole('button', { name: 'online-documents' }))
 
@@ -176,7 +210,11 @@ describe('data-source/before-run-form', () => {
       startRunBtnDisabled: false,
     })
 
-    render(<BeforeRunForm {...createProps({ payload: createData({ provider_type: DatasourceType.websiteCrawl }) })} />)
+    render(
+      <BeforeRunForm
+        {...createProps({ payload: createData({ provider_type: DatasourceType.websiteCrawl }) })}
+      />,
+    )
 
     await user.click(screen.getByRole('button', { name: 'website-crawl' }))
 
@@ -195,7 +233,11 @@ describe('data-source/before-run-form', () => {
       startRunBtnDisabled: false,
     })
 
-    render(<BeforeRunForm {...createProps({ payload: createData({ provider_type: DatasourceType.onlineDrive }) })} />)
+    render(
+      <BeforeRunForm
+        {...createProps({ payload: createData({ provider_type: DatasourceType.onlineDrive }) })}
+      />,
+    )
 
     await user.click(screen.getByRole('button', { name: 'online-drive' }))
 

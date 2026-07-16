@@ -2,20 +2,20 @@
 
 import type { Value } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
-import type {
-  CommonNodeType,
-  Edge,
-  Node,
-} from '../../types'
+import type { CommonNodeType, Edge, Node } from '../../types'
 import type {
   CollaborationState,
   CollaborationUpdate,
   CursorPosition,
+  GraphReloadRequest,
   NodePanelPresenceMap,
   NodePanelPresenceUser,
   OnlineUser,
   RestoreCompleteData,
   RestoreIntentData,
+  WorkflowSyncAcknowledgement,
+  WorkflowSyncRequest,
+  WorkflowSyncResult,
 } from '../types/collaboration'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
@@ -101,15 +101,15 @@ type SetNodesAnomalyLogEntry = {
   }
 }
 
-type GraphSyncDiagnosticStage
-  = | 'nodes_subscribe'
-    | 'edges_subscribe'
-    | 'nodes_import_apply'
-    | 'edges_import_apply'
-    | 'schedule_graph_import_emit'
-    | 'graph_import_emit'
-    | 'start_import_log'
-    | 'finalize_import_log'
+type GraphSyncDiagnosticStage =
+  | 'nodes_subscribe'
+  | 'edges_subscribe'
+  | 'nodes_import_apply'
+  | 'edges_import_apply'
+  | 'schedule_graph_import_emit'
+  | 'graph_import_emit'
+  | 'start_import_log'
+  | 'finalize_import_log'
 
 type GraphSyncDiagnosticEvent = {
   timestamp: number
@@ -131,9 +131,28 @@ type GraphSyncDiagnosticEvent = {
 const GRAPH_IMPORT_LOG_LIMIT = 20
 const SET_NODES_ANOMALY_LOG_LIMIT = 100
 const GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT = 400
+const WORKFLOW_SYNC_REQUEST_TIMEOUT = 20_000
+const GRAPH_RESYNC_RETRY_BASE_DELAY = 1000
+const GRAPH_RESYNC_RETRY_MAX_DELAY = 10_000
 
 const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
-const toLoroRecord = (value: unknown): Record<string, Value> => cloneDeep(value) as Record<string, Value>
+const toLoroRecord = (value: unknown): Record<string, Value> =>
+  cloneDeep(value) as Record<string, Value>
+
+const toUint8Array = (value: unknown): Uint8Array | null => {
+  if (value instanceof Uint8Array) return value
+  if (value instanceof ArrayBuffer) return new Uint8Array(value)
+  if (ArrayBuffer.isView(value))
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+  if (
+    Array.isArray(value) &&
+    value.every((item) => Number.isInteger(item) && item >= 0 && item <= 255)
+  )
+    return Uint8Array.from(value)
+
+  return null
+}
+
 export class CollaborationManager {
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
@@ -151,9 +170,30 @@ export class CollaborationManager {
   private activeConnections = new Set<string>()
   private isUndoRedoInProgress = false
   private pendingInitialSync = false
+  private initialSyncRetryTimer: ReturnType<typeof setTimeout> | null = null
+  private initialSyncRetryAttempt = 0
   private rejoinInProgress = false
   private pendingGraphImportEmit = false
+  private pendingGraphResyncBroadcast = false
   private graphViewActive: boolean | null = null
+  private graphViewSequence = 0
+  private visibilityListenerAttached = false
+  private crdtTrusted = false
+  private rebuildCrdtOnNextConnect = false
+  private reconnectedWithFreshDoc = false
+  private awaitingSnapshotImport = false
+  private graphReloadRequired = false
+  private crdtGeneration = 0
+  private graphReloadToken = 0
+  private graphReloadAttempt = 0
+  private pendingWorkflowSyncRequests = new Map<
+    string,
+    {
+      resolve: (result: WorkflowSyncResult) => void
+      reject: (error: Error) => void
+      timeout: ReturnType<typeof setTimeout>
+    }
+  >()
   private graphImportLogs: GraphImportLogEntry[] = []
   private setNodesAnomalyLogs: SetNodesAnomalyLogEntry[] = []
   private graphSyncDiagnostics: GraphSyncDiagnosticEvent[] = []
@@ -167,20 +207,16 @@ export class CollaborationManager {
   } | null = null
 
   private getActiveSocket(): Socket | null {
-    if (!this.currentAppId)
-      return null
+    if (!this.currentAppId) return null
     return webSocketClient.getSocket(this.currentAppId)
   }
 
   private handleSessionUnauthorized = (): void => {
-    if (this.rejoinInProgress)
-      return
-    if (!this.currentAppId)
-      return
+    if (this.rejoinInProgress) return
+    if (!this.currentAppId) return
 
     const socket = this.getActiveSocket()
-    if (!socket)
-      return
+    if (!socket) return
 
     this.rejoinInProgress = true
     console.warn('Collaboration session expired, attempting to rejoin workflow.')
@@ -203,28 +239,35 @@ export class CollaborationManager {
 
   private sendCollaborationEvent(payload: CollaborationEventPayload): void {
     const socket = this.getActiveSocket()
-    if (!socket)
-      return
+    if (!socket) return
 
-    emitWithAuthGuard(socket, 'collaboration_event', payload, { onUnauthorized: this.handleSessionUnauthorized })
+    emitWithAuthGuard(socket, 'collaboration_event', payload, {
+      onUnauthorized: this.handleSessionUnauthorized,
+    })
   }
 
   private sendGraphEvent(payload: Uint8Array): void {
     const socket = this.getActiveSocket()
-    if (!socket)
-      return
+    if (!socket) return
 
-    emitWithAuthGuard(socket, 'graph_event', payload, { onUnauthorized: this.handleSessionUnauthorized })
+    emitWithAuthGuard(socket, 'graph_event', payload, {
+      onUnauthorized: this.handleSessionUnauthorized,
+    })
   }
 
   private getNodeContainer(nodeId: string): LoroMap<Record<string, Value>> {
-    if (!this.nodesMap)
-      throw new Error('Nodes map not initialized')
+    if (!this.nodesMap) throw new Error('Nodes map not initialized')
 
     let container = this.nodesMap.get(nodeId) as unknown
 
-    const isMapContainer = (value: unknown): value is LoroMap<Record<string, Value>> & LoroContainer => {
-      return !!value && typeof (value as LoroContainer).kind === 'function' && (value as LoroContainer).kind?.() === 'Map'
+    const isMapContainer = (
+      value: unknown,
+    ): value is LoroMap<Record<string, Value>> & LoroContainer => {
+      return (
+        !!value &&
+        typeof (value as LoroContainer).kind === 'function' &&
+        (value as LoroContainer).kind?.() === 'Map'
+      )
     }
 
     if (!container || !isMapContainer(container)) {
@@ -233,9 +276,11 @@ export class CollaborationManager {
       const attached = (newContainer as LoroContainer).getAttached?.() ?? newContainer
       container = attached
       if (previousValue && typeof previousValue === 'object')
-        this.populateNodeContainer(container as LoroMap<Record<string, Value>>, previousValue as Node)
-    }
-    else {
+        this.populateNodeContainer(
+          container as LoroMap<Record<string, Value>>,
+          previousValue as Node,
+        )
+    } else {
       const attached = (container as LoroContainer).getAttached?.() ?? container
       container = attached
     }
@@ -243,21 +288,34 @@ export class CollaborationManager {
     return container as LoroMap<Record<string, Value>>
   }
 
-  private ensureDataContainer(nodeContainer: LoroMap<Record<string, Value>>): LoroMap<Record<string, Value>> {
+  private ensureDataContainer(
+    nodeContainer: LoroMap<Record<string, Value>>,
+  ): LoroMap<Record<string, Value>> {
     let dataContainer = nodeContainer.get('data') as unknown
 
-    if (!dataContainer || typeof (dataContainer as LoroContainer).kind !== 'function' || (dataContainer as LoroContainer).kind?.() !== 'Map')
+    if (
+      !dataContainer ||
+      typeof (dataContainer as LoroContainer).kind !== 'function' ||
+      (dataContainer as LoroContainer).kind?.() !== 'Map'
+    )
       dataContainer = nodeContainer.setContainer('data', new LoroMap())
 
     const attached = (dataContainer as LoroContainer).getAttached?.() ?? dataContainer
     return attached as LoroMap<Record<string, Value>>
   }
 
-  private ensureList(nodeContainer: LoroMap<Record<string, Value>>, key: string): LoroList<unknown> {
+  private ensureList(
+    nodeContainer: LoroMap<Record<string, Value>>,
+    key: string,
+  ): LoroList<unknown> {
     const dataContainer = this.ensureDataContainer(nodeContainer)
     let list = dataContainer.get(key) as unknown
 
-    if (!list || typeof (list as LoroContainer).kind !== 'function' || (list as LoroContainer).kind?.() !== 'List')
+    if (
+      !list ||
+      typeof (list as LoroContainer).kind !== 'function' ||
+      (list as LoroContainer).kind?.() !== 'List'
+    )
       list = dataContainer.setContainer(key, new LoroList())
 
     const attached = (list as LoroContainer).getAttached?.() ?? list
@@ -281,16 +339,13 @@ export class CollaborationManager {
     container.set('sourcePosition', node.sourcePosition)
     container.set('targetPosition', node.targetPosition)
 
-    if (node.width === undefined)
-      container.delete('width')
+    if (node.width === undefined) container.delete('width')
     else container.set('width', node.width)
 
-    if (node.height === undefined)
-      container.delete('height')
+    if (node.height === undefined) container.delete('height')
     else container.set('height', node.height)
 
-    if (node.selected === undefined)
-      container.delete('selected')
+    if (node.selected === undefined) container.delete('selected')
     else container.set('selected', node.selected)
 
     const optionalProps: Array<keyof Node> = [
@@ -315,43 +370,45 @@ export class CollaborationManager {
 
     optionalProps.forEach((prop) => {
       const value = node[prop]
-      if (value === undefined)
-        container.delete(prop as string)
-      else
-        container.set(prop as string, toLoroValue(value))
+      if (value === undefined) container.delete(prop as string)
+      else container.set(prop as string, toLoroValue(value))
     })
 
     const dataContainer = this.ensureDataContainer(container)
     const handledKeys = new Set<string>()
 
     Object.entries(node.data || {}).forEach(([key, value]) => {
-      if (!this.shouldSyncDataKey(key))
-        return
+      if (!this.shouldSyncDataKey(key)) return
       handledKeys.add(key)
 
-      if (listFields.has(key))
-        this.syncList(container, key, Array.isArray(value) ? value : [])
-      else
-        dataContainer.set(key, toLoroValue(value))
+      if (listFields.has(key)) this.syncList(container, key, Array.isArray(value) ? value : [])
+      else dataContainer.set(key, toLoroValue(value))
     })
 
     const existingData = dataContainer.toJSON() || {}
     Object.keys(existingData).forEach((key) => {
-      if (!this.shouldSyncDataKey(key))
-        return
-      if (handledKeys.has(key))
-        return
+      if (!this.shouldSyncDataKey(key)) return
+      if (handledKeys.has(key)) return
 
       dataContainer.delete(key)
     })
   }
 
   private shouldSyncDataKey(key: string): boolean {
-    const syncDataAllowList = new Set(['_children', '_connectedSourceHandleIds', '_connectedTargetHandleIds', '_targetBranches'])
+    const syncDataAllowList = new Set([
+      '_children',
+      '_connectedSourceHandleIds',
+      '_connectedTargetHandleIds',
+      '_targetBranches',
+    ])
     return (syncDataAllowList.has(key) || !key.startsWith('_')) && key !== 'selected'
   }
 
-  private syncList(nodeContainer: LoroMap<Record<string, Value>>, key: string, desired: Array<unknown>): void {
+  private syncList(
+    nodeContainer: LoroMap<Record<string, Value>>,
+    key: string,
+    desired: Array<unknown>,
+  ): void {
     const list = this.ensureList(nodeContainer, key)
     const current = list.toJSON() as Array<unknown>
     const target = Array.isArray(desired) ? desired : []
@@ -366,10 +423,8 @@ export class CollaborationManager {
 
     if (current.length > target.length) {
       list.delete(target.length, current.length - target.length)
-    }
-    else if (target.length > current.length) {
-      for (let i = current.length; i < target.length; i += 1)
-        list.insert(i, cloneDeep(target[i]))
+    } else if (target.length > current.length) {
+      for (let i = current.length; i < target.length; i += 1) list.insert(i, cloneDeep(target[i]))
     }
   }
 
@@ -389,26 +444,22 @@ export class CollaborationManager {
       Object.entries(this.nodePanelPresence).forEach(([id, viewers]) => {
         if (viewers[clientId]) {
           delete viewers[clientId]
-          if (Object.keys(viewers).length === 0)
-            delete this.nodePanelPresence[id]
+          if (Object.keys(viewers).length === 0) delete this.nodePanelPresence[id]
         }
       })
 
-      if (!this.nodePanelPresence[nodeId])
-        this.nodePanelPresence[nodeId] = {}
+      if (!this.nodePanelPresence[nodeId]) this.nodePanelPresence[nodeId] = {}
 
       this.nodePanelPresence[nodeId][clientId] = {
         ...user,
         clientId,
         timestamp: timestamp || Date.now(),
       }
-    }
-    else {
+    } else {
       const viewers = this.nodePanelPresence[nodeId]
       if (viewers) {
         delete viewers[clientId]
-        if (Object.keys(viewers).length === 0)
-          delete this.nodePanelPresence[nodeId]
+        if (Object.keys(viewers).length === 0) delete this.nodePanelPresence[nodeId]
       }
     }
 
@@ -428,29 +479,31 @@ export class CollaborationManager {
         }
       })
 
-      if (Object.keys(viewers).length === 0)
-        delete this.nodePanelPresence[nodeId]
+      if (Object.keys(viewers).length === 0) delete this.nodePanelPresence[nodeId]
     })
 
-    if (hasChanges)
-      this.eventEmitter.emit('nodePanelPresence', this.getNodePanelPresenceSnapshot())
+    if (hasChanges) this.eventEmitter.emit('nodePanelPresence', this.getNodePanelPresenceSnapshot())
   }
 
   init = (appId: string, reactFlowStore: ReactFlowStore): void => {
     if (!reactFlowStore) {
-      console.warn('CollaborationManager.init called without reactFlowStore, deferring to connect()')
+      console.warn(
+        'CollaborationManager.init called without reactFlowStore, deferring to connect()',
+      )
       return
     }
     this.connect(appId, reactFlowStore)
   }
 
-  setNodes = (oldNodes: Node[], newNodes: Node[], source = 'collaboration-manager:setNodes'): void => {
-    if (!this.doc)
-      return
+  setNodes = (
+    oldNodes: Node[],
+    newNodes: Node[],
+    source = 'collaboration-manager:setNodes',
+  ): void => {
+    if (!this.doc || !this.canApplyLocalGraphMutation()) return
 
     // Don't track operations during undo/redo to prevent loops
-    if (this.isUndoRedoInProgress)
-      return
+    if (this.isUndoRedoInProgress) return
 
     this.seedCrdtGraphFromReactFlowIfNeeded()
     this.captureSetNodesAnomaly(oldNodes, newNodes, source)
@@ -459,12 +512,10 @@ export class CollaborationManager {
   }
 
   setEdges = (oldEdges: Edge[], newEdges: Edge[]): void => {
-    if (!this.doc)
-      return
+    if (!this.doc || !this.canApplyLocalGraphMutation()) return
 
     // Don't track operations during undo/redo to prevent loops
-    if (this.isUndoRedoInProgress)
-      return
+    if (this.isUndoRedoInProgress) return
 
     this.seedCrdtGraphFromReactFlowIfNeeded()
     this.syncEdges(oldEdges, newEdges)
@@ -475,47 +526,27 @@ export class CollaborationManager {
     this.disconnect()
   }
 
-  async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
-    const connectionId = Math.random().toString(36).substring(2, 11)
-
-    this.activeConnections.add(connectionId)
-
-    if (this.currentAppId === appId && this.doc) {
-      // Already connected to the same app, only update store if provided and we don't have one
-      if (reactFlowStore && !this.reactFlowStore)
-        this.reactFlowStore = reactFlowStore
-
-      return connectionId
-    }
-
-    // Only disconnect if switching to a different app
-    if (this.currentAppId && this.currentAppId !== appId)
-      this.forceDisconnect()
-
-    this.currentAppId = appId
-    // Only set store if provided
-    if (reactFlowStore)
-      this.reactFlowStore = reactFlowStore
-
-    const socket = webSocketClient.connect(appId)
-
-    // Setup event listeners BEFORE any other operations
-    this.setupSocketEventListeners(socket)
-
+  private initializeCrdt(socket: Socket): void {
+    this.provider?.destroy()
+    this.undoManager = null
     this.doc = new LoroDoc()
     this.nodesMap = this.doc.getMap('nodes') as LoroMap<Record<string, Value>>
     this.edgesMap = this.doc.getMap('edges') as LoroMap<Record<string, Value>>
+    this.crdtGeneration += 1
+    this.pendingGraphImportEmit = false
+    this.pendingGraphResyncBroadcast = false
+    this.pendingImportLog = null
 
-    // Initialize UndoManager for collaborative undo/redo
     this.undoManager = new UndoManager(this.doc, {
       maxUndoSteps: 100,
-      mergeInterval: 500, // Merge operations within 500ms
-      excludeOriginPrefixes: [], // Don't exclude anything - let UndoManager track all local operations
+      mergeInterval: 500,
+      excludeOriginPrefixes: [],
       onPush: (_isUndo, _range, _event) => {
-        // Store current selection state when an operation is pushed
-        const selectedNode = this.reactFlowStore?.getState().getNodes().find((n: Node) => n.data?.selected)
+        const selectedNode = this.reactFlowStore
+          ?.getState()
+          .getNodes()
+          .find((n: Node) => n.data?.selected)
 
-        // Emit event to update UI button states when new operation is pushed
         setTimeout(() => {
           this.eventEmitter.emit('undoRedoStateChange', {
             canUndo: this.undoManager?.canUndo() || false,
@@ -532,8 +563,12 @@ export class CollaborationManager {
         }
       },
       onPop: (_isUndo, value, _counterRange) => {
-        // Restore selection state when undoing/redoing
-        if (value?.value && typeof value.value === 'object' && 'selectedNodeId' in value.value && this.reactFlowStore) {
+        if (
+          value?.value &&
+          typeof value.value === 'object' &&
+          'selectedNodeId' in value.value &&
+          this.reactFlowStore
+        ) {
           const selectedNodeId = (value.value as { selectedNodeId?: string | null }).selectedNodeId
           if (selectedNodeId) {
             const state = this.reactFlowStore.getState()
@@ -546,37 +581,120 @@ export class CollaborationManager {
                 selected: n.id === selectedNodeId,
               },
             }))
-            this.captureSetNodesAnomaly(nodes, newNodes, 'reactflow-native:undo-redo-selection-restore')
+            this.captureSetNodesAnomaly(
+              nodes,
+              newNodes,
+              'reactflow-native:undo-redo-selection-restore',
+            )
             setNodes(newNodes)
           }
         }
       },
     })
 
-    this.provider = new CRDTProvider(socket, this.doc, this.handleSessionUnauthorized)
-
+    this.provider = new CRDTProvider(
+      socket,
+      this.doc,
+      this.handleSessionUnauthorized,
+      this.handleSnapshotImported,
+      this.shouldImportSnapshot,
+    )
     this.setupSubscriptions()
+  }
+
+  private handleSnapshotImported = (): void => {
+    if (!this.awaitingSnapshotImport) return
+
+    const shouldBroadcastSnapshot = this.isLeader && this.pendingGraphResyncBroadcast
+    this.clearInitialSyncRetry()
+    this.refreshGraphSynchronously()
+    this.awaitingSnapshotImport = false
+    this.crdtTrusted = true
+    this.reconnectedWithFreshDoc = false
+    this.graphReloadRequired = false
+    this.emitGraphReadyState()
+    if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
+  }
+
+  private shouldImportSnapshot = (): boolean => {
+    return !this.isLeader || this.awaitingSnapshotImport
+  }
+
+  async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
+    const connectionId = Math.random().toString(36).substring(2, 11)
+
+    this.activeConnections.add(connectionId)
+
+    if (this.currentAppId === appId && this.doc) {
+      // Already connected to the same app, only update store if provided and we don't have one
+      if (reactFlowStore && !this.reactFlowStore) this.reactFlowStore = reactFlowStore
+
+      return connectionId
+    }
+
+    // Only disconnect if switching to a different app
+    if (this.currentAppId && this.currentAppId !== appId) this.forceDisconnect()
+
+    this.currentAppId = appId
+    // Only set store if provided
+    if (reactFlowStore) this.reactFlowStore = reactFlowStore
+
+    const socket = webSocketClient.connect(appId)
+
+    // Setup event listeners BEFORE any other operations
+    this.setupSocketEventListeners(socket)
+    this.attachVisibilityListener()
+
+    this.crdtTrusted = false
+    this.pendingInitialSync = true
+    this.initializeCrdt(socket)
+    this.emitGraphReadyState()
 
     // Force user_connect if already connected
     if (socket.connected)
-      emitWithAuthGuard(socket, 'user_connect', { workflow_id: appId }, { onUnauthorized: this.handleSessionUnauthorized })
+      emitWithAuthGuard(
+        socket,
+        'user_connect',
+        { workflow_id: appId },
+        { onUnauthorized: this.handleSessionUnauthorized },
+      )
 
     return connectionId
   }
 
   disconnect = (connectionId?: string): void => {
-    if (connectionId)
-      this.activeConnections.delete(connectionId)
+    if (connectionId) this.activeConnections.delete(connectionId)
 
     // Only disconnect when no more connections
-    if (this.activeConnections.size === 0)
-      this.forceDisconnect()
+    if (this.activeConnections.size === 0) this.forceDisconnect()
+  }
+
+  private rejectPendingWorkflowSyncRequests(error: Error): void {
+    this.pendingWorkflowSyncRequests.forEach((request) => {
+      clearTimeout(request.timeout)
+      request.reject(error)
+    })
+    this.pendingWorkflowSyncRequests.clear()
   }
 
   private forceDisconnect = (): void => {
-    if (this.currentAppId)
-      webSocketClient.disconnect(this.currentAppId)
+    if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
 
+    this.clearInitialSyncRetry()
+    this.detachVisibilityListener()
+    this.graphViewActive = null
+    this.graphViewSequence = 0
+    this.crdtTrusted = false
+    this.rebuildCrdtOnNextConnect = false
+    this.reconnectedWithFreshDoc = false
+    this.awaitingSnapshotImport = false
+    this.graphReloadRequired = false
+    this.graphReloadToken += 1
+    this.graphReloadAttempt = 0
+    this.pendingGraphResyncBroadcast = false
+    this.emitGraphReadyState()
+    this.crdtGeneration += 1
+    this.rejectPendingWorkflowSyncRequests(new Error('Collaboration connection closed.'))
     this.provider?.destroy()
     this.undoManager = null
     this.doc = null
@@ -597,8 +715,7 @@ export class CollaborationManager {
     this.isLeader = false
     this.leaderId = null
 
-    if (wasLeader)
-      this.eventEmitter.emit('leaderChange', false)
+    if (wasLeader) this.eventEmitter.emit('leaderChange', false)
 
     this.activeConnections.clear()
     this.eventEmitter.removeAllListeners()
@@ -609,22 +726,108 @@ export class CollaborationManager {
   }
 
   getNodes(): Node[] {
-    if (!this.nodesMap)
-      return []
-    return Array.from(this.nodesMap.keys()).map(id => this.exportNode(id as string))
+    if (!this.nodesMap) return []
+    return Array.from(this.nodesMap.keys()).map((id) => this.exportNode(id as string))
   }
 
   getEdges(): Edge[] {
-    return this.edgesMap ? Array.from(this.edgesMap.values()) as Edge[] : []
+    return this.edgesMap ? (Array.from(this.edgesMap.values()) as Edge[]) : []
+  }
+
+  canRestoreGraphFromCrdt(): boolean {
+    return this.crdtTrusted && !this.graphReloadRequired && this.doc !== null
+  }
+
+  canPersistLocalGraph(): boolean {
+    return this.crdtTrusted && !this.graphReloadRequired && this.graphViewActive !== false
+  }
+
+  canApplyLocalGraphMutation(): boolean {
+    if (!this.currentAppId) return true
+    return this.canPersistLocalGraph() && this.getActiveSocket()?.connected === true
+  }
+
+  private emitGraphReadyState(): void {
+    this.eventEmitter.emit('graphReadyChange', this.canApplyLocalGraphMutation())
+  }
+
+  onGraphReadyChange(callback: (isReady: boolean) => void): () => void {
+    const unsubscribe = this.eventEmitter.on('graphReadyChange', callback)
+    callback(this.canApplyLocalGraphMutation())
+    return unsubscribe
+  }
+
+  canFlushGraphOnPageClose(): boolean {
+    if (!this.crdtTrusted || this.graphReloadRequired || !this.isLeader) return false
+    if (this.graphViewActive !== false) return true
+
+    const socketId = this.getActiveSocket()?.id
+    return (
+      typeof socketId === 'string' &&
+      this.onlineUsers.length === 1 &&
+      this.onlineUsers[0]?.sid === socketId
+    )
+  }
+
+  private getGraphReloadRequest(): GraphReloadRequest {
+    return {
+      generation: this.crdtGeneration,
+      token: this.graphReloadToken,
+      attempt: this.graphReloadAttempt,
+    }
+  }
+
+  private emitGraphReloadRequired(attempt = 0): void {
+    this.graphReloadAttempt = attempt
+    this.graphReloadToken += 1
+    this.eventEmitter.emit('graphReloadRequired', this.getGraphReloadRequest())
+  }
+
+  onGraphReloadRequired(callback: (request: GraphReloadRequest) => void): () => void {
+    const unsubscribe = this.eventEmitter.on('graphReloadRequired', callback)
+    if (this.graphReloadRequired) callback(this.getGraphReloadRequest())
+    return unsubscribe
+  }
+
+  isGraphReloadCurrent(request: GraphReloadRequest): boolean {
+    return (
+      this.isLeader &&
+      this.graphReloadRequired &&
+      !this.crdtTrusted &&
+      request.generation === this.crdtGeneration &&
+      request.token === this.graphReloadToken
+    )
+  }
+
+  replaceGraphFromReactFlow(request: GraphReloadRequest): boolean {
+    if (!this.doc || !this.reactFlowStore || !this.isGraphReloadCurrent(request)) return false
+
+    const shouldBroadcastSnapshot = this.pendingGraphResyncBroadcast
+    const state = this.reactFlowStore.getState()
+    this.syncNodes(this.getNodes(), state.getNodes())
+    this.syncEdges(this.getEdges(), state.getEdges())
+    this.doc.commit()
+    this.clearInitialSyncRetry()
+    this.crdtTrusted = true
+    this.awaitingSnapshotImport = false
+    this.reconnectedWithFreshDoc = false
+    this.graphReloadRequired = false
+    this.emitGraphReadyState()
+    if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
+    return true
+  }
+
+  retryGraphReload(request: GraphReloadRequest): void {
+    if (!this.isGraphReloadCurrent(request)) return
+
+    this.emitGraphReloadRequired(request.attempt + 1)
   }
 
   emitCursorMove(position: CursorPosition): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     const socket = this.getActiveSocket()
-    if (!socket)
-      return
+    if (!socket) return
 
     this.sendCollaborationEvent({
       type: 'mouse_move',
@@ -634,20 +837,110 @@ export class CollaborationManager {
     })
   }
 
-  emitSyncRequest(): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
+  requestWorkflowSync(): Promise<WorkflowSyncResult> {
+    const socket = this.getActiveSocket()
+    if (!this.currentAppId || !socket?.connected)
+      return Promise.reject(new Error('Collaboration connection is not available.'))
+    if (!this.doc || !this.canPersistLocalGraph())
+      return Promise.reject(new Error('Collaborative graph is not ready to save.'))
+
+    const requestId =
+      globalThis.crypto?.randomUUID?.() ??
+      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+    const graphSnapshot = this.doc.export({ mode: 'snapshot' })
+
+    return new Promise<WorkflowSyncResult>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pendingWorkflowSyncRequests.delete(requestId)
+        reject(new Error('Workflow draft sync timed out.'))
+      }, WORKFLOW_SYNC_REQUEST_TIMEOUT)
+
+      this.pendingWorkflowSyncRequests.set(requestId, { resolve, reject, timeout })
+
+      emitWithAuthGuard(
+        socket,
+        'collaboration_event',
+        {
+          type: 'sync_request',
+          data: { requestId, graphSnapshot },
+          timestamp: Date.now(),
+        } satisfies CollaborationEventPayload,
+        {
+          onAck: (body: unknown, status: unknown) => {
+            const pendingRequest = this.pendingWorkflowSyncRequests.get(requestId)
+            if (!pendingRequest) return
+
+            clearTimeout(pendingRequest.timeout)
+            this.pendingWorkflowSyncRequests.delete(requestId)
+
+            const response = body as {
+              success?: unknown
+              hash?: unknown
+              updatedAt?: unknown
+              error?: unknown
+              msg?: unknown
+            }
+            const failedStatus = typeof status === 'number' && (status < 200 || status >= 300)
+            if (
+              failedStatus ||
+              response?.success !== true ||
+              typeof response.hash !== 'string' ||
+              typeof response.updatedAt !== 'number'
+            ) {
+              const message =
+                (typeof response?.error === 'string' && response.error) ||
+                (typeof response?.msg === 'string' && response.msg) ||
+                'Workflow draft sync failed.'
+              pendingRequest.reject(new Error(message))
+              return
+            }
+
+            pendingRequest.resolve({ hash: response.hash, updatedAt: response.updatedAt })
+          },
+          onUnauthorized: this.handleSessionUnauthorized,
+        },
+      )
+    })
+  }
+
+  emitGraphViewState(active: boolean, force = false): void {
+    // Record the state even while offline so the post-rejoin 'status' handler can re-report it.
+    if (!force && this.graphViewActive === active) return
+
+    this.graphViewActive = active
+    this.graphViewSequence += 1
+    this.emitGraphReadyState()
+
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     this.sendCollaborationEvent({
-      type: 'sync_request',
-      data: { timestamp: Date.now() },
+      type: 'graph_view_state',
+      data: { graphActive: active, sequence: this.graphViewSequence, timestamp: Date.now() },
       timestamp: Date.now(),
     })
   }
 
+  private handleVisibilityChange = (): void => {
+    this.emitGraphViewState(document.visibilityState === 'visible')
+  }
+
+  private attachVisibilityListener(): void {
+    if (this.visibilityListenerAttached || typeof document === 'undefined') return
+
+    document.addEventListener('visibilitychange', this.handleVisibilityChange)
+    this.visibilityListenerAttached = true
+    this.graphViewActive = document.visibilityState === 'visible'
+  }
+
+  private detachVisibilityListener(): void {
+    if (!this.visibilityListenerAttached || typeof document === 'undefined') return
+
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
+    this.visibilityListenerAttached = false
+  }
+
   emitWorkflowUpdate(appId: string): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     this.sendCollaborationEvent({
       type: 'workflow_update',
@@ -657,12 +950,10 @@ export class CollaborationManager {
   }
 
   emitNodePanelPresence(nodeId: string, isOpen: boolean, user: NodePanelPresenceUser): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     const socket = this.getActiveSocket()
-    if (!socket || !nodeId || !user?.userId)
-      return
+    if (!socket || !nodeId || !user?.userId) return
 
     const payload: NodePanelPresenceEventData = {
       nodeId,
@@ -681,11 +972,11 @@ export class CollaborationManager {
     this.applyNodePanelPresenceUpdate(payload)
   }
 
-  onSyncRequest(callback: () => void): () => void {
+  onSyncRequest(callback: (request: WorkflowSyncRequest) => void): () => void {
     return this.eventEmitter.on('syncRequest', callback)
   }
 
-  onGraphImport(callback: (payload: { nodes: Node[], edges: Edge[] }) => void): () => void {
+  onGraphImport(callback: (payload: { nodes: Node[]; edges: Edge[] }) => void): () => void {
     return this.eventEmitter.on('graphImport', callback)
   }
 
@@ -701,7 +992,7 @@ export class CollaborationManager {
     return this.eventEmitter.on('onlineUsers', callback)
   }
 
-  onWorkflowUpdate(callback: (update: { appId: string, timestamp: number }) => void): () => void {
+  onWorkflowUpdate(callback: (update: { appId: string; timestamp: number }) => void): () => void {
     return this.eventEmitter.on('workflowUpdate', callback)
   }
 
@@ -735,13 +1026,12 @@ export class CollaborationManager {
     return this.eventEmitter.on('leaderChange', callback)
   }
 
-  onCommentsUpdate(callback: (update: { appId: string, timestamp: number }) => void): () => void {
+  onCommentsUpdate(callback: (update: { appId: string; timestamp: number }) => void): () => void {
     return this.eventEmitter.on('commentsUpdate', callback)
   }
 
   emitCommentsUpdate(appId: string): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     this.sendCollaborationEvent({
       type: 'comments_update',
@@ -751,8 +1041,7 @@ export class CollaborationManager {
   }
 
   emitHistoryAction(action: 'undo' | 'redo' | 'jump'): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     this.sendCollaborationEvent({
       type: 'workflow_history_action',
@@ -761,17 +1050,20 @@ export class CollaborationManager {
     })
   }
 
-  onUndoRedoStateChange(callback: (state: { canUndo: boolean, canRedo: boolean }) => void): () => void {
+  onUndoRedoStateChange(
+    callback: (state: { canUndo: boolean; canRedo: boolean }) => void,
+  ): () => void {
     return this.eventEmitter.on('undoRedoStateChange', callback)
   }
 
-  onHistoryAction(callback: (payload: { action: 'undo' | 'redo' | 'jump', userId?: string }) => void): () => void {
+  onHistoryAction(
+    callback: (payload: { action: 'undo' | 'redo' | 'jump'; userId?: string }) => void,
+  ): () => void {
     return this.eventEmitter.on('historyAction', callback)
   }
 
   emitRestoreIntent(data: RestoreIntentData): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_intent',
@@ -781,8 +1073,7 @@ export class CollaborationManager {
   }
 
   emitRestoreComplete(data: RestoreCompleteData): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_complete',
@@ -809,8 +1100,7 @@ export class CollaborationManager {
 
   // Collaborative undo/redo methods
   undo(): boolean {
-    if (!this.undoManager)
-      return false
+    if (!this.undoManager) return false
 
     const canUndo = this.undoManager.canUndo()
     if (canUndo) {
@@ -839,8 +1129,7 @@ export class CollaborationManager {
             canRedo: this.undoManager?.canRedo() || false,
           })
         })
-      }
-      else {
+      } else {
         this.isUndoRedoInProgress = false
       }
 
@@ -851,8 +1140,7 @@ export class CollaborationManager {
   }
 
   redo(): boolean {
-    if (!this.undoManager)
-      return false
+    if (!this.undoManager) return false
 
     const canRedo = this.undoManager.canRedo()
     if (canRedo) {
@@ -881,8 +1169,7 @@ export class CollaborationManager {
             canRedo: this.undoManager?.canRedo() || false,
           })
         })
-      }
-      else {
+      } else {
         this.isUndoRedoInProgress = false
       }
 
@@ -893,29 +1180,25 @@ export class CollaborationManager {
   }
 
   canUndo(): boolean {
-    if (!this.undoManager)
-      return false
+    if (!this.undoManager) return false
     return this.undoManager.canUndo()
   }
 
   canRedo(): boolean {
-    if (!this.undoManager)
-      return false
+    if (!this.undoManager) return false
     return this.undoManager.canRedo()
   }
 
   clearUndoStack(): void {
-    if (!this.undoManager)
-      return
+    if (!this.undoManager) return
     this.undoManager.clear()
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
-    if (!this.nodesMap || !this.doc)
-      return
+    if (!this.nodesMap || !this.doc) return
 
-    const oldNodesMap = new Map(oldNodes.map(node => [node.id, node]))
-    const newNodesMap = new Map(newNodes.map(node => [node.id, node]))
+    const oldNodesMap = new Map(oldNodes.map((node) => [node.id, node]))
+    const newNodesMap = new Map(newNodes.map((node) => [node.id, node]))
 
     oldNodes.forEach((oldNode) => {
       if (!newNodesMap.has(oldNode.id)) {
@@ -925,10 +1208,8 @@ export class CollaborationManager {
 
     newNodes.forEach((newNode) => {
       const oldNode = oldNodesMap.get(newNode.id)
-      if (oldNode && oldNode === newNode)
-        return
-      if (oldNode && isEqual(oldNode, newNode))
-        return
+      if (oldNode && oldNode === newNode) return
+      if (oldNode && isEqual(oldNode, newNode)) return
 
       const nodeContainer = this.getNodeContainer(newNode.id)
       this.populateNodeContainer(nodeContainer, newNode)
@@ -936,11 +1217,10 @@ export class CollaborationManager {
   }
 
   private syncEdges(oldEdges: Edge[], newEdges: Edge[]): void {
-    if (!this.edgesMap)
-      return
+    if (!this.edgesMap) return
 
-    const oldEdgesMap = new Map(oldEdges.map(edge => [edge.id, edge]))
-    const newEdgesMap = new Map(newEdges.map(edge => [edge.id, edge]))
+    const oldEdgesMap = new Map(oldEdges.map((edge) => [edge.id, edge]))
+    const newEdgesMap = new Map(newEdges.map((edge) => [edge.id, edge]))
 
     oldEdges.forEach((oldEdge) => {
       if (!newEdgesMap.has(oldEdge.id)) {
@@ -958,21 +1238,21 @@ export class CollaborationManager {
   }
 
   private setupSubscriptions(): void {
+    const generation = this.crdtGeneration
     this.nodesMap?.subscribe((event: LoroSubscribeEvent) => {
+      if (generation !== this.crdtGeneration) return
+
       const reactFlowStore = this.reactFlowStore
       const eventBy = event.by ?? 'unknown'
-      this.recordGraphSyncDiagnostic(
-        'nodes_subscribe',
-        'triggered',
-        undefined,
-        {
-          eventBy,
-          hasReactFlowStore: Boolean(reactFlowStore),
-        },
-      )
+      this.recordGraphSyncDiagnostic('nodes_subscribe', 'triggered', undefined, {
+        eventBy,
+        hasReactFlowStore: Boolean(reactFlowStore),
+      })
 
       if (eventBy !== 'import') {
-        this.recordGraphSyncDiagnostic('nodes_subscribe', 'skipped', 'event_by_not_import', { eventBy })
+        this.recordGraphSyncDiagnostic('nodes_subscribe', 'skipped', 'event_by_not_import', {
+          eventBy,
+        })
         return
       }
 
@@ -989,83 +1269,77 @@ export class CollaborationManager {
 
       this.recordGraphSyncDiagnostic('nodes_subscribe', 'queued', 'raf_scheduled')
       requestAnimationFrame(() => {
+        if (generation !== this.crdtGeneration) return
+
         const state = reactFlowStore.getState()
         const previousNodes: Node[] = state.getNodes()
         const previousEdges: Edge[] = state.getEdges()
         this.startImportLog('nodes', { nodes: previousNodes, edges: previousEdges })
-        const previousNodeMap = new Map(previousNodes.map(node => [node.id, node]))
+        const previousNodeMap = new Map(previousNodes.map((node) => [node.id, node]))
         const selectedIds = new Set(
-          previousNodes
-            .filter(node => node.data?.selected)
-            .map(node => node.id),
+          previousNodes.filter((node) => node.data?.selected).map((node) => node.id),
         )
 
         this.pendingInitialSync = false
 
-        const updatedNodes = Array
-          .from(this.nodesMap?.keys() || [])
-          .map((nodeId) => {
-            const node = this.exportNode(nodeId as string)
-            const clonedNode: Node = {
-              ...node,
-              data: {
-                ...(node.data || {}),
-              },
-            }
-            const clonedNodeData = clonedNode.data as (CommonNodeType & Record<string, unknown>)
-            // Keep the previous node's private data properties (starting with _)
-            const previousNode = previousNodeMap.get(clonedNode.id)
-            if (previousNode?.data) {
-              const previousData = previousNode.data as Record<string, unknown>
-              Object.entries(previousData)
-                .filter(([key]) => key.startsWith('_'))
-                .forEach(([key, value]) => {
-                  if (!(key in clonedNodeData))
-                    clonedNodeData[key] = value
-                })
-            }
+        const updatedNodes = Array.from(this.nodesMap?.keys() || []).map((nodeId) => {
+          const node = this.exportNode(nodeId as string)
+          const clonedNode: Node = {
+            ...node,
+            data: {
+              ...(node.data || {}),
+            },
+          }
+          const clonedNodeData = clonedNode.data as CommonNodeType & Record<string, unknown>
+          // Keep the previous node's private data properties (starting with _)
+          const previousNode = previousNodeMap.get(clonedNode.id)
+          if (previousNode?.data) {
+            const previousData = previousNode.data as Record<string, unknown>
+            Object.entries(previousData)
+              .filter(([key]) => key.startsWith('_'))
+              .forEach(([key, value]) => {
+                if (!(key in clonedNodeData)) clonedNodeData[key] = value
+              })
+          }
 
-            if (selectedIds.has(clonedNode.id))
-              clonedNode.data.selected = true
+          if (selectedIds.has(clonedNode.id)) clonedNode.data.selected = true
 
-            return clonedNode
-          })
+          return clonedNode
+        })
 
         // Call ReactFlow's native setter directly to avoid triggering collaboration
-        this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:import-nodes-map-subscribe')
-        state.setNodes(updatedNodes)
-        this.recordGraphSyncDiagnostic(
-          'nodes_import_apply',
-          'applied',
-          undefined,
-          {
-            eventBy,
-            previousNodeCount: previousNodes.length,
-            updatedNodeCount: updatedNodes.length,
-            previousEdgeCount: previousEdges.length,
-            selectedCount: selectedIds.size,
-          },
+        this.captureSetNodesAnomaly(
+          previousNodes,
+          updatedNodes,
+          'reactflow-native:import-nodes-map-subscribe',
         )
+        state.setNodes(updatedNodes)
+        this.recordGraphSyncDiagnostic('nodes_import_apply', 'applied', undefined, {
+          eventBy,
+          previousNodeCount: previousNodes.length,
+          updatedNodeCount: updatedNodes.length,
+          previousEdgeCount: previousEdges.length,
+          selectedCount: selectedIds.size,
+        })
 
         this.scheduleGraphImportEmit()
       })
     })
 
     this.edgesMap?.subscribe((event: LoroSubscribeEvent) => {
+      if (generation !== this.crdtGeneration) return
+
       const reactFlowStore = this.reactFlowStore
       const eventBy = event.by ?? 'unknown'
-      this.recordGraphSyncDiagnostic(
-        'edges_subscribe',
-        'triggered',
-        undefined,
-        {
-          eventBy,
-          hasReactFlowStore: Boolean(reactFlowStore),
-        },
-      )
+      this.recordGraphSyncDiagnostic('edges_subscribe', 'triggered', undefined, {
+        eventBy,
+        hasReactFlowStore: Boolean(reactFlowStore),
+      })
 
       if (eventBy !== 'import') {
-        this.recordGraphSyncDiagnostic('edges_subscribe', 'skipped', 'event_by_not_import', { eventBy })
+        this.recordGraphSyncDiagnostic('edges_subscribe', 'skipped', 'event_by_not_import', {
+          eventBy,
+        })
         return
       }
 
@@ -1082,6 +1356,8 @@ export class CollaborationManager {
 
       this.recordGraphSyncDiagnostic('edges_subscribe', 'queued', 'raf_scheduled')
       requestAnimationFrame(() => {
+        if (generation !== this.crdtGeneration) return
+
         // Get ReactFlow's native setters, not the collaborative ones
         const state = reactFlowStore.getState()
         const previousNodes = state.getNodes()
@@ -1093,17 +1369,12 @@ export class CollaborationManager {
 
         // Call ReactFlow's native setter directly to avoid triggering collaboration
         state.setEdges(updatedEdges)
-        this.recordGraphSyncDiagnostic(
-          'edges_import_apply',
-          'applied',
-          undefined,
-          {
-            eventBy,
-            previousNodeCount: previousNodes.length,
-            previousEdgeCount: previousEdges.length,
-            updatedEdgeCount: updatedEdges.length,
-          },
-        )
+        this.recordGraphSyncDiagnostic('edges_import_apply', 'applied', undefined, {
+          eventBy,
+          previousNodeCount: previousNodes.length,
+          previousEdgeCount: previousEdges.length,
+          updatedEdgeCount: updatedEdges.length,
+        })
 
         this.scheduleGraphImportEmit()
       })
@@ -1112,34 +1383,28 @@ export class CollaborationManager {
 
   private scheduleGraphImportEmit(): void {
     if (this.pendingGraphImportEmit) {
-      this.recordGraphSyncDiagnostic(
-        'schedule_graph_import_emit',
-        'skipped',
-        'already_pending',
-      )
+      this.recordGraphSyncDiagnostic('schedule_graph_import_emit', 'skipped', 'already_pending')
       return
     }
 
     this.recordGraphSyncDiagnostic('schedule_graph_import_emit', 'queued')
     this.pendingGraphImportEmit = true
+    const generation = this.crdtGeneration
     requestAnimationFrame(() => {
+      if (generation !== this.crdtGeneration) return
+
       const beforeFinalizeNodes = this.getNodes().length
       const beforeFinalizeEdges = this.getEdges().length
       this.pendingGraphImportEmit = false
       this.finalizeImportLog()
       const mergedNodes = this.mergeLocalNodeState(this.getNodes())
       const mergedEdges = this.getEdges()
-      this.recordGraphSyncDiagnostic(
-        'graph_import_emit',
-        'emitted',
-        undefined,
-        {
-          mergedNodeCount: mergedNodes.length,
-          mergedEdgeCount: mergedEdges.length,
-          crdtNodeCountBeforeFinalize: beforeFinalizeNodes,
-          crdtEdgeCountBeforeFinalize: beforeFinalizeEdges,
-        },
-      )
+      this.recordGraphSyncDiagnostic('graph_import_emit', 'emitted', undefined, {
+        mergedNodeCount: mergedNodes.length,
+        mergedEdgeCount: mergedEdges.length,
+        crdtNodeCountBeforeFinalize: beforeFinalizeNodes,
+        crdtEdgeCountBeforeFinalize: beforeFinalizeEdges,
+      })
       this.eventEmitter.emit('graphImport', {
         nodes: mergedNodes,
         edges: mergedEdges,
@@ -1160,14 +1425,12 @@ export class CollaborationManager {
     const state = reactFlowStore?.getState()
     const localNodes = state?.getNodes() || []
 
-    if (localNodes.length === 0)
-      return nodes
+    if (localNodes.length === 0) return nodes
 
-    const localNodesMap = new Map(localNodes.map(node => [node.id, node]))
+    const localNodesMap = new Map(localNodes.map((node) => [node.id, node]))
     return nodes.map((node) => {
       const localNode = localNodesMap.get(node.id)
-      if (!localNode)
-        return node
+      if (!localNode) return node
 
       const nextNode = cloneDeep(node)
       const nextData = { ...(nextNode.data || {}) } as Node['data']
@@ -1176,12 +1439,14 @@ export class CollaborationManager {
 
       if (localData) {
         Object.entries(localData).forEach(([key, value]) => {
-          if (key === 'selected' || key.startsWith('_'))
-            nextDataRecord[key] = value
+          if (key === 'selected' || key.startsWith('_')) nextDataRecord[key] = value
         })
       }
 
-      if (!Object.prototype.hasOwnProperty.call(nextDataRecord, 'selected') && localNode.selected !== undefined)
+      if (
+        !Object.prototype.hasOwnProperty.call(nextDataRecord, 'selected') &&
+        localNode.selected !== undefined
+      )
         nextDataRecord.selected = localNode.selected
 
       nextNode.data = nextData
@@ -1267,30 +1532,30 @@ export class CollaborationManager {
 
     this.graphSyncDiagnostics.push(entry)
     if (this.graphSyncDiagnostics.length > GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT)
-      this.graphSyncDiagnostics.splice(0, this.graphSyncDiagnostics.length - GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT)
+      this.graphSyncDiagnostics.splice(
+        0,
+        this.graphSyncDiagnostics.length - GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT,
+      )
   }
 
   private captureSetNodesAnomaly(oldNodes: Node[], newNodes: Node[], source: string): void {
-    const oldNodeIds = oldNodes.map(node => node.id)
-    const newNodeIds = newNodes.map(node => node.id)
+    const oldNodeIds = oldNodes.map((node) => node.id)
+    const newNodeIds = newNodes.map((node) => node.id)
     const newNodeIdSet = new Set(newNodeIds)
-    const removedNodeIds = oldNodeIds.filter(nodeId => !newNodeIdSet.has(nodeId))
+    const removedNodeIds = oldNodeIds.filter((nodeId) => !newNodeIdSet.has(nodeId))
 
     const oldStartNodeIds = oldNodes
-      .filter(node => (node.data as CommonNodeType | undefined)?.type === 'start')
-      .map(node => node.id)
+      .filter((node) => (node.data as CommonNodeType | undefined)?.type === 'start')
+      .map((node) => node.id)
     const newStartNodeIds = newNodes
-      .filter(node => (node.data as CommonNodeType | undefined)?.type === 'start')
-      .map(node => node.id)
+      .filter((node) => (node.data as CommonNodeType | undefined)?.type === 'start')
+      .map((node) => node.id)
 
     const reasons: SetNodesAnomalyReason[] = []
-    if (newNodes.length < oldNodes.length)
-      reasons.push('node_count_decrease')
-    if (oldStartNodeIds.length > 0 && newStartNodeIds.length === 0)
-      reasons.push('start_removed')
+    if (newNodes.length < oldNodes.length) reasons.push('node_count_decrease')
+    if (oldStartNodeIds.length > 0 && newStartNodeIds.length === 0) reasons.push('start_removed')
 
-    if (!reasons.length)
-      return
+    if (!reasons.length) return
 
     const entry: SetNodesAnomalyLogEntry = {
       timestamp: Date.now(),
@@ -1315,10 +1580,13 @@ export class CollaborationManager {
     }
     this.setNodesAnomalyLogs.push(entry)
     if (this.setNodesAnomalyLogs.length > SET_NODES_ANOMALY_LOG_LIMIT)
-      this.setNodesAnomalyLogs.splice(0, this.setNodesAnomalyLogs.length - SET_NODES_ANOMALY_LOG_LIMIT)
+      this.setNodesAnomalyLogs.splice(
+        0,
+        this.setNodesAnomalyLogs.length - SET_NODES_ANOMALY_LOG_LIMIT,
+      )
   }
 
-  private snapshotReactFlowGraph(): { nodes: Node[], edges: Edge[] } {
+  private snapshotReactFlowGraph(): { nodes: Node[]; edges: Edge[] } {
     if (!this.reactFlowStore) {
       return {
         nodes: this.getNodes(),
@@ -1333,7 +1601,10 @@ export class CollaborationManager {
     }
   }
 
-  private startImportLog(source: 'nodes' | 'edges', before?: { nodes: Node[], edges: Edge[] }): void {
+  private startImportLog(
+    source: 'nodes' | 'edges',
+    before?: { nodes: Node[]; edges: Edge[] },
+  ): void {
     if (!this.pendingImportLog) {
       const snapshot = before ?? this.snapshotReactFlowGraph()
       this.pendingImportLog = {
@@ -1344,28 +1615,18 @@ export class CollaborationManager {
           edges: cloneDeep(snapshot.edges),
         },
       }
-      this.recordGraphSyncDiagnostic(
-        'start_import_log',
-        'snapshot',
-        'created',
-        {
-          source,
-          beforeNodes: snapshot.nodes.length,
-          beforeEdges: snapshot.edges.length,
-        },
-      )
+      this.recordGraphSyncDiagnostic('start_import_log', 'snapshot', 'created', {
+        source,
+        beforeNodes: snapshot.nodes.length,
+        beforeEdges: snapshot.edges.length,
+      })
       return
     }
     this.pendingImportLog.sources.add(source)
-    this.recordGraphSyncDiagnostic(
-      'start_import_log',
-      'snapshot',
-      'merged_source',
-      {
-        source,
-        sourceCount: this.pendingImportLog.sources.size,
-      },
-    )
+    this.recordGraphSyncDiagnostic('start_import_log', 'snapshot', 'merged_source', {
+      source,
+      sourceCount: this.pendingImportLog.sources.size,
+    })
   }
 
   private finalizeImportLog(): void {
@@ -1396,84 +1657,105 @@ export class CollaborationManager {
     }
 
     this.graphImportLogs.push(entry)
-    this.recordGraphSyncDiagnostic(
-      'finalize_import_log',
-      'snapshot',
-      undefined,
-      {
-        sources: entry.sources,
-        beforeNodes: entry.before.nodes.length,
-        beforeEdges: entry.before.edges.length,
-        afterNodes: entry.after.nodes.length,
-        afterEdges: entry.after.edges.length,
-      },
-    )
+    this.recordGraphSyncDiagnostic('finalize_import_log', 'snapshot', undefined, {
+      sources: entry.sources,
+      beforeNodes: entry.before.nodes.length,
+      beforeEdges: entry.before.edges.length,
+      afterNodes: entry.after.nodes.length,
+      afterEdges: entry.after.edges.length,
+    })
     if (this.graphImportLogs.length > GRAPH_IMPORT_LOG_LIMIT)
       this.graphImportLogs.splice(0, this.graphImportLogs.length - GRAPH_IMPORT_LOG_LIMIT)
     this.pendingImportLog = null
   }
 
+  private importWorkflowSyncSnapshot(snapshotData: unknown): boolean {
+    if (!this.doc || !this.canPersistLocalGraph()) return false
+
+    const snapshot = toUint8Array(snapshotData)
+    if (!snapshot) return false
+
+    try {
+      this.doc.import(snapshot)
+      return true
+    } catch (error) {
+      console.error('Error importing workflow sync snapshot:', error)
+      return false
+    }
+  }
+
   private setupSocketEventListeners(socket: Socket): void {
-    socket.on('collaboration_update', (update: CollaborationUpdate) => {
-      if (update.type === 'mouse_move') {
-        // Update cursor state for this user
-        const data = update.data as { x: number, y: number }
-        this.cursors[update.userId] = {
-          x: data.x,
-          y: data.y,
-          userId: update.userId,
-          timestamp: update.timestamp,
-        }
+    socket.on(
+      'collaboration_update',
+      (update: CollaborationUpdate, socketAcknowledgement?: (result: unknown) => void) => {
+        if (update.type === 'mouse_move') {
+          // Update cursor state for this user
+          const data = update.data as { x: number; y: number }
+          this.cursors[update.userId] = {
+            x: data.x,
+            y: data.y,
+            userId: update.userId,
+            timestamp: update.timestamp,
+          }
 
-        this.eventEmitter.emit('cursors', { ...this.cursors })
-      }
-      else if (update.type === 'vars_and_features_update') {
-        this.eventEmitter.emit('varsAndFeaturesUpdate', update)
-      }
-      else if (update.type === 'app_state_update') {
-        this.eventEmitter.emit('appStateUpdate', update)
-      }
-      else if (update.type === 'app_meta_update') {
-        this.eventEmitter.emit('appMetaUpdate', update)
-      }
-      else if (update.type === 'app_publish_update') {
-        this.eventEmitter.emit('appPublishUpdate', update)
-      }
-      else if (update.type === 'mcp_server_update') {
-        this.eventEmitter.emit('mcpServerUpdate', update)
-      }
-      else if (update.type === 'workflow_update') {
-        this.eventEmitter.emit('workflowUpdate', update.data)
-      }
-      else if (update.type === 'comments_update') {
-        this.eventEmitter.emit('commentsUpdate', update.data)
-      }
-      else if (update.type === 'node_panel_presence') {
-        this.applyNodePanelPresenceUpdate(update.data as NodePanelPresenceEventData)
-      }
-      else if (update.type === 'sync_request') {
-        // Only process if we are the leader
-        if (this.isLeader)
-          this.eventEmitter.emit('syncRequest', {})
-      }
-      else if (update.type === 'graph_resync_request') {
-        if (this.isLeader)
+          this.eventEmitter.emit('cursors', { ...this.cursors })
+        } else if (update.type === 'vars_and_features_update') {
+          this.eventEmitter.emit('varsAndFeaturesUpdate', update)
+        } else if (update.type === 'app_state_update') {
+          this.eventEmitter.emit('appStateUpdate', update)
+        } else if (update.type === 'app_meta_update') {
+          this.eventEmitter.emit('appMetaUpdate', update)
+        } else if (update.type === 'app_publish_update') {
+          this.eventEmitter.emit('appPublishUpdate', update)
+        } else if (update.type === 'mcp_server_update') {
+          this.eventEmitter.emit('mcpServerUpdate', update)
+        } else if (update.type === 'workflow_update') {
+          this.eventEmitter.emit('workflowUpdate', update.data)
+        } else if (update.type === 'comments_update') {
+          this.eventEmitter.emit('commentsUpdate', update.data)
+        } else if (update.type === 'node_panel_presence') {
+          this.applyNodePanelPresenceUpdate(update.data as NodePanelPresenceEventData)
+        } else if (update.type === 'sync_request') {
+          const requestId =
+            typeof update.data.requestId === 'string' ? update.data.requestId : undefined
+          let acknowledged = false
+          const acknowledge = (result: WorkflowSyncAcknowledgement) => {
+            if (acknowledged || !socketAcknowledgement) return
+            acknowledged = true
+            socketAcknowledgement(result)
+          }
+
+          if (
+            !this.canPersistLocalGraph() ||
+            !this.importWorkflowSyncSnapshot(update.data.graphSnapshot)
+          ) {
+            acknowledge({ success: false, error: 'Collaborative graph is not ready to save.' })
+            return
+          }
+
+          // The server sends sync_request only to its selected saver. The local leader flag can
+          // lag behind that routing decision, so receiving this directed event is the authority.
+          this.eventEmitter.emit('syncRequest', {
+            requestId,
+            acknowledge,
+          } satisfies WorkflowSyncRequest)
+        } else if (update.type === 'graph_resync_request') {
+          // The server sends this only to its selected snapshot source. Its routing decision is
+          // authoritative even if the preceding local leader status event is still in flight.
           this.broadcastCurrentGraph()
-      }
-      else if (update.type === 'workflow_restore_intent') {
-        this.eventEmitter.emit('restoreIntent', update.data as RestoreIntentData)
-      }
-      else if (update.type === 'workflow_restore_complete') {
-        this.eventEmitter.emit('restoreComplete', update.data as RestoreCompleteData)
-      }
-      else if (update.type === 'workflow_history_action') {
-        const data = update.data as { action?: 'undo' | 'redo' | 'jump' } | undefined
-        if (data?.action)
-          this.eventEmitter.emit('historyAction', { action: data.action, userId: update.userId })
-      }
-    })
+        } else if (update.type === 'workflow_restore_intent') {
+          this.eventEmitter.emit('restoreIntent', update.data as RestoreIntentData)
+        } else if (update.type === 'workflow_restore_complete') {
+          this.eventEmitter.emit('restoreComplete', update.data as RestoreCompleteData)
+        } else if (update.type === 'workflow_history_action') {
+          const data = update.data as { action?: 'undo' | 'redo' | 'jump' } | undefined
+          if (data?.action)
+            this.eventEmitter.emit('historyAction', { action: data.action, userId: update.userId })
+        }
+      },
+    )
 
-    socket.on('online_users', (data: { users: OnlineUser[], leader?: string }) => {
+    socket.on('online_users', (data: { users: OnlineUser[]; leader?: string }) => {
       try {
         if (!data || !Array.isArray(data.users)) {
           console.warn('Invalid online_users data structure:', data)
@@ -1489,21 +1771,18 @@ export class CollaborationManager {
 
         // Remove cursors for offline users
         Object.keys(this.cursors).forEach((userId) => {
-          if (!onlineUserIds.has(userId))
-            delete this.cursors[userId]
+          if (!onlineUserIds.has(userId)) delete this.cursors[userId]
         })
 
         this.cleanupNodePanelPresence(onlineClientIds)
 
         // Update leader information
-        if (data.leader && typeof data.leader === 'string')
-          this.leaderId = data.leader
+        if (data.leader && typeof data.leader === 'string') this.leaderId = data.leader
 
         this.onlineUsers = data.users
         this.eventEmitter.emit('onlineUsers', data.users)
         this.eventEmitter.emit('cursors', { ...this.cursors })
-      }
-      catch (error) {
+      } catch (error) {
         console.error('Error processing online_users update:', error)
       }
     })
@@ -1516,35 +1795,75 @@ export class CollaborationManager {
         }
 
         const wasLeader = this.isLeader
+        const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
 
-        if (this.isLeader) {
-          this.seedCrdtGraphFromReactFlowIfNeeded()
+        if (
+          this.isLeader &&
+          (this.reconnectedWithFreshDoc || this.awaitingSnapshotImport || this.graphReloadRequired)
+        ) {
+          this.clearInitialSyncRetry()
           this.pendingInitialSync = false
-        }
-        else {
-          this.requestInitialSyncIfNeeded()
+          const shouldNotifyReload = !this.graphReloadRequired || !wasLeader
+          this.graphReloadRequired = true
+          if (shouldNotifyReload) this.emitGraphReloadRequired()
+        } else if (this.isLeader) {
+          this.clearInitialSyncRetry()
+          this.seedCrdtGraphFromReactFlowIfNeeded()
+          this.crdtTrusted = true
+          this.pendingInitialSync = false
+        } else {
+          this.awaitingSnapshotImport = !this.crdtTrusted
+          this.pendingGraphResyncBroadcast = false
+          if (!this.awaitingSnapshotImport) {
+            this.clearInitialSyncRetry()
+            this.pendingInitialSync = false
+          } else if (!wasAwaitingSnapshotImport) {
+            this.clearInitialSyncRetry()
+            this.pendingInitialSync = true
+            this.requestInitialSyncIfNeeded()
+          }
         }
 
-        if (wasLeader !== this.isLeader)
-          this.eventEmitter.emit('leaderChange', this.isLeader)
-      }
-      catch (error) {
+        if (wasLeader !== this.isLeader) this.eventEmitter.emit('leaderChange', this.isLeader)
+
+        this.emitGraphReadyState()
+
+        // The server recreates the session on every (re)join. Re-report both visible and hidden
+        // states with a monotonically increasing sequence so stale deliveries cannot win.
+        if (this.graphViewActive !== null) this.emitGraphViewState(this.graphViewActive, true)
+      } catch (error) {
         console.error('Error processing status update:', error)
       }
     })
 
     socket.on('connect', () => {
+      if (this.rebuildCrdtOnNextConnect) {
+        this.initializeCrdt(socket)
+        this.rebuildCrdtOnNextConnect = false
+        this.reconnectedWithFreshDoc = true
+        this.awaitingSnapshotImport = false
+        this.crdtTrusted = false
+      }
+      this.emitGraphReadyState()
       this.eventEmitter.emit('stateChange', { isConnected: true })
       this.pendingInitialSync = true
     })
 
     socket.on('disconnect', (reason) => {
+      this.clearInitialSyncRetry()
       this.cursors = {}
       this.onlineUsers = []
       this.isLeader = false
       this.leaderId = null
+      this.crdtTrusted = false
+      this.rebuildCrdtOnNextConnect = true
+      this.reconnectedWithFreshDoc = false
+      this.awaitingSnapshotImport = false
+      this.graphReloadRequired = false
       this.pendingInitialSync = false
+      this.emitGraphReadyState()
+      this.rejectPendingWorkflowSyncRequests(new Error('Collaboration connection lost.'))
       this.eventEmitter.emit('stateChange', { isConnected: false, disconnectReason: reason })
       this.eventEmitter.emit('onlineUsers', [])
       this.eventEmitter.emit('cursors', {})
@@ -1563,47 +1882,73 @@ export class CollaborationManager {
   // We currently only relay CRDT updates; the server doesn't persist them.
   // When a follower joins mid-session, it might miss earlier broadcasts and render stale data.
   // This lightweight checkpoint asks the leader to rebroadcast the latest graph snapshot once.
+  private clearInitialSyncRetry(): void {
+    if (this.initialSyncRetryTimer) clearTimeout(this.initialSyncRetryTimer)
+    this.initialSyncRetryTimer = null
+    this.initialSyncRetryAttempt = 0
+  }
+
+  private scheduleInitialSyncRetry(): void {
+    if (this.initialSyncRetryTimer) return
+    if (this.isLeader || this.crdtTrusted || !this.awaitingSnapshotImport) return
+
+    const retryDelay = Math.min(
+      GRAPH_RESYNC_RETRY_BASE_DELAY * 2 ** this.initialSyncRetryAttempt,
+      GRAPH_RESYNC_RETRY_MAX_DELAY,
+    )
+    this.initialSyncRetryTimer = setTimeout(() => {
+      this.initialSyncRetryTimer = null
+      if (this.isLeader || this.crdtTrusted || !this.awaitingSnapshotImport) {
+        this.initialSyncRetryAttempt = 0
+        return
+      }
+
+      this.initialSyncRetryAttempt += 1
+      this.pendingInitialSync = true
+      this.requestInitialSyncIfNeeded()
+    }, retryDelay)
+  }
+
   private requestInitialSyncIfNeeded(): void {
-    if (!this.pendingInitialSync)
-      return
-    if (this.isLeader) {
+    if (!this.pendingInitialSync) return
+    if (this.isLeader || this.crdtTrusted || !this.awaitingSnapshotImport) {
       this.pendingInitialSync = false
+      this.clearInitialSyncRetry()
       return
     }
 
-    this.emitGraphResyncRequest()
+    if (!this.emitGraphResyncRequest()) return
+
     this.pendingInitialSync = false
+    this.scheduleInitialSyncRetry()
   }
 
-  private emitGraphResyncRequest(): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
+  private emitGraphResyncRequest(): boolean {
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return false
+    if (this.getActiveSocket()?.connected !== true) return false
 
     this.sendCollaborationEvent({
       type: 'graph_resync_request',
       data: { timestamp: Date.now() },
       timestamp: Date.now(),
     })
+    return true
   }
 
   private seedCrdtGraphFromReactFlowIfNeeded(): void {
-    if (!this.doc)
-      return
-    if (!this.reactFlowStore)
-      return
+    if (!this.doc) return
+    if (!this.reactFlowStore) return
 
     // CRDT may still be empty when the canvas was initially loaded from HTTP draft data
     // before collaboration finished connecting, and no local mutation has been written yet.
     // Seed once from the current ReactFlow graph so leader resync can broadcast a full snapshot.
-    if (this.getNodes().length > 0 || this.getEdges().length > 0)
-      return
+    if (this.getNodes().length > 0 || this.getEdges().length > 0) return
 
     const state = this.reactFlowStore.getState()
     const nodes = state.getNodes()
     const edges = state.getEdges()
 
-    if (!nodes.length && !edges.length)
-      return
+    if (!nodes.length && !edges.length) return
 
     this.syncNodes([], nodes)
     this.syncEdges([], edges)
@@ -1611,25 +1956,24 @@ export class CollaborationManager {
   }
 
   private broadcastCurrentGraph(): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (!this.doc) return
+
+    if (!this.crdtTrusted || this.graphReloadRequired) {
+      this.pendingGraphResyncBroadcast = true
       return
-    if (!this.doc)
-      return
+    }
 
     const socket = webSocketClient.getSocket(this.currentAppId)
-    if (!socket)
-      return
+    if (!socket) return
 
     try {
       this.seedCrdtGraphFromReactFlowIfNeeded()
 
-      if (this.getNodes().length === 0 && this.getEdges().length === 0)
-        return
-
       const snapshot = this.doc.export({ mode: 'snapshot' })
       this.sendGraphEvent(snapshot)
-    }
-    catch (error) {
+      this.pendingGraphResyncBroadcast = false
+    } catch (error) {
       console.error('Failed to broadcast graph snapshot:', error)
     }
   }

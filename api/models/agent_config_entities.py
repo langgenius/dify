@@ -188,6 +188,14 @@ def validate_config_skill_name(name: str) -> str:
     return normalized
 
 
+def _normalize_legacy_missing_asset_file_id(value: Any) -> Any:
+    """Canonicalize the null placeholder emitted by early portable Agent DSLs."""
+
+    if isinstance(value, dict) and value.get("is_missing") is True and value.get("file_id") is None:
+        return {**value, "file_id": ""}
+    return value
+
+
 class AgentConfigFileRefConfig(BaseModel):
     """Stable Agent Soul reference to one config file payload."""
 
@@ -195,15 +203,31 @@ class AgentConfigFileRefConfig(BaseModel):
 
     name: str = Field(min_length=1, max_length=255)
     file_kind: Literal["upload_file", "tool_file"]
-    file_id: str = Field(min_length=1, max_length=255)
+    file_id: str = Field(default="", max_length=255)
+    is_missing: bool = False
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_legacy_file_id(cls, value: Any) -> Any:
+        return _normalize_legacy_missing_asset_file_id(value)
 
     @field_validator("name")
     @classmethod
     def _validate_name(cls, value: str) -> str:
         return validate_config_name(value)
+
+    @model_validator(mode="after")
+    def _validate_file_reference(self) -> Self:
+        if self.is_missing:
+            if self.file_id:
+                raise ValueError("missing config files must not retain a workspace-local file_id")
+            return self
+        if not self.file_id or not self.file_id.strip():
+            raise ValueError("config file file_id is required unless is_missing is true")
+        return self
 
 
 class AgentConfigSkillRefConfig(BaseModel):
@@ -214,15 +238,31 @@ class AgentConfigSkillRefConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = ""
     file_kind: Literal["tool_file"] = "tool_file"
-    file_id: str = Field(min_length=1, max_length=255)
+    file_id: str = Field(default="", max_length=255)
+    is_missing: bool = False
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = "application/zip"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_legacy_file_id(cls, value: Any) -> Any:
+        return _normalize_legacy_missing_asset_file_id(value)
 
     @field_validator("name")
     @classmethod
     def _validate_name(cls, value: str) -> str:
         return validate_config_skill_name(value)
+
+    @model_validator(mode="after")
+    def _validate_file_reference(self) -> Self:
+        if self.is_missing:
+            if self.file_id:
+                raise ValueError("missing config skills must not retain a workspace-local file_id")
+            return self
+        if not self.file_id or not self.file_id.strip():
+            raise ValueError("config skill file_id is required unless is_missing is true")
+        return self
 
 
 class AgentPermissionConfig(BaseModel):

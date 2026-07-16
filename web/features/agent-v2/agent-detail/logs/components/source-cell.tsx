@@ -2,17 +2,13 @@ import type { AgentLogConversationItemResponse } from '@dify/contracts/api/conso
 import { useTranslation } from 'react-i18next'
 import { LogSourceIcon } from './source-icon'
 
-export function LogSourceCell({
-  source,
-}: {
-  source?: AgentLogConversationItemResponse['source']
-}) {
+export function LogSourceCell({ source }: { source?: AgentLogConversationItemResponse['source'] }) {
   const { t } = useTranslation('agentV2')
 
   if (!source) {
     return (
       <div className="truncate text-text-quaternary">
-        {t($ => $['agentDetail.logs.notAvailable'])}
+        {t(($) => $['agentDetail.logs.notAvailable'])}
       </div>
     )
   }
@@ -20,9 +16,7 @@ export function LogSourceCell({
   return (
     <div className="flex min-w-0 items-center gap-2">
       <LogSourceIcon source={source} />
-      <div className="min-w-0 flex-1 truncate">
-        {source.app_name}
-      </div>
+      <div className="min-w-0 flex-1 truncate">{source.app_name}</div>
     </div>
   )
 }

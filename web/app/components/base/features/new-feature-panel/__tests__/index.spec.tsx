@@ -15,7 +15,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     return { data: null }
   },
   useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    modelList: [{ provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] }],
+    modelList: [
+      { provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] },
+    ],
     defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
     currentModel: true,
   }),
@@ -74,16 +76,18 @@ const defaultFeatures: Features = {
   annotationReply: { enabled: false },
 }
 
-const renderPanel = (props: Partial<{
-  show: boolean
-  isChatMode: boolean
-  disabled: boolean
-  onChange: () => void
-  onClose: () => void
-  inWorkflow: boolean
-  showFileUpload: boolean
-  showAnnotationReply: boolean
-}> = {}) => {
+const renderPanel = (
+  props: Partial<{
+    show: boolean
+    isChatMode: boolean
+    disabled: boolean
+    onChange: () => void
+    onClose: () => void
+    inWorkflow: boolean
+    showFileUpload: boolean
+    showAnnotationReply: boolean
+  }> = {},
+) => {
   return render(
     <FeaturesProvider features={defaultFeatures}>
       <NewFeaturePanel

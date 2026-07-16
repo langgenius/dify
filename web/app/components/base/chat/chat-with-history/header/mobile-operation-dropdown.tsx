@@ -27,43 +27,35 @@ const MobileOperationDropdown = ({
   }, [])
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <ActionButton
-            aria-label={t($ => $['operation.more'], { ns: 'common' })}
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             size="l"
             state={open ? ActionButtonState.Hover : ActionButtonState.Default}
           >
             <div className="i-ri-more-fill h-[18px] w-[18px]" aria-hidden="true" />
           </ActionButton>
-        )}
+        }
       />
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="min-w-[160px]"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
         <DropdownMenuItem
           className="system-md-regular"
           onClick={() => handleMenuAction(handleResetChat)}
         >
-          <span className="grow">{t($ => $['chat.resetChat'], { ns: 'share' })}</span>
+          <span className="grow">{t(($) => $['chat.resetChat'], { ns: 'share' })}</span>
         </DropdownMenuItem>
         {!hideViewChatSettings && (
           <DropdownMenuItem
             className="system-md-regular"
             onClick={() => handleMenuAction(handleViewChatSettings)}
           >
-            <span className="grow">{t($ => $['chat.viewChatSettings'], { ns: 'share' })}</span>
+            <span className="grow">{t(($) => $['chat.viewChatSettings'], { ns: 'share' })}</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-
   )
 }
 

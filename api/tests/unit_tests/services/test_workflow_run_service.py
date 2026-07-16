@@ -34,11 +34,13 @@ def _end_user(**kwargs: Any) -> EndUser:
     return cast(EndUser, SimpleNamespace(**kwargs))
 
 
-def _fake_session_returning_messages(messages: list[Any]) -> SimpleNamespace:
-    """A stand-in db session whose scalars(...).all() returns the given messages."""
-    scalars_result = MagicMock()
-    scalars_result.all.return_value = messages
-    return SimpleNamespace(scalars=MagicMock(return_value=scalars_result))
+def _fake_session_factory_returning_messages(messages: list[Any]) -> tuple[MagicMock, MagicMock]:
+    """Build a session factory whose session returns the given messages."""
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = messages
+    session_factory = MagicMock()
+    session_factory.return_value.__enter__.return_value = session
+    return session_factory, session
 
 
 class TestWorkflowRunServiceInitialization:
@@ -125,16 +127,14 @@ class TestWorkflowRunServiceQueries:
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
+        message = SimpleNamespace(id="msg-1", conversation_id="conv-1", workflow_run_id="run-1")
+        session_factory, session = _fake_session_factory_returning_messages([message])
+        service = WorkflowRunService(session_factory=session_factory)
         app_model = _app_model(tenant_id="tenant-1", id="app-1")
         run_with_message = SimpleNamespace(id="run-1", status="running")
         run_without_message = SimpleNamespace(id="run-2", status="succeeded")
         pagination = SimpleNamespace(data=[run_with_message, run_without_message])
         monkeypatch.setattr(service, "get_paginate_workflow_runs", MagicMock(return_value=pagination))
-
-        message = SimpleNamespace(id="msg-1", conversation_id="conv-1", workflow_run_id="run-1")
-        fake_session = _fake_session_returning_messages([message])
-        monkeypatch.setattr(service_module, "db", SimpleNamespace(session=fake_session))
 
         result = service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args={"limit": "2"})
 
@@ -146,7 +146,8 @@ class TestWorkflowRunServiceQueries:
         assert not hasattr(result.data[1], "message_id")
         assert result.data[1].id == "run-2"
         # Messages are batch-loaded in a single query, not one per run.
-        fake_session.scalars.assert_called_once()
+        session_factory.assert_called_once_with()
+        session.scalars.assert_called_once()
 
     def test_get_paginate_advanced_chat_workflow_runs_batch_loads_messages_without_n_plus_one(
         self,
@@ -158,19 +159,18 @@ class TestWorkflowRunServiceQueries:
         Previously the deprecated WorkflowRun.message property issued one query per
         run (N+1); they are now batch-loaded in a single query.
         """
-        service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
+        session_factory, session = _fake_session_factory_returning_messages([])
+        service = WorkflowRunService(session_factory=session_factory)
         app_model = _app_model(tenant_id="tenant-1", id="app-1")
         runs = [SimpleNamespace(id=f"run-{i}", status="succeeded") for i in range(5)]
         pagination = SimpleNamespace(data=runs)
         monkeypatch.setattr(service, "get_paginate_workflow_runs", MagicMock(return_value=pagination))
 
-        fake_session = _fake_session_returning_messages([])
-        monkeypatch.setattr(service_module, "db", SimpleNamespace(session=fake_session))
-
         service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args={})
 
         # Exactly one message query for the whole page, independent of run count.
-        assert fake_session.scalars.call_count == 1
+        session_factory.assert_called_once_with()
+        assert session.scalars.call_count == 1
 
     def test_get_workflow_run_should_delegate_to_repository_by_tenant_and_app(
         self,
@@ -247,17 +247,21 @@ class TestWorkflowRunServiceQueries:
         monkeypatch.setattr(service_module, "EndUser", FakeEndUser)
         user = cast(EndUser, FakeEndUser(tenant_id="tenant-end-user"))
         app_model = _app_model(id="app-1")
-        expected = [SimpleNamespace(id="exec-1")]
-        node_repo.get_executions_by_workflow_run.return_value = expected
+        expected_executions = [SimpleNamespace(id="exec-1")]
+        expected_traces = [SimpleNamespace(id="exec-1:retry:1")]
+        node_repo.get_executions_by_workflow_run.return_value = expected_executions
+        mock_assemble = MagicMock(return_value=expected_traces)
+        monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", mock_assemble)
 
         result = service.get_workflow_run_node_executions(app_model=app_model, run_id="run-1", user=user)
 
-        assert result == expected
+        assert result == expected_traces
         node_repo.get_executions_by_workflow_run.assert_called_once_with(
             tenant_id="tenant-end-user",
             app_id="app-1",
             workflow_run_id="run-1",
         )
+        mock_assemble.assert_called_once_with(expected_executions, node_repo)
 
     def test_get_workflow_run_node_executions_should_use_account_current_tenant_id(
         self,
@@ -269,17 +273,21 @@ class TestWorkflowRunServiceQueries:
         monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=SimpleNamespace(id="run-1")))
         app_model = _app_model(id="app-1")
         user = _account(current_tenant_id="tenant-account")
-        expected = [SimpleNamespace(id="exec-1"), SimpleNamespace(id="exec-2")]
-        node_repo.get_executions_by_workflow_run.return_value = expected
+        expected_executions = [SimpleNamespace(id="exec-1"), SimpleNamespace(id="exec-2")]
+        expected_traces = [SimpleNamespace(id="exec-1:retry:1"), SimpleNamespace(id="exec-1")]
+        node_repo.get_executions_by_workflow_run.return_value = expected_executions
+        mock_assemble = MagicMock(return_value=expected_traces)
+        monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", mock_assemble)
 
         result = service.get_workflow_run_node_executions(app_model=app_model, run_id="run-1", user=user)
 
-        assert result == expected
+        assert result == expected_traces
         node_repo.get_executions_by_workflow_run.assert_called_once_with(
             tenant_id="tenant-account",
             app_id="app-1",
             workflow_run_id="run-1",
         )
+        mock_assemble.assert_called_once_with(expected_executions, node_repo)
 
     def test_get_workflow_run_node_executions_should_raise_when_resolved_tenant_id_is_none(
         self,
