@@ -243,6 +243,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
             workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
+                tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=workflow_triggered_from,
@@ -250,6 +251,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             # Create workflow node execution repository
             workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=session_factory,
+                tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -419,6 +421,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
+        *,
+        session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -429,6 +433,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param user: account or end user
         :param args: request args
         :param streaming: is streamed
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -467,6 +472,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow execution(aka workflow run) repository
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -474,11 +480,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -508,6 +515,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         args: LoopNodeRunPayload,
         streaming: bool = True,
+        *,
+        session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -518,6 +527,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param user: account or end user
         :param args: request args
         :param streaming: is streamed
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -554,6 +564,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow execution(aka workflow run) repository
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -561,11 +572,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,

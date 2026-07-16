@@ -532,8 +532,11 @@ services:
   local_sandbox:
     image: langgenius/dify-agent-local-sandbox:1.16.0-rc1
     restart: always
+    env_file:
+      - path: ./envs/core-services/local-sandbox.env
+        required: false
     environment:
-      SHELLCTL_AUTH_TOKEN: ${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}
+      - SHELLCTL_AUTH_TOKEN=${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
       interval: 30s

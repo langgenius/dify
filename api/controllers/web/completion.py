@@ -30,7 +30,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
@@ -224,7 +223,7 @@ class ChatApi(WebApiResource):
                     app_model=app_model,
                     conversation_id=payload.conversation_id,
                     user=end_user,
-                    session=db.session(),
+                    session=session,
                 )
 
             response = AppGenerateService.generate(

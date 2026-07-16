@@ -96,7 +96,7 @@ describe('Status', () => {
   it('renders succeeded metadata values', () => {
     render(<Status status="succeeded" time={1.234} tokens={8} />)
 
-    expect(screen.getByText('SUCCESS')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('SUCCESS')
     expect(screen.getByText('1.234s')).toBeInTheDocument()
     expect(screen.getByText('8 Tokens')).toBeInTheDocument()
   })

@@ -114,10 +114,9 @@ vi.mock('@/app/components/workflow', () => ({
     hooksStore,
   }: PropsWithChildren<{
     onWorkflowDataUpdate?: (payload: unknown) => void
-    hooksStore?: { accessControl?: { canComment?: boolean; canEdit?: boolean } }
+    hooksStore?: { accessControl?: { canEdit?: boolean } }
   }>) => (
     <div data-testid="workflow-inner-context">
-      <div data-testid="can-comment">{String(hooksStore?.accessControl?.canComment)}</div>
       <div data-testid="can-edit">{String(hooksStore?.accessControl?.canEdit)}</div>
       {children}
       <button
@@ -235,15 +234,6 @@ describe('RagPipelineMain', () => {
   })
 
   describe('hooks integration', () => {
-    it('should pass readonly ACL permission as comment-only workflow access', () => {
-      mockPermissionState.permissionKeys = [DatasetACLPermission.Readonly]
-
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('can-comment')).toHaveTextContent('true')
-      expect(screen.getByTestId('can-edit')).toHaveTextContent('false')
-    })
-
     it('should use useNodesSyncDraft hook', () => {
       render(<RagPipelineMain {...defaultProps} />)
 

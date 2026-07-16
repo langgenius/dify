@@ -85,8 +85,11 @@ export function useWorkflowInlineAgentConfigureSync({
   const enabledRef = useRef(enabled)
   const onDraftSavedRef = useRef(onDraftSaved)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
-  const saveComposerMutation = useMutation(
+  const { mutateAsync: saveAppComposer } = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+  )
+  const { mutateAsync: saveSnippetComposer } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
 
   baseConfigRef.current = baseConfig
@@ -106,32 +109,62 @@ export function useWorkflowInlineAgentConfigureSync({
 
   const saveComposer = useSerialAsyncCallback(
     async (configSnapshot: AgentSoulConfig): Promise<WorkflowAgentComposerResponse | undefined> => {
-      if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow) return
+      if (
+        !configsMap?.flowId ||
+        (configsMap.flowType !== FlowType.appFlow && configsMap.flowType !== FlowType.snippet)
+      )
+        return
 
       const savedDraftKey = JSON.stringify(configSnapshot)
-      const composerState = await saveComposerMutation.mutateAsync({
-        params: {
-          app_id: configsMap.flowId,
-          node_id: nodeId,
-        },
-        body: {
-          variant: 'workflow',
-          save_strategy: 'node_job_only',
-          agent_soul: configSnapshot,
-        },
-      })
+      const body = {
+        variant: 'workflow' as const,
+        save_strategy: 'node_job_only' as const,
+        agent_soul: configSnapshot,
+      }
+      const composerState =
+        configsMap.flowType === FlowType.snippet
+          ? await saveSnippetComposer({
+              params: {
+                snippet_id: configsMap.flowId,
+                node_id: nodeId,
+              },
+              body,
+            })
+          : await saveAppComposer({
+              params: {
+                app_id: configsMap.flowId,
+                node_id: nodeId,
+              },
+              body,
+            })
 
-      queryClient.setQueryData(
-        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-          input: {
-            params: {
-              app_id: configsMap.flowId,
-              node_id: nodeId,
+      if (configsMap.flowType === FlowType.snippet) {
+        queryClient.setQueryData(
+          consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+            {
+              input: {
+                params: {
+                  snippet_id: configsMap.flowId,
+                  node_id: nodeId,
+                },
+              },
             },
-          },
-        }),
-        composerState,
-      )
+          ),
+          composerState,
+        )
+      } else {
+        queryClient.setQueryData(
+          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+            input: {
+              params: {
+                app_id: configsMap.flowId,
+                node_id: nodeId,
+              },
+            },
+          }),
+          composerState,
+        )
+      }
       setOriginalConfig(composerState.agent_soul)
       setOriginalDraft(agentSoulConfigToFormState(composerState.agent_soul))
       setDraftSavedAt(Date.now())

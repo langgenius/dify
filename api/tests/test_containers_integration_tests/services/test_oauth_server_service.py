@@ -157,21 +157,22 @@ class TestOAuthServerServiceTokenOperations:
             ex=OAUTH_REFRESH_TOKEN_EXPIRES_IN,
         )
 
-    def test_validate_access_token_returns_none_when_not_found(self, mock_redis):
+    def test_validate_access_token_returns_none_when_not_found(self, mock_redis, db_session_with_containers: Session):
         mock_redis.get.return_value = None
         session = MagicMock()
 
-        result = OAuthServerService.validate_oauth_access_token("client-1", "missing-token", session)
+        result = OAuthServerService.validate_oauth_access_token("client-1", "missing-token", db_session_with_containers)
 
         assert result is None
 
-    def test_validate_access_token_loads_user_when_exists(self, mock_redis):
+    def test_validate_access_token_loads_user_when_exists(self, mock_redis, db_session_with_containers: Session):
         mock_redis.get.return_value = b"user-88"
         expected_user = MagicMock()
-        session = MagicMock()
 
         with patch("services.oauth_server.AccountService.load_user", return_value=expected_user) as mock_load:
-            result = OAuthServerService.validate_oauth_access_token("client-1", "access-token", session)
+            result = OAuthServerService.validate_oauth_access_token(
+                "client-1", "access-token", db_session_with_containers
+            )
 
         assert result is expected_user
-        mock_load.assert_called_once_with("user-88", session)
+        mock_load.assert_called_once_with("user-88", db_session_with_containers)

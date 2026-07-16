@@ -147,7 +147,7 @@ vi.mock('../run-and-history', () => ({
 }))
 
 vi.mock('../version-history-button', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
+  VersionHistoryButton: ({ onClick }: { onClick: () => void }) => (
     <button type="button" onClick={onClick}>
       version-history
     </button>

@@ -5,8 +5,7 @@ import { Kbd } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
-
-const searchShortcut = ['Mod', 'K']
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 
 export function MainNavSearchButton() {
   const { t } = useTranslation()
@@ -24,7 +23,7 @@ export function MainNavSearchButton() {
     >
       <span aria-hidden className="i-custom-vender-main-nav-quick-search h-4 w-4" />
       <Kbd className="h-4.5 min-w-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-        {searchShortcut.map((key) => (
+        {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
           <span key={key}>{formatForDisplay(key)}</span>
         ))}
       </Kbd>

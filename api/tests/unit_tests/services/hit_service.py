@@ -587,6 +587,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
             HitTestingTestDataFactory.create_retrieval_record_mock(content="Doc 1", score=0.95),
             HitTestingTestDataFactory.create_retrieval_record_mock(content="Doc 2", score=0.85),
         ]
+        session = MagicMock()
 
         with patch(
             "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
@@ -594,14 +595,16 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = mock_records
 
             # Act
-            result = HitTestingService.compact_retrieve_response(query, documents, session=MagicMock())
+            result = HitTestingService.compact_retrieve_response(query, documents, session=session)
 
             # Assert
             assert result["query"]["content"] == query
             assert len(result["records"]) == 2
             assert result["records"][0]["content"] == "Doc 1"
             assert result["records"][0]["score"] == 0.95
-            mock_format.assert_called_once_with(documents)
+            mock_format.assert_called_once()
+            assert mock_format.call_args.args[0] is not session
+            assert mock_format.call_args.args[1] == documents
 
     def test_compact_retrieve_response_empty_documents(self):
         """
@@ -613,6 +616,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
         # Arrange
         query = "test query"
         documents = []
+        session = MagicMock()
 
         with patch(
             "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
@@ -620,11 +624,14 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = []
 
             # Act
-            result = HitTestingService.compact_retrieve_response(query, documents, session=MagicMock())
+            result = HitTestingService.compact_retrieve_response(query, documents, session=session)
 
             # Assert
             assert result["query"]["content"] == query
             assert result["records"] == []
+            mock_format.assert_called_once()
+            assert mock_format.call_args.args[0] is not session
+            assert mock_format.call_args.args[1] == documents
 
 
 class TestHitTestingServiceCompactExternalRetrieveResponse:

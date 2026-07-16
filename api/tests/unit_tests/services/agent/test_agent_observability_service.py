@@ -25,6 +25,11 @@ def test_resolve_source_filter_accepts_structured_sources() -> None:
     assert AgentObservabilityService.resolve_source_filter("webapp").kind == "webapp"
     assert AgentObservabilityService.resolve_source_filter("webapp:app-1").app_id == "app-1"
 
+    workflow_app_filter = AgentObservabilityService.resolve_source_filter("workflow:app-2")
+    assert workflow_app_filter.kind == "workflow"
+    assert workflow_app_filter.app_id == "app-2"
+    assert workflow_app_filter.workflow_id is None
+
     workflow_filter = AgentObservabilityService.resolve_source_filter("workflow:app-2:workflow-1:v1:node-1")
     assert workflow_filter.kind == "workflow"
     assert workflow_filter.app_id == "app-2"
@@ -32,12 +37,20 @@ def test_resolve_source_filter_accepts_structured_sources() -> None:
     assert workflow_filter.workflow_version == "v1"
     assert workflow_filter.node_id == "node-1"
 
+    timestamp_version_filter = AgentObservabilityService.resolve_source_filter(
+        "workflow:app-2:workflow-1:2026-07-06 02:17:12.910515:node-1"
+    )
+    assert timestamp_version_filter.workflow_version == "2026-07-06 02:17:12.910515"
+    assert timestamp_version_filter.node_id == "node-1"
+
     legacy_filter = AgentObservabilityService.resolve_source_filter("console")
     assert legacy_filter.kind == "webapp"
     assert legacy_filter.invoke_from == InvokeFrom.EXPLORE
 
     with pytest.raises(ValueError, match="Unsupported source"):
-        AgentObservabilityService.resolve_source_filter("workflow:broken")
+        AgentObservabilityService.resolve_source_filter("workflow:")
+    with pytest.raises(ValueError, match="Unsupported source"):
+        AgentObservabilityService.resolve_source_filter("workflow:app-2:incomplete")
 
 
 def test_resolve_source_filters_accepts_multiple_structured_sources() -> None:
@@ -65,6 +78,17 @@ def test_statistics_explicit_source_filters_invoke_from() -> None:
     scope_sql = AgentObservabilityService._statistics_message_scope_sql(source_filter)
 
     assert "m.invoke_from = :source" in scope_sql
+
+
+def test_statistics_workflow_app_source_covers_all_versions_and_nodes() -> None:
+    source_filter = AgentObservabilityService.resolve_source_filter("workflow:app-2")
+
+    scope_sql = AgentObservabilityService._statistics_message_scope_sql(source_filter)
+
+    assert "wanb.app_id = :source_app_id" in scope_sql
+    assert "wanb.workflow_id = :workflow_id" not in scope_sql
+    assert "wanb.workflow_version = :workflow_version" not in scope_sql
+    assert "wanb.node_id = :node_id" not in scope_sql
 
 
 def test_apply_status_filter_accepts_multiple_statuses() -> None:
@@ -115,6 +139,7 @@ def test_source_serializers_return_structured_frontend_shape() -> None:
     )
 
     webapp_source = AgentObservabilityService._serialize_webapp_source(app)  # type: ignore[arg-type]
+    workflow_app_source = AgentObservabilityService._serialize_workflow_app_source(app=app)  # type: ignore[arg-type]
     workflow_source = AgentObservabilityService._serialize_workflow_source(
         app=app,  # type: ignore[arg-type]
         workflow_id="workflow-1",
@@ -134,9 +159,56 @@ def test_source_serializers_return_structured_frontend_shape() -> None:
         "workflow_version": None,
         "node_id": None,
     }
+    assert workflow_app_source == {
+        "id": "workflow:app-1",
+        "type": "workflow",
+        "app_id": "app-1",
+        "app_name": "Iris",
+        "app_icon_type": "emoji",
+        "app_icon": "robot",
+        "app_icon_background": "#fff",
+        "workflow_id": None,
+        "workflow_version": None,
+        "node_id": None,
+    }
     assert workflow_source["id"] == "workflow:app-1:workflow-1:v1:node-1"
     assert workflow_source["type"] == "workflow"
     assert workflow_source["workflow_id"] == "workflow-1"
+
+
+def test_list_workflow_sources_deduplicates_versions_and_nodes_by_app() -> None:
+    app_a = SimpleNamespace(
+        id="app-a",
+        name="Alpha",
+        icon_type=None,
+        icon=None,
+        icon_background=None,
+    )
+    app_b = SimpleNamespace(
+        id="app-b",
+        name="Beta",
+        icon_type=None,
+        icon=None,
+        icon_background=None,
+    )
+
+    class FakeResult:
+        def all(self):
+            return [(app_a,), (app_a,), (app_a,), (app_b,)]
+
+    class FakeSession:
+        def execute(self, stmt):
+            stmt.compile()
+            return FakeResult()
+
+    service = AgentObservabilityService(FakeSession())
+
+    sources = service._list_workflow_sources(
+        app=SimpleNamespace(tenant_id="tenant-1"),  # type: ignore[arg-type]
+        agent_id="agent-1",
+    )
+
+    assert [source["id"] for source in sources] == ["workflow:app-a", "workflow:app-b"]
 
 
 def test_serialize_log_message_returns_frontend_log_shape() -> None:

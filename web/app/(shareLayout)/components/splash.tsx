@@ -8,7 +8,6 @@ import {
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
@@ -48,7 +47,7 @@ function Splash({ children }: PropsWithChildren) {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     const effectiveShareCode = loginRedirect?.appCode || shareCode
     if (!effectiveShareCode || (isWebAppSigninPath(pathname) && !loginRedirect)) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
 
@@ -62,7 +61,7 @@ function Splash({ children }: PropsWithChildren) {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     const isSigninRoute = isWebAppSigninPath(pathname)
     if ((redirectUrl !== null && !loginRedirect) || (isSigninRoute && !loginRedirect)) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
 

@@ -610,6 +610,54 @@ describe('consoleQuery agent mutation defaults', () => {
     ).toEqual(composerState)
   })
 
+  it('should cache snippet composer state after saving the inline agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const composerState = createWorkflowComposerState({
+      binding: {
+        agent_id: 'snippet-inline-agent-1',
+        binding_type: 'inline_agent',
+        current_snapshot_id: 'snippet-inline-snapshot-1',
+        id: 'binding-1',
+        node_id: 'node-1',
+        workflow_id: 'workflow-1',
+      },
+    })
+
+    const mutationOptions =
+      consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'node-1',
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+          {
+            input: {
+              params: {
+                snippet_id: 'snippet-1',
+                node_id: 'node-1',
+              },
+            },
+          },
+        ),
+      ),
+    ).toEqual(composerState)
+  })
+
   it('should cache workflow composer state and invalidate roster lists after saving inline agent to roster', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
@@ -647,6 +695,64 @@ describe('consoleQuery agent mutation defaults', () => {
             },
           },
         }),
+      ),
+    ).toEqual(composerState)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+        input: {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+      }),
+    })
+  })
+
+  it('should cache snippet composer state and invalidate roster lists after saving inline agent to roster', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const composerState = createWorkflowComposerState()
+
+    const mutationOptions =
+      consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'node-1',
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'save_to_roster',
+          new_agent_name: 'Saved Agent',
+          description: 'Agent description',
+          role: 'Assistant',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+          {
+            input: {
+              params: {
+                snippet_id: 'snippet-1',
+                node_id: 'node-1',
+              },
+            },
+          },
+        ),
       ),
     ).toEqual(composerState)
     expect(invalidateQueries).toHaveBeenCalledWith({

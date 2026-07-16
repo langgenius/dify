@@ -11,11 +11,12 @@ import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
-import ToggleButton from '@/app/components/app-sidebar/toggle-button'
 import Divider from '@/app/components/base/divider'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
+import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { DeploymentActionsMenu } from '../deployment-actions'
@@ -77,8 +78,6 @@ const DEPLOYMENT_TABS: TabDef[] = [
   { key: 'access', icon: AccessIcon, selectedIcon: AccessSelectedIcon, hidden: true },
   { key: 'api-tokens', icon: ApiIcon, selectedIcon: ApiSelectedIcon },
 ]
-
-const SEARCH_SHORTCUT = ['Mod', 'K']
 
 function DeploymentIcon({ expand }: { expand: boolean }) {
   return (
@@ -198,9 +197,9 @@ export function DeploymentDetailTop({
     return (
       <div className="flex w-full items-center justify-center px-3 pt-2 pb-1">
         {onToggle && (
-          <ToggleButton
+          <DetailSidebarToggleButton
             expand={expand}
-            handleToggle={onToggle}
+            onToggle={onToggle}
             icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
             className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
           />
@@ -251,16 +250,16 @@ export function DeploymentDetailTop({
         >
           <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
           <KbdGroup>
-            {SEARCH_SHORTCUT.map((key) => (
+            {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
               <Kbd key={key}>{formatForDisplay(key)}</Kbd>
             ))}
           </KbdGroup>
         </TooltipContent>
       </Tooltip>
       {onToggle && (
-        <ToggleButton
+        <DetailSidebarToggleButton
           expand={expand}
-          handleToggle={onToggle}
+          onToggle={onToggle}
           icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
           className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
         />

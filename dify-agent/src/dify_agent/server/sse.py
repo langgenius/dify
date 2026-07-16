@@ -9,6 +9,14 @@ from collections.abc import AsyncIterable, AsyncIterator
 
 from dify_agent.protocol.schemas import RUN_EVENT_ADAPTER, RunEvent
 
+_SSE_UNSAFE_LINE_SEPARATORS = str.maketrans(
+    {
+        "\x85": "\\u0085",
+        "\u2028": "\\u2028",
+        "\u2029": "\\u2029",
+    }
+)
+
 
 def format_sse_event(event: RunEvent) -> str:
     """Serialize one event as an SSE frame."""
@@ -16,7 +24,8 @@ def format_sse_event(event: RunEvent) -> str:
     if event.id is not None:
         lines.append(f"id: {event.id}")
     lines.append(f"event: {event.type}")
-    lines.append(f"data: {RUN_EVENT_ADAPTER.dump_json(event).decode()}")
+    payload = RUN_EVENT_ADAPTER.dump_json(event).decode().translate(_SSE_UNSAFE_LINE_SEPARATORS)
+    lines.append(f"data: {payload}")
     return "\n".join(lines) + "\n\n"
 
 

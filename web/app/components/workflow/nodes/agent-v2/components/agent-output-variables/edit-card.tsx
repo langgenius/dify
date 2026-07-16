@@ -1,4 +1,5 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { EditableOutputConfig, EditingState, OutputDraft } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -18,7 +19,8 @@ import {
   OUTPUT_NAME_PATTERN_SOURCE,
 } from './utils'
 
-const CONFIRM_HOTKEY = 'Mod+Enter'
+const CANCEL_HOTKEY = 'Escape' satisfies Hotkey
+const CONFIRM_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 function ConfirmHotkeyHint() {
   const displayKeys = formatForDisplay(CONFIRM_HOTKEY, { separatorToken: ' ' })
@@ -70,8 +72,11 @@ export function OutputEditCard({
     if (confirmDisabled) return
     onConfirm(createOutputFromDraft(draft, { includeDefaultValue: allowDefaultValue }), state)
   }
-  useHotkey(CONFIRM_HOTKEY, handleConfirm, { target: editorRef, ignoreInputs: false })
-  useHotkey('Escape', onCancel, { target: editorRef, ignoreInputs: false })
+  useHotkey(CONFIRM_HOTKEY, handleConfirm, {
+    target: editorRef,
+    ignoreInputs: false,
+  })
+  useHotkey(CANCEL_HOTKEY, onCancel, { target: editorRef, ignoreInputs: false })
   return (
     <div ref={editorRef}>
       <Form

@@ -1,30 +1,7 @@
-import type { ReactNode } from 'react'
 import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
-import DatasetDetailTop from '../dataset-detail-top'
-
-vi.mock('../toggle-button', () => ({
-  default: ({
-    expand,
-    handleToggle,
-    icon,
-  }: {
-    expand: boolean
-    handleToggle: () => void
-    icon?: ReactNode
-  }) => (
-    <button
-      type="button"
-      data-testid="toggle-button"
-      data-expand={expand}
-      data-has-icon={Boolean(icon)}
-      onClick={handleToggle}
-    >
-      Toggle
-    </button>
-  ),
-}))
+import { DatasetDetailTop } from '../dataset-detail-top'
 
 function TestGotoAnythingDialog() {
   return (
@@ -73,10 +50,8 @@ describe('DatasetDetailTop', () => {
     const onToggle = vi.fn()
 
     render(<DatasetDetailTop expand={false} onToggle={onToggle} />)
-    fireEvent.click(screen.getByTestId('toggle-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }))
 
-    expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-expand', 'false')
-    expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-has-icon', 'true')
     expect(onToggle).toHaveBeenCalledTimes(1)
   })
 })
