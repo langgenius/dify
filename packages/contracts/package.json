@@ -31,7 +31,7 @@
     "gen-knowledge-fs-contract": "node scripts/knowledge-fs-contract.mjs",
     "update-knowledge-fs-contract": "node scripts/knowledge-fs-contract.mjs --update-lock",
     "check-knowledge-fs-contract": "node scripts/knowledge-fs-contract.mjs --check",
-    "test": "vp test openapi-yaml.test.ts && node scripts/knowledge-fs-contract.mjs --verify-generated",
+    "test": "vp test openapi-yaml.test.ts knowledge-fs-contract.test.ts && node scripts/knowledge-fs-contract.mjs --verify-generated",
     "type-check": "tsc"
   },
   "dependencies": {

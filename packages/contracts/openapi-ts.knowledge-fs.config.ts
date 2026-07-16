@@ -1,4 +1,4 @@
-import { defineConfig } from '@hey-api/openapi-ts'
+import { $, defineConfig } from '@hey-api/openapi-ts'
 
 const proxyPrefix = '/knowledge-fs'
 const input = process.env.KNOWLEDGE_FS_OPENAPI
@@ -20,11 +20,6 @@ export default defineConfig({
     path: outputPath,
   },
   parser: {
-    filters: {
-      operations: {
-        include: ['GET /knowledge-fs/knowledge-spaces', 'POST /knowledge-fs/knowledge-spaces'],
-      },
-    },
     patch: {
       input: (spec) => {
         const paths = spec.paths as Record<string, unknown> | undefined
@@ -44,6 +39,15 @@ export default defineConfig({
     },
     {
       name: 'zod',
+      '~resolvers': {
+        string: (context) => {
+          if (context.schema.format !== 'binary') return
+          return $(context.symbols.z)
+            .attr('custom')
+            .call()
+            .generic($.type.or($.type('Blob'), $.type('File')))
+        },
+      },
     },
     {
       contracts: {

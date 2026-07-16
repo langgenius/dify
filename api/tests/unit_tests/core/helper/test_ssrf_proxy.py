@@ -98,6 +98,48 @@ def test_request_rejects_identity_response_exceeding_byte_limit() -> None:
         )
 
 
+def test_request_can_return_an_open_stream_the_caller_closes() -> None:
+    class EventStream(httpx.SyncByteStream):
+        def __iter__(self):
+            yield b"event: delta\ndata: first\n\n"
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            stream=EventStream(),
+            request=request,
+        )
+    )
+
+    with (
+        httpx.Client(transport=transport) as client,
+        patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
+    ):
+        response = make_request(
+            "GET",
+            "http://example.com/events",
+            max_retries=0,
+            stream_response=True,
+        )
+
+        assert response.is_stream_consumed is False
+        assert response.is_closed is False
+        assert b"".join(response.iter_bytes()) == b"event: delta\ndata: first\n\n"
+        response.close()
+
+    assert response.is_closed
+
+
+def test_request_rejects_streaming_with_a_buffer_limit() -> None:
+    with pytest.raises(ValueError, match="stream_response cannot be combined"):
+        make_request(
+            "GET",
+            "http://example.com/events",
+            max_response_bytes=1024,
+            stream_response=True,
+        )
+
+
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
 def test_retry_exceed_max_retries(mock_get_client):
     mock_client = MagicMock()

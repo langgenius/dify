@@ -2,23 +2,25 @@
 
 These raw Blueprint routes deliberately stay outside Dify's OpenAPI surface:
 KnowledgeFS owns the wire contract consumed by the frontend. The catch-all path
-avoids resource-specific Dify controllers, while the forwarding module retains
-the explicit product-level operation allowlist. Console auth and method-specific
-dataset RBAC run before forwarding. Request bodies are capped at 64 KiB, upstream
-responses at 1 MiB, only safe response headers are exposed, and upstream 401/403
-responses become 502 so they cannot trigger Dify browser-session recovery.
+avoids resource-specific Dify controllers, while the forwarding module consumes
+the exact operation templates generated from the pinned KnowledgeFS contract.
+Console auth and contract-specific dataset RBAC run before forwarding. Request
+bodies are capped at 64 MiB, JSON and binary responses have separate bounds,
+SSE responses remain streaming, only safe response headers are exposed, and
+upstream 401/403 responses become 502 so they cannot trigger Dify browser-session
+recovery.
 """
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from functools import wraps
 from http import HTTPStatus
-from typing import NoReturn
+from typing import NoReturn, cast
 
 import httpx
-from flask import Response, request
+from flask import Response, request, stream_with_context
 from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import (
     BadGateway,
@@ -45,13 +47,22 @@ from services.knowledge_fs_proxy import (
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,
+    KnowledgeFSUpstreamResponse,
     forward_knowledge_fs_request,
+    get_knowledge_fs_operation,
 )
 
 logger = logging.getLogger(__name__)
 
-_MAX_PROXY_BODY_BYTES = 64 * 1024
-_RESPONSE_HEADER_ALLOWLIST = ("Cache-Control", "Content-Type", "Retry-After", "X-Trace-Id")
+_MAX_PROXY_BODY_BYTES = 64 * 1024 * 1024
+_MAX_STREAM_RESPONSE_BYTES = 64 * 1024 * 1024
+_RESPONSE_HEADER_ALLOWLIST = (
+    "Cache-Control",
+    "Content-Disposition",
+    "Content-Type",
+    "Retry-After",
+    "X-Trace-Id",
+)
 
 
 def _console_api_errors[**P](
@@ -92,13 +103,31 @@ def _request_body() -> bytes:
     return body
 
 
-def _proxy_response(upstream: httpx.Response, *, tenant_id: str) -> Response:
+def _stream_response_body(upstream: httpx.Response, *, tenant_id: str) -> Iterator[bytes]:
+    """Yield one bounded SSE response and always release its pooled connection."""
+    total_bytes = 0
+    try:
+        for chunk in upstream.iter_bytes():
+            total_bytes += len(chunk)
+            if total_bytes > _MAX_STREAM_RESPONSE_BYTES:
+                logger.warning("KnowledgeFS stream exceeded the proxy limit for tenant_id=%s", tenant_id)
+                return
+            yield chunk
+    except httpx.RequestError:
+        logger.warning("KnowledgeFS stream disconnected for tenant_id=%s", tenant_id)
+    finally:
+        upstream.close()
+
+
+def _proxy_response(upstream_result: KnowledgeFSUpstreamResponse, *, tenant_id: str) -> Response:
     """Expose raw content, status, and allowlisted headers from KnowledgeFS.
 
     Raises:
         BadGateway: KnowledgeFS rejects the configured server credential.
     """
+    upstream = upstream_result.response
     if upstream.status_code in {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN}:
+        upstream.close()
         logger.error(
             "KnowledgeFS rejected the Dify server credential with HTTP %s for tenant_id=%s",
             upstream.status_code,
@@ -107,7 +136,20 @@ def _proxy_response(upstream: httpx.Response, *, tenant_id: str) -> Response:
         raise BadGateway("KnowledgeFS authentication failed")
 
     headers = {name: value for name in _RESPONSE_HEADER_ALLOWLIST if (value := upstream.headers.get(name)) is not None}
-    return Response(upstream.content, status=upstream.status_code, headers=headers)
+    if upstream_result.response_kind == "stream":
+        response = Response(
+            stream_with_context(_stream_response_body(upstream, tenant_id=tenant_id)),
+            status=upstream.status_code,
+            headers=headers,
+        )
+        response.call_on_close(upstream.close)
+        return response
+
+    try:
+        content = upstream.content
+    finally:
+        upstream.close()
+    return Response(content, status=upstream.status_code, headers=headers)
 
 
 def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
@@ -117,16 +159,18 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     converted to Console HTTP exceptions for the outer JSON error adapter.
     """
     current_user, tenant_id = current_account_with_tenant()
-    if method == "POST" and not current_user.is_dataset_editor:
-        raise Forbidden()
-
     try:
+        operation = get_knowledge_fs_operation(method, upstream_path)
+        if operation.access == "write" and not current_user.is_dataset_editor:
+            raise Forbidden()
         upstream = forward_knowledge_fs_request(
             method=method,
             path=upstream_path,
             tenant_id=tenant_id,
+            accept=request.headers.get("Accept"),
+            content_type=request.content_type,
             query=request.query_string or None,
-            body=_request_body() if method == "POST" else None,
+            body=_request_body() if method != "GET" else None,
         )
     except (
         KnowledgeFSConfigurationError,
@@ -136,6 +180,31 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     ) as exc:
         _translate_proxy_error(exc, tenant_id=tenant_id)
     return _proxy_response(upstream, tenant_id=tenant_id)
+
+
+@rbac_permission_required(
+    RBACResourceScope.DATASET,
+    RBACPermission.DATASET_READONLY,
+    resource_required=False,
+)
+@cloud_edition_billing_rate_limit_check("knowledge")
+def _proxy_knowledge_fs_read_operation(
+    method: KnowledgeFSMethod,
+    upstream_path: str,
+) -> ResponseReturnValue:
+    """Apply read RBAC and billing checks to contract-declared read-only non-GET operations."""
+    return _proxy_request(method, upstream_path)
+
+
+@rbac_permission_required(
+    RBACResourceScope.DATASET,
+    RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+    resource_required=False,
+)
+@cloud_edition_billing_rate_limit_check("knowledge")
+def _proxy_knowledge_fs_mutation(upstream_path: str) -> ResponseReturnValue:
+    """Apply mutation RBAC and billing checks to contract-declared writes."""
+    return _proxy_request(cast(KnowledgeFSMethod, request.method), upstream_path)
 
 
 @bp.route("/knowledge-fs/<path:upstream_path>", methods=["GET"])
@@ -160,19 +229,13 @@ def proxy_knowledge_fs_get(upstream_path: str) -> ResponseReturnValue:
     return _proxy_request("GET", upstream_path)
 
 
-@bp.route("/knowledge-fs/<path:upstream_path>", methods=["POST"])
+@bp.route("/knowledge-fs/<path:upstream_path>", methods=["DELETE", "PATCH", "POST", "PUT"])
 @_console_api_errors
 @setup_required
 @login_required
 @account_initialization_required
-@rbac_permission_required(
-    RBACResourceScope.DATASET,
-    RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
-    resource_required=False,
-)
-@cloud_edition_billing_rate_limit_check("knowledge")
-def proxy_knowledge_fs_post(upstream_path: str) -> ResponseReturnValue:
-    """Forward one authenticated, dataset-manageable POST request.
+def proxy_knowledge_fs_write(upstream_path: str) -> ResponseReturnValue:
+    """Forward one authenticated non-GET request under its contract access policy.
 
     Args:
         upstream_path: Relative KFS path captured after the Console proxy prefix.
@@ -180,4 +243,11 @@ def proxy_knowledge_fs_post(upstream_path: str) -> ResponseReturnValue:
     Returns:
         The filtered raw KnowledgeFS response or a Console JSON error response.
     """
-    return _proxy_request("POST", upstream_path)
+    method = cast(KnowledgeFSMethod, request.method)
+    try:
+        operation = get_knowledge_fs_operation(method, upstream_path)
+    except KnowledgeFSRouteNotAllowedError as exc:
+        raise NotFound() from exc
+    if operation.access == "read":
+        return _proxy_knowledge_fs_read_operation(method, upstream_path)
+    return _proxy_knowledge_fs_mutation(upstream_path)

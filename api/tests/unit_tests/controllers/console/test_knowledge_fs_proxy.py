@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import MagicMock
 
@@ -18,17 +19,50 @@ from werkzeug.exceptions import (
 from controllers.console import bp
 from controllers.console.knowledge_fs_proxy import (
     _console_api_errors,
+    _proxy_knowledge_fs_mutation,
+    _proxy_knowledge_fs_read_operation,
     proxy_knowledge_fs_get,
-    proxy_knowledge_fs_post,
+    proxy_knowledge_fs_write,
 )
 from controllers.console.wraps import RBACPermission
-from services.knowledge_fs_proxy import KnowledgeFSConfigurationError, KnowledgeFSRouteNotAllowedError
+from services.knowledge_fs_proxy import (
+    KnowledgeFSConfigurationError,
+    KnowledgeFSResponseKind,
+    KnowledgeFSRouteNotAllowedError,
+    KnowledgeFSUpstreamResponse,
+)
+
+
+def _upstream(
+    response: httpx.Response,
+    kind: KnowledgeFSResponseKind = "buffered",
+) -> KnowledgeFSUpstreamResponse:
+    return KnowledgeFSUpstreamResponse(response, kind)
+
+
+class _EventStream(httpx.SyncByteStream):
+    def __init__(self, content: bytes) -> None:
+        self._content = content
+
+    def __iter__(self) -> Iterator[bytes]:
+        yield self._content
 
 
 def _set_current_workspace(monkeypatch: pytest.MonkeyPatch, *, editor: bool = True) -> None:
     monkeypatch.setattr(
         "controllers.console.knowledge_fs_proxy.current_account_with_tenant",
         lambda: (MagicMock(id="account-1", is_dataset_editor=editor), "tenant-1"),
+    )
+
+
+def _bypass_policy_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy._proxy_knowledge_fs_read_operation",
+        unwrap(_proxy_knowledge_fs_read_operation),
+    )
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy._proxy_knowledge_fs_mutation",
+        unwrap(_proxy_knowledge_fs_mutation),
     )
 
 
@@ -41,32 +75,45 @@ def test_console_blueprint_registers_generic_knowledge_fs_routes() -> None:
         "/console/api/knowledge-fs/knowledge-spaces",
         method="GET",
     )
-    post_endpoint, post_values = adapter.match(
-        "/console/api/knowledge-fs/knowledge-spaces",
-        method="POST",
-    )
-
     assert get_endpoint.endswith("proxy_knowledge_fs_get")
-    assert post_endpoint.endswith("proxy_knowledge_fs_post")
     assert get_values == {"upstream_path": "knowledge-spaces"}
-    assert post_values == {"upstream_path": "knowledge-spaces"}
+    for method in ("DELETE", "PATCH", "POST", "PUT"):
+        write_endpoint, write_values = adapter.match(
+            "/console/api/knowledge-fs/knowledge-spaces/space-1",
+            method=method,
+        )
+        assert write_endpoint.endswith("proxy_knowledge_fs_write")
+        assert write_values == {"upstream_path": "knowledge-spaces/space-1"}
 
 
 @pytest.mark.parametrize(
-    ("route", "permission"),
+    ("route", "route_args", "unwrap_count", "permission"),
     [
-        (proxy_knowledge_fs_get, RBACPermission.DATASET_READONLY),
-        (proxy_knowledge_fs_post, RBACPermission.DATASET_CREATE_AND_MANAGEMENT),
+        (proxy_knowledge_fs_get, ("knowledge-spaces",), 4, RBACPermission.DATASET_READONLY),
+        (
+            _proxy_knowledge_fs_read_operation,
+            ("POST", "queries"),
+            0,
+            RBACPermission.DATASET_READONLY,
+        ),
+        (
+            _proxy_knowledge_fs_mutation,
+            ("knowledge-spaces",),
+            0,
+            RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        ),
     ],
 )
-def test_generic_routes_enforce_method_specific_workspace_rbac(
+def test_generic_routes_enforce_contract_specific_workspace_rbac(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     route,
+    route_args: tuple[str, ...],
+    unwrap_count: int,
     permission: RBACPermission,
 ) -> None:
     method = route
-    for _ in range(4):
+    for _ in range(unwrap_count):
         method = method.__wrapped__
 
     monkeypatch.setattr("controllers.common.wraps.dify_config.RBAC_ENABLED", True)
@@ -77,12 +124,40 @@ def test_generic_routes_enforce_method_specific_workspace_rbac(
     enforce = MagicMock(side_effect=Forbidden())
     monkeypatch.setattr("controllers.common.wraps.enforce_rbac_access", enforce)
 
-    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"):
+    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces", method="POST"):
         with pytest.raises(Forbidden):
-            method("knowledge-spaces")
+            method(*route_args)
 
     assert enforce.call_args.kwargs["scene"] == permission
     assert enforce.call_args.kwargs["resource_required"] is False
+
+
+def test_read_post_applies_knowledge_rate_limit_once(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("controllers.common.wraps.dify_config.RBAC_ENABLED", False)
+    monkeypatch.setattr(
+        "controllers.console.wraps.current_account_with_tenant",
+        lambda: (MagicMock(id="account-1"), "tenant-1"),
+    )
+    monkeypatch.setattr(
+        "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
+        MagicMock(return_value=MagicMock(enabled=True, limit=10)),
+    )
+    zadd = MagicMock()
+    monkeypatch.setattr("controllers.console.wraps.redis_client.zadd", zadd)
+    monkeypatch.setattr("controllers.console.wraps.redis_client.zremrangebyscore", MagicMock())
+    monkeypatch.setattr("controllers.console.wraps.redis_client.zcard", MagicMock(return_value=1))
+    proxy = MagicMock(return_value=Response(status=200))
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_request", proxy)
+
+    with app.test_request_context("/console/api/knowledge-fs/queries", method="POST"):
+        response = _proxy_knowledge_fs_read_operation("POST", "queries")
+
+    assert isinstance(response, Response)
+    zadd.assert_called_once()
+    proxy.assert_called_once_with("POST", "queries")
 
 
 def test_generic_get_forwards_path_query_and_raw_response(
@@ -90,17 +165,20 @@ def test_generic_get_forwards_path_query_and_raw_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     forward = MagicMock(
-        return_value=httpx.Response(
-            200,
-            content=gzip.compress(b'{"items":[],"nextCursor":null}'),
-            headers={
-                "Cache-Control": "no-store",
-                "Content-Encoding": "gzip",
-                "Content-Type": "application/json",
-                "Retry-After": "3",
-                "Set-Cookie": "kfs=secret",
-                "X-Trace-Id": "trace-1",
-            },
+        return_value=_upstream(
+            httpx.Response(
+                200,
+                content=gzip.compress(b'{"items":[],"nextCursor":null}'),
+                headers={
+                    "Cache-Control": "no-store",
+                    "Content-Encoding": "gzip",
+                    "Content-Disposition": 'attachment; filename="result.json"',
+                    "Content-Type": "application/json",
+                    "Retry-After": "3",
+                    "Set-Cookie": "kfs=secret",
+                    "X-Trace-Id": "trace-1",
+                },
+            )
         )
     )
     monkeypatch.setattr(
@@ -120,6 +198,8 @@ def test_generic_get_forwards_path_query_and_raw_response(
         method="GET",
         path="knowledge-spaces",
         tenant_id="tenant-1",
+        accept=None,
+        content_type=None,
         query=b"limit=20&cursor=first&cursor=second",
         body=None,
     )
@@ -127,21 +207,35 @@ def test_generic_get_forwards_path_query_and_raw_response(
     assert response.status_code == 200
     assert response.get_json() == {"items": [], "nextCursor": None}
     assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Content-Disposition"] == 'attachment; filename="result.json"'
     assert response.headers["Retry-After"] == "3"
     assert response.headers["X-Trace-Id"] == "trace-1"
     assert "Content-Encoding" not in response.headers
     assert "Set-Cookie" not in response.headers
 
 
-def test_generic_post_forwards_path_raw_body_and_current_tenant(
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("DELETE", "knowledge-spaces/space-1"),
+        ("PATCH", "knowledge-spaces/space-1"),
+        ("POST", "knowledge-spaces"),
+        ("PUT", "knowledge-spaces/space-1/retrieval-profile"),
+    ],
+)
+def test_generic_write_forwards_path_raw_body_and_current_tenant(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    path: str,
 ) -> None:
     forward = MagicMock(
-        return_value=httpx.Response(
-            201,
-            content=b'{"id":"space-1","tenantId":"tenant-1"}',
-            headers={"Content-Type": "application/json"},
+        return_value=_upstream(
+            httpx.Response(
+                201,
+                content=b'{"id":"space-1","tenantId":"tenant-1"}',
+                headers={"Content-Type": "application/json"},
+            )
         )
     )
     monkeypatch.setattr(
@@ -149,21 +243,24 @@ def test_generic_post_forwards_path_raw_body_and_current_tenant(
         forward,
     )
     _set_current_workspace(monkeypatch)
-    route = unwrap(proxy_knowledge_fs_post)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
     body = b'{"idempotencyKey":"create-product-docs","name":"Product docs"}'
 
     with app.test_request_context(
-        "/console/api/knowledge-fs/knowledge-spaces",
-        method="POST",
+        f"/console/api/knowledge-fs/{path}",
+        method=method,
         data=body,
         content_type="application/json",
     ):
-        response = route("knowledge-spaces")
+        response = route(path)
 
     forward.assert_called_once_with(
-        method="POST",
-        path="knowledge-spaces",
+        method=method,
+        path=path,
         tenant_id="tenant-1",
+        accept=None,
+        content_type="application/json",
         query=None,
         body=body,
     )
@@ -179,7 +276,8 @@ def test_generic_post_rejects_non_editor(app: Flask, monkeypatch: pytest.MonkeyP
         forward,
     )
     _set_current_workspace(monkeypatch, editor=False)
-    route = unwrap(proxy_knowledge_fs_post)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
 
     with app.test_request_context(
         "/console/api/knowledge-fs/knowledge-spaces",
@@ -193,6 +291,66 @@ def test_generic_post_rejects_non_editor(app: Flask, monkeypatch: pytest.MonkeyP
     forward.assert_not_called()
 
 
+def test_read_post_allows_non_editor_and_streams_sse(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    upstream = httpx.Response(
+        200,
+        stream=_EventStream(b"event: delta\ndata: first\n\nevent: done\ndata: {}\n\n"),
+        headers={"Cache-Control": "no-store", "Content-Type": "text/event-stream"},
+    )
+    forward = MagicMock(return_value=_upstream(upstream, "stream"))
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        forward,
+    )
+    _set_current_workspace(monkeypatch, editor=False)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/queries",
+        method="POST",
+        data=b'{"knowledgeSpaceId":"space-1","query":"hello"}',
+        content_type="application/json",
+    ):
+        response = route("queries")
+        assert isinstance(response, Response)
+        assert response.get_data() == b"event: delta\ndata: first\n\nevent: done\ndata: {}\n\n"
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"].startswith("text/event-stream")
+    assert response.headers["Cache-Control"] == "no-store"
+    assert upstream.is_closed
+    forward.assert_called_once()
+
+
+def test_unconsumed_sse_response_closes_upstream(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    upstream = httpx.Response(
+        200,
+        stream=_EventStream(b"event: done\ndata: {}\n\n"),
+        headers={"Content-Type": "text/event-stream"},
+    )
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
+        MagicMock(return_value=_upstream(upstream, "stream")),
+    )
+    _set_current_workspace(monkeypatch, editor=False)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
+
+    with app.test_request_context("/console/api/knowledge-fs/queries", method="POST", data=b"{}"):
+        response = route("queries")
+        assert isinstance(response, Response)
+        response.close()
+
+    assert upstream.is_closed
+
+
 def test_generic_post_rejects_oversized_body(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     forward = MagicMock()
     monkeypatch.setattr(
@@ -200,12 +358,15 @@ def test_generic_post_rejects_oversized_body(app: Flask, monkeypatch: pytest.Mon
         forward,
     )
     _set_current_workspace(monkeypatch)
-    route = unwrap(proxy_knowledge_fs_post)
+    _bypass_policy_wrappers(monkeypatch)
+    route = unwrap(proxy_knowledge_fs_write)
+
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy._MAX_PROXY_BODY_BYTES", 8)
 
     with app.test_request_context(
         "/console/api/knowledge-fs/knowledge-spaces",
         method="POST",
-        data=b"x" * (64 * 1024 + 1),
+        data=b"x" * 9,
         content_type="application/json",
     ):
         with pytest.raises(RequestEntityTooLarge):
@@ -223,10 +384,12 @@ def test_server_credential_rejection_is_not_exposed_as_browser_auth_failure(
     monkeypatch.setattr(
         "controllers.console.knowledge_fs_proxy.forward_knowledge_fs_request",
         MagicMock(
-            return_value=httpx.Response(
-                status_code,
-                content=b'{"error":"invalid server credential"}',
-                headers={"Content-Type": "application/json", "WWW-Authenticate": "Bearer"},
+            return_value=_upstream(
+                httpx.Response(
+                    status_code,
+                    content=b'{"error":"invalid server credential"}',
+                    headers={"Content-Type": "application/json", "WWW-Authenticate": "Bearer"},
+                )
             )
         ),
     )
@@ -262,6 +425,19 @@ def test_disallowed_kfs_route_is_hidden_as_not_found(app: Flask, monkeypatch: py
     with app.test_request_context("/console/api/knowledge-fs/openapi.json"):
         with pytest.raises(NotFound):
             route("openapi.json")
+
+
+@pytest.mark.parametrize("method", ["PATCH", "POST"])
+def test_disallowed_non_get_route_is_hidden_as_not_found(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+) -> None:
+    route = unwrap(proxy_knowledge_fs_write)
+
+    with app.test_request_context("/console/api/knowledge-fs/not-a-route", method=method):
+        with pytest.raises(NotFound):
+            route("not-a-route")
 
 
 def test_raw_route_uses_console_json_error_handler(app: Flask) -> None:

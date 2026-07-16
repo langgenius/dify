@@ -105,6 +105,2013 @@ export const zKnowledgeSpaceList = z.object({
   nextCursor: z.string().optional(),
 })
 
+export const zKnowledgeSpaceManifest = z.object({
+  consistencyPolicy: z.object({
+    cacheTtlSeconds: z.int().gt(0).optional(),
+    defaultClass: z.enum([
+      'path-consistent',
+      'snapshot-consistent',
+      'cache-consistent',
+      'eventual-preview',
+    ]),
+    snapshotTtlSeconds: z.int().gt(0),
+  }),
+  createdAt: z.iso.datetime(),
+  embeddingProfile: z
+    .object({
+      model: z.string().min(1).max(256),
+      pluginId: z.string().min(1).max(256),
+      provider: z.string().min(1).max(256),
+      dimension: z.int().gt(0).optional(),
+      revision: z.int().gt(0),
+      vectorSpaceId: z.string().regex(/^embedding-space-sha256:[a-f0-9]{64}$/),
+    })
+    .optional(),
+  embeddingProfileFrozenAt: z.iso.datetime().optional(),
+  encryptionPolicy: z.object({
+    keyRef: z.string().min(1).max(512).optional(),
+    strategy: z.enum(['provider-managed', 'customer-managed', 'none']),
+  }),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  manifestVersion: z.int().gt(0),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  metadataDialect: z.enum(['portable', 'postgres', 'tidb']),
+  minClientVersion: z.string().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/),
+  nodeSchemaVersion: z.int().gt(0),
+  objectKeyPrefix: z
+    .string()
+    .min(1)
+    .max(512)
+    .regex(/^[A-Za-z0-9._=-]+(?:\/[A-Za-z0-9._=-]+)*$/),
+  parserPolicyVersion: z.string().min(1).max(128),
+  pendingModelConfiguration: z
+    .object({
+      digest: z.string().regex(/^[a-f0-9]{64}$/),
+      embeddingSelection: z
+        .object({
+          model: z.string().min(1).max(256),
+          pluginId: z.string().min(1).max(256),
+          provider: z.string().min(1).max(256),
+        })
+        .optional(),
+      failure: z
+        .object({
+          code: z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/),
+          failedAt: z.iso.datetime(),
+          retryable: z.boolean(),
+        })
+        .optional(),
+      retrievalProfile: z
+        .object({
+          defaultMode: z.enum(['fast', 'research', 'deep']),
+          reasoningModel: z.object({
+            model: z.string().min(1).max(256),
+            pluginId: z.string().min(1).max(256),
+            provider: z.string().min(1).max(256),
+          }),
+          rerank: z.object({
+            enabled: z.boolean(),
+            model: z
+              .object({
+                model: z.string().min(1).max(256),
+                pluginId: z.string().min(1).max(256),
+                provider: z.string().min(1).max(256),
+              })
+              .optional(),
+          }),
+          scoreThreshold: z.object({
+            enabled: z.boolean(),
+            stage: z.enum(['mode-final', 'rerank']),
+            value: z.number().gte(0).lte(1).optional(),
+          }),
+          topK: z.int().gte(1).lte(100),
+        })
+        .optional(),
+      revision: z.int().gt(0),
+      state: z.enum(['pending-validation', 'validation-failed']),
+    })
+    .optional(),
+  projectionSetVersion: z.string().min(1).max(128),
+  quotaPolicy: z.object({
+    maxActiveJobCount: z.int().gt(0).nullish().default(null),
+    maxActiveSessionCount: z.int().gt(0).nullish().default(null),
+    maxArtifactBytes: z.int().gt(0).nullish().default(null),
+    maxGraphEntityCount: z.int().gt(0).nullish().default(null),
+    maxGraphRelationCount: z.int().gt(0).nullish().default(null),
+    maxNodeCount: z.int().gt(0).nullish().default(null),
+    maxProjectionCount: z.int().gt(0).nullish().default(null),
+    maxRawDocumentBytes: z.int().gt(0).nullish().default(null),
+    maxSegmentCount: z.int().gt(0).nullish().default(null),
+    maxTraceBytes: z.int().gt(0).nullish().default(null),
+    providerBudgets: z
+      .object({
+        maxEmbeddingTokensPerDay: z.int().gt(0).nullish().default(null),
+        maxLlmTokensPerDay: z.int().gt(0).nullish().default(null),
+        maxParserPagesPerDay: z.int().gt(0).nullish().default(null),
+        maxRerankRequestsPerDay: z.int().gt(0).nullish().default(null),
+      })
+      .optional()
+      .default({
+        maxEmbeddingTokensPerDay: null,
+        maxLlmTokensPerDay: null,
+        maxParserPagesPerDay: null,
+        maxRerankRequestsPerDay: null,
+      }),
+  }),
+  retentionPolicy: z.object({
+    artifactVersionsToKeep: z.int().gt(0),
+    failedCommitRetentionDays: z.int().gt(0),
+    traceRetentionDays: z.int().gt(0),
+  }),
+  retrievalProfile: z
+    .object({
+      defaultMode: z.enum(['fast', 'research', 'deep']),
+      reasoningModel: z.object({
+        model: z.string().min(1).max(256),
+        pluginId: z.string().min(1).max(256),
+        provider: z.string().min(1).max(256),
+      }),
+      rerank: z.object({
+        enabled: z.boolean(),
+        model: z
+          .object({
+            model: z.string().min(1).max(256),
+            pluginId: z.string().min(1).max(256),
+            provider: z.string().min(1).max(256),
+          })
+          .optional(),
+      }),
+      scoreThreshold: z.object({
+        enabled: z.boolean(),
+        stage: z.enum(['mode-final', 'rerank']),
+        value: z.number().gte(0).lte(1).optional(),
+      }),
+      topK: z.int().gte(1).lte(100),
+      revision: z.int().gt(0),
+    })
+    .optional(),
+  storageProvider: z.enum(['memory-dev', 'r2', 's3-compatible']),
+  tenantId: z.string().min(1).max(255),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zKnowledgeSpaceEmbeddingProfile = z.object({
+  model: z.string().min(1).max(256),
+  pluginId: z.string().min(1).max(256),
+  provider: z.string().min(1).max(256),
+  dimension: z.int().gt(0).optional(),
+  revision: z.int().gt(0),
+  vectorSpaceId: z.string().regex(/^embedding-space-sha256:[a-f0-9]{64}$/),
+})
+
+export const zKnowledgeSpacePendingModelConfiguration = z.object({
+  configurationStatus: z.enum(['pending-validation', 'setup-required']),
+  digest: z.string().regex(/^[a-f0-9]{64}$/),
+  operation: z.enum(['initial-validation-pending']),
+  revision: z.int().gt(0),
+})
+
+export const zKnowledgeSpaceProfileMigration = z.object({
+  candidatePublicationFingerprint: z.string().min(1).max(86).optional(),
+  changedKind: z.enum(['embedding', 'retrieval']),
+  checkpoint: z.enum(['queued', 'candidate-built', 'evaluated', 'activated']),
+  completedAt: z.iso.datetime().optional(),
+  createdAt: z.iso.datetime(),
+  errorCode: z.string().min(1).max(64).optional(),
+  evaluationSummary: z
+    .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
+    .optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  rebuildScope: z.enum([
+    'clone-publication',
+    'full-page-index-summary-outline',
+    'full-vector-space',
+  ]),
+  runState: z.enum(['queued', 'running', 'succeeded', 'failed', 'canceled']),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zKnowledgeSpaceRetrievalProfile = z.object({
+  defaultMode: z.enum(['fast', 'research', 'deep']),
+  reasoningModel: z.object({
+    model: z.string().min(1).max(256),
+    pluginId: z.string().min(1).max(256),
+    provider: z.string().min(1).max(256),
+  }),
+  rerank: z.object({
+    enabled: z.boolean(),
+    model: z
+      .object({
+        model: z.string().min(1).max(256),
+        pluginId: z.string().min(1).max(256),
+        provider: z.string().min(1).max(256),
+      })
+      .optional(),
+  }),
+  scoreThreshold: z.object({
+    enabled: z.boolean(),
+    stage: z.enum(['mode-final', 'rerank']),
+    value: z.number().gte(0).lte(1).optional(),
+  }),
+  topK: z.int().gte(1).lte(100),
+  revision: z.int().gt(0),
+})
+
+export const zKnowledgeSpaceStatus = z.object({
+  activeLeases: z.object({
+    count: z.int().gte(0),
+    items: z.array(
+      z.object({
+        expiresAt: z.iso.datetime(),
+        id: z.uuid(),
+        leaseType: z.enum(['read', 'publish', 'delete', 'reindex']),
+        targetType: z.enum([
+          'knowledge-space',
+          'document-asset',
+          'parse-artifact',
+          'knowledge-path',
+          'projection',
+          'staged-commit',
+        ]),
+        virtualPath: z.string(),
+      }),
+    ),
+    truncated: z.boolean(),
+  }),
+  activeSessions: z.object({
+    count: z.int().gte(0),
+    items: z.array(
+      z.object({
+        clientKind: z.enum(['api', 'mcp', 'worker', 'admin']),
+        consistencyClass: z.enum([
+          'path-consistent',
+          'snapshot-consistent',
+          'cache-consistent',
+          'eventual-preview',
+        ]),
+        expiresAt: z.iso.datetime(),
+        heartbeatAt: z.iso.datetime(),
+        id: z.uuid(),
+        subjectId: z.string(),
+      }),
+    ),
+    truncated: z.boolean(),
+  }),
+  configuration: z.object({
+    activeProfiles: z.object({
+      embeddingRevision: z.int().gt(0).optional(),
+      retrievalRevision: z.int().gt(0).optional(),
+    }),
+    availableModes: z.array(z.enum(['fast', 'research', 'deep'])),
+    pendingModelConfiguration: z
+      .union([
+        z.object({
+          digest: z.string().regex(/^(?:sha256:)?[a-f0-9]{64}$/),
+          revision: z.int().gt(0),
+          state: z.enum(['pending-validation']),
+        }),
+        z.object({
+          digest: z.string().regex(/^(?:sha256:)?[a-f0-9]{64}$/),
+          revision: z.int().gt(0),
+          failure: z.object({
+            code: z.string().min(1).max(64),
+            failedAt: z.iso.datetime(),
+            retryable: z.boolean(),
+          }),
+          state: z.enum(['validation-failed']),
+        }),
+      ])
+      .optional(),
+    status: z.enum(['setup-required', 'pending-validation', 'validation-failed', 'ready']),
+  }),
+  failedCommits: z.object({
+    count: z.int().gte(0),
+    items: z.array(
+      z.object({
+        errorCode: z.string().optional(),
+        expiresAt: z.iso.datetime().optional(),
+        id: z.uuid(),
+        status: z.enum(['failed-retryable', 'failed-terminal']),
+        updatedAt: z.iso.datetime(),
+      }),
+    ),
+    truncated: z.boolean(),
+  }),
+  generatedAt: z.iso.datetime(),
+  index: z.object({
+    nodeSchemaVersion: z.int().gt(0),
+    projectionSetVersion: z.string(),
+    projectionVersion: z.int().gt(0),
+    summaries: z.object({
+      denseVector: z.object({
+        building: z.int().gte(0),
+        failed: z.int().gte(0),
+        ready: z.int().gte(0),
+        stale: z.int().gte(0),
+        total: z.int().gte(0),
+      }),
+      fts: z.object({
+        building: z.int().gte(0),
+        failed: z.int().gte(0),
+        ready: z.int().gte(0),
+        stale: z.int().gte(0),
+        total: z.int().gte(0),
+      }),
+      graph: z.object({
+        building: z.int().gte(0),
+        failed: z.int().gte(0),
+        ready: z.int().gte(0),
+        stale: z.int().gte(0),
+        total: z.int().gte(0),
+      }),
+      metadata: z.object({
+        building: z.int().gte(0),
+        failed: z.int().gte(0),
+        ready: z.int().gte(0),
+        stale: z.int().gte(0),
+        total: z.int().gte(0),
+      }),
+    }),
+  }),
+  knowledgeSpaceId: z.uuid(),
+  manifest: z.object({
+    consistencyClass: z.enum([
+      'path-consistent',
+      'snapshot-consistent',
+      'cache-consistent',
+      'eventual-preview',
+    ]),
+    manifestVersion: z.int().gt(0),
+    metadataDialect: z.enum(['portable', 'postgres', 'tidb']),
+    objectKeyPrefix: z.string(),
+    storageProvider: z.enum(['memory-dev', 'r2', 's3-compatible']),
+  }),
+  parser: z.object({
+    kind: z.enum(['native-html', 'native-markdown', 'native-structured', 'unstructured']),
+    policyVersion: z.string(),
+  }),
+  storage: z.object({
+    healthy: z.boolean(),
+    objectStorageKind: z.enum(['r2', 's3-compatible', 'local', 'memory']),
+    provider: z.enum(['memory-dev', 'r2', 's3-compatible']),
+  }),
+  tenantId: z.string(),
+})
+
+export const zKnowledgeSpaceStats = z.object({
+  cache: z.object({
+    available: z.boolean(),
+    entries: z.int().gte(0),
+    totalBytes: z.int().gte(0),
+  }),
+  commits: z.object({
+    failedRetryable: z.int().gte(0),
+    failedTerminal: z.int().gte(0),
+    sampled: z.int().gte(0),
+    truncated: z.boolean(),
+  }),
+  generatedAt: z.iso.datetime(),
+  knowledgeSpaceId: z.uuid(),
+  metrics: z.object({
+    available: z.boolean(),
+    reason: z.string().optional(),
+  }),
+  projections: z.object({
+    denseVector: z.object({
+      building: z.int().gte(0),
+      failed: z.int().gte(0),
+      ready: z.int().gte(0),
+      stale: z.int().gte(0),
+      total: z.int().gte(0),
+    }),
+    fts: z.object({
+      building: z.int().gte(0),
+      failed: z.int().gte(0),
+      ready: z.int().gte(0),
+      stale: z.int().gte(0),
+      total: z.int().gte(0),
+    }),
+    graph: z.object({
+      building: z.int().gte(0),
+      failed: z.int().gte(0),
+      ready: z.int().gte(0),
+      stale: z.int().gte(0),
+      total: z.int().gte(0),
+    }),
+    metadata: z.object({
+      building: z.int().gte(0),
+      failed: z.int().gte(0),
+      ready: z.int().gte(0),
+      stale: z.int().gte(0),
+      total: z.int().gte(0),
+    }),
+    projectionVersion: z.int().gt(0),
+  }),
+  runtime: z.object({
+    activeLeaseSampleCount: z.int().gte(0),
+    activeSessionSampleCount: z.int().gte(0),
+    truncated: z.boolean(),
+  }),
+  storage: z.object({
+    documentCount: z.int().gte(0),
+    rawDocumentBytes: z.int().gte(0),
+  }),
+  tenantId: z.string(),
+  window: z.object({
+    end: z.iso.datetime(),
+    minutes: z.int().gt(0).lte(1440),
+    start: z.iso.datetime(),
+  }),
+})
+
+export const zKnowledgeFsckReport = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  issues: z
+    .array(
+      z.object({
+        code: z.string().min(1).max(128),
+        message: z.string().min(1).max(1000),
+        repairability: z.enum(['auto-repairable', 'manual', 'not-repairable']),
+        severity: z.enum(['info', 'warning', 'error', 'critical']),
+        target: z.object({
+          documentAssetId: z
+            .string()
+            .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+            .optional(),
+          id: z.string().min(1).max(512).optional(),
+          objectKey: z.string().min(1).max(1024).optional(),
+          parseArtifactId: z
+            .string()
+            .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+            .optional(),
+          type: z.enum([
+            'raw-object',
+            'artifact-object',
+            'artifact-segment',
+            'knowledge-path',
+            'knowledge-node',
+            'index-projection',
+            'staged-commit',
+          ]),
+          virtualPath: z
+            .string()
+            .max(384)
+            .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/)
+            .optional(),
+        }),
+        type: z.enum([
+          'missing-raw-object',
+          'checksum-mismatch',
+          'size-mismatch',
+          'missing-artifact-object',
+          'segment-hash-mismatch',
+          'broken-path-target',
+          'missing-node-target',
+          'stale-projection',
+          'orphaned-staged-object',
+          'failed-commit-expired',
+        ]),
+      }),
+    )
+    .max(1000),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  scannedAt: z.iso.datetime(),
+  summary: z.object({
+    critical: z.int().gte(0),
+    error: z.int().gte(0),
+    info: z.int().gte(0),
+    repairable: z.int().gte(0),
+    scanned: z.int().gte(0),
+    warning: z.int().gte(0),
+  }),
+  tenantId: z.string().min(1).max(255),
+})
+
+export const zKnowledgeFsGcDryRunReport = z.object({
+  candidates: z
+    .array(
+      z.object({
+        candidateType: z.enum([
+          'staged-object',
+          'failed-commit',
+          'artifact-segment',
+          'parse-artifact',
+          'index-projection',
+          'answer-trace',
+        ]),
+        count: z.int().gt(0),
+        estimatedBytes: z.int().gte(0),
+        idempotencyKey: z.string().min(1).max(512),
+        reason: z.string().min(1).max(1000),
+        target: z.object({
+          documentAssetId: z
+            .string()
+            .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+            .optional(),
+          id: z.string().min(1).max(512).optional(),
+          objectKey: z.string().min(1).max(1024).optional(),
+          parseArtifactId: z
+            .string()
+            .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+            .optional(),
+          type: z.enum([
+            'raw-object',
+            'artifact-object',
+            'artifact-segment',
+            'knowledge-path',
+            'knowledge-node',
+            'index-projection',
+            'staged-commit',
+          ]),
+          virtualPath: z
+            .string()
+            .max(384)
+            .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/)
+            .optional(),
+        }),
+      }),
+    )
+    .max(1000),
+  cursor: z.string().min(1).max(1024).optional(),
+  dryRunId: z.string().min(1).max(128),
+  generatedAt: z.iso.datetime(),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  summary: z.object({
+    candidateCount: z.int().gte(0),
+    estimatedBytes: z.int().gte(0),
+    failedCommitCount: z.int().gte(0),
+    stagedObjectCount: z.int().gte(0),
+  }),
+  tenantId: z.string().min(1).max(255),
+})
+
+export const zKnowledgeFsStagedObjectGcExecuteResult = z.object({
+  deleted: z.int().gte(0),
+  items: z.array(
+    z.object({
+      idempotencyKey: z.string(),
+      objectKey: z.string(),
+      status: z.enum(['deleted', 'skipped-active-lease']),
+    }),
+  ),
+  skipped: z.int().gte(0),
+  tenantId: z.string(),
+})
+
+export const zKnowledgeFsLease = z.object({
+  acquiredAt: z.iso.datetime(),
+  expiresAt: z.iso.datetime(),
+  heartbeatAt: z.iso.datetime(),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  leaseType: z.enum(['read', 'publish', 'delete', 'reindex']),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  sessionId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  status: z.enum(['active', 'released', 'expired', 'failed']),
+  targetId: z.string().min(1).max(512),
+  targetType: z.enum([
+    'knowledge-space',
+    'document-asset',
+    'parse-artifact',
+    'knowledge-path',
+    'projection',
+    'staged-commit',
+  ]),
+  targetVersion: z.int().gt(0).optional(),
+  tenantId: z.string().min(1).max(255),
+  updatedAt: z.iso.datetime(),
+  virtualPath: z
+    .string()
+    .max(384)
+    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+export const zKnowledgeSpaceStagedCommit = z.object({
+  checksum: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
+  createdAt: z.iso.datetime(),
+  documentAssetId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  errorCode: z.string().min(1).max(128).optional(),
+  errorMessage: z.string().min(1).max(2000).optional(),
+  expiresAt: z.iso.datetime().optional(),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  idempotencyKey: z.string().min(1).max(255),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  operationType: z.enum([
+    'document-upload',
+    'artifact-segment-write',
+    'bulk-reindex',
+    'projection-publish',
+  ]),
+  parseArtifactId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  projectionFingerprint: z.string().min(1).max(512).optional(),
+  publishedObjectKey: z
+    .string()
+    .min(1)
+    .max(1024)
+    .regex(/^[A-Za-z0-9._=-]+(?:\/[A-Za-z0-9._=-]+)*$/)
+    .optional(),
+  rawObjectKey: z
+    .string()
+    .min(1)
+    .max(1024)
+    .regex(/^[A-Za-z0-9._=-]+(?:\/[A-Za-z0-9._=-]+)*$/)
+    .optional(),
+  sizeBytes: z.int().gte(0).optional(),
+  status: z.enum([
+    'received',
+    'object-staged',
+    'object-verified',
+    'metadata-prepared',
+    'artifacts-built',
+    'nodes-built',
+    'projections-built',
+    'published',
+    'failed-retryable',
+    'failed-terminal',
+    'canceled',
+    'gc-pending',
+    'gc-complete',
+  ]),
+  tenantId: z.string().min(1).max(255),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zDurableDeletionJob = z.object({
+  checkpoint: z.enum([
+    'requested',
+    'quiescing',
+    'deleting_objects',
+    'deleting_derived_data',
+    'deleting_primary_data',
+    'completed',
+  ]),
+  completedAt: z.iso.datetime().optional(),
+  createdAt: z.iso.datetime(),
+  error: z
+    .object({
+      code: z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/),
+      message: z.string().min(1).max(256),
+      retryable: z.boolean(),
+    })
+    .optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  mode: z.enum(['cascade', 'keep']).optional(),
+  progress: z
+    .object({
+      completedItems: z.int().gte(0),
+      currentItemKind: z.string().min(1).optional(),
+      totalItems: z.int().gte(0).optional(),
+    })
+    .optional(),
+  retryAt: z.iso.datetime().optional(),
+  runState: z.enum([
+    'dispatch_pending',
+    'queued',
+    'running',
+    'retry_wait',
+    'completed',
+    'failed',
+    'canceled',
+  ]),
+  targetId: z.uuid(),
+  targetType: z.enum(['knowledge_space', 'source', 'document', 'logical_document']),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zDurableDeletionAccepted = z.object({
+  job: zDurableDeletionJob,
+  statusUrl: z.string().min(1),
+})
+
+export const zDurableBulkDeletionAccepted = z.object({
+  items: z.array(
+    z.object({
+      documentId: z.uuid(),
+      job: zDurableDeletionJob,
+      statusUrl: z.string().min(1),
+    }),
+  ),
+  total: z.int().gt(0),
+})
+
+export const zKnowledgeSpaceProfileAuditRevision = z.object({
+  activatedAt: z.iso.datetime().optional(),
+  capabilitySnapshotDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  createdAt: z.iso.datetime(),
+  createdBySubjectId: z.string().min(1).max(255),
+  dimension: z.int().gt(0).optional(),
+  failedAt: z.iso.datetime().optional(),
+  failureCode: z.string().min(1).max(64).optional(),
+  kind: z.enum(['embedding', 'retrieval']),
+  model: z.string().min(1).max(256),
+  pluginId: z.string().min(1).max(256),
+  provider: z.string().min(1).max(256),
+  revision: z.int().gt(0),
+  snapshotDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  state: z.enum(['candidate', 'active', 'superseded', 'failed']),
+  supersededAt: z.iso.datetime().optional(),
+  updatedAt: z.iso.datetime(),
+  vectorSpaceId: z
+    .string()
+    .regex(/^embedding-space-sha256:[a-f0-9]{64}$/)
+    .optional(),
+})
+
+export const zKnowledgeSpaceProfileAuditRevisionList = z.object({
+  activeRevision: z.int().gt(0).nullable(),
+  items: z.array(zKnowledgeSpaceProfileAuditRevision).max(100),
+  nextRevision: z.int().gt(0).optional(),
+})
+
+export const zGoldenQuestion = z.object({
+  createdAt: z.iso.datetime(),
+  expectedEvidenceIds: z
+    .array(z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/))
+    .optional()
+    .default([]),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  question: z.string().min(1).max(4000),
+  tags: z.array(z.string().min(1).max(80)).optional().default([]),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zQualityAnswerTraceSummary = z.object({
+  completed: z.boolean(),
+  createdAt: z.iso.datetime(),
+  evidenceBundleId: z.uuid().optional(),
+  evidenceState: z.string().optional(),
+  finalScore: z.number().gte(0).lte(1).optional(),
+  id: z.uuid(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']),
+  profile: z.object({
+    embeddingModel: z.string().optional(),
+    embeddingVectorSpaceId: z.string().optional(),
+    projectionPublicationId: z.uuid().optional(),
+    projectionVersion: z.int().gt(0).optional(),
+    reasoningModel: z.string().optional(),
+    rerankModel: z.string().optional(),
+    retrievalProfileRevision: z.int().gt(0).optional(),
+  }),
+  query: z.string(),
+  scores: z.object({
+    final: z.number().gte(0).lte(1).optional(),
+    rerank: z.number().gte(0).lte(1).optional(),
+    retrieval: z.number().gte(0).lte(1).optional(),
+  }),
+  stages: z.array(
+    z.object({
+      candidateCount: z.int().gte(0).optional(),
+      name: z.string(),
+      status: z.enum(['error', 'ok', 'skipped']),
+    }),
+  ),
+})
+
+export const zMissingEvidenceReview = z.object({
+  actorSubjectId: z.string(),
+  createdAt: z.iso.datetime(),
+  id: z.uuid(),
+  itemKey: z.string(),
+  knowledgeSpaceId: z.uuid(),
+  reason: z.string().optional(),
+  revision: z.int().gt(0),
+  status: z.enum(['active', 'dismissed']),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zProductionBadCase = z.object({
+  actorSubjectId: z.string(),
+  createdAt: z.iso.datetime(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  reason: z.string(),
+  replayRunId: z.uuid().optional(),
+  revision: z.int().gt(0),
+  status: z.enum(['open', 'replaying', 'fixed', 'dismissed']),
+  tags: z.array(z.string()),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zQualityReplayRun = z.object({
+  attempt: z.int().gte(0),
+  createdAt: z.iso.datetime(),
+  error: z.string().optional(),
+  id: z.uuid(),
+  items: z.array(
+    z.object({
+      goldenQuestionId: z.uuid(),
+      id: z.uuid(),
+      ordinal: z.int().gt(0),
+      question: z.string(),
+      result: z
+        .object({
+          evidenceDiff: z.object({
+            expectedCount: z.int().gte(0),
+            missingCount: z.int().gte(0),
+            retrievedCount: z.int().gte(0),
+          }),
+          metrics: z.object({
+            denseCandidates: z.int().gte(0).optional(),
+            ftsCandidates: z.int().gte(0).optional(),
+            fusedCandidates: z.int().gte(0).optional(),
+            graphExpansionCandidates: z.int().gte(0).optional(),
+            pageIndexMatchedNodes: z.int().gte(0).optional(),
+            permissionFilteredCandidates: z.int().gte(0).optional(),
+            rerankCandidates: z.int().gte(0).optional(),
+            scoreThresholdFilteredCandidates: z.int().gte(0).optional(),
+            summaryCandidates: z.int().gte(0).optional(),
+            totalMs: z.number().gte(0).optional(),
+          }),
+          passed: z.boolean(),
+        })
+        .optional(),
+      state: z.enum(['queued', 'running', 'passed', 'failed', 'canceled']),
+    }),
+  ),
+  knowledgeSpaceId: z.uuid(),
+  mode: z.enum(['deep', 'fast', 'research']),
+  provenance: z.object({
+    embedding: z
+      .object({
+        dimension: z.int().gt(0),
+        model: z.string(),
+        vectorSpaceId: z.string(),
+      })
+      .optional(),
+    projection: z.object({
+      projectionVersion: z.int().gt(0),
+    }),
+    retrieval: z.object({
+      profileRevision: z.int().gt(0),
+      reasoningModel: z.string(),
+      rerankModel: z.string().optional(),
+    }),
+  }),
+  revision: z.int().gt(0),
+  state: z.enum(['queued', 'running', 'passed', 'failed', 'canceled']),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zQualityTrendReport = z.object({
+  baseline: z.object({
+    failedQueries: z.number(),
+    passRate: z.number(),
+    totalReplays: z.number(),
+  }),
+  current: z.object({
+    badCases: z.object({
+      dismissed: z.number(),
+      fixed: z.number(),
+      open: z.number(),
+      replaying: z.number(),
+    }),
+    failedQueries: z.number(),
+    passRate: z.number(),
+    totalReplays: z.number(),
+  }),
+  from: z.iso.datetime(),
+  slices: z.array(
+    z.object({
+      failedQueries: z.number(),
+      mode: z.string(),
+      model: z.string(),
+      passRate: z.number(),
+      profileRevision: z.number(),
+      replayRuns: z.number(),
+    }),
+  ),
+  to: z.iso.datetime(),
+  topUnanswered: z.array(
+    z.object({
+      count: z.number(),
+      query: z.string(),
+    }),
+  ),
+})
+
+export const zDocumentAsset = z.object({
+  createdAt: z.iso.datetime(),
+  filename: z.string().min(1).max(512),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  mimeType: z.string().min(1),
+  objectKey: z.string().min(1),
+  parserStatus: z.enum(['pending', 'parsed', 'failed']),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  sizeBytes: z.int().gte(0),
+  sourceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  updatedAt: z.iso.datetime().optional(),
+  version: z.int().gt(0),
+})
+
+export const zDocumentAssetList = z.object({
+  items: z.array(zDocumentAsset),
+  nextCursor: z.uuid().optional(),
+})
+
+export const zParseArtifact = z.object({
+  artifactHash: z.string().regex(/^[0-9a-f]{64}$/),
+  contentType: z.enum(['text', 'structured', 'mixed']),
+  createdAt: z.iso.datetime(),
+  documentAssetId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  elements: z.array(
+    z.object({
+      id: z.string().min(1),
+      metadata: z.record(z.string(), z.unknown()).optional().default({}),
+      pageNumber: z.int().gt(0).optional(),
+      sectionPath: z.array(z.string().min(1)).optional().default([]),
+      text: z.string().optional(),
+      type: z.enum([
+        'title',
+        'heading',
+        'paragraph',
+        'table',
+        'list',
+        'image',
+        'code',
+        'page-break',
+      ]),
+    }),
+  ),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  parser: z.enum(['native-markdown', 'native-html', 'native-structured', 'unstructured']),
+  updatedAt: z.iso.datetime().optional(),
+  version: z.int().gt(0),
+})
+
+export const zDocumentOutlineNode = z.object({
+  childNodeIds: z.array(z.string()).optional().default([]),
+  children: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+  endOffset: z.int().gte(0).optional(),
+  endPage: z.int().gt(0).optional(),
+  id: z.string(),
+  level: z.int().gt(0),
+  metadata: z.record(z.string(), z.unknown()),
+  sectionPath: z.array(z.string()).optional().default([]),
+  sourceElementIds: z.array(z.string()).optional().default([]),
+  sourceNodeIds: z.array(z.string()).optional().default([]),
+  startOffset: z.int().gte(0).optional(),
+  startPage: z.int().gt(0).optional(),
+  summary: z.string().optional(),
+  title: z.string(),
+  titleLocation: z.record(z.string(), z.unknown()).optional(),
+  tocSource: z.string(),
+})
+
+export const zDocumentOutline = z.object({
+  artifactHash: z.string(),
+  createdAt: z.string(),
+  documentAssetId: z.uuid(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  metadata: z.record(z.string(), z.unknown()),
+  nodes: z.array(zDocumentOutlineNode),
+  outlineVersion: z.string(),
+  parseArtifactId: z.uuid(),
+  updatedAt: z.string().optional(),
+  version: z.int().gt(0),
+})
+
+export const zDocumentMultimodalManifest = z.object({
+  artifactHash: z.string().regex(/^[0-9a-f]{64}$/),
+  createdAt: z.iso.datetime(),
+  documentAssetId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  items: z.array(
+    z.object({
+      assetRef: z
+        .object({
+          contentType: z.string().min(1).optional(),
+          objectKey: z
+            .string()
+            .min(1)
+            .max(1024)
+            .regex(/^[A-Za-z0-9._=-]+(?:\/[A-Za-z0-9._=-]+)*$/)
+            .optional(),
+          sha256: z
+            .string()
+            .regex(/^[0-9a-f]{64}$/)
+            .optional(),
+          uri: z.string().min(1).max(2048).optional(),
+          variants: z
+            .record(
+              z.string(),
+              z.object({
+                contentType: z.string().min(1).optional(),
+                height: z.number().gte(0).optional(),
+                objectKey: z
+                  .string()
+                  .min(1)
+                  .max(1024)
+                  .regex(/^[A-Za-z0-9._=-]+(?:\/[A-Za-z0-9._=-]+)*$/)
+                  .optional(),
+                sha256: z
+                  .string()
+                  .regex(/^[0-9a-f]{64}$/)
+                  .optional(),
+                uri: z.string().min(1).max(2048).optional(),
+                width: z.number().gte(0).optional(),
+              }),
+            )
+            .optional(),
+        })
+        .optional(),
+      boundingBox: z
+        .object({
+          height: z.number().gte(0),
+          width: z.number().gte(0),
+          x: z.number().gte(0),
+          y: z.number().gte(0),
+        })
+        .optional(),
+      caption: z.string().min(1).max(16000).optional(),
+      endOffset: z.int().gte(0).optional(),
+      enrichment: z.object({
+        asset: z.enum(['missing', 'pending', 'provided', 'unsupported']),
+        caption: z.enum(['missing', 'pending', 'provided', 'unsupported']),
+        ocr: z.enum(['missing', 'pending', 'provided', 'unsupported']),
+        tableStructure: z.enum(['missing', 'pending', 'provided', 'unsupported']),
+        visualEmbedding: z.enum(['missing', 'pending', 'provided', 'unsupported']),
+      }),
+      id: z.string().min(1).max(512),
+      modality: z.enum(['code', 'image', 'page', 'table']),
+      ocrText: z.string().min(1).max(64000).optional(),
+      pageNumber: z.int().gt(0).optional(),
+      parseElementId: z.string().min(1).max(512),
+      sectionPath: z.array(z.string().min(1)).optional().default([]),
+      sourceMetadata: z.record(z.string(), z.unknown()).optional().default({}),
+      startOffset: z.int().gte(0).optional(),
+      textPreview: z.string().min(1).max(4000).optional(),
+      title: z.string().min(1).max(2000).optional(),
+    }),
+  ),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  manifestVersion: z.string().min(1).max(128),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  parseArtifactId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  publicationGenerationId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  updatedAt: z.iso.datetime().optional(),
+  version: z.int().gt(0),
+})
+
+export const zLogicalDocumentRevision = z
+  .object({
+    activatedAt: z.string().optional(),
+    contentHash: z.string().length(64),
+    createdAt: z.string(),
+    documentAssetId: z.uuid(),
+    documentAssetVersion: z.int().gt(0),
+    documentId: z.uuid(),
+    knowledgeSpaceId: z.uuid(),
+    mimeType: z.string(),
+    revision: z.int().gt(0),
+    sizeBytes: z.int().gte(0),
+    state: z.enum(['candidate', 'active', 'superseded', 'failed']),
+  })
+  .nullable()
+
+export const zLogicalDocument = z.object({
+  active: zLogicalDocumentRevision,
+  activeRevision: z.int().gt(0).optional(),
+  createdAt: z.string(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  providerItemId: z.string().optional(),
+  rowVersion: z.int().gte(0),
+  sourceId: z.uuid().optional(),
+  status: z.enum(['pending', 'ready', 'failed', 'deleting']),
+  title: z.string(),
+  updatedAt: z.string(),
+  userMetadata: z.record(z.string(), z.unknown()),
+})
+
+export const zLogicalDocumentList = z.object({
+  items: z.array(zLogicalDocument),
+  nextCursor: z.string().optional(),
+})
+
+export const zDocumentRevisionList = z.object({
+  items: z.array(zLogicalDocumentRevision.and(z.record(z.string(), z.unknown()))),
+  nextCursor: z.string().optional(),
+})
+
+export const zDocumentProcessingTask = z.object({
+  completedAt: z.string().optional(),
+  createdAt: z.string(),
+  documentId: z.uuid(),
+  documentRevision: z.int().gt(0),
+  errorCode: z.string().optional(),
+  errorMessage: z.string().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  progressPercent: z.int().gte(0).lte(100),
+  retryAt: z.string().optional(),
+  stage: z.enum([
+    'queued',
+    'parsed',
+    'outline_built',
+    'nodes_generated',
+    'projection_built',
+    'smoke_eval_passed',
+    'published',
+  ]),
+  state: z.enum([
+    'dispatch_pending',
+    'queued',
+    'running',
+    'retry_wait',
+    'succeeded',
+    'failed',
+    'canceled',
+    'superseded',
+  ]),
+  updatedAt: z.string(),
+})
+
+export const zDocumentRevisionChunk = z.object({
+  createdAt: z.string(),
+  documentId: z.uuid(),
+  documentRevision: z.int().gt(0),
+  enabled: z.boolean(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  ordinal: z.int().gte(0),
+  parentChunkId: z.uuid().optional(),
+  text: z.string(),
+  tokenCount: z.int().gte(0),
+  userMetadata: z.record(z.string(), z.unknown()),
+})
+
+export const zDocumentChunkList = z.object({
+  items: z.array(zDocumentRevisionChunk),
+  nextCursor: z.string().optional(),
+})
+
+export const zDocumentChunkStateChangeAccepted = z.object({
+  candidateFingerprint: z.string().optional(),
+  candidatePublicationId: z.uuid().optional(),
+  chunkId: z.uuid(),
+  compilationAttemptId: z.uuid(),
+  createdAt: z.string(),
+  documentId: z.uuid(),
+  documentRevision: z.int().gt(0),
+  enabled: z.boolean(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  state: z.enum(['candidate']),
+  statusUrl: z.string().min(1),
+})
+
+export const zDocumentProcessingTaskList = z.object({
+  items: z.array(zDocumentProcessingTask),
+  nextCursor: z.string().optional(),
+})
+
+export const zDocumentSettingsHead = z.object({
+  activeRevision: z.int().gt(0),
+  profile: z.object({
+    activatedAt: z.string().optional(),
+    createdAt: z.string(),
+    revision: z.int().gt(0),
+    settings: z.object({
+      chunkOverlap: z.int().gte(0).lte(8191),
+      chunkSize: z.int().gte(128).lte(8192),
+      enableGraph: z.boolean(),
+      enablePageIndex: z.boolean(),
+      language: z.string().min(2).max(64).optional(),
+    }),
+    state: z.enum(['active']),
+  }),
+  rowVersion: z.int().gte(0),
+  updatedAt: z.string(),
+})
+
+export const zDocumentReindexAccepted = z.object({
+  attemptId: z.uuid(),
+  compilationAttemptId: z.uuid(),
+  settingsRevision: z.int().gt(0),
+  state: z.enum(['running']),
+  statusUrl: z.string(),
+})
+
+export const zDocumentCompilationJob = z.object({
+  baseHeadRevision: z.int().gte(0).optional(),
+  candidateFingerprint: z.string().min(1).optional(),
+  candidatePublicationId: z.uuid().optional(),
+  completedAt: z.number().optional(),
+  createdAt: z.number(),
+  documentAssetId: z.string().min(1),
+  error: z.string().optional(),
+  executionAttempts: z.int().gte(0).optional(),
+  id: z.string().min(1),
+  knowledgeSpaceId: z.string().min(1),
+  leaseExpiresAt: z.number().optional(),
+  maxExecutionAttempts: z.int().gt(0).optional(),
+  publicationGenerationId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  queueJobId: z.string().min(1).optional(),
+  retryAt: z.number().optional(),
+  runState: z
+    .enum([
+      'dispatch_pending',
+      'queued',
+      'running',
+      'retry_wait',
+      'succeeded',
+      'failed',
+      'canceled',
+      'superseded',
+    ])
+    .optional(),
+  stage: z.enum([
+    'queued',
+    'parsed',
+    'outline_built',
+    'nodes_generated',
+    'projection_built',
+    'smoke_eval_passed',
+    'published',
+    'failed',
+    'canceled',
+  ]),
+  tenantId: z.string().min(1).max(255),
+  updatedAt: z.number(),
+  version: z.int().gt(0),
+})
+
+export const zAnswerTrace = z.object({
+  createdAt: z.iso.datetime(),
+  evidenceBundleId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  mode: z.enum(['fast', 'deep', 'research', 'auto']),
+  query: z.string().min(1),
+  steps: z.array(
+    z.object({
+      endedAt: z.iso.datetime().optional(),
+      metadata: z.record(z.string(), z.unknown()).optional().default({}),
+      name: z.string().min(1),
+      startedAt: z.iso.datetime(),
+      status: z.enum(['ok', 'error', 'skipped']),
+    }),
+  ),
+})
+
+export const zBulkOperationProgress = z.object({
+  completedItems: z.int().gte(0),
+  createdAt: z.string(),
+  failedItemIds: z.array(z.string().min(1)),
+  failedItems: z.int().gte(0),
+  id: z.string().min(1),
+  knowledgeSpaceId: z.string().min(1),
+  status: z.enum(['running', 'completed', 'failed']),
+  totalItems: z.int().gte(0),
+  type: z.enum(['document_upload', 'document_delete', 'document_reindex']),
+  updatedAt: z.string(),
+})
+
+export const zRetentionPolicy = z.object({
+  answerTraceRetentionDays: z.int().gt(0),
+  createdAt: z.string(),
+  evidenceCacheRetentionDays: z.int().gt(0),
+  id: z.string().min(1),
+  inactiveProjectionRetentionDays: z.int().gt(0),
+  knowledgeSpaceId: z.uuid().nullable(),
+  parseArtifactVersions: z.int().gt(0),
+  rawDocumentRetentionDays: z.int().gt(0).nullable(),
+  scope: z.enum(['tenant', 'knowledge_space']),
+  sessionInactivityMinutes: z.int().gt(0),
+  tenantId: z.string().min(1),
+  updatedAt: z.string(),
+})
+
+export const zFailedQuery = z.object({
+  createdAt: z.iso.datetime(),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  mode: z.enum(['fast', 'deep', 'research', 'auto']),
+  query: z.string().min(1),
+  status: z.enum([
+    'pending-triage',
+    'triaged',
+    'pending-annotation',
+    'annotated',
+    'dismissed',
+    'promoted',
+  ]),
+  trigger: z.enum(['no-retrieval-evidence', 'low-confidence', 'abstained']),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zFailedQueryMetrics = z.object({
+  byStatus: z.object({
+    annotated: z.number(),
+    dismissed: z.number(),
+    'pending-annotation': z.number(),
+    'pending-triage': z.number(),
+    promoted: z.number(),
+    triaged: z.number(),
+  }),
+  promotionRate: z.number(),
+  total: z.number(),
+})
+
+export const zFailedQueryTriageResult = z.object({
+  triaged: z.number(),
+  verdicts: z.object({
+    'coverage-gap': z.number(),
+    irrelevant: z.number(),
+    'retrieval-miss': z.number(),
+    uncertain: z.number(),
+  }),
+})
+
+export const zFailedQueryClusters = z.object({
+  clusters: z.array(
+    z.object({
+      clusterKey: z.string(),
+      count: z.number(),
+      failedQueryIds: z.array(z.string()),
+      representative: zFailedQuery,
+    }),
+  ),
+})
+
+export const zAgentWorkspaceSnapshot = z.object({
+  commandLog: z.array(
+    z.object({
+      command: z.string().min(1).max(4000),
+      completedAt: z.iso.datetime().optional(),
+      cost: z.record(z.string(), z.unknown()).optional(),
+      input: z.record(z.string(), z.unknown()).optional().default({}),
+      outputSummary: z.string().max(4000).optional(),
+      startedAt: z.iso.datetime(),
+    }),
+  ),
+  createdAt: z.iso.datetime(),
+  evidenceBundles: z.array(
+    z.object({
+      createdAt: z.iso.datetime(),
+      id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+      items: z.array(
+        z.object({
+          citations: z
+            .array(
+              z.object({
+                artifactHash: z
+                  .string()
+                  .regex(/^[0-9a-f]{64}$/)
+                  .optional(),
+                documentAssetId: z
+                  .string()
+                  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+                documentVersion: z.int().gt(0),
+                endOffset: z.int().gte(0).optional(),
+                pageNumber: z.int().gt(0).optional(),
+                sectionPath: z.array(z.string().min(1)).optional().default([]),
+                startOffset: z.int().gte(0).optional(),
+              }),
+            )
+            .min(1),
+          conflicts: z
+            .array(
+              z.object({
+                reason: z.string().min(1).max(2000),
+                severity: z.enum(['info', 'warning', 'blocking']),
+                withNodeId: z
+                  .string()
+                  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+                  .optional(),
+              }),
+            )
+            .optional()
+            .default([]),
+          freshness: z.object({
+            observedAt: z.iso.datetime().optional(),
+            sourceUpdatedAt: z.iso.datetime().optional(),
+            status: z.enum(['fresh', 'stale', 'unknown']),
+          }),
+          metadata: z.record(z.string(), z.unknown()).optional().default({}),
+          nodeId: z
+            .string()
+            .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+          score: z.number().gte(0).lte(1),
+          scores: z.object({
+            final: z.number().gte(0).lte(1),
+            freshness: z.number().gte(0).lte(1).optional(),
+            rerank: z.number().gte(0).lte(1).optional(),
+            retrieval: z.number().gte(0).lte(1),
+          }),
+          text: z.string().min(1),
+        }),
+      ),
+      missingEvidence: z
+        .array(
+          z.object({
+            expectedEvidenceId: z
+              .string()
+              .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+              .optional(),
+            metadata: z.record(z.string(), z.unknown()).optional().default({}),
+            reason: z.enum([
+              'not-retrieved',
+              'permission-filtered',
+              'stale',
+              'conflict',
+              'unknown',
+            ]),
+            text: z.string().min(1).max(4000),
+          }),
+        )
+        .optional()
+        .default([]),
+      query: z.string().min(1),
+      state: z.enum([
+        'answerable',
+        'partial',
+        'not-enough-evidence',
+        'conflict',
+        'permission-limited',
+      ]),
+      traceId: z
+        .string()
+        .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+        .optional(),
+    }),
+  ),
+  fingerprint: z.string().regex(/^snapshot-sha256:[a-f0-9]{64}$/),
+  id: z.string().min(1),
+  indexProjection: z.object({
+    fingerprint: z.string().min(1).max(512),
+    projectionIds: z.array(z.string().min(1).max(240)).optional().default([]),
+  }),
+  knowledgeSpaceId: z.uuid(),
+  manifestVersion: z.int().gt(0),
+  metadata: z.record(z.string(), z.unknown()),
+  mounts: z.array(
+    z.object({
+      cachePolicy: z
+        .object({
+          maxBytes: z.int().gt(0).lte(1073741824).optional(),
+          strategy: z.enum(['none', 'memory', 'object-storage']),
+          ttlSeconds: z.int().gt(0).lte(86400).optional(),
+        })
+        .optional()
+        .default({ strategy: 'none' }),
+      capabilities: z
+        .array(z.enum(['ls', 'tree', 'cat', 'grep', 'find', 'stat', 'diff', 'sync', 'watch']))
+        .optional()
+        .default([]),
+      createdAt: z.iso.datetime(),
+      freshnessPolicy: z.object({
+        staleAfterSeconds: z.int().gt(0).optional(),
+        strategy: z.enum(['realtime', 'ttl', 'manual', 'async']),
+      }),
+      id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+      knowledgeSpaceId: z
+        .string()
+        .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+      lastSyncedAt: z.iso.datetime().optional(),
+      metadata: z.record(z.string(), z.unknown()).optional().default({}),
+      mode: z.enum(['read', 'write', 'exec']),
+      mountPath: z
+        .string()
+        .max(384)
+        .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+      permissionScope: z.array(z.string().min(1)).optional().default([]),
+      permissionSnapshotVersion: z.int().gt(0),
+      provider: z.enum([
+        'upload',
+        'object-storage',
+        'connector',
+        'web',
+        'database',
+        'github',
+        'slack',
+        'internal',
+      ]),
+      resourceType: z.enum(['source', 'document', 'node', 'artifact', 'evidence', 'workspace']),
+      sourcePointer: z.string().min(1),
+      tenantId: z.string().min(1).max(255),
+    }),
+  ),
+  pathVersions: z.array(
+    z.object({
+      version: z.string().min(1).max(512),
+      virtualPath: z.string().min(1).max(1000),
+    }),
+  ),
+  researchTaskJobId: z.string().optional(),
+  sourceVersions: z.array(
+    z.object({
+      provider: z.string().min(1).max(120),
+      providerResourceKey: z.string().min(1).max(1000),
+      version: z.string().min(1).max(512),
+    }),
+  ),
+  traceIds: z.array(z.string().min(1)),
+})
+
+export const zAgentWorkspaceReplay = z.object({
+  commands: z.array(
+    z.object({
+      command: z.string(),
+      commandIndex: z.int().gte(0),
+      completedAt: z.iso.datetime(),
+      error: z.string().optional(),
+      input: z.record(z.string(), z.unknown()),
+      originalOutputSummary: z.string().optional(),
+      replayedOutputSummary: z.string().optional(),
+      startedAt: z.iso.datetime(),
+      status: z.enum(['changed', 'failed', 'matched']),
+    }),
+  ),
+  completedAt: z.iso.datetime(),
+  id: z.string().min(1),
+  knowledgeSpaceId: z.uuid(),
+  snapshotId: z.string().min(1),
+  startedAt: z.iso.datetime(),
+  summary: z.object({
+    changed: z.int().gte(0),
+    failed: z.int().gte(0),
+    matched: z.int().gte(0),
+    total: z.int().gte(0),
+  }),
+  traceId: z.string().optional(),
+})
+
+export const zResearchTaskDryRunPlan = z.object({
+  budget: z.object({
+    budgetUsd: z.number().gte(0).optional(),
+    exceedsBudget: z.boolean(),
+    remainingBudgetUsd: z.number().optional(),
+  }),
+  estimates: z.object({
+    cacheHitProbability: z.number().gte(0).lte(1),
+    costUsd: z.object({
+      currency: z.enum(['USD']),
+      estimated: z.number().gte(0),
+      max: z.number().gte(0),
+      min: z.number().gte(0),
+    }),
+    inputTokens: z.int().gte(0),
+    latencyMs: z.object({
+      p50: z.int().gte(0),
+      p95: z.int().gte(0),
+    }),
+    outputTokens: z.int().gte(0),
+    retrievalSteps: z.int().gte(0),
+    scannedResources: z.int().gte(0),
+    toolCalls: z.int().gte(0),
+    totalTokens: z.int().gte(0),
+  }),
+  knowledgeSpaceId: z.uuid(),
+  query: z.string().min(1),
+  retrievalPlan: z.object({
+    denseTopK: z.int().gte(0),
+    ftsTopK: z.int().gte(0),
+    fusionLimit: z.int().gte(0),
+    queryLanguage: z.enum(['cjk', 'latin', 'mixed-cjk-latin', 'other']),
+    requestedMode: z.enum(['auto', 'deep', 'fast', 'research']),
+    rerankCandidateLimit: z.int().gte(0),
+    resolvedMode: z.enum(['deep', 'fast', 'research']),
+    strategyVersion: z.string().min(1),
+    topK: z.int().gt(0),
+  }),
+  steps: z.array(
+    z.object({
+      estimatedCostUsd: z.number().gte(0),
+      estimatedInputTokens: z.int().gte(0),
+      estimatedLatencyMs: z.int().gte(0),
+      estimatedOutputTokens: z.int().gte(0),
+      estimatedToolCalls: z.int().gte(0),
+      name: z.enum(['analyze', 'generate', 'inspect', 'plan', 'retrieve']),
+    }),
+  ),
+  strategyVersion: z.enum(['research-dry-run-planner-v1']),
+})
+
+export const zResearchTaskJob = z.object({
+  budgetUsd: z.number().gte(0).optional(),
+  completedAt: z.number().optional(),
+  cost: z.object({
+    budgetExceeded: z.boolean().optional(),
+    budgetUsd: z.number().gte(0).optional(),
+    entries: z.array(
+      z.object({
+        costUsd: z.number().gte(0),
+        provider: z.string().min(1),
+        recordedAt: z.number(),
+        step: z.string().min(1),
+        usage: z.record(z.string(), z.unknown()),
+      }),
+    ),
+    totalUsd: z.number().gte(0),
+  }),
+  createdAt: z.number(),
+  error: z.string().optional(),
+  id: z.string().min(1),
+  knowledgeSpaceId: z.string().min(1),
+  limits: z
+    .object({
+      maxRetrievalSteps: z.int().gt(0).optional(),
+      maxScannedResources: z.int().gt(0).optional(),
+      maxToolCalls: z.int().gt(0).optional(),
+      timeoutMs: z.int().gt(0).optional(),
+    })
+    .optional(),
+  metadata: z.record(z.string(), z.unknown()),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).optional(),
+  query: z.string().min(1),
+  stage: z.enum([
+    'queued',
+    'planning',
+    'retrieving',
+    'analyzing',
+    'generating',
+    'paused',
+    'completed',
+    'failed',
+    'canceled',
+  ]),
+  topK: z.int().gt(0).optional(),
+  updatedAt: z.number(),
+})
+
+export const zResearchTaskPartialResult = z.object({
+  evidenceBundle: z.object({
+    createdAt: z.iso.datetime(),
+    id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+    items: z.array(
+      z.object({
+        citations: z
+          .array(
+            z.object({
+              artifactHash: z
+                .string()
+                .regex(/^[0-9a-f]{64}$/)
+                .optional(),
+              documentAssetId: z
+                .string()
+                .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+              documentVersion: z.int().gt(0),
+              endOffset: z.int().gte(0).optional(),
+              pageNumber: z.int().gt(0).optional(),
+              sectionPath: z.array(z.string().min(1)).optional().default([]),
+              startOffset: z.int().gte(0).optional(),
+            }),
+          )
+          .min(1),
+        conflicts: z
+          .array(
+            z.object({
+              reason: z.string().min(1).max(2000),
+              severity: z.enum(['info', 'warning', 'blocking']),
+              withNodeId: z
+                .string()
+                .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+                .optional(),
+            }),
+          )
+          .optional()
+          .default([]),
+        freshness: z.object({
+          observedAt: z.iso.datetime().optional(),
+          sourceUpdatedAt: z.iso.datetime().optional(),
+          status: z.enum(['fresh', 'stale', 'unknown']),
+        }),
+        metadata: z.record(z.string(), z.unknown()).optional().default({}),
+        nodeId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+        score: z.number().gte(0).lte(1),
+        scores: z.object({
+          final: z.number().gte(0).lte(1),
+          freshness: z.number().gte(0).lte(1).optional(),
+          rerank: z.number().gte(0).lte(1).optional(),
+          retrieval: z.number().gte(0).lte(1),
+        }),
+        text: z.string().min(1),
+      }),
+    ),
+    missingEvidence: z
+      .array(
+        z.object({
+          expectedEvidenceId: z
+            .string()
+            .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+            .optional(),
+          metadata: z.record(z.string(), z.unknown()).optional().default({}),
+          reason: z.enum(['not-retrieved', 'permission-filtered', 'stale', 'conflict', 'unknown']),
+          text: z.string().min(1).max(4000),
+        }),
+      )
+      .optional()
+      .default([]),
+    query: z.string().min(1),
+    state: z.enum([
+      'answerable',
+      'partial',
+      'not-enough-evidence',
+      'conflict',
+      'permission-limited',
+    ]),
+    traceId: z
+      .string()
+      .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+      .optional(),
+  }),
+  knowledgeSpaceId: z.string().min(1),
+  researchTaskJobId: z.string().min(1),
+  sequence: z.int().gt(0),
+  tenantId: z.string().min(1),
+})
+
+export const zResearchTaskPartialResultList = z.object({
+  items: z.array(zResearchTaskPartialResult),
+  nextCursor: z.string().optional(),
+})
+
+export const zTopicViewMaterializationResult = z.object({
+  documentCount: z.int().gte(0),
+  generatedVersion: z.string().min(1),
+  knowledgeSpaceId: z.uuid(),
+  pathCount: z.int().gte(0),
+  topicName: z.string().min(1),
+  topicSlug: z.string().min(1),
+})
+
+export const zSemanticEntityExtractionResult = z.object({
+  entitiesExtracted: z.int().gte(0),
+  extractionMode: z.enum(['provider']),
+  graphEntitiesIndexed: z.int().gte(0),
+  graphRelationsIndexed: z.int().gte(0),
+  knowledgeSpaceId: z.uuid(),
+  nodesScanned: z.int().gte(0),
+  nodesUpdated: z.int().gte(0),
+})
+
+export const zSemanticCommunityMaterializationResult = z.object({
+  communityCount: z.int().gte(0),
+  documentCount: z.int().gte(0),
+  entityCount: z.int().gte(0),
+  generatedVersion: z.string().min(1),
+  knowledgeSpaceId: z.uuid(),
+  pathCount: z.int().gte(0),
+})
+
+export const zBulkDocumentReindexResult = z.object({
+  bulkJobId: z.string().min(1),
+  items: z.array(
+    z.union([
+      z.object({
+        asset: zDocumentAsset,
+        compilationJob: z.object({
+          id: z.string().min(1),
+          stage: z.enum(['queued']),
+        }),
+        status: z.enum(['queued']),
+        statusUrl: z.string().min(1),
+      }),
+      z.object({
+        documentId: z.uuid(),
+        status: z.enum(['not_found']),
+      }),
+    ]),
+  ),
+  total: z.int().gte(0),
+})
+
+export const zDocumentUploadAccepted = z.object({
+  asset: zDocumentAsset,
+  assetStatusUrl: z.string().min(1).optional(),
+  compilationJob: z.object({
+    id: z.string().min(1),
+    stage: z.enum(['queued']),
+  }),
+  logicalDocument: z.object({
+    id: z.uuid(),
+    revision: z.int().gt(0),
+  }),
+  logicalDocumentId: z.uuid(),
+  documentRevision: z.int().gt(0),
+  statusUrl: z.string().min(1),
+  status: z.enum(['accepted']).optional(),
+})
+
+export const zBulkDocumentUploadAccepted = z.object({
+  accepted: z.int().gte(0),
+  bulkJobId: z.string().min(1),
+  excluded: z.int().gte(0),
+  items: z.array(
+    z.union([
+      zDocumentUploadAccepted,
+      z.object({
+        filename: z.string(),
+        index: z.int().gte(0),
+        mimeType: z.string(),
+        reason: z.enum([
+          'batch_byte_limit_exceeded',
+          'document_not_found',
+          'file_count_limit_exceeded',
+          'file_too_large',
+          'invalid_file',
+          'invalid_target',
+          'processing_failed',
+          'quota_exceeded',
+          'revision_conflict',
+          'unsupported_mime_type',
+        ]),
+        sizeBytes: z.int().gte(0),
+        status: z.enum(['excluded']),
+      }),
+    ]),
+  ),
+  total: z.int().gte(0),
+})
+
+export const zSourceWorkflowRun = z.object({
+  canceledAt: z.string().optional(),
+  checkpoint: z.string(),
+  completedAt: z.string().optional(),
+  createdAt: z.string(),
+  cursor: z.string().optional(),
+  executionAttempts: z.int(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  kind: z.string(),
+  lastErrorCode: z.string().optional(),
+  maxExecutionAttempts: z.int(),
+  progressCompleted: z.int(),
+  progressFailed: z.int(),
+  progressSkipped: z.int(),
+  progressTotal: z.int().optional(),
+  sourceId: z.uuid().optional(),
+  state: z.string(),
+  updatedAt: z.string(),
+})
+
+export const zSource = z.object({
+  connectionId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  createdAt: z.iso.datetime(),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  metadata: z.record(z.string(), z.unknown()),
+  name: z.string().min(1).max(200),
+  permissionScope: z.array(z.string().min(1)).optional().default([]),
+  status: z.enum(['active', 'syncing', 'error', 'disabled']),
+  type: z.enum(['upload', 'object-storage', 'connector', 'web']),
+  updatedAt: z.iso.datetime(),
+  uri: z.string().min(1),
+  version: z.int().gte(1).optional().default(1),
+  credentialConfigured: z.boolean().optional(),
+})
+
+export const zWebsiteCrawlResult = z.object({
+  completed: z.number().optional(),
+  failed: z.number().optional(),
+  imported: z.number().optional(),
+  pages: z.array(
+    z.object({
+      content: z.string(),
+      description: z.string().optional(),
+      sourceUrl: z.string(),
+      title: z.string().optional(),
+    }),
+  ),
+  replaced: z.number().optional(),
+  skipped: z.number().optional(),
+  status: z.string().optional(),
+  total: z.number().optional(),
+})
+
+export const zOnlineDocumentPages = z.object({
+  nextCursor: z.string().optional(),
+  workspaces: z.array(
+    z.object({
+      pages: z.array(
+        z.object({
+          lastEditedTime: z.string().optional(),
+          pageId: z.string(),
+          pageName: z.string(),
+          parentId: z.string().optional(),
+          type: z.string(),
+        }),
+      ),
+      total: z.number().optional(),
+      workspaceId: z.string().optional(),
+      workspaceName: z.string().optional(),
+    }),
+  ),
+})
+
+export const zSourceImportResult = z.object({
+  documents: z.array(
+    z.object({
+      documentAssetId: z.string(),
+      filename: z.string(),
+    }),
+  ),
+  failed: z.array(
+    z.object({
+      code: z.string(),
+      error: z.string(),
+      filename: z.string(),
+    }),
+  ),
+  skipped: z.array(z.string()),
+})
+
+export const zSourceCredentialTest = z.object({
+  code: z.string().optional(),
+  error: z.string().optional(),
+  valid: z.boolean(),
+})
+
+export const zOnlineDriveFiles = z.object({
+  buckets: z.array(
+    z.object({
+      bucket: z.string().optional(),
+      continuationToken: z.string().optional(),
+      files: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          size: z.number().optional(),
+          type: z.string(),
+        }),
+      ),
+      isTruncated: z.boolean().optional(),
+    }),
+  ),
+})
+
+/**
+ * Platform component health
+ */
+export const zGetHealthResponse = z.object({
+  ok: z.boolean(),
+  runtime: z.enum(['cloudflare-workers', 'node-docker']),
+  components: z.record(z.string(), z.boolean()),
+})
+
 export const zListKnowledgeSpacesQuery = z.object({
   cursor: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(100),
@@ -121,3 +2128,3941 @@ export const zCreateKnowledgeSpaceBody = zCreateKnowledgeSpace
  * Created knowledge space
  */
 export const zCreateKnowledgeSpaceResponse = zKnowledgeSpaceCreationResponse
+
+export const zDeleteKnowledgeSpacesByIdBody = z.object({
+  challenge: z.string().min(1).max(160),
+  expectedRevision: z.int().gt(0),
+})
+
+export const zDeleteKnowledgeSpacesByIdHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+})
+
+export const zDeleteKnowledgeSpacesByIdPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zDeleteKnowledgeSpacesByIdResponse = zDurableDeletionAccepted
+
+export const zGetKnowledgeSpacesByIdPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Knowledge space
+ */
+export const zGetKnowledgeSpacesByIdResponse = zKnowledgeSpace
+
+export const zPatchKnowledgeSpacesByIdBody = z.object({
+  description: z.string().max(2000).optional(),
+  expectedRevision: z.int().gt(0),
+  iconRef: z
+    .string()
+    .max(72)
+    .regex(/^builtin:[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/)
+    .nullish(),
+  name: z.string().min(1).max(160).optional(),
+  slug: z
+    .string()
+    .max(160)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Updated knowledge space
+ */
+export const zPatchKnowledgeSpacesByIdResponse = zKnowledgeSpace
+
+export const zGetKnowledgeSpacesByIdManifestPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * KnowledgeSpace control-plane manifest
+ */
+export const zGetKnowledgeSpacesByIdManifestResponse = zKnowledgeSpaceManifest
+
+export const zPutKnowledgeSpacesByIdEmbeddingProfileBody = z.object({
+  model: z.string().min(1).max(256),
+  pluginId: z.string().min(1).max(256),
+  provider: z.string().min(1).max(256),
+})
+
+export const zPutKnowledgeSpacesByIdEmbeddingProfilePath = z.object({
+  id: z.uuid(),
+})
+
+export const zPutKnowledgeSpacesByIdEmbeddingProfileResponse = z.union([
+  zKnowledgeSpaceEmbeddingProfile,
+  z.union([zKnowledgeSpacePendingModelConfiguration, zKnowledgeSpaceProfileMigration]),
+])
+
+export const zPutKnowledgeSpacesByIdRetrievalProfileBody = z.object({
+  expectedRevision: z.int().gte(0),
+  profile: z.object({
+    defaultMode: z.enum(['fast', 'research', 'deep']),
+    reasoningModel: z.object({
+      model: z.string().min(1).max(256),
+      pluginId: z.string().min(1).max(256),
+      provider: z.string().min(1).max(256),
+    }),
+    rerank: z.object({
+      enabled: z.boolean(),
+      model: z
+        .object({
+          model: z.string().min(1).max(256),
+          pluginId: z.string().min(1).max(256),
+          provider: z.string().min(1).max(256),
+        })
+        .optional(),
+    }),
+    scoreThreshold: z.object({
+      enabled: z.boolean(),
+      stage: z.enum(['mode-final', 'rerank']),
+      value: z.number().gte(0).lte(1).optional(),
+    }),
+    topK: z.int().gte(1).lte(100),
+  }),
+})
+
+export const zPutKnowledgeSpacesByIdRetrievalProfilePath = z.object({
+  id: z.uuid(),
+})
+
+export const zPutKnowledgeSpacesByIdRetrievalProfileResponse = z.union([
+  zKnowledgeSpaceRetrievalProfile,
+  z.union([zKnowledgeSpacePendingModelConfiguration, zKnowledgeSpaceProfileMigration]),
+])
+
+export const zGetKnowledgeSpacesByIdStatusPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Bounded KnowledgeSpace control-plane status, including safe model-configuration validation state
+ */
+export const zGetKnowledgeSpacesByIdStatusResponse = zKnowledgeSpaceStatus
+
+export const zGetKnowledgeSpacesByIdStatsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdStatsQuery = z.object({
+  windowMinutes: z.int().gte(1).lte(1440).optional(),
+})
+
+/**
+ * Low-cardinality KnowledgeSpace statistics
+ */
+export const zGetKnowledgeSpacesByIdStatsResponse = zKnowledgeSpaceStats
+
+export const zGetKnowledgeSpacesByIdFsckPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFsckQuery = z.object({
+  check: z
+    .enum(['raw-objects', 'artifact-segments', 'references'])
+    .optional()
+    .default('raw-objects'),
+  cursor: z.string().min(1).max(1024).optional(),
+})
+
+/**
+ * Bounded KnowledgeSpace fsck diagnostics
+ */
+export const zGetKnowledgeSpacesByIdFsckResponse = zKnowledgeFsckReport
+
+export const zGetKnowledgeSpacesByIdGcStagedObjectsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdGcStagedObjectsQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  stagedObjectPrefix: z
+    .string()
+    .min(1)
+    .max(1024)
+    .regex(/^[A-Za-z0-9._=-]+(?:\/[A-Za-z0-9._=-]+)*\/?$/)
+    .optional(),
+})
+
+/**
+ * Bounded staged object GC dry-run
+ */
+export const zGetKnowledgeSpacesByIdGcStagedObjectsResponse = zKnowledgeFsGcDryRunReport
+
+export const zPostKnowledgeSpacesByIdGcStagedObjectsExecuteBody = z.object({
+  candidates: z
+    .array(
+      z.object({
+        candidateType: z.enum([
+          'staged-object',
+          'failed-commit',
+          'artifact-segment',
+          'parse-artifact',
+          'index-projection',
+          'answer-trace',
+        ]),
+        count: z.int().gt(0),
+        estimatedBytes: z.int().gte(0),
+        idempotencyKey: z.string().min(1).max(512),
+        reason: z.string().min(1).max(1000),
+        target: z.object({
+          documentAssetId: z
+            .string()
+            .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+            .optional(),
+          id: z.string().min(1).max(512).optional(),
+          objectKey: z.string().min(1).max(1024).optional(),
+          parseArtifactId: z
+            .string()
+            .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+            .optional(),
+          type: z.enum([
+            'raw-object',
+            'artifact-object',
+            'artifact-segment',
+            'knowledge-path',
+            'knowledge-node',
+            'index-projection',
+            'staged-commit',
+          ]),
+          virtualPath: z
+            .string()
+            .max(384)
+            .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/)
+            .optional(),
+        }),
+      }),
+    )
+    .max(100),
+})
+
+export const zPostKnowledgeSpacesByIdGcStagedObjectsExecutePath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Execute staged object GC candidates
+ */
+export const zPostKnowledgeSpacesByIdGcStagedObjectsExecuteResponse =
+  zKnowledgeFsStagedObjectGcExecuteResult
+
+export const zGetKnowledgeSpacesByIdLeasesActivePath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdLeasesActiveQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(100),
+})
+
+/**
+ * Read-only active KnowledgeFS lease diagnostics
+ */
+export const zGetKnowledgeSpacesByIdLeasesActiveResponse = z.object({
+  items: z.array(zKnowledgeFsLease),
+  nextCursor: z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdStagedCommitsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdStagedCommitsQuery = z.object({
+  cursor: z.uuid().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(100),
+  status: z
+    .enum([
+      'received',
+      'object-staged',
+      'object-verified',
+      'metadata-prepared',
+      'artifacts-built',
+      'nodes-built',
+      'projections-built',
+      'published',
+      'failed-retryable',
+      'failed-terminal',
+      'canceled',
+      'gc-pending',
+      'gc-complete',
+    ])
+    .optional(),
+})
+
+/**
+ * Read-only staged commit diagnostics
+ */
+export const zGetKnowledgeSpacesByIdStagedCommitsResponse = z.object({
+  items: z.array(zKnowledgeSpaceStagedCommit),
+  nextCursor: z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdOverviewStatsPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Bounded 24h, 7d and 30d product statistics
+ */
+export const zGetKnowledgeSpacesByIdOverviewStatsResponse = z.object({
+  current: z.object({
+    freshSourceCount: z.int().gte(0),
+    knowledgeCount: z.int().gte(0),
+    latestSourceSyncAt: z.iso.datetime().optional(),
+    linkedAppCount: z.int().gte(0),
+    sourceCount: z.int().gte(0),
+    staleSourceCount: z.int().gte(0),
+  }),
+  generatedAt: z.iso.datetime(),
+  knowledgeSpaceId: z.uuid(),
+  windows: z.object({
+    '24h': z.object({
+      answerRate: z.number().gte(0).lte(1),
+      answeredQueryCount: z.int().gte(0),
+      queryCount: z.int().gte(0),
+      since: z.iso.datetime(),
+    }),
+    '30d': z.object({
+      answerRate: z.number().gte(0).lte(1),
+      answeredQueryCount: z.int().gte(0),
+      queryCount: z.int().gte(0),
+      since: z.iso.datetime(),
+    }),
+    '7d': z.object({
+      answerRate: z.number().gte(0).lte(1),
+      answeredQueryCount: z.int().gte(0),
+      queryCount: z.int().gte(0),
+      since: z.iso.datetime(),
+    }),
+  }),
+})
+
+export const zGetKnowledgeSpacesByIdOverviewActivityPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdOverviewActivityQuery = z.object({
+  action: z
+    .enum([
+      'query.requested',
+      'query.completed',
+      'query.failed',
+      'document.published',
+      'document.failed',
+      'source.synced',
+      'source.failed',
+      'settings.updated',
+      'permission.updated',
+      'profile.published',
+      'worker.failed',
+    ])
+    .optional(),
+  cursor: z.string().min(1).max(512).optional(),
+  from: z.iso.datetime().optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+  resourceType: z
+    .enum([
+      'knowledge-space',
+      'query',
+      'document',
+      'source',
+      'permission',
+      'profile',
+      'publication',
+      'worker',
+    ])
+    .optional(),
+  result: z.enum(['pending', 'success', 'failure', 'canceled']).optional(),
+  to: z.iso.datetime().optional(),
+})
+
+/**
+ * Append-only product activity feed
+ */
+export const zGetKnowledgeSpacesByIdOverviewActivityResponse = z.object({
+  items: z.array(
+    z.object({
+      action: z.enum([
+        'query.requested',
+        'query.completed',
+        'query.failed',
+        'document.published',
+        'document.failed',
+        'source.synced',
+        'source.failed',
+        'settings.updated',
+        'permission.updated',
+        'profile.published',
+        'worker.failed',
+      ]),
+      actor: z.object({
+        id: z.string().optional(),
+        type: z.enum(['member', 'system']),
+      }),
+      details: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+      id: z.uuid(),
+      occurredAt: z.iso.datetime(),
+      resource: z.object({
+        id: z.string().optional(),
+        type: z.enum([
+          'knowledge-space',
+          'query',
+          'document',
+          'source',
+          'permission',
+          'profile',
+          'publication',
+          'worker',
+        ]),
+      }),
+      result: z.enum(['pending', 'success', 'failure', 'canceled']),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdOverviewAttentionPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdOverviewAttentionQuery = z.object({
+  includeDismissed: z.boolean().optional().default(false),
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+/**
+ * Rule-backed Needs Attention findings
+ */
+export const zGetKnowledgeSpacesByIdOverviewAttentionResponse = z.object({
+  items: z.array(
+    z.object({
+      action: z.object({
+        kind: z.enum(['open-resource', 'review-permissions', 'review-models']),
+        resourceId: z.string().optional(),
+        resourceType: z.enum(['knowledge-space', 'document', 'source', 'failed-query']),
+      }),
+      dismissedUntil: z.iso.datetime().optional(),
+      evidence: z.array(
+        z.object({
+          code: z.string(),
+          observedAt: z.iso.datetime(),
+          value: z.union([z.number(), z.string()]).optional(),
+        }),
+      ),
+      issueKey: z.string(),
+      knowledgeSpaceId: z.uuid(),
+      resource: z.object({
+        id: z.string(),
+        type: z.enum(['knowledge-space', 'document', 'source', 'failed-query']),
+      }),
+      revision: z.int().gt(0),
+      ruleId: z.enum([
+        'stale-source',
+        'failed-document',
+        'low-quality-query',
+        'permission-readiness',
+        'model-readiness',
+      ]),
+      severity: z.enum(['critical', 'warning', 'info']),
+      status: z.enum(['active', 'dismissed', 'resolved']),
+      title: z.string(),
+      updatedAt: z.iso.datetime(),
+    }),
+  ),
+})
+
+export const zPatchKnowledgeSpacesByIdOverviewAttentionByIssueKeyBody = z.object({
+  dismissedUntil: z.iso.datetime().optional(),
+  expectedRevision: z.int().gt(0),
+  status: z.enum(['active', 'dismissed', 'resolved']),
+})
+
+export const zPatchKnowledgeSpacesByIdOverviewAttentionByIssueKeyPath = z.object({
+  id: z.uuid(),
+  issueKey: z.string().min(1).max(255),
+})
+
+/**
+ * CAS-updated attention state
+ */
+export const zPatchKnowledgeSpacesByIdOverviewAttentionByIssueKeyResponse = z.object({
+  action: z.object({
+    kind: z.enum(['open-resource', 'review-permissions', 'review-models']),
+    resourceId: z.string().optional(),
+    resourceType: z.enum(['knowledge-space', 'document', 'source', 'failed-query']),
+  }),
+  dismissedUntil: z.iso.datetime().optional(),
+  evidence: z.array(
+    z.object({
+      code: z.string(),
+      observedAt: z.iso.datetime(),
+      value: z.union([z.number(), z.string()]).optional(),
+    }),
+  ),
+  issueKey: z.string(),
+  knowledgeSpaceId: z.uuid(),
+  resource: z.object({
+    id: z.string(),
+    type: z.enum(['knowledge-space', 'document', 'source', 'failed-query']),
+  }),
+  revision: z.int().gt(0),
+  ruleId: z.enum([
+    'stale-source',
+    'failed-document',
+    'low-quality-query',
+    'permission-readiness',
+    'model-readiness',
+  ]),
+  severity: z.enum(['critical', 'warning', 'info']),
+  status: z.enum(['active', 'dismissed', 'resolved']),
+  title: z.string(),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zGetKnowledgeSpacesByIdOverviewHealthPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Stable product health contract
+ */
+export const zGetKnowledgeSpacesByIdOverviewHealthResponse = z.object({
+  components: z.object({
+    index: z.object({
+      codes: z.array(z.string()),
+      state: z.enum(['healthy', 'degraded', 'unavailable', 'unknown']),
+    }),
+    ingestion: z.object({
+      codes: z.array(z.string()),
+      state: z.enum(['healthy', 'degraded', 'unavailable', 'unknown']),
+    }),
+    profilePublication: z.object({
+      codes: z.array(z.string()),
+      state: z.enum(['healthy', 'degraded', 'unavailable', 'unknown']),
+    }),
+    queryAvailability: z.object({
+      codes: z.array(z.string()),
+      state: z.enum(['healthy', 'degraded', 'unavailable', 'unknown']),
+    }),
+    sourceFreshness: z.object({
+      codes: z.array(z.string()),
+      state: z.enum(['healthy', 'degraded', 'unavailable', 'unknown']),
+    }),
+    workerReadiness: z.object({
+      codes: z.array(z.string()),
+      state: z.enum(['healthy', 'degraded', 'unavailable', 'unknown']),
+    }),
+  }),
+  generatedAt: z.iso.datetime(),
+  knowledgeSpaceId: z.uuid(),
+  state: z.enum(['healthy', 'degraded', 'unavailable', 'unknown']),
+})
+
+export const zPostKnowledgeSpacesByIdProfileMigrationsBody = z.object({
+  candidateRevision: z.int().gt(0),
+  changedKind: z.enum(['embedding', 'retrieval']),
+})
+
+export const zPostKnowledgeSpacesByIdProfileMigrationsHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdProfileMigrationsPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Durable profile migration
+ */
+export const zPostKnowledgeSpacesByIdProfileMigrationsResponse = zKnowledgeSpaceProfileMigration
+
+export const zDeleteKnowledgeSpacesByIdProfileMigrationsByMigrationIdBody = z.object({
+  reason: z.string().min(1).max(512).optional(),
+})
+
+export const zDeleteKnowledgeSpacesByIdProfileMigrationsByMigrationIdPath = z.object({
+  id: z.uuid(),
+  migrationId: z.uuid(),
+})
+
+/**
+ * Durable profile migration
+ */
+export const zDeleteKnowledgeSpacesByIdProfileMigrationsByMigrationIdResponse =
+  zKnowledgeSpaceProfileMigration
+
+export const zGetKnowledgeSpacesByIdProfileMigrationsByMigrationIdPath = z.object({
+  id: z.uuid(),
+  migrationId: z.uuid(),
+})
+
+/**
+ * Durable profile migration
+ */
+export const zGetKnowledgeSpacesByIdProfileMigrationsByMigrationIdResponse =
+  zKnowledgeSpaceProfileMigration
+
+export const zPostKnowledgeSpacesByIdProfileMigrationsByMigrationIdRetryHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdProfileMigrationsByMigrationIdRetryPath = z.object({
+  id: z.uuid(),
+  migrationId: z.uuid(),
+})
+
+/**
+ * Durable profile migration
+ */
+export const zPostKnowledgeSpacesByIdProfileMigrationsByMigrationIdRetryResponse =
+  zKnowledgeSpaceProfileMigration
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdBody = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdQuery = z.object({
+  documents: z.enum(['cascade', 'keep']).optional().default('cascade'),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdResponse = zDurableDeletionAccepted
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Source
+ */
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdResponse = zSource
+
+export const zPatchKnowledgeSpacesByIdSourcesBySourceIdBody = z.object({
+  expectedVersion: z.int().gte(1).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().min(1).max(200).optional(),
+  status: z.enum(['active', 'syncing', 'error', 'disabled']).optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdSourcesBySourceIdPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Updated source
+ */
+export const zPatchKnowledgeSpacesByIdSourcesBySourceIdResponse = zSource
+
+export const zDeleteKnowledgeSpacesByIdDocumentsBulkBody = z.object({
+  documents: z
+    .array(
+      z.object({
+        documentId: z.uuid(),
+        expectedRevision: z.int().gt(0),
+      }),
+    )
+    .min(1),
+})
+
+export const zDeleteKnowledgeSpacesByIdDocumentsBulkHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+})
+
+export const zDeleteKnowledgeSpacesByIdDocumentsBulkPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Per-document durable deletions accepted
+ */
+export const zDeleteKnowledgeSpacesByIdDocumentsBulkResponse = zDurableBulkDeletionAccepted
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkBody = z.object({
+  files: z.array(z.custom<Blob | File>()).min(1),
+  targets: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Accepted bulk document upload for durable compilation
+ */
+export const zPostKnowledgeSpacesByIdDocumentsBulkResponse = zBulkDocumentUploadAccepted
+
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdBody = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+})
+
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdResponse = zDurableDeletionAccepted
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Document asset
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdResponse = zDocumentAsset
+
+export const zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdBody = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+export const zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+})
+
+export const zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse =
+  zDurableDeletionAccepted
+
+export const zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Logical document
+ */
+export const zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse = zLogicalDocument
+
+export const zGetDeletionJobsByJobIdPath = z.object({
+  jobId: z.uuid(),
+})
+
+/**
+ * Durable deletion status
+ */
+export const zGetDeletionJobsByJobIdResponse = zDurableDeletionJob
+
+export const zPostDeletionJobsByJobIdRetryHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+})
+
+export const zPostDeletionJobsByJobIdRetryPath = z.object({
+  jobId: z.uuid(),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zPostDeletionJobsByJobIdRetryResponse = zDurableDeletionAccepted
+
+export const zPostKnowledgeSpacesByIdAccessBootstrapBody = z.object({
+  ownerSubjectId: z.string().min(1).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdAccessBootstrapPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Initialized access state for a legacy knowledge space
+ */
+export const zPostKnowledgeSpacesByIdAccessBootstrapResponse = z.object({
+  id: z.string().min(1),
+  ownerSubjectId: z.string().min(1).max(255),
+  partialMemberSubjectIds: z.array(z.string().min(1).max(255)),
+  revision: z.int().gt(0),
+  visibility: z.enum(['only_me', 'all_members', 'partial_members']),
+})
+
+export const zGetKnowledgeSpacesByIdAccessPolicyPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Knowledge space visibility policy
+ */
+export const zGetKnowledgeSpacesByIdAccessPolicyResponse = z.object({
+  id: z.string().min(1),
+  ownerSubjectId: z.string().min(1).max(255),
+  partialMemberSubjectIds: z.array(z.string().min(1).max(255)),
+  revision: z.int().gt(0),
+  visibility: z.enum(['only_me', 'all_members', 'partial_members']),
+})
+
+export const zPatchKnowledgeSpacesByIdAccessPolicyBody = z.object({
+  expectedRevision: z.int().gt(0),
+  partialMemberSubjectIds: z.array(z.string().min(1).max(255)).max(500).optional().default([]),
+  visibility: z.enum(['only_me', 'all_members', 'partial_members']),
+})
+
+export const zPatchKnowledgeSpacesByIdAccessPolicyPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Updated knowledge space visibility policy
+ */
+export const zPatchKnowledgeSpacesByIdAccessPolicyResponse = z.object({
+  id: z.string().min(1),
+  ownerSubjectId: z.string().min(1).max(255),
+  partialMemberSubjectIds: z.array(z.string().min(1).max(255)),
+  revision: z.int().gt(0),
+  visibility: z.enum(['only_me', 'all_members', 'partial_members']),
+})
+
+export const zGetKnowledgeSpacesByIdMembersPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdMembersQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * Knowledge space members
+ */
+export const zGetKnowledgeSpacesByIdMembersResponse = z.object({
+  items: z.array(
+    z.object({
+      id: z.string().min(1),
+      revision: z.int().gt(0),
+      role: z.enum(['owner', 'editor', 'viewer']),
+      subjectId: z.string().min(1).max(255),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdMembersBody = z.object({
+  role: z.enum(['owner', 'editor', 'viewer']),
+  subjectId: z.string().min(1).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdMembersPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Added knowledge space member
+ */
+export const zPostKnowledgeSpacesByIdMembersResponse = z.object({
+  id: z.string().min(1),
+  revision: z.int().gt(0),
+  role: z.enum(['owner', 'editor', 'viewer']),
+  subjectId: z.string().min(1).max(255),
+})
+
+export const zDeleteKnowledgeSpacesByIdMembersBySubjectIdPath = z.object({
+  id: z.uuid(),
+  subjectId: z.string().min(1).max(255),
+})
+
+export const zDeleteKnowledgeSpacesByIdMembersBySubjectIdQuery = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+/**
+ * Removed knowledge space member
+ */
+export const zDeleteKnowledgeSpacesByIdMembersBySubjectIdResponse = z.void()
+
+export const zPatchKnowledgeSpacesByIdMembersBySubjectIdBody = z.object({
+  expectedRevision: z.int().gt(0),
+  role: z.enum(['owner', 'editor', 'viewer']),
+})
+
+export const zPatchKnowledgeSpacesByIdMembersBySubjectIdPath = z.object({
+  id: z.uuid(),
+  subjectId: z.string().min(1).max(255),
+})
+
+/**
+ * Updated knowledge space member
+ */
+export const zPatchKnowledgeSpacesByIdMembersBySubjectIdResponse = z.object({
+  id: z.string().min(1),
+  revision: z.int().gt(0),
+  role: z.enum(['owner', 'editor', 'viewer']),
+  subjectId: z.string().min(1).max(255),
+})
+
+export const zGetKnowledgeSpacesByIdApiAccessPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Knowledge space API access policy
+ */
+export const zGetKnowledgeSpacesByIdApiAccessResponse = z.object({
+  enabled: z.boolean(),
+  id: z.string().min(1),
+  revision: z.int().gt(0),
+})
+
+export const zPatchKnowledgeSpacesByIdApiAccessBody = z.object({
+  enabled: z.boolean(),
+  expectedRevision: z.int().gt(0),
+})
+
+export const zPatchKnowledgeSpacesByIdApiAccessPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Updated knowledge space API access policy
+ */
+export const zPatchKnowledgeSpacesByIdApiAccessResponse = z.object({
+  enabled: z.boolean(),
+  id: z.string().min(1),
+  revision: z.int().gt(0),
+})
+
+export const zGetKnowledgeSpacesByIdApiKeysPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdApiKeysQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * Knowledge space API keys without secret hashes
+ */
+export const zGetKnowledgeSpacesByIdApiKeysResponse = z.object({
+  items: z.array(
+    z.object({
+      createdAt: z.iso.datetime(),
+      expiresAt: z.iso.datetime().optional(),
+      id: z.string().min(1),
+      lastUsedAt: z.iso.datetime().optional(),
+      name: z.string().min(1).max(160),
+      prefix: z.string().min(1).max(64),
+      principalSubjectId: z.string().min(1).max(255),
+      revision: z.int().gt(0),
+      revokedAt: z.iso.datetime().optional(),
+      status: z.enum(['active', 'revoked']),
+      updatedAt: z.iso.datetime(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdApiKeysBody = z.object({
+  expiresAt: z.iso.datetime().optional(),
+  name: z.string().min(1).max(160),
+  principalSubjectId: z.string().min(1).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdApiKeysPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Issued API key; plaintext token is returned once
+ */
+export const zPostKnowledgeSpacesByIdApiKeysResponse = z.object({
+  apiKey: z.object({
+    createdAt: z.iso.datetime(),
+    expiresAt: z.iso.datetime().optional(),
+    id: z.string().min(1),
+    lastUsedAt: z.iso.datetime().optional(),
+    name: z.string().min(1).max(160),
+    prefix: z.string().min(1).max(64),
+    principalSubjectId: z.string().min(1).max(255),
+    revision: z.int().gt(0),
+    revokedAt: z.iso.datetime().optional(),
+    status: z.enum(['active', 'revoked']),
+    updatedAt: z.iso.datetime(),
+  }),
+  token: z.string().regex(/^kfs_[0-9a-f-]{36}_[A-Za-z0-9_-]{32,256}$/),
+})
+
+export const zDeleteKnowledgeSpacesByIdApiKeysByKeyIdPath = z.object({
+  id: z.uuid(),
+  keyId: z.string().min(1),
+})
+
+export const zDeleteKnowledgeSpacesByIdApiKeysByKeyIdQuery = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+/**
+ * Revoked knowledge space API key
+ */
+export const zDeleteKnowledgeSpacesByIdApiKeysByKeyIdResponse = z.object({
+  createdAt: z.iso.datetime(),
+  expiresAt: z.iso.datetime().optional(),
+  id: z.string().min(1),
+  lastUsedAt: z.iso.datetime().optional(),
+  name: z.string().min(1).max(160),
+  prefix: z.string().min(1).max(64),
+  principalSubjectId: z.string().min(1).max(255),
+  revision: z.int().gt(0),
+  revokedAt: z.iso.datetime().optional(),
+  status: z.enum(['active', 'revoked']),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zGetKnowledgeSpacesByIdModelCatalogPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdModelCatalogQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  kind: z.enum(['embedding', 'reasoning', 'rerank']).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * Tenant-installed plugin-daemon model catalog
+ */
+export const zGetKnowledgeSpacesByIdModelCatalogResponse = z.object({
+  items: z
+    .array(
+      z.object({
+        capabilities: z.record(z.string(), z.unknown()).optional().default({}),
+        kinds: z.array(z.enum(['embedding', 'reasoning', 'rerank'])).min(1),
+        model: z.string().min(1).max(256),
+        pluginId: z.string().min(1).max(256),
+        pluginUniqueIdentifier: z.string().min(1).max(1024),
+        pluginVersion: z.string().min(1).max(256).optional(),
+        provider: z.string().min(1).max(256),
+        schemaFingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+      }),
+    )
+    .max(100),
+  nextCursor: z.string().min(1).max(1024).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdModelPreflightsBody = z.object({
+  kind: z.enum(['embedding', 'reasoning', 'rerank']),
+  selection: z.object({
+    model: z.string().min(1).max(256),
+    pluginId: z.string().min(1).max(256),
+    provider: z.string().min(1).max(256),
+  }),
+})
+
+export const zPostKnowledgeSpacesByIdModelPreflightsPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Observed model capability snapshot
+ */
+export const zPostKnowledgeSpacesByIdModelPreflightsResponse = z.object({
+  capabilityDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  checkedAt: z.iso.datetime(),
+  dimension: z.int().gt(0).optional(),
+  distanceMetric: z.enum(['cosine', 'dot', 'l2']).optional(),
+  kind: z.enum(['embedding', 'reasoning', 'rerank']),
+  pluginUniqueIdentifier: z.string().min(1).max(1024),
+  pluginVersion: z.string().min(1).max(256).optional(),
+  schemaFingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  selection: z.object({
+    model: z.string().min(1).max(256),
+    pluginId: z.string().min(1).max(256),
+    provider: z.string().min(1).max(256),
+  }),
+})
+
+export const zGetKnowledgeSpacesByIdProfilesByKindRevisionsPath = z.object({
+  id: z.uuid(),
+  kind: z.enum(['embedding', 'retrieval']),
+})
+
+export const zGetKnowledgeSpacesByIdProfilesByKindRevisionsQuery = z.object({
+  afterRevision: z.int().gt(0).optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+/**
+ * Bounded immutable knowledge-space profile revision audit history
+ */
+export const zGetKnowledgeSpacesByIdProfilesByKindRevisionsResponse =
+  zKnowledgeSpaceProfileAuditRevisionList
+
+export const zGetKnowledgeSpacesByIdGoldenQuestionsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdGoldenQuestionsQuery = z.object({
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(100),
+})
+
+/**
+ * Knowledge space golden questions
+ */
+export const zGetKnowledgeSpacesByIdGoldenQuestionsResponse = z.object({
+  items: z.array(zGoldenQuestion),
+  nextCursor: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdGoldenQuestionsBody = z.object({
+  expectedEvidenceIds: z.array(z.uuid()).optional().default([]),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  question: z.string().min(1).max(4000),
+  tags: z.array(z.string().min(1).max(80)).optional().default([]),
+})
+
+export const zPostKnowledgeSpacesByIdGoldenQuestionsPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Created golden question
+ */
+export const zPostKnowledgeSpacesByIdGoldenQuestionsResponse = zGoldenQuestion
+
+export const zDeleteKnowledgeSpacesByIdGoldenQuestionsByQuestionIdPath = z.object({
+  id: z.uuid(),
+  questionId: z.uuid(),
+})
+
+/**
+ * Deleted golden question
+ */
+export const zDeleteKnowledgeSpacesByIdGoldenQuestionsByQuestionIdResponse = z.void()
+
+export const zGetKnowledgeSpacesByIdGoldenQuestionsByQuestionIdPath = z.object({
+  id: z.uuid(),
+  questionId: z.uuid(),
+})
+
+/**
+ * Golden question
+ */
+export const zGetKnowledgeSpacesByIdGoldenQuestionsByQuestionIdResponse = zGoldenQuestion
+
+export const zPatchKnowledgeSpacesByIdGoldenQuestionsByQuestionIdBody = z.object({
+  expectedEvidenceIds: z.array(z.uuid()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  question: z.string().min(1).max(4000).optional(),
+  tags: z.array(z.string().min(1).max(80)).optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdGoldenQuestionsByQuestionIdPath = z.object({
+  id: z.uuid(),
+  questionId: z.uuid(),
+})
+
+/**
+ * Updated golden question
+ */
+export const zPatchKnowledgeSpacesByIdGoldenQuestionsByQuestionIdResponse = zGoldenQuestion
+
+export const zPostKnowledgeSpacesByIdGoldenQuestionsByQuestionIdAnnotationsBody = z.object({
+  answerCorrectness: z.enum(['correct', 'incorrect', 'not-answerable', 'partially-correct']),
+  evidenceRelevance: z
+    .array(
+      z.object({
+        evidenceId: z.uuid(),
+        note: z.string().min(1).max(1000).optional(),
+        relevant: z.boolean(),
+      }),
+    )
+    .max(50)
+    .optional()
+    .default([]),
+  note: z.string().min(1).max(1000).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdGoldenQuestionsByQuestionIdAnnotationsPath = z.object({
+  id: z.uuid(),
+  questionId: z.uuid(),
+})
+
+/**
+ * Annotated golden question
+ */
+export const zPostKnowledgeSpacesByIdGoldenQuestionsByQuestionIdAnnotationsResponse =
+  zGoldenQuestion
+
+export const zPostKnowledgeSpacesByIdProductionBadCasesBody = z.object({
+  reason: z.string().min(1).max(1000).optional(),
+  tags: z.array(z.string().min(1).max(80)).max(20).optional().default([]),
+  traceId: z.uuid(),
+})
+
+export const zPostKnowledgeSpacesByIdProductionBadCasesPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Captured production bad case queued for evaluation review
+ */
+export const zPostKnowledgeSpacesByIdProductionBadCasesResponse = zGoldenQuestion
+
+export const zGetKnowledgeSpacesByIdQualityTracesPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdQualityTracesQuery = z.object({
+  cursor: z.string().max(1000).optional(),
+  from: z.iso.datetime().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).optional(),
+  query: z.string().min(1).max(500).optional(),
+  status: z.enum(['completed', 'failed']).optional(),
+  to: z.iso.datetime().optional(),
+})
+
+/**
+ * Subject-owned, candidate-authorized answer trace history
+ */
+export const zGetKnowledgeSpacesByIdQualityTracesResponse = z.object({
+  items: z.array(zQualityAnswerTraceSummary),
+  nextCursor: z.string().optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdQualityTracesByTraceIdMissingByItemKeyBody = z.object({
+  expectedRevision: z.int().gte(0),
+  reason: z.string().min(1).max(2000).optional(),
+  status: z.enum(['active', 'dismissed']),
+})
+
+export const zPatchKnowledgeSpacesByIdQualityTracesByTraceIdMissingByItemKeyPath = z.object({
+  id: z.uuid(),
+  traceId: z.uuid(),
+  itemKey: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+})
+
+/**
+ * Updated missing-evidence review
+ */
+export const zPatchKnowledgeSpacesByIdQualityTracesByTraceIdMissingByItemKeyResponse =
+  zMissingEvidenceReview
+
+export const zGetKnowledgeSpacesByIdQualityTracesByTraceIdMissingByItemKeyHistoryPath = z.object({
+  id: z.uuid(),
+  traceId: z.uuid(),
+  itemKey: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+})
+
+/**
+ * Missing-evidence review history
+ */
+export const zGetKnowledgeSpacesByIdQualityTracesByTraceIdMissingByItemKeyHistoryResponse =
+  z.object({
+    items: z.array(
+      z.object({
+        action: z.string(),
+        actorSubjectId: z.string(),
+        createdAt: z.iso.datetime(),
+        fromStatus: z.string().optional(),
+        id: z.uuid(),
+        reason: z.string().optional(),
+        revision: z.int().gt(0),
+        toStatus: z.string(),
+      }),
+    ),
+  })
+
+export const zGetKnowledgeSpacesByIdQualityBadCasesPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdQualityBadCasesQuery = z.object({
+  cursor: z.string().max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  status: z.enum(['open', 'replaying', 'fixed', 'dismissed']).optional(),
+})
+
+/**
+ * Production bad cases
+ */
+export const zGetKnowledgeSpacesByIdQualityBadCasesResponse = z.object({
+  items: z.array(zProductionBadCase),
+  nextCursor: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdQualityBadCasesBody = z.object({
+  reason: z.string().min(1).max(4000),
+  tags: z.array(z.string().min(1).max(80)).max(50).optional().default([]),
+  traceId: z.uuid(),
+})
+
+export const zPostKnowledgeSpacesByIdQualityBadCasesPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Captured production bad case
+ */
+export const zPostKnowledgeSpacesByIdQualityBadCasesResponse = zProductionBadCase
+
+export const zGetKnowledgeSpacesByIdQualityBadCasesByBadCaseIdPath = z.object({
+  id: z.uuid(),
+  badCaseId: z.uuid(),
+})
+
+/**
+ * Production bad case
+ */
+export const zGetKnowledgeSpacesByIdQualityBadCasesByBadCaseIdResponse = zProductionBadCase
+
+export const zPatchKnowledgeSpacesByIdQualityBadCasesByBadCaseIdBody = z.object({
+  expectedRevision: z.int().gt(0),
+  reason: z.string().min(1).max(4000).optional(),
+  replayRunId: z.uuid().optional(),
+  status: z.enum(['open', 'replaying', 'fixed', 'dismissed']),
+  tags: z.array(z.string().min(1).max(80)).max(50).optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdQualityBadCasesByBadCaseIdPath = z.object({
+  id: z.uuid(),
+  badCaseId: z.uuid(),
+})
+
+/**
+ * Updated production bad case
+ */
+export const zPatchKnowledgeSpacesByIdQualityBadCasesByBadCaseIdResponse = zProductionBadCase
+
+export const zGetKnowledgeSpacesByIdQualityBadCasesByBadCaseIdHistoryPath = z.object({
+  id: z.uuid(),
+  badCaseId: z.uuid(),
+})
+
+/**
+ * Production bad-case history
+ */
+export const zGetKnowledgeSpacesByIdQualityBadCasesByBadCaseIdHistoryResponse = z.object({
+  items: z.array(
+    z.object({
+      action: z.string(),
+      actorSubjectId: z.string(),
+      createdAt: z.iso.datetime(),
+      fromStatus: z.string().optional(),
+      id: z.uuid(),
+      reason: z.string().optional(),
+      revision: z.int().gt(0),
+      toStatus: z.string(),
+    }),
+  ),
+})
+
+export const zGetKnowledgeSpacesByIdQualityReplayRunsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdQualityReplayRunsQuery = z.object({
+  cursor: z.string().max(1000).optional(),
+  from: z.iso.datetime().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  mode: z.enum(['deep', 'fast', 'research']).optional(),
+  state: z.enum(['queued', 'running', 'passed', 'failed', 'canceled']).optional(),
+  to: z.iso.datetime().optional(),
+})
+
+/**
+ * Bounded durable replay history
+ */
+export const zGetKnowledgeSpacesByIdQualityReplayRunsResponse = z.object({
+  items: z.array(zQualityReplayRun),
+  nextCursor: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdQualityReplayRunsBody = z.object({
+  goldenQuestionIds: z.array(z.uuid()).min(1).max(100),
+  mode: z.enum(['deep', 'fast', 'research']).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdQualityReplayRunsHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdQualityReplayRunsPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Durable replay queued
+ */
+export const zPostKnowledgeSpacesByIdQualityReplayRunsResponse = zQualityReplayRun
+
+export const zGetKnowledgeSpacesByIdQualityReplayRunsByRunIdPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+/**
+ * Durable replay run
+ */
+export const zGetKnowledgeSpacesByIdQualityReplayRunsByRunIdResponse = zQualityReplayRun
+
+export const zPostKnowledgeSpacesByIdQualityReplayRunsByRunIdCancelBody = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+export const zPostKnowledgeSpacesByIdQualityReplayRunsByRunIdCancelPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+/**
+ * Canceled replay run
+ */
+export const zPostKnowledgeSpacesByIdQualityReplayRunsByRunIdCancelResponse = zQualityReplayRun
+
+export const zPostKnowledgeSpacesByIdQualityReplayRunsByRunIdRetryBody = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+export const zPostKnowledgeSpacesByIdQualityReplayRunsByRunIdRetryPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+/**
+ * Replay requeued with fresh permission/profile snapshot
+ */
+export const zPostKnowledgeSpacesByIdQualityReplayRunsByRunIdRetryResponse = zQualityReplayRun
+
+export const zGetKnowledgeSpacesByIdQualityTrendsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdQualityTrendsQuery = z.object({
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional(),
+  window: z.enum(['24h', '7d', '30d']).optional().default('7d'),
+})
+
+/**
+ * Bounded quality trends and baseline comparison
+ */
+export const zGetKnowledgeSpacesByIdQualityTrendsResponse = zQualityTrendReport
+
+export const zGetKnowledgeSpacesByIdDocumentsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsQuery = z.object({
+  cursor: z.uuid().optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+/**
+ * Document assets
+ */
+export const zGetKnowledgeSpacesByIdDocumentsResponse = zDocumentAssetList
+
+export const zPostKnowledgeSpacesByIdDocumentsBody = z.object({
+  documentId: z.uuid().optional(),
+  expectedActiveRevision: z.union([z.int().gt(0), z.enum(['null'])]).optional(),
+  expectedDocumentRowVersion: z.int().gte(0).nullish(),
+  file: z.custom<Blob | File>(),
+  sourceId: z.uuid().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsResponse = z.union([
+  zDocumentAsset,
+  zDocumentUploadAccepted,
+])
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdParseArtifactsByVersionPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+  version: z.int().gt(0),
+})
+
+/**
+ * Parse artifact
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdParseArtifactsByVersionResponse =
+  zParseArtifact
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlinePath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Document outline
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineResponse = zDocumentOutline
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdMultimodalPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Document multimodal manifest
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdMultimodalResponse =
+  zDocumentMultimodalManifest
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdMultimodalByItemIdAssetPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+  itemId: z.string().min(1).max(1024),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdMultimodalByItemIdAssetQuery = z.object({
+  variant: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[A-Za-z0-9._=-]+$/)
+    .optional(),
+})
+
+/**
+ * Document multimodal item asset
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdMultimodalByItemIdAssetResponse = z.custom<
+  Blob | File
+>()
+
+export const zGetKnowledgeSpacesByIdLogicalDocumentsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdLogicalDocumentsQuery = z.object({
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+/**
+ * Logical documents
+ */
+export const zGetKnowledgeSpacesByIdLogicalDocumentsResponse = zLogicalDocumentList
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsQuery = z.object({
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+/**
+ * Immutable document revision history
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponse = zDocumentRevisionList
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackBody =
+  z.object({
+    expectedActiveRevision: z.int().gt(0),
+    expectedRowVersion: z.int().gte(0),
+  })
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackPath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    revision: z.int().gt(0),
+  })
+
+/**
+ * Rollback candidate compilation accepted
+ */
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackResponse =
+  zDocumentProcessingTask
+
+export const zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataBody = z.object({
+  expectedRowVersion: z.int().gte(0),
+  patch: z.record(z.string(), z.unknown()),
+})
+
+export const zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Updated user metadata
+ */
+export const zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataResponse = zLogicalDocument
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+  revision: z.int().gt(0),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksQuery = z.object({
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+  query: z.string().min(1).max(512).optional(),
+})
+
+/**
+ * Revision-scoped chunks
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponse =
+  zDocumentChunkList
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdPath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    revision: z.int().gt(0),
+    chunkId: z.uuid(),
+  })
+
+/**
+ * Revision-scoped chunk
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponse =
+  zDocumentRevisionChunk
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateBody =
+  z.object({
+    enabled: z.boolean(),
+  })
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStatePath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    revision: z.int().gt(0),
+    chunkId: z.uuid(),
+  })
+
+/**
+ * Candidate publication accepted
+ */
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateResponse =
+  zDocumentChunkStateChangeAccepted
+
+export const zGetKnowledgeSpacesByIdProcessingTasksPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdProcessingTasksQuery = z.object({
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+/**
+ * Space processing tasks
+ */
+export const zGetKnowledgeSpacesByIdProcessingTasksResponse = zDocumentProcessingTaskList
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksQuery = z.object({
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+/**
+ * Document processing tasks
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksResponse =
+  zDocumentProcessingTaskList
+
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+  taskId: z.uuid(),
+})
+
+/**
+ * Canceled processing task
+ */
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
+  zDocumentProcessingTask
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+  taskId: z.uuid(),
+})
+
+/**
+ * Processing task polling snapshot
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
+  zDocumentProcessingTask
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    taskId: z.uuid(),
+  })
+
+/**
+ * Progress SSE snapshot; reconnect using polling or Last-Event-ID
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse =
+  z.string()
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryPath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    taskId: z.uuid(),
+  })
+
+/**
+ * Retried processing task
+ */
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponse =
+  zDocumentProcessingTask
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Active document index settings
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse = zDocumentSettingsHead
+
+export const zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsBody = z.object({
+  expectedSettingsHeadRevision: z.int().gt(0).nullable(),
+  settings: z.object({
+    chunkOverlap: z.int().gte(0).lte(8191),
+    chunkSize: z.int().gte(128).lte(8192),
+    enableGraph: z.boolean(),
+    enablePageIndex: z.boolean(),
+    language: z.string().min(2).max(64).optional(),
+  }),
+})
+
+export const zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Versioned settings reindex accepted
+ */
+export const zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse = zDocumentReindexAccepted
+
+export const zDeleteJobsByIdPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Canceled document compilation job
+ */
+export const zDeleteJobsByIdResponse = zDocumentCompilationJob
+
+export const zGetJobsByIdPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Document compilation job status
+ */
+export const zGetJobsByIdResponse = zDocumentCompilationJob
+
+export const zPostJobsByIdRetryPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Reactivated document compilation attempt
+ */
+export const zPostJobsByIdRetryResponse = zDocumentCompilationJob
+
+export const zGetKnowledgeSpacesByIdPublicationBootstrapPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Whole-space publication bootstrap status
+ */
+export const zGetKnowledgeSpacesByIdPublicationBootstrapResponse = z.object({
+  checkpoint: z.enum([
+    'pending_snapshot',
+    'snapshot_captured',
+    'rebuilding',
+    'verifying',
+    'published',
+  ]),
+  completedAt: z.iso.datetime().optional(),
+  completedDocuments: z.int().gte(0),
+  createdAt: z.iso.datetime(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  lastErrorCode: z.string().optional(),
+  lastErrorMessage: z.string().optional(),
+  publishedFingerprint: z.string().optional(),
+  publishedHeadRevision: z.int().gt(0).optional(),
+  publishedPublicationId: z.uuid().optional(),
+  rowVersion: z.int().gte(0),
+  runState: z.enum(['queued', 'running', 'succeeded', 'failed', 'canceled']),
+  tenantId: z.string().min(1),
+  totalDocuments: z.int().gte(0),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zPostKnowledgeSpacesByIdPublicationBootstrapPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Durable whole-space publication bootstrap accepted
+ */
+export const zPostKnowledgeSpacesByIdPublicationBootstrapResponse = z.object({
+  checkpoint: z.enum([
+    'pending_snapshot',
+    'snapshot_captured',
+    'rebuilding',
+    'verifying',
+    'published',
+  ]),
+  completedAt: z.iso.datetime().optional(),
+  completedDocuments: z.int().gte(0),
+  createdAt: z.iso.datetime(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  lastErrorCode: z.string().optional(),
+  lastErrorMessage: z.string().optional(),
+  publishedFingerprint: z.string().optional(),
+  publishedHeadRevision: z.int().gt(0).optional(),
+  publishedPublicationId: z.uuid().optional(),
+  rowVersion: z.int().gte(0),
+  runState: z.enum(['queued', 'running', 'succeeded', 'failed', 'canceled']),
+  tenantId: z.string().min(1),
+  totalDocuments: z.int().gte(0),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zPostKnowledgeSpacesByIdPublicationBootstrapRetryPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Failed whole-space bootstrap requeued
+ */
+export const zPostKnowledgeSpacesByIdPublicationBootstrapRetryResponse = z.object({
+  checkpoint: z.enum([
+    'pending_snapshot',
+    'snapshot_captured',
+    'rebuilding',
+    'verifying',
+    'published',
+  ]),
+  completedAt: z.iso.datetime().optional(),
+  completedDocuments: z.int().gte(0),
+  createdAt: z.iso.datetime(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  lastErrorCode: z.string().optional(),
+  lastErrorMessage: z.string().optional(),
+  publishedFingerprint: z.string().optional(),
+  publishedHeadRevision: z.int().gt(0).optional(),
+  publishedPublicationId: z.uuid().optional(),
+  rowVersion: z.int().gte(0),
+  runState: z.enum(['queued', 'running', 'succeeded', 'failed', 'canceled']),
+  tenantId: z.string().min(1),
+  totalDocuments: z.int().gte(0),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zGetKnowledgeSpacesByIdPageIndexUpgradePath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Current head PageIndex upgrade status
+ */
+export const zGetKnowledgeSpacesByIdPageIndexUpgradeResponse = z.object({
+  completedAt: z.iso.datetime().optional(),
+  completedItems: z.int().gte(0),
+  createdAt: z.iso.datetime(),
+  headRevision: z.int().gt(0),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  lastErrorCode: z.string().optional(),
+  lastErrorMessage: z.string().optional(),
+  publicationFingerprint: z.string().min(1),
+  publicationId: z.uuid(),
+  retryCount: z.int().gte(0),
+  rowVersion: z.int().gte(0),
+  runState: z.enum(['queued', 'running', 'succeeded', 'failed', 'superseded']),
+  tenantId: z.string().min(1),
+  totalItems: z.int().gte(0),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zPostKnowledgeSpacesByIdPageIndexUpgradePath = z.object({
+  id: z.uuid(),
+})
+
+export const zPostKnowledgeSpacesByIdPageIndexUpgradeResponse = z.union([
+  z.object({
+    completedAt: z.iso.datetime().optional(),
+    completedItems: z.int().gte(0),
+    createdAt: z.iso.datetime(),
+    headRevision: z.int().gt(0),
+    id: z.uuid(),
+    knowledgeSpaceId: z.uuid(),
+    lastErrorCode: z.string().optional(),
+    lastErrorMessage: z.string().optional(),
+    publicationFingerprint: z.string().min(1),
+    publicationId: z.uuid(),
+    retryCount: z.int().gte(0),
+    rowVersion: z.int().gte(0),
+    runState: z.enum(['queued', 'running', 'succeeded', 'failed', 'superseded']),
+    tenantId: z.string().min(1),
+    totalItems: z.int().gte(0),
+    updatedAt: z.iso.datetime(),
+  }),
+  z.object({
+    completedAt: z.iso.datetime().optional(),
+    completedItems: z.int().gte(0),
+    createdAt: z.iso.datetime(),
+    headRevision: z.int().gt(0),
+    id: z.uuid(),
+    knowledgeSpaceId: z.uuid(),
+    lastErrorCode: z.string().optional(),
+    lastErrorMessage: z.string().optional(),
+    publicationFingerprint: z.string().min(1),
+    publicationId: z.uuid(),
+    retryCount: z.int().gte(0),
+    rowVersion: z.int().gte(0),
+    runState: z.enum(['queued', 'running', 'succeeded', 'failed', 'superseded']),
+    tenantId: z.string().min(1),
+    totalItems: z.int().gte(0),
+    updatedAt: z.iso.datetime(),
+  }),
+  z.void(),
+])
+
+export const zPostKnowledgeSpacesByIdPageIndexUpgradeRetryPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Failed current-head PageIndex upgrade requeued
+ */
+export const zPostKnowledgeSpacesByIdPageIndexUpgradeRetryResponse = z.object({
+  completedAt: z.iso.datetime().optional(),
+  completedItems: z.int().gte(0),
+  createdAt: z.iso.datetime(),
+  headRevision: z.int().gt(0),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  lastErrorCode: z.string().optional(),
+  lastErrorMessage: z.string().optional(),
+  publicationFingerprint: z.string().min(1),
+  publicationId: z.uuid(),
+  retryCount: z.int().gte(0),
+  rowVersion: z.int().gte(0),
+  runState: z.enum(['queued', 'running', 'succeeded', 'failed', 'superseded']),
+  tenantId: z.string().min(1),
+  totalItems: z.int().gte(0),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zGetKnowledgeSpacesByIdTidbFtsPostingBackfillPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Current TiDB lexical-posting repair status
+ */
+export const zGetKnowledgeSpacesByIdTidbFtsPostingBackfillResponse = z.object({
+  completedAt: z.iso.datetime().optional(),
+  createdAt: z.iso.datetime(),
+  cursorProjectionId: z.uuid().optional(),
+  heartbeatAt: z.iso.datetime().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  lastErrorCode: z.string().optional(),
+  lastErrorMessage: z.string().optional(),
+  leaseExpiresAt: z.iso.datetime().optional(),
+  retryCount: z.int().gte(0),
+  rowVersion: z.int().gte(0),
+  runState: z.enum(['queued', 'running', 'succeeded', 'failed']),
+  scannedProjections: z.int().gte(0),
+  tenantId: z.string().min(1),
+  tokenizerVersion: z.string().min(1),
+  updatedAt: z.iso.datetime(),
+  workerId: z.string().optional(),
+  writtenPostings: z.int().gte(0),
+})
+
+export const zPostKnowledgeSpacesByIdTidbFtsPostingBackfillPath = z.object({
+  id: z.uuid(),
+})
+
+export const zPostKnowledgeSpacesByIdTidbFtsPostingBackfillResponse = z.union([
+  z.object({
+    completedAt: z.iso.datetime().optional(),
+    createdAt: z.iso.datetime(),
+    cursorProjectionId: z.uuid().optional(),
+    heartbeatAt: z.iso.datetime().optional(),
+    id: z.uuid(),
+    knowledgeSpaceId: z.uuid(),
+    lastErrorCode: z.string().optional(),
+    lastErrorMessage: z.string().optional(),
+    leaseExpiresAt: z.iso.datetime().optional(),
+    retryCount: z.int().gte(0),
+    rowVersion: z.int().gte(0),
+    runState: z.enum(['queued', 'running', 'succeeded', 'failed']),
+    scannedProjections: z.int().gte(0),
+    tenantId: z.string().min(1),
+    tokenizerVersion: z.string().min(1),
+    updatedAt: z.iso.datetime(),
+    workerId: z.string().optional(),
+    writtenPostings: z.int().gte(0),
+  }),
+  z.object({
+    completedAt: z.iso.datetime().optional(),
+    createdAt: z.iso.datetime(),
+    cursorProjectionId: z.uuid().optional(),
+    heartbeatAt: z.iso.datetime().optional(),
+    id: z.uuid(),
+    knowledgeSpaceId: z.uuid(),
+    lastErrorCode: z.string().optional(),
+    lastErrorMessage: z.string().optional(),
+    leaseExpiresAt: z.iso.datetime().optional(),
+    retryCount: z.int().gte(0),
+    rowVersion: z.int().gte(0),
+    runState: z.enum(['queued', 'running', 'succeeded', 'failed']),
+    scannedProjections: z.int().gte(0),
+    tenantId: z.string().min(1),
+    tokenizerVersion: z.string().min(1),
+    updatedAt: z.iso.datetime(),
+    workerId: z.string().optional(),
+    writtenPostings: z.int().gte(0),
+  }),
+  z.void(),
+])
+
+export const zPostKnowledgeSpacesByIdTidbFtsPostingBackfillRetryPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Failed TiDB lexical-posting repair requeued from its durable cursor
+ */
+export const zPostKnowledgeSpacesByIdTidbFtsPostingBackfillRetryResponse = z.object({
+  completedAt: z.iso.datetime().optional(),
+  createdAt: z.iso.datetime(),
+  cursorProjectionId: z.uuid().optional(),
+  heartbeatAt: z.iso.datetime().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  lastErrorCode: z.string().optional(),
+  lastErrorMessage: z.string().optional(),
+  leaseExpiresAt: z.iso.datetime().optional(),
+  retryCount: z.int().gte(0),
+  rowVersion: z.int().gte(0),
+  runState: z.enum(['queued', 'running', 'succeeded', 'failed']),
+  scannedProjections: z.int().gte(0),
+  tenantId: z.string().min(1),
+  tokenizerVersion: z.string().min(1),
+  updatedAt: z.iso.datetime(),
+  workerId: z.string().optional(),
+  writtenPostings: z.int().gte(0),
+})
+
+export const zGetKnowledgeSpacesByIdGraphTraversePath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdGraphTraverseQuery = z.object({
+  depth: z.int().gte(1).lte(2).optional().default(2),
+  entityId: z.uuid(),
+  fanout: z.int().gte(1).lte(50).optional().default(20),
+  maxNodes: z.int().gte(1).lte(200).optional().default(50),
+  timeoutMs: z.int().gte(1).lte(5000).optional().default(250),
+})
+
+/**
+ * Bounded graph traversal result
+ */
+export const zGetKnowledgeSpacesByIdGraphTraverseResponse = z.object({
+  entities: z.array(
+    z.object({
+      aliases: z.array(z.string()),
+      canonicalKey: z.string(),
+      confidence: z.number(),
+      createdAt: z.string(),
+      depth: z.int().gte(0),
+      extractionVersion: z.int().gt(0),
+      id: z.string(),
+      knowledgeSpaceId: z.string(),
+      metadata: z.record(z.string(), z.unknown()),
+      name: z.string(),
+      permissionScope: z.array(z.string()),
+      sourceNodeIds: z.array(z.string()),
+      type: z.enum(['date', 'metric', 'organization', 'person', 'policy', 'product', 'term']),
+      updatedAt: z.string(),
+    }),
+  ),
+  metrics: z.object({
+    depthReached: z.int().gte(0),
+    elapsedMs: z.number().gte(0),
+    exploredRelations: z.int().gte(0),
+    fanout: z.int().gt(0),
+    maxDepth: z.int().gt(0),
+    maxNodes: z.int().gt(0),
+    timedOut: z.boolean(),
+  }),
+  relations: z.array(
+    z.object({
+      confidence: z.number(),
+      createdAt: z.string(),
+      depth: z.int().gt(0),
+      extractionVersion: z.int().gt(0),
+      id: z.string(),
+      knowledgeSpaceId: z.string(),
+      metadata: z.record(z.string(), z.unknown()),
+      objectEntityId: z.string(),
+      permissionScope: z.array(z.string()),
+      sourceNodeIds: z.array(z.string()),
+      subjectEntityId: z.string(),
+      type: z.enum([
+        'contradicts',
+        'defines',
+        'depends_on',
+        'mentions',
+        'references',
+        'supersedes',
+      ]),
+      updatedAt: z.string(),
+    }),
+  ),
+  truncated: z.boolean(),
+})
+
+export const zGetQueriesByTraceIdPath = z.object({
+  traceId: z.uuid(),
+})
+
+/**
+ * Answer trace
+ */
+export const zGetQueriesByTraceIdResponse = zAnswerTrace
+
+export const zGetQueriesByTraceIdEvidencePath = z.object({
+  traceId: z.uuid(),
+})
+
+export const zGetQueriesByTraceIdEvidenceQuery = z.object({
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(25),
+})
+
+/**
+ * Query evidence virtual tree
+ */
+export const zGetQueriesByTraceIdEvidenceResponse = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  items: z.array(
+    z.object({
+      kind: z.enum(['directory', 'resource']),
+      metadata: z.record(z.string(), z.unknown()),
+      name: z.string(),
+      path: z.string(),
+      resourceType: z
+        .enum(['source', 'document', 'node', 'artifact', 'evidence', 'workspace'])
+        .optional(),
+      targetId: z.string().optional(),
+      version: z.int().gt(0).optional(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+  path: z.string(),
+  preview: z.boolean().optional(),
+  truncated: z.boolean(),
+})
+
+export const zGetQueriesByTraceIdConflictsPath = z.object({
+  traceId: z.uuid(),
+})
+
+export const zGetQueriesByTraceIdConflictsQuery = z.object({
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(25),
+})
+
+/**
+ * Query evidence virtual tree
+ */
+export const zGetQueriesByTraceIdConflictsResponse = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  items: z.array(
+    z.object({
+      kind: z.enum(['directory', 'resource']),
+      metadata: z.record(z.string(), z.unknown()),
+      name: z.string(),
+      path: z.string(),
+      resourceType: z
+        .enum(['source', 'document', 'node', 'artifact', 'evidence', 'workspace'])
+        .optional(),
+      targetId: z.string().optional(),
+      version: z.int().gt(0).optional(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+  path: z.string(),
+  preview: z.boolean().optional(),
+  truncated: z.boolean(),
+})
+
+export const zGetQueriesByTraceIdMissingPath = z.object({
+  traceId: z.uuid(),
+})
+
+export const zGetQueriesByTraceIdMissingQuery = z.object({
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(25),
+})
+
+/**
+ * Query evidence virtual tree
+ */
+export const zGetQueriesByTraceIdMissingResponse = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  items: z.array(
+    z.object({
+      kind: z.enum(['directory', 'resource']),
+      metadata: z.record(z.string(), z.unknown()),
+      name: z.string(),
+      path: z.string(),
+      resourceType: z
+        .enum(['source', 'document', 'node', 'artifact', 'evidence', 'workspace'])
+        .optional(),
+      targetId: z.string().optional(),
+      version: z.int().gt(0).optional(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+  path: z.string(),
+  preview: z.boolean().optional(),
+  truncated: z.boolean(),
+})
+
+export const zGetBulkJobsByIdPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Bulk operation progress
+ */
+export const zGetBulkJobsByIdResponse = zBulkOperationProgress
+
+/**
+ * Tenant retention policy
+ */
+export const zGetRetentionPolicyResponse = zRetentionPolicy
+
+export const zPatchRetentionPolicyBody = z.object({
+  answerTraceRetentionDays: z.int().gt(0).optional(),
+  evidenceCacheRetentionDays: z.int().gt(0).optional(),
+  inactiveProjectionRetentionDays: z.int().gt(0).optional(),
+  parseArtifactVersions: z.int().gt(0).optional(),
+  rawDocumentRetentionDays: z.int().gt(0).nullish(),
+  sessionInactivityMinutes: z.int().gt(0).optional(),
+})
+
+/**
+ * Updated tenant retention policy
+ */
+export const zPatchRetentionPolicyResponse = zRetentionPolicy
+
+export const zGetKnowledgeSpacesByIdRetentionPolicyPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Knowledge-space retention policy
+ */
+export const zGetKnowledgeSpacesByIdRetentionPolicyResponse = zRetentionPolicy
+
+export const zPatchKnowledgeSpacesByIdRetentionPolicyBody = z.object({
+  answerTraceRetentionDays: z.int().gt(0).optional(),
+  evidenceCacheRetentionDays: z.int().gt(0).optional(),
+  inactiveProjectionRetentionDays: z.int().gt(0).optional(),
+  parseArtifactVersions: z.int().gt(0).optional(),
+  rawDocumentRetentionDays: z.int().gt(0).nullish(),
+  sessionInactivityMinutes: z.int().gt(0).optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdRetentionPolicyPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Updated knowledge-space retention policy
+ */
+export const zPatchKnowledgeSpacesByIdRetentionPolicyResponse = zRetentionPolicy
+
+export const zPostQueriesBody = z.object({
+  activeDocumentIds: z.array(z.uuid()).max(100).optional().default([]),
+  activeEntityIds: z.array(z.string().min(1).max(200)).max(100).optional().default([]),
+  knowledgeSpaceId: z.uuid(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).optional(),
+  query: z.string().min(1).max(16000),
+  sessionId: z.uuid().optional(),
+})
+
+/**
+ * Streaming generated answer. SSE data.traceId and x-query-run-id identify the durable AnswerTrace; x-trace-id is transport correlation.
+ */
+export const zPostQueriesResponse = z.string()
+
+export const zPostKnowledgeSpacesByIdRetrievalTestsBody = z.object({
+  mode: z.enum(['fast', 'research', 'deep']).optional(),
+  query: z.string().min(1).max(16000),
+})
+
+export const zPostKnowledgeSpacesByIdRetrievalTestsPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Bounded retrieval-stage diagnostics without answer generation
+ */
+export const zPostKnowledgeSpacesByIdRetrievalTestsResponse = z.object({
+  capabilityStatus: z.object({
+    embedding: z.enum(['not-required', 'verified']),
+    reasoning: z.enum(['verified']),
+    rerank: z.enum(['disabled', 'not-required', 'verified']),
+  }),
+  embeddingProfile: z
+    .object({
+      model: z.string().min(1).max(256),
+      pluginId: z.string().min(1).max(256),
+      provider: z.string().min(1).max(256),
+      dimension: z.int().gt(0).optional(),
+      revision: z.int().gt(0),
+      vectorSpaceId: z.string().regex(/^embedding-space-sha256:[a-f0-9]{64}$/),
+    })
+    .optional(),
+  items: z
+    .array(
+      z.object({
+        citation: z.object({
+          artifactHash: z.string().min(1).max(128),
+          documentAssetId: z.string().min(1).max(512),
+          documentVersion: z.int().gt(0),
+          endOffset: z.int().gte(0).optional(),
+          pageNumber: z.int().gte(0).optional(),
+          sectionPath: z.array(z.string().max(512)).max(64),
+          startOffset: z.int().gte(0).optional(),
+        }),
+        nodeId: z.string().min(1).max(512),
+        projectionIds: z.array(z.string().min(1).max(512)).max(128),
+        score: z.number(),
+        sources: z.array(z.enum(['dense', 'fts', 'pageindex', 'visual'])).max(4),
+      }),
+    )
+    .max(100),
+  metrics: z.object({
+    degradationFlags: z.array(z.string().max(256)).max(32).optional(),
+    denseCandidates: z.int().gte(0),
+    denseMs: z.number().gte(0),
+    documentOutlineMatchedItems: z.int().gte(0).optional(),
+    ftsCandidates: z.int().gte(0),
+    ftsMs: z.number().gte(0),
+    fusedCandidates: z.int().gte(0),
+    fusionMs: z.number().gte(0),
+    graphExpansionCandidates: z.int().gte(0).optional(),
+    graphExpansionMs: z.number().gte(0).optional(),
+    graphExpansionRelations: z.int().gte(0).optional(),
+    graphExpansionSeeds: z.int().gte(0).optional(),
+    graphExpansionTimedOut: z.boolean().optional(),
+    graphExpansionTraversedEntities: z.int().gte(0).optional(),
+    imageCandidates: z.int().gte(0).optional(),
+    metadataFilteredCandidates: z.int().gte(0).optional(),
+    multimodalCandidates: z.int().gte(0).optional(),
+    pageIndexCandidateTruncated: z.boolean().optional(),
+    pageIndexMatchedNodes: z.int().gte(0).optional(),
+    pageIndexOpenedRanges: z.int().gte(0).optional(),
+    pageIndexScannedNodes: z.int().gte(0).optional(),
+    pageIndexScannedOutlines: z.int().gte(0).optional(),
+    pageIndexScoreVersion: z.string().max(256).optional(),
+    permissionFilteredCandidates: z.int().gte(0).optional(),
+    projectionFilteredCandidates: z.int().gte(0).optional(),
+    reasoningTreeSearchNodes: z.int().gte(0).optional(),
+    rerankCandidates: z.int().gte(0).optional(),
+    rerankMs: z.number().gte(0).optional(),
+    scoreThresholdFilteredCandidates: z.int().gte(0).optional(),
+    summaryCandidates: z.int().gte(0).optional(),
+    summarySelectedSections: z.int().gte(0).optional(),
+    tableCandidates: z.int().gte(0).optional(),
+    totalMs: z.number().gte(0),
+    visualEmbeddingCandidates: z.int().gte(0).optional(),
+  }),
+  mode: z.enum(['fast', 'research', 'deep']),
+  plan: z.object({
+    denseTopK: z.int().gte(0),
+    ftsTopK: z.int().gte(0),
+    fusionLimit: z.int().gte(0),
+    queryLanguage: z.enum(['cjk', 'latin', 'mixed-cjk-latin', 'other']),
+    requestedMode: z.enum(['fast', 'research', 'deep']),
+    rerankCandidateLimit: z.int().gte(0),
+    resolvedMode: z.enum(['fast', 'research', 'deep']),
+    strategyVersion: z.enum(['retrieval-planner-v1']),
+    topK: z.int().gte(1).lte(100),
+  }),
+  projectionSnapshot: z.object({
+    fingerprint: z.string().min(1).max(512),
+    headRevision: z.int().gte(0),
+    projectionVersion: z.int().gte(0),
+    publicationId: z.string().min(1).max(512),
+  }),
+  retrievalProfile: z.object({
+    defaultMode: z.enum(['fast', 'research', 'deep']),
+    reasoningModel: z.object({
+      model: z.string().min(1).max(256),
+      pluginId: z.string().min(1).max(256),
+      provider: z.string().min(1).max(256),
+    }),
+    rerank: z.object({
+      enabled: z.boolean(),
+      model: z
+        .object({
+          model: z.string().min(1).max(256),
+          pluginId: z.string().min(1).max(256),
+          provider: z.string().min(1).max(256),
+        })
+        .optional(),
+    }),
+    scoreThreshold: z.object({
+      enabled: z.boolean(),
+      stage: z.enum(['mode-final', 'rerank']),
+      value: z.number().gte(0).lte(1).optional(),
+    }),
+    topK: z.int().gte(1).lte(100),
+    revision: z.int().gt(0),
+  }),
+  stages: z
+    .array(
+      z.object({
+        candidateCount: z.int().gte(0).optional(),
+        durationMs: z.number().gte(0).optional(),
+        filteredCount: z.int().gte(0).optional(),
+        name: z.enum([
+          'embedding',
+          'dense',
+          'fts',
+          'fusion',
+          'summary',
+          'outline',
+          'pageindex',
+          'graph',
+          'rerank',
+          'permission_filter',
+          'publication_filter',
+          'threshold',
+          'top_k',
+        ]),
+        status: z.enum(['executed', 'skipped']),
+      }),
+    )
+    .max(13),
+  traceId: z.string().min(1).max(512),
+})
+
+export const zGetKnowledgeSpacesByIdFailedQueriesPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFailedQueriesQuery = z.object({
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(200).optional(),
+  status: z
+    .enum(['pending-triage', 'triaged', 'pending-annotation', 'annotated', 'dismissed', 'promoted'])
+    .optional(),
+})
+
+/**
+ * Knowledge space failed queries
+ */
+export const zGetKnowledgeSpacesByIdFailedQueriesResponse = z.object({
+  items: z.array(zFailedQuery),
+  nextCursor: z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdFailedQueriesMetricsPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Failed-query counts by status and the golden-question promotion rate
+ */
+export const zGetKnowledgeSpacesByIdFailedQueriesMetricsResponse = zFailedQueryMetrics
+
+export const zPostKnowledgeSpacesByIdFailedQueriesTriagePath = z.object({
+  id: z.uuid(),
+})
+
+export const zPostKnowledgeSpacesByIdFailedQueriesTriageQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional(),
+})
+
+/**
+ * Triaged a batch of pending failed queries
+ */
+export const zPostKnowledgeSpacesByIdFailedQueriesTriageResponse = zFailedQueryTriageResult
+
+export const zGetKnowledgeSpacesByIdFailedQueriesClustersPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFailedQueriesClustersQuery = z.object({
+  limit: z.int().gte(1).lte(1000).optional(),
+  status: z
+    .enum(['pending-triage', 'triaged', 'pending-annotation', 'annotated', 'dismissed', 'promoted'])
+    .optional(),
+})
+
+/**
+ * Failed queries grouped into clusters, most frequent first
+ */
+export const zGetKnowledgeSpacesByIdFailedQueriesClustersResponse = zFailedQueryClusters
+
+export const zPatchKnowledgeSpacesByIdFailedQueriesByFailedQueryIdBody = z.object({
+  expectedEvidenceIds: z.array(z.uuid()).max(100).optional(),
+  note: z.string().max(2000).optional(),
+  verdict: z.enum(['retrieval-miss', 'coverage-gap', 'irrelevant']),
+})
+
+export const zPatchKnowledgeSpacesByIdFailedQueriesByFailedQueryIdPath = z.object({
+  failedQueryId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Annotated failed query (promoted to a golden question for retrieval-miss)
+ */
+export const zPatchKnowledgeSpacesByIdFailedQueriesByFailedQueryIdResponse = zFailedQuery
+
+export const zPostAgentWorkspaceSnapshotsBody = z.object({
+  commandLog: z
+    .array(
+      z.object({
+        command: z.string().min(1).max(4000),
+        completedAt: z.iso.datetime().optional(),
+        cost: z.record(z.string(), z.unknown()).optional(),
+        input: z.record(z.string(), z.unknown()).optional().default({}),
+        outputSummary: z.string().max(4000).optional(),
+        startedAt: z.iso.datetime(),
+      }),
+    )
+    .optional()
+    .default([]),
+  evidenceBundles: z
+    .array(
+      z.object({
+        createdAt: z.iso.datetime(),
+        id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+        items: z.array(
+          z.object({
+            citations: z
+              .array(
+                z.object({
+                  artifactHash: z
+                    .string()
+                    .regex(/^[0-9a-f]{64}$/)
+                    .optional(),
+                  documentAssetId: z
+                    .string()
+                    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+                  documentVersion: z.int().gt(0),
+                  endOffset: z.int().gte(0).optional(),
+                  pageNumber: z.int().gt(0).optional(),
+                  sectionPath: z.array(z.string().min(1)).optional().default([]),
+                  startOffset: z.int().gte(0).optional(),
+                }),
+              )
+              .min(1),
+            conflicts: z
+              .array(
+                z.object({
+                  reason: z.string().min(1).max(2000),
+                  severity: z.enum(['info', 'warning', 'blocking']),
+                  withNodeId: z
+                    .string()
+                    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+                    .optional(),
+                }),
+              )
+              .optional()
+              .default([]),
+            freshness: z.object({
+              observedAt: z.iso.datetime().optional(),
+              sourceUpdatedAt: z.iso.datetime().optional(),
+              status: z.enum(['fresh', 'stale', 'unknown']),
+            }),
+            metadata: z.record(z.string(), z.unknown()).optional().default({}),
+            nodeId: z
+              .string()
+              .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+            score: z.number().gte(0).lte(1),
+            scores: z.object({
+              final: z.number().gte(0).lte(1),
+              freshness: z.number().gte(0).lte(1).optional(),
+              rerank: z.number().gte(0).lte(1).optional(),
+              retrieval: z.number().gte(0).lte(1),
+            }),
+            text: z.string().min(1),
+          }),
+        ),
+        missingEvidence: z
+          .array(
+            z.object({
+              expectedEvidenceId: z
+                .string()
+                .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+                .optional(),
+              metadata: z.record(z.string(), z.unknown()).optional().default({}),
+              reason: z.enum([
+                'not-retrieved',
+                'permission-filtered',
+                'stale',
+                'conflict',
+                'unknown',
+              ]),
+              text: z.string().min(1).max(4000),
+            }),
+          )
+          .optional()
+          .default([]),
+        query: z.string().min(1),
+        state: z.enum([
+          'answerable',
+          'partial',
+          'not-enough-evidence',
+          'conflict',
+          'permission-limited',
+        ]),
+        traceId: z
+          .string()
+          .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+          .optional(),
+      }),
+    )
+    .optional()
+    .default([]),
+  indexProjection: z.object({
+    fingerprint: z.string().min(1).max(512),
+    projectionIds: z.array(z.string().min(1).max(240)).optional().default([]),
+  }),
+  knowledgeSpaceId: z.uuid(),
+  manifestVersion: z.int().gt(0).optional().default(1),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  mounts: z
+    .array(
+      z.object({
+        cachePolicy: z
+          .object({
+            maxBytes: z.int().gt(0).lte(1073741824).optional(),
+            strategy: z.enum(['none', 'memory', 'object-storage']),
+            ttlSeconds: z.int().gt(0).lte(86400).optional(),
+          })
+          .optional()
+          .default({ strategy: 'none' }),
+        capabilities: z
+          .array(z.enum(['ls', 'tree', 'cat', 'grep', 'find', 'stat', 'diff', 'sync', 'watch']))
+          .optional()
+          .default([]),
+        createdAt: z.iso.datetime(),
+        freshnessPolicy: z.object({
+          staleAfterSeconds: z.int().gt(0).optional(),
+          strategy: z.enum(['realtime', 'ttl', 'manual', 'async']),
+        }),
+        id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+        knowledgeSpaceId: z
+          .string()
+          .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+        lastSyncedAt: z.iso.datetime().optional(),
+        metadata: z.record(z.string(), z.unknown()).optional().default({}),
+        mode: z.enum(['read', 'write', 'exec']),
+        mountPath: z
+          .string()
+          .max(384)
+          .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+        permissionScope: z.array(z.string().min(1)).optional().default([]),
+        permissionSnapshotVersion: z.int().gt(0),
+        provider: z.enum([
+          'upload',
+          'object-storage',
+          'connector',
+          'web',
+          'database',
+          'github',
+          'slack',
+          'internal',
+        ]),
+        resourceType: z.enum(['source', 'document', 'node', 'artifact', 'evidence', 'workspace']),
+        sourcePointer: z.string().min(1),
+        tenantId: z.string().min(1).max(255),
+      }),
+    )
+    .optional()
+    .default([]),
+  pathVersions: z
+    .array(
+      z.object({
+        version: z.string().min(1).max(512),
+        virtualPath: z.string().min(1).max(1000),
+      }),
+    )
+    .optional()
+    .default([]),
+  researchTaskJobId: z.string().min(1).max(240).optional(),
+  sourceVersions: z
+    .array(
+      z.object({
+        provider: z.string().min(1).max(120),
+        providerResourceKey: z.string().min(1).max(1000),
+        version: z.string().min(1).max(512),
+      }),
+    )
+    .optional()
+    .default([]),
+  traceIds: z.array(z.string().min(1)).optional().default([]),
+})
+
+/**
+ * Created agent workspace snapshot
+ */
+export const zPostAgentWorkspaceSnapshotsResponse = zAgentWorkspaceSnapshot
+
+export const zGetAgentWorkspaceSnapshotsByIdPath = z.object({
+  id: z.string().min(1).max(240),
+})
+
+/**
+ * Agent workspace snapshot
+ */
+export const zGetAgentWorkspaceSnapshotsByIdResponse = zAgentWorkspaceSnapshot
+
+export const zPostAgentWorkspaceSnapshotsByIdReplayPath = z.object({
+  id: z.string().min(1).max(240),
+})
+
+/**
+ * Agent workspace snapshot replay
+ */
+export const zPostAgentWorkspaceSnapshotsByIdReplayResponse = zAgentWorkspaceReplay
+
+export const zPostResearchTasksPlanBody = z.object({
+  budgetUsd: z.number().gte(0).optional(),
+  knowledgeSpaceId: z.uuid(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).optional(),
+  query: z.string().min(1).max(16000),
+  topK: z.int().gt(0).lte(50).optional(),
+})
+
+/**
+ * Dry-run research task plan
+ */
+export const zPostResearchTasksPlanResponse = zResearchTaskDryRunPlan
+
+export const zPostResearchTasksBody = z.object({
+  budgetUsd: z.number().gte(0).optional(),
+  knowledgeSpaceId: z.uuid(),
+  limits: z
+    .object({
+      maxRetrievalSteps: z.int().gt(0).optional(),
+      maxScannedResources: z.int().gt(0).optional(),
+      maxToolCalls: z.int().gt(0).optional(),
+      timeoutMs: z.int().gt(0).optional(),
+    })
+    .optional(),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).optional(),
+  query: z.string().min(1).max(16000),
+  topK: z.int().gt(0).lte(50).optional(),
+})
+
+/**
+ * Created research task job
+ */
+export const zPostResearchTasksResponse = zResearchTaskJob
+
+export const zDeleteResearchTasksByIdPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Canceled research task job
+ */
+export const zDeleteResearchTasksByIdResponse = zResearchTaskJob
+
+export const zGetResearchTasksByIdPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Research task job status
+ */
+export const zGetResearchTasksByIdResponse = zResearchTaskJob
+
+export const zGetResearchTasksByIdPartialsPath = z.object({
+  id: z.string().min(1),
+})
+
+export const zGetResearchTasksByIdPartialsQuery = z.object({
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(25),
+})
+
+/**
+ * Research task partial evidence bundles
+ */
+export const zGetResearchTasksByIdPartialsResponse = zResearchTaskPartialResultList
+
+export const zGetResearchTasksByIdEventsPath = z.object({
+  id: z.string().min(1),
+})
+
+export const zGetResearchTasksByIdEventsQuery = z.object({
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(25),
+})
+
+/**
+ * Research task progress event stream
+ */
+export const zGetResearchTasksByIdEventsResponse = z.string()
+
+export const zGetKnowledgeSpacesByIdFsLsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFsLsQuery = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  cursor: z.string().optional(),
+  limit: z.int().gte(1),
+  path: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+/**
+ * KnowledgeFS directory listing
+ */
+export const zGetKnowledgeSpacesByIdFsLsResponse = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  items: z.array(
+    z.object({
+      kind: z.enum(['directory', 'resource']),
+      metadata: z.record(z.string(), z.unknown()),
+      name: z.string(),
+      path: z.string(),
+      resourceType: z
+        .enum(['source', 'document', 'node', 'artifact', 'evidence', 'workspace'])
+        .optional(),
+      targetId: z.string().optional(),
+      version: z.int().gt(0).optional(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+  path: z.string(),
+  preview: z.boolean().optional(),
+  truncated: z.boolean(),
+})
+
+export const zGetKnowledgeSpacesByIdFsTreePath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFsTreeQuery = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  cursor: z.string().optional(),
+  depth: z.int().gte(1).lte(8).optional(),
+  limit: z.int().gte(1),
+  path: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+/**
+ * KnowledgeFS directory tree
+ */
+export const zGetKnowledgeSpacesByIdFsTreeResponse = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  nextCursor: z.string().optional(),
+  path: z.string(),
+  preview: z.boolean().optional(),
+  root: z.record(z.string(), z.unknown()).optional(),
+  truncated: z.boolean(),
+})
+
+export const zGetKnowledgeSpacesByIdFsGrepPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFsGrepQuery = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  cursor: z.string().optional(),
+  limit: z.int().gte(1),
+  path: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  q: z.string().min(1).max(4000),
+  timeoutMs: z.int().gte(1).lte(10000).optional(),
+})
+
+/**
+ * KnowledgeFS scoped text search
+ */
+export const zGetKnowledgeSpacesByIdFsGrepResponse = z.object({
+  matches: z.array(
+    z.object({
+      endOffset: z.int().gte(0),
+      kind: z.enum(['node', 'segment']),
+      metadata: z.record(z.string(), z.unknown()),
+      nodeId: z.string().optional(),
+      path: z.string(),
+      segmentId: z.string().optional(),
+      snippet: z.string(),
+      startOffset: z.int().gte(0),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+  path: z.string(),
+  truncated: z.boolean(),
+})
+
+export const zGetKnowledgeSpacesByIdFsFindPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFsFindQuery = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  cursor: z.string().optional(),
+  limit: z.int().gte(1),
+  path: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  metadataKey: z.string().min(1).max(120).optional(),
+  metadataValue: z.string().min(1).max(4000).optional(),
+  nameContains: z.string().min(1).max(240).optional(),
+  resourceType: z
+    .enum(['source', 'document', 'node', 'artifact', 'evidence', 'workspace'])
+    .optional(),
+})
+
+/**
+ * KnowledgeFS scoped metadata search
+ */
+export const zGetKnowledgeSpacesByIdFsFindResponse = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  items: z.array(
+    z.object({
+      kind: z.enum(['directory', 'resource']),
+      metadata: z.record(z.string(), z.unknown()),
+      name: z.string(),
+      path: z.string(),
+      resourceType: z
+        .enum(['source', 'document', 'node', 'artifact', 'evidence', 'workspace'])
+        .optional(),
+      targetId: z.string().optional(),
+      version: z.int().gt(0).optional(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+  path: z.string(),
+  preview: z.boolean().optional(),
+  truncated: z.boolean(),
+})
+
+export const zGetKnowledgeSpacesByIdFsDiffPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFsDiffQuery = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  mode: z.enum(['line', 'word']).optional(),
+  newPath: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  oldPath: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  semantic: z.enum(['true', 'false']).optional(),
+})
+
+/**
+ * KnowledgeFS text diff
+ */
+export const zGetKnowledgeSpacesByIdFsDiffResponse = z.object({
+  mode: z.enum(['line', 'word']),
+  newPath: z.string(),
+  oldPath: z.string(),
+  operations: z.array(
+    z.object({
+      kind: z.enum(['equal', 'insert', 'delete']),
+      newEnd: z.int().gt(0).optional(),
+      newStart: z.int().gt(0).optional(),
+      oldEnd: z.int().gt(0).optional(),
+      oldStart: z.int().gt(0).optional(),
+      text: z.string(),
+    }),
+  ),
+  semantic: z
+    .object({
+      changes: z
+        .array(
+          z.object({
+            category: z.string().min(1).max(120),
+            evidence: z.array(z.string().max(8000)).max(20),
+            summary: z.string().min(1).max(8000),
+          }),
+        )
+        .max(100),
+      metadata: z.record(z.string(), z.unknown()),
+      model: z.string().min(1).max(200).optional(),
+      summary: z.string().min(1).max(8000),
+    })
+    .optional(),
+  stats: z.object({
+    delete: z.int().gte(0),
+    equal: z.int().gte(0),
+    insert: z.int().gte(0),
+  }),
+})
+
+export const zGetKnowledgeSpacesByIdFsOpenNodePath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFsOpenNodeQuery = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  nodeId: z.uuid(),
+})
+
+/**
+ * Citation-ready KnowledgeFS node
+ */
+export const zGetKnowledgeSpacesByIdFsOpenNodeResponse = z.object({
+  citation: z.object({
+    artifactHash: z.string(),
+    documentAssetId: z.string(),
+    endOffset: z.int().gte(0),
+    pageNumber: z.int().gt(0).optional(),
+    parseArtifactId: z.string(),
+    sectionPath: z.array(z.string()),
+    startOffset: z.int().gte(0),
+  }),
+  node: z.object({
+    artifactHash: z.string().regex(/^[0-9a-f]{64}$/),
+    documentAssetId: z
+      .string()
+      .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+    endOffset: z.int().gte(0),
+    id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+    kind: z.enum(['chunk', 'section', 'table', 'image', 'summary']),
+    knowledgeSpaceId: z
+      .string()
+      .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+    metadata: z.record(z.string(), z.unknown()).optional().default({}),
+    parseArtifactId: z
+      .string()
+      .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+    permissionScope: z.array(z.string().min(1)).optional().default([]),
+    publicationGenerationId: z
+      .string()
+      .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+      .optional(),
+    sourceLocation: z.object({
+      endOffset: z.int().gte(0).optional(),
+      pageNumber: z.int().gt(0).optional(),
+      sectionPath: z.array(z.string().min(1)).optional().default([]),
+      startOffset: z.int().gte(0).optional(),
+    }),
+    startOffset: z.int().gte(0),
+    text: z.string().min(1),
+    updatedAt: z.iso.datetime().optional(),
+  }),
+})
+
+export const zGetKnowledgeSpacesByIdFsCatPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFsCatQuery = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).optional(),
+  path: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+/**
+ * KnowledgeFS file content
+ */
+export const zGetKnowledgeSpacesByIdFsCatResponse = z.object({
+  contentType: z.string(),
+  nextCursor: z.string().optional(),
+  path: z.string(),
+  text: z.string(),
+  truncated: z.boolean(),
+})
+
+export const zGetKnowledgeSpacesByIdFsStatPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdFsStatQuery = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  path: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+/**
+ * KnowledgeFS path metadata
+ */
+export const zGetKnowledgeSpacesByIdFsStatResponse = z.object({
+  consistencyClass: z
+    .enum(['path-consistent', 'snapshot-consistent', 'cache-consistent', 'eventual-preview'])
+    .optional(),
+  contentType: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()),
+  parserStatus: z.enum(['pending', 'parsed', 'failed']).optional(),
+  path: z.string(),
+  resourceType: z.enum(['source', 'document', 'node', 'artifact', 'evidence', 'workspace']),
+  sha256: z.string().optional(),
+  sizeBytes: z.int().gte(0).optional(),
+  targetId: z.string(),
+  preview: z.boolean().optional(),
+  version: z.int().gt(0).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdFsWriteBody = z.object({
+  path: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  text: z.string().max(262144),
+})
+
+export const zPostKnowledgeSpacesByIdFsWritePath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * KnowledgeFS file overwritten
+ */
+export const zPostKnowledgeSpacesByIdFsWriteResponse = z.object({
+  bytesWritten: z.int().gte(0),
+  mode: z.enum(['append', 'write']),
+  objectKey: z.string(),
+  path: z.string(),
+  targetId: z.string(),
+  version: z.int().gt(0),
+})
+
+export const zPostKnowledgeSpacesByIdFsAppendBody = z.object({
+  path: z.string().regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  text: z.string().max(262144),
+})
+
+export const zPostKnowledgeSpacesByIdFsAppendPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * KnowledgeFS file appended
+ */
+export const zPostKnowledgeSpacesByIdFsAppendResponse = z.object({
+  bytesWritten: z.int().gte(0),
+  mode: z.enum(['append', 'write']),
+  objectKey: z.string(),
+  path: z.string(),
+  targetId: z.string(),
+  version: z.int().gt(0),
+})
+
+export const zPostKnowledgeSpacesByIdSemanticViewsTopicMaterializeBody = z.object({
+  generatedVersion: z.string().min(1).max(120).optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+  topicName: z.string().min(1).max(120).optional(),
+  topicSlug: z
+    .string()
+    .min(1)
+    .max(120)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSemanticViewsTopicMaterializePath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Materialized KnowledgeFS topic view
+ */
+export const zPostKnowledgeSpacesByIdSemanticViewsTopicMaterializeResponse =
+  zTopicViewMaterializationResult
+
+export const zPostKnowledgeSpacesByIdSemanticViewsEntitiesExtractBody = z.object({
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSemanticViewsEntitiesExtractPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Extracted and indexed semantic entities
+ */
+export const zPostKnowledgeSpacesByIdSemanticViewsEntitiesExtractResponse =
+  zSemanticEntityExtractionResult
+
+export const zPostKnowledgeSpacesByIdSemanticViewsCommunitiesMaterializeBody = z.object({
+  generatedVersion: z.string().min(1).max(120).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSemanticViewsCommunitiesMaterializePath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Materialized KnowledgeFS community view
+ */
+export const zPostKnowledgeSpacesByIdSemanticViewsCommunitiesMaterializeResponse =
+  zSemanticCommunityMaterializationResult
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexBody = z.object({
+  all: z.boolean().optional(),
+  documentIds: z.array(z.uuid()).min(1).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Accepted bulk document reindex
+ */
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexResponse = zBulkDocumentReindexResult
+
+/**
+ * Source provider capability catalog
+ */
+export const zGetSourceProvidersResponse = z.object({
+  items: z.array(
+    z.object({
+      authKinds: z.array(z.enum(['api-key', 'endpoint', 'oauth2'])),
+      available: z.boolean(),
+      capabilities: z.array(z.enum(['website-crawl', 'online-document', 'online-drive'])),
+      configuration: z.array(
+        z.object({
+          description: z.string().optional(),
+          format: z.enum(['password', 'uri']).optional(),
+          name: z.string(),
+          required: z.boolean(),
+          secret: z.boolean(),
+          type: z.enum(['boolean', 'integer', 'string']),
+        }),
+      ),
+      displayName: z.string(),
+      id: z.string(),
+      unavailableReason: z.string().optional(),
+    }),
+  ),
+})
+
+export const zGetKnowledgeSpacesByIdSourceConnectionsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceConnectionsQuery = z.object({
+  cursor: z.string().max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * Source connections
+ */
+export const zGetKnowledgeSpacesByIdSourceConnectionsResponse = z.object({
+  items: z.array(
+    z.object({
+      authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+      configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+      createdAt: z.string(),
+      errorCode: z.string().optional(),
+      expiresAt: z.string().optional(),
+      id: z.uuid(),
+      knowledgeSpaceId: z.uuid(),
+      name: z.string(),
+      providerId: z.string(),
+      scopes: z.array(z.string()),
+      status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+      updatedAt: z.string(),
+      version: z.int(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourceConnectionsBody = z.object({
+  authKind: z.enum(['api-key', 'endpoint']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])).optional(),
+  credentials: z.record(z.string(), z.unknown()),
+  name: z.string().min(1).max(160),
+  providerId: z.string().min(1).max(128),
+})
+
+export const zPostKnowledgeSpacesByIdSourceConnectionsPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Source connection created
+ */
+export const zPostKnowledgeSpacesByIdSourceConnectionsResponse = z.object({
+  authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+  createdAt: z.string(),
+  errorCode: z.string().optional(),
+  expiresAt: z.string().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  name: z.string(),
+  providerId: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+  updatedAt: z.string(),
+  version: z.int(),
+})
+
+export const zPostKnowledgeSpacesByIdSourceConnectionsOauthBody = z.object({
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])).optional(),
+  name: z.string().min(1).max(160),
+  providerId: z.string().min(1).max(128),
+  redirectUri: z.string().min(1).max(2048),
+  scopes: z.array(z.string().min(1).max(255)).max(100).optional().default([]),
+})
+
+export const zPostKnowledgeSpacesByIdSourceConnectionsOauthPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * OAuth authorization started
+ */
+export const zPostKnowledgeSpacesByIdSourceConnectionsOauthResponse = z.object({
+  authorizationUrl: z.string(),
+  connection: z.object({
+    authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+    configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+    createdAt: z.string(),
+    errorCode: z.string().optional(),
+    expiresAt: z.string().optional(),
+    id: z.uuid(),
+    knowledgeSpaceId: z.uuid(),
+    name: z.string(),
+    providerId: z.string(),
+    scopes: z.array(z.string()),
+    status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+    updatedAt: z.string(),
+    version: z.int(),
+  }),
+})
+
+export const zPostSourceOauthCallbackBody = z.object({
+  code: z.string().min(1).max(8192),
+  state: z.string().min(32).max(256),
+})
+
+/**
+ * OAuth connection activated
+ */
+export const zPostSourceOauthCallbackResponse = z.object({
+  authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+  createdAt: z.string(),
+  errorCode: z.string().optional(),
+  expiresAt: z.string().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  name: z.string(),
+  providerId: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+  updatedAt: z.string(),
+  version: z.int(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdPath = z.object({
+  id: z.uuid(),
+  connectionId: z.uuid(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdQuery = z.object({
+  expectedVersion: z.int().gte(1),
+})
+
+/**
+ * Source connection locally revoked
+ */
+export const zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse = z.object({
+  authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+  createdAt: z.string(),
+  errorCode: z.string().optional(),
+  expiresAt: z.string().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  name: z.string(),
+  providerId: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+  updatedAt: z.string(),
+  version: z.int(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdPath = z.object({
+  id: z.uuid(),
+  connectionId: z.uuid(),
+})
+
+/**
+ * Source connection
+ */
+export const zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse = z.object({
+  authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+  createdAt: z.string(),
+  errorCode: z.string().optional(),
+  expiresAt: z.string().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  name: z.string(),
+  providerId: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+  updatedAt: z.string(),
+  version: z.int(),
+})
+
+export const zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshBody = z.object({
+  expectedVersion: z.int().gte(1),
+})
+
+export const zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshPath = z.object({
+  id: z.uuid(),
+  connectionId: z.uuid(),
+})
+
+/**
+ * Source connection refreshed
+ */
+export const zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshResponse = z.object({
+  authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+  createdAt: z.string(),
+  errorCode: z.string().optional(),
+  expiresAt: z.string().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  name: z.string(),
+  providerId: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+  updatedAt: z.string(),
+  version: z.int(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdSyncHeaders = z.object({
+  'Idempotency-Key': z.string().min(1).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdSyncPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Durable source sync accepted
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdSyncResponse = zSourceWorkflowRun
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewHeaders = z.object({
+  'Idempotency-Key': z.string().min(1).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Durable crawl preview accepted
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponse = zSourceWorkflowRun
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsBody = z.union([
+  z.object({
+    items: z
+      .array(
+        z.object({
+          etag: z.string().max(2048).optional(),
+          lastEditedTime: z.string().max(2048).optional(),
+          name: z.string().max(500).optional(),
+          pageId: z.string().min(1).max(2048),
+          providerItemId: z.string().min(1).max(2048),
+          type: z.string().min(1).max(128),
+          workspaceId: z.string().min(1).max(2048),
+        }),
+      )
+      .min(1)
+      .max(200),
+    kind: z.enum(['online-document-import']),
+  }),
+  z.object({
+    items: z
+      .array(
+        z.object({
+          bucket: z.string().max(2048).optional(),
+          etag: z.string().max(2048).optional(),
+          id: z.string().min(1).max(2048),
+          mimeType: z.string().max(255).optional(),
+          name: z.string().min(1).max(500),
+          providerItemId: z.string().min(1).max(2048),
+        }),
+      )
+      .min(1)
+      .max(200),
+    kind: z.enum(['online-drive-import']),
+  }),
+])
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsHeaders = z.object({
+  'Idempotency-Key': z.string().min(1).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Durable provider import accepted
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsResponse = zSourceWorkflowRun
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Source sync policy
+ */
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse = z.object({
+  createdAt: z.string(),
+  customIntervalSeconds: z.int().optional(),
+  enabled: z.boolean(),
+  expectedSourceVersion: z.int().gte(1),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  mode: z.enum(['provider', 'manual', 'interval', 'custom']),
+  nextRunAt: z.string().optional(),
+  revision: z.int().gte(1),
+  sourceId: z.uuid(),
+  updatedAt: z.string(),
+})
+
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyBody = z.object({
+  customIntervalSeconds: z.int().gte(3600).lte(2592000).optional(),
+  enabled: z.boolean(),
+  expectedRevision: z.int().gte(0),
+  expectedSourceVersion: z.int().gte(1),
+  mode: z.enum(['provider', 'manual', 'interval', 'custom']),
+})
+
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Source sync policy updated
+ */
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse = z.object({
+  createdAt: z.string(),
+  customIntervalSeconds: z.int().optional(),
+  enabled: z.boolean(),
+  expectedSourceVersion: z.int().gte(1),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  mode: z.enum(['provider', 'manual', 'interval', 'custom']),
+  nextRunAt: z.string().optional(),
+  revision: z.int().gte(1),
+  sourceId: z.uuid(),
+  updatedAt: z.string(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBulkBody = z.object({
+  action: z.enum(['sync', 'disable', 'remove']),
+  sourceIds: z.array(z.uuid()).min(1).max(200),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBulkHeaders = z.object({
+  'Idempotency-Key': z.string().min(1).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBulkPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Durable bulk source workflow accepted
+ */
+export const zPostKnowledgeSpacesByIdSourcesBulkResponse = zSourceWorkflowRun
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsQuery = z.object({
+  cursor: z.string().max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+  sourceId: z.uuid().optional(),
+})
+
+/**
+ * Source workflow history
+ */
+export const zGetKnowledgeSpacesByIdSourceWorkflowsResponse = z.object({
+  items: z.array(zSourceWorkflowRun),
+  nextCursor: z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+/**
+ * Source workflow
+ */
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponse = zSourceWorkflowRun
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsQuery = z.object({
+  cursor: z.string().max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * Per-source bulk workflow results
+ */
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsResponse = z.object({
+  items: z.array(
+    z.object({
+      action: z.enum(['sync', 'disable', 'remove']),
+      errorCode: z.string().optional(),
+      id: z.uuid(),
+      reason: z.string().optional(),
+      sourceId: z.uuid(),
+      status: z.enum(['eligible', 'running', 'skipped', 'failed', 'completed']),
+      updatedAt: z.string(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelBody = z.object({
+  reason: z.string().max(1000).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+/**
+ * Source workflow canceled
+ */
+export const zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelResponse = zSourceWorkflowRun
+
+export const zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+/**
+ * Source workflow retried
+ */
+export const zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryResponse = zSourceWorkflowRun
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesQuery = z.object({
+  cursor: z.string().max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * Crawl preview pages (content excluded)
+ */
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse = z.object({
+  items: z.array(
+    z.object({
+      description: z.string().optional(),
+      etag: z.string().optional(),
+      pageId: z.string(),
+      sourceUrl: z.string(),
+      title: z.string().optional(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionBody = z.object({
+  pageIds: z.array(z.string().min(1).max(128)).min(1).max(200),
+})
+
+export const zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionHeaders = z.object({
+  'Idempotency-Key': z.string().min(1).max(255),
+})
+
+export const zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+/**
+ * Crawl import selection accepted
+ */
+export const zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionResponse = zSourceWorkflowRun
+
+export const zGetKnowledgeSpacesByIdSourcesPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourcesQuery = z.object({
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(200).optional(),
+})
+
+/**
+ * Knowledge space sources
+ */
+export const zGetKnowledgeSpacesByIdSourcesResponse = z.object({
+  items: z.array(zSource),
+  nextCursor: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBody = z.object({
+  connectionId: z.uuid().optional(),
+  credentials: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().min(1).max(200),
+  permissionScope: z.array(z.string().min(1)).optional(),
+  status: z.enum(['active', 'syncing', 'error', 'disabled']).optional(),
+  type: z.enum(['upload', 'object-storage', 'connector', 'web']),
+  uri: z.string().min(1),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Created source
+ */
+export const zPostKnowledgeSpacesByIdSourcesResponse = zSource
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsQuery = z.object({
+  expectedVersion: z.int().gte(1),
+})
+
+/**
+ * Revoked source credentials
+ */
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse = zSource
+
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsBody = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  expectedVersion: z.int().gte(1),
+})
+
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Rotated source credentials; secret bytes are returned neither here nor later
+ */
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse = zSource
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Website crawl result
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlResponse = zWebsiteCrawlResult
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdPagesPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdPagesQuery = z.object({
+  cursor: z.string().min(1).max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * Authorized online-document pages
+ */
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdPagesResponse = zOnlineDocumentPages
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportBody = z.object({
+  pages: z
+    .array(
+      z.object({
+        lastEditedTime: z.string().min(1).optional(),
+        name: z.string().min(1).max(200).optional(),
+        pageId: z.string().min(1),
+        type: z.string().min(1),
+        workspaceId: z.string().min(1),
+      }),
+    )
+    .min(1)
+    .max(200),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Imported online-document pages
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportResponse = zSourceImportResult
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdTestPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Source credential validation result
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdTestResponse = zSourceCredentialTest
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdFilesPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdFilesQuery = z.object({
+  bucket: z.string().optional(),
+  continuationToken: z.string().min(1).max(4096).optional(),
+  maxKeys: z.int().gte(1).lte(1000).optional(),
+  prefix: z.string().optional(),
+})
+
+/**
+ * Online-drive files
+ */
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdFilesResponse = zOnlineDriveFiles
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesBody = z.object({
+  files: z
+    .array(
+      z.object({
+        bucket: z.string().optional(),
+        id: z.string().min(1),
+        mimeType: z.string().optional(),
+        name: z.string().min(1).max(255),
+      }),
+    )
+    .min(1)
+    .max(200),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Imported online-drive files
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesResponse = zSourceImportResult

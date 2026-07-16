@@ -165,9 +165,10 @@ def make_request(
     url: str,
     max_retries: int = SSRF_DEFAULT_MAX_RETRIES,
     max_response_bytes: int | None = None,
+    stream_response: bool = False,
     **kwargs: Any,
 ) -> httpx.Response:
-    """Send one SSRF-protected request with an optional in-memory response-size limit.
+    """Send one SSRF-protected request with optional buffering and size limits.
 
     When ``max_response_bytes`` is set, identity responses are read incrementally
     and rejected before more than that many bytes are retained in memory. Encoded
@@ -179,20 +180,24 @@ def make_request(
         url: Absolute request URL.
         max_retries: Number of retry attempts after the initial request.
         max_response_bytes: Optional maximum bytes retained from an identity response.
+        stream_response: Return an open streaming response that the caller must close.
         **kwargs: Additional keyword arguments forwarded to ``httpx.Client``.
 
     Returns:
-        A fully buffered response. Size-limited responses have decoded transfer headers removed.
+        A buffered response, or an open response when ``stream_response`` is true.
+        Size-limited responses have decoded transfer headers removed.
 
     Raises:
         ResponseLimitError: The response exceeds the limit or uses a non-identity encoding.
         ToolSSRFError: The configured SSRF proxy rejects the destination.
         MaxRetriesExceededError: All configured request attempts fail.
         httpx.RequestError: A request fails while retries are disabled.
-        ValueError: The response limit or request headers are invalid.
+        ValueError: The response options, limit, or request headers are invalid.
     """
     if max_response_bytes is not None and max_response_bytes <= 0:
         raise ValueError("max_response_bytes must be positive")
+    if stream_response and max_response_bytes is not None:
+        raise ValueError("stream_response cannot be combined with max_response_bytes")
 
     # Convert requests-style allow_redirects to httpx-style follow_redirects
     if "allow_redirects" in kwargs:
@@ -226,6 +231,12 @@ def make_request(
     # When using a forward proxy, httpx may override the Host header based on the URL.
     # We extract and preserve any explicitly set Host header to support virtual hosting.
     user_provided_host = _get_user_provided_host_header(headers)
+    stream_send_kwargs: dict[str, Any] = {}
+    if stream_response:
+        if "auth" in kwargs:
+            stream_send_kwargs["auth"] = kwargs.pop("auth")
+        if "follow_redirects" in kwargs:
+            stream_send_kwargs["follow_redirects"] = kwargs.pop("follow_redirects")
 
     retries = 0
     while retries <= max_retries:
@@ -236,7 +247,10 @@ def make_request(
             if user_provided_host is not None:
                 headers["host"] = user_provided_host
             kwargs["headers"] = headers
-            if max_response_bytes is None:
+            if stream_response:
+                request = client.build_request(method=method, url=url, **kwargs)
+                response = client.send(request, stream=True, **stream_send_kwargs)
+            elif max_response_bytes is None:
                 response = client.request(method=method, url=url, **kwargs)
             else:
                 with client.stream(method=method, url=url, **kwargs) as streaming_response:
@@ -273,6 +287,7 @@ def make_request(
 
                 # Squid typically identifies itself in Server or Via headers
                 if "squid" in server_header or "squid" in via_header:
+                    response.close()
                     raise ToolSSRFError(
                         f"Access to '{url}' was blocked by SSRF protection. "
                         f"The URL may point to a private or local network address. "
@@ -286,6 +301,7 @@ def make_request(
                     response.status_code,
                     url,
                 )
+                response.close()
 
         except httpx.RequestError as e:
             logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
