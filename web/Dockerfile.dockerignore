@@ -13,6 +13,8 @@
 !sdks/
 !sdks/nodejs-client/
 !sdks/nodejs-client/package.json
+!cli/
+!cli/package.json
 
 .git
 node_modules
@@ -22,6 +24,7 @@ web/.env.*
 web/logs
 web/*.log*
 web/node_modules
+packages/**/node_modules
 web/dist
 web/build
 web/coverage
