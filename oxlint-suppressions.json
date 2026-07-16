@@ -5998,28 +5998,17 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/panel/env-panel/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
     },
     "jsx_a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 4
-    },
-    "no-restricted-imports": {
       "count": 1
     },
-    "typescript/no-explicit-any": {
+    "jsx_a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -6265,7 +6254,7 @@
       "count": 3
     },
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 6
     }
   },
   "web/app/components/workflow/update-dsl-modal.tsx": {

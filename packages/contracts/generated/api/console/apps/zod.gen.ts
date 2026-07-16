@@ -651,17 +651,6 @@ export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unkno
  */
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
 
-/**
- * SyncDraftWorkflowPayload
- */
-export const zSyncDraftWorkflowPayload = z.object({
-  conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
-  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
-  features: z.record(z.string(), z.unknown()),
-  graph: z.record(z.string(), z.unknown()),
-  hash: z.string().nullish(),
-})
-
 export const zSyncDraftWorkflowResponse = z.object({
   hash: z.string().optional(),
   result: z.string().optional(),
@@ -1936,6 +1925,27 @@ export const zWorkflowPaginationResponse = z.object({
 })
 
 /**
+ * SyncEnvironmentVariablePatchPayload
+ */
+export const zSyncEnvironmentVariablePatchPayload = z.object({
+  deleted_environment_variable_ids: z.array(z.string()).optional(),
+  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
+ * SyncDraftWorkflowPayload
+ */
+export const zSyncDraftWorkflowPayload = z.object({
+  _is_collaborative: z.boolean().optional().default(false),
+  conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
+  environment_variable_patch: zSyncEnvironmentVariablePatchPayload.nullish(),
+  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
+  features: z.record(z.string(), z.unknown()),
+  graph: z.record(z.string(), z.unknown()),
+  hash: z.string().nullish(),
+})
+
+/**
  * ConversationVariableItemPayload
  */
 export const zConversationVariableItemPayload = z.object({
@@ -1991,7 +2001,9 @@ export const zEnvironmentVariableItemPayload = z.object({
  * EnvironmentVariableUpdatePayload
  */
 export const zEnvironmentVariableUpdatePayload = z.object({
+  deleted_environment_variable_ids: z.array(z.string()).optional(),
   environment_variables: z.array(zEnvironmentVariableItemPayload),
+  patch: z.boolean().optional().default(false),
 })
 
 /**
