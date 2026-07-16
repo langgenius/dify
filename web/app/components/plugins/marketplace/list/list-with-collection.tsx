@@ -38,18 +38,35 @@ type ListWithCollectionProps = {
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
+  installedPluginIds?: ReadonlySet<string>
+  isInstallStatusLoading?: boolean
 }
 
 type PluginCardProps = {
   plugin: Plugin
   showInstallButton?: boolean
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
+  isInstalled?: boolean
+  isInstallStatusLoading?: boolean
 }
 
-const PluginCard = ({ plugin, showInstallButton, cardRender }: PluginCardProps) => {
+const PluginCard = ({
+  plugin,
+  showInstallButton,
+  cardRender,
+  isInstalled,
+  isInstallStatusLoading,
+}: PluginCardProps) => {
   if (cardRender) return cardRender(plugin)
 
-  return <CardWrapper plugin={plugin} showInstallButton={showInstallButton} />
+  return (
+    <CardWrapper
+      plugin={plugin}
+      showInstallButton={showInstallButton}
+      isInstalled={isInstalled}
+      isInstallStatusLoading={isInstallStatusLoading}
+    />
+  )
 }
 
 const ListWithCollection = ({
@@ -59,6 +76,8 @@ const ListWithCollection = ({
   cardContainerClassName,
   cardRender,
   onCollectionMoreClick,
+  installedPluginIds,
+  isInstallStatusLoading,
 }: ListWithCollectionProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -143,6 +162,8 @@ const ListWithCollection = ({
                               plugin={plugin}
                               showInstallButton={showInstallButton}
                               cardRender={cardRender}
+                              isInstalled={installedPluginIds?.has(plugin.plugin_id)}
+                              isInstallStatusLoading={isInstallStatusLoading}
                             />
                           </div>
                         ))}
@@ -158,6 +179,8 @@ const ListWithCollection = ({
                       plugin={plugin}
                       showInstallButton={showInstallButton}
                       cardRender={cardRender}
+                      isInstalled={installedPluginIds?.has(plugin.plugin_id)}
+                      isInstallStatusLoading={isInstallStatusLoading}
                     />
                   ))}
                 </div>

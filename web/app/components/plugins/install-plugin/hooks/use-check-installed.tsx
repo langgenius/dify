@@ -7,7 +7,7 @@ type Props = Readonly<{
   enabled: boolean
 }>
 const useCheckInstalled = (props: Props) => {
-  const { data, isLoading, error } = useDoCheckInstalled(props)
+  const { data, isLoading, isFetching, error } = useDoCheckInstalled(props)
 
   const installedInfo = useMemo(() => {
     if (!data) return undefined
@@ -25,6 +25,7 @@ const useCheckInstalled = (props: Props) => {
   return {
     installedInfo,
     isLoading,
+    isFetching,
     error,
   }
 }

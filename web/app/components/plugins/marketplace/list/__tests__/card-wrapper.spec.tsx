@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -102,6 +103,29 @@ describe('CardWrapper', () => {
     expect(
       screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }),
     ).toBeInTheDocument()
+  })
+
+  it('shows a disabled installed action and prevents another installation', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true, isInstalled: true })
+
+    const installedButton = screen.getByRole('button', { name: 'plugin.task.installed' })
+    expect(installedButton).toBeDisabled()
+
+    await user.click(installedButton)
+    expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
+  })
+
+  it('shows loading instead of install while installation status is loading', () => {
+    renderCardWrapper({ showInstallButton: true, isInstallStatusLoading: true })
+
+    expect(screen.getByRole('button', { name: 'common.loading' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'plugin.detailPanel.operation.install' }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens marketplace detail from the detail action', () => {
