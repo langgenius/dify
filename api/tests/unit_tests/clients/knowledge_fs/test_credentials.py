@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import jwt
+import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from clients.knowledge_fs.credentials import (
@@ -8,6 +9,7 @@ from clients.knowledge_fs.credentials import (
     RS256KnowledgeFSCredentialProvider,
     StaticKnowledgeFSCredentialProvider,
 )
+from clients.knowledge_fs.errors import KnowledgeFSConfigurationError
 
 
 def test_rs256_credential_is_tenant_scoped_short_lived_and_safe_to_repr() -> None:
@@ -72,7 +74,10 @@ def test_rs256_credential_is_tenant_scoped_short_lived_and_safe_to_repr() -> Non
 
 
 def test_static_provider_returns_configured_dev_credential_without_exposing_it_in_repr() -> None:
-    provider = StaticKnowledgeFSCredentialProvider(token="dev-static-secret")
+    provider = StaticKnowledgeFSCredentialProvider(
+        token="dev-static-secret",
+        expected_tenant_id="tenant-dev",
+    )
 
     credential = provider.issue(
         tenant_id="tenant-dev",
@@ -83,3 +88,17 @@ def test_static_provider_returns_configured_dev_credential_without_exposing_it_i
     assert credential.token == "dev-static-secret"
     assert credential.expires_at == datetime.max.replace(tzinfo=UTC)
     assert credential.token not in repr(provider)
+
+
+def test_static_provider_rejects_a_request_for_another_tenant() -> None:
+    provider = StaticKnowledgeFSCredentialProvider(
+        token="dev-static-secret",
+        expected_tenant_id="tenant-dev",
+    )
+
+    with pytest.raises(KnowledgeFSConfigurationError, match="KNOWLEDGE_FS_STATIC_TENANT_ID"):
+        provider.issue(
+            tenant_id="another-tenant",
+            subject_id="user-dev",
+            scope="knowledge-spaces:write",
+        )

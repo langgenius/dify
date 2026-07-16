@@ -7,14 +7,13 @@ export type ClientOptions = {
 export type KnowledgeSpaceListResponse = {
   data: Array<KnowledgeSpaceResponse>
   enabled: boolean
-  has_more: boolean
   next_cursor: string | null
 }
 
 export type CreateKnowledgeSpacePayload = {
   description?: string | null
+  idempotency_key: string
   name: string
-  slug: string
 }
 
 export type KnowledgeSpaceResponse = {

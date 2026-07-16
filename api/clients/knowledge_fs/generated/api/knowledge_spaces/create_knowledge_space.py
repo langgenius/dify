@@ -6,8 +6,11 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.create_knowledge_space import CreateKnowledgeSpace
+from ...models.create_knowledge_space_response_400_type_0 import (
+    CreateKnowledgeSpaceResponse400Type0,
+)
 from ...models.error_response import ErrorResponse
-from ...models.knowledge_space import KnowledgeSpace
+from ...models.knowledge_space_creation_response import KnowledgeSpaceCreationResponse
 from ...types import Response
 
 
@@ -32,14 +35,40 @@ def _get_kwargs(
 
 def _parse_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> ErrorResponse | KnowledgeSpace | None:
+) -> (
+    CreateKnowledgeSpaceResponse400Type0
+    | ErrorResponse
+    | ErrorResponse
+    | KnowledgeSpaceCreationResponse
+    | None
+):
     if response.status_code == 201:
-        response_201 = KnowledgeSpace.from_dict(response.json())
+        response_201 = KnowledgeSpaceCreationResponse.from_dict(response.json())
 
         return response_201
 
     if response.status_code == 400:
-        response_400 = ErrorResponse.from_dict(response.json())
+
+        def _parse_response_400(
+            data: object,
+        ) -> CreateKnowledgeSpaceResponse400Type0 | ErrorResponse:
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                response_400_type_0 = CreateKnowledgeSpaceResponse400Type0.from_dict(
+                    data
+                )
+
+                return response_400_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            if not isinstance(data, dict):
+                raise TypeError()
+            response_400_type_1 = ErrorResponse.from_dict(data)
+
+            return response_400_type_1
+
+        response_400 = _parse_response_400(response.json())
 
         return response_400
 
@@ -58,10 +87,20 @@ def _parse_response(
 
         return response_409
 
+    if response.status_code == 422:
+        response_422 = ErrorResponse.from_dict(response.json())
+
+        return response_422
+
     if response.status_code == 429:
         response_429 = ErrorResponse.from_dict(response.json())
 
         return response_429
+
+    if response.status_code == 503:
+        response_503 = ErrorResponse.from_dict(response.json())
+
+        return response_503
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -71,7 +110,12 @@ def _parse_response(
 
 def _build_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[ErrorResponse | KnowledgeSpace]:
+) -> Response[
+    CreateKnowledgeSpaceResponse400Type0
+    | ErrorResponse
+    | ErrorResponse
+    | KnowledgeSpaceCreationResponse
+]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -84,7 +128,12 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     body: CreateKnowledgeSpace,
-) -> Response[ErrorResponse | KnowledgeSpace]:
+) -> Response[
+    CreateKnowledgeSpaceResponse400Type0
+    | ErrorResponse
+    | ErrorResponse
+    | KnowledgeSpaceCreationResponse
+]:
     """
     Args:
         body (CreateKnowledgeSpace):
@@ -94,7 +143,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorResponse | KnowledgeSpace]
+        Response[CreateKnowledgeSpaceResponse400Type0 | ErrorResponse | ErrorResponse | KnowledgeSpaceCreationResponse]
     """
 
     kwargs = _get_kwargs(
@@ -112,7 +161,13 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     body: CreateKnowledgeSpace,
-) -> ErrorResponse | KnowledgeSpace | None:
+) -> (
+    CreateKnowledgeSpaceResponse400Type0
+    | ErrorResponse
+    | ErrorResponse
+    | KnowledgeSpaceCreationResponse
+    | None
+):
     """
     Args:
         body (CreateKnowledgeSpace):
@@ -122,7 +177,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorResponse | KnowledgeSpace
+        CreateKnowledgeSpaceResponse400Type0 | ErrorResponse | ErrorResponse | KnowledgeSpaceCreationResponse
     """
 
     return sync_detailed(
@@ -135,7 +190,12 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     body: CreateKnowledgeSpace,
-) -> Response[ErrorResponse | KnowledgeSpace]:
+) -> Response[
+    CreateKnowledgeSpaceResponse400Type0
+    | ErrorResponse
+    | ErrorResponse
+    | KnowledgeSpaceCreationResponse
+]:
     """
     Args:
         body (CreateKnowledgeSpace):
@@ -145,7 +205,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorResponse | KnowledgeSpace]
+        Response[CreateKnowledgeSpaceResponse400Type0 | ErrorResponse | ErrorResponse | KnowledgeSpaceCreationResponse]
     """
 
     kwargs = _get_kwargs(
@@ -161,7 +221,13 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     body: CreateKnowledgeSpace,
-) -> ErrorResponse | KnowledgeSpace | None:
+) -> (
+    CreateKnowledgeSpaceResponse400Type0
+    | ErrorResponse
+    | ErrorResponse
+    | KnowledgeSpaceCreationResponse
+    | None
+):
     """
     Args:
         body (CreateKnowledgeSpace):
@@ -171,7 +237,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorResponse | KnowledgeSpace
+        CreateKnowledgeSpaceResponse400Type0 | ErrorResponse | ErrorResponse | KnowledgeSpaceCreationResponse
     """
 
     return (

@@ -25,18 +25,42 @@ def test_knowledge_fs_config_normalizes_optional_connection_values() -> None:
         KNOWLEDGE_FS_AUTH_MODE="dev-static",
         KNOWLEDGE_FS_BASE_URL="  https://knowledge-fs.test/  ",
         KNOWLEDGE_FS_API_TOKEN="  server-token  ",
+        KNOWLEDGE_FS_STATIC_TENANT_ID="  tenant-dev  ",
         KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN=True,
     )
 
     assert config.KNOWLEDGE_FS_BASE_URL == "https://knowledge-fs.test"
     assert isinstance(config.KNOWLEDGE_FS_API_TOKEN, SecretStr)
     assert config.KNOWLEDGE_FS_API_TOKEN.get_secret_value() == "server-token"
+    assert config.KNOWLEDGE_FS_STATIC_TENANT_ID == "tenant-dev"
     assert "server-token" not in repr(config)
     assert "server-token" not in config.model_dump_json()
 
     disabled = KnowledgeFSConfig(KNOWLEDGE_FS_BASE_URL=" ", KNOWLEDGE_FS_API_TOKEN="")
     assert disabled.KNOWLEDGE_FS_BASE_URL is None
     assert disabled.KNOWLEDGE_FS_API_TOKEN is None
+
+
+def test_knowledge_fs_config_requires_an_explicit_tenant_for_dev_static_auth() -> None:
+    with pytest.raises(ValidationError, match="KNOWLEDGE_FS_STATIC_TENANT_ID"):
+        KnowledgeFSConfig(
+            KNOWLEDGE_FS_AUTH_MODE="dev-static",
+            KNOWLEDGE_FS_BASE_URL="http://localhost:8788",
+            KNOWLEDGE_FS_API_TOKEN="dev-token",
+            KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN=True,
+        )
+
+
+def test_knowledge_fs_config_rejects_static_tenant_for_dify_jwt_auth() -> None:
+    with pytest.raises(ValidationError, match="KNOWLEDGE_FS_STATIC_TENANT_ID"):
+        KnowledgeFSConfig(
+            KNOWLEDGE_FS_AUTH_MODE="dify-jwt",
+            KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test",
+            KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64=_private_key_b64(),
+            KNOWLEDGE_FS_JWT_KEY_ID="k1",
+            KNOWLEDGE_FS_JWT_ISSUER="https://dify.test/knowledge-fs",
+            KNOWLEDGE_FS_STATIC_TENANT_ID="tenant-dev",
+        )
 
 
 @pytest.mark.parametrize("base_url", ["knowledge-fs.test", "ftp://knowledge-fs.test", "http:///missing-host"])
@@ -97,6 +121,7 @@ def test_knowledge_fs_config_accepts_explicit_dify_jwt_profile() -> None:
                 "KNOWLEDGE_FS_AUTH_MODE": "dev-static",
                 "KNOWLEDGE_FS_BASE_URL": "http://localhost:8788",
                 "KNOWLEDGE_FS_API_TOKEN": "dev-token",
+                "KNOWLEDGE_FS_STATIC_TENANT_ID": "tenant-dev",
             },
             "ALLOW_SHARED_TENANT_TOKEN",
         ),

@@ -9,14 +9,13 @@ import * as z from 'zod'
  *
  * Names are trimmed and must contain a visible character; these invariants
  * are enforced at the server boundary instead of relying on the Console form.
+ * KFS owns slug allocation, while the caller-provided idempotency key keeps
+ * retries for one creation intent attached to the same provisioning operation.
  */
 export const zCreateKnowledgeSpacePayload = z.object({
   description: z.string().max(2000).nullish(),
+  idempotency_key: z.string().min(1).max(255),
   name: z.string().min(1).max(160),
-  slug: z
-    .string()
-    .max(160)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
 })
 
 /**
@@ -41,7 +40,6 @@ export const zKnowledgeSpaceResponse = z.object({
 export const zKnowledgeSpaceListResponse = z.object({
   data: z.array(zKnowledgeSpaceResponse),
   enabled: z.boolean(),
-  has_more: z.boolean(),
   next_cursor: z.string().nullable(),
 })
 

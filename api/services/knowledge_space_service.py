@@ -64,7 +64,7 @@ class KnowledgeSpaceService:
         tenant_id: str,
         user_id: str,
     ) -> KnowledgeSpaceList:
-        """List workspace-visible spaces without inventing page totals."""
+        """List spaces authorized for the current KnowledgeFS subject."""
         return self.client.list_knowledge_spaces(
             limit=limit,
             cursor=cursor,
@@ -75,16 +75,16 @@ class KnowledgeSpaceService:
     def create_knowledge_space(
         self,
         *,
+        idempotency_key: str,
         name: str,
-        slug: str,
         description: str | None,
         tenant_id: str,
         user_id: str,
     ) -> KnowledgeSpace:
-        """Create a workspace-visible KnowledgeFS space."""
+        """Create a KnowledgeFS space owned by the current subject."""
         return self.client.create_knowledge_space(
+            idempotency_key=idempotency_key,
             name=name,
-            slug=slug,
             description=description,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -96,15 +96,17 @@ def create_knowledge_space_service() -> KnowledgeSpaceService | None:
 
     Returns ``None`` when the feature is wholly unconfigured so the frontend
     can keep Classic Dataset as the only entry. A partial configuration is an
-    operator error and must not look like a disabled feature.
+    operator error and must not look like a disabled feature. The development
+    credential is bound to one configured tenant before any upstream request.
     """
     auth_mode = dify_config.KNOWLEDGE_FS_AUTH_MODE
     base_url = dify_config.KNOWLEDGE_FS_BASE_URL
     static_token = dify_config.KNOWLEDGE_FS_API_TOKEN
+    static_tenant_id = dify_config.KNOWLEDGE_FS_STATIC_TENANT_ID
     jwt_private_key = dify_config.KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64
     jwt_key_id = dify_config.KNOWLEDGE_FS_JWT_KEY_ID
     jwt_issuer = dify_config.KNOWLEDGE_FS_JWT_ISSUER
-    configured = any((auth_mode, base_url, static_token, jwt_private_key, jwt_key_id, jwt_issuer))
+    configured = any((auth_mode, base_url, static_token, static_tenant_id, jwt_private_key, jwt_key_id, jwt_issuer))
     if not configured:
         return None
     if not base_url:
@@ -116,6 +118,8 @@ def create_knowledge_space_service() -> KnowledgeSpaceService | None:
     if auth_mode == "dev-static":
         if not static_token:
             raise KnowledgeFSConfigurationError("KNOWLEDGE_FS_API_TOKEN is required for dev-static auth")
+        if not static_tenant_id:
+            raise KnowledgeFSConfigurationError("KNOWLEDGE_FS_STATIC_TENANT_ID is required for dev-static auth")
         if not dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN:
             raise KnowledgeFSConfigurationError(
                 "KNOWLEDGE_FS_API_TOKEN is a shared tenant token; explicitly enable it only for local "
@@ -123,9 +127,12 @@ def create_knowledge_space_service() -> KnowledgeSpaceService | None:
             )
         if any((jwt_private_key, jwt_key_id, jwt_issuer)):
             raise KnowledgeFSConfigurationError("Dify JWT settings cannot be combined with dev-static auth")
-        credential_provider = StaticKnowledgeFSCredentialProvider(token=static_token.get_secret_value())
+        credential_provider = StaticKnowledgeFSCredentialProvider(
+            token=static_token.get_secret_value(),
+            expected_tenant_id=static_tenant_id,
+        )
     elif auth_mode == "dify-jwt":
-        if static_token or dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN:
+        if static_token or static_tenant_id or dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN:
             raise KnowledgeFSConfigurationError("Static token settings cannot be combined with dify-jwt auth")
         if jwt_private_key is None or jwt_key_id is None or jwt_issuer is None:
             raise KnowledgeFSConfigurationError(

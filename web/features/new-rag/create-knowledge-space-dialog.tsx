@@ -15,25 +15,25 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 
 type CreateKnowledgeSpaceFormValues = {
   description?: string
   name?: string
-  slug?: string
 }
 
-const SLUG_PATTERN = '[a-z0-9]+(?:-[a-z0-9]+)*'
+type CreateKnowledgeSpaceAttempt = {
+  description: string
+  idempotencyKey: string
+  name: string
+}
 
-function createSlug(name: string) {
-  return name
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036F]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+function createIdempotencyKey() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
+
+  return `knowledge-space-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 export function CreateKnowledgeSpaceDialog() {
@@ -43,18 +43,16 @@ export function CreateKnowledgeSpaceDialog() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
-  const [slug, setSlug] = useState('')
   const [description, setDescription] = useState('')
-  const [slugIsEdited, setSlugIsEdited] = useState(false)
+  const createAttemptRef = useRef<CreateKnowledgeSpaceAttempt | null>(null)
   const createKnowledgeSpaceMutation = useMutation(
     consoleQuery.knowledgeSpaces.post.mutationOptions(),
   )
 
   const resetForm = () => {
+    createAttemptRef.current = null
     setName('')
-    setSlug('')
     setDescription('')
-    setSlugIsEdited(false)
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -62,23 +60,22 @@ export function CreateKnowledgeSpaceDialog() {
     if (!nextOpen) resetForm()
   }
 
-  const handleNameChange = (nextName: string) => {
-    setName(nextName)
-    if (!slugIsEdited) setSlug(createSlug(nextName))
-  }
-
-  const handleSlugChange = (nextSlug: string) => {
-    setSlugIsEdited(true)
-    setSlug(nextSlug)
-  }
-
   const handleSubmit = (values: CreateKnowledgeSpaceFormValues) => {
     if (createKnowledgeSpaceMutation.isPending) return
 
+    const description = values.description?.trim() ?? ''
+    const name = values.name?.trim() ?? ''
+    const previousAttempt = createAttemptRef.current
+    const idempotencyKey =
+      previousAttempt?.description === description && previousAttempt.name === name
+        ? previousAttempt.idempotencyKey
+        : createIdempotencyKey()
+    createAttemptRef.current = { description, idempotencyKey, name }
+
     const body = {
-      description: values.description?.trim() ?? '',
-      name: values.name?.trim() ?? '',
-      slug: values.slug?.trim() ?? '',
+      description,
+      idempotency_key: idempotencyKey,
+      name,
     } satisfies CreateKnowledgeSpacePayload
 
     createKnowledgeSpaceMutation.mutate(
@@ -133,7 +130,7 @@ export function CreateKnowledgeSpaceDialog() {
                 // oxlint-disable-next-line jsx-a11y/no-autofocus -- The dialog opens from an explicit create command and name is its primary input.
                 autoFocus
                 maxLength={160}
-                onValueChange={handleNameChange}
+                onValueChange={setName}
                 placeholder={tDatasetSettings(($) => $['form.namePlaceholder'])}
                 required
                 value={name}
@@ -144,27 +141,6 @@ export function CreateKnowledgeSpaceDialog() {
                 })}
               </FieldError>
               <FieldError match="customError" />
-            </Field>
-
-            <Field name="slug">
-              <FieldLabel>{t(($) => $['newRag.slugLabel'])}</FieldLabel>
-              <FieldControl
-                autoCapitalize="none"
-                autoComplete="off"
-                maxLength={160}
-                onValueChange={handleSlugChange}
-                pattern={SLUG_PATTERN}
-                placeholder={t(($) => $['newRag.slugPlaceholder'])}
-                required
-                spellCheck={false}
-                value={slug}
-              />
-              <FieldError match="valueMissing">
-                {tCommon(($) => $['errorMsg.fieldRequired'], {
-                  field: t(($) => $['newRag.slugLabel']),
-                })}
-              </FieldError>
-              <FieldError match="patternMismatch">{t(($) => $['newRag.slugInvalid'])}</FieldError>
             </Field>
 
             <Field name="description">

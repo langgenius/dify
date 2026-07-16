@@ -7,15 +7,19 @@ from typing import Any, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.knowledge_space_creation_response_configuration_status import (
+    KnowledgeSpaceCreationResponseConfigurationStatus,
+)
 from ..types import UNSET, Unset
 
-T = TypeVar("T", bound="KnowledgeSpace")
+T = TypeVar("T", bound="KnowledgeSpaceCreationResponse")
 
 
 @_attrs_define
-class KnowledgeSpace:
+class KnowledgeSpaceCreationResponse:
     """
     Attributes:
+        configuration_status (KnowledgeSpaceCreationResponseConfigurationStatus):
         created_at (datetime.datetime):
         id (str):
         name (str):
@@ -27,6 +31,7 @@ class KnowledgeSpace:
         icon_ref (str | Unset):
     """
 
+    configuration_status: KnowledgeSpaceCreationResponseConfigurationStatus
     created_at: datetime.datetime
     id: str
     name: str
@@ -39,6 +44,8 @@ class KnowledgeSpace:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        configuration_status = self.configuration_status.value
+
         created_at = self.created_at.isoformat()
 
         id = self.id
@@ -61,6 +68,7 @@ class KnowledgeSpace:
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
+                "configurationStatus": configuration_status,
                 "createdAt": created_at,
                 "id": id,
                 "name": name,
@@ -80,6 +88,10 @@ class KnowledgeSpace:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
+        configuration_status = KnowledgeSpaceCreationResponseConfigurationStatus(
+            d.pop("configurationStatus")
+        )
+
         created_at = datetime.datetime.fromisoformat(d.pop("createdAt"))
 
         id = d.pop("id")
@@ -98,7 +110,8 @@ class KnowledgeSpace:
 
         icon_ref = d.pop("iconRef", UNSET)
 
-        knowledge_space = cls(
+        knowledge_space_creation_response = cls(
+            configuration_status=configuration_status,
             created_at=created_at,
             id=id,
             name=name,
@@ -110,8 +123,8 @@ class KnowledgeSpace:
             icon_ref=icon_ref,
         )
 
-        knowledge_space.additional_properties = d
-        return knowledge_space
+        knowledge_space_creation_response.additional_properties = d
+        return knowledge_space_creation_response
 
     @property
     def additional_keys(self) -> list[str]:

@@ -60,10 +60,10 @@ function PageState({
     <div className="flex min-h-80 flex-col items-center justify-center rounded-xl border border-dashed border-divider-subtle bg-background-default-subtle px-6 py-12 text-center">
       <span className="mb-4 i-ri-book-open-line size-7 text-text-quaternary" aria-hidden />
       <h2 className="system-md-semibold text-text-primary">{title}</h2>
-      {description && (
+      {description ? (
         <p className="mt-1 max-w-120 system-sm-regular text-text-tertiary">{description}</p>
-      )}
-      {action && <div className="mt-5">{action}</div>}
+      ) : null}
+      {action ? <div className="mt-5">{action}</div> : null}
     </div>
   )
 }
@@ -94,22 +94,31 @@ function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: KnowledgeSpace
 export function DatasetsV2Page() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, refetch } =
-    useInfiniteQuery(
-      consoleQuery.knowledgeSpaces.get.infiniteOptions({
-        input: (pageParam) => ({
-          query: {
-            limit: PAGE_SIZE,
-            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-          },
-        }),
-        getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-        initialPageParam: null as string | null,
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    isPending,
+    refetch,
+  } = useInfiniteQuery(
+    consoleQuery.knowledgeSpaces.get.infiniteOptions({
+      input: (pageParam) => ({
+        query: {
+          limit: PAGE_SIZE,
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+        },
       }),
-    )
+      getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+      initialPageParam: null as string | null,
+    }),
+  )
 
   const firstPage = data?.pages[0]
   const enabled = firstPage?.enabled ?? true
+  const isInitialError = Boolean(error && !data)
   const knowledgeSpaces = data?.pages.flatMap((page) => page.data) ?? []
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
@@ -127,13 +136,15 @@ export function DatasetsV2Page() {
             {t(($) => $['newRag.badge'])}
           </span>
         </div>
-        {!isPending && !error && enabled && canCreateDataset && <CreateKnowledgeSpaceDialog />}
+        {!isPending && !isInitialError && enabled && canCreateDataset && (
+          <CreateKnowledgeSpaceDialog />
+        )}
       </header>
 
       <div className="px-8 pt-2 pb-8">
         {isPending ? (
           <KnowledgeSpaceSkeleton label={tCommon(($) => $.loading)} />
-        ) : error ? (
+        ) : isInitialError ? (
           <PageState
             title={t(($) => $.unknownError)}
             action={
@@ -162,7 +173,18 @@ export function DatasetsV2Page() {
                 <KnowledgeSpaceCard key={knowledgeSpace.id} knowledgeSpace={knowledgeSpace} />
               ))}
             </ul>
-            {hasNextPage && (
+            {isFetchNextPageError ? (
+              <div className="mt-6 flex items-center justify-center gap-3" role="alert">
+                <p className="system-sm-regular text-text-secondary">{t(($) => $.unknownError)}</p>
+                <Button
+                  type="button"
+                  loading={isFetchingNextPage}
+                  onClick={() => void fetchNextPage()}
+                >
+                  {tCommon(($) => $['operation.retry'])}
+                </Button>
+              </div>
+            ) : hasNextPage ? (
               <div className="mt-6 flex justify-center">
                 <Button
                   type="button"
@@ -172,7 +194,7 @@ export function DatasetsV2Page() {
                   {t(($) => $['newRag.loadMore'])}
                 </Button>
               </div>
-            )}
+            ) : null}
           </>
         )}
       </div>

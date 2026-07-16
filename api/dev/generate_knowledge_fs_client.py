@@ -3,8 +3,8 @@
 
 KnowledgeFS owns the full service contract. Dify intentionally vendors only
 the operations it consumes so code generation remains reviewable. Run with a
-KFS release artifact or local export when syncing, then run with ``--check``
-in CI to detect generated-code drift.
+KFS release artifact or local export when syncing, recording its immutable
+revision, then run with ``--check`` in CI to detect generated-code drift.
 """
 
 from __future__ import annotations
@@ -72,7 +72,12 @@ def _assert_bearer_security(source: JsonObject, operation: JsonObject, *, label:
         raise ValueError(f"{label} must accept bearerAuth")
 
 
-def project_contract(source: JsonObject, *, source_sha256: str) -> JsonObject:
+def project_contract(
+    source: JsonObject,
+    *,
+    source_sha256: str,
+    source_revision: str,
+) -> JsonObject:
     """Return the transitive OpenAPI slice used by the Dify Console BFF."""
     paths = _object(source.get("paths"), label="paths")
     projected_path_items: dict[str, JsonValue] = {}
@@ -115,6 +120,14 @@ def project_contract(source: JsonObject, *, source_sha256: str) -> JsonObject:
     if not isinstance(bearer_auth, dict) or bearer_auth.get("type") != "http" or bearer_auth.get("scheme") != "bearer":
         raise ValueError("KnowledgeFS OpenAPI must publish the bearerAuth security scheme")
 
+    source_metadata: JsonObject = {
+        "generator": f"openapi-python-client=={GENERATOR_VERSION}",
+        "operations": operation_ids,
+        "repository": "https://github.com/langgenius/knowledge-fs",
+        "revision": source_revision,
+        "sha256": source_sha256,
+    }
+
     return {
         "openapi": deepcopy(source.get("openapi")),
         "info": deepcopy(source.get("info")),
@@ -124,12 +137,7 @@ def project_contract(source: JsonObject, *, source_sha256: str) -> JsonObject:
             "schemas": projected_schemas,
             "securitySchemes": {"bearerAuth": deepcopy(bearer_auth)},
         },
-        "x-dify-source": {
-            "generator": f"openapi-python-client=={GENERATOR_VERSION}",
-            "operations": operation_ids,
-            "repository": "https://github.com/langgenius/knowledge-fs",
-            "sha256": source_sha256,
-        },
+        "x-dify-source": source_metadata,
     }
 
 
@@ -199,12 +207,20 @@ def generate_client(*, check: bool) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", help="Full KnowledgeFS OpenAPI JSON file or URL to project before generation")
+    parser.add_argument("--source-revision", help="Immutable KnowledgeFS commit or release containing the source")
     parser.add_argument("--check", action="store_true", help="Fail instead of writing when artifacts are stale")
     args = parser.parse_args()
 
+    if (args.source is None) != (args.source_revision is None):
+        parser.error("--source and --source-revision must be provided together")
+
     if args.source:
         source, source_sha256 = _read_source(args.source)
-        projected = project_contract(source, source_sha256=source_sha256)
+        projected = project_contract(
+            source,
+            source_revision=args.source_revision,
+            source_sha256=source_sha256,
+        )
         serialized = _serialized(projected)
         if args.check:
             current = PROJECTED_SPEC_PATH.read_text(encoding="utf-8") if PROJECTED_SPEC_PATH.exists() else None

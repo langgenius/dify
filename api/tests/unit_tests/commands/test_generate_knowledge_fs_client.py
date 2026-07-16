@@ -100,7 +100,11 @@ def _source_contract() -> dict[str, object]:
 def test_project_contract_keeps_only_selected_operations_and_transitive_schemas() -> None:
     module = _load_generator_module()
 
-    projected = module.project_contract(_source_contract(), source_sha256="full-spec-sha")
+    projected = module.project_contract(
+        _source_contract(),
+        source_revision="86438e32be53cde1fe7fbc5ffe612dac0024485f",
+        source_sha256="full-spec-sha",
+    )
 
     assert set(projected["paths"]) == {"/knowledge-spaces"}
     assert set(projected["paths"]["/knowledge-spaces"]) == {"get", "parameters", "post"}
@@ -112,6 +116,7 @@ def test_project_contract_keeps_only_selected_operations_and_transitive_schemas(
     }
     assert projected["components"]["securitySchemes"] == {"bearerAuth": {"type": "http", "scheme": "bearer"}}
     assert projected["x-dify-source"]["sha256"] == "full-spec-sha"
+    assert projected["x-dify-source"]["revision"] == "86438e32be53cde1fe7fbc5ffe612dac0024485f"
     assert projected["x-dify-source"]["operations"] == [
         "listKnowledgeSpaces",
         "createKnowledgeSpace",
@@ -124,7 +129,7 @@ def test_project_contract_rejects_missing_stable_operation_id() -> None:
     del source["paths"]["/knowledge-spaces"]["post"]["operationId"]
 
     with pytest.raises(ValueError, match="createKnowledgeSpace"):
-        module.project_contract(source, source_sha256="full-spec-sha")
+        module.project_contract(source, source_revision="source-revision", source_sha256="full-spec-sha")
 
 
 def test_project_contract_rejects_selected_operation_without_bearer_authentication() -> None:
@@ -133,7 +138,7 @@ def test_project_contract_rejects_selected_operation_without_bearer_authenticati
     source["paths"]["/knowledge-spaces"]["get"]["security"] = []
 
     with pytest.raises(ValueError, match="bearerAuth"):
-        module.project_contract(source, source_sha256="full-spec-sha")
+        module.project_contract(source, source_revision="source-revision", source_sha256="full-spec-sha")
 
 
 @pytest.mark.parametrize(
@@ -152,4 +157,25 @@ def test_project_contract_rejects_authentication_not_satisfied_by_bearer_alone(
     source["paths"]["/knowledge-spaces"]["get"]["security"] = security
 
     with pytest.raises(ValueError, match="bearerAuth"):
-        module.project_contract(source, source_sha256="full-spec-sha")
+        module.project_contract(source, source_revision="source-revision", source_sha256="full-spec-sha")
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--source", "knowledge-fs.openapi.json"],
+        ["--source-revision", "source-revision"],
+    ],
+)
+def test_main_requires_source_and_revision_together(
+    arguments: list[str],
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_generator_module()
+    monkeypatch.setattr(sys, "argv", ["generate_knowledge_fs_client.py", *arguments])
+
+    with pytest.raises(SystemExit, match="2"):
+        module.main()
+
+    assert "--source and --source-revision must be provided together" in capsys.readouterr().err

@@ -38,4 +38,4 @@ class KnowledgeFSValidationError(KnowledgeFSError):
 
 
 class KnowledgeFSConfigurationError(KnowledgeFSError):
-    """Raised when only part of the KnowledgeFS connection is configured."""
+    """Raised when KnowledgeFS configuration is incomplete or unsafe for the request tenant."""

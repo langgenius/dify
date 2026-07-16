@@ -42,6 +42,7 @@ from clients.knowledge_fs.generated.models import (
     CreateKnowledgeSpace,
     ErrorResponse,
     KnowledgeSpace,
+    KnowledgeSpaceCreationResponse,
     KnowledgeSpaceList,
 )
 from clients.knowledge_fs.generated.types import UNSET
@@ -102,8 +103,8 @@ class KnowledgeFSClient(Protocol):
     def create_knowledge_space(
         self,
         *,
+        idempotency_key: str,
         name: str,
-        slug: str,
         description: str | None,
         tenant_id: str,
         user_id: str,
@@ -171,8 +172,8 @@ class OpenAPIKnowledgeFSClient:
     def create_knowledge_space(
         self,
         *,
+        idempotency_key: str,
         name: str,
-        slug: str,
         description: str | None,
         tenant_id: str,
         user_id: str,
@@ -180,8 +181,8 @@ class OpenAPIKnowledgeFSClient:
         """Call the generated ``createKnowledgeSpace`` operation."""
         logger.debug("Creating a KnowledgeFS space", extra={"tenant_id": tenant_id, "user_id": user_id})
         body = CreateKnowledgeSpace(
+            idempotency_key=idempotency_key,
             name=name,
-            slug=slug,
             description=description if description is not None else UNSET,
         )
         credential = self.credential_provider.issue(
@@ -201,11 +202,22 @@ class OpenAPIKnowledgeFSClient:
 
         if response.status_code != 201:
             raise self._http_error(response.status_code, response.parsed)
-        if not isinstance(response.parsed, KnowledgeSpace):
+        if not isinstance(response.parsed, KnowledgeSpaceCreationResponse):
             raise KnowledgeFSValidationError(detail="createKnowledgeSpace returned an invalid success body")
-        self._validate_space(response.parsed)
-        self._validate_space_tenant(response.parsed, expected_tenant_id=tenant_id)
-        return response.parsed
+        space = KnowledgeSpace(
+            created_at=response.parsed.created_at,
+            description=response.parsed.description,
+            icon_ref=response.parsed.icon_ref,
+            id=response.parsed.id,
+            name=response.parsed.name,
+            revision=response.parsed.revision,
+            slug=response.parsed.slug,
+            tenant_id=response.parsed.tenant_id,
+            updated_at=response.parsed.updated_at,
+        )
+        self._validate_space(space)
+        self._validate_space_tenant(space, expected_tenant_id=tenant_id)
+        return space
 
     @staticmethod
     def _http_error(status_code: int, parsed: object) -> KnowledgeFSHTTPError:
@@ -237,6 +249,8 @@ class OpenAPIKnowledgeFSClient:
             raise KnowledgeFSValidationError(detail=f"KnowledgeSpace.{invalid_string_field} must be a string")
         if space.description is not UNSET and not isinstance(space.description, str):
             raise KnowledgeFSValidationError(detail="KnowledgeSpace.description must be a string")
+        if isinstance(space.revision, bool) or not isinstance(space.revision, int) or space.revision <= 0:
+            raise KnowledgeFSValidationError(detail="KnowledgeSpace.revision must be a positive integer")
         if not isinstance(space.created_at, datetime) or not isinstance(space.updated_at, datetime):
             raise KnowledgeFSValidationError(detail="KnowledgeSpace timestamps must be datetimes")
 

@@ -1,8 +1,8 @@
 """Console BFF for the Dataset 2.0 KnowledgeSpace list and empty creation.
 
 The browser never receives the KnowledgeFS base URL or bearer token. During
-the MVP, spaces are workspace-visible because KnowledgeFS currently enforces
-tenant isolation but does not yet mirror Dify's per-Dataset ACL model.
+the MVP, KnowledgeFS remains the visibility authority; Dify forwards the
+current workspace and account identity without maintaining a parallel ACL.
 """
 
 from __future__ import annotations
@@ -67,10 +67,12 @@ class CreateKnowledgeSpacePayload(BaseModel):
 
     Names are trimmed and must contain a visible character; these invariants
     are enforced at the server boundary instead of relying on the Console form.
+    KFS owns slug allocation, while the caller-provided idempotency key keeps
+    retries for one creation intent attached to the same provisioning operation.
     """
 
+    idempotency_key: str = Field(min_length=1, max_length=255)
     name: str = Field(min_length=1, max_length=160)
-    slug: str = Field(max_length=160, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     description: str | None = Field(default=None, max_length=2000)
 
     model_config = ConfigDict(extra="forbid")
@@ -82,6 +84,13 @@ class CreateKnowledgeSpacePayload(BaseModel):
             value = value.strip()
             if not value:
                 raise ValueError("name must not be blank")
+        return value
+
+    @field_validator("idempotency_key", mode="before")
+    @classmethod
+    def normalize_idempotency_key(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
         return value
 
 
@@ -101,7 +110,6 @@ class KnowledgeSpaceListResponse(ResponseModel):
 
     enabled: bool
     data: list[KnowledgeSpaceResponse]
-    has_more: bool
     next_cursor: str | None
 
 
@@ -136,6 +144,9 @@ def _service_or_unavailable() -> KnowledgeSpaceService:
 
 
 def _translate_knowledge_fs_error(exc: Exception) -> NoReturn:
+    if isinstance(exc, KnowledgeFSConfigurationError):
+        logger.error("KnowledgeFS request was blocked by invalid tenant configuration")
+        raise ServiceUnavailable("KnowledgeFS integration is misconfigured") from exc
     if isinstance(exc, KnowledgeFSTimeoutError):
         raise GatewayTimeout("KnowledgeFS request timed out") from exc
     if isinstance(exc, KnowledgeFSValidationError):
@@ -148,7 +159,7 @@ def _translate_knowledge_fs_error(exc: Exception) -> NoReturn:
             case 404:
                 raise NotFound("Knowledge space not found") from exc
             case 409:
-                raise Conflict("A knowledge base with this slug already exists") from exc
+                raise Conflict("Knowledge space creation conflict") from exc
             case 422:
                 raise UnprocessableEntity("Invalid knowledge space fields") from exc
             case 429:
@@ -184,7 +195,7 @@ class KnowledgeSpaceListApi(Resource):
         if service is None:
             return dump_response(
                 KnowledgeSpaceListResponse,
-                {"enabled": False, "data": [], "has_more": False, "next_cursor": None},
+                {"enabled": False, "data": [], "next_cursor": None},
             )
 
         query = KnowledgeSpaceListQuery.model_validate(request.args.to_dict(flat=True))
@@ -207,7 +218,6 @@ class KnowledgeSpaceListApi(Resource):
             {
                 "enabled": True,
                 "data": [_space_response_source(item) for item in result.items],
-                "has_more": next_cursor is not None,
                 "next_cursor": next_cursor,
             },
         )
@@ -237,8 +247,8 @@ class KnowledgeSpaceListApi(Resource):
         payload = CreateKnowledgeSpacePayload.model_validate(console_ns.payload or {})
         try:
             space = service.create_knowledge_space(
+                idempotency_key=payload.idempotency_key,
                 name=payload.name,
-                slug=payload.slug,
                 description=payload.description,
                 tenant_id=tenant_id,
                 user_id=current_user.id,

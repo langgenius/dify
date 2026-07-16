@@ -13,6 +13,8 @@ import httpx
 import jwt
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
+from clients.knowledge_fs.errors import KnowledgeFSConfigurationError
+
 KnowledgeFSScope = Literal["knowledge-spaces:read", "knowledge-spaces:write"]
 
 
@@ -38,11 +40,13 @@ class KnowledgeFSCredentialProvider(Protocol):
 
 
 class StaticKnowledgeFSCredentialProvider:
-    """Return an explicitly configured non-expiring credential for local development."""
+    """Issue a development credential only for its explicitly configured Dify tenant."""
 
+    _expected_tenant_id: str
     _token: str
 
-    def __init__(self, *, token: str) -> None:
+    def __init__(self, *, token: str, expected_tenant_id: str) -> None:
+        self._expected_tenant_id = expected_tenant_id
         self._token = token
 
     def issue(
@@ -52,7 +56,11 @@ class StaticKnowledgeFSCredentialProvider:
         subject_id: str,
         scope: KnowledgeFSScope,
     ) -> BearerCredential:
-        """Return the configured development credential for any requested scope."""
+        """Return the static credential, rejecting another tenant before external I/O."""
+        if tenant_id != self._expected_tenant_id:
+            raise KnowledgeFSConfigurationError(
+                "KNOWLEDGE_FS_STATIC_TENANT_ID does not match the current Dify workspace"
+            )
         return BearerCredential(token=self._token, expires_at=datetime.max.replace(tzinfo=UTC))
 
 

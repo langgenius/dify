@@ -34,6 +34,7 @@ def _set_disabled_config(monkeypatch) -> None:
         "KNOWLEDGE_FS_AUTH_MODE": None,
         "KNOWLEDGE_FS_BASE_URL": None,
         "KNOWLEDGE_FS_API_TOKEN": None,
+        "KNOWLEDGE_FS_STATIC_TENANT_ID": None,
         "KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN": False,
         "KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64": None,
         "KNOWLEDGE_FS_JWT_KEY_ID": None,
@@ -79,12 +80,42 @@ def test_factory_rejects_shared_tenant_token_without_explicit_single_tenant_opt_
         SecretStr("dev-token"),
     )
     monkeypatch.setattr(
+        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_STATIC_TENANT_ID",
+        "tenant-dev",
+        raising=False,
+    )
+    monkeypatch.setattr(
         "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN",
         False,
         raising=False,
     )
 
     with pytest.raises(KnowledgeFSConfigurationError, match="shared tenant token"):
+        create_knowledge_space_service()
+
+
+def test_factory_rejects_dev_static_without_an_explicit_tenant(monkeypatch) -> None:
+    _set_disabled_config(monkeypatch)
+    monkeypatch.setattr(
+        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_AUTH_MODE",
+        "dev-static",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_BASE_URL",
+        "http://localhost:8788",
+    )
+    monkeypatch.setattr(
+        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_API_TOKEN",
+        SecretStr("dev-token"),
+    )
+    monkeypatch.setattr(
+        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN",
+        True,
+        raising=False,
+    )
+
+    with pytest.raises(KnowledgeFSConfigurationError, match="STATIC_TENANT_ID"):
         create_knowledge_space_service()
 
 
@@ -104,6 +135,11 @@ def test_factory_builds_service_from_server_only_configuration(monkeypatch) -> N
     monkeypatch.setattr(
         "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_API_TOKEN",
         SecretStr("dev-token"),
+    )
+    monkeypatch.setattr(
+        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_STATIC_TENANT_ID",
+        "tenant-dev",
+        raising=False,
     )
     monkeypatch.setattr(
         "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_TIMEOUT_SECONDS",

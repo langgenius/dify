@@ -8,10 +8,161 @@
             "maxLength": 2000,
             "type": "string"
           },
+          "embeddingProfile": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "pluginId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "provider": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "pluginId",
+              "provider"
+            ],
+            "type": "object"
+          },
+          "iconRef": {
+            "maxLength": 72,
+            "pattern": "^builtin:[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
           "name": {
             "maxLength": 160,
             "minLength": 1,
             "type": "string"
+          },
+          "retrievalProfile": {
+            "additionalProperties": false,
+            "properties": {
+              "defaultMode": {
+                "enum": [
+                  "fast",
+                  "research",
+                  "deep"
+                ],
+                "type": "string"
+              },
+              "reasoningModel": {
+                "additionalProperties": false,
+                "properties": {
+                  "model": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "pluginId": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "provider": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "model",
+                  "pluginId",
+                  "provider"
+                ],
+                "type": "object"
+              },
+              "rerank": {
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "model": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "model": {
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "pluginId": {
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "provider": {
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "model",
+                      "pluginId",
+                      "provider"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ],
+                "type": "object"
+              },
+              "scoreThreshold": {
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "stage": {
+                    "enum": [
+                      "mode-final",
+                      "rerank"
+                    ],
+                    "type": "string"
+                  },
+                  "value": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "stage"
+                ],
+                "type": "object"
+              },
+              "topK": {
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "defaultMode",
+              "reasoningModel",
+              "rerank",
+              "scoreThreshold",
+              "topK"
+            ],
+            "type": "object"
           },
           "slug": {
             "maxLength": 160,
@@ -20,13 +171,15 @@
           }
         },
         "required": [
-          "name",
-          "slug"
+          "name"
         ],
         "type": "object"
       },
       "ErrorResponse": {
         "properties": {
+          "code": {
+            "type": "string"
+          },
           "error": {
             "type": "string"
           }
@@ -46,6 +199,11 @@
             "maxLength": 2000,
             "type": "string"
           },
+          "iconRef": {
+            "maxLength": 72,
+            "pattern": "^builtin:[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$",
+            "type": "string"
+          },
           "id": {
             "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
             "type": "string"
@@ -55,12 +213,17 @@
             "minLength": 1,
             "type": "string"
           },
+          "revision": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
           "slug": {
             "maxLength": 160,
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "type": "string"
           },
           "tenantId": {
+            "maxLength": 255,
             "minLength": 1,
             "type": "string"
           },
@@ -73,9 +236,74 @@
           "createdAt",
           "id",
           "name",
+          "revision",
           "slug",
           "tenantId",
           "updatedAt"
+        ],
+        "type": "object"
+      },
+      "KnowledgeSpaceCreationResponse": {
+        "properties": {
+          "configurationStatus": {
+            "enum": [
+              "pending-validation",
+              "ready",
+              "setup-required",
+              "validation-failed"
+            ],
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "iconRef": {
+            "maxLength": 72,
+            "pattern": "^builtin:[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "type": "string"
+          },
+          "revision": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "slug": {
+            "maxLength": 160,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "tenantId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "name",
+          "revision",
+          "slug",
+          "tenantId",
+          "updatedAt",
+          "configurationStatus"
         ],
         "type": "object"
       },
@@ -198,7 +426,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KnowledgeSpace"
+                  "$ref": "#/components/schemas/KnowledgeSpaceCreationResponse"
                 }
               }
             },
@@ -208,11 +436,46 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "enum": [
+                            "RETRIEVAL_PROFILE_SCORE_THRESHOLD_REQUIRES_RERANK"
+                          ],
+                          "type": "string"
+                        },
+                        "error": {
+                          "enum": [
+                            "Fast/Deep mode-final score threshold requires the knowledge-space reranker to be enabled"
+                          ],
+                          "type": "string"
+                        },
+                        "mode": {
+                          "enum": [
+                            "fast",
+                            "research",
+                            "deep"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "error",
+                        "mode"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
                 }
               }
             },
-            "description": "Invalid create request"
+            "description": "Invalid create request or knowledge space configuration"
           },
           "401": {
             "content": {
@@ -242,7 +505,17 @@
                 }
               }
             },
-            "description": "Tenant slug conflict"
+            "description": "Tenant slug or create-request idempotency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A selected model failed capability validation"
           },
           "429": {
             "content": {
@@ -253,6 +526,16 @@
               }
             },
             "description": "Knowledge space capacity exceeded"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Model capability preflight or atomic provisioning is unavailable"
           }
         },
         "tags": [
@@ -273,6 +556,7 @@
       "createKnowledgeSpace"
     ],
     "repository": "https://github.com/langgenius/knowledge-fs",
-    "sha256": "6f5c2700b358f6396987979fe5407658387bc5fc09a7eb1fc34495b6ce675e58"
+    "revision": "463ba6627c80fefae013c3b95d973989c5ab9b45",
+    "sha256": "96ea558b1a220a0b0ccd400941ec917968089bf988b8e1f38426afe947c016d1"
   }
 }

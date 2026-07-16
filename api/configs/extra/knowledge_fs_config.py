@@ -17,6 +17,7 @@ class KnowledgeFSConfig(BaseSettings):
     The integration is disabled when all connection and authentication fields
     are absent. Enabled deployments must choose exactly one explicit auth
     profile so production cannot silently fall back to a shared tenant token.
+    The development token is bound to one explicit Dify workspace tenant.
     """
 
     KNOWLEDGE_FS_AUTH_MODE: Literal["dify-jwt", "dev-static"] | None = Field(
@@ -31,9 +32,15 @@ class KnowledgeFSConfig(BaseSettings):
         description="Server-only bearer token used to authenticate to KnowledgeFS.",
         default=None,
     )
+    KNOWLEDGE_FS_STATIC_TENANT_ID: str | None = Field(
+        description="Dify workspace tenant id bound to the single-tenant development token.",
+        default=None,
+        min_length=1,
+        max_length=255,
+    )
     KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN: bool = Field(
         description=(
-            "Allow one process-level token to map every Dify workspace to the same KnowledgeFS tenant. "
+            "Allow one process-level token for the explicitly configured static tenant. "
             "This is only safe for local development or an explicitly single-workspace deployment."
         ),
         default=False,
@@ -73,6 +80,7 @@ class KnowledgeFSConfig(BaseSettings):
         "KNOWLEDGE_FS_AUTH_MODE",
         "KNOWLEDGE_FS_BASE_URL",
         "KNOWLEDGE_FS_API_TOKEN",
+        "KNOWLEDGE_FS_STATIC_TENANT_ID",
         "KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64",
         "KNOWLEDGE_FS_JWT_KEY_ID",
         "KNOWLEDGE_FS_JWT_ISSUER",
@@ -151,6 +159,7 @@ class KnowledgeFSConfig(BaseSettings):
                 self.KNOWLEDGE_FS_AUTH_MODE,
                 self.KNOWLEDGE_FS_BASE_URL,
                 self.KNOWLEDGE_FS_API_TOKEN,
+                self.KNOWLEDGE_FS_STATIC_TENANT_ID,
                 self.KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64,
                 self.KNOWLEDGE_FS_JWT_KEY_ID,
                 self.KNOWLEDGE_FS_JWT_ISSUER,
@@ -177,12 +186,16 @@ class KnowledgeFSConfig(BaseSettings):
                 raise ValueError(f"{missing} is required for the dify-jwt auth profile")
             if self.KNOWLEDGE_FS_API_TOKEN is not None:
                 raise ValueError("KNOWLEDGE_FS_API_TOKEN cannot be combined with the dify-jwt auth profile")
+            if self.KNOWLEDGE_FS_STATIC_TENANT_ID is not None:
+                raise ValueError("KNOWLEDGE_FS_STATIC_TENANT_ID cannot be combined with the dify-jwt auth profile")
             if self.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN:
                 raise ValueError("KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN cannot be enabled for dify-jwt")
             return self
 
         if self.KNOWLEDGE_FS_API_TOKEN is None:
             raise ValueError("KNOWLEDGE_FS_API_TOKEN is required for the dev-static auth profile")
+        if self.KNOWLEDGE_FS_STATIC_TENANT_ID is None:
+            raise ValueError("KNOWLEDGE_FS_STATIC_TENANT_ID is required for the dev-static auth profile")
         if not self.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN:
             raise ValueError("KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN must be enabled for dev-static")
         configured_jwt_field = next((name for name, value in jwt_fields.items() if value is not None), None)

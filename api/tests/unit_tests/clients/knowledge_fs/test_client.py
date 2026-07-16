@@ -55,16 +55,21 @@ def _client(http_client: httpx.Client) -> OpenAPIKnowledgeFSClient:
     )
 
 
-def _space_payload(*, tenant_id: str = "dify-tenant") -> dict[str, str]:
+def _space_payload(*, tenant_id: str = "dify-tenant") -> dict[str, str | int]:
     return {
         "id": "space-1",
         "tenantId": tenant_id,
         "name": "Product docs",
+        "revision": 1,
         "slug": "product-docs",
         "description": "New RAG knowledge base",
         "createdAt": "2026-07-15T08:00:00Z",
         "updatedAt": "2026-07-15T08:00:00Z",
     }
+
+
+def _creation_payload(*, tenant_id: str = "dify-tenant") -> dict[str, str | int]:
+    return {**_space_payload(tenant_id=tenant_id), "configurationStatus": "pending-validation"}
 
 
 def test_list_knowledge_spaces_uses_generated_operation_and_per_request_credential() -> None:
@@ -151,7 +156,7 @@ def test_concurrent_tenants_receive_request_scoped_jwts_without_cross_tenant_lea
         payload = _space_payload(tenant_id=tenant_id)
         if request.method == "GET":
             return httpx.Response(200, json={"items": [payload]})
-        return httpx.Response(201, json=payload)
+        return httpx.Response(201, json={**payload, "configurationStatus": "pending-validation"})
 
     transport = httpx.MockTransport(handler)
     with httpx.Client(base_url="http://knowledge-fs.test", transport=transport) as http_client:
@@ -168,8 +173,8 @@ def test_concurrent_tenants_receive_request_scoped_jwts_without_cross_tenant_lea
             )
             create_future = executor.submit(
                 client.create_knowledge_space,
+                idempotency_key="create-product-docs",
                 name="Product docs",
-                slug="product-docs",
                 description=None,
                 tenant_id="tenant-b",
                 user_id="user-b",
@@ -195,7 +200,7 @@ def test_create_knowledge_space_uses_kfs_wire_shape() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         nonlocal captured_body
         captured_body = json.loads(request.content)
-        return httpx.Response(201, json=_space_payload())
+        return httpx.Response(201, json=_creation_payload())
 
     transport = httpx.MockTransport(handler)
     with httpx.Client(
@@ -205,16 +210,16 @@ def test_create_knowledge_space_uses_kfs_wire_shape() -> None:
     ) as http_client:
         client = _client(http_client)
         result = client.create_knowledge_space(
+            idempotency_key="create-product-docs",
             name="Product docs",
-            slug="product-docs",
             description="New RAG knowledge base",
             tenant_id="dify-tenant",
             user_id="dify-user",
         )
 
     assert captured_body == {
+        "idempotencyKey": "create-product-docs",
         "name": "Product docs",
-        "slug": "product-docs",
         "description": "New RAG knowledge base",
     }
     assert result.id == "space-1"
@@ -222,21 +227,38 @@ def test_create_knowledge_space_uses_kfs_wire_shape() -> None:
 
 def test_create_knowledge_space_rejects_response_from_another_tenant() -> None:
     transport = httpx.MockTransport(
-        lambda _request: httpx.Response(201, json=_space_payload(tenant_id="another-tenant"))
+        lambda _request: httpx.Response(201, json=_creation_payload(tenant_id="another-tenant"))
     )
 
     with httpx.Client(base_url="http://knowledge-fs.test", transport=transport) as http_client:
         client = _client(http_client)
         with pytest.raises(KnowledgeFSValidationError, match="response validation failed") as exc_info:
             client.create_knowledge_space(
+                idempotency_key="create-product-docs",
                 name="Product docs",
-                slug="product-docs",
                 description=None,
                 tenant_id="dify-tenant",
                 user_id="dify-user",
             )
 
     assert exc_info.value.detail == "KnowledgeSpace.tenantId does not match the requested tenant"
+
+
+def test_create_knowledge_space_rejects_invalid_revision() -> None:
+    transport = httpx.MockTransport(lambda _request: httpx.Response(201, json={**_creation_payload(), "revision": "1"}))
+
+    with httpx.Client(base_url="http://knowledge-fs.test", transport=transport) as http_client:
+        client = _client(http_client)
+        with pytest.raises(KnowledgeFSValidationError, match="response validation failed") as exc_info:
+            client.create_knowledge_space(
+                idempotency_key="create-product-docs",
+                name="Product docs",
+                description=None,
+                tenant_id="dify-tenant",
+                user_id="dify-user",
+            )
+
+    assert exc_info.value.detail == "KnowledgeSpace.revision must be a positive integer"
 
 
 def test_client_preserves_http_status_and_safe_error_detail() -> None:
@@ -250,8 +272,8 @@ def test_client_preserves_http_status_and_safe_error_detail() -> None:
         client = _client(http_client)
         with pytest.raises(KnowledgeFSHTTPError) as exc_info:
             client.create_knowledge_space(
+                idempotency_key="create-product-docs",
                 name="Product docs",
-                slug="product-docs",
                 description=None,
                 tenant_id="dify-tenant",
                 user_id="dify-user",
@@ -268,8 +290,8 @@ def test_client_ignores_non_string_error_detail_without_raising_type_error() -> 
         client = _client(http_client)
         with pytest.raises(KnowledgeFSHTTPError) as exc_info:
             client.create_knowledge_space(
+                idempotency_key="create-product-docs",
                 name="Product docs",
-                slug="product-docs",
                 description=None,
                 tenant_id="dify-tenant",
                 user_id="dify-user",
@@ -357,8 +379,8 @@ def test_client_rejects_oversized_error_response_with_forged_content_length() ->
         client = _client(http_client)
         with pytest.raises(KnowledgeFSValidationError, match="response validation failed") as exc_info:
             client.create_knowledge_space(
+                idempotency_key="create-product-docs",
                 name="Product docs",
-                slug="product-docs",
                 description=None,
                 tenant_id="dify-tenant",
                 user_id="dify-user",
@@ -396,6 +418,7 @@ def test_client_preserves_existing_response_hooks() -> None:
     [
         {"items": [], "nextCursor": 123},
         {"items": [{**_space_payload(), "id": 123}]},
+        {"items": [{**_space_payload(), "revision": 0}]},
     ],
 )
 def test_client_rejects_success_fields_with_wrong_runtime_types(payload: object) -> None:

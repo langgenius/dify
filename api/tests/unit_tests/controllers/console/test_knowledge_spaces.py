@@ -24,6 +24,7 @@ def _space() -> KnowledgeSpace:
         id="space-1",
         tenant_id="tenant-dev",
         name="Product docs",
+        revision=1,
         slug="product-docs",
         description="New RAG knowledge base",
         created_at=timestamp,
@@ -31,22 +32,29 @@ def _space() -> KnowledgeSpace:
     )
 
 
-def test_create_payload_rejects_slug_longer_than_kfs_contract() -> None:
-    with pytest.raises(ValidationError):
-        CreateKnowledgeSpacePayload.model_validate(
-            {
-                "name": "Product docs",
-                "slug": "a" * 161,
-            }
-        )
+def test_create_payload_accepts_server_generated_slug() -> None:
+    payload = CreateKnowledgeSpacePayload.model_validate(
+        {
+            "idempotency_key": "create-product-docs",
+            "name": "Product docs",
+        }
+    )
+
+    assert payload.idempotency_key == "create-product-docs"
+    assert payload.name == "Product docs"
+
+
+def test_create_payload_requires_idempotency_key() -> None:
+    with pytest.raises(ValidationError, match="idempotency_key"):
+        CreateKnowledgeSpacePayload.model_validate({"name": "Product docs"})
 
 
 def test_create_payload_rejects_blank_name() -> None:
     with pytest.raises(ValidationError, match="name must not be blank"):
         CreateKnowledgeSpacePayload.model_validate(
             {
+                "idempotency_key": "create-product-docs",
                 "name": " \t ",
-                "slug": "product-docs",
             }
         )
 
@@ -54,8 +62,8 @@ def test_create_payload_rejects_blank_name() -> None:
 def test_create_payload_trims_name_before_forwarding_to_kfs() -> None:
     payload = CreateKnowledgeSpacePayload.model_validate(
         {
+            "idempotency_key": "create-product-docs",
             "name": "  Product docs \t",
-            "slug": "product-docs",
         }
     )
 
@@ -75,7 +83,7 @@ def test_list_returns_disabled_contract_without_kfs_configuration(
     with app.test_request_context("/console/api/knowledge-spaces"):
         response = method(KnowledgeSpaceListApi())
 
-    assert response == {"enabled": False, "data": [], "has_more": False, "next_cursor": None}
+    assert response == {"enabled": False, "data": [], "next_cursor": None}
 
 
 def test_list_enforces_workspace_level_dataset_read_rbac(app: Flask, monkeypatch) -> None:
@@ -129,7 +137,6 @@ def test_list_proxies_current_dify_tenant_and_user(app: Flask, monkeypatch) -> N
     )
     assert response["enabled"] is True
     assert response["data"][0]["id"] == "space-1"
-    assert response["has_more"] is True
     assert response["next_cursor"] == "product-docs"
 
 
@@ -166,16 +173,16 @@ def test_create_proxies_validated_payload_and_current_request_context(app: Flask
         "/console/api/knowledge-spaces",
         method="POST",
         json={
+            "idempotency_key": "create-product-docs",
             "name": "Product docs",
-            "slug": "product-docs",
             "description": "New RAG knowledge base",
         },
     ):
         response, status = method(KnowledgeSpaceListApi())
 
     service.create_knowledge_space.assert_called_once_with(
+        idempotency_key="create-product-docs",
         name="Product docs",
-        slug="product-docs",
         description="New RAG knowledge base",
         tenant_id="tenant-1",
         user_id="account-1",
@@ -185,7 +192,7 @@ def test_create_proxies_validated_payload_and_current_request_context(app: Flask
     assert response["created_at"] == "2026-07-15T08:00:00Z"
 
 
-def test_create_translates_kfs_slug_conflict(app: Flask, monkeypatch) -> None:
+def test_create_translates_kfs_creation_conflict(app: Flask, monkeypatch) -> None:
     service = MagicMock()
     service.create_knowledge_space.side_effect = KnowledgeFSHTTPError(
         status_code=409,
@@ -205,7 +212,32 @@ def test_create_translates_kfs_slug_conflict(app: Flask, monkeypatch) -> None:
     with app.test_request_context(
         "/console/api/knowledge-spaces",
         method="POST",
-        json={"name": "Product docs", "slug": "product-docs"},
+        json={"idempotency_key": "create-product-docs", "name": "Product docs"},
     ):
-        with pytest.raises(Conflict):
+        with pytest.raises(Conflict, match="Knowledge space creation conflict"):
+            method(KnowledgeSpaceListApi())
+
+
+def test_create_reports_static_tenant_mismatch_as_unavailable(app: Flask, monkeypatch) -> None:
+    service = MagicMock()
+    service.create_knowledge_space.side_effect = KnowledgeFSConfigurationError(
+        "KNOWLEDGE_FS_STATIC_TENANT_ID does not match the current Dify workspace"
+    )
+    account = MagicMock(id="account-1", is_dataset_editor=True)
+    monkeypatch.setattr(
+        "controllers.console.knowledge_spaces.spaces.create_knowledge_space_service",
+        lambda: service,
+    )
+    monkeypatch.setattr(
+        "controllers.console.knowledge_spaces.spaces.current_account_with_tenant",
+        lambda: (account, "tenant-1"),
+    )
+    method = unwrap(KnowledgeSpaceListApi.post)
+
+    with app.test_request_context(
+        "/console/api/knowledge-spaces",
+        method="POST",
+        json={"idempotency_key": "create-product-docs", "name": "Product docs"},
+    ):
+        with pytest.raises(ServiceUnavailable, match="KnowledgeFS integration is misconfigured"):
             method(KnowledgeSpaceListApi())

@@ -23,12 +23,18 @@ def test_factory_pools_across_providers_without_storing_credentials_in_headers_o
 
     first = create_knowledge_fs_client(
         base_url="https://knowledge-fs.test/",
-        credential_provider=StaticKnowledgeFSCredentialProvider(token="first-secret-token"),
+        credential_provider=StaticKnowledgeFSCredentialProvider(
+            token="first-secret-token",
+            expected_tenant_id="tenant-dev",
+        ),
         timeout_seconds=7.5,
     )
     create_knowledge_fs_client(
         base_url="https://knowledge-fs.test/",
-        credential_provider=StaticKnowledgeFSCredentialProvider(token="second-secret-token"),
+        credential_provider=StaticKnowledgeFSCredentialProvider(
+            token="second-secret-token",
+            expected_tenant_id="tenant-dev",
+        ),
         timeout_seconds=7.5,
     )
 

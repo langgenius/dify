@@ -9,6 +9,7 @@ const queryMock = vi.hoisted(() => ({
   error: null as Error | null,
   fetchNextPage: vi.fn(),
   hasNextPage: false,
+  isFetchNextPageError: false,
   isFetchingNextPage: false,
   isPending: false,
   refetch: vi.fn(),
@@ -103,7 +104,6 @@ function setResolvedPage({
       {
         data,
         enabled,
-        has_more: hasMore,
         next_cursor: hasMore ? 'next-page' : null,
       },
     ],
@@ -117,6 +117,7 @@ describe('DatasetsV2Page', () => {
     queryMock.data = undefined
     queryMock.error = null
     queryMock.hasNextPage = false
+    queryMock.isFetchNextPageError = false
     queryMock.isFetchingNextPage = false
     queryMock.isPending = false
     mutationMock.isPending = false
@@ -208,7 +209,39 @@ describe('DatasetsV2Page', () => {
     expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('creates an empty knowledge base with an editable generated slug and refreshes the list', async () => {
+  it('keeps loaded cards visible and retries locally when the next page fails', async () => {
+    const user = userEvent.setup()
+    setResolvedPage({
+      data: [
+        {
+          created_at: '2026-07-15T00:00:00Z',
+          description: 'Support materials',
+          id: 'space-1',
+          name: 'Support knowledge',
+          slug: 'support-knowledge',
+          updated_at: '2026-07-15T00:00:00Z',
+        },
+      ],
+      hasMore: true,
+    })
+    queryMock.error = new Error('next page failed')
+    queryMock.isFetchNextPageError = true
+
+    render(<DatasetsV2Page />)
+
+    expect(screen.getByText('Support knowledge')).toBeInTheDocument()
+    const paginationAlert = screen.getByRole('alert')
+    expect(within(paginationAlert).getByText('dataset.unknownError')).toBeInTheDocument()
+
+    await user.click(
+      within(paginationAlert).getByRole('button', { name: 'common.operation.retry' }),
+    )
+
+    expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
+    expect(queryMock.refetch).not.toHaveBeenCalled()
+  })
+
+  it('creates a non-Latin knowledge base with a server-generated slug and refreshes the list', async () => {
     const user = userEvent.setup()
     setResolvedPage()
     render(<DatasetsV2Page />)
@@ -218,13 +251,11 @@ describe('DatasetsV2Page', () => {
       name: 'dataset.newRag.createDialogTitle',
     })
     const nameInput = within(dialog).getByRole('textbox', { name: 'datasetSettings.form.name' })
-    const slugInput = within(dialog).getByRole('textbox', { name: 'dataset.newRag.slugLabel' })
 
-    expect(slugInput).toHaveAttribute('maxlength', '160')
-    await user.type(nameInput, 'Product Support')
-    expect(slugInput).toHaveValue('product-support')
-    await user.clear(slugInput)
-    await user.type(slugInput, 'product-help')
+    expect(
+      within(dialog).queryByRole('textbox', { name: 'dataset.newRag.slugLabel' }),
+    ).not.toBeInTheDocument()
+    await user.type(nameInput, '产品知识库')
     await user.type(
       within(dialog).getByRole('textbox', { name: /dataset\.externalKnowledgeDescription/ }),
       'Answers for customers',
@@ -235,8 +266,8 @@ describe('DatasetsV2Page', () => {
       {
         body: {
           description: 'Answers for customers',
-          name: 'Product Support',
-          slug: 'product-help',
+          idempotency_key: expect.any(String),
+          name: '产品知识库',
         },
       },
       expect.objectContaining({ onSuccess: expect.any(Function) }),
@@ -258,7 +289,7 @@ describe('DatasetsV2Page', () => {
     })
   })
 
-  it('keeps the create dialog open and notifies the user when creation fails', async () => {
+  it('keeps the create dialog open and reuses its idempotency key when creation is retried', async () => {
     const user = userEvent.setup()
     setResolvedPage()
     render(<DatasetsV2Page />)
@@ -279,9 +310,16 @@ describe('DatasetsV2Page', () => {
     expect(toastMock.error).toHaveBeenCalledWith('dataset.newRag.createFailed')
     expect(screen.getByRole('dialog', { name: 'dataset.newRag.createDialogTitle' })).toBeVisible()
     expect(nameInput).toHaveValue('Product Support')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
+
+    expect(mutationMock.mutate).toHaveBeenCalledTimes(2)
+    const firstKey = mutationMock.mutate.mock.calls[0]?.[0].body.idempotency_key
+    const retryKey = mutationMock.mutate.mock.calls[1]?.[0].body.idempotency_key
+    expect(firstKey).toEqual(expect.any(String))
+    expect(retryKey).toBe(firstKey)
   })
 
-  it('keeps the create dialog open when the edited slug is invalid', async () => {
+  it('uses a new idempotency key when a failed creation is retried with edited content', async () => {
     const user = userEvent.setup()
     setResolvedPage()
     render(<DatasetsV2Page />)
@@ -290,16 +328,63 @@ describe('DatasetsV2Page', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'dataset.newRag.createDialogTitle',
     })
-    await user.type(
-      within(dialog).getByRole('textbox', { name: 'datasetSettings.form.name' }),
-      'Product Support',
-    )
-    const slugInput = within(dialog).getByRole('textbox', { name: 'dataset.newRag.slugLabel' })
-    await user.clear(slugInput)
-    await user.type(slugInput, 'Invalid Slug')
+    const nameInput = within(dialog).getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.type(nameInput, 'Product Support')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
-    expect(await within(dialog).findByText('dataset.newRag.slugInvalid')).toBeInTheDocument()
-    expect(mutationMock.mutate).not.toHaveBeenCalled()
+    const callbacks = mutationMock.mutate.mock.calls[0]?.[1]
+    await act(async () => {
+      callbacks.onError()
+    })
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Customer Support')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
+
+    expect(mutationMock.mutate).toHaveBeenCalledTimes(2)
+    const firstKey = mutationMock.mutate.mock.calls[0]?.[0].body.idempotency_key
+    const editedKey = mutationMock.mutate.mock.calls[1]?.[0].body.idempotency_key
+    expect(editedKey).toEqual(expect.any(String))
+    expect(editedKey).not.toBe(firstKey)
+  })
+
+  it('uses a new idempotency key after the create dialog is closed and reopened', async () => {
+    const user = userEvent.setup()
+    setResolvedPage()
+    render(<DatasetsV2Page />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    const firstDialog = await screen.findByRole('dialog', {
+      name: 'dataset.newRag.createDialogTitle',
+    })
+    await user.type(
+      within(firstDialog).getByRole('textbox', { name: 'datasetSettings.form.name' }),
+      'Product Support',
+    )
+    await user.click(within(firstDialog).getByRole('button', { name: 'common.operation.create' }))
+
+    const callbacks = mutationMock.mutate.mock.calls[0]?.[1]
+    await act(async () => {
+      callbacks.onError()
+    })
+    await user.click(within(firstDialog).getByRole('button', { name: 'common.operation.cancel' }))
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    const reopenedDialog = await screen.findByRole('dialog', {
+      name: 'dataset.newRag.createDialogTitle',
+    })
+    await user.type(
+      within(reopenedDialog).getByRole('textbox', { name: 'datasetSettings.form.name' }),
+      'Product Support',
+    )
+    await user.click(
+      within(reopenedDialog).getByRole('button', { name: 'common.operation.create' }),
+    )
+
+    expect(mutationMock.mutate).toHaveBeenCalledTimes(2)
+    const firstKey = mutationMock.mutate.mock.calls[0]?.[0].body.idempotency_key
+    const reopenedKey = mutationMock.mutate.mock.calls[1]?.[0].body.idempotency_key
+    expect(reopenedKey).toEqual(expect.any(String))
+    expect(reopenedKey).not.toBe(firstKey)
   })
 })
