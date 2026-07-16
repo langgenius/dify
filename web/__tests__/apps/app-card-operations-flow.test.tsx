@@ -10,7 +10,8 @@
  *   - Access mode icons
  */
 import type { App } from '@/types/app'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AppCard } from '@/app/components/apps/app-card'
@@ -278,8 +279,10 @@ const renderAppCard = (app?: Partial<App>) => {
   })
 }
 
-const openOperationsMenu = () => {
-  fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+const openOperationsMenu = async (appName = 'Test Chat App') => {
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: `common.operation.more: ${appName}` }))
+  return user
 }
 
 describe('App Card Operations Flow', () => {
@@ -334,15 +337,15 @@ describe('App Card Operations Flow', () => {
     it('should show delete confirmation and call API on confirm', async () => {
       renderAppCard({ id: 'app-to-delete', name: 'Deletable App' })
 
-      openOperationsMenu()
-      fireEvent.click(await screen.findByText('common.operation.delete'))
+      const user = await openOperationsMenu('Deletable App')
+      await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
 
       await waitFor(() => {
         expect(screen.getByText('app.deleteAppConfirmTitle')).toBeInTheDocument()
       })
 
-      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Deletable App' } })
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+      await user.type(screen.getByRole('textbox'), 'Deletable App')
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
         expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
@@ -355,9 +358,9 @@ describe('App Card Operations Flow', () => {
     it('should open edit modal and call updateAppInfo on confirm', async () => {
       renderAppCard({ id: 'app-edit', name: 'Editable App' })
 
-      openOperationsMenu()
-      fireEvent.click(await screen.findByText('app.editApp'))
-      fireEvent.click(await screen.findByTestId('confirm-edit'))
+      const user = await openOperationsMenu('Editable App')
+      await user.click(await screen.findByRole('menuitem', { name: 'app.editApp' }))
+      await user.click(await screen.findByRole('button', { name: 'Confirm' }))
 
       await waitFor(() => {
         expect(updateAppInfo).toHaveBeenCalledWith(
@@ -375,8 +378,8 @@ describe('App Card Operations Flow', () => {
     it('should call exportAppConfig for completion apps', async () => {
       renderAppCard({ id: 'app-export', mode: AppModeEnum.COMPLETION, name: 'Export App' })
 
-      openOperationsMenu()
-      fireEvent.click(await screen.findByText('app.export'))
+      const user = await openOperationsMenu('Export App')
+      await user.click(await screen.findByRole('menuitem', { name: 'app.export' }))
 
       await waitFor(() => {
         expect(exportAppConfig).toHaveBeenCalledWith(
@@ -392,7 +395,9 @@ describe('App Card Operations Flow', () => {
       renderAppCard({ name: 'Readonly App', created_by: 'another-user', permission_keys: [] })
 
       expect(
-        screen.queryByRole('button', { name: 'common.operation.more' }),
+        screen.queryByRole('button', {
+          name: 'common.operation.more: Readonly App',
+        }),
       ).not.toBeInTheDocument()
     })
   })
@@ -402,21 +407,15 @@ describe('App Card Operations Flow', () => {
     it('should show switch option for chat mode apps', async () => {
       renderAppCard({ id: 'app-switch', mode: AppModeEnum.CHAT })
 
-      openOperationsMenu()
-
-      await waitFor(() => {
-        expect(screen.queryByText('app.switch')).toBeInTheDocument()
-      })
+      await openOperationsMenu()
+      expect(await screen.findByRole('menuitem', { name: 'app.switch' })).toBeVisible()
     })
 
     it('should not show switch option for workflow apps', async () => {
       renderAppCard({ id: 'app-wf', mode: AppModeEnum.WORKFLOW, name: 'WF App' })
 
-      openOperationsMenu()
-
-      await waitFor(() => {
-        expect(screen.queryByText('app.switch')).not.toBeInTheDocument()
-      })
+      await openOperationsMenu('WF App')
+      expect(screen.queryByRole('menuitem', { name: 'app.switch' })).not.toBeInTheDocument()
     })
   })
 })
