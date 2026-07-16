@@ -1,8 +1,11 @@
 import json
+from collections.abc import Iterator
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
@@ -26,7 +29,7 @@ class DummyRunner(CotAgentRunner):
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture):
+def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[DummyRunner]:
     # Prevent BaseAgentRunner __init__ from hitting database
     mocker.patch(
         "core.agent.base_agent_runner.BaseAgentRunner.organize_agent_history",
@@ -81,9 +84,12 @@ def runner(mocker: MockerFixture):
     runner.agent_callback = None
     runner.memory = None
     runner.history_prompt_messages = []
-    runner.session = MagicMock()
+    runner.session = Session(sqlite_engine)
 
-    return runner
+    try:
+        yield runner
+    finally:
+        runner.session.close()
 
 
 class TestFillInputs:

@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import override
 from unittest.mock import MagicMock, patch
 
@@ -5,6 +6,8 @@ import pytest
 from flask import Flask, request
 from flask_login import LoginManager, UserMixin
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
 from controllers.common.wraps import _extract_resource_id
@@ -34,6 +37,7 @@ from controllers.console.wraps import (
 )
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
+from models.dataset import RateLimitLog
 from services.feature_service import LicenseStatus
 
 
@@ -657,8 +661,7 @@ class TestRateLimiting:
     """Test rate limiting decorator"""
 
     @patch("controllers.console.wraps.redis_client")
-    @patch("controllers.console.wraps.db")
-    def test_should_allow_requests_within_rate_limit(self, mock_db: MagicMock, mock_redis: MagicMock):
+    def test_should_allow_requests_within_rate_limit(self, mock_redis: MagicMock):
         """Test that requests within rate limit are allowed"""
         # Arrange
         mock_rate_limit = MagicMock()
@@ -685,8 +688,13 @@ class TestRateLimiting:
         mock_redis.zremrangebyscore.assert_called_once()
 
     @patch("controllers.console.wraps.redis_client")
-    @patch("controllers.console.wraps.db")
-    def test_should_reject_requests_over_rate_limit(self, mock_db: MagicMock, mock_redis: MagicMock):
+    @pytest.mark.parametrize("sqlite_session", [(RateLimitLog,)], indirect=True)
+    def test_should_reject_requests_over_rate_limit(
+        self,
+        mock_redis: MagicMock,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
         """Test that requests over rate limit are rejected and logged"""
         # Arrange
         app = create_app_with_login()
@@ -696,8 +704,7 @@ class TestRateLimiting:
         mock_rate_limit.subscription_plan = "pro"
         mock_redis.zcard.return_value = 11  # Over limit
 
-        mock_session = MagicMock()
-        mock_db.session = mock_session
+        monkeypatch.setattr("controllers.console.wraps.db", SimpleNamespace(session=sqlite_session))
 
         @cloud_edition_billing_rate_limit_check("knowledge")
         def knowledge_request():
@@ -719,9 +726,11 @@ class TestRateLimiting:
                     assert exc_info.value.code == 403
                     assert "rate limit" in str(exc_info.value.description)
 
-                    # Verify rate limit log was created
-                    mock_session.add.assert_called_once()
-                    mock_session.commit.assert_called_once()
+                    rate_limit_log = sqlite_session.scalar(select(RateLimitLog))
+                    assert rate_limit_log is not None
+                    assert rate_limit_log.tenant_id == "tenant123"
+                    assert rate_limit_log.subscription_plan == "pro"
+                    assert rate_limit_log.operation == "knowledge"
 
 
 class TestCloudUtmRecord:
