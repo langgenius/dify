@@ -6,6 +6,7 @@ import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
@@ -472,24 +473,24 @@ class TestRunDryRunMode:
 
 
 class TestTriggerLogMethods:
-    def test_delete_trigger_logs(self, cleanup):
-        session = MagicMock()
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_delete_trigger_logs(self, cleanup, sqlite_session: Session):
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
         ) as RepoClass:
             instance = RepoClass.return_value
             instance.delete_by_run_ids.return_value = 5
-            result = cleanup._delete_trigger_logs(session, ["r1", "r2"])
+            result = cleanup._delete_trigger_logs(sqlite_session, ["r1", "r2"])
         assert result == 5
 
-    def test_count_trigger_logs(self, cleanup):
-        session = MagicMock()
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_count_trigger_logs(self, cleanup, sqlite_session: Session):
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
         ) as RepoClass:
             instance = RepoClass.return_value
             instance.count_by_run_ids.return_value = 3
-            result = cleanup._count_trigger_logs(session, ["r1"])
+            result = cleanup._count_trigger_logs(sqlite_session, ["r1"])
         assert result == 3
 
 
@@ -499,26 +500,22 @@ class TestTriggerLogMethods:
 
 
 class TestNodeExecutionMethods:
-    def test_count_node_executions(self, cleanup):
-        session = MagicMock()
-        session.get_bind.return_value = MagicMock()
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_count_node_executions(self, cleanup, sqlite_session: Session):
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
         ) as factory:
             repo = factory.create_api_workflow_node_execution_repository.return_value
             repo.count_by_runs.return_value = (10, 2)
-            with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.sessionmaker"):
-                result = cleanup._count_node_executions_by_run_ids(session, ["r1"])
+            result = cleanup._count_node_executions_by_run_ids(sqlite_session, ["r1"])
         assert result == (10, 2)
 
-    def test_delete_node_executions(self, cleanup):
-        session = MagicMock()
-        session.get_bind.return_value = MagicMock()
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_delete_node_executions(self, cleanup, sqlite_session: Session):
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
         ) as factory:
             repo = factory.create_api_workflow_node_execution_repository.return_value
             repo.delete_by_runs.return_value = (5, 1)
-            with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.sessionmaker"):
-                result = cleanup._delete_node_executions_by_run_ids(session, ["r1"])
+            result = cleanup._delete_node_executions_by_run_ids(sqlite_session, ["r1"])
         assert result == (5, 1)
