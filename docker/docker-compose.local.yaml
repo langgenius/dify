@@ -1,0 +1,15 @@
+services:
+  api:
+    image: langgenius/dify-api:latest
+
+  api_websocket:
+    image: langgenius/dify-api:latest
+
+  worker:
+    image: langgenius/dify-api:latest
+
+  worker_beat:
+    image: langgenius/dify-api:latest
+
+  web:
+    image: dify-web:local
