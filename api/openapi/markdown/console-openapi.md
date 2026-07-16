@@ -22008,6 +22008,7 @@ Tag type
 | role | string |  | No |
 | status | string |  | No |
 | trial_credits | integer |  | No |
+| trial_credits_exhausted_at | integer |  | No |
 | trial_credits_used | integer |  | No |
 | trial_end_reason | string |  | No |
 

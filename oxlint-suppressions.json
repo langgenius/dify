@@ -3388,14 +3388,6 @@
       "count": 3
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/utils.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2

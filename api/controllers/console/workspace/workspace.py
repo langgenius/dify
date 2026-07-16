@@ -88,6 +88,7 @@ class TenantInfoResponse(ResponseModel):
     custom_config: WorkspaceCustomConfigResponse | None = None
     trial_credits: int | None = None
     trial_credits_used: int | None = None
+    trial_credits_exhausted_at: int | None = None
     next_credit_reset_date: int | None = None
 
     @field_validator("plan", "status", "trial_end_reason", mode="before")

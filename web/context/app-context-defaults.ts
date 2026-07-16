@@ -25,5 +25,6 @@ export const initialWorkspaceInfo: ICurrentWorkspace = {
   providers: [],
   trial_credits: 200,
   trial_credits_used: 0,
+  trial_credits_exhausted_at: 0,
   next_credit_reset_date: 0,
 }

@@ -72,6 +72,7 @@ export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   providers: Provider[]
   trial_credits: number
   trial_credits_used: number
+  trial_credits_exhausted_at: number
   next_credit_reset_date: number
   trial_end_reason?: string
   custom_config?: {
