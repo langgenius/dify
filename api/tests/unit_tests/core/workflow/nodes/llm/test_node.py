@@ -895,7 +895,11 @@ def test_fetch_jinja_inputs_serializes_supported_segment_types(llm_node):
     }
 
 
-def test_fetch_jinja_inputs_raises_for_missing_variable(llm_node):
+def test_fetch_jinja_inputs_tolerates_missing_variable(llm_node):
+    from core.workflow import node_factory as _node_factory
+
+    _node_factory.register_nodes()
+
     node_data = llm_node.node_data.model_copy(
         update={
             "prompt_config": PromptConfig(
@@ -904,8 +908,12 @@ def test_fetch_jinja_inputs_raises_for_missing_variable(llm_node):
         }
     )
 
-    with pytest.raises(VariableNotFoundError, match="Variable missing not found"):
-        llm_node._fetch_jinja_inputs(node_data)
+    # Issue #38655: an absent upstream variable must NOT crash the node with
+    # ``VariableNotFoundError``. The user-authored ``{% if missing is defined %}``
+    # guard should decide whether the branch renders instead.
+    result = llm_node._fetch_jinja_inputs(node_data)
+
+    assert result == {}
 
 
 def test_fetch_inputs_collects_prompt_and_memory_variables(llm_node):

@@ -1155,3 +1155,78 @@ class TestDifyNodeFactoryMemory:
             node_data_memory=memory_config,
             model_instance=sentinel.model_instance,
         )
+
+
+class TestJinjaMissingVariableTolerance:
+    """Regression coverage for issue #38655.
+
+    When a conditional branch feeds an LLM node whose Jinja2 template guards an
+    optional upstream variable with ``{% if var is defined and var %}``, Dify must
+    NOT crash with ``Variable <name> not found``. ``LLMNode._fetch_jinja_inputs``
+    is patched by ``register_nodes()`` (see ``_patch_graphon_jinja_variable_tolerance``)
+    so that absent upstream variables are tolerated and the user-authored ``is
+    defined`` guard decides whether the branch renders.
+    """
+
+    @staticmethod
+    def _make_llm_node(*, jinja2_variables):
+        node_factory.register_nodes()
+        from graphon.nodes.base.entities import VariableSelector
+        from graphon.nodes.llm.entities import LLMNodeData, PromptConfig
+
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+                "prompt_config": PromptConfig(
+                    jinja2_variables=[
+                        VariableSelector(variable=v.variable, value_selector=list(v.value_selector))
+                        for v in jinja2_variables
+                    ]
+                ),
+            }
+        )
+        node = LLMNode.__new__(LLMNode)
+        variable_pool = MagicMock()
+        variable_pool.get.side_effect = lambda selector: {
+            ("present_node", "present"): StringSegment(value="hello"),
+        }.get(tuple(selector))
+        node.graph_runtime_state = SimpleNamespace(variable_pool=variable_pool)
+        node._stringify_jinja_variable = LLMNode._stringify_jinja_variable
+        return node, node_data
+
+    def test_absent_jinja_variable_is_tolerated(self):
+        from graphon.nodes.llm.exc import VariableNotFoundError
+
+        node, node_data = self._make_llm_node(
+            jinja2_variables=[
+                SimpleNamespace(variable="present", value_selector=("present_node", "present")),
+                SimpleNamespace(variable="missing", value_selector=("missing_node", "missing")),
+            ]
+        )
+
+        # Must not raise VariableNotFoundError for the absent upstream variable.
+        try:
+            result = node._fetch_jinja_inputs(node_data=node_data)
+        except VariableNotFoundError:
+            pytest.fail("VariableNotFoundError raised for an absent optional jinja2 variable (#38655)")
+
+        assert "present" in result
+        assert "missing" not in result
+
+    def test_only_present_variables_collected(self):
+        node, node_data = self._make_llm_node(
+            jinja2_variables=[
+                SimpleNamespace(variable="present", value_selector=("present_node", "present")),
+                SimpleNamespace(variable="missing", value_selector=("missing_node", "missing")),
+            ]
+        )
+
+        result = node._fetch_jinja_inputs(node_data=node_data)
+
+        assert result == {"present": "hello"}
+        assert "missing" not in result

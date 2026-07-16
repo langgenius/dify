@@ -109,11 +109,68 @@ def _import_node_package(package_name: str, *, excluded_modules: frozenset[str] 
         importlib.import_module(module_name)
 
 
+def _patch_graphon_jinja_variable_tolerance() -> None:
+    """Make ``LLMNode`` tolerate jinja2 variables that are absent at run time.
+
+    Issue #38655: when a conditional branch feeds an LLM node whose Jinja2
+    template guards a variable with ``{% if var is defined and var %}``, Dify
+    crashed *before* template evaluation with ``Variable <name> not found``.
+    The crash came from graphon's ``LLMNode._fetch_jinja_inputs`` which raises
+    ``VariableNotFoundError`` for every entry in ``prompt_config.jinja2_variables``
+    whose upstream selector is missing from the variable pool.
+
+    graphon's own renderer (``_render_jinja2_message``) already treats a missing
+    variable as an empty string, so the only behaviour that actually depends on
+    the collected mapping is the strict pre-check. We replace that pre-check with
+    one that tolerates an absent upstream variable: an omitted selector simply
+    resolves to an empty string during rendering, which makes the user-written
+    ``is defined`` guard decide whether the branch renders. This keeps every
+    existing "variable truly required" path intact (prompt-template inputs,
+    context, memory) while letting optional jinja2 variables fail soft.
+
+    graphon is an external pinned dependency, so we monkey-patch the live class
+    once at registration time rather than fork the package.
+    """
+    from graphon.nodes.base.entities import VariableSelector
+    from graphon.nodes.llm.entities import LLMNodeData
+    from graphon.nodes.llm.node import LLMNode
+
+    if getattr(LLMNode._fetch_jinja_inputs, "_dify_missing_var_patched", False):
+        return
+
+    original_fetch = LLMNode._fetch_jinja_inputs
+
+    def _patched_fetch_jinja_inputs(self, node_data: LLMNodeData) -> dict[str, str]:
+        if not node_data.prompt_config:
+            return {}
+
+        variables: dict[str, str] = {}
+        for variable_selector in node_data.prompt_config.jinja2_variables or []:
+            variable = self.graph_runtime_state.variable_pool.get(
+                variable_selector.value_selector
+            )
+            if variable is None:
+                # Absent upstream variable: tolerate it so user-authored
+                # ``{% if <var> is defined %}`` guards work as expected.
+                continue
+            variables[variable_selector.variable] = self._stringify_jinja_variable(variable)
+        return variables
+
+    # Preserve introspectability / test references.
+    _patched_fetch_jinja_inputs._dify_missing_var_patched = True  # type: ignore[attr-defined]
+    _patched_fetch_jinja_inputs.__wrapped__ = original_fetch  # type: ignore[attr-defined]
+    LLMNode._fetch_jinja_inputs = _patched_fetch_jinja_inputs  # type: ignore[misc]
+
+
 @lru_cache(maxsize=1)
 def register_nodes() -> None:
     """Import production node modules so they self-register with ``Node``."""
     _import_node_package("graphon.nodes")
     _import_node_package("core.workflow.nodes")
+    # Issue #38655: tolerate absent upstream jinja2 variables in LLM nodes so
+    # user-authored ``{% if var is defined %}`` guards work instead of crashing
+    # with ``Variable <name> not found``.
+    _patch_graphon_jinja_variable_tolerance()
 
 
 def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:
