@@ -4,9 +4,7 @@ package landlock
 
 import (
 	"errors"
-	"fmt"
 	"os"
-	"syscall"
 
 	golandlock "github.com/landlock-lsm/go-landlock/landlock"
 )
@@ -14,21 +12,15 @@ import (
 // ErrNotSupported is returned when the kernel does not support Landlock.
 var ErrNotSupported = errors.New("landlock: not supported by kernel")
 
-// Restrict applies Landlock filesystem restrictions for the current process.
+// Restrict applies Landlock V1 filesystem restrictions for the current process.
 //
-// It first tries strict enforcement.  If the kernel lacks Landlock support,
-// it falls back to BestEffort (which may silently degrade) and returns
-// ErrNotSupported so callers can log a warning.
+// It uses BestEffort mode so it works on any kernel with Landlock (≥ 5.13).
+// If the kernel has no Landlock at all, ErrNotSupported is returned so callers
+// can log a warning.
 func Restrict(cfg *Config) error {
 	rules := buildRules(cfg)
 
-	if err := golandlock.V5.RestrictPaths(rules...); err != nil {
-		if !isNotSupported(err) {
-			return fmt.Errorf("landlock: restrict paths: %w", err)
-		}
-		if err2 := golandlock.V5.BestEffort().RestrictPaths(rules...); err2 != nil {
-			return fmt.Errorf("landlock: best-effort restrict paths: %w", err2)
-		}
+	if err := golandlock.V1.BestEffort().RestrictPaths(rules...); err != nil {
 		return ErrNotSupported
 	}
 	return nil
@@ -61,12 +53,6 @@ func buildRules(cfg *Config) []golandlock.Rule {
 		rules = append(rules, golandlock.RWFiles(rwDevFiles...))
 	}
 	return rules
-}
-
-// isNotSupported reports whether err indicates the kernel does not support
-// Landlock (ENOSYS = syscall absent, EOPNOTSUPP = feature disabled).
-func isNotSupported(err error) bool {
-	return errors.Is(err, syscall.ENOSYS) || errors.Is(err, syscall.EOPNOTSUPP)
 }
 
 func filterExisting(paths []string) []string {
