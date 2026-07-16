@@ -129,8 +129,12 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
     assert package.soul.tools.dify_tools[0].credential_ref is None
     assert package.soul.tools.dify_tools[0].runtime_parameters["upload_file_id"] is None
     assert package.soul.tools.dify_tools[0].runtime_parameters["api_key"] is None
-    assert package.soul.config_skills == []
-    assert package.soul.config_files == []
+    assert package.soul.config_skills[0].name == "research"
+    assert package.soul.config_skills[0].file_id == ""
+    assert package.soul.config_skills[0].is_missing is True
+    assert package.soul.config_files[0].name == "guide.md"
+    assert package.soul.config_files[0].file_id == ""
+    assert package.soul.config_files[0].is_missing is True
     assert [asset.kind for asset in package.omitted_assets] == ["skill", "file"]
     assert "plain-secret" not in str(serialized)
     assert "model-secret" not in str(serialized)
@@ -147,6 +151,43 @@ def test_agent_package_round_trips_as_strict_dsl_dto() -> None:
     restored = AgentPackage.model_validate(package.model_dump(mode="json"))
 
     assert restored == package
+
+
+def test_agent_package_normalizes_legacy_null_missing_asset_file_ids() -> None:
+    package = make_portable_agent_package(
+        _agent(),
+        AgentSoulConfig.model_validate(
+            {
+                "config_skills": [{"name": "research", "file_id": "skill-file"}],
+                "config_files": [{"name": "guide.md", "file_kind": "tool_file", "file_id": "config-file"}],
+            }
+        ),
+    ).model_dump(mode="json")
+    package["soul"]["config_skills"][0]["file_id"] = None
+    package["soul"]["config_files"][0]["file_id"] = None
+
+    restored = AgentPackage.model_validate(package)
+
+    assert restored.soul.config_skills[0].file_id == ""
+    assert restored.soul.config_files[0].file_id == ""
+    assert restored.model_dump(mode="json")["soul"]["config_skills"][0]["file_id"] == ""
+    assert restored.model_dump(mode="json")["soul"]["config_files"][0]["file_id"] == ""
+
+
+@pytest.mark.parametrize(
+    "asset",
+    [
+        {"name": "research", "file_id": None, "is_missing": False},
+        {"name": "guide.md", "file_kind": "tool_file", "file_id": None, "is_missing": False},
+    ],
+)
+def test_agent_package_rejects_null_file_id_for_available_assets(asset: dict) -> None:
+    package = make_portable_agent_package(_agent(), AgentSoulConfig()).model_dump(mode="json")
+    target = "config_files" if "file_kind" in asset else "config_skills"
+    package["soul"][target] = [asset]
+
+    with pytest.raises(ValidationError):
+        AgentPackage.model_validate(package)
 
 
 def test_import_warnings_cover_runtime_setup_removed_from_package(monkeypatch) -> None:
@@ -530,7 +571,7 @@ def test_create_imported_roster_agent_app_prefixes_warnings(monkeypatch) -> None
     assert app.name == "Portable Agent"
     assert app.enable_site is True
     assert app.enable_api is True
-    send.assert_called_once_with(app, account=SimpleNamespace(id="account-1"))
+    send.assert_called_once_with(app, account=SimpleNamespace(id="account-1"), session=session)
     assert imported.warnings[0].path == "agent_packages.agent_1.soul.model"
 
 
@@ -627,6 +668,25 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(mon
     assert datasets[0].id == "existing"
     assert datasets[1].id is not None
     assert datasets[1].id.startswith("missing-dataset-")
+    assert resolved.config_skills[0].model_dump(mode="json") == {
+        "name": "skill",
+        "description": "",
+        "file_kind": "tool_file",
+        "file_id": "",
+        "is_missing": True,
+        "size": None,
+        "hash": None,
+        "mime_type": "application/zip",
+    }
+    assert resolved.config_files[0].model_dump(mode="json") == {
+        "name": "Guide",
+        "file_kind": "upload_file",
+        "file_id": "",
+        "is_missing": True,
+        "size": None,
+        "hash": None,
+        "mime_type": None,
+    }
     assert {warning.code for warning in warnings} == {
         "agent_skill_omitted",
         "agent_file_omitted",

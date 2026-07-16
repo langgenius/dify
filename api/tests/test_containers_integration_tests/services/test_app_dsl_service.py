@@ -22,7 +22,8 @@ from core.trigger.constants import (
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
 from models import Account, App, AppMode
-from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentScope, AgentSource
+from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot, AgentScope, AgentSource
+from models.agent_config_entities import AgentSoulConfig
 from models.model import AppModelConfig, IconType
 from services import app_dsl_service
 from services.account_service import AccountService, TenantService
@@ -969,6 +970,43 @@ class TestAppDslService:
             account,
             session=db_session_with_containers,
         )
+        source_agent = db_session_with_containers.scalar(
+            select(Agent).where(
+                Agent.tenant_id == account.current_tenant_id,
+                Agent.app_id == source_app.id,
+                Agent.scope == AgentScope.ROSTER,
+            )
+        )
+        assert source_agent is not None
+        source_snapshot = db_session_with_containers.scalar(
+            select(AgentConfigSnapshot).where(
+                AgentConfigSnapshot.agent_id == source_agent.id,
+                AgentConfigSnapshot.id == source_agent.active_config_snapshot_id,
+            )
+        )
+        assert source_snapshot is not None
+        source_snapshot.config_snapshot = AgentSoulConfig.model_validate(
+            {
+                "config_skills": [
+                    {
+                        "name": "research",
+                        "description": "Research source material.",
+                        "file_id": "source-skill-file-id",
+                        "size": 123,
+                    }
+                ],
+                "config_files": [
+                    {
+                        "name": "guide.md",
+                        "file_kind": "upload_file",
+                        "file_id": "source-config-file-id",
+                        "size": 456,
+                        "mime_type": "text/markdown",
+                    }
+                ],
+            }
+        )
+        db_session_with_containers.commit()
 
         yaml_content = AppDslService.export_dsl(
             source_app,
@@ -979,13 +1017,42 @@ class TestAppDslService:
         serialized_package = exported_data["agent_packages"][exported_data["agent"]["package_ref"]]
         assert exported_data["app"]["mode"] == AppMode.AGENT.value
         assert "agent_id" not in json.dumps(serialized_package)
+        assert serialized_package["soul"]["config_skills"] == [
+            {
+                "name": "research",
+                "description": "Research source material.",
+                "file_kind": "tool_file",
+                "file_id": "",
+                "is_missing": True,
+                "size": 123,
+                "hash": None,
+                "mime_type": "application/zip",
+            }
+        ]
+        assert serialized_package["soul"]["config_files"] == [
+            {
+                "name": "guide.md",
+                "file_kind": "upload_file",
+                "file_id": "",
+                "is_missing": True,
+                "size": 456,
+                "hash": None,
+                "mime_type": "text/markdown",
+            }
+        ]
+        assert "source-skill-file-id" not in yaml_content
+        assert "source-config-file-id" not in yaml_content
 
         result = AppDslService(db_session_with_containers).import_app(
             account=account,
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=yaml_content,
         )
-        assert result.status == ImportStatus.COMPLETED
+        assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
+        assert {warning.code for warning in result.warnings} == {
+            "agent_file_omitted",
+            "agent_skill_omitted",
+        }
         assert result.app_id is not None
         db_session_with_containers.commit()
 
@@ -1008,6 +1075,13 @@ class TestAppDslService:
         )
         assert draft is not None
         assert draft.base_snapshot_id == imported_agent.active_config_snapshot_id
+        imported_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        assert imported_soul.config_skills[0].name == "research"
+        assert imported_soul.config_skills[0].file_id == ""
+        assert imported_soul.config_skills[0].is_missing is True
+        assert imported_soul.config_files[0].name == "guide.md"
+        assert imported_soul.config_files[0].file_id == ""
+        assert imported_soul.config_files[0].is_missing is True
 
     def test_export_dsl_workflow_app_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
