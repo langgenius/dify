@@ -103,12 +103,16 @@ class FakeProvider:
 def test_default_layer_providers_wire_provided_shell_provider() -> None:
     fake_provider = FakeProvider()
 
-    providers = create_default_layer_providers(shell_provider=cast(ShellProviderProtocol, fake_provider))
+    providers = create_default_layer_providers(
+        shell_provider=cast(ShellProviderProtocol, fake_provider),
+        shell_home_root="/tmp/dify-agent-home",
+    )
     shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
     shell_layer = shell_provider.create_layer(DifyShellLayerConfig())
 
     assert isinstance(shell_layer, DifyShellLayer)
     assert shell_layer.shell_provider is fake_provider
+    assert shell_layer.shell_home_root == "/tmp/dify-agent-home"
 
 
 def test_default_layer_providers_forward_agent_stub_token_factory() -> None:

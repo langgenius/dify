@@ -11,10 +11,18 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -99,10 +107,41 @@ describe('useDSLByCanEdit', () => {
       include: false,
       workflowID: undefined,
     })
-    expect(mockDownloadBlob).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.any(Blob),
-      fileName: 'Workflow App.yml',
-    }))
+    expect(mockDownloadBlob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.any(Blob),
+        fileName: 'Workflow App.yml',
+      }),
+    )
+  })
+
+  it('should download workflow DSL containing portable Agent packages unchanged', async () => {
+    const agentDSL = `version: 0.7.0
+agent_packages:
+  agent_1:
+    schema_version: 1
+workflow:
+  graph:
+    nodes:
+      - data:
+          type: agent
+          version: '2'
+          agent_binding:
+            binding_type: inline_agent
+            package_ref: agent_1
+`
+    mockExportAppConfig.mockResolvedValue({ data: agentDSL })
+    const { result } = renderHook(() => useDSLByCanEdit(true))
+
+    await act(async () => {
+      await result.current.handleExportDSL()
+    })
+
+    const [{ data, fileName }] = mockDownloadBlob.mock.calls[0] as [
+      { data: Blob; fileName: string },
+    ]
+    expect(await data.text()).toBe(agentDSL)
+    expect(fileName).toBe('Workflow App.yml')
   })
 
   it('should forward include and workflow id arguments when exporting dsl directly', async () => {

@@ -5,7 +5,11 @@ import { serverUserProfileQueryOptions } from '@/features/account-profile/server
 import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
-import { getServerConsoleClientContext, resolveServerConsoleApiUrl, serverConsoleQuery } from '@/service/server'
+import {
+  getServerConsoleClientContext,
+  resolveServerConsoleApiUrl,
+  serverConsoleQuery,
+} from '@/service/server'
 import { basePath } from '@/utils/var'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
@@ -24,8 +28,7 @@ const parseConsoleErrorPayload = async (error: Response): Promise<ConsoleErrorPa
   try {
     const payload: unknown = await error.clone().json()
     return isConsoleErrorPayload(payload) ? payload : null
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -43,16 +46,12 @@ const redirectToAuthRefresh = async () => {
 }
 
 const handleProfileError = async (error: unknown) => {
-  if (!(error instanceof Response))
-    throw error
+  if (!(error instanceof Response)) throw error
 
   const errorData = await parseConsoleErrorPayload(error)
-  if (errorData?.code === 'not_setup')
-    redirect(`${basePath}/install`)
-  if (errorData?.code === 'not_init_validated')
-    redirect(`${basePath}/init`)
-  if (error.status === 401)
-    await redirectToAuthRefresh()
+  if (errorData?.code === 'not_setup') redirect(`${basePath}/install`)
+  if (errorData?.code === 'not_init_validated') redirect(`${basePath}/init`)
+  if (error.status === 401) await redirectToAuthRefresh()
 
   throw error
 }
@@ -68,20 +67,17 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
       await Promise.all([
         queryClient.fetchQuery(serverUserProfileQueryOptions()),
         queryClient.prefetchQuery(serverSystemFeaturesQueryOptions()),
-        queryClient.prefetchQuery(serverConsoleQuery.workspaces.current.post.queryOptions({
-          context,
-          retry: false,
-        })),
+        queryClient.prefetchQuery(
+          serverConsoleQuery.workspaces.current.post.queryOptions({
+            context,
+            retry: false,
+          }),
+        ),
       ])
-    }
-    catch (error) {
+    } catch (error) {
       await handleProfileError(error)
     }
   }
 
-  return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      {children}
-    </HydrationBoundary>
-  )
+  return <HydrationBoundary state={dehydrate(queryClient)}>{children}</HydrationBoundary>
 }

@@ -18,6 +18,7 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from controllers.service_api.schema import binary_response, expect_with_user, multipart_file_params
@@ -33,6 +34,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -54,6 +56,7 @@ class AudioApi(Resource):
             200: "Successfully converted audio to text.",
             400: (
                 "- `app_unavailable` : App unavailable or misconfigured.\n"
+                "- `speech_to_text_disabled` : Speech-to-text is disabled for this app.\n"
                 "- `provider_not_support_speech_to_text` : Model provider does not support speech-to-text.\n"
                 "- `provider_not_initialize` : No valid model provider credentials found.\n"
                 "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
@@ -101,7 +104,12 @@ class AudioApi(Resource):
         file = request.files["file"]
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.id)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=end_user.id,
+            )
 
             return dump_response(AudioTranscriptResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -115,6 +123,8 @@ class AudioApi(Resource):
             raise UnsupportedAudioTypeError()
         except ProviderNotSupportSpeechToTextServiceError:
             raise ProviderNotSupportSpeechToTextError()
+        except SpeechToTextDisabledServiceError:
+            raise SpeechToTextDisabledError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

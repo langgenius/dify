@@ -6,7 +6,7 @@ import { formatted, OutputFormat } from '@/framework/output'
 import { runSetMember } from './run'
 
 export default class SetMember extends DifyCommand {
-  static override description = 'Change a member\'s role in the active (or specified) workspace'
+  static override description = "Change a member's role in the active (or specified) workspace"
 
   static override effect: CommandEffect = 'write'
 
@@ -21,16 +21,19 @@ export default class SetMember extends DifyCommand {
   }
 
   static override flags = {
-    'role': Flags.string({
+    role: Flags.string({
       description: 'new role (normal|admin); owner is not assignable here',
       required: true,
     }),
-    'workspace': Flags.string({
+    workspace: Flags.string({
       char: 'w',
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     'http-retry': httpRetryFlag,
-    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT], default: '' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT],
+      default: '',
+    }),
   }
 
   async run(argv: string[]) {

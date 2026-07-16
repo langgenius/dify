@@ -16,16 +16,10 @@ type IFilterProps = {
   children: React.JSX.Element
 }
 
-const Filter: FC<IFilterProps> = ({
-  appId,
-  queryParams,
-  setQueryParams,
-  children,
-}) => {
+const Filter: FC<IFilterProps> = ({ appId, queryParams, setQueryParams, children }) => {
   const { data, isLoading } = useAnnotationsCount(appId)
   const { t } = useTranslation()
-  if (isLoading || !data)
-    return null
+  if (isLoading || !data) return null
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center justify-between gap-2">
       <Input
@@ -33,7 +27,7 @@ const Filter: FC<IFilterProps> = ({
         showLeftIcon
         showClearIcon
         value={queryParams.keyword}
-        placeholder={t($ => $['operation.search'], { ns: 'common' })!}
+        placeholder={t(($) => $['operation.search'], { ns: 'common' })!}
         onChange={(e) => {
           setQueryParams({ ...queryParams, keyword: e.target.value })
         }}

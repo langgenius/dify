@@ -118,6 +118,74 @@ export type SnippetLoopNodeRunPayload = {
   } | null
 }
 
+export type WorkflowAgentComposerResponse = {
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
+  agent?: AgentComposerAgentResponse | null
+  agent_soul: AgentSoulConfig
+  app_id?: string | null
+  backing_app_id?: string | null
+  binding?: AgentComposerBindingResponse | null
+  chat_endpoint?: string | null
+  debug_conversation_has_messages?: boolean
+  debug_conversation_id?: string | null
+  debug_conversation_message_count?: number
+  effective_declared_outputs?: Array<DeclaredOutputConfig>
+  hidden_app_backed?: boolean
+  impact_summary?: AgentComposerImpactResponse | null
+  node_id?: string | null
+  node_job: WorkflowNodeJobConfig
+  save_options: Array<ComposerSaveStrategy>
+  soul_lock: AgentComposerSoulLockResponse
+  validation?: ComposerValidationFindingsResponse | null
+  variant: 'workflow'
+  workflow_id?: string | null
+}
+
+export type ComposerSavePayload = {
+  agent_soul?: AgentSoulConfig | null
+  binding?: ComposerBindingPayload | null
+  client_revision_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
+  idempotency_key?: string | null
+  new_agent_name?: string | null
+  node_job?: WorkflowNodeJobConfig | null
+  role?: string | null
+  save_strategy: ComposerSaveStrategy
+  soul_lock?: ComposerSoulLockPayload
+  variant: ComposerVariant
+  version_note?: string | null
+}
+
+export type AgentComposerCandidatesResponse = {
+  allowed_node_job_candidates?: AgentComposerNodeJobCandidatesResponse
+  allowed_soul_candidates?: AgentComposerSoulCandidatesResponse
+  capabilities?: ComposerCandidateCapabilities
+  truncated?: boolean
+  variant: ComposerVariant
+}
+
+export type WorkflowComposerCopyFromRosterPayload = {
+  idempotency_key?: string | null
+  source_agent_id: string
+  source_snapshot_id?: string | null
+}
+
+export type AgentComposerImpactResponse = {
+  bindings?: Array<AgentComposerImpactBindingResponse>
+  current_snapshot_id?: string | null
+  workflow_node_count: number
+}
+
+export type AgentComposerValidateResponse = {
+  errors?: Array<string>
+  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
+  result: 'success'
+  warnings?: Array<ComposerValidationWarningResponse>
+}
+
 export type WorkflowRunNodeExecutionResponse = {
   created_at?: number | null
   created_by_account?: SimpleAccountResponse | null
@@ -139,6 +207,7 @@ export type WorkflowRunNodeExecutionResponse = {
   predecessor_node_id?: string | null
   process_data?: unknown
   process_data_truncated?: boolean | null
+  retry_index?: number | null
   status?: string | null
   title?: string | null
 }
@@ -184,8 +253,8 @@ export type WorkflowDraftVariable = {
     | number
     | boolean
     | {
-      [key: string]: unknown
-    }
+        [key: string]: unknown
+      }
     | Array<unknown>
     | null
   value_type?: string
@@ -288,16 +357,184 @@ export type EnvironmentVariableItemResponse = {
   visible: boolean
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
+export type JsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
       [key: string]: unknown
     }
-    | Array<unknown>
-    | null
+  | Array<unknown>
+  | null
+
+export type AgentConfigSnapshotSummaryResponse = {
+  agent_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  display_version?: number | null
+  id: string
+  snapshot_version?: number | null
+  summary?: string | null
+  version: number
+  version_note?: string | null
+}
+
+export type AgentComposerAgentResponse = {
+  active_config_snapshot_id?: string | null
+  app_id?: string | null
+  backing_app_id?: string | null
+  description: string
+  hidden_app_backed?: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  name: string
+  role?: string | null
+  scope: AgentScope
+  source?: AgentSource | null
+  status: AgentStatus
+}
+
+export type AgentSoulConfig = {
+  app_features?: AgentSoulAppFeaturesConfig
+  app_variables?: Array<AppVariableConfig>
+  config_files?: Array<AgentConfigFileRefConfig>
+  config_note?: string
+  config_skills?: Array<AgentConfigSkillRefConfig>
+  env?: AgentSoulEnvConfig
+  files?: AgentSoulFilesConfig
+  human?: AgentSoulHumanConfig
+  knowledge?: AgentSoulKnowledgeConfig
+  memory?: AgentSoulMemoryConfig
+  misc_legacy?: AgentSoulAppFeaturesConfig
+  model?: AgentSoulModelConfig | null
+  prompt?: AgentSoulPromptConfig
+  sandbox?: AgentSoulSandboxConfig
+  schema_version?: number
+  tools?: AgentSoulToolsConfig
+}
+
+export type AgentComposerBindingResponse = {
+  agent_id?: string | null
+  binding_type: WorkflowAgentBindingType
+  current_snapshot_id?: string | null
+  id: string
+  node_id: string
+  workflow_id: string
+}
+
+export type DeclaredOutputConfig = {
+  array_item?: DeclaredArrayItem | null
+  check?: DeclaredOutputCheckConfig | null
+  children?: Array<{
+    array_item?: {
+      children?: Array<{
+        [key: string]: unknown
+      }>
+      description?: string | null
+      type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+      [key: string]: unknown
+    }
+    children?: Array<{
+      [key: string]: unknown
+    }>
+    description?: string | null
+    file?: {
+      [key: string]: unknown
+    }
+    name: string
+    required?: boolean
+    type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+  }>
+  description?: string | null
+  failure_strategy?: DeclaredOutputFailureStrategy
+  file?: DeclaredOutputFileConfig | null
+  id?: string | null
+  name: string
+  required?: boolean
+  type: DeclaredOutputType
+}
+
+export type WorkflowNodeJobConfig = {
+  declared_outputs?: Array<DeclaredOutputConfig>
+  human_contacts?: Array<AgentHumanContactConfig>
+  metadata?: WorkflowNodeJobMetadata
+  mode?: WorkflowNodeJobMode
+  previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
+  schema_version?: number
+  workflow_prompt?: string
+}
+
+export type ComposerSaveStrategy =
+  | 'node_job_only'
+  | 'save_as_new_agent'
+  | 'save_as_new_version'
+  | 'save_to_current_version'
+  | 'save_to_roster'
+
+export type AgentComposerSoulLockResponse = {
+  can_unlock?: boolean
+  locked: boolean
+  reason?: string | null
+}
+
+export type ComposerValidationFindingsResponse = {
+  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
+  warnings?: Array<ComposerValidationWarningResponse>
+}
+
+export type ComposerBindingPayload = {
+  agent_id?: string | null
+  binding_type: 'inline_agent' | 'roster_agent'
+  current_snapshot_id?: string | null
+}
+
+export type AgentIconType = 'emoji' | 'image' | 'link'
+
+export type ComposerSoulLockPayload = {
+  locked?: boolean
+  unlocked_from_version_id?: string | null
+}
+
+export type ComposerVariant = 'agent_app' | 'workflow'
+
+export type AgentComposerNodeJobCandidatesResponse = {
+  declare_output_types?: Array<DeclaredOutputType>
+  human_contacts?: Array<AgentHumanContactConfig>
+  previous_node_outputs?: Array<WorkflowPreviousNodeOutputRef>
+}
+
+export type AgentComposerSoulCandidatesResponse = {
+  cli_tools?: Array<AgentCliToolConfig>
+  dify_tools?: Array<AgentComposerDifyToolCandidateResponse>
+  human_contacts?: Array<AgentHumanContactConfig>
+  knowledge_sets?: Array<AgentComposerKnowledgeSetCandidateResponse>
+}
+
+export type ComposerCandidateCapabilities = {
+  human_roster_available?: boolean
+}
+
+export type AgentComposerImpactBindingResponse = {
+  app_id: string
+  node_id: string
+  workflow_id: string
+}
+
+export type ComposerKnowledgePlaceholderResponse = {
+  id: string
+  placeholder_name: string
+}
+
+export type ComposerValidationWarningResponse = {
+  code: string
+  id?: string | null
+  kind?: string | null
+  message?: string | null
+  surface?: string | null
+}
 
 export type WorkflowDraftVariableWithoutValue = {
   description?: string
@@ -309,6 +546,583 @@ export type WorkflowDraftVariableWithoutValue = {
   type?: string
   value_type?: string
   visible?: boolean
+}
+
+export type AgentScope = 'roster' | 'workflow_only'
+
+export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'workflow'
+
+export type AgentStatus = 'active' | 'archived'
+
+export type AgentSoulAppFeaturesConfig = {
+  file_upload?: AgentFileUploadFeatureConfig
+  opening_statement?: string | null
+  retriever_resource?: AgentFeatureToggleConfig | null
+  sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  speech_to_text?: AgentFeatureToggleConfig | null
+  suggested_questions?: Array<string> | null
+  suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
+  text_to_speech?: AgentTextToSpeechFeatureConfig | null
+  [key: string]: unknown
+}
+
+export type AppVariableConfig = {
+  default?: unknown
+  name: string
+  required?: boolean
+  type: string
+}
+
+export type AgentConfigFileRefConfig = {
+  file_id?: string
+  file_kind: 'tool_file' | 'upload_file'
+  hash?: string | null
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillRefConfig = {
+  description?: string
+  file_id?: string
+  file_kind?: 'tool_file'
+  hash?: string | null
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentSoulEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
+
+export type AgentSoulFilesConfig = {
+  files?: Array<AgentFileRefConfig>
+  skills?: Array<AgentSkillRefConfig>
+}
+
+export type AgentSoulHumanConfig = {
+  contacts?: Array<AgentHumanContactConfig>
+  tools?: Array<AgentHumanToolConfig>
+}
+
+export type AgentSoulKnowledgeConfig = {
+  sets?: Array<AgentKnowledgeSetConfig>
+}
+
+export type AgentSoulMemoryConfig = {
+  artifacts?: Array<AgentMemoryArtifactConfig>
+  budget?: string | null
+  scope?: string | null
+}
+
+export type AgentSoulModelConfig = {
+  credential_ref?: AgentSoulModelCredentialRef | null
+  model: string
+  model_provider: string
+  model_settings?: AgentSoulModelSettings
+  plugin_id: string
+}
+
+export type AgentSoulPromptConfig = {
+  system_prompt?: string
+}
+
+export type AgentSoulSandboxConfig = {
+  config?: AgentSandboxProviderConfig
+  provider?: string | null
+}
+
+export type AgentSoulToolsConfig = {
+  cli_tools?: Array<AgentCliToolConfig>
+  dify_tools?: Array<AgentSoulDifyToolConfig>
+}
+
+export type WorkflowAgentBindingType = 'inline_agent' | 'roster_agent'
+
+export type DeclaredArrayItem = {
+  children?: Array<{
+    array_item?: {
+      children?: Array<{
+        [key: string]: unknown
+      }>
+      description?: string | null
+      type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+      [key: string]: unknown
+    }
+    children?: Array<{
+      [key: string]: unknown
+    }>
+    description?: string | null
+    file?: {
+      [key: string]: unknown
+    }
+    name: string
+    required?: boolean
+    type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+  }>
+  description?: string | null
+  type: DeclaredOutputType
+}
+
+export type DeclaredOutputCheckConfig = {
+  benchmark_file_ref?: AgentFileRefConfig | null
+  enabled?: boolean
+  model_ref?: AgentSoulModelConfig | null
+  prompt?: string | null
+}
+
+export type DeclaredOutputFailureStrategy = {
+  default_value?: unknown
+  on_failure?: OutputErrorStrategy
+  retry?: DeclaredOutputRetryConfig
+}
+
+export type DeclaredOutputFileConfig = {
+  extensions?: Array<string>
+  mime_types?: Array<string>
+}
+
+export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+
+export type AgentHumanContactConfig = {
+  channel?: string | null
+  contact_id?: string | null
+  contact_method?: string | null
+  email?: string | null
+  human_id?: string | null
+  id?: string | null
+  method?: string | null
+  name?: string | null
+  tenant_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowNodeJobMetadata = {
+  agent_soul?: {
+    [key: string]: unknown
+  } | null
+  file_refs?: Array<AgentFileRefConfig> | null
+}
+
+export type WorkflowNodeJobMode = 'let_agent_figure_it_out' | 'tell_agent_what_to_do'
+
+export type WorkflowPreviousNodeOutputRef = {
+  key?: string | null
+  name?: string | null
+  node_id?: string | null
+  output?: string | null
+  selector?: Array<string | number | number | boolean | null> | null
+  value_selector?: Array<string | number | number | boolean | null> | null
+  variable?: string | null
+  variable_selector?: Array<string | number | number | boolean | null> | null
+  [key: string]: unknown
+}
+
+export type AgentCliToolConfig = {
+  approved?: boolean
+  authorization_status?: AgentCliToolAuthorizationStatus | null
+  command?: string | null
+  dangerous?: boolean
+  dangerous_accepted?: boolean
+  dangerous_acknowledged?: boolean
+  dangerous_command?: boolean
+  description?: string | null
+  enabled?: boolean
+  env?: AgentCliToolEnvConfig
+  id?: string | null
+  inferred_from?: string | null
+  install?: string | null
+  install_command?: string | null
+  install_commands?: Array<string>
+  invoke_metadata?: {
+    [key: string]: unknown
+  }
+  label?: string | null
+  name?: string | null
+  permission?: AgentPermissionConfig | null
+  pre_authorized?: boolean | null
+  requires_confirmation?: boolean
+  risk_accepted?: boolean
+  risk_level?: AgentCliToolRiskLevel | null
+  setup_command?: string | null
+  tool_name?: string | null
+  [key: string]: unknown
+}
+
+export type AgentComposerDifyToolCandidateResponse = {
+  description?: string | null
+  granularity?: string | null
+  id?: string | null
+  name?: string | null
+  plugin_id?: string | null
+  provider?: string | null
+  provider_id?: string | null
+  tools_count?: number | null
+}
+
+export type AgentComposerKnowledgeSetCandidateResponse = {
+  datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
+  description?: string | null
+  id: string
+  missing_dataset_ids?: Array<string>
+  name: string
+}
+
+export type AgentFileUploadFeatureConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AgentFileUploadImageFeatureConfig
+  number_limits?: number
+  [key: string]: unknown
+}
+
+export type AgentFeatureToggleConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
+export type AgentSensitiveWordAvoidanceFeatureConfig = {
+  config?: AgentModerationProviderConfig | null
+  enabled?: boolean
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
+  enabled?: boolean
+  model?: AgentSuggestedQuestionsAfterAnswerModelConfig | null
+  prompt?: string | null
+  [key: string]: unknown
+}
+
+export type AgentTextToSpeechFeatureConfig = {
+  autoPlay?: string | null
+  enabled?: boolean
+  language?: string | null
+  voice?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSecretRefConfig = {
+  credential_id?: string | null
+  env_name?: string | null
+  id?: string | null
+  key?: string | null
+  name?: string | null
+  permission?: AgentPermissionConfig | null
+  permission_status?: string | null
+  provider?: string | null
+  provider_credential_id?: string | null
+  ref?: string | null
+  type?: string | null
+  value?: string | null
+  variable?: string | null
+  [key: string]: unknown
+}
+
+export type AgentEnvVariableConfig = {
+  default?:
+    | string
+    | number
+    | number
+    | boolean
+    | Array<string>
+    | Array<number>
+    | Array<number>
+    | Array<boolean>
+    | null
+  env_name?: string | null
+  key?: string | null
+  name?: string | null
+  required?: boolean
+  type?: string | null
+  value?:
+    | string
+    | number
+    | number
+    | boolean
+    | Array<string>
+    | Array<number>
+    | Array<number>
+    | Array<boolean>
+    | null
+  variable?: string | null
+  [key: string]: unknown
+}
+
+export type AgentFileRefConfig = {
+  drive_key?: string | null
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSkillRefConfig = {
+  description?: string | null
+  file_id?: string | null
+  full_archive_file_id?: string | null
+  full_archive_key?: string | null
+  id?: string | null
+  manifest_files?: Array<string> | null
+  name?: string | null
+  path?: string | null
+  skill_md_file_id?: string | null
+  skill_md_key?: string | null
+  [key: string]: unknown
+}
+
+export type AgentHumanToolConfig = {
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeSetConfig = {
+  datasets: Array<AgentKnowledgeDatasetConfig>
+  description?: string | null
+  id: string
+  metadata_filtering?: AgentKnowledgeMetadataFilteringConfig
+  name: string
+  query: AgentKnowledgeQueryConfig
+  retrieval: AgentKnowledgeRetrievalConfig
+}
+
+export type AgentMemoryArtifactConfig = {
+  id?: string | null
+  name?: string | null
+  type?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSoulModelCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type: string
+}
+
+export type AgentSoulModelSettings = {
+  frequency_penalty?: number | null
+  max_tokens?: number | null
+  presence_penalty?: number | null
+  response_format?: AgentModelResponseFormatConfig | null
+  stop?: Array<string> | null
+  temperature?: number | null
+  top_p?: number | null
+}
+
+export type AgentSandboxProviderConfig = {
+  cpu?: number | null
+  env?: Array<AgentEnvVariableConfig>
+  image?: string | null
+  working_dir?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSoulDifyToolConfig = {
+  credential_ref?: AgentSoulDifyToolCredentialRef | null
+  credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  plugin_id?: string | null
+  provider?: string | null
+  provider_id?: string | null
+  provider_type?: string
+  runtime_parameters?: {
+    [key: string]:
+      | string
+      | number
+      | number
+      | boolean
+      | Array<string>
+      | Array<number>
+      | Array<number>
+      | Array<boolean>
+      | null
+  }
+  tool_name?: string | null
+}
+
+export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
+
+export type DeclaredOutputRetryConfig = {
+  enabled?: boolean
+  max_retries?: number
+  retry_interval_ms?: number
+}
+
+export type AgentCliToolAuthorizationStatus =
+  | 'allowed'
+  | 'authorized'
+  | 'denied'
+  | 'forbidden'
+  | 'not_required'
+  | 'pending'
+  | 'pre_authorized'
+  | 'unauthorized'
+
+export type AgentCliToolEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
+
+export type AgentPermissionConfig = {
+  allowed?: boolean | null
+  state?: string | null
+  status?: string | null
+}
+
+export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
+
+export type AgentComposerKnowledgeDatasetCandidateResponse = {
+  description?: string | null
+  id?: string | null
+  missing?: boolean
+  name?: string | null
+}
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AgentFileUploadImageFeatureConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
+export type AgentModerationProviderConfig = {
+  api_based_extension_id?: string | null
+  inputs_config?: AgentModerationIoConfig | null
+  keywords?: string | null
+  outputs_config?: AgentModerationIoConfig | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  } | null
+  mode?: string | null
+  name: string
+  provider: string
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeDatasetConfig = {
+  description?: string | null
+  id?: string | null
+  name?: string | null
+}
+
+export type AgentKnowledgeMetadataFilteringConfig = {
+  conditions?: AgentKnowledgeMetadataConditions | null
+  mode?: 'automatic' | 'disabled' | 'manual'
+  model_config?: AgentKnowledgeModelConfig | null
+}
+
+export type AgentKnowledgeQueryConfig = {
+  mode: AgentKnowledgeQueryMode
+  value?: string | null
+}
+
+export type AgentKnowledgeRetrievalConfig = {
+  mode: 'multiple' | 'single'
+  model?: AgentKnowledgeModelConfig | null
+  reranking_enable?: boolean
+  reranking_mode?: string
+  reranking_model?: AgentKnowledgeRerankingModelConfig | null
+  score_threshold?: number | null
+  top_k?: number | null
+  weights?: AgentKnowledgeWeightedScoreConfig | null
+}
+
+export type AgentModelResponseFormatConfig = {
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSoulDifyToolCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type?: 'provider' | 'tool'
+}
+
+export type AgentModerationIoConfig = {
+  enabled?: boolean
+  preset_response?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeMetadataConditions = {
+  conditions?: Array<AgentKnowledgeMetadataCondition>
+  logical_operator?: 'and' | 'or'
+}
+
+export type AgentKnowledgeModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: string
+  name: string
+  provider: string
+}
+
+export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
+
+export type AgentKnowledgeRerankingModelConfig = {
+  model: string
+  provider: string
+}
+
+export type AgentKnowledgeWeightedScoreConfig = {
+  keyword_setting?: {
+    [key: string]: unknown
+  } | null
+  vector_setting?: {
+    [key: string]: unknown
+  } | null
+  weight_type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeMetadataCondition = {
+  comparison_operator:
+    | '<'
+    | '='
+    | '>'
+    | 'after'
+    | 'before'
+    | 'contains'
+    | 'empty'
+    | 'end with'
+    | 'in'
+    | 'is'
+    | 'is not'
+    | 'not contains'
+    | 'not empty'
+    | 'not in'
+    | 'start with'
+    | '≠'
+    | '≤'
+    | '≥'
+  name: string
+  value?: string | Array<string> | number | null
 }
 
 export type GetSnippetsBySnippetIdWorkflowRunsData = {
@@ -327,8 +1141,8 @@ export type GetSnippetsBySnippetIdWorkflowRunsResponses = {
   200: WorkflowRunPaginationResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowRunsResponse
-  = GetSnippetsBySnippetIdWorkflowRunsResponses[keyof GetSnippetsBySnippetIdWorkflowRunsResponses]
+export type GetSnippetsBySnippetIdWorkflowRunsResponse =
+  GetSnippetsBySnippetIdWorkflowRunsResponses[keyof GetSnippetsBySnippetIdWorkflowRunsResponses]
 
 export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopData = {
   body?: never
@@ -348,8 +1162,8 @@ export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponse
-  = PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponses[keyof PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponses]
+export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponse =
+  PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponses[keyof PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponses]
 
 export type GetSnippetsBySnippetIdWorkflowRunsByRunIdData = {
   body?: never
@@ -369,8 +1183,8 @@ export type GetSnippetsBySnippetIdWorkflowRunsByRunIdResponses = {
   200: WorkflowRunDetailResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowRunsByRunIdResponse
-  = GetSnippetsBySnippetIdWorkflowRunsByRunIdResponses[keyof GetSnippetsBySnippetIdWorkflowRunsByRunIdResponses]
+export type GetSnippetsBySnippetIdWorkflowRunsByRunIdResponse =
+  GetSnippetsBySnippetIdWorkflowRunsByRunIdResponses[keyof GetSnippetsBySnippetIdWorkflowRunsByRunIdResponses]
 
 export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsData = {
   body?: never
@@ -386,8 +1200,8 @@ export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponses = {
   200: WorkflowRunNodeExecutionListResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponse
-  = GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponses]
+export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponse =
+  GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsData = {
   body?: never
@@ -405,8 +1219,8 @@ export type GetSnippetsBySnippetIdWorkflowsResponses = {
   200: SnippetWorkflowPaginationResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowsResponse
-  = GetSnippetsBySnippetIdWorkflowsResponses[keyof GetSnippetsBySnippetIdWorkflowsResponses]
+export type GetSnippetsBySnippetIdWorkflowsResponse =
+  GetSnippetsBySnippetIdWorkflowsResponses[keyof GetSnippetsBySnippetIdWorkflowsResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsData = {
   body?: never
@@ -421,8 +1235,8 @@ export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponses 
   200: DefaultBlockConfigsResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse
-  = GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponses[keyof GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponses]
+export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse =
+  GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponses[keyof GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftData = {
   body?: never
@@ -441,8 +1255,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftResponses = {
   200: SnippetWorkflowResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDraftResponse
-  = GetSnippetsBySnippetIdWorkflowsDraftResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftResponses]
+export type GetSnippetsBySnippetIdWorkflowsDraftResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftData = {
   body: SnippetDraftSyncPayload
@@ -461,8 +1275,8 @@ export type PostSnippetsBySnippetIdWorkflowsDraftResponses = {
   200: WorkflowRestoreResponse
 }
 
-export type PostSnippetsBySnippetIdWorkflowsDraftResponse
-  = PostSnippetsBySnippetIdWorkflowsDraftResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftResponses]
+export type PostSnippetsBySnippetIdWorkflowsDraftResponse =
+  PostSnippetsBySnippetIdWorkflowsDraftResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftConfigData = {
   body?: never
@@ -477,8 +1291,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftConfigResponses = {
   200: SnippetDraftConfigResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDraftConfigResponse
-  = GetSnippetsBySnippetIdWorkflowsDraftConfigResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftConfigResponses]
+export type GetSnippetsBySnippetIdWorkflowsDraftConfigResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftConfigResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftConfigResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesData = {
   body?: never
@@ -493,8 +1307,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponses =
   200: WorkflowDraftVariableList
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse
-  = GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponses]
+export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesData = {
   body?: never
@@ -513,8 +1327,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponses = 
   200: EnvironmentVariableListResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse
-  = GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponses]
+export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunData = {
   body: SnippetIterationNodeRunPayload
@@ -534,8 +1348,8 @@ export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunRespon
   200: GeneratedAppResponse
 }
 
-export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponse
-  = PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponses]
+export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponse =
+  PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunData = {
   body: SnippetLoopNodeRunPayload
@@ -555,8 +1369,130 @@ export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponses =
   200: GeneratedAppResponse
 }
 
-export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponse
-  = PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponses]
+export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponse =
+  PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponses]
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
+  body?: never
+  path: {
+    node_id: string
+    snippet_id: string
+  }
+  query?: {
+    snapshot_id?: string
+  }
+  url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer'
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
+  200: WorkflowAgentComposerResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
+
+export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
+  body: ComposerSavePayload
+  path: {
+    node_id: string
+    snippet_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer'
+}
+
+export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
+  200: WorkflowAgentComposerResponse
+}
+
+export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse =
+  PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesData = {
+  body?: never
+  path: {
+    node_id: string
+    snippet_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates'
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses = {
+  200: AgentComposerCandidatesResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses]
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterData = {
+  body: WorkflowComposerCopyFromRosterPayload
+  path: {
+    node_id: string
+    snippet_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster'
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses =
+  {
+    200: WorkflowAgentComposerResponse
+  }
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses]
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = {
+  body: ComposerSavePayload
+  path: {
+    node_id: string
+    snippet_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact'
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses = {
+  200: AgentComposerImpactResponse
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses]
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterData = {
+  body: ComposerSavePayload
+  path: {
+    node_id: string
+    snippet_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster'
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses = {
+  200: WorkflowAgentComposerResponse
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses]
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateData = {
+  body: ComposerSavePayload
+  path: {
+    node_id: string
+    snippet_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate'
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses = {
+  200: AgentComposerValidateResponse
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunData = {
   body?: never
@@ -576,8 +1512,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponses = 
   200: WorkflowRunNodeExecutionResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponse
-  = GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponses]
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunData = {
   body: SnippetDraftNodeRunPayload
@@ -597,8 +1533,8 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponses = {
   200: WorkflowRunNodeExecutionResponse
 }
 
-export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponse
-  = PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponses]
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponse =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponses]
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
@@ -614,8 +1550,8 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesRespons
   204: void
 }
 
-export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse
-  = DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses]
+export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse =
+  DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
@@ -631,8 +1567,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses 
   200: WorkflowDraftVariableList
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse
-  = GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses]
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftRunData = {
   body: SnippetDraftRunPayload
@@ -651,8 +1587,8 @@ export type PostSnippetsBySnippetIdWorkflowsDraftRunResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostSnippetsBySnippetIdWorkflowsDraftRunResponse
-  = PostSnippetsBySnippetIdWorkflowsDraftRunResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftRunResponses]
+export type PostSnippetsBySnippetIdWorkflowsDraftRunResponse =
+  PostSnippetsBySnippetIdWorkflowsDraftRunResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftRunResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesData = {
   body?: never
@@ -667,8 +1603,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses = {
   200: WorkflowDraftVariableList
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse
-  = GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses]
+export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses]
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesData = {
   body?: never
@@ -683,8 +1619,8 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses = {
   204: void
 }
 
-export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse
-  = DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses[keyof DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses]
+export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse =
+  DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses[keyof DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesData = {
   body?: never
@@ -702,8 +1638,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses = {
   200: WorkflowDraftVariableListWithoutValue
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponse
-  = GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses]
+export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses]
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never
@@ -723,8 +1659,8 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse
   204: void
 }
 
-export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse
-  = DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses[keyof DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses]
+export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse =
+  DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses[keyof DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never
@@ -744,8 +1680,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses =
   200: WorkflowDraftVariable
 }
 
-export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse
-  = GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses]
+export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse =
+  GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
   body: WorkflowDraftVariableUpdatePayload
@@ -765,8 +1701,8 @@ export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses
   200: WorkflowDraftVariable
 }
 
-export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse
-  = PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses[keyof PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses]
+export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse =
+  PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses[keyof PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetData = {
   body?: never
@@ -787,8 +1723,8 @@ export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetRespon
   204: void
 }
 
-export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse
-  = PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponses[keyof PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponses]
+export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse =
+  PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponses[keyof PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsPublishData = {
   body?: never
@@ -807,8 +1743,8 @@ export type GetSnippetsBySnippetIdWorkflowsPublishResponses = {
   200: SnippetWorkflowResponse
 }
 
-export type GetSnippetsBySnippetIdWorkflowsPublishResponse
-  = GetSnippetsBySnippetIdWorkflowsPublishResponses[keyof GetSnippetsBySnippetIdWorkflowsPublishResponses]
+export type GetSnippetsBySnippetIdWorkflowsPublishResponse =
+  GetSnippetsBySnippetIdWorkflowsPublishResponses[keyof GetSnippetsBySnippetIdWorkflowsPublishResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsPublishData = {
   body: PublishWorkflowPayload
@@ -827,8 +1763,8 @@ export type PostSnippetsBySnippetIdWorkflowsPublishResponses = {
   200: WorkflowPublishResponse
 }
 
-export type PostSnippetsBySnippetIdWorkflowsPublishResponse
-  = PostSnippetsBySnippetIdWorkflowsPublishResponses[keyof PostSnippetsBySnippetIdWorkflowsPublishResponses]
+export type PostSnippetsBySnippetIdWorkflowsPublishResponse =
+  PostSnippetsBySnippetIdWorkflowsPublishResponses[keyof PostSnippetsBySnippetIdWorkflowsPublishResponses]
 
 export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
   body: WorkflowUpdatePayload
@@ -849,8 +1785,8 @@ export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses = {
   200: SnippetWorkflowResponse
 }
 
-export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse
-  = PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses[keyof PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses]
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse =
+  PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses[keyof PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreData = {
   body?: never
@@ -871,5 +1807,5 @@ export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponses = {
   200: WorkflowRestoreResponse
 }
 
-export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse
-  = PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponses[keyof PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponses]
+export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse =
+  PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponses[keyof PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponses]

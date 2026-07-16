@@ -8,7 +8,7 @@ export const OpenDecision = {
   SkipNoTTY: 'Non-interactive TTY',
   SkipUserOptOut: '--no-browser requested',
 } as const
-export type OpenDecision = typeof OpenDecision[keyof typeof OpenDecision]
+export type OpenDecision = (typeof OpenDecision)[keyof typeof OpenDecision]
 
 export type BrowserEnv = {
   getEnv: (key: string) => string | undefined
@@ -19,7 +19,7 @@ export type BrowserEnv = {
 
 export function realEnv(): BrowserEnv {
   return {
-    getEnv: k => process.env[k],
+    getEnv: (k) => process.env[k],
     platform: platform(),
     isOutTTY: Boolean(process.stdout.isTTY),
     isErrTTY: Boolean(process.stderr.isTTY),
@@ -27,17 +27,17 @@ export function realEnv(): BrowserEnv {
 }
 
 export function decideOpen(env: BrowserEnv, userOptOut: boolean): OpenDecision {
-  if (userOptOut)
-    return OpenDecision.SkipUserOptOut
+  if (userOptOut) return OpenDecision.SkipUserOptOut
   if (truthy(env.getEnv('SSH_CONNECTION')) || truthy(env.getEnv('SSH_TTY')))
     return OpenDecision.SkipSSH
-  if (env.platform === 'linux'
-    && !truthy(env.getEnv('DISPLAY'))
-    && !truthy(env.getEnv('WAYLAND_DISPLAY'))) {
+  if (
+    env.platform === 'linux' &&
+    !truthy(env.getEnv('DISPLAY')) &&
+    !truthy(env.getEnv('WAYLAND_DISPLAY'))
+  ) {
     return OpenDecision.SkipHeadlessLinux
   }
-  if (!env.isOutTTY || !env.isErrTTY)
-    return OpenDecision.SkipNoTTY
+  if (!env.isOutTTY || !env.isErrTTY) return OpenDecision.SkipNoTTY
   return OpenDecision.Auto
 }
 

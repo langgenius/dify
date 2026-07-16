@@ -48,23 +48,25 @@ const LearnDifyContent = ({
 
   useEffect(() => {
     return () => {
-      if (hideTimerRef.current)
-        clearTimeout(hideTimerRef.current)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
     }
   }, [])
 
   const handleHide = () => {
     const sectionRect = sectionRef.current?.getBoundingClientRect()
-    const helpTargetRect = document.querySelector('[data-learn-dify-help-target]')?.getBoundingClientRect()
+    const helpTargetRect = document
+      .querySelector('[data-learn-dify-help-target]')
+      ?.getBoundingClientRect()
     if (sectionRect && helpTargetRect) {
       const sectionCenterX = sectionRect.left + sectionRect.width / 2
       const sectionCenterY = sectionRect.top + sectionRect.height / 2
       const helpCenterX = helpTargetRect.left + helpTargetRect.width / 2
       const helpCenterY = helpTargetRect.top + helpTargetRect.height / 2
 
-      setCollapseTransform(`translate3d(${helpCenterX - sectionCenterX}px, ${helpCenterY - sectionCenterY}px, 0) scale(0.08)`)
-    }
-    else {
+      setCollapseTransform(
+        `translate3d(${helpCenterX - sectionCenterX}px, ${helpCenterY - sectionCenterY}px, 0) scale(0.08)`,
+      )
+    } else {
       setCollapseTransform('scale(0.08)')
     }
     setIsClosing(true)
@@ -76,12 +78,10 @@ const LearnDifyContent = ({
   }
 
   const visibleItems = itemLimit ? learnDifyItems.slice(0, itemLimit) : learnDifyItems
-  const sectionTitle = title ?? t($ => $['learnDify.title'], { ns: 'explore' })
+  const sectionTitle = title ?? t(($) => $['learnDify.title'], { ns: 'explore' })
 
-  if (isLoading)
-    return loadingFallback
-  if (visibleItems.length === 0)
-    return null
+  if (isLoading) return loadingFallback
+  if (visibleItems.length === 0) return null
 
   return (
     <section
@@ -91,18 +91,24 @@ const LearnDifyContent = ({
         isClosing && 'pointer-events-none relative z-50 opacity-20',
         className,
       )}
-      style={isClosing ? { transform: collapseTransform, transformOrigin: 'center center' } : undefined}
+      style={
+        isClosing ? { transform: collapseTransform, transformOrigin: 'center center' } : undefined
+      }
       aria-labelledby="learn-dify-title"
     >
       <div className="-mx-4 rounded-2xl bg-background-section p-4">
         <div className="flex items-start justify-between gap-4 pb-2.5">
           <div className="min-w-0">
-            <h2 id="learn-dify-title" className="truncate system-xl-medium text-text-primary" title={sectionTitle}>
+            <h2
+              id="learn-dify-title"
+              className="truncate system-xl-medium text-text-primary"
+              title={sectionTitle}
+            >
               {sectionTitle}
             </h2>
             {showDescription && (
               <p className="mt-0.5 truncate system-xs-regular text-text-tertiary">
-                {t($ => $['learnDify.description'], { ns: 'explore' })}
+                {t(($) => $['learnDify.description'], { ns: 'explore' })}
               </p>
             )}
           </div>
@@ -110,7 +116,7 @@ const LearnDifyContent = ({
             <button
               type="button"
               className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
-              aria-label={t($ => $['learnDify.hide'], { ns: 'explore' })}
+              aria-label={t(($) => $['learnDify.hide'], { ns: 'explore' })}
               onClick={handleHide}
             >
               <span className="i-ri-close-line size-4" aria-hidden="true" />
@@ -118,7 +124,7 @@ const LearnDifyContent = ({
           )}
         </div>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
-          {visibleItems.map(item => (
+          {visibleItems.map((item) => (
             <LearnDifyItem
               key={item.app_id}
               canCreate={canCreate}
@@ -137,8 +143,7 @@ const DismissibleLearnDify = (props: LearnDifyProps) => {
   const hidden = useLearnDifyHiddenValue()
   const setHidden = useSetLearnDifyHidden()
 
-  if (hidden)
-    return null
+  if (hidden) return null
 
   return <LearnDifyContent {...props} onHide={() => setHidden(true)} />
 }
@@ -146,11 +151,9 @@ const DismissibleLearnDify = (props: LearnDifyProps) => {
 const LearnDify = (props: LearnDifyProps) => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
-  if (!systemFeatures.enable_learn_app)
-    return null
+  if (!systemFeatures.enable_learn_app) return null
 
-  if (props.dismissible === false)
-    return <LearnDifyContent {...props} />
+  if (props.dismissible === false) return <LearnDifyContent {...props} />
 
   return <DismissibleLearnDify {...props} />
 }

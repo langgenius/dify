@@ -40,8 +40,15 @@ type Props = {
   readonly inMessage?: boolean
   readonly hideInfo?: boolean
   readonly hideProcessDetail?: boolean
-  readonly onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
-  readonly onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
+  readonly onShowIterationDetail?: (
+    detail: NodeTracing[][],
+    iterDurationMap: IterationDurationMap,
+  ) => void
+  readonly onShowLoopDetail?: (
+    detail: NodeTracing[][],
+    loopDurationMap: LoopDurationMap,
+    loopVariableMap: LoopVariableMap,
+  ) => void
   readonly onShowRetryDetail?: (detail: NodeTracing[]) => void
   readonly onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
   readonly notShowIterationNav?: boolean
@@ -63,29 +70,27 @@ const NodePanel: FC<Props> = ({
   notShowLoopNav,
 }) => {
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
-  const setCollapseState = useCallback((state: boolean) => {
-    if (hideProcessDetail)
-      return
-    doSetCollapseState(state)
-  }, [hideProcessDetail])
+  const setCollapseState = useCallback(
+    (state: boolean) => {
+      if (hideProcessDetail) return
+      doSetCollapseState(state)
+    },
+    [hideProcessDetail],
+  )
   const { t } = useTranslation()
   const docLink = useDocLink()
 
   const getTime = (time: number) => {
-    if (time < 1)
-      return `${(time * 1000).toFixed(3)} ms`
-    if (time > 60)
-      return `${Math.floor(time / 60)} m ${(time % 60).toFixed(3)} s`
+    if (time < 1) return `${(time * 1000).toFixed(3)} ms`
+    if (time > 60) return `${Math.floor(time / 60)} m ${(time % 60).toFixed(3)} s`
     return `${time.toFixed(3)} s`
   }
 
   const getTokenCount = (tokens: number) => {
-    if (tokens < 1000)
-      return tokens
+    if (tokens < 1000) return tokens
     if (tokens >= 1000 && tokens < 1000000)
       return `${Number.parseFloat((tokens / 1000).toFixed(3))}K`
-    if (tokens >= 1000000)
-      return `${Number.parseFloat((tokens / 1000000).toFixed(3))}M`
+    if (tokens >= 1000000) return `${Number.parseFloat((tokens / 1000000).toFixed(3))}M`
   }
 
   useEffect(() => {
@@ -99,16 +104,16 @@ const NodePanel: FC<Props> = ({
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
   const inputsTitle = useMemo(() => {
-    let text = t($ => $['common.input'], { ns: 'workflow' })
+    let text = t(($) => $['common.input'], { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t($ => $['nodes.loop.initialLoopVariables'], { ns: 'workflow' })
+      text = t(($) => $['nodes.loop.initialLoopVariables'], { ns: 'workflow' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
-  const processDataTitle = t($ => $['common.processData'], { ns: 'workflow' }).toLocaleUpperCase()
+  const processDataTitle = t(($) => $['common.processData'], { ns: 'workflow' }).toLocaleUpperCase()
   const outputTitle = useMemo(() => {
-    let text = t($ => $['common.output'], { ns: 'workflow' })
+    let text = t(($) => $['common.output'], { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t($ => $['nodes.loop.finalLoopVariables'], { ns: 'workflow' })
+      text = t(($) => $['nodes.loop.finalLoopVariables'], { ns: 'workflow' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
 
@@ -131,10 +136,15 @@ const NodePanel: FC<Props> = ({
               )}
             />
           )}
-          <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && 'mr-1!')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
+          <BlockIcon
+            size={inMessage ? 'xs' : 'sm'}
+            className={cn('mr-2 shrink-0', inMessage && 'mr-1!')}
+            type={nodeInfo.node_type}
+            toolIcon={nodeInfo.extras?.icon || nodeInfo.extras}
+          />
           <Tooltip>
             <TooltipTrigger
-              render={(
+              render={
                 <div
                   className={cn(
                     'min-w-0 grow truncate system-xs-semibold-uppercase text-text-secondary',
@@ -143,7 +153,7 @@ const NodePanel: FC<Props> = ({
                 >
                   {nodeInfo.title}
                 </div>
-              )}
+              }
             />
             <TooltipContent>
               <div className="max-w-xs">{nodeInfo.title}</div>
@@ -151,7 +161,9 @@ const NodePanel: FC<Props> = ({
           </Tooltip>
           {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
             <div className="shrink-0 system-xs-regular text-text-tertiary">
-              {nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}
+              {nodeInfo.execution_metadata?.total_tokens
+                ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · `
+                : ''}
               {`${getTime(nodeInfo.elapsed_time || 0)}`}
             </div>
           )}
@@ -162,13 +174,28 @@ const NodePanel: FC<Props> = ({
             <RiErrorWarningFill className="ml-2 size-3.5 shrink-0 text-text-destructive" />
           )}
           {nodeInfo.status === 'stopped' && (
-            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
+            <RiAlertFill
+              className={cn(
+                'ml-2 size-4 shrink-0 text-text-warning-secondary',
+                inMessage && 'size-3.5',
+              )}
+            />
           )}
           {nodeInfo.status === 'paused' && (
-            <RiPauseCircleFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
+            <RiPauseCircleFill
+              className={cn(
+                'ml-2 size-4 shrink-0 text-text-warning-secondary',
+                inMessage && 'size-3.5',
+              )}
+            />
           )}
           {nodeInfo.status === 'exception' && (
-            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
+            <RiAlertFill
+              className={cn(
+                'ml-2 size-4 shrink-0 text-text-warning-secondary',
+                inMessage && 'size-3.5',
+              )}
+            />
           )}
           {nodeInfo.status === 'running' && (
             <div className="flex shrink-0 items-center text-[13px] leading-[16px] font-medium text-text-accent">
@@ -196,26 +223,21 @@ const NodePanel: FC<Props> = ({
               />
             )}
             {isRetryNode && onShowRetryDetail && (
-              <RetryLogTrigger
-                nodeInfo={nodeInfo}
-                onShowRetryResultList={onShowRetryDetail}
-              />
+              <RetryLogTrigger nodeInfo={nodeInfo} onShowRetryResultList={onShowRetryDetail} />
             )}
-            {
-              (isAgentNode || isToolNode) && onShowAgentOrToolLog && (
-                <AgentLogTrigger
-                  nodeInfo={nodeInfo}
-                  onShowAgentOrToolLog={onShowAgentOrToolLog}
-                />
-              )
-            }
+            {(isAgentNode || isToolNode) && onShowAgentOrToolLog && (
+              <AgentLogTrigger nodeInfo={nodeInfo} onShowAgentOrToolLog={onShowAgentOrToolLog} />
+            )}
             <div className={cn('mb-1', hideInfo && 'px-2! py-0.5!')}>
-              {(nodeInfo.status === 'stopped') && (
+              {nodeInfo.status === 'stopped' && (
                 <StatusContainer status="stopped">
-                  {t($ => $['tracing.stopBy'], { ns: 'workflow', user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
+                  {t(($) => $['tracing.stopBy'], {
+                    ns: 'workflow',
+                    user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A',
+                  })}
                 </StatusContainer>
               )}
-              {(nodeInfo.status === 'exception') && (
+              {nodeInfo.status === 'exception' && (
                 <StatusContainer status="stopped">
                   {nodeInfo.error}
                   <a
@@ -224,23 +246,21 @@ const NodePanel: FC<Props> = ({
                     rel="noopener noreferrer"
                     className="text-text-accent"
                   >
-                    {t($ => $['common.learnMore'], { ns: 'workflow' })}
+                    {t(($) => $['common.learnMore'], { ns: 'workflow' })}
                   </a>
                 </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (
-                <StatusContainer status="failed">
-                  {nodeInfo.error}
-                </StatusContainer>
+                <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>
               )}
               {nodeInfo.status === 'retry' && (
-                <StatusContainer status="failed">
-                  {nodeInfo.error}
-                </StatusContainer>
+                <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>
               )}
-              {(nodeInfo.status === 'paused') && (
+              {nodeInfo.status === 'paused' && (
                 <StatusContainer status="paused">
-                  <div className="system-xs-regular text-text-warning">{t($ => $['nodes.humanInput.log.reasonContent'], { ns: 'workflow' })}</div>
+                  <div className="system-xs-regular text-text-warning">
+                    {t(($) => $['nodes.humanInput.log.reasonContent'], { ns: 'workflow' })}
+                  </div>
                 </StatusContainer>
               )}
             </div>
@@ -252,7 +272,11 @@ const NodePanel: FC<Props> = ({
                   language={CodeLanguage.json}
                   value={nodeInfo.inputs}
                   isJSONStringifyBeauty
-                  footer={nodeInfo.inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />}
+                  footer={
+                    nodeInfo.inputs_truncated && (
+                      <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />
+                    )
+                  }
                 />
               </div>
             )}
@@ -278,7 +302,15 @@ const NodePanel: FC<Props> = ({
                   value={nodeInfo.outputs}
                   isJSONStringifyBeauty
                   tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
-                  footer={nodeInfo.outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={nodeInfo.outputs_full_content?.download_url} className="mx-1 mt-2 mb-1 h-7" />}
+                  footer={
+                    nodeInfo.outputs_truncated && (
+                      <LargeDataAlert
+                        textHasNoExport
+                        downloadUrl={nodeInfo.outputs_full_content?.download_url}
+                        className="mx-1 mt-2 mb-1 h-7"
+                      />
+                    )
+                  }
                 />
               </div>
             )}

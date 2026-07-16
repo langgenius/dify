@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from typing import Annotated, Literal
 from urllib import parse
 from uuid import UUID
 
@@ -22,7 +23,8 @@ from controllers.console.auth.error import (
     NotOwnerError,
     OwnerTransferLimitError,
 )
-from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
+from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
+from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.wraps import (
     account_initialization_required,
     is_allow_transfer_owner,
@@ -43,7 +45,7 @@ from services.feature_service import FeatureService
 
 
 class MemberInvitePayload(BaseModel):
-    emails: list[str] = Field(default_factory=list)
+    emails: list[str] = Field(min_length=1)
     role: str
     language: str | None = None
 
@@ -70,11 +72,28 @@ class OwnerTransferPayload(BaseModel):
     token: str
 
 
-class MemberInviteResultResponse(ResponseModel):
-    status: str
+class MemberInviteSuccessResponse(ResponseModel):
+    status: Literal["success"]
     email: str
-    url: str | None = None
-    message: str | None = None
+    url: str
+
+
+class MemberInviteAlreadyMemberResponse(ResponseModel):
+    status: Literal["already_member"]
+    email: str
+    message: str
+
+
+class MemberInviteFailedResponse(ResponseModel):
+    status: Literal["failed"]
+    email: str
+    message: str
+
+
+MemberInviteResultResponse = Annotated[
+    MemberInviteSuccessResponse | MemberInviteAlreadyMemberResponse | MemberInviteFailedResponse,
+    Field(discriminator="status"),
+]
 
 
 class MemberActionResponse(ResponseModel):
@@ -83,9 +102,15 @@ class MemberActionResponse(ResponseModel):
 
 
 class MemberInviteResponse(ResponseModel):
-    result: str
+    result: Literal["success"]
     invitation_results: list[MemberInviteResultResponse]
     tenant_id: str
+
+
+class MemberInviteErrorResponse(ResponseModel):
+    code: Literal["invalid_param", "invalid_role", "limit_exceeded"]
+    message: str
+    status: Literal[400]
 
 
 register_enum_models(console_ns, TenantAccountRole)
@@ -102,8 +127,11 @@ register_response_schema_models(
     AccountWithRoleResponse,
     AccountWithRoleListResponse,
     MemberActionResponse,
+    MemberInviteErrorResponse,
     MemberInviteResponse,
-    MemberInviteResultResponse,
+    MemberInviteSuccessResponse,
+    MemberInviteAlreadyMemberResponse,
+    MemberInviteFailedResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
@@ -132,12 +160,14 @@ def _normalize_enum_value(value: object) -> str:
     return str(normalized) if normalized is not None else ""
 
 
-def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
+def _count_new_member_invites(tenant_id: str, emails: list[str]) -> tuple[int, int]:
     new_member_count = 0
+    new_account_count = 0
     for email in emails:
         account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
         if not account:
             new_member_count += 1
+            new_account_count += 1
             continue
 
         exists = db.session.scalar(
@@ -148,7 +178,7 @@ def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
         if not exists:
             new_member_count += 1
 
-    return new_member_count
+    return new_member_count, new_account_count
 
 
 def _count_current_members(tenant_id: str) -> int:
@@ -157,7 +187,7 @@ def _count_current_members(tenant_id: str) -> int:
     )
 
 
-def _check_member_invite_limits(tenant_id: str, new_member_count: int) -> None:
+def _check_member_invite_limits(tenant_id: str, new_member_count: int, new_account_count: int) -> None:
     if new_member_count <= 0:
         return
 
@@ -167,6 +197,10 @@ def _check_member_invite_limits(tenant_id: str, new_member_count: int) -> None:
         workspace_members = features.workspace_members
         if workspace_members.enabled is True and not workspace_members.is_available(new_member_count):
             raise WorkspaceMembersLimitExceeded()
+        if new_account_count > 0:
+            seats = FeatureService.get_system_features(is_authenticated=True).license.seats
+            if not seats.is_available(new_account_count):
+                raise SeatsLimitExceeded()
         return
 
     if dify_config.BILLING_ENABLED and features.billing.enabled is True:
@@ -229,6 +263,11 @@ class MemberInviteEmailApi(Resource):
 
     @console_ns.expect(console_ns.models[MemberInvitePayload.__name__])
     @console_ns.response(HTTPStatus.CREATED, "Success", console_ns.models[MemberInviteResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.BAD_REQUEST,
+        "Invalid role or workspace member limit exceeded",
+        console_ns.models[MemberInviteErrorResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -242,14 +281,14 @@ class MemberInviteEmailApi(Resource):
         interface_language = args.language
         if not dify_config.RBAC_ENABLED:
             if not TenantAccountRole.is_valid_role(invitee_role):
-                return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
+                raise InvalidMemberRoleError()
             if not TenantAccountRole.is_non_owner_role(TenantAccountRole(invitee_role)):
-                return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
+                raise InvalidMemberRoleError()
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
         if not _is_role_enabled(invitee_role, inviter.current_tenant.id):
-            return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
+            raise InvalidMemberRoleError()
 
         # Check workspace permission for member invitations
         from libs.workspace_permission import check_workspace_member_invite_permission
@@ -262,8 +301,8 @@ class MemberInviteEmailApi(Resource):
         tenant_id = inviter.current_tenant.id
         with redis_client.lock(f"workspace_member_invite:{tenant_id}", timeout=60):
             if dify_config.ENTERPRISE_ENABLED is True or dify_config.BILLING_ENABLED is True:
-                new_member_count = _count_new_member_invites(tenant_id, invitee_emails)
-                _check_member_invite_limits(tenant_id, new_member_count)
+                new_member_count, new_account_count = _count_new_member_invites(tenant_id, invitee_emails)
+                _check_member_invite_limits(tenant_id, new_member_count, new_account_count)
 
             for invitee_email in invitee_emails:
                 try:
@@ -279,7 +318,7 @@ class MemberInviteEmailApi(Resource):
                     )
                     encoded_invitee_email = parse.quote(invitee_email)
                     invitation_results.append(
-                        MemberInviteResultResponse(
+                        MemberInviteSuccessResponse(
                             status="success",
                             email=invitee_email,
                             url=f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
@@ -287,7 +326,7 @@ class MemberInviteEmailApi(Resource):
                     )
                 except AccountAlreadyInTenantError:
                     invitation_results.append(
-                        MemberInviteResultResponse(
+                        MemberInviteAlreadyMemberResponse(
                             status="already_member",
                             email=invitee_email,
                             message="Account already in workspace.",
@@ -295,14 +334,20 @@ class MemberInviteEmailApi(Resource):
                     )
                 except Exception as e:
                     invitation_results.append(
-                        MemberInviteResultResponse(status="failed", email=invitee_email, message=str(e))
+                        MemberInviteFailedResponse(status="failed", email=invitee_email, message=str(e))
                     )
 
-        return MemberInviteResponse(
-            result="success",
-            invitation_results=invitation_results,
-            tenant_id=inviter.current_tenant.id if inviter.current_tenant else "",
-        ).model_dump(mode="json"), HTTPStatus.CREATED
+        return (
+            dump_response(
+                MemberInviteResponse,
+                {
+                    "result": "success",
+                    "invitation_results": invitation_results,
+                    "tenant_id": inviter.current_tenant.id if inviter.current_tenant else "",
+                },
+            ),
+            HTTPStatus.CREATED,
+        )
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>")

@@ -12,11 +12,12 @@ import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AppSelector from '../index'
 
-type DeepPartial<T> = T extends Array<infer U>
-  ? Array<U>
-  : T extends object
-    ? { [K in keyof T]?: DeepPartial<T[K]> }
-    : T
+type DeepPartial<T> =
+  T extends Array<infer U>
+    ? Array<U>
+    : T extends object
+      ? { [K in keyof T]?: DeepPartial<T[K]> }
+      : T
 
 vi.mock('../../account-setting', () => ({
   default: () => <div data-testid="account-setting">AccountSetting</div>,
@@ -36,7 +37,11 @@ vi.mock('@/app/components/header/github-star', () => ({
 }))
 
 vi.mock('@/app/components/base/theme-switcher', () => ({
-  default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
+  default: () => (
+    <button type="button" data-testid="theme-switcher-button">
+      Theme switcher
+    </button>
+  ),
 }))
 
 const { mockSetTheme } = vi.hoisted(() => ({
@@ -76,7 +81,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -88,8 +94,8 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', async importOriginal => ({
-  ...await importOriginal<typeof import('@/service/use-common')>(),
+vi.mock('@/service/use-common', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-common')>()),
   useLogout: vi.fn(),
 }))
 
@@ -100,10 +106,6 @@ vi.mock('@/next/navigation', async (importOriginal) => {
     useRouter: vi.fn(),
   }
 })
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
 
 // Mock config and env
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
@@ -123,11 +125,21 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
-    get AMPLITUDE_API_KEY() { return mockConfig.AMPLITUDE_API_KEY },
-    get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
-    get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
-    get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
+    get IS_CLOUD_EDITION() {
+      return mockConfig.IS_CLOUD_EDITION
+    },
+    get AMPLITUDE_API_KEY() {
+      return mockConfig.AMPLITUDE_API_KEY
+    },
+    get isAmplitudeEnabled() {
+      return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY
+    },
+    get ZENDESK_WIDGET_KEY() {
+      return mockConfig.ZENDESK_WIDGET_KEY
+    },
+    get SUPPORT_EMAIL_ADDRESS() {
+      return mockConfig.SUPPORT_EMAIL_ADDRESS
+    },
     IS_DEV: false,
     IS_CE_EDITION: false,
   }
@@ -277,7 +289,9 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByText('common.settings.preferences'))
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+        payload: ACCOUNT_SETTING_TAB.PREFERENCES,
+      })
     })
 
     it('should show Appearance after Preferences in the main nav account dropdown', () => {
@@ -290,7 +304,9 @@ describe('AccountDropdown', () => {
 
       // Assert
       expect(preferences.compareDocumentPosition(appearance)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-      expect(screen.getByRole('menuitem', { name: 'common.account.appearanceLabel' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', { name: 'common.account.appearanceLabel' }),
+      ).toBeInTheDocument()
     })
 
     it('should show Compliance in Cloud Edition for workspace owner', () => {
@@ -300,7 +316,11 @@ describe('AccountDropdown', () => {
         ...baseAppContextValue,
         userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         isCurrentWorkspaceOwner: true,
-        langGeniusVersionInfo: { ...baseAppContextValue.langGeniusVersionInfo, current_version: '0.6.0', latest_version: '0.6.0' },
+        langGeniusVersionInfo: {
+          ...baseAppContextValue.langGeniusVersionInfo,
+          current_version: '0.6.0',
+          latest_version: '0.6.0',
+        },
       })
 
       // Act
@@ -352,7 +372,11 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      expect(screen.getByRole('menuitem', { name: 'common.userProfile.logout' }).querySelector('.i-ri-shut-down-line')).toBeInTheDocument()
+      expect(
+        screen
+          .getByRole('menuitem', { name: 'common.userProfile.logout' })
+          .querySelector('.i-ri-shut-down-line'),
+      ).toBeInTheDocument()
     })
 
     it('should show About section when about button is clicked and can close it', () => {
@@ -426,7 +450,9 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      expect(document.querySelector('.bg-components-badge-status-light-warning-bg')).toBeInTheDocument()
+      expect(
+        document.querySelector('.bg-components-badge-status-light-warning-bg'),
+      ).toBeInTheDocument()
     })
 
     it('should show green indicator when version is latest', () => {
@@ -446,7 +472,9 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      expect(document.querySelector('.bg-components-badge-status-light-success-bg')).toBeInTheDocument()
+      expect(
+        document.querySelector('.bg-components-badge-status-light-success-bg'),
+      ).toBeInTheDocument()
     })
   })
 })

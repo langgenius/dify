@@ -27,7 +27,11 @@ function makeVar(overrides: Partial<VarInInspect> = {}): VarInInspect {
 function makeNodeWithVar(nodeId: string, vars: VarInInspect[]): NodeWithVar {
   return {
     nodeId,
-    nodePayload: { title: `Node ${nodeId}`, desc: '', type: BlockEnum.Code } as NodeWithVar['nodePayload'],
+    nodePayload: {
+      title: `Node ${nodeId}`,
+      desc: '',
+      type: BlockEnum.Code,
+    } as NodeWithVar['nodePayload'],
     nodeType: BlockEnum.Code,
     title: `Node ${nodeId}`,
     vars,
@@ -81,10 +85,12 @@ describe('Inspect Vars Slice', () => {
   describe('deleteNodeInspectVars', () => {
     it('should remove the matching node', () => {
       const store = createStore()
-      store.getState().setNodesWithInspectVars([
-        makeNodeWithVar('n1', [makeVar()]),
-        makeNodeWithVar('n2', [makeVar()]),
-      ])
+      store
+        .getState()
+        .setNodesWithInspectVars([
+          makeNodeWithVar('n1', [makeVar()]),
+          makeNodeWithVar('n2', [makeVar()]),
+        ])
 
       store.getState().deleteNodeInspectVars('n1')
 
@@ -151,7 +157,9 @@ describe('Inspect Vars Slice', () => {
 
     it('should not change state when var is not found', () => {
       const store = createStore()
-      store.getState().setNodesWithInspectVars([makeNodeWithVar('n1', [makeVar({ id: 'v1', edited: true })])])
+      store
+        .getState()
+        .setNodesWithInspectVars([makeNodeWithVar('n1', [makeVar({ id: 'v1', edited: true })])])
 
       store.getState().resetToLastRunVar('n1', 'wrong-var', 'val')
 

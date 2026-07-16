@@ -35,53 +35,78 @@ const KeyValueList: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const handleChange = useCallback((index: number) => {
-    return (newItem: KeyValue) => {
-      const newList = produce(list, (draft: any) => {
-        draft[index] = newItem
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleChange = useCallback(
+    (index: number) => {
+      return (newItem: KeyValue) => {
+        const newList = produce(list, (draft: any) => {
+          draft[index] = newItem
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
-  const handleRemove = useCallback((index: number) => {
-    return () => {
-      const newList = produce(list, (draft: any) => {
-        draft.splice(index, 1)
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleRemove = useCallback(
+    (index: number) => {
+      return () => {
+        const newList = produce(list, (draft: any) => {
+          draft.splice(index, 1)
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
-  if (!Array.isArray(list))
-    return null
+  if (!Array.isArray(list)) return null
 
   return (
     <div className="overflow-hidden rounded-lg border border-divider-regular">
-      <div className={cn('flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary')}>
-        <div className={cn('flex h-full items-center border-r border-divider-regular pl-3', isSupportFile ? 'w-[140px]' : 'w-1/2')}>{t($ => $[`${i18nPrefix}.key`], { ns: 'workflow' })}</div>
-        {isSupportFile && <div className="flex h-full w-[70px] shrink-0 items-center border-r border-divider-regular pl-3">{t($ => $[`${i18nPrefix}.type`], { ns: 'workflow' })}</div>}
-        <div className={cn('flex h-full items-center justify-between pr-1 pl-3', isSupportFile ? 'grow' : 'w-1/2')}>{t($ => $[`${i18nPrefix}.value`], { ns: 'workflow' })}</div>
+      <div
+        className={cn(
+          'flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary',
+        )}
+      >
+        <div
+          className={cn(
+            'flex h-full items-center border-r border-divider-regular pl-3',
+            isSupportFile ? 'w-[140px]' : 'w-1/2',
+          )}
+        >
+          {t(($) => $[`${i18nPrefix}.key`], { ns: 'workflow' })}
+        </div>
+        {isSupportFile && (
+          <div className="flex h-full w-[70px] shrink-0 items-center border-r border-divider-regular pl-3">
+            {t(($) => $[`${i18nPrefix}.type`], { ns: 'workflow' })}
+          </div>
+        )}
+        <div
+          className={cn(
+            'flex h-full items-center justify-between pr-1 pl-3',
+            isSupportFile ? 'grow' : 'w-1/2',
+          )}
+        >
+          {t(($) => $[`${i18nPrefix}.value`], { ns: 'workflow' })}
+        </div>
       </div>
-      {
-        list.map((item, index) => (
-          <KeyValueItem
-            key={item.id}
-            instanceId={item.id!}
-            nodeId={nodeId}
-            payload={item}
-            onChange={handleChange(index)}
-            onRemove={handleRemove(index)}
-            isLastItem={index === list.length - 1}
-            onAdd={onAdd}
-            readonly={readonly}
-            canRemove={list.length > 1}
-            isSupportFile={isSupportFile}
-            keyNotSupportVar={keyNotSupportVar}
-            insertVarTipToLeft={insertVarTipToLeft}
-          />
-        ))
-      }
+      {list.map((item, index) => (
+        <KeyValueItem
+          key={item.id}
+          instanceId={item.id!}
+          nodeId={nodeId}
+          payload={item}
+          onChange={handleChange(index)}
+          onRemove={handleRemove(index)}
+          isLastItem={index === list.length - 1}
+          onAdd={onAdd}
+          readonly={readonly}
+          canRemove={list.length > 1}
+          isSupportFile={isSupportFile}
+          keyNotSupportVar={keyNotSupportVar}
+          insertVarTipToLeft={insertVarTipToLeft}
+        />
+      ))}
     </div>
   )
 }

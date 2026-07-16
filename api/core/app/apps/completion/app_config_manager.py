@@ -1,5 +1,7 @@
 from typing import Any, cast
 
+from sqlalchemy.orm import Session
+
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigManager
@@ -10,7 +12,7 @@ from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppMod
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.app_config.features.more_like_this.manager import MoreLikeThisConfigManager
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
-from models.model import App, AppMode, AppModelConfig, AppModelConfigDict
+from models.model import AnnotationReplyConfig, App, AppMode, AppModelConfig, AppModelConfigDict
 
 
 class CompletionAppConfig(EasyUIBasedAppConfig):
@@ -24,7 +26,12 @@ class CompletionAppConfig(EasyUIBasedAppConfig):
 class CompletionAppConfigManager(BaseAppConfigManager):
     @classmethod
     def get_app_config(
-        cls, app_model: App, app_model_config: AppModelConfig, override_config_dict: AppModelConfigDict | None = None
+        cls,
+        app_model: App,
+        app_model_config: AppModelConfig,
+        override_config_dict: AppModelConfigDict | None = None,
+        *,
+        annotation_reply: AnnotationReplyConfig | None,
     ) -> CompletionAppConfig:
         """
         Convert app model config to completion app config
@@ -39,7 +46,7 @@ class CompletionAppConfigManager(BaseAppConfigManager):
             config_from = EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
 
         if config_from != EasyUIBasedAppModelConfigFrom.ARGS:
-            app_model_config_dict = app_model_config.to_dict()
+            app_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
             config_dict = app_model_config_dict.copy()
         else:
             if not override_config_dict:
@@ -68,7 +75,7 @@ class CompletionAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: dict[str, Any]) -> AppModelConfigDict:
+    def config_validate(cls, tenant_id: str, config: dict[str, Any], session: Session) -> AppModelConfigDict:
         """
         Validate for completion app model config
 
@@ -97,7 +104,7 @@ class CompletionAppConfigManager(BaseAppConfigManager):
 
         # dataset_query_variable
         config, current_related_config_keys = DatasetConfigManager.validate_and_set_defaults(
-            tenant_id, app_mode, config
+            tenant_id, app_mode, config, session
         )
         related_config_keys.extend(current_related_config_keys)
 

@@ -1,7 +1,12 @@
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { NotionPage } from '@/models/common'
-import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse, FileItem } from '@/models/datasets'
+import type {
+  CrawlResultItem,
+  CustomFile,
+  FileIndexingEstimateResponse,
+  FileItem,
+} from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -99,7 +104,9 @@ describe('StepOnePreview', () => {
     })
 
     it('should not render FilePreview when currentLocalFile is undefined', () => {
-      const { container } = render(<StepOnePreview {...defaultProps} currentLocalFile={undefined} />)
+      const { container } = render(
+        <StepOnePreview {...defaultProps} currentLocalFile={undefined} />,
+      )
       // Container should still render but without file preview content
       expect(container.querySelector('.h-full')).toBeInTheDocument()
     })
@@ -268,7 +275,9 @@ describe('StepTwoPreview', () => {
     })
 
     it('should handle empty onlineDriveFiles', () => {
-      const { container } = render(<StepTwoPreview {...defaultProps} selectedOnlineDriveFileList={[]} />)
+      const { container } = render(
+        <StepTwoPreview {...defaultProps} selectedOnlineDriveFileList={[]} />,
+      )
       expect(container.querySelector('.h-full')).toBeInTheDocument()
     })
 

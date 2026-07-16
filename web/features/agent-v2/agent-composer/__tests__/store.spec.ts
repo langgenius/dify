@@ -12,6 +12,40 @@ import {
 } from '../store'
 
 describe('agent composer store conversions', () => {
+  it('should hydrate missing file and skill references from API config', () => {
+    const formState = agentSoulConfigToFormState({
+      config_files: [
+        {
+          file_id: 'missing-file-id',
+          file_kind: 'upload_file',
+          is_missing: true,
+          name: 'missing.pdf',
+        },
+      ],
+      config_skills: [
+        {
+          file_id: 'missing-skill-id',
+          file_kind: 'tool_file',
+          is_missing: true,
+          name: 'Missing Skill',
+        },
+      ],
+    } as unknown as AgentSoulConfig)
+
+    expect(formState.files).toEqual([
+      expect.objectContaining({
+        isMissing: true,
+        name: 'missing.pdf',
+      }),
+    ])
+    expect(formState.skills).toEqual([
+      expect.objectContaining({
+        isMissing: true,
+        name: 'Missing Skill',
+      }),
+    ])
+  })
+
   it('rebases draft baselines through the composer state action', () => {
     const store = createStore()
     const nextDraft = {
@@ -32,7 +66,9 @@ describe('agent composer store conversions', () => {
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Build draft prompt')
     expect(store.get(agentComposerOriginalDraftAtom)?.prompt).toBe('Build draft prompt')
     expect(store.get(agentComposerPublishedDraftAtom)?.prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe(
+      'Build draft prompt',
+    )
   })
 
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
@@ -203,22 +239,24 @@ describe('agent composer store conversions', () => {
         }),
       ],
     })
-    expect(formState.tools).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        id: 'duckduckgo',
-        kind: 'provider',
-        actions: [
-          expect.objectContaining({
-            toolName: 'ddg_search',
-          }),
-        ],
-      }),
-      expect.objectContaining({
-        id: 'run-tests',
-        kind: 'cli',
-        installCommand: 'pnpm install',
-      }),
-    ]))
+    expect(formState.tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'duckduckgo',
+          kind: 'provider',
+          actions: [
+            expect.objectContaining({
+              toolName: 'ddg_search',
+            }),
+          ],
+        }),
+        expect.objectContaining({
+          id: 'run-tests',
+          kind: 'cli',
+          installCommand: 'pnpm install',
+        }),
+      ]),
+    )
     expect(formState.toolSettings['duckduckgo:ddg_search']).toEqual({
       query: 'latest docs',
       used_in_agent_nodes: true,

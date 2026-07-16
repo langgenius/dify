@@ -12,7 +12,7 @@ const UpgradeBanner: FC = () => {
         <ZapFast className="h-4 w-4 text-[#FB6514]" />
       </div>
       <div className="mx-3 grow text-[13px] font-medium text-gray-700">
-        {t($ => $['plansCommon.documentProcessingPriorityUpgrade'], { ns: 'billing' })}
+        {t(($) => $['plansCommon.documentProcessingPriorityUpgrade'], { ns: 'billing' })}
       </div>
       <UpgradeBtn loc="knowledge-speed-up" />
     </div>

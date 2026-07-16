@@ -6,8 +6,12 @@ import { describe, expect, it } from 'vitest'
 // rejects (rag-pipeline, channel) or modes that aren't listable here (agent).
 describe('get app --mode whitelist', () => {
   it('is exactly the listable app types', () => {
-    expect([...zSupportedAppType.options].sort()).toEqual(
-      ['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow'],
-    )
+    expect([...zSupportedAppType.options].sort()).toEqual([
+      'advanced-chat',
+      'agent-chat',
+      'chat',
+      'completion',
+      'workflow',
+    ])
   })
 })

@@ -68,14 +68,11 @@ const renderInputsPanel = (
   options?: Omit<Parameters<typeof renderWorkflowFlowComponent>[1], 'nodes' | 'edges'>,
   onRun = vi.fn(),
 ) =>
-  renderWorkflowFlowComponent(
-    <InputsPanel onRun={onRun} />,
-    {
-      nodes: [startNode],
-      edges: [],
-      ...options,
-    },
-  )
+  renderWorkflowFlowComponent(<InputsPanel onRun={onRun} />, {
+    nodes: [startNode],
+    edges: [],
+    ...options,
+  })
 
 describe('InputsPanel', () => {
   beforeEach(() => {
@@ -154,12 +151,14 @@ describe('InputsPanel', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
 
       await waitFor(() => {
-        expect(store.getState().files).toEqual([{
-          type: 'image',
-          transfer_method: TransferMethod.remote_url,
-          url: 'https://example.com/image.png',
-          upload_file_id: '',
-        }])
+        expect(store.getState().files).toEqual([
+          {
+            type: 'image',
+            transfer_method: TransferMethod.remote_url,
+            url: 'https://example.com/image.png',
+            upload_file_id: '',
+          },
+        ])
       })
     })
 
@@ -305,18 +304,21 @@ describe('InputsPanel', () => {
       const onRun = vi.fn()
       const handleRun = vi.fn()
 
-      renderInputsPanel(createStartNode(), {
-        hooksStoreProps: createHooksStoreProps({
-          handleRun,
-          accessControl: {
-            canEdit: true,
-            canComment: true,
-            canRun: false,
-            canImportExportDSL: true,
-            canReleaseAndVersion: true,
-          },
-        }),
-      }, onRun)
+      renderInputsPanel(
+        createStartNode(),
+        {
+          hooksStoreProps: createHooksStoreProps({
+            handleRun,
+            accessControl: {
+              canEdit: true,
+              canRun: false,
+              canImportExportDSL: true,
+              canReleaseAndVersion: true,
+            },
+          }),
+        },
+        onRun,
+      )
 
       await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 

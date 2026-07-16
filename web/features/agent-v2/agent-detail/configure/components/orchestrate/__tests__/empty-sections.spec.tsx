@@ -45,12 +45,22 @@ describe('Agent configure empty sections', () => {
     renderEmptySections()
 
     expect(screen.getByText('agentV2.agentDetail.configure.skills.empty.title')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.skills.empty.description')).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.skills.empty.description'),
+    ).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.configure.files.empty.title')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.files.empty.description')).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.files.empty.description'),
+    ).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.configure.tools.empty.title')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.tools.empty.description')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.empty.title')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.empty.description')).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.tools.empty.description'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.empty.title'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.empty.description'),
+    ).toBeInTheDocument()
   })
 })

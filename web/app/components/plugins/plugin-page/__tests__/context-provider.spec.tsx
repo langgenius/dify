@@ -19,25 +19,23 @@ vi.mock('../../hooks', () => ({
 
 const renderWithProviders = (
   ui: ReactElement,
-  options: { enableMarketplace: boolean, searchParams?: string } = { enableMarketplace: true },
+  options: { enableMarketplace: boolean; searchParams?: string } = { enableMarketplace: true },
 ) => {
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { enable_marketplace: options.enableMarketplace },
   })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <SystemFeaturesWrapper>
-      <NuqsTestingAdapter searchParams={options.searchParams ?? ''}>
-        {children}
-      </NuqsTestingAdapter>
+      <NuqsTestingAdapter searchParams={options.searchParams ?? ''}>{children}</NuqsTestingAdapter>
     </SystemFeaturesWrapper>
   )
   return render(ui, { wrapper: Wrapper })
 }
 
 const Consumer = () => {
-  const currentPluginID = usePluginPageContext(v => v.currentPluginID)
-  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
-  const options = usePluginPageContext(v => v.options)
+  const currentPluginID = usePluginPageContext((v) => v.currentPluginID)
+  const setCurrentPluginID = usePluginPageContext((v) => v.setCurrentPluginID)
+  const options = usePluginPageContext((v) => v.options)
 
   return (
     <div>

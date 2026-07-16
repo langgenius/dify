@@ -2,10 +2,8 @@
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppListCategory } from './app-type-filter-shared'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
+import { CreateAppDropdown } from '@/app/components/app/create-app-dropdown'
 import { SearchInput } from '@/app/components/base/search-input'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
@@ -71,7 +69,7 @@ export function AppListHeaderFilters({
           className="w-50 max-w-full"
           value={keywords}
           onValueChange={onKeywordsChange}
-          aria-label={t($ => $['gotoAnything.actions.searchApplications'], { ns: 'app' })}
+          aria-label={t(($) => $['gotoAnything.actions.searchApplications'], { ns: 'app' })}
         />
       </div>
       <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
@@ -80,64 +78,14 @@ export function AppListHeaderFilters({
           className="inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
           <span aria-hidden className="i-ri-braces-line size-4 shrink-0" />
-          {t($ => $['studio.viewSnippets'], { ns: 'app' })}
+          {t(($) => $['studio.viewSnippets'], { ns: 'app' })}
         </Link>
         {showCreateButton && (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
-              render={(
-                <Button
-                  variant="primary"
-                  size="medium"
-                  className="gap-0.5 px-2 whitespace-nowrap shadow-xs shadow-shadow-shadow-3"
-                >
-                  <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                  <span className="pl-1">{t($ => $['operation.create'], { ns: 'common' })}</span>
-                  <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
-                </Button>
-              )}
-            />
-            <DropdownMenuContent
-              placement="bottom-end"
-              sideOffset={4}
-              popupClassName="w-70 p-0"
-            >
-              <div className="py-1">
-                <DropdownMenuItem
-                  className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
-                  onClick={onCreateBlank}
-                >
-                  <span aria-hidden className="i-ri-sticky-note-add-line size-4 shrink-0 text-text-secondary" />
-                  <span className="min-w-0 flex-1 truncate px-1">{t($ => $['newApp.startFromBlank'], { ns: 'app' })}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
-                  onClick={onCreateTemplate}
-                >
-                  <span aria-hidden className="i-ri-apps-2-add-line size-4 shrink-0 text-text-secondary" />
-                  <span className="min-w-0 flex-1 truncate px-1">{t($ => $['newApp.startFromTemplate'], { ns: 'app' })}</span>
-                </DropdownMenuItem>
-              </div>
-              <div className="h-px bg-divider-subtle" />
-              <div className="py-1">
-                <DropdownMenuItem
-                  className={cn(
-                    'h-auto items-start gap-1 rounded-lg px-2 py-1.5',
-                    'hover:bg-state-base-hover focus:bg-state-base-hover',
-                  )}
-                  onClick={onImportDSL}
-                >
-                  <span className="flex h-5 shrink-0 items-center py-0.5">
-                    <span aria-hidden className="i-ri-file-upload-line size-4 text-text-secondary" />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-1">
-                    <span className="system-md-regular text-text-secondary">{t($ => $.importDSL, { ns: 'app' })}</span>
-                    <span className="system-xs-regular text-text-tertiary">{t($ => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}</span>
-                  </span>
-                </DropdownMenuItem>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <CreateAppDropdown
+            onCreateBlank={onCreateBlank}
+            onCreateTemplate={onCreateTemplate}
+            onImportDSL={onImportDSL}
+          />
         )}
       </div>
     </div>

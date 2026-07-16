@@ -7,20 +7,9 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useInfiniteScroll } from 'ahooks'
-import {
-  memo,
-  useCallback,
-  useDeferredValue,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
@@ -77,36 +66,31 @@ const Snippets = ({
 
   const keyword = deferredSearchText.trim() || undefined
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    isFetchingNextPage,
-    fetchNextPage,
-    hasNextPage,
-  } = useInfiniteSnippetList({
-    page: 1,
-    limit: 30,
-    keyword,
-    ...(tagIds.length ? { tag_ids: tagIds } : {}),
-    is_published: true,
-  })
+  const { data, isLoading, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } =
+    useInfiniteSnippetList({
+      page: 1,
+      limit: 30,
+      keyword,
+      ...(tagIds.length ? { tag_ids: tagIds } : {}),
+      is_published: true,
+    })
 
   const snippets = useMemo(() => {
     return (data?.pages ?? []).flatMap(({ data }) => data)
   }, [data?.pages])
 
   const isNoMore = hasNextPage === false
-  const handleSnippetClick = useCallback(async (snippetId: string) => {
-    const inserted = await handleInsertSnippet(snippetId, insertPayload)
-    if (inserted)
-      onInserted?.()
-  }, [handleInsertSnippet, insertPayload, onInserted])
+  const handleSnippetClick = useCallback(
+    async (snippetId: string) => {
+      const inserted = await handleInsertSnippet(snippetId, insertPayload)
+      if (inserted) onInserted?.()
+    },
+    [handleInsertSnippet, insertPayload, onInserted],
+  )
 
   useInfiniteScroll(
     async () => {
-      if (!hasNextPage || isFetchingNextPage)
-        return { list: [] }
+      if (!hasNextPage || isFetchingNextPage) return { list: [] }
 
       await fetchNextPage()
       return { list: [] }
@@ -122,21 +106,24 @@ const Snippets = ({
     <div className="border-b border-divider-subtle p-2">
       <div className="flex items-center rounded-lg border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover">
         <div className="flex min-w-0 grow items-center py-1.75 pr-3 pl-2">
-          <span className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" aria-hidden="true" />
+          <span
+            className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+            aria-hidden="true"
+          />
           <input
             autoFocus
             value={searchText}
-            placeholder={t($ => $['tabs.searchSnippets'], { ns: 'workflow' })}
+            placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
             className={cn(
               'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
               searchText && 'mr-2',
             )}
-            onChange={event => onSearchTextChange?.(event.target.value)}
+            onChange={(event) => onSearchTextChange?.(event.target.value)}
           />
           {!!searchText && (
             <button
               type="button"
-              aria-label={t($ => $['operation.clear'], { ns: 'common' })}
+              aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
               className="group shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
               onClick={() => onSearchTextChange?.('')}
             >
@@ -162,55 +149,48 @@ const Snippets = ({
   return (
     <>
       {filter}
-      {!snippets.length
-        ? (
-            <SnippetEmptyState />
-          )
-        : (
-            <ScrollAreaRoot className="relative max-h-120 max-w-125 overflow-hidden">
-              <ScrollAreaViewport ref={viewportRef}>
-                <ScrollAreaContent className="p-1">
-                  {snippets.map((item) => {
-                    const row = (
-                      <SnippetListItem
-                        snippet={item}
-                        isHovered={hoveredSnippetId === item.id}
-                        onClick={() => handleSnippetClick(item.id)}
-                        onMouseEnter={() => setHoveredSnippetId(item.id)}
-                        onMouseLeave={() => setHoveredSnippetId(current => current === item.id ? null : current)}
-                      />
-                    )
+      {!snippets.length ? (
+        <SnippetEmptyState />
+      ) : (
+        <ScrollAreaRoot className="relative max-h-120 max-w-125 overflow-hidden">
+          <ScrollAreaViewport ref={viewportRef}>
+            <ScrollAreaContent className="p-1">
+              {snippets.map((item) => {
+                const row = (
+                  <SnippetListItem
+                    snippet={item}
+                    isHovered={hoveredSnippetId === item.id}
+                    onClick={() => handleSnippetClick(item.id)}
+                    onMouseEnter={() => setHoveredSnippetId(item.id)}
+                    onMouseLeave={() =>
+                      setHoveredSnippetId((current) => (current === item.id ? null : current))
+                    }
+                  />
+                )
 
-                    if (!item.description)
-                      return <div key={item.id}>{row}</div>
+                if (!item.description) return <div key={item.id}>{row}</div>
 
-                    return (
-                      <Tooltip key={item.id}>
-                        <TooltipTrigger
-                          delay={0}
-                          render={row}
-                        />
-                        <TooltipContent
-                          placement="right-start"
-                          className="bg-transparent! p-0!"
-                        >
-                          <SnippetDetailCard snippet={item} />
-                        </TooltipContent>
-                      </Tooltip>
-                    )
-                  })}
-                  {isFetchingNextPage && (
-                    <div className="flex justify-center px-3 py-2">
-                      <Loading />
-                    </div>
-                  )}
-                </ScrollAreaContent>
-              </ScrollAreaViewport>
-              <ScrollAreaScrollbar orientation="vertical">
-                <ScrollAreaThumb />
-              </ScrollAreaScrollbar>
-            </ScrollAreaRoot>
-          )}
+                return (
+                  <Tooltip key={item.id}>
+                    <TooltipTrigger delay={0} render={row} />
+                    <TooltipContent placement="right-start" className="bg-transparent! p-0!">
+                      <SnippetDetailCard snippet={item} />
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              })}
+              {isFetchingNextPage && (
+                <div className="flex justify-center px-3 py-2">
+                  <Loading />
+                </div>
+              )}
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar orientation="vertical">
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollAreaRoot>
+      )}
     </>
   )
 }

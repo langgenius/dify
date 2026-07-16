@@ -13,7 +13,8 @@ import {
 } from '.'
 import { Button } from '../button'
 
-const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const triggerButtonClassName =
+  'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const meta = {
   title: 'Base/UI/AlertDialog',
@@ -22,7 +23,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound alert dialog built on Base UI AlertDialog. Use it for destructive or high-risk confirmations that require an explicit user decision. Compose title, description, and actions via `AlertDialogActions`, `AlertDialogCancelButton`, and `AlertDialogConfirmButton`.',
+        component:
+          'Compound alert dialog built on Base UI AlertDialog. Use it for destructive or high-risk confirmations that require an explicit user decision. Compose title, description, and actions via `AlertDialogActions`, `AlertDialogCancelButton`, and `AlertDialogConfirmButton`.',
       },
     },
   },
@@ -35,9 +37,7 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   render: () => (
     <AlertDialog>
-      <AlertDialogTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
-      >
+      <AlertDialogTrigger render={<button type="button" className={triggerButtonClassName} />}>
         Delete project
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -46,7 +46,8 @@ export const Default: Story = {
             Delete project?
           </AlertDialogTitle>
           <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
-            This action cannot be undone. All workflows, datasets, and API keys will be permanently removed.
+            This action cannot be undone. All workflows, datasets, and API keys will be permanently
+            removed.
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
@@ -66,9 +67,14 @@ export const Default: Story = {
       await expect(dialog).toBeVisible()
     })
 
+    await userEvent.click(body.getByRole('button', { name: 'Delete' }))
+    await expect(dialog).toBeVisible()
+
     await userEvent.click(body.getByRole('button', { name: 'Cancel' }))
     await waitFor(async () => {
-      await expect(body.queryByRole('alertdialog', { name: 'Delete project?' })).not.toBeInTheDocument()
+      await expect(
+        body.queryByRole('alertdialog', { name: 'Delete project?' }),
+      ).not.toBeInTheDocument()
     })
   },
 }
@@ -76,9 +82,7 @@ export const Default: Story = {
 export const NonDestructive: Story = {
   render: () => (
     <AlertDialog>
-      <AlertDialogTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
-      >
+      <AlertDialogTrigger render={<button type="button" className={triggerButtonClassName} />}>
         Publish changes
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -87,7 +91,8 @@ export const NonDestructive: Story = {
             Publish the latest draft?
           </AlertDialogTitle>
           <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
-            Collaborators will immediately see the new workflow. You can still revert from version history.
+            Collaborators will immediately see the new workflow. You can still revert from version
+            history.
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
@@ -110,9 +115,7 @@ const ControlledDemo = () => {
       </Button>
       <span className="text-xs text-text-tertiary">
         Confirmed
-        {count}
-        {' '}
-        times
+        {count} times
       </span>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
@@ -121,14 +124,15 @@ const ControlledDemo = () => {
               Revoke API token?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
-              Any integration using this token will immediately stop working. You can issue a new token afterwards.
+              Any integration using this token will immediately stop working. You can issue a new
+              token afterwards.
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton variant="secondary">Keep token</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               onClick={() => {
-                setCount(prev => prev + 1)
+                setCount((prev) => prev + 1)
                 setOpen(false)
               }}
             >
@@ -159,9 +163,7 @@ const LoadingConfirmDemo = () => {
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
-      >
+      <AlertDialogTrigger render={<button type="button" className={triggerButtonClassName} />}>
         Archive workspace
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -170,18 +172,15 @@ const LoadingConfirmDemo = () => {
             Archive this workspace?
           </AlertDialogTitle>
           <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
-            Members will lose access until the workspace is restored. This may take a moment to finalize.
+            Members will lose access until the workspace is restored. This may take a moment to
+            finalize.
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
           <AlertDialogCancelButton variant="secondary" disabled={pending}>
             Cancel
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            tone="default"
-            loading={pending}
-            onClick={handleConfirm}
-          >
+          <AlertDialogConfirmButton tone="default" loading={pending} onClick={handleConfirm}>
             {pending ? 'Archiving…' : 'Archive'}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

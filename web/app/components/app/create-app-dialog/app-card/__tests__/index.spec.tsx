@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { App } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
 import { screen, within } from '@testing-library/react'
@@ -10,7 +10,11 @@ import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
 vi.mock('@heroicons/react/20/solid', () => ({
-  PlusIcon: ({ className }: any) => <div data-testid="plus-icon" className={className} aria-label="Add icon">+</div>,
+  PlusIcon: ({ className }: any) => (
+    <div data-testid="plus-icon" className={className} aria-label="Add icon">
+      +
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -69,7 +73,7 @@ describe('AppCard', () => {
 
   const renderWithProvider = (ui: React.ReactElement) => {
     return render(
-      // eslint-disable-next-line react/no-context-provider
+      // oxlint-disable-next-line eslint-react/no-context-provider
       <AppListContext.Provider
         value={{
           currentApp: undefined,
@@ -155,7 +159,9 @@ describe('AppCard', () => {
       }
       render(<AppCard {...defaultProps} app={longNameApp} />)
 
-      const nameElement = screen.getByTitle('This is a very long app name that should be truncated with line-clamp-1')
+      const nameElement = screen.getByTitle(
+        'This is a very long app name that should be truncated with line-clamp-1',
+      )
       expect(nameElement).toBeInTheDocument()
     })
   })
@@ -234,7 +240,10 @@ describe('AppCard', () => {
       }
       render(<AppCard {...defaultProps} app={appWithImageUrl} />)
 
-      expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute('src', 'https://example.com/remote-icon.png')
+      expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute(
+        'src',
+        'https://example.com/remote-icon.png',
+      )
     })
   })
 
@@ -281,7 +290,9 @@ describe('AppCard', () => {
       mockConfig.isCloudEdition = false
       renderWithProvider(<AppCard {...defaultProps} />)
 
-      expect(screen.queryByRole('button', { name: /explore\.appCard\.try/ })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /explore\.appCard\.try/ }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -291,7 +302,9 @@ describe('AppCard', () => {
       render(<AppCard {...defaultProps} onCreate={mockOnCreate} />)
 
       await userEvent.tab()
-      const button = screen.getByRole('button', { name: /app\.newApp\.useTemplate/ }) as HTMLButtonElement
+      const button = screen.getByRole('button', {
+        name: /app\.newApp\.useTemplate/,
+      }) as HTMLButtonElement
 
       // Test that button can be focused
       expect(button).toHaveFocus()
@@ -331,7 +344,8 @@ describe('AppCard', () => {
     })
 
     it('should handle app with very long description', () => {
-      const longDescription = 'This is a very long description that should be truncated with line-clamp-3. '.repeat(5)
+      const longDescription =
+        'This is a very long description that should be truncated with line-clamp-3. '.repeat(5)
       const appWithLongDesc = {
         ...mockApp,
         description: longDescription,
@@ -351,7 +365,9 @@ describe('AppCard', () => {
       }
       render(<AppCard {...defaultProps} app={appWithSpecialChars} />)
 
-      expect(screen.getByText('App <script>alert("test")</script> & Special "Chars"')).toBeInTheDocument()
+      expect(
+        screen.getByText('App <script>alert("test")</script> & Special "Chars"'),
+      ).toBeInTheDocument()
     })
 
     it('should handle onCreate function throwing error', async () => {
@@ -368,14 +384,12 @@ describe('AppCard', () => {
       let capturedError: unknown
       try {
         await userEvent.click(button)
-      }
-      catch (err) {
+      } catch (err) {
         capturedError = err
       }
       expect(errorOnCreate).toHaveBeenCalledTimes(1)
       // expect(consoleSpy).toHaveBeenCalled()
-      if (capturedError instanceof Error)
-        expect(capturedError.message).toContain('Create failed')
+      if (capturedError instanceof Error) expect(capturedError.message).toContain('Create failed')
 
       consoleSpy.mockRestore()
     })

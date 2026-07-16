@@ -30,8 +30,7 @@ function makeRegistry(): Registry {
 
 function makeActive(reg: Registry): ActiveContext {
   const active = reg.resolveActive()
-  if (active === undefined)
-    throw new Error('resolveActive returned undefined in test setup')
+  if (active === undefined) throw new Error('resolveActive returned undefined in test setup')
   return active
 }
 
@@ -53,12 +52,22 @@ function fakeClient(opts: {
 }) {
   return {
     switch: vi.fn(opts.switch ?? (() => Promise.resolve(makeDetail()))),
-    list: vi.fn(opts.list ?? (() => Promise.resolve({
-      workspaces: [
-        { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
-        { id: '00000000-0000-0000-0000-000000000002', name: 'Two', role: 'owner', status: 'normal', current: false },
-      ],
-    }))),
+    list: vi.fn(
+      opts.list ??
+        (() =>
+          Promise.resolve({
+            workspaces: [
+              { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
+              {
+                id: '00000000-0000-0000-0000-000000000002',
+                name: 'Two',
+                role: 'owner',
+                status: 'normal',
+                current: false,
+              },
+            ],
+          })),
+    ),
   }
 }
 
@@ -91,14 +100,22 @@ describe('runUseWorkspace', () => {
     expect(client.list).not.toHaveBeenCalled()
 
     const activeCtx = next.resolveActive()
-    expect(activeCtx?.ctx.workspace).toEqual({ id: '00000000-0000-0000-0000-000000000002', name: 'Two', role: 'owner' })
-    expect((activeCtx?.ctx as Record<string, unknown> | undefined)?.available_workspaces).toBeUndefined()
+    expect(activeCtx?.ctx.workspace).toEqual({
+      id: '00000000-0000-0000-0000-000000000002',
+      name: 'Two',
+      role: 'owner',
+    })
+    expect(
+      (activeCtx?.ctx as Record<string, unknown> | undefined)?.available_workspaces,
+    ).toBeUndefined()
 
     const reloaded = await Registry.load()
     const reloadedActive = reloaded?.resolveActive()
     expect(reloadedActive?.ctx.workspace?.id).toBe('00000000-0000-0000-0000-000000000002')
     expect(reloadedActive?.ctx.workspace?.name).toBe('Two')
-    expect((reloadedActive?.ctx as Record<string, unknown> | undefined)?.available_workspaces).toBeUndefined()
+    expect(
+      (reloadedActive?.ctx as Record<string, unknown> | undefined)?.available_workspaces,
+    ).toBeUndefined()
 
     expect(io.outBuf()).toMatch(/Switched to Two \(00000000-0000-0000-0000-000000000002\)/)
   })
@@ -153,7 +170,11 @@ describe('runUseWorkspace', () => {
     const active = makeActive(reg)
     const client = fakeClient({})
 
-    selectFromListMock.mockResolvedValue({ id: '00000000-0000-0000-0000-000000000002', name: 'Two', role: 'owner' })
+    selectFromListMock.mockResolvedValue({
+      id: '00000000-0000-0000-0000-000000000002',
+      name: 'Two',
+      role: 'owner',
+    })
 
     await runUseWorkspace(
       { workspaceId: undefined },

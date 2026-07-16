@@ -8,21 +8,22 @@ import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import {
-  overlayLabelClassName,
-  overlayPopupAnimationClassName,
-  overlaySeparatorClassName,
+  floatingGroupLabelClassName,
+  floatingItemIndicatorClassName,
+  floatingPopupAnimationClassName,
+  floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export type SelectRootProps<
+export type SelectProps<
   Value,
   Multiple extends boolean | undefined = false,
 > = BaseSelect.Root.Props<Value, Multiple>
 
 export function Select<Value, Multiple extends boolean | undefined = false>(
-  props: SelectRootProps<Value, Multiple>,
+  props: SelectProps<Value, Multiple>,
 ): React.JSX.Element {
   return <BaseSelect.Root {...props} />
 }
@@ -54,25 +55,13 @@ const selectTriggerVariants = cva(
   },
 )
 
-type SelectTriggerProps
-  = Omit<BaseSelect.Trigger.Props, 'className'>
-    & VariantProps<typeof selectTriggerVariants>
-    & { className?: string }
+type SelectTriggerProps = Omit<BaseSelect.Trigger.Props, 'className'> &
+  VariantProps<typeof selectTriggerVariants> & { className?: string }
 
-export function SelectTrigger({
-  className,
-  children,
-  size,
-  ...props
-}: SelectTriggerProps) {
+export function SelectTrigger({ className, children, size, ...props }: SelectTriggerProps) {
   return (
-    <BaseSelect.Trigger
-      className={cn(selectTriggerVariants({ size, className }))}
-      {...props}
-    >
-      <span className="min-w-0 grow truncate">
-        {children}
-      </span>
+    <BaseSelect.Trigger className={cn(selectTriggerVariants({ size, className }))} {...props}>
+      <span className="min-w-0 grow truncate">{children}</span>
       <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
@@ -80,40 +69,16 @@ export function SelectTrigger({
   )
 }
 
-export function SelectLabel({
-  className,
-  ...props
-}: BaseSelect.Label.Props) {
-  return (
-    <BaseSelect.Label
-      className={cn(formLabelClassName, className)}
-      {...props}
-    />
-  )
+export function SelectLabel({ className, ...props }: BaseSelect.Label.Props) {
+  return <BaseSelect.Label className={cn(formLabelClassName, className)} {...props} />
 }
 
-export function SelectGroupLabel({
-  className,
-  ...props
-}: BaseSelect.GroupLabel.Props) {
-  return (
-    <BaseSelect.GroupLabel
-      className={cn(overlayLabelClassName, className)}
-      {...props}
-    />
-  )
+export function SelectGroupLabel({ className, ...props }: BaseSelect.GroupLabel.Props) {
+  return <BaseSelect.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
 }
 
-export function SelectSeparator({
-  className,
-  ...props
-}: BaseSelect.Separator.Props) {
-  return (
-    <BaseSelect.Separator
-      className={cn(overlaySeparatorClassName, className)}
-      {...props}
-    />
-  )
+export function SelectSeparator({ className, ...props }: BaseSelect.Separator.Props) {
+  return <BaseSelect.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
 }
 
 type SelectContentProps = {
@@ -128,14 +93,8 @@ type SelectContentProps = {
     BaseSelect.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
-  popupProps?: Omit<
-    BaseSelect.Popup.Props,
-    'children' | 'className'
-  >
-  listProps?: Omit<
-    BaseSelect.List.Props,
-    'children' | 'className'
-  >
+  popupProps?: Omit<BaseSelect.Popup.Props, 'children' | 'className'>
+  listProps?: Omit<BaseSelect.List.Props, 'children' | 'className'>
 }
 
 export function SelectContent({
@@ -166,7 +125,7 @@ export function SelectContent({
         <BaseSelect.Popup
           className={cn(
             'min-w-(--anchor-width) rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            overlayPopupAnimationClassName,
+            floatingPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}
@@ -183,10 +142,7 @@ export function SelectContent({
   )
 }
 
-export function SelectItem({
-  className,
-  ...props
-}: BaseSelect.Item.Props) {
+export function SelectItem({ className, ...props }: BaseSelect.Item.Props) {
   return (
     <BaseSelect.Item
       className={cn(
@@ -199,15 +155,9 @@ export function SelectItem({
   )
 }
 
-export function SelectItemText({
-  className,
-  ...props
-}: BaseSelect.ItemText.Props) {
+export function SelectItemText({ className, ...props }: BaseSelect.ItemText.Props) {
   return (
-    <BaseSelect.ItemText
-      className={cn('me-1 min-w-0 grow truncate px-1', className)}
-      {...props}
-    />
+    <BaseSelect.ItemText className={cn('me-1 min-w-0 grow truncate px-1', className)} {...props} />
   )
 }
 
@@ -216,10 +166,7 @@ export function SelectItemIndicator({
   ...props
 }: Omit<BaseSelect.ItemIndicator.Props, 'children'>) {
   return (
-    <BaseSelect.ItemIndicator
-      className={cn('ms-auto flex shrink-0 items-center text-text-accent', className)}
-      {...props}
-    >
+    <BaseSelect.ItemIndicator className={cn(floatingItemIndicatorClassName, className)} {...props}>
       <span className="i-ri-check-line h-4 w-4" aria-hidden />
     </BaseSelect.ItemIndicator>
   )

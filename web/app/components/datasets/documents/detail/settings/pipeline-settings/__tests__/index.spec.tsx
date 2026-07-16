@@ -17,8 +17,9 @@ vi.mock('@/next/navigation', () => ({
 // Mock dataset detail context
 const mockPipelineId = 'pipeline-123'
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { pipeline_id: string, doc_form: string } }) => unknown) =>
-    selector({ dataset: { pipeline_id: mockPipelineId, doc_form: 'text_model' } }),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: { pipeline_id: string; doc_form: string } }) => unknown,
+  ) => selector({ dataset: { pipeline_id: mockPipelineId, doc_form: 'text_model' } }),
 }))
 
 // Mock API hooks for PipelineSettings
@@ -26,7 +27,8 @@ const mockUsePipelineExecutionLog = vi.fn()
 const mockMutateAsync = vi.fn()
 const mockUseRunPublishedPipeline = vi.fn()
 vi.mock('@/service/use-pipeline', () => ({
-  usePipelineExecutionLog: (params: { dataset_id: string, document_id: string }) => mockUsePipelineExecutionLog(params),
+  usePipelineExecutionLog: (params: { dataset_id: string; document_id: string }) =>
+    mockUsePipelineExecutionLog(params),
   useRunPublishedPipeline: () => mockUseRunPublishedPipeline(),
   // For ProcessDocuments component
   usePublishedPipelineProcessingParams: () => ({
@@ -55,14 +57,14 @@ vi.mock('../../../../create-from-pipeline/process-documents/form', () => ({
   }: {
     ref: React.RefObject<{ submit: () => void }>
     initialData: Record<string, unknown>
-    configurations: Array<{ variable: string, label: string, type: string }>
+    configurations: Array<{ variable: string; label: string; type: string }>
     schema: unknown
     onSubmit: (data: Record<string, unknown>) => void
     onPreview: () => void
     isRunning: boolean
   }) {
     if (ref && typeof ref === 'object' && 'current' in ref) {
-      (ref as React.MutableRefObject<{ submit: () => void }>).current = {
+      ;(ref as React.MutableRefObject<{ submit: () => void }>).current = {
         submit: () => onSubmit(initialData),
       }
     }
@@ -133,11 +135,7 @@ const createQueryClient = () =>
 
 const renderWithProviders = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 // Factory functions for test data
@@ -194,7 +192,9 @@ describe('PipelineSettings', () => {
 
       // Assert - Real LeftHeader should render with correct content
       expect(screen.getByText('datasetPipeline.documentSettings.title')).toBeInTheDocument()
-      expect(screen.getByText('datasetPipeline.addDocuments.steps.processDocuments')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.addDocuments.steps.processDocuments'),
+      ).toBeInTheDocument()
       // Real ProcessDocuments should render
       expect(screen.getByTestId('process-form')).toBeInTheDocument()
       // ChunkPreview should render
@@ -380,7 +380,9 @@ describe('PipelineSettings', () => {
 
       renderWithProviders(<PipelineSettings {...props} />)
       // Find the "Save and Process" button (from real ProcessDocuments > Actions)
-      const processButton = screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' })
+      const processButton = screen.getByRole('button', {
+        name: 'datasetPipeline.operations.saveAndProcess',
+      })
       fireEvent.click(processButton)
 
       await waitFor(() => {
@@ -393,7 +395,9 @@ describe('PipelineSettings', () => {
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
-      fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+      )
 
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
@@ -415,7 +419,9 @@ describe('PipelineSettings', () => {
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
-      fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+      )
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-123/documents')
@@ -430,7 +436,9 @@ describe('PipelineSettings', () => {
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
-      fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+      )
 
       await waitFor(() => {
         expect(mockInvalidDocumentList).toHaveBeenCalled()
@@ -536,7 +544,12 @@ describe('PipelineSettings', () => {
     ])('should handle %s datasource type correctly', (datasourceType, testId, expectedCount) => {
       const datasourceInfoMap: Record<DatasourceType, Record<string, unknown>> = {
         [DatasourceType.localFile]: { related_id: 'f1', name: 'file.pdf', extension: 'pdf' },
-        [DatasourceType.websiteCrawl]: { content: 'c', description: 'd', source_url: 'u', title: 't' },
+        [DatasourceType.websiteCrawl]: {
+          content: 'c',
+          description: 'd',
+          source_url: 'u',
+          title: 't',
+        },
         [DatasourceType.onlineDocument]: { workspace_id: 'w1', page: { page_id: 'p1' } },
         [DatasourceType.onlineDrive]: { id: 'd1', type: 'doc', name: 'n', size: 100 },
       }
@@ -615,7 +628,9 @@ describe('PipelineSettings', () => {
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
-      fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+      )
 
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
@@ -690,7 +705,9 @@ describe('PipelineSettings', () => {
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
-      fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+      )
 
       // Assert - isPending && isPreview.current should be false (true && false = false)
       await waitFor(() => {

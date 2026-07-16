@@ -22,23 +22,38 @@ const nodeDefault: NodeDefault<AssignerNodeType> = {
   },
   checkValid(payload: AssignerNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
-    const {
-      items: operationItems,
-    } = payload
+    const { items: operationItems } = payload
 
     operationItems?.forEach((value) => {
       if (!errorMessages && !value.variable_selector?.length)
-        errorMessages = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: t($ => $['nodes.assigner.assignedVariable'], { ns: 'workflow' }) })
+        errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+          ns: 'workflow',
+          field: t(($) => $['nodes.assigner.assignedVariable'], { ns: 'workflow' }),
+        })
 
-      if (!errorMessages && value.operation !== WriteMode.clear && value.operation !== WriteMode.removeFirst && value.operation !== WriteMode.removeLast) {
-        if (value.operation === WriteMode.set || value.operation === WriteMode.increment
-          || value.operation === WriteMode.decrement || value.operation === WriteMode.multiply
-          || value.operation === WriteMode.divide) {
+      if (
+        !errorMessages &&
+        value.operation !== WriteMode.clear &&
+        value.operation !== WriteMode.removeFirst &&
+        value.operation !== WriteMode.removeLast
+      ) {
+        if (
+          value.operation === WriteMode.set ||
+          value.operation === WriteMode.increment ||
+          value.operation === WriteMode.decrement ||
+          value.operation === WriteMode.multiply ||
+          value.operation === WriteMode.divide
+        ) {
           if (!value.value && value.value !== false && typeof value.value !== 'number')
-            errorMessages = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: t($ => $['nodes.assigner.variable'], { ns: 'workflow' }) })
-        }
-        else if (!value.value?.length) {
-          errorMessages = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: t($ => $['nodes.assigner.variable'], { ns: 'workflow' }) })
+            errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+              ns: 'workflow',
+              field: t(($) => $['nodes.assigner.variable'], { ns: 'workflow' }),
+            })
+        } else if (!value.value?.length) {
+          errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+            ns: 'workflow',
+            field: t(($) => $['nodes.assigner.variable'], { ns: 'workflow' }),
+          })
         }
       }
     })

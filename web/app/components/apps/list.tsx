@@ -2,7 +2,12 @@
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -39,15 +44,13 @@ type Props = Readonly<{
   controlRefreshList?: number
 }>
 
-function List({
-  controlRefreshList = 0,
-}: Props) {
+function List({ controlRefreshList = 0 }: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { onPlanInfoChanged } = useProviderContext()
 
-  // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
+  // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
   const {
     query: { category, keywords, creatorIDs },
     setCategory,
@@ -66,13 +69,15 @@ function List({
   const [needsRefreshAppList, setNeedsRefreshAppList] = useNeedRefreshAppList()
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
-  const handleDSLFileDropped = useCallback((file: File) => {
-    if (!canCreateApp)
-      return
+  const handleDSLFileDropped = useCallback(
+    (file: File) => {
+      if (!canCreateApp) return
 
-    setDroppedDSLFile(file)
-    setShowCreateFromDSLModal(true)
-  }, [canCreateApp])
+      setDroppedDSLFile(file)
+      setShowCreateFromDSLModal(true)
+    },
+    [canCreateApp],
+  )
 
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
@@ -80,15 +85,18 @@ function List({
     enabled: canCreateApp,
   })
 
-  const appListQuery = useMemo<AppListQuery>(() => ({
-    page: 1,
-    limit: 30,
-    name: debouncedKeywords,
-    sort_by: sortBy,
-    ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
-    ...(category !== 'all' ? { mode: category } : {}),
-  }), [category, creatorIDs, debouncedKeywords, sortBy, tagIDs])
+  const appListQuery = useMemo<AppListQuery>(
+    () => ({
+      page: 1,
+      limit: 30,
+      name: debouncedKeywords,
+      sort_by: sortBy,
+      ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
+      ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
+      ...(category !== 'all' ? { mode: category } : {}),
+    }),
+    [category, creatorIDs, debouncedKeywords, sortBy, tagIDs],
+  )
 
   const {
     data,
@@ -101,33 +109,33 @@ function List({
     refetch,
   } = useInfiniteQuery({
     ...consoleQuery.apps.get.infiniteOptions({
-      input: pageParam => ({
+      input: (pageParam) => ({
         query: {
           ...appListQuery,
           page: Number(pageParam),
         },
       }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-    select: data => ({
+    select: (data) => ({
       ...data,
       pages: data.pages.map(normalizeAppPagination),
     }),
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })
 
-  const starredAppListQuery = useMemo<AppListQuery>(() => ({
-    ...appListQuery,
-    page: 1,
-    limit: STARRED_APP_LIMIT,
-  }), [appListQuery])
+  const starredAppListQuery = useMemo<AppListQuery>(
+    () => ({
+      ...appListQuery,
+      page: 1,
+      limit: STARRED_APP_LIMIT,
+    }),
+    [appListQuery],
+  )
 
-  const {
-    data: starredAppList,
-    refetch: refetchStarredAppList,
-  } = useQuery({
+  const { data: starredAppList, refetch: refetchStarredAppList } = useQuery({
     ...consoleQuery.apps.starred.get.queryOptions({
       input: {
         query: starredAppListQuery,
@@ -142,8 +150,7 @@ function List({
   }, [refetch, refetchStarredAppList])
 
   useEffect(() => {
-    if (controlRefreshList > 0)
-      refetch()
+    if (controlRefreshList > 0) refetch()
   }, [controlRefreshList, refetch])
 
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -160,8 +167,7 @@ function List({
     let observer: IntersectionObserver | undefined
 
     if (error) {
-      if (observer)
-        observer.disconnect()
+      if (observer) observer.disconnect()
       return
     }
 
@@ -169,14 +175,17 @@ function List({
       const containerHeight = containerRef.current.clientHeight
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200))
 
-      observer = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
-          fetchNextPage()
-      }, {
-        root: containerRef.current,
-        rootMargin: `${dynamicMargin}px`,
-        threshold: 0.1,
-      })
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
+            fetchNextPage()
+        },
+        {
+          root: containerRef.current,
+          rootMargin: `${dynamicMargin}px`,
+          threshold: 0.1,
+        },
+      )
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
@@ -195,45 +204,50 @@ function List({
     return Array.from(appIds)
   }, [apps])
 
-  const {
-    onlineUsersMap: workflowOnlineUsersMap,
-  } = useWorkflowOnlineUsers({
+  const { onlineUsersMap: workflowOnlineUsersMap } = useWorkflowOnlineUsers({
     appIds: workflowOnlineUserAppIds,
     enabled: systemFeatures.enable_collaboration_mode,
   })
 
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
-  const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || creatorIDs.length > 0
+  const hasActiveFilters =
+    category !== 'all' ||
+    tagIDs.length > 0 ||
+    keywords.trim().length > 0 ||
+    debouncedKeywords.trim().length > 0 ||
+    creatorIDs.length > 0
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
-  const showFirstEmptyState = !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
+  const showFirstEmptyState =
+    !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
   const openCreateBlankModal = useCallback(() => {
-    if (canCreateApp)
-      setShowNewAppModal(true)
+    if (canCreateApp) setShowNewAppModal(true)
   }, [canCreateApp])
   const openCreateTemplateDialog = useCallback(() => {
-    if (canCreateApp)
-      setShowNewAppTemplateDialog(true)
+    if (canCreateApp) setShowNewAppTemplateDialog(true)
   }, [canCreateApp])
   const openCreateFromDSLModal = useCallback(() => {
-    if (canCreateApp)
-      setShowCreateFromDSLModal(true)
+    if (canCreateApp) setShowCreateFromDSLModal(true)
   }, [canCreateApp])
 
   return (
     <>
-      <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
+      <div
+        ref={containerRef}
+        className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body"
+      >
         {dragging && (
-          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
-          </div>
+          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2"></div>
         )}
 
         <StudioListHeader
-          title={(
+          title={
             <div className="flex items-center">
-              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t($ => $['menus.apps'], { ns: 'common' })}</h1>
+              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
+                {t(($) => $['menus.apps'], { ns: 'common' })}
+              </h1>
             </div>
-          )}
+          }
         >
           <AppListHeaderFilters
             category={category}
@@ -253,60 +267,60 @@ function List({
             showCreateButton={canCreateApp}
           />
         </StudioListHeader>
-        {showFirstEmptyState
-          ? (
-              <FirstEmptyState
-                onCreateBlank={openCreateBlankModal}
-                onCreateTemplate={openCreateTemplateDialog}
-                onImportDSL={openCreateFromDSLModal}
-                showLearnDify={systemFeatures.enable_learn_app}
-              />
-            )
-          : (
-              <>
-                {starredApps.length > 0 && (
-                  <StarredAppList
-                    apps={starredApps}
-                    onRefresh={refreshAppLists}
-                  />
-                )}
-                <div className={cn(
-                  `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
-                  !hasAnyApp && 'overflow-hidden',
-                )}
-                >
-                  {showSkeleton
-                    ? <AppCardSkeleton count={6} />
-                    : hasAnyApp
-                      ? apps.map(app => (
-                          <AppCard
-                            key={app.id}
-                            app={app}
-                            onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                            onRefresh={refreshAppLists}
-                            onOpenTagManagement={() => setShowTagManagementModal(true)}
-                          />
-                        ))
-                      : <Empty />}
-                  {isFetchingNextPage && (
-                    <AppCardSkeleton count={3} />
-                  )}
-                </div>
-              </>
+        {showFirstEmptyState ? (
+          <FirstEmptyState
+            onCreateBlank={openCreateBlankModal}
+            onCreateTemplate={openCreateTemplateDialog}
+            onImportDSL={openCreateFromDSLModal}
+            showLearnDify={systemFeatures.enable_learn_app}
+          />
+        ) : (
+          <>
+            {starredApps.length > 0 && (
+              <StarredAppList apps={starredApps} onRefresh={refreshAppLists} />
             )}
+            <div
+              className={cn(
+                `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
+                !hasAnyApp && 'overflow-hidden',
+              )}
+            >
+              {showSkeleton ? (
+                <AppCardSkeleton count={6} />
+              ) : hasAnyApp ? (
+                apps.map((app) => (
+                  <AppCard
+                    key={app.id}
+                    app={app}
+                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+                    onRefresh={refreshAppLists}
+                    onOpenTagManagement={() => setShowTagManagementModal(true)}
+                  />
+                ))
+              ) : (
+                <Empty />
+              )}
+              {isFetchingNextPage && <AppCardSkeleton count={3} />}
+            </div>
+          </>
+        )}
 
         {canCreateApp && !showFirstEmptyState && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
-            aria-label={t($ => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
+            aria-label={t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
           >
             <span className="i-ri-drag-drop-line size-4" />
-            <span className="system-xs-regular">{t($ => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}</span>
+            <span className="system-xs-regular">
+              {t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
+            </span>
           </div>
         )}
         <CheckModal />
-        <div ref={anchorRef} className="h-0"> </div>
+        <div ref={anchorRef} className="h-0">
+          {' '}
+        </div>
         <AppListTagManagementModal
           show={showTagManagementModal}
           onClose={() => setShowTagManagementModal(false)}
