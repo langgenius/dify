@@ -1,270 +1,229 @@
 from __future__ import annotations
 
-import base64
+import json
+from collections.abc import Callable
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
 
-import jwt
+import httpx
 import pytest
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 from pydantic import SecretStr
 
-import services.knowledge_space_service as knowledge_space_service_module
-from clients.knowledge_fs import KnowledgeFSConfigurationError
-from clients.knowledge_fs.credentials import (
-    RS256KnowledgeFSCredentialProvider,
-    StaticKnowledgeFSCredentialProvider,
+from clients.knowledge_fs.generated.client import Client as GeneratedKnowledgeFSClient
+from services.knowledge_space_service import (
+    KnowledgeFSConfigurationError,
+    KnowledgeFSTimeoutError,
+    KnowledgeFSUpstreamError,
+    KnowledgeSpaceService,
+    create_knowledge_space_service,
 )
-from services.knowledge_space_service import KnowledgeSpaceService, create_knowledge_space_service
 
 
-def _private_key() -> tuple[rsa.RSAPrivateKey, str]:
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
+def _space_payload(*, tenant_id: str = "tenant-dev") -> dict[str, object]:
+    timestamp = datetime(2026, 7, 15, 8, 0, tzinfo=UTC).isoformat()
+    return {
+        "configurationStatus": "ready",
+        "createdAt": timestamp,
+        "description": "New RAG knowledge base",
+        "id": "space-1",
+        "name": "Product docs",
+        "revision": 1,
+        "slug": "product-docs",
+        "tenantId": tenant_id,
+        "updatedAt": timestamp,
+    }
+
+
+def _service(
+    handler: Callable[[httpx.Request], httpx.Response],
+    *,
+    expected_tenant_id: str = "tenant-dev",
+) -> tuple[KnowledgeSpaceService, httpx.Client]:
+    http_client = httpx.Client(
+        base_url="http://knowledge-fs.test",
+        headers={"Authorization": "Bearer server-token"},
+        transport=httpx.MockTransport(handler),
     )
-    return private_key, base64.b64encode(pem).decode()
+    generated_client = GeneratedKnowledgeFSClient(base_url=str(http_client.base_url)).set_httpx_client(http_client)
+    return KnowledgeSpaceService(generated_client, expected_tenant_id=expected_tenant_id), http_client
 
 
-def _set_disabled_config(monkeypatch) -> None:
+def _set_disabled_config(monkeypatch: pytest.MonkeyPatch) -> None:
     values = {
-        "KNOWLEDGE_FS_AUTH_MODE": None,
         "KNOWLEDGE_FS_BASE_URL": None,
         "KNOWLEDGE_FS_API_TOKEN": None,
         "KNOWLEDGE_FS_STATIC_TENANT_ID": None,
-        "KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN": False,
-        "KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64": None,
-        "KNOWLEDGE_FS_JWT_KEY_ID": None,
-        "KNOWLEDGE_FS_JWT_ISSUER": None,
-        "KNOWLEDGE_FS_JWT_AUDIENCE": "knowledge-fs",
-        "KNOWLEDGE_FS_JWT_TTL_SECONDS": 60,
         "KNOWLEDGE_FS_TIMEOUT_SECONDS": 10.0,
     }
     for name, value in values.items():
         monkeypatch.setattr(f"services.knowledge_space_service.dify_config.{name}", value, raising=False)
 
 
-def test_factory_returns_none_when_kfs_is_fully_unconfigured(monkeypatch) -> None:
+def test_factory_returns_none_when_kfs_is_unconfigured(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_disabled_config(monkeypatch)
 
     assert create_knowledge_space_service() is None
 
 
-def test_factory_rejects_partial_kfs_configuration(monkeypatch) -> None:
+def test_factory_rejects_partial_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_disabled_config(monkeypatch)
     monkeypatch.setattr(
         "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_BASE_URL",
         "http://localhost:8788",
     )
 
-    with pytest.raises(KnowledgeFSConfigurationError, match="AUTH_MODE"):
+    with pytest.raises(KnowledgeFSConfigurationError, match="incomplete"):
         create_knowledge_space_service()
 
 
-def test_factory_rejects_shared_tenant_token_without_explicit_single_tenant_opt_in(monkeypatch) -> None:
+def test_factory_builds_one_static_authenticated_generated_client(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_disabled_config(monkeypatch)
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_AUTH_MODE",
-        "dev-static",
-        raising=False,
-    )
+    captured_keys: list[str] = []
+    captured_clients: list[httpx.Client] = []
+
+    def fake_pool(key: str, factory: Callable[[], httpx.Client]) -> httpx.Client:
+        captured_keys.append(key)
+        client = factory()
+        captured_clients.append(client)
+        return client
+
     monkeypatch.setattr(
         "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_BASE_URL",
         "http://localhost:8788",
     )
     monkeypatch.setattr(
         "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_API_TOKEN",
-        SecretStr("dev-token"),
+        SecretStr("server-token"),
     )
     monkeypatch.setattr(
         "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_STATIC_TENANT_ID",
         "tenant-dev",
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN",
-        False,
-        raising=False,
-    )
-
-    with pytest.raises(KnowledgeFSConfigurationError, match="shared tenant token"):
-        create_knowledge_space_service()
-
-
-def test_factory_rejects_dev_static_without_an_explicit_tenant(monkeypatch) -> None:
-    _set_disabled_config(monkeypatch)
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_AUTH_MODE",
-        "dev-static",
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_BASE_URL",
-        "http://localhost:8788",
-    )
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_API_TOKEN",
-        SecretStr("dev-token"),
-    )
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN",
-        True,
-        raising=False,
-    )
-
-    with pytest.raises(KnowledgeFSConfigurationError, match="STATIC_TENANT_ID"):
-        create_knowledge_space_service()
-
-
-def test_factory_builds_service_from_server_only_configuration(monkeypatch) -> None:
-    _set_disabled_config(monkeypatch)
-    client = MagicMock()
-    factory = MagicMock(return_value=client)
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_AUTH_MODE",
-        "dev-static",
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_BASE_URL",
-        "http://localhost:8788/",
-    )
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_API_TOKEN",
-        SecretStr("dev-token"),
-    )
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_STATIC_TENANT_ID",
-        "tenant-dev",
-        raising=False,
     )
     monkeypatch.setattr(
         "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_TIMEOUT_SECONDS",
         7.5,
     )
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN",
-        True,
-        raising=False,
-    )
-    monkeypatch.setattr("services.knowledge_space_service.create_knowledge_fs_client", factory)
+    monkeypatch.setattr("services.knowledge_space_service.get_pooled_http_client", fake_pool)
 
     service = create_knowledge_space_service()
 
-    assert isinstance(service, KnowledgeSpaceService)
-    assert service.client is client
-    factory.assert_called_once()
-    call = factory.call_args.kwargs
-    assert call["base_url"] == "http://localhost:8788/"
-    assert call["timeout_seconds"] == 7.5
-    assert isinstance(call["credential_provider"], StaticKnowledgeFSCredentialProvider)
-    credential = call["credential_provider"].issue(
-        tenant_id="tenant-dev",
-        subject_id="user-dev",
-        scope="knowledge-spaces:read",
-    )
-    assert credential.token == "dev-token"
+    try:
+        assert isinstance(service, KnowledgeSpaceService)
+        assert captured_clients[0].base_url == httpx.URL("http://localhost:8788")
+        assert captured_clients[0].headers["Authorization"] == "Bearer server-token"
+        assert captured_clients[0].timeout.read == 7.5
+        assert captured_keys == ["knowledge-fs"]
+    finally:
+        for client in captured_clients:
+            client.close()
 
 
-def test_factory_builds_request_scoped_rs256_provider_for_production_profile(monkeypatch) -> None:
-    _set_disabled_config(monkeypatch)
-    private_key, encoded_private_key = _private_key()
-    client = MagicMock()
-    factory = MagicMock(return_value=client)
-    configured = {
-        "KNOWLEDGE_FS_AUTH_MODE": "dify-jwt",
-        "KNOWLEDGE_FS_BASE_URL": "https://knowledge-fs.test",
-        "KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64": SecretStr(encoded_private_key),
-        "KNOWLEDGE_FS_JWT_KEY_ID": "2026-07-k1",
-        "KNOWLEDGE_FS_JWT_ISSUER": "https://dify.test/knowledge-fs",
-        "KNOWLEDGE_FS_JWT_AUDIENCE": "urn:langgenius:knowledge-fs",
-        "KNOWLEDGE_FS_JWT_TTL_SECONDS": 60,
-        "KNOWLEDGE_FS_TIMEOUT_SECONDS": 7.5,
-    }
-    for name, value in configured.items():
-        monkeypatch.setattr(f"services.knowledge_space_service.dify_config.{name}", value, raising=False)
-    monkeypatch.setattr("services.knowledge_space_service.create_knowledge_fs_client", factory)
+def test_list_uses_generated_operation_and_static_server_credential() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer server-token"
+        assert request.url.params["limit"] == "20"
+        assert request.url.params["cursor"] == "previous-space"
+        return httpx.Response(200, json={"items": [_space_payload()], "nextCursor": "product-docs"})
 
-    service = create_knowledge_space_service()
-
-    assert isinstance(service, KnowledgeSpaceService)
-    provider = factory.call_args.kwargs["credential_provider"]
-    assert isinstance(provider, RS256KnowledgeFSCredentialProvider)
-    credential = provider.issue(
-        tenant_id="tenant-a",
-        subject_id="user-a",
-        scope="knowledge-spaces:write",
-    )
-    claims = jwt.decode(
-        credential.token,
-        private_key.public_key(),
-        algorithms=["RS256"],
-        audience="urn:langgenius:knowledge-fs",
-        issuer="https://dify.test/knowledge-fs",
-    )
-    assert claims["tenant_id"] == "tenant-a"
-    assert claims["sub"] == "user-a"
-    assert claims["scope"] == "knowledge-spaces:write"
-    assert claims["exp"] - claims["iat"] == 60
-    assert datetime.fromtimestamp(claims["exp"], tz=UTC) == credential.expires_at
-
-
-def test_factory_cache_excludes_private_key_material_and_refreshes_after_rotation(monkeypatch) -> None:
-    _set_disabled_config(monkeypatch)
-    first_private_key, first_encoded_private_key = _private_key()
-    second_private_key, second_encoded_private_key = _private_key()
-    factory = MagicMock(return_value=MagicMock())
-    configured = {
-        "KNOWLEDGE_FS_AUTH_MODE": "dify-jwt",
-        "KNOWLEDGE_FS_BASE_URL": "https://knowledge-fs.test",
-        "KNOWLEDGE_FS_JWT_KEY_ID": "2026-07-k1",
-        "KNOWLEDGE_FS_JWT_ISSUER": "https://dify.test/knowledge-fs",
-        "KNOWLEDGE_FS_JWT_AUDIENCE": "knowledge-fs",
-        "KNOWLEDGE_FS_JWT_TTL_SECONDS": 60,
-    }
-    for name, value in configured.items():
-        monkeypatch.setattr(f"services.knowledge_space_service.dify_config.{name}", value, raising=False)
-    monkeypatch.setattr("services.knowledge_space_service.create_knowledge_fs_client", factory)
-
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64",
-        SecretStr(first_encoded_private_key),
-    )
-    create_knowledge_space_service()
-    first_provider = factory.call_args.kwargs["credential_provider"]
-
-    monkeypatch.setattr(
-        "services.knowledge_space_service.dify_config.KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64",
-        SecretStr(second_encoded_private_key),
-    )
-    create_knowledge_space_service()
-    second_provider = factory.call_args.kwargs["credential_provider"]
-
-    assert first_provider is not second_provider
-    assert first_encoded_private_key not in repr(knowledge_space_service_module._rs256_credential_provider_cache)
-    assert second_encoded_private_key not in repr(knowledge_space_service_module._rs256_credential_provider_cache)
-
-    credential = second_provider.issue(
-        tenant_id="tenant-a",
-        subject_id="user-a",
-        scope="knowledge-spaces:read",
-    )
-    claims = jwt.decode(
-        credential.token,
-        second_private_key.public_key(),
-        algorithms=["RS256"],
-        audience="knowledge-fs",
-        issuer="https://dify.test/knowledge-fs",
-    )
-    assert claims["tenant_id"] == "tenant-a"
-    with pytest.raises(jwt.InvalidSignatureError):
-        jwt.decode(
-            credential.token,
-            first_private_key.public_key(),
-            algorithms=["RS256"],
-            audience="knowledge-fs",
-            issuer="https://dify.test/knowledge-fs",
+    service, client = _service(handler)
+    try:
+        result = service.list_knowledge_spaces(
+            limit=20,
+            cursor="previous-space",
+            tenant_id="tenant-dev",
         )
+    finally:
+        client.close()
+
+    assert result.items[0].id == "space-1"
+    assert result.next_cursor == "product-docs"
+
+
+def test_create_uses_generated_request_and_response_models() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer server-token"
+        assert json.loads(request.read()) == {
+            "name": "Product docs",
+            "description": "New RAG knowledge base",
+            "idempotencyKey": "create-product-docs",
+        }
+        return httpx.Response(201, json=_space_payload())
+
+    service, client = _service(handler)
+    try:
+        result = service.create_knowledge_space(
+            idempotency_key="create-product-docs",
+            name="Product docs",
+            description="New RAG knowledge base",
+            tenant_id="tenant-dev",
+        )
+    finally:
+        client.close()
+
+    assert result.id == "space-1"
+    assert result.tenant_id == "tenant-dev"
+
+
+def test_static_tenant_mismatch_fails_before_external_io() -> None:
+    requested = False
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal requested
+        requested = True
+        return httpx.Response(200, json={"items": []})
+
+    service, client = _service(handler)
+    try:
+        with pytest.raises(KnowledgeFSConfigurationError, match="current Dify workspace"):
+            service.list_knowledge_spaces(limit=20, cursor=None, tenant_id="another-tenant")
+    finally:
+        client.close()
+
+    assert requested is False
+
+
+def test_response_tenant_mismatch_fails_closed() -> None:
+    service, client = _service(
+        lambda _request: httpx.Response(200, json={"items": [_space_payload(tenant_id="another-tenant")]})
+    )
+    try:
+        with pytest.raises(KnowledgeFSUpstreamError, match="another tenant"):
+            service.list_knowledge_spaces(limit=20, cursor=None, tenant_id="tenant-dev")
+    finally:
+        client.close()
+
+
+def test_malformed_pagination_cursor_fails_closed() -> None:
+    service, client = _service(lambda _request: httpx.Response(200, json={"items": [], "nextCursor": 42}))
+    try:
+        with pytest.raises(KnowledgeFSUpstreamError, match="pagination cursor"):
+            service.list_knowledge_spaces(limit=20, cursor=None, tenant_id="tenant-dev")
+    finally:
+        client.close()
+
+
+def test_upstream_status_is_normalized() -> None:
+    service, client = _service(lambda _request: httpx.Response(503, json={"error": "unavailable"}))
+    try:
+        with pytest.raises(KnowledgeFSUpstreamError, match="HTTP 503") as exc_info:
+            service.create_knowledge_space(
+                idempotency_key="create-product-docs",
+                name="Product docs",
+                description=None,
+                tenant_id="tenant-dev",
+            )
+    finally:
+        client.close()
+
+    assert exc_info.value.status_code == 503
+
+
+def test_timeout_is_normalized() -> None:
+    def timeout(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    service, client = _service(timeout)
+    try:
+        with pytest.raises(KnowledgeFSTimeoutError):
+            service.list_knowledge_spaces(limit=20, cursor=None, tenant_id="tenant-dev")
+    finally:
+        client.close()

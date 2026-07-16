@@ -1,9 +1,4 @@
-"""Console BFF for the Dataset 2.0 KnowledgeSpace list and empty creation.
-
-The browser never receives the KnowledgeFS base URL or bearer token. During
-the MVP, KnowledgeFS remains the visibility authority; Dify forwards the
-current workspace and account identity without maintaining a parallel ACL.
-"""
+"""Console BFF for listing and creating Dataset 2.0 knowledge spaces."""
 
 from __future__ import annotations
 
@@ -14,27 +9,16 @@ from typing import NoReturn
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from werkzeug.exceptions import (
     BadGateway,
-    BadRequest,
-    Conflict,
     Forbidden,
     GatewayTimeout,
-    NotFound,
     ServiceUnavailable,
-    TooManyRequests,
-    UnprocessableEntity,
+    abort,
 )
 
-from clients.knowledge_fs import (
-    KnowledgeFSConfigurationError,
-    KnowledgeFSHTTPError,
-    KnowledgeFSTimeoutError,
-    KnowledgeFSTransportError,
-    KnowledgeFSValidationError,
-    KnowledgeSpace,
-)
+from clients.knowledge_fs.generated.models import KnowledgeSpace, KnowledgeSpaceCreationResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
@@ -48,7 +32,13 @@ from controllers.console.wraps import (
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
-from services.knowledge_space_service import KnowledgeSpaceService, create_knowledge_space_service
+from services.knowledge_space_service import (
+    KnowledgeFSConfigurationError,
+    KnowledgeFSTimeoutError,
+    KnowledgeFSUpstreamError,
+    KnowledgeSpaceService,
+    create_knowledge_space_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,35 +53,13 @@ class KnowledgeSpaceListQuery(BaseModel):
 
 
 class CreateKnowledgeSpacePayload(BaseModel):
-    """Dify-facing payload for creating an empty Dataset 2.0 knowledge base.
-
-    Names are trimmed and must contain a visible character; these invariants
-    are enforced at the server boundary instead of relying on the Console form.
-    KFS owns slug allocation, while the caller-provided idempotency key keeps
-    retries for one creation intent attached to the same provisioning operation.
-    """
+    """Dify-facing payload for creating an empty Dataset 2.0 knowledge base."""
 
     idempotency_key: str = Field(min_length=1, max_length=255)
     name: str = Field(min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=2000)
 
     model_config = ConfigDict(extra="forbid")
-
-    @field_validator("name", mode="before")
-    @classmethod
-    def normalize_name(cls, value: object) -> object:
-        if isinstance(value, str):
-            value = value.strip()
-            if not value:
-                raise ValueError("name must not be blank")
-        return value
-
-    @field_validator("idempotency_key", mode="before")
-    @classmethod
-    def normalize_idempotency_key(cls, value: object) -> object:
-        if isinstance(value, str):
-            return value.strip()
-        return value
 
 
 class KnowledgeSpaceResponse(ResponseModel):
@@ -101,30 +69,30 @@ class KnowledgeSpaceResponse(ResponseModel):
     name: str
     slug: str
     description: str | None
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime = Field(validation_alias="createdAt")
+    updated_at: datetime = Field(validation_alias="updatedAt")
 
 
 class KnowledgeSpaceListResponse(ResponseModel):
     """Feature availability and one real cursor page."""
 
     enabled: bool
-    data: list[KnowledgeSpaceResponse]
-    next_cursor: str | None
+    data: list[KnowledgeSpaceResponse] = Field(validation_alias="items")
+    next_cursor: str | None = Field(validation_alias="nextCursor")
 
 
 register_schema_models(console_ns, KnowledgeSpaceListQuery, CreateKnowledgeSpacePayload)
 register_response_schema_models(console_ns, KnowledgeSpaceResponse, KnowledgeSpaceListResponse)
 
 
-def _space_response_source(space: KnowledgeSpace) -> dict[str, object]:
+def _space_response_source(space: KnowledgeSpace | KnowledgeSpaceCreationResponse) -> dict[str, object]:
     return {
         "id": space.id,
         "name": space.name,
         "slug": space.slug,
         "description": space.description if isinstance(space.description, str) else None,
-        "created_at": space.created_at,
-        "updated_at": space.updated_at,
+        "createdAt": space.created_at,
+        "updatedAt": space.updated_at,
     }
 
 
@@ -149,29 +117,13 @@ def _translate_knowledge_fs_error(exc: Exception) -> NoReturn:
         raise ServiceUnavailable("KnowledgeFS integration is misconfigured") from exc
     if isinstance(exc, KnowledgeFSTimeoutError):
         raise GatewayTimeout("KnowledgeFS request timed out") from exc
-    if isinstance(exc, KnowledgeFSValidationError):
-        logger.error("KnowledgeFS returned an invalid success response")
+    if isinstance(exc, ValidationError):
+        logger.warning("KnowledgeFS returned an invalid success response")
         raise BadGateway("KnowledgeFS returned an invalid response") from exc
-    if isinstance(exc, KnowledgeFSHTTPError):
-        match exc.status_code:
-            case 400:
-                raise BadRequest("Invalid KnowledgeFS request") from exc
-            case 404:
-                raise NotFound("Knowledge space not found") from exc
-            case 409:
-                raise Conflict("Knowledge space creation conflict") from exc
-            case 422:
-                raise UnprocessableEntity("Invalid knowledge space fields") from exc
-            case 429:
-                raise TooManyRequests("KnowledgeFS capacity or rate limit reached") from exc
-            case 401 | 403:
-                logger.error("KnowledgeFS rejected the server credential with HTTP %s", exc.status_code)
-                raise BadGateway("KnowledgeFS authentication failed") from exc
-            case _:
-                logger.warning("KnowledgeFS request failed with HTTP %s", exc.status_code)
-                raise BadGateway("KnowledgeFS is unavailable") from exc
-    if isinstance(exc, KnowledgeFSTransportError):
-        logger.warning("KnowledgeFS transport request failed: %s", type(exc).__name__)
+    if isinstance(exc, KnowledgeFSUpstreamError):
+        if exc.status_code in {400, 409, 422, 429, 503}:
+            abort(exc.status_code, description="KnowledgeFS request failed")
+        logger.warning("KnowledgeFS request failed: %s", exc)
         raise BadGateway("KnowledgeFS is unavailable") from exc
     raise exc
 
@@ -199,28 +151,23 @@ class KnowledgeSpaceListApi(Resource):
             )
 
         query = KnowledgeSpaceListQuery.model_validate(request.args.to_dict(flat=True))
-        current_user, tenant_id = current_account_with_tenant()
+        _, tenant_id = current_account_with_tenant()
         try:
             result = service.list_knowledge_spaces(
                 limit=query.limit,
                 cursor=query.cursor,
                 tenant_id=tenant_id,
-                user_id=current_user.id,
+            )
+            return dump_response(
+                KnowledgeSpaceListResponse,
+                {
+                    "enabled": True,
+                    "items": [_space_response_source(space) for space in result.items],
+                    "nextCursor": result.next_cursor if isinstance(result.next_cursor, str) else None,
+                },
             )
         except Exception as exc:
             _translate_knowledge_fs_error(exc)
-            raise AssertionError("unreachable")
-
-        next_cursor = result.next_cursor if isinstance(result.next_cursor, str) else None
-
-        return dump_response(
-            KnowledgeSpaceListResponse,
-            {
-                "enabled": True,
-                "data": [_space_response_source(item) for item in result.items],
-                "next_cursor": next_cursor,
-            },
-        )
 
     @console_ns.doc("create_knowledge_space")
     @console_ns.doc(description="Create an empty Dataset 2.0 knowledge base in KnowledgeFS")
@@ -251,9 +198,7 @@ class KnowledgeSpaceListApi(Resource):
                 name=payload.name,
                 description=payload.description,
                 tenant_id=tenant_id,
-                user_id=current_user.id,
             )
+            return dump_response(KnowledgeSpaceResponse, _space_response_source(space)), HTTPStatus.CREATED
         except Exception as exc:
             _translate_knowledge_fs_error(exc)
-            raise AssertionError("unreachable")
-        return dump_response(KnowledgeSpaceResponse, _space_response_source(space)), HTTPStatus.CREATED

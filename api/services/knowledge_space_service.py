@@ -1,60 +1,56 @@
-"""Application service for the first Dataset 2.0 KnowledgeFS slice."""
+"""Minimal server-side bridge to the KnowledgeFS OpenAPI client.
+
+This bridge uses one server-only token bound to one KFS tenant. Dify
+rejects any other workspace before I/O and validates the tenant echoed by KFS;
+the generated client remains the owner of the HTTP wire contract. Connection
+setting changes require an API process restart because the client is pooled.
+"""
 
 from __future__ import annotations
 
-import base64
-import binascii
-from collections import OrderedDict
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from hashlib import sha256
-from threading import Lock
-from uuid import uuid4
+from http import HTTPStatus
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from pydantic import SecretStr
+import httpx
 
-from clients.knowledge_fs import (
-    KnowledgeFSClient,
-    KnowledgeFSConfigurationError,
-    KnowledgeSpace,
+from clients.knowledge_fs.generated.api.knowledge_spaces import create_knowledge_space, list_knowledge_spaces
+from clients.knowledge_fs.generated.client import Client as GeneratedKnowledgeFSClient
+from clients.knowledge_fs.generated.models import (
+    CreateKnowledgeSpace,
+    KnowledgeSpaceCreationResponse,
     KnowledgeSpaceList,
-    create_knowledge_fs_client,
 )
-from clients.knowledge_fs.credentials import (
-    KnowledgeFSCredentialProvider,
-    RS256KnowledgeFSCredentialProvider,
-    StaticKnowledgeFSCredentialProvider,
-)
+from clients.knowledge_fs.generated.types import UNSET
 from configs import dify_config
+from core.helper.http_client_pooling import get_pooled_http_client
 
 
-@dataclass(frozen=True, slots=True)
-class _RS256CredentialProviderCacheKey:
-    """Identify a signer without retaining private key material in the cache key."""
-
-    private_key_digest: str
-    key_id: str
-    issuer: str
-    audience: str
-    ttl_seconds: int
+class KnowledgeFSConfigurationError(RuntimeError):
+    """KnowledgeFS is partially configured or bound to another workspace."""
 
 
-_RS256_CREDENTIAL_PROVIDER_CACHE_MAX_SIZE = 4
-_rs256_credential_provider_cache: OrderedDict[_RS256CredentialProviderCacheKey, RS256KnowledgeFSCredentialProvider] = (
-    OrderedDict()
-)
-_rs256_credential_provider_cache_lock = Lock()
+class KnowledgeFSUpstreamError(RuntimeError):
+    """KnowledgeFS could not return a valid response."""
+
+    status_code: int | None
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        self.status_code = status_code
+        super().__init__(message)
+
+
+class KnowledgeFSTimeoutError(KnowledgeFSUpstreamError):
+    """KnowledgeFS exceeded the configured request timeout."""
 
 
 class KnowledgeSpaceService:
-    """Coordinate tenant-aware list and create calls through KnowledgeFS."""
+    """Call the two KnowledgeFS operations exposed to the Console."""
 
-    client: KnowledgeFSClient
+    _client: GeneratedKnowledgeFSClient
+    _expected_tenant_id: str
 
-    def __init__(self, client: KnowledgeFSClient) -> None:
-        self.client = client
+    def __init__(self, client: GeneratedKnowledgeFSClient, *, expected_tenant_id: str) -> None:
+        self._client = client
+        self._expected_tenant_id = expected_tenant_id
 
     def list_knowledge_spaces(
         self,
@@ -62,15 +58,34 @@ class KnowledgeSpaceService:
         limit: int,
         cursor: str | None,
         tenant_id: str,
-        user_id: str,
     ) -> KnowledgeSpaceList:
-        """List spaces authorized for the current KnowledgeFS subject."""
-        return self.client.list_knowledge_spaces(
-            limit=limit,
-            cursor=cursor,
-            tenant_id=tenant_id,
-            user_id=user_id,
-        )
+        """List one KFS cursor page after enforcing the static tenant binding."""
+        self._ensure_tenant(tenant_id)
+        try:
+            response = list_knowledge_spaces.sync_detailed(
+                client=self._client,
+                limit=limit,
+                cursor=cursor if cursor is not None else UNSET,
+            )
+        except httpx.TimeoutException as exc:
+            raise KnowledgeFSTimeoutError("KnowledgeFS request timed out") from exc
+        except httpx.HTTPError as exc:
+            raise KnowledgeFSUpstreamError("KnowledgeFS transport request failed") from exc
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise KnowledgeFSUpstreamError("KnowledgeFS returned an invalid response") from exc
+
+        if response.status_code != HTTPStatus.OK:
+            raise KnowledgeFSUpstreamError(
+                f"KnowledgeFS returned HTTP {response.status_code}",
+                status_code=int(response.status_code),
+            )
+        if not isinstance(response.parsed, KnowledgeSpaceList):
+            raise KnowledgeFSUpstreamError("KnowledgeFS returned an invalid list response")
+        if response.parsed.next_cursor is not UNSET and not isinstance(response.parsed.next_cursor, str):
+            raise KnowledgeFSUpstreamError("KnowledgeFS returned an invalid pagination cursor")
+        if any(space.tenant_id != tenant_id for space in response.parsed.items):
+            raise KnowledgeFSUpstreamError("KnowledgeFS returned data for another tenant")
+        return response.parsed
 
     def create_knowledge_space(
         self,
@@ -79,128 +94,60 @@ class KnowledgeSpaceService:
         name: str,
         description: str | None,
         tenant_id: str,
-        user_id: str,
-    ) -> KnowledgeSpace:
-        """Create a KnowledgeFS space owned by the current subject."""
-        return self.client.create_knowledge_space(
+    ) -> KnowledgeSpaceCreationResponse:
+        """Create an empty KFS space after enforcing the static tenant binding."""
+        self._ensure_tenant(tenant_id)
+        body = CreateKnowledgeSpace(
             idempotency_key=idempotency_key,
             name=name,
-            description=description,
-            tenant_id=tenant_id,
-            user_id=user_id,
+            description=description if description is not None else UNSET,
         )
+        try:
+            response = create_knowledge_space.sync_detailed(client=self._client, body=body)
+        except httpx.TimeoutException as exc:
+            raise KnowledgeFSTimeoutError("KnowledgeFS request timed out") from exc
+        except httpx.HTTPError as exc:
+            raise KnowledgeFSUpstreamError("KnowledgeFS transport request failed") from exc
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise KnowledgeFSUpstreamError("KnowledgeFS returned an invalid response") from exc
+
+        if response.status_code != HTTPStatus.CREATED:
+            raise KnowledgeFSUpstreamError(
+                f"KnowledgeFS returned HTTP {response.status_code}",
+                status_code=int(response.status_code),
+            )
+        if not isinstance(response.parsed, KnowledgeSpaceCreationResponse):
+            raise KnowledgeFSUpstreamError("KnowledgeFS returned an invalid create response")
+        if response.parsed.tenant_id != tenant_id:
+            raise KnowledgeFSUpstreamError("KnowledgeFS returned data for another tenant")
+        return response.parsed
+
+    def _ensure_tenant(self, tenant_id: str) -> None:
+        if tenant_id != self._expected_tenant_id:
+            raise KnowledgeFSConfigurationError(
+                "KNOWLEDGE_FS_STATIC_TENANT_ID does not match the current Dify workspace"
+            )
 
 
 def create_knowledge_space_service() -> KnowledgeSpaceService | None:
-    """Build the optional integration from process configuration.
-
-    Returns ``None`` when the feature is wholly unconfigured so the frontend
-    can keep Classic Dataset as the only entry. A partial configuration is an
-    operator error and must not look like a disabled feature. The development
-    credential is bound to one configured tenant before any upstream request.
-    """
-    auth_mode = dify_config.KNOWLEDGE_FS_AUTH_MODE
+    """Build the optional single-workspace bridge from validated process config."""
     base_url = dify_config.KNOWLEDGE_FS_BASE_URL
-    static_token = dify_config.KNOWLEDGE_FS_API_TOKEN
-    static_tenant_id = dify_config.KNOWLEDGE_FS_STATIC_TENANT_ID
-    jwt_private_key = dify_config.KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64
-    jwt_key_id = dify_config.KNOWLEDGE_FS_JWT_KEY_ID
-    jwt_issuer = dify_config.KNOWLEDGE_FS_JWT_ISSUER
-    configured = any((auth_mode, base_url, static_token, static_tenant_id, jwt_private_key, jwt_key_id, jwt_issuer))
-    if not configured:
+    api_token = dify_config.KNOWLEDGE_FS_API_TOKEN
+    tenant_id = dify_config.KNOWLEDGE_FS_STATIC_TENANT_ID
+    if base_url is None and api_token is None and tenant_id is None:
         return None
-    if not base_url:
-        raise KnowledgeFSConfigurationError("KNOWLEDGE_FS_BASE_URL is required when KnowledgeFS is enabled")
-    if not auth_mode:
-        raise KnowledgeFSConfigurationError("KNOWLEDGE_FS_AUTH_MODE is required when KnowledgeFS is enabled")
+    if base_url is None or api_token is None or tenant_id is None:
+        raise KnowledgeFSConfigurationError("KnowledgeFS connection configuration is incomplete")
 
-    credential_provider: KnowledgeFSCredentialProvider
-    if auth_mode == "dev-static":
-        if not static_token:
-            raise KnowledgeFSConfigurationError("KNOWLEDGE_FS_API_TOKEN is required for dev-static auth")
-        if not static_tenant_id:
-            raise KnowledgeFSConfigurationError("KNOWLEDGE_FS_STATIC_TENANT_ID is required for dev-static auth")
-        if not dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN:
-            raise KnowledgeFSConfigurationError(
-                "KNOWLEDGE_FS_API_TOKEN is a shared tenant token; explicitly enable it only for local "
-                "or single-workspace use"
-            )
-        if any((jwt_private_key, jwt_key_id, jwt_issuer)):
-            raise KnowledgeFSConfigurationError("Dify JWT settings cannot be combined with dev-static auth")
-        credential_provider = StaticKnowledgeFSCredentialProvider(
-            token=static_token.get_secret_value(),
-            expected_tenant_id=static_tenant_id,
-        )
-    elif auth_mode == "dify-jwt":
-        if static_token or static_tenant_id or dify_config.KNOWLEDGE_FS_ALLOW_SHARED_TENANT_TOKEN:
-            raise KnowledgeFSConfigurationError("Static token settings cannot be combined with dify-jwt auth")
-        if jwt_private_key is None or jwt_key_id is None or jwt_issuer is None:
-            raise KnowledgeFSConfigurationError(
-                "KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64, KNOWLEDGE_FS_JWT_KEY_ID, and "
-                "KNOWLEDGE_FS_JWT_ISSUER are required for dify-jwt auth"
-            )
-        credential_provider = _create_rs256_credential_provider(
-            private_key_b64=jwt_private_key,
-            key_id=jwt_key_id,
-            issuer=jwt_issuer,
-            audience=dify_config.KNOWLEDGE_FS_JWT_AUDIENCE,
-            ttl_seconds=dify_config.KNOWLEDGE_FS_JWT_TTL_SECONDS,
-        )
-    else:
-        raise KnowledgeFSConfigurationError("KNOWLEDGE_FS_AUTH_MODE must be either dev-static or dify-jwt")
-
-    return KnowledgeSpaceService(
-        create_knowledge_fs_client(
+    timeout_seconds = float(dify_config.KNOWLEDGE_FS_TIMEOUT_SECONDS)
+    token = api_token.get_secret_value()
+    http_client = get_pooled_http_client(
+        "knowledge-fs",
+        lambda: httpx.Client(
             base_url=base_url,
-            credential_provider=credential_provider,
-            timeout_seconds=float(dify_config.KNOWLEDGE_FS_TIMEOUT_SECONDS),
-        )
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=timeout_seconds,
+        ),
     )
-
-
-def _create_rs256_credential_provider(
-    *,
-    private_key_b64: SecretStr,
-    key_id: str,
-    issuer: str,
-    audience: str,
-    ttl_seconds: int,
-) -> RS256KnowledgeFSCredentialProvider:
-    """Load and cache a validated signer under a non-secret, rotation-aware key."""
-    encoded_private_key = private_key_b64.get_secret_value()
-    cache_key = _RS256CredentialProviderCacheKey(
-        private_key_digest=sha256(encoded_private_key.encode()).hexdigest(),
-        key_id=key_id,
-        issuer=issuer,
-        audience=audience,
-        ttl_seconds=ttl_seconds,
-    )
-    with _rs256_credential_provider_cache_lock:
-        cached_provider = _rs256_credential_provider_cache.get(cache_key)
-        if cached_provider is not None:
-            _rs256_credential_provider_cache.move_to_end(cache_key)
-            return cached_provider
-
-        try:
-            private_key_pem = base64.b64decode(encoded_private_key, validate=True)
-            private_key = serialization.load_pem_private_key(private_key_pem, password=None)
-        except (ValueError, TypeError, binascii.Error) as exc:
-            raise KnowledgeFSConfigurationError(
-                "KNOWLEDGE_FS_JWT_PRIVATE_KEY_B64 must contain an unencrypted PKCS#8 PEM key"
-            ) from exc
-        if not isinstance(private_key, RSAPrivateKey) or private_key.key_size < 2048:
-            raise KnowledgeFSConfigurationError("KnowledgeFS JWT signing requires an RSA key of at least 2048 bits")
-
-        provider = RS256KnowledgeFSCredentialProvider(
-            private_key=private_key,
-            key_id=key_id,
-            issuer=issuer,
-            audience=audience,
-            ttl_seconds=ttl_seconds,
-            now=lambda: datetime.now(UTC),
-            jti_factory=lambda: str(uuid4()),
-        )
-        _rs256_credential_provider_cache[cache_key] = provider
-        if len(_rs256_credential_provider_cache) > _RS256_CREDENTIAL_PROVIDER_CACHE_MAX_SIZE:
-            _rs256_credential_provider_cache.popitem(last=False)
-        return provider
+    generated_client = GeneratedKnowledgeFSClient(base_url=base_url).set_httpx_client(http_client)
+    return KnowledgeSpaceService(generated_client, expected_tenant_id=tenant_id)

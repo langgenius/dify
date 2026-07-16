@@ -7,15 +7,14 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from werkzeug.exceptions import Conflict, Forbidden, ServiceUnavailable
+from werkzeug.exceptions import BadGateway, Conflict, Forbidden, ServiceUnavailable
 
-from clients.knowledge_fs import (
-    KnowledgeFSConfigurationError,
-    KnowledgeFSHTTPError,
-    KnowledgeSpace,
-    KnowledgeSpaceList,
-)
+from clients.knowledge_fs.generated.models import KnowledgeSpace, KnowledgeSpaceList
 from controllers.console.knowledge_spaces.spaces import CreateKnowledgeSpacePayload, KnowledgeSpaceListApi
+from services.knowledge_space_service import (
+    KnowledgeFSConfigurationError,
+    KnowledgeFSUpstreamError,
+)
 
 
 def _space() -> KnowledgeSpace:
@@ -26,7 +25,6 @@ def _space() -> KnowledgeSpace:
         name="Product docs",
         revision=1,
         slug="product-docs",
-        description="New RAG knowledge base",
         created_at=timestamp,
         updated_at=timestamp,
     )
@@ -47,27 +45,6 @@ def test_create_payload_accepts_server_generated_slug() -> None:
 def test_create_payload_requires_idempotency_key() -> None:
     with pytest.raises(ValidationError, match="idempotency_key"):
         CreateKnowledgeSpacePayload.model_validate({"name": "Product docs"})
-
-
-def test_create_payload_rejects_blank_name() -> None:
-    with pytest.raises(ValidationError, match="name must not be blank"):
-        CreateKnowledgeSpacePayload.model_validate(
-            {
-                "idempotency_key": "create-product-docs",
-                "name": " \t ",
-            }
-        )
-
-
-def test_create_payload_trims_name_before_forwarding_to_kfs() -> None:
-    payload = CreateKnowledgeSpacePayload.model_validate(
-        {
-            "idempotency_key": "create-product-docs",
-            "name": "  Product docs \t",
-        }
-    )
-
-    assert payload.name == "Product docs"
 
 
 def test_list_returns_disabled_contract_without_kfs_configuration(
@@ -106,7 +83,7 @@ def test_list_enforces_workspace_level_dataset_read_rbac(app: Flask, monkeypatch
     assert enforce.call_args.kwargs["resource_required"] is False
 
 
-def test_list_proxies_current_dify_tenant_and_user(app: Flask, monkeypatch) -> None:
+def test_list_proxies_current_dify_tenant(app: Flask, monkeypatch) -> None:
     service = MagicMock()
     service.list_knowledge_spaces.return_value = KnowledgeSpaceList(
         items=[_space()],
@@ -133,10 +110,10 @@ def test_list_proxies_current_dify_tenant_and_user(app: Flask, monkeypatch) -> N
         limit=20,
         cursor="previous-space",
         tenant_id="tenant-1",
-        user_id="account-1",
     )
     assert response["enabled"] is True
     assert response["data"][0]["id"] == "space-1"
+    assert response["data"][0]["description"] is None
     assert response["next_cursor"] == "product-docs"
 
 
@@ -185,18 +162,18 @@ def test_create_proxies_validated_payload_and_current_request_context(app: Flask
         name="Product docs",
         description="New RAG knowledge base",
         tenant_id="tenant-1",
-        user_id="account-1",
     )
     assert status == 201
     assert response["id"] == "space-1"
+    assert response["description"] is None
     assert response["created_at"] == "2026-07-15T08:00:00Z"
 
 
-def test_create_translates_kfs_creation_conflict(app: Flask, monkeypatch) -> None:
+def test_create_preserves_safe_kfs_status(app: Flask, monkeypatch) -> None:
     service = MagicMock()
-    service.create_knowledge_space.side_effect = KnowledgeFSHTTPError(
+    service.create_knowledge_space.side_effect = KnowledgeFSUpstreamError(
+        "KnowledgeFS returned HTTP 409",
         status_code=409,
-        detail="Tenant slug conflict",
     )
     account = MagicMock(id="account-1", is_dataset_editor=True)
     monkeypatch.setattr(
@@ -214,7 +191,27 @@ def test_create_translates_kfs_creation_conflict(app: Flask, monkeypatch) -> Non
         method="POST",
         json={"idempotency_key": "create-product-docs", "name": "Product docs"},
     ):
-        with pytest.raises(Conflict, match="Knowledge space creation conflict"):
+        with pytest.raises(Conflict, match="KnowledgeFS request failed"):
+            method(KnowledgeSpaceListApi())
+
+
+def test_list_normalizes_malformed_kfs_success_response(app: Flask, monkeypatch) -> None:
+    space = _space()
+    space.id = 123  # type: ignore[assignment]
+    service = MagicMock()
+    service.list_knowledge_spaces.return_value = KnowledgeSpaceList(items=[space])
+    monkeypatch.setattr(
+        "controllers.console.knowledge_spaces.spaces.create_knowledge_space_service",
+        lambda: service,
+    )
+    monkeypatch.setattr(
+        "controllers.console.knowledge_spaces.spaces.current_account_with_tenant",
+        lambda: (MagicMock(id="account-1"), "tenant-1"),
+    )
+    method = unwrap(KnowledgeSpaceListApi.get)
+
+    with app.test_request_context("/console/api/knowledge-spaces"):
+        with pytest.raises(BadGateway, match="KnowledgeFS returned an invalid response"):
             method(KnowledgeSpaceListApi())
 
 

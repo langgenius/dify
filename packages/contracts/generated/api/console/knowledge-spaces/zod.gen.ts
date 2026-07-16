@@ -6,11 +6,6 @@ import * as z from 'zod'
  * CreateKnowledgeSpacePayload
  *
  * Dify-facing payload for creating an empty Dataset 2.0 knowledge base.
- *
- * Names are trimmed and must contain a visible character; these invariants
- * are enforced at the server boundary instead of relying on the Console form.
- * KFS owns slug allocation, while the caller-provided idempotency key keeps
- * retries for one creation intent attached to the same provisioning operation.
  */
 export const zCreateKnowledgeSpacePayload = z.object({
   description: z.string().max(2000).nullish(),
