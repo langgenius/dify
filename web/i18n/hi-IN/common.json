@@ -471,6 +471,7 @@
   "operation.log": "लॉग",
   "operation.more": "अधिक",
   "operation.moreActions": "अधिक कार्रवाइयाँ",
+  "operation.moreActionsFor": "{{name}} के लिए अधिक कार्रवाइयाँ",
   "operation.no": "नहीं",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "कोई {{content}} नहीं मिला",
