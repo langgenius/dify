@@ -217,7 +217,7 @@ function EnvEditorRow({
         isHighlighted && 'bg-background-default-hover',
       )}
     >
-      <EnvEditorCell role="rowheader">
+      <EnvEditorCell role="cell">
         {editable ? (
           <EnvEditorInput
             aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.keyColumn'])}
@@ -345,7 +345,7 @@ function EnvEditorDraftRow({
 
   return (
     <div role="row" className={cn('grid min-h-7 border-t border-divider-subtle', gridClassName)}>
-      <EnvEditorCell role="rowheader">{renderDraftPlaceholder(keyPlaceholder)}</EnvEditorCell>
+      <EnvEditorCell role="cell">{renderDraftPlaceholder(keyPlaceholder)}</EnvEditorCell>
       <EnvEditorCell role="cell">{renderDraftValueCell()}</EnvEditorCell>
       {showScope && (
         <EnvEditorCell role="cell">

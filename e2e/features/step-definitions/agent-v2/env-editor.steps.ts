@@ -5,6 +5,7 @@ import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources'
 import { getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import {
+  expectAgentEnvVariableAbsent,
   expectAgentEnvVariableHidden,
   expectAgentEnvVariableRows,
   expectAgentEnvVariableVisible,
@@ -50,10 +51,15 @@ When(
     const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
 
     await advancedSettings.getByRole('button', { name: 'Add environment variable' }).click()
-    await getAgentEnvVariableRow(advancedSettings, 'Key')
+    const newVariableRow = await getAgentEnvVariableRow(advancedSettings, '')
+    await newVariableRow
       .getByRole('textbox', { name: 'Key' })
       .fill(agentBuilderFixedInputs.envModeKey)
-    await getAgentEnvVariableRow(advancedSettings, agentBuilderFixedInputs.envModeKey)
+    const savedVariableRow = await getAgentEnvVariableRow(
+      advancedSettings,
+      agentBuilderFixedInputs.envModeKey,
+    )
+    await savedVariableRow
       .getByRole('textbox', { name: 'Value' })
       .fill(agentBuilderFixedInputs.envModeValue)
     await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
@@ -255,9 +261,7 @@ Then(
       agentBuilderFixedInputs.envModeKey,
       agentBuilderFixedInputs.envModeValue,
     )
-    await expect(
-      getAgentEnvVariableRow(advancedSettings, agentBuilderFixedInputs.envPlainKey),
-    ).toHaveCount(0)
+    await expectAgentEnvVariableAbsent(advancedSettings, agentBuilderFixedInputs.envPlainKey)
     await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(1)
   },
 )
@@ -267,7 +271,7 @@ Then(
   async function (this: DifyWorld) {
     const page = this.getPage()
     const advancedSettings = await openAgentAdvancedSettings(page)
-    const variableRow = getAgentEnvVariableRow(
+    const variableRow = await getAgentEnvVariableRow(
       advancedSettings,
       agentBuilderFixedInputs.envPlainKey,
     )
