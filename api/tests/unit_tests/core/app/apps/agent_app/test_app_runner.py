@@ -11,7 +11,7 @@ from typing import Any, override
 from unittest.mock import MagicMock
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
+from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
     AgentRunUsage,
@@ -54,6 +54,7 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueRetrieverResourcesEvent,
 )
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
@@ -332,6 +333,96 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         )
 
 
+class _KnowledgeStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        resource = {
+            "dataset_id": "dataset-1",
+            "dataset_name": "Docs",
+            "document_id": "document-1",
+            "document_name": "Guide.md",
+            "segment_id": "segment-1",
+            "retriever_from": "agent",
+            "score": 0.9,
+            "content": "Reset instructions",
+            "title": "Guide",
+            "files": [],
+        }
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=FunctionToolResultEvent(
+                part=ToolReturnPart(
+                    tool_name="knowledge_base_search",
+                    content="Knowledge base search results",
+                    tool_call_id="knowledge-1",
+                    metadata={"retriever_resources": [resource]},
+                )
+            ),
+        )
+        yield RunSucceededEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "Use the reset instructions."},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _EagerKnowledgeFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield RunSucceededEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "Version 1.16 is current."},
+                session_snapshot=CompositorSessionSnapshot(
+                    layers=[
+                        LayerSessionSnapshot(
+                            name="knowledge",
+                            lifecycle_state="suspended",
+                            runtime_state={
+                                "eager_config_fingerprint": "fingerprint",
+                                "eager_results": [
+                                    {
+                                        "set_id": "release-notes",
+                                        "set_name": "Release notes",
+                                        "query": "current version",
+                                        "observation": "Version 1.16",
+                                        "status": "success",
+                                        "retriever_resources": [
+                                            {
+                                                "dataset_id": "dataset-2",
+                                                "dataset_name": "Releases",
+                                                "document_id": "document-2",
+                                                "document_name": "1.16.md",
+                                                "retriever_from": "agent",
+                                                "score": 0.8,
+                                                "content": "Version 1.16",
+                                                "title": "1.16",
+                                            }
+                                        ],
+                                    }
+                                ],
+                            },
+                        )
+                    ]
+                ),
+            ),
+        )
+
+
 class _FakeDbSession:
     def __init__(self) -> None:
         self.rows: dict[str, MessageAgentThought] = {}
@@ -468,7 +559,13 @@ def _runner(
     )
 
 
-def _run(runner: AgentAppRunner, qm: _FakeQueueManager, *, agent_runtime_exit_intent: str = "suspend") -> None:
+def _run(
+    runner: AgentAppRunner,
+    qm: _FakeQueueManager,
+    *,
+    agent_runtime_exit_intent: str = "suspend",
+    show_retrieve_source: bool = False,
+) -> None:
     runner.run(
         dify_context=_dify_ctx(),
         agent_id="agent-1",
@@ -479,6 +576,7 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager, *, agent_runtime_exit_in
         message_id="msg-1",
         model_name="gpt-4o-mini",
         queue_manager=qm,  # type: ignore[arg-type]
+        show_retrieve_source=show_retrieve_source,
         agent_runtime_exit_intent=agent_runtime_exit_intent,  # type: ignore[arg-type]
     )
 
@@ -527,6 +625,52 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert pending_form_id is None
     assert pending_tool_call_id is None
     assert store.cleaned == []
+
+
+def test_knowledge_tool_result_publishes_retriever_resources_before_message_end():
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(_KnowledgeStreamingFakeAgentBackendRunClient(), store), qm, show_retrieve_source=True)
+
+    retriever_event = next(event for event in qm.events if isinstance(event, QueueRetrieverResourcesEvent))
+    message_end = _message_end(qm)
+    assert qm.events.index(retriever_event) < qm.events.index(message_end)
+    assert [resource.model_dump(exclude_none=True) for resource in retriever_event.retriever_resources] == [
+        {
+            "dataset_id": "dataset-1",
+            "dataset_name": "Docs",
+            "document_id": "document-1",
+            "document_name": "Guide.md",
+            "segment_id": "segment-1",
+            "retriever_from": "agent",
+            "score": 0.9,
+            "content": "Reset instructions",
+            "title": "Guide",
+            "files": [],
+        }
+    ]
+
+
+def test_eager_knowledge_snapshot_publishes_retriever_resources_before_message_end():
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(_EagerKnowledgeFakeAgentBackendRunClient(), store), qm, show_retrieve_source=True)
+
+    retriever_event = next(event for event in qm.events if isinstance(event, QueueRetrieverResourcesEvent))
+    message_end = _message_end(qm)
+    assert qm.events.index(retriever_event) < qm.events.index(message_end)
+    assert [resource.document_id for resource in retriever_event.retriever_resources] == ["document-2"]
+
+
+def test_knowledge_resources_are_not_published_when_citations_are_disabled():
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(_KnowledgeStreamingFakeAgentBackendRunClient(), store), qm, show_retrieve_source=False)
+
+    assert not any(isinstance(event, QueueRetrieverResourcesEvent) for event in qm.events)
 
 
 def test_successful_turn_enqueues_cleanup_for_superseded_sessions_after_saving_snapshot(monkeypatch):

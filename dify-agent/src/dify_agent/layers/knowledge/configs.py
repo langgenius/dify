@@ -5,7 +5,8 @@ its dataset ids plus query, retrieval, and metadata-filtering policy. Generated-
 query sets are exposed through one stable model-visible search tool whose
 schema lets the model pick ``set_name`` and ``query``; user-query sets are
 retrieved eagerly when the layer enters a run and their formatted observations
-are kept only in JSON-safe ``runtime_state`` for session snapshots.
+plus application-only retriever resources are kept in JSON-safe
+``runtime_state`` for session snapshots.
 """
 
 from __future__ import annotations
@@ -227,13 +228,18 @@ class DifyKnowledgeSetConfig(BaseModel):
 
 
 class DifyKnowledgeEagerResult(BaseModel):
-    """JSON-safe eager user-query result stored in layer runtime state."""
+    """JSON-safe eager user-query result stored in layer runtime state.
+
+    ``retriever_resources`` preserves application-only citation metadata for
+    API consumers. The model still receives only the formatted ``observation``.
+    """
 
     set_id: str
     set_name: str
     query: str
     observation: str
     status: Literal["success", "empty", "temporarily_unavailable"]
+    retriever_resources: list[dict[str, JsonValue]] = Field(default_factory=list)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

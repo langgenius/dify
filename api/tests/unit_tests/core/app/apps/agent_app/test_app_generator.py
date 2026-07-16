@@ -363,6 +363,7 @@ class TestGenerateWorker:
         runtime_session_snapshot_id="s",
         prompt_file_mappings=(),
         agent_runtime_exit_intent="suspend",
+        show_retrieve_source=False,
     ):
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
@@ -373,6 +374,9 @@ class TestGenerateWorker:
                 agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
                 agent_runtime_exit_intent=agent_runtime_exit_intent,
                 model_conf=mocker.MagicMock(model="m"),
+                app_config=mocker.MagicMock(
+                    additional_features=mocker.MagicMock(show_retrieve_source=show_retrieve_source)
+                ),
                 query=query,
                 prompt_file_mappings=prompt_file_mappings,
             ),
@@ -407,6 +411,17 @@ class TestGenerateWorker:
         self._call(generator, mocker, queue_manager, agent_runtime_exit_intent="delete")
 
         assert runner.run.call_args.kwargs["agent_runtime_exit_intent"] == "delete"
+
+    @pytest.mark.parametrize("show_retrieve_source", [False, True])
+    def test_worker_forwards_citations_toggle_to_runner(
+        self, generator, mocker: MockerFixture, show_retrieve_source: bool
+    ):
+        runner = self._wire(generator, mocker)
+        queue_manager = mocker.MagicMock()
+
+        self._call(generator, mocker, queue_manager, show_retrieve_source=show_retrieve_source)
+
+        assert runner.run.call_args.kwargs["show_retrieve_source"] is show_retrieve_source
 
     def test_worker_appends_prompt_files_to_backend_query(self, generator, mocker: MockerFixture):
         runner, _ = self._wire(generator, mocker, guard_query="你看得见这张图片吗")

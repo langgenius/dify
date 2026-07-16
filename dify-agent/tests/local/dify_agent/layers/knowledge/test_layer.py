@@ -4,6 +4,7 @@ import json
 import httpx
 import pytest
 from pydantic_ai import Tool
+from pydantic_ai.messages import ToolReturn
 
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -142,7 +143,8 @@ def test_knowledge_layer_rejects_blank_query_locally() -> None:
                 result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
                     {"set_name": "Support KB", "query": "   "}, None
                 )
-                assert result == BLANK_QUERY_OBSERVATION
+                assert isinstance(result, ToolReturn)
+                assert result.return_value == BLANK_QUERY_OBSERVATION
 
     asyncio.run(scenario())
 
@@ -186,8 +188,11 @@ def test_knowledge_layer_fetches_user_query_sets_on_context_entry(monkeypatch: p
                     {
                         "metadata": {
                             "_source": "knowledge",
+                            "dataset_id": "dataset-1",
                             "dataset_name": "Docs",
+                            "document_id": "document-1",
                             "document_name": "Release.md",
+                            "segment_id": "segment-1",
                             "score": 0.8,
                         },
                         "title": "Release",
@@ -221,6 +226,20 @@ def test_knowledge_layer_fetches_user_query_sets_on_context_entry(monkeypatch: p
             assert seen_requests[0]["dataset_ids"] == ["dataset-1"]
             assert knowledge_layer.runtime_state.eager_config_fingerprint
             assert knowledge_layer.runtime_state.eager_results[0].status == "success"
+            assert knowledge_layer.runtime_state.eager_results[0].retriever_resources == [
+                {
+                    "dataset_id": "dataset-1",
+                    "dataset_name": "Docs",
+                    "document_id": "document-1",
+                    "document_name": "Release.md",
+                    "segment_id": "segment-1",
+                    "retriever_from": "agent",
+                    "score": 0.8,
+                    "content": "Version notes",
+                    "title": "Release",
+                    "files": [],
+                }
+            ]
             assert knowledge_layer.user_prompts == [
                 "Knowledge retrieval results:\n\n"
                 "Set: Support KB\n"
@@ -282,8 +301,11 @@ def test_knowledge_layer_formats_results_and_truncates_observation() -> None:
                     {
                         "metadata": {
                             "_source": "knowledge",
+                            "dataset_id": "dataset-1",
                             "dataset_name": "Docs",
+                            "document_id": "document-1",
                             "document_name": "Guide.md",
+                            "segment_id": "segment-1",
                             "score": 0.9,
                         },
                         "title": "Guide",
@@ -315,12 +337,30 @@ def test_knowledge_layer_formats_results_and_truncates_observation() -> None:
                 result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
                     {"set_name": "Support KB", "query": "reset"}, None
                 )
-                assert result.startswith("Knowledge base search results:\n1. Title: Guide")
-                assert "Dataset: Docs" in result
-                assert "Document: Guide.md" in result
-                assert "Score: 0.9" in result
-                assert "Content: ABCDE..." in result
-                assert len(result) <= 160
+                assert isinstance(result, ToolReturn)
+                assert isinstance(result.return_value, str)
+                assert result.return_value.startswith("Knowledge base search results:\n1. Title: Guide")
+                assert "Dataset: Docs" in result.return_value
+                assert "Document: Guide.md" in result.return_value
+                assert "Score: 0.9" in result.return_value
+                assert "Content: ABCDE..." in result.return_value
+                assert len(result.return_value) <= 160
+                assert result.metadata == {
+                    "retriever_resources": [
+                        {
+                            "dataset_id": "dataset-1",
+                            "dataset_name": "Docs",
+                            "document_id": "document-1",
+                            "document_name": "Guide.md",
+                            "segment_id": "segment-1",
+                            "retriever_from": "agent",
+                            "score": 0.9,
+                            "content": "ABCDEFGHIJKL",
+                            "title": "Guide",
+                            "files": [],
+                        }
+                    ]
+                }
 
     asyncio.run(scenario())
 
@@ -347,7 +387,8 @@ def test_knowledge_layer_returns_no_results_observation() -> None:
                 result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
                     {"set_name": "Support KB", "query": "reset"}, None
                 )
-                assert result == NO_RESULTS_OBSERVATION
+                assert isinstance(result, ToolReturn)
+                assert result.return_value == NO_RESULTS_OBSERVATION
 
     asyncio.run(scenario())
 
@@ -376,7 +417,8 @@ def test_knowledge_layer_converts_retryable_failures_into_observation() -> None:
                 result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
                     {"set_name": "Support KB", "query": "reset"}, None
                 )
-                assert result == TEMPORARY_UNAVAILABLE_OBSERVATION
+                assert isinstance(result, ToolReturn)
+                assert result.return_value == TEMPORARY_UNAVAILABLE_OBSERVATION
 
     asyncio.run(scenario())
 
@@ -411,7 +453,8 @@ def test_knowledge_layer_converts_retryable_transport_failures_into_observation(
                 result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
                     {"set_name": "Support KB", "query": "reset"}, None
                 )
-                assert result == TEMPORARY_UNAVAILABLE_OBSERVATION
+                assert isinstance(result, ToolReturn)
+                assert result.return_value == TEMPORARY_UNAVAILABLE_OBSERVATION
 
     asyncio.run(scenario())
 
@@ -539,6 +582,7 @@ def test_knowledge_layer_sends_execution_context_and_static_config_to_inner_api(
                 result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
                     {"set_name": "Support KB", "query": "reset"}, None
                 )
-                assert result == NO_RESULTS_OBSERVATION
+                assert isinstance(result, ToolReturn)
+                assert result.return_value == NO_RESULTS_OBSERVATION
 
     asyncio.run(scenario())
