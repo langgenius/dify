@@ -11,13 +11,20 @@ describe('Contacts IM platform feature flag', () => {
     featurePreviewEnabled = false
   })
 
-  it('uses the existing feature-preview product gate', async () => {
+  it('uses the existing feature-preview product gate for non-enterprise workspaces', async () => {
     const { isContactsImPlatformEnabled } = await import('../feature-flag')
 
-    expect(isContactsImPlatformEnabled()).toBe(false)
+    expect(isContactsImPlatformEnabled(false)).toBe(false)
 
     featurePreviewEnabled = true
 
-    expect(isContactsImPlatformEnabled()).toBe(true)
+    expect(isContactsImPlatformEnabled(false)).toBe(true)
+  })
+
+  it('keeps the entry hidden for enterprise workspaces', async () => {
+    featurePreviewEnabled = true
+    const { isContactsImPlatformEnabled } = await import('../feature-flag')
+
+    expect(isContactsImPlatformEnabled(true)).toBe(false)
   })
 })

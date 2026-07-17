@@ -28,7 +28,7 @@ Contacts 目前缺少用于配置 Organization 级 IM platform、触发通讯录
 
 - 前端需要在 Contacts feature 边界内实现管理界面、相关路由、typed mock repository、dify-ui 组件使用和 `web/i18n/*` 文案。现有 `web/features/agent-v2/roster/` 管理的是可复用 AI Agent 资产，不属于本 change。
 - 本 change 不修改后端 API、OpenAPI schema、生成式 client、数据模型、数据库迁移、任务队列、provider adapter 或真实 OAuth / credential 存储逻辑。
-- 管理入口需要适配部署形态：EE 企业管理面与 CE / SaaS workspace 管理面复用同一 Contacts feature UI；角色权限、provider availability 和各类状态暂由 mock scenario 提供，仅用于前端行为展示，不构成安全边界。
+- 管理入口只在非企业版的 CE / SaaS workspace 管理面展示，并复用现有 workspace plan 判断隐藏 enterprise plan；角色权限、provider availability 和各类状态暂由 mock scenario 提供，仅用于前端行为展示，不构成安全边界。
 - 需要为权限、连接状态、表单提交、手动同步、匹配结果和同步详情补充 Vitest / Testing Library 测试，并使用确定性的 mock scenario 完成前端 smoke 验证。
 - 后续后端能力就绪时，应通过新的 change 用真实 repository adapter 替换 mock repository，而不改写页面组件的状态语义。
 - 设计验收来源：

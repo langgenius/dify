@@ -1,6 +1,6 @@
 ## 1. Frontend Scope and Design Baseline
 
-- [x] 1.1 Identify the EE enterprise-management and CE / SaaS workspace-management mount points for Contacts, define the shared Organization context contract, and verify that no entry is added under `web/features/agent-v2/roster/`.
+- [x] 1.1 Identify the CE / SaaS workspace-management mount point and existing enterprise-plan guard for Contacts, define the Organization context contract, and verify that no entry is added under `web/features/agent-v2/roster/`.
 - [x] 1.2 Inspect the six referenced Figma nodes with authorized access and record a frontend acceptance matrix for layout, overlay type, fields, statuses, table columns, responsive behavior, and visible copy.
 - [x] 1.3 Define the existing product feature gate used to expose the mock-backed Contacts IM platform entry and its rollback behavior.
 
@@ -14,7 +14,7 @@
 
 ## 3. IM Platform Binding UI
 
-- [ ] 3.1 Write failing component tests for the Contacts entry, EE and CE / SaaS permission variants, initial loading/error/empty states, provider availability, and the six connection-status presentations.
+- [ ] 3.1 Write failing component tests for the non-enterprise Contacts entry, enterprise-plan exclusion, CE / SaaS permission variants, initial loading/error/empty states, provider availability, and the six connection-status presentations.
 - [ ] 3.2 Implement the shared Contacts IM platform management surface, status summary, provider selection, diagnostics, recent-sync summary, and feature-gated mount points with `@langgenius/dify-ui/*` primitives.
 - [ ] 3.3 Write failing component tests for credential and mock OAuth flows, required-field errors, pending-state duplicate prevention, mutation failure recovery, provider replacement confirmation, and disconnect behavior.
 - [ ] 3.4 Implement the shared binding overlay and typed provider-specific form adapters, including mock authorization recovery, callback copy interaction, replacement/disconnect confirmation, and repository refresh after mutations.

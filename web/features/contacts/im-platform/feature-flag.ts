@@ -1,3 +1,4 @@
 import { ENABLE_FEATURE_PREVIEW } from '@/config'
 
-export const isContactsImPlatformEnabled = () => ENABLE_FEATURE_PREVIEW
+export const isContactsImPlatformEnabled = (isEnterprisePlan: boolean) =>
+  ENABLE_FEATURE_PREVIEW && !isEnterprisePlan

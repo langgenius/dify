@@ -43,18 +43,18 @@
 - **WHEN** 用户保存、测试、授权、替换或解除绑定
 - **THEN** 当前 change 的实现 MUST 只调用 mock repository，MUST NOT 新增后端 endpoint、OpenAPI schema 或网络请求
 
-### Requirement: 管理入口必须展示部署形态与权限差异
+### Requirement: 管理入口必须只在非企业版 workspace 展示
 
-前端 MUST 支持 EE 企业管理面和 CE / SaaS workspace 管理面的 Contacts IM platform 入口。EE scenario 由企业管理员管理；CE / SaaS scenario 由 workspace owner 或 workspace admin 管理。该权限结果 MUST 来自 mock context，且 MUST 被明确视为 UI 展示状态而非真实安全边界。
+前端 MUST 只在非 enterprise plan 的 CE / SaaS workspace 管理面展示 Contacts IM platform 入口，并 MUST 复用现有 workspace plan 判断。非企业版由 workspace owner 或 workspace admin 管理；权限结果 MUST 来自 mock context，且 MUST 被明确视为 UI 展示状态而非真实安全边界。
 
-#### Scenario: EE 企业管理员管理绑定
+#### Scenario: 企业版不展示绑定入口
 
-- **WHEN** EE 企业管理员 scenario 从企业 Contacts 管理面进入 IM platform 设置
-- **THEN** 前端 MUST 允许其查看和操作当前 Organization 的 mock 绑定
+- **WHEN** 当前 workspace plan 为 enterprise
+- **THEN** 前端 MUST 不展示 Contacts IM platform 入口，且通过深链请求该 tab 时 MUST 回退到允许访问的设置页
 
-#### Scenario: CE 或 SaaS 管理员管理绑定
+#### Scenario: 非企业版管理员管理绑定
 
-- **WHEN** CE / SaaS workspace owner 或 workspace admin scenario 从 workspace Contacts 管理面进入 IM platform 设置
+- **WHEN** 非 enterprise plan 的 CE / SaaS workspace owner 或 workspace admin 从 workspace Contacts 管理面进入 IM platform 设置
 - **THEN** 前端 MUST 允许其查看和操作当前 Organization 的 mock 绑定
 
 #### Scenario: 无管理权限
