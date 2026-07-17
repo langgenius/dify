@@ -119,10 +119,7 @@ export default function OAuthAuthorize() {
       url.searchParams.set('code', code)
       globalThis.location.href = url.toString()
     } catch (error: unknown) {
-      const message =
-        typeof error === 'object' && error !== null && 'message' in error
-          ? String(error.message)
-          : String(error)
+      const message = error instanceof Error ? error.message : String(error)
       toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
     }
   }
