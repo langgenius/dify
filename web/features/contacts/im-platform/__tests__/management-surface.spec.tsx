@@ -160,6 +160,39 @@ describe('Contacts IM platform binding flows', () => {
     await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
 
     expect(screen.getAllByText('contacts.imPlatform.bindingDialog.required')).toHaveLength(2)
+    const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')
+    expect(appId).toHaveAttribute('aria-invalid', 'true')
+    expect(secret).toHaveAttribute('aria-invalid', 'true')
+    expect(appId).toHaveAccessibleDescription('contacts.imPlatform.bindingDialog.required')
+    expect(secret).toHaveAccessibleDescription('contacts.imPlatform.bindingDialog.required')
+  })
+
+  it('uses the Figma-sized dialog and restores focus to the provider trigger', async () => {
+    const user = userEvent.setup()
+    renderSurface()
+    const trigger = await screen.findByRole('button', { name: /Slack.*connect/i })
+    await user.click(trigger)
+
+    expect(screen.getByRole('dialog')).toHaveClass('w-[520px]')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('submits a complete credential form from the keyboard', async () => {
+    const user = userEvent.setup()
+    renderSurface()
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'keyboard-app',
+    )
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')
+    await user.type(secret, 'keyboard-secret')
+    secret.focus()
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByText('contacts.imPlatform.status.configured')).toBeInTheDocument()
   })
 
   it('saves credentials, clears the secret, and advances to configured', async () => {
@@ -448,5 +481,18 @@ describe('Contacts IM platform manual sync', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockNavigation.replace).toHaveBeenCalledWith('/contacts/settings', { scroll: false })
+  })
+
+  it('restores focus to the details trigger after closing the overlay', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.SyncSuccess })
+    const trigger = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.action.viewDetails',
+    })
+    await user.click(trigger)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 })

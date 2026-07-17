@@ -15,6 +15,7 @@ const legacyLocaleMap: Partial<Record<Locale, Locale>> = {
 }
 
 const defaultLocale = 'en-US' satisfies Locale
+const contactsLocalizedLocales = new Set<Locale>(['en-US', 'zh-Hans'])
 
 const normalizeLocale = (locale: Locale): Locale => {
   const normalized = legacyLocaleMap[locale] ?? locale
@@ -32,6 +33,12 @@ export const loadI18nResource = async (
   locale: Locale,
   namespace: Namespace | NamespaceInFileName,
 ) => {
-  const { loadResource } = await loadLocaleResources(locale)
-  return loadResource(kebabCase(namespace))
+  const normalizedLocale = normalizeLocale(locale)
+  const fileNamespace = kebabCase(namespace)
+  const resourceLocale =
+    fileNamespace === 'contacts' && !contactsLocalizedLocales.has(normalizedLocale)
+      ? defaultLocale
+      : normalizedLocale
+  const { loadResource } = await loadLocaleResources(resourceLocale)
+  return loadResource(fileNamespace)
 }

@@ -29,8 +29,8 @@
 
 ## 5. Product Quality and Verification
 
-- [ ] 5.1 Add all user-facing copy to `web/i18n/en-US/` and update every supported locale with correct localized values.
-- [ ] 5.2 Match the authorized Figma acceptance matrix using dify-ui tokens, including loading and error states, responsive layouts, visible focus, keyboard submission, error associations, live status announcements, and focus restoration for overlays.
-- [ ] 5.3 Run the targeted Vitest / Testing Library suites and resolve all failures, including fake-timer cleanup and React Query cache isolation between scenarios.
-- [ ] 5.4 Run the repository-prescribed frontend formatting, lint, and type-check commands, then fix issues introduced by this change.
-- [ ] 5.5 Audit the final diff to confirm it changes only frontend and OpenSpec files, adds no backend/OpenAPI/generated-client/task-queue code, issues no real IM or backend requests, and leaves the future API repository adapter for a separate change.
+- [x] 5.1 Add all user-facing copy to `web/i18n/en-US/` and `web/i18n/zh-Hans/`; per the confirmed implementation scope, other locales use the English Contacts namespace fallback.
+- [x] 5.2 Match the authorized Figma acceptance matrix using dify-ui tokens, including loading and error states, responsive layouts, visible focus, keyboard submission, error associations, live status announcements, and focus restoration for overlays.
+- [x] 5.3 Run the targeted Vitest / Testing Library suites and resolve all failures, including fake-timer cleanup and React Query cache isolation between scenarios.
+- [x] 5.4 Run the repository-prescribed frontend formatting, lint, and type-check commands, then fix issues introduced by this change.
+- [x] 5.5 Audit the final diff to confirm it changes only frontend and OpenSpec files, adds no backend/OpenAPI/generated-client/task-queue code, issues no real IM or backend requests, and leaves the future API repository adapter for a separate change.
