@@ -9,10 +9,15 @@ const mockNavigationState = vi.hoisted(() => ({
   params: {} as { token?: string },
   pathname: '/chat',
 }))
+const mockFileUploadContext = vi.hoisted(() => ({ uploadUrl: undefined as string | undefined }))
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => mockNavigationState.params,
   usePathname: () => mockNavigationState.pathname,
+}))
+
+vi.mock('../upload-context', () => ({
+  useFileUploadContext: () => mockFileUploadContext,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -124,6 +129,7 @@ describe('useFile', () => {
     mockStoreFiles = []
     mockNavigationState.params = {}
     mockNavigationState.pathname = '/chat'
+    mockFileUploadContext.uploadUrl = undefined
     mockIsAllowedFileExtension.mockReturnValue(true)
     mockGetSupportFileType.mockReturnValue('document')
   })
@@ -780,6 +786,20 @@ describe('useFile', () => {
       // Test success callback
       uploadCall.onSuccessCallback({ id: 'uploaded-1' })
       expect(mockSetFiles).toHaveBeenCalled()
+    })
+
+    it('should upload through the configured resource-scoped endpoint', () => {
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+      mockFileUploadContext.uploadUrl = '/trial-apps/app-id/files/upload'
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockFileUpload).toHaveBeenCalledWith(
+        expect.any(Object),
+        false,
+        '/trial-apps/app-id/files/upload',
+      )
     })
 
     it('should use human input form local upload on form page', () => {

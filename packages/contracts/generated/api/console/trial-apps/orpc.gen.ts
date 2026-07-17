@@ -24,6 +24,9 @@ import {
   zPostTrialAppsByAppIdCompletionMessagesBody,
   zPostTrialAppsByAppIdCompletionMessagesPath,
   zPostTrialAppsByAppIdCompletionMessagesResponse,
+  zPostTrialAppsByAppIdFilesUploadBody,
+  zPostTrialAppsByAppIdFilesUploadPath,
+  zPostTrialAppsByAppIdFilesUploadResponse,
   zPostTrialAppsByAppIdTextToAudioBody,
   zPostTrialAppsByAppIdTextToAudioPath,
   zPostTrialAppsByAppIdTextToAudioResponse,
@@ -109,6 +112,35 @@ export const datasets = {
   get,
 }
 
+/**
+ * Upload a file into the tenant that owns the trial app
+ */
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdFilesUpload',
+    path: '/trial-apps/{app_id}/files/upload',
+    successStatus: 201,
+    summary: 'Upload a file into the tenant that owns the trial app',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdFilesUploadBody,
+      params: zPostTrialAppsByAppIdFilesUploadPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdFilesUploadResponse)
+
+export const upload = {
+  post: post4,
+}
+
+export const files = {
+  upload,
+}
+
 export const get2 = oc
   .route({
     inputStructure: 'detailed',
@@ -174,7 +206,7 @@ export const site = {
   get: get4,
 }
 
-export const post4 = oc
+export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -191,13 +223,13 @@ export const post4 = oc
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
-  post: post4,
+  post: post5,
 }
 
 /**
  * Run workflow
  */
-export const post5 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -215,13 +247,13 @@ export const post5 = oc
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
 
 export const run = {
-  post: post5,
+  post: post6,
 }
 
 /**
  * Stop workflow task
  */
-export const post6 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -234,7 +266,7 @@ export const post6 = oc
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
 
 export const stop = {
-  post: post6,
+  post: post7,
 }
 
 export const byTaskId = {
@@ -287,6 +319,7 @@ export const byAppId = {
   chatMessages,
   completionMessages,
   datasets,
+  files,
   messages,
   parameters,
   site,

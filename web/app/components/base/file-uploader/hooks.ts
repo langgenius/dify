@@ -22,6 +22,7 @@ import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } fro
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { useFileStore } from './store'
+import { useFileUploadContext } from './upload-context'
 import {
   fileUpload,
   getFileUploadErrorMessage,
@@ -54,6 +55,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const fileStore = useFileStore()
   const params = useParams()
   const pathname = usePathname()
+  const { uploadUrl } = useFileUploadContext()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
@@ -196,11 +198,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             ...uploadParams,
           })
         } else {
-          fileUpload(uploadParams, !!params.token)
+          fileUpload(uploadParams, !!params.token, uploadUrl)
         }
       }
     },
-    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token],
+    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token, uploadUrl],
   )
 
   const startProgressTimer = useCallback(
@@ -374,7 +376,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               ...uploadParams,
             })
           } else {
-            fileUpload(uploadParams, !!params.token)
+            fileUpload(uploadParams, !!params.token, uploadUrl)
           }
         },
         false,
@@ -397,6 +399,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       isHumanInputFormPage,
       formToken,
       params.token,
+      uploadUrl,
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
       fileConfig?.enabled,

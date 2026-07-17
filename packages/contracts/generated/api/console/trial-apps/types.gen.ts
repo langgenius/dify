@@ -64,6 +64,24 @@ export type TrialDatasetListResponse = {
   total: number
 }
 
+export type FileResponse = {
+  conversation_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  extension?: string | null
+  file_key?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  original_url?: string | null
+  preview_url?: string | null
+  reference?: string | null
+  size: number
+  source_url?: string | null
+  tenant_id?: string | null
+  user_id?: string | null
+}
+
 export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
@@ -377,6 +395,25 @@ export type GetTrialAppsByAppIdDatasetsResponses = {
 
 export type GetTrialAppsByAppIdDatasetsResponse =
   GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
+
+export type PostTrialAppsByAppIdFilesUploadData = {
+  body: {
+    file: Blob | File
+    source?: 'datasets'
+  }
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/files/upload'
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponses = {
+  201: FileResponse
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponse =
+  PostTrialAppsByAppIdFilesUploadResponses[keyof PostTrialAppsByAppIdFilesUploadResponses]
 
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
