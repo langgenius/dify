@@ -54,7 +54,7 @@ class ChatAudioApi(InstalledAppResource):
         if app_model is None:
             raise AppUnavailableError()
 
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
             response = AudioService.transcript_asr(

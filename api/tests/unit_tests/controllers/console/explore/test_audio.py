@@ -76,6 +76,15 @@ class TestChatAudioApi:
 
         assert resp == {"text": "ok"}
 
+    def test_post_missing_file_returns_no_audio_uploaded(self, app: Flask, installed_app):
+        with app.test_request_context(
+            "/",
+            data={},
+            content_type="multipart/form-data",
+        ):
+            with pytest.raises(NoAudioUploadedError):
+                self.method(installed_app)
+
     def test_app_unavailable(self, app: Flask, installed_app, audio_file):
         with (
             app.test_request_context(
