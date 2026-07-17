@@ -118,6 +118,7 @@ jobs:
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \
             api/tests/integration_tests/tools \
+            api/tests/integration_tests/controllers/console/app \
             api/tests/test_containers_integration_tests
 
       - name: Upload integration coverage data
