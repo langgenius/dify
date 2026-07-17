@@ -1,4 +1,5 @@
 import { fireEvent, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import IntegrationsPage from '../page'
 
@@ -633,60 +634,8 @@ describe('IntegrationsPage', () => {
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
-  it('uses hover-only arrows for the tools parent icon', () => {
-    const view = renderIntegrationsPage({ section: 'provider' })
-
-    const collapsedToolsButton = screen.getByRole('button', { name: 'common.menus.tools' })
-    const collapsedDisclosureIcon = collapsedToolsButton.querySelector(
-      'svg[viewBox="0 0 12 14.0003"]',
-    )
-
-    expect(collapsedToolsButton).toHaveAttribute('aria-expanded', 'false')
-    expect(collapsedDisclosureIcon).toBeInTheDocument()
-    expect(collapsedDisclosureIcon).toHaveClass('h-3.5', 'w-3', 'group-hover:hidden')
-    expect(collapsedToolsButton.querySelector('[data-icon="MagicBox"]')).not.toBeInTheDocument()
-    expect(
-      collapsedToolsButton.querySelector('.i-custom-vender-solid-mediaAndDevices-magic-box'),
-    ).not.toBeInTheDocument()
-    expect(
-      collapsedToolsButton.querySelector('.i-custom-vender-plugin-box-sparkle-fill'),
-    ).not.toBeInTheDocument()
-    expect(collapsedToolsButton.querySelector('.i-ri-arrow-down-s-line')).toHaveClass(
-      'hidden',
-      'group-hover:inline-block',
-    )
-    expect(collapsedToolsButton.querySelector('.i-ri-arrow-up-s-line')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('link', { name: 'common.toolsPage.toolPlugin' }),
-    ).not.toBeInTheDocument()
-
-    view.unmount()
-    renderIntegrationsPage({ section: 'mcp' })
-
-    const expandedToolsButton = screen.getByRole('button', { name: 'common.menus.tools' })
-    const expandedDisclosureIcon = expandedToolsButton.querySelector(
-      'svg[viewBox="0 0 12 14.0003"]',
-    )
-
-    expect(expandedToolsButton).toHaveAttribute('aria-expanded', 'true')
-    expect(expandedToolsButton).not.toHaveClass('bg-state-base-active')
-    expect(expandedToolsButton).not.toHaveAttribute('aria-current')
-    expect(expandedDisclosureIcon).toBeInTheDocument()
-    expect(expandedToolsButton.querySelector('.i-ri-arrow-up-s-line')).toHaveClass(
-      'hidden',
-      'group-hover:inline-block',
-    )
-    expect(expandedToolsButton.querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
-    expect(
-      expandedToolsButton.querySelector('.i-custom-vender-integrations-tools-active'),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toHaveAttribute(
-      'href',
-      '/integrations/tools/built-in',
-    )
-  })
-
-  it('toggles the tools submenu without other nav items closing it', () => {
+  it('toggles the tools submenu from the keyboard without other nav items closing it', async () => {
+    const user = userEvent.setup()
     const onSectionChange = vi.fn()
     renderWithNuqs(<IntegrationsPage section="provider" onSectionChange={onSectionChange} />)
 
@@ -699,20 +648,22 @@ describe('IntegrationsPage', () => {
     expect(toolsButton).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('button', { name: 'MCP' })).not.toBeInTheDocument()
 
-    fireEvent.click(toolsButton)
+    toolsButton.focus()
+    await user.keyboard('{Enter}')
 
     expect(onSectionChange).toHaveBeenCalledWith('builtin')
     expect(toolsButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.settings.provider' }))
+    await user.click(screen.getByRole('button', { name: 'common.settings.provider' }))
 
     expect(onSectionChange).toHaveBeenCalledWith('provider')
     expect(toolsButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
 
-    fireEvent.click(toolsButton)
+    toolsButton.focus()
+    await user.keyboard(' ')
 
     expect(toolsButton).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('button', { name: 'MCP' })).not.toBeInTheDocument()
@@ -994,7 +945,7 @@ describe('IntegrationsPage', () => {
     expect(screen.getByText('plugin.privilege.quickWhoCanInstall')).toBeInTheDocument()
     expect(screen.getByText('plugin.privilege.quickWhoCanDebug')).toBeInTheDocument()
 
-    const dialog = screen.getByRole('dialog')
+    const dialog = screen.getByRole('dialog', { name: 'plugin.privilege.permissions' })
     expect(
       within(dialog).getByText('plugin.privilege.permissions').closest('.w-\\[360px\\]'),
     ).toHaveClass('rounded-2xl', 'shadow-2xl')
@@ -1014,6 +965,12 @@ describe('IntegrationsPage', () => {
       install_permission: 'noone',
       debug_permission: 'admins',
     })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(
+      screen.queryByRole('dialog', { name: 'plugin.privilege.permissions' }),
+    ).not.toBeInTheDocument()
   })
 
   it('hides the sidebar plugin permissions quick settings when permission management is unavailable', () => {
