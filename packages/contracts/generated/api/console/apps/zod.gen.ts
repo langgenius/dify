@@ -74,6 +74,13 @@ export const zHumanInputFormSubmitPayload = z.object({
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
 
 /**
+ * MessageTemplateTestResponse
+ *
+ * Response body returned after one message-template test send.
+ */
+export const zMessageTemplateTestResponse = z.record(z.string(), z.unknown())
+
+/**
  * IterationNodeRunPayload
  */
 export const zIterationNodeRunPayload = z.object({
@@ -982,7 +989,32 @@ export const zAppImportResponse = z.object({
   warnings: z.array(zDslImportWarning).optional(),
 })
 
-export const zJsonValue = z
+/**
+ * DebugChannel
+ */
+export const zDebugChannel = z.enum([
+  'ding_talk',
+  'email',
+  'feishu',
+  'lark',
+  'ms_teams',
+  'slack',
+  'we_com',
+])
+
+export const zJsonValue = z.unknown()
+
+/**
+ * MessageTemplateTestRequest
+ *
+ * Request body for sending one message-template test notification.
+ */
+export const zMessageTemplateTestRequest = z.object({
+  channel: zDebugChannel,
+  inputs: z.record(z.string(), zJsonValue).optional(),
+})
+
+export const zJsonValue2 = z
   .union([
     z.string(),
     z.int(),
@@ -996,7 +1028,7 @@ export const zJsonValue = z
 /**
  * GeneratedAppResponse
  */
-export const zGeneratedAppResponse = zJsonValue
+export const zGeneratedAppResponse = zJsonValue2
 
 /**
  * AgentConfigVersionResponse
@@ -1371,7 +1403,7 @@ export const zAgentThought = z.object({
   thought: z.string().nullish(),
   tool: z.string().nullish(),
   tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
+  tool_labels: zJsonValue2,
 })
 
 /**
@@ -2487,7 +2519,7 @@ export const zSkillToolInferenceResult = z.object({
  * SimpleModelConfig
  */
 export const zSimpleModelConfig = z.object({
-  model: zJsonValue.nullish(),
+  model: zJsonValue2.nullish(),
   pre_prompt: z.string().nullish(),
 })
 
@@ -2541,7 +2573,7 @@ export const zConversationWithSummaryPagination = z.object({
  */
 export const zSimpleMessageDetail = z.object({
   answer: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
+  inputs: z.record(z.string(), zJsonValue2),
   message: z.string(),
   query: z.string(),
 })
@@ -2635,11 +2667,11 @@ export const zMessageDetail = z.object({
   from_end_user_id: z.string().nullish(),
   from_source: z.string(),
   id: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
-  message: zJsonValue,
+  inputs: z.record(z.string(), zJsonValue2),
+  message: zJsonValue2,
   message_files: z.array(zMessageFile),
   message_tokens: z.int(),
-  metadata: zJsonValue,
+  metadata: zJsonValue2,
   parent_message_id: z.string().nullish(),
   provider_response_latency: z.number(),
   query: z.string(),
@@ -2659,6 +2691,18 @@ export const zConversationMessageDetail = z.object({
   message: zMessageDetail.nullish(),
   model_config: zModelConfig.nullish(),
   status: z.string(),
+})
+
+/**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
@@ -3032,20 +3076,6 @@ export const zWorkflowRunSnapshotView = z.object({
   node_outputs: z.array(zNodeOutputsView).optional(),
   workflow_run_id: z.string(),
   workflow_run_status: zWorkflowExecutionStatus,
-})
-
-export const zJsonValue2 = z.unknown()
-
-/**
- * HumanInputFormSubmissionData
- */
-export const zHumanInputFormSubmissionData = z.object({
-  action_id: z.string(),
-  action_text: z.string(),
-  node_id: z.string(),
-  node_title: z.string(),
-  rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
 })
 
 /**
@@ -3942,11 +3972,11 @@ export const zMessageDetailResponse = z.object({
   from_end_user_id: z.string().nullish(),
   from_source: z.string(),
   id: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
-  message: zJsonValue,
+  inputs: z.record(z.string(), zJsonValue2),
+  message: zJsonValue2,
   message_files: z.array(zMessageFile),
   message_tokens: z.int(),
-  metadata: zJsonValue,
+  metadata: zJsonValue2,
   parent_message_id: z.string().nullish(),
   provider_response_latency: z.number(),
   query: z.string(),
@@ -4121,9 +4151,16 @@ export const zComposerSavePayload = z.object({
 })
 
 /**
+ * MessageTemplateTestResponse
+ *
+ * Response body returned after one message-template test send.
+ */
+export const zMessageTemplateTestResponseWritable = z.record(z.string(), z.unknown())
+
+/**
  * GeneratedAppResponse
  */
-export const zGeneratedAppResponseWritable = zJsonValue
+export const zGeneratedAppResponseWritable = zJsonValue2
 
 /**
  * AppPartial
@@ -4521,6 +4558,21 @@ export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFo
  */
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse =
   zHumanInputFormSubmitResponse
+
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestBody =
+  zMessageTemplateTestRequest
+
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestPath =
+  z.object({
+    app_id: z.uuid(),
+    node_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponse =
+  zMessageTemplateTestResponse
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunBody =
   zIterationNodeRunPayload
@@ -6198,6 +6250,21 @@ export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunPath = 
  */
 export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse =
   zHumanInputFormSubmitResponse
+
+export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestBody =
+  zMessageTemplateTestRequest
+
+export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestPath =
+  z.object({
+    app_id: z.uuid(),
+    node_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponse =
+  zMessageTemplateTestResponse
 
 export const zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunBody = zIterationNodeRunPayload
 

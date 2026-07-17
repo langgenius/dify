@@ -162,6 +162,147 @@ export type EndpointUpdatePayload = {
   }
 }
 
+export type ListContactsResponse = {
+  data: Array<HumanInputContact>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type ExternalContactRequest = {
+  avatar?: string | null
+  email: string
+  name: string
+}
+
+export type ContactResponse = {
+  contact: HumanInputContact
+}
+
+export type AddPlatformContactsRequest = {
+  member_ids: Array<string>
+}
+
+export type AddPlatformContactsResponse = {
+  data: Array<HumanInputContact>
+  total: number
+}
+
+export type RemoveContactsRequest = {
+  contact_ids: Array<string>
+}
+
+export type RemoveContactsResponse = {
+  removed_contact_ids: Array<string>
+}
+
+export type ResetContactImOverrideResponse = {
+  contact: HumanInputContact
+}
+
+export type SetContactImOverrideRequest = {
+  identity_id: string
+}
+
+export type SetContactImOverrideResponse = {
+  contact: HumanInputContact
+}
+
+export type ListImIdentitiesResponse = {
+  data: Array<ImIdentity>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type GetImIntegrationResponse = {
+  integration: ImIntegration
+}
+
+export type UpdateImIntegrationRequest = {
+  credentials:
+    | ({
+        provider: 'feishu'
+      } & FeishuImIntegrationCredentials)
+    | ({
+        provider: 'slack'
+      } & SlackImIntegrationCredentials)
+    | ({
+        provider: 'ding_talk'
+      } & DingTalkImIntegrationCredentials)
+    | ({
+        provider: 'ms_teams'
+      } & MsTeamsImIntegrationCredentials)
+    | ({
+        provider: 'we_com'
+      } & WeComImIntegrationCredentials)
+    | ({
+        provider: 'lark'
+      } & LarkImIntegrationCredentials)
+}
+
+export type UpdateImIntegrationResponse = {
+  integration: ImIntegration
+}
+
+export type TestImIntegrationRequest = {
+  credentials:
+    | ({
+        provider: 'feishu'
+      } & FeishuImIntegrationCredentials)
+    | ({
+        provider: 'slack'
+      } & SlackImIntegrationCredentials)
+    | ({
+        provider: 'ding_talk'
+      } & DingTalkImIntegrationCredentials)
+    | ({
+        provider: 'ms_teams'
+      } & MsTeamsImIntegrationCredentials)
+    | ({
+        provider: 'we_com'
+      } & WeComImIntegrationCredentials)
+    | ({
+        provider: 'lark'
+      } & LarkImIntegrationCredentials)
+}
+
+export type TestImIntegrationResponse = {
+  message: string
+  status: ImIntegrationStatus
+}
+
+export type ListImSyncRunsResponse = {
+  data: Array<ImSyncRun>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type CreateImSyncRunResponse = {
+  run: ImSyncRun
+}
+
+export type GetImSyncRunResponse = {
+  added?: Array<ImSyncItem>
+  failed?: Array<ImSyncItem>
+  not_matched?: Array<ImSyncItem>
+  removed?: Array<ImSyncItem>
+  run: ImSyncRun
+  skipped?: Array<ImSyncItem>
+}
+
+export type ListOrganizationCandidatesResponse = {
+  data: Array<OrganizationCandidate>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type MemberInvitePayload = {
   emails: Array<string>
   language?: string | null
@@ -1155,6 +1296,107 @@ export type EndpointListItemResponse = {
   url: string
 }
 
+export type HumanInputContact = {
+  email?: string | null
+  id: string
+  name: string
+  type: HumanInputContactType
+}
+
+export type ImIdentity = {
+  binding_status: ImIdentityBindingStatus
+  display_name?: string | null
+  email?: string | null
+  id: string
+  provider: ImProvider
+  provider_user_id: string
+}
+
+export type ImIntegration = {
+  callback_url?: string | null
+  configured_at?: number | null
+  permission_hint?: string | null
+  provider?: ImProvider | null
+  status: ImIntegrationStatus
+  updated_at?: number | null
+}
+
+export type FeishuImIntegrationCredentials = {
+  app_id: string
+  app_secret: string
+  encrypt_key?: string | null
+  provider: 'feishu'
+  verification_token?: string | null
+}
+
+export type SlackImIntegrationCredentials = {
+  bot_token: string
+  client_id: string
+  client_secret: string
+  provider: 'slack'
+  signing_secret: string
+}
+
+export type DingTalkImIntegrationCredentials = {
+  client_id: string
+  client_secret: string
+  provider: 'ding_talk'
+}
+
+export type MsTeamsImIntegrationCredentials = {
+  client_id: string
+  client_secret: string
+  provider: 'ms_teams'
+  tenant_id: string
+}
+
+export type WeComImIntegrationCredentials = {
+  agent_id: string
+  corp_id: string
+  provider: 'we_com'
+  secret: string
+}
+
+export type LarkImIntegrationCredentials = {
+  app_id: string
+  app_secret: string
+  encrypt_key?: string | null
+  provider: 'lark'
+  verification_token?: string | null
+}
+
+export type ImIntegrationStatus =
+  | 'callback_error'
+  | 'configured'
+  | 'connected'
+  | 'connection_error'
+  | 'not_configured'
+  | 'permission_issue'
+
+export type ImSyncRun = {
+  error_message?: string | null
+  finished_at?: number | null
+  id: string
+  started_at?: number | null
+  status: ImSyncRunStatus
+  triggered_by?: string | null
+}
+
+export type ImSyncItem = {
+  contact_id?: string | null
+  display_name?: string | null
+  email?: string | null
+  provider_user_id: string
+  reason?: ImSyncReason | null
+}
+
+export type OrganizationCandidate = {
+  avatar_url?: string | null
+  email: string
+  id: string
+  name: string
+}
+
 export type MemberInviteSuccessResponse = {
   email: string
   status: 'success'
@@ -1695,6 +1937,22 @@ export type EndpointProviderDeclarationResponse = {
   endpoints?: Array<EndpointDeclarationResponse> | null
   settings?: Array<EndpointProviderConfigResponse>
 }
+
+export type HumanInputContactType = 'external' | 'platform' | 'workspace'
+
+export type ImIdentityBindingStatus = 'bound' | 'unbound'
+
+export type ImProvider = 'ding_talk' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
+
+export type ImSyncRunStatus = 'failed' | 'queued' | 'running' | 'succeeded'
+
+export type ImSyncReason =
+  | 'binding_removed'
+  | 'matched_by_email'
+  | 'matched_by_provider_user_id'
+  | 'provider_error'
+  | 'skipped_by_rule'
+  | 'unmatched_identity'
 
 export type ConfigurateMethod = 'customizable-model' | 'predefined-model'
 
@@ -2899,6 +3157,241 @@ export type PatchWorkspacesCurrentEndpointsByIdResponses = {
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
   PatchWorkspacesCurrentEndpointsByIdResponses[keyof PatchWorkspacesCurrentEndpointsByIdResponses]
+
+export type GetWorkspacesCurrentHumanInputContactsData = {
+  body?: never
+  path?: never
+  query?: {
+    group?: 'external' | 'platform' | 'workspace'
+    keyword?: string
+    limit?: number
+    page?: number
+  }
+  url: '/workspaces/current/human-input/contacts'
+}
+
+export type GetWorkspacesCurrentHumanInputContactsResponses = {
+  200: ListContactsResponse
+}
+
+export type GetWorkspacesCurrentHumanInputContactsResponse =
+  GetWorkspacesCurrentHumanInputContactsResponses[keyof GetWorkspacesCurrentHumanInputContactsResponses]
+
+export type PostWorkspacesCurrentHumanInputContactsExternalData = {
+  body: ExternalContactRequest
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/contacts/external'
+}
+
+export type PostWorkspacesCurrentHumanInputContactsExternalResponses = {
+  200: ContactResponse
+}
+
+export type PostWorkspacesCurrentHumanInputContactsExternalResponse =
+  PostWorkspacesCurrentHumanInputContactsExternalResponses[keyof PostWorkspacesCurrentHumanInputContactsExternalResponses]
+
+export type PatchWorkspacesCurrentHumanInputContactsExternalByContactIdData = {
+  body: ExternalContactRequest
+  path: {
+    contact_id: string
+  }
+  query?: never
+  url: '/workspaces/current/human-input/contacts/external/{contact_id}'
+}
+
+export type PatchWorkspacesCurrentHumanInputContactsExternalByContactIdResponses = {
+  200: ContactResponse
+}
+
+export type PatchWorkspacesCurrentHumanInputContactsExternalByContactIdResponse =
+  PatchWorkspacesCurrentHumanInputContactsExternalByContactIdResponses[keyof PatchWorkspacesCurrentHumanInputContactsExternalByContactIdResponses]
+
+export type PostWorkspacesCurrentHumanInputContactsPlatformData = {
+  body: AddPlatformContactsRequest
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/contacts/platform'
+}
+
+export type PostWorkspacesCurrentHumanInputContactsPlatformResponses = {
+  200: AddPlatformContactsResponse
+}
+
+export type PostWorkspacesCurrentHumanInputContactsPlatformResponse =
+  PostWorkspacesCurrentHumanInputContactsPlatformResponses[keyof PostWorkspacesCurrentHumanInputContactsPlatformResponses]
+
+export type PostWorkspacesCurrentHumanInputContactsRemoveData = {
+  body: RemoveContactsRequest
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/contacts/remove'
+}
+
+export type PostWorkspacesCurrentHumanInputContactsRemoveResponses = {
+  200: RemoveContactsResponse
+}
+
+export type PostWorkspacesCurrentHumanInputContactsRemoveResponse =
+  PostWorkspacesCurrentHumanInputContactsRemoveResponses[keyof PostWorkspacesCurrentHumanInputContactsRemoveResponses]
+
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideData = {
+  body?: never
+  path: {
+    contact_id: string
+  }
+  query?: never
+  url: '/workspaces/current/human-input/contacts/{contact_id}/im-override'
+}
+
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponses = {
+  200: ResetContactImOverrideResponse
+}
+
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponse =
+  DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponses[keyof DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponses]
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideData = {
+  body: SetContactImOverrideRequest
+  path: {
+    contact_id: string
+  }
+  query?: never
+  url: '/workspaces/current/human-input/contacts/{contact_id}/im-override'
+}
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponses = {
+  200: SetContactImOverrideResponse
+}
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponse =
+  PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponses[keyof PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponses]
+
+export type GetWorkspacesCurrentHumanInputImIdentitiesData = {
+  body?: never
+  path?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+    provider?: 'ding_talk' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
+  }
+  url: '/workspaces/current/human-input/im-identities'
+}
+
+export type GetWorkspacesCurrentHumanInputImIdentitiesResponses = {
+  200: ListImIdentitiesResponse
+}
+
+export type GetWorkspacesCurrentHumanInputImIdentitiesResponse =
+  GetWorkspacesCurrentHumanInputImIdentitiesResponses[keyof GetWorkspacesCurrentHumanInputImIdentitiesResponses]
+
+export type GetWorkspacesCurrentHumanInputImIntegrationData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/im-integration'
+}
+
+export type GetWorkspacesCurrentHumanInputImIntegrationResponses = {
+  200: GetImIntegrationResponse
+}
+
+export type GetWorkspacesCurrentHumanInputImIntegrationResponse =
+  GetWorkspacesCurrentHumanInputImIntegrationResponses[keyof GetWorkspacesCurrentHumanInputImIntegrationResponses]
+
+export type PutWorkspacesCurrentHumanInputImIntegrationData = {
+  body: UpdateImIntegrationRequest
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/im-integration'
+}
+
+export type PutWorkspacesCurrentHumanInputImIntegrationResponses = {
+  200: UpdateImIntegrationResponse
+}
+
+export type PutWorkspacesCurrentHumanInputImIntegrationResponse =
+  PutWorkspacesCurrentHumanInputImIntegrationResponses[keyof PutWorkspacesCurrentHumanInputImIntegrationResponses]
+
+export type PostWorkspacesCurrentHumanInputImIntegrationTestData = {
+  body: TestImIntegrationRequest
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/im-integration/test'
+}
+
+export type PostWorkspacesCurrentHumanInputImIntegrationTestResponses = {
+  200: TestImIntegrationResponse
+}
+
+export type PostWorkspacesCurrentHumanInputImIntegrationTestResponse =
+  PostWorkspacesCurrentHumanInputImIntegrationTestResponses[keyof PostWorkspacesCurrentHumanInputImIntegrationTestResponses]
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsData = {
+  body?: never
+  path?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
+  url: '/workspaces/current/human-input/im-sync-runs'
+}
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsResponses = {
+  200: ListImSyncRunsResponse
+}
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsResponse =
+  GetWorkspacesCurrentHumanInputImSyncRunsResponses[keyof GetWorkspacesCurrentHumanInputImSyncRunsResponses]
+
+export type PostWorkspacesCurrentHumanInputImSyncRunsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/im-sync-runs'
+}
+
+export type PostWorkspacesCurrentHumanInputImSyncRunsResponses = {
+  200: CreateImSyncRunResponse
+}
+
+export type PostWorkspacesCurrentHumanInputImSyncRunsResponse =
+  PostWorkspacesCurrentHumanInputImSyncRunsResponses[keyof PostWorkspacesCurrentHumanInputImSyncRunsResponses]
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdData = {
+  body?: never
+  path: {
+    sync_run_id: string
+  }
+  query?: never
+  url: '/workspaces/current/human-input/im-sync-runs/{sync_run_id}'
+}
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdResponses = {
+  200: GetImSyncRunResponse
+}
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdResponse =
+  GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdResponses[keyof GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdResponses]
+
+export type GetWorkspacesCurrentHumanInputOrganizationCandidatesData = {
+  body?: never
+  path?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+  }
+  url: '/workspaces/current/human-input/organization-candidates'
+}
+
+export type GetWorkspacesCurrentHumanInputOrganizationCandidatesResponses = {
+  200: ListOrganizationCandidatesResponse
+}
+
+export type GetWorkspacesCurrentHumanInputOrganizationCandidatesResponse =
+  GetWorkspacesCurrentHumanInputOrganizationCandidatesResponses[keyof GetWorkspacesCurrentHumanInputOrganizationCandidatesResponses]
 
 export type GetWorkspacesCurrentMembersData = {
   body?: never

@@ -200,6 +200,11 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
+export type FormAccessRequestResponse = {
+  expires_in_seconds: number
+  resend_after_seconds: number
+}
+
 export type FormInputConfig =
   | ({
       type: 'paragraph'
@@ -1095,6 +1100,22 @@ export type PostForgotPasswordValidityResponses = {
 
 export type PostForgotPasswordValidityResponse =
   PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
+
+export type PostFormHumanInputByFormTokenAccessRequestData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/{form_token}/access-request'
+}
+
+export type PostFormHumanInputByFormTokenAccessRequestResponses = {
+  200: FormAccessRequestResponse
+}
+
+export type PostFormHumanInputByFormTokenAccessRequestResponse =
+  PostFormHumanInputByFormTokenAccessRequestResponses[keyof PostFormHumanInputByFormTokenAccessRequestResponses]
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never

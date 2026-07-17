@@ -259,6 +259,16 @@ export const zForgotPasswordSendPayload = z.object({
 })
 
 /**
+ * FormAccessRequestResponse
+ *
+ * Response body returned after creating one OTP challenge.
+ */
+export const zFormAccessRequestResponse = z.object({
+  expires_in_seconds: z.int(),
+  resend_after_seconds: z.int(),
+})
+
+/**
  * HumanInputFileUploadFormPayload
  *
  * Parsed multipart form fields for HITL uploads.
@@ -1181,6 +1191,15 @@ export const zPostForgotPasswordValidityBody = zForgotPasswordCheckPayload
  * Token is valid
  */
 export const zPostForgotPasswordValidityResponse = zVerificationTokenResponse
+
+export const zPostFormHumanInputByFormTokenAccessRequestPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputByFormTokenAccessRequestResponse = zFormAccessRequestResponse
 
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),

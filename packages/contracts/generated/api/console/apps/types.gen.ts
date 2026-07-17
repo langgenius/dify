@@ -152,13 +152,24 @@ export type HumanInputFormSubmitResponse = {
   [key: string]: unknown
 }
 
+export type MessageTemplateTestRequest = {
+  channel: DebugChannel
+  inputs?: {
+    [key: string]: JsonValue
+  }
+}
+
+export type MessageTemplateTestResponse = {
+  [key: string]: unknown
+}
+
 export type IterationNodeRunPayload = {
   inputs?: {
     [key: string]: unknown
   } | null
 }
 
-export type GeneratedAppResponse = JsonValue
+export type GeneratedAppResponse = JsonValue2
 
 export type LoopNodeRunPayload = {
   inputs?: {
@@ -583,12 +594,12 @@ export type MessageDetailResponse = {
   from_source: string
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: JsonValue2
   }
-  message: JsonValue
+  message: JsonValue2
   message_files: Array<MessageFile>
   message_tokens: number
-  metadata: JsonValue
+  metadata: JsonValue2
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
@@ -1410,7 +1421,18 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type JsonValue =
+export type DebugChannel =
+  | 'ding_talk'
+  | 'email'
+  | 'feishu'
+  | 'lark'
+  | 'ms_teams'
+  | 'slack'
+  | 'we_com'
+
+export type JsonValue = unknown
+
+export type JsonValue2 =
   | string
   | number
   | number
@@ -1640,12 +1662,12 @@ export type MessageDetail = {
   from_source: string
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: JsonValue2
   }
-  message: JsonValue
+  message: JsonValue2
   message_files: Array<MessageFile>
   message_tokens: number
-  metadata: JsonValue
+  metadata: JsonValue2
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
@@ -1675,7 +1697,7 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: JsonValue2
 }
 
 export type ConversationAnnotation = {
@@ -2247,7 +2269,7 @@ export type EnvSuggestion = {
 }
 
 export type SimpleModelConfig = {
-  model?: JsonValue | null
+  model?: JsonValue2 | null
   pre_prompt?: string | null
 }
 
@@ -2261,7 +2283,7 @@ export type StatusCount = {
 export type SimpleMessageDetail = {
   answer: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: JsonValue2
   }
   message: string
   query: string
@@ -2295,7 +2317,7 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
@@ -2618,8 +2640,6 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
-
-export type JsonValue2 = unknown
 
 export type WorkflowFileUploadTransferPayload = {
   enabled?: boolean | null
@@ -3077,7 +3097,11 @@ export type AppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
-export type GeneratedAppResponseWritable = JsonValue
+export type MessageTemplateTestResponseWritable = {
+  [key: string]: unknown
+}
+
+export type GeneratedAppResponseWritable = JsonValue2
 
 export type WorkflowCommentBasicListWritable = {
   data: Array<WorkflowCommentBasicWritable>
@@ -3491,6 +3515,25 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse =
   PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses]
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestData =
+  {
+    body: MessageTemplateTestRequest
+    path: {
+      app_id: string
+      node_id: string
+    }
+    query?: never
+    url: '/apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/message-template/test'
+  }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponses =
+  {
+    200: MessageTemplateTestResponse
+  }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponse =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunData = {
   body: IterationNodeRunPayload
@@ -6109,6 +6152,23 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse =
   PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses]
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestData = {
+  body: MessageTemplateTestRequest
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/message-template/test'
+}
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponses = {
+  200: MessageTemplateTestResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponse =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestResponses]
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunData = {
   body: IterationNodeRunPayload
