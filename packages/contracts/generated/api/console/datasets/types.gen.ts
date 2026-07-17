@@ -209,7 +209,7 @@ export type ProcessRuleResponse = {
 }
 
 export type RetrievalSettingResponse = {
-  retrieval_method: Array<string>
+  retrieval_method: Array<RetrievalMethod>
 }
 
 export type DatasetDetailWithPartialMembersResponse = {
@@ -713,6 +713,12 @@ export type Rule = {
   subchunk_segmentation?: Segmentation | null
 }
 
+export type RetrievalMethod =
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'keyword_search'
+  | 'semantic_search'
+
 export type DocumentWithSegmentsResponse = {
   archived?: boolean | null
   completed_segments?: number | null
@@ -903,12 +909,6 @@ export type RerankingModel = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
 }
-
-export type RetrievalMethod =
-  | 'full_text_search'
-  | 'hybrid_search'
-  | 'keyword_search'
-  | 'semantic_search'
 
 export type WeightModel = {
   keyword_setting?: WeightKeywordSetting | null

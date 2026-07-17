@@ -92,13 +92,6 @@ export const zNotionEstimatePayload = z.object({
 })
 
 /**
- * RetrievalSettingResponse
- */
-export const zRetrievalSettingResponse = z.object({
-  retrieval_method: z.array(z.string()),
-})
-
-/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -487,6 +480,23 @@ export const zDatasetMetadataBuiltInFieldsResponse = z.object({
 export const zProcessRuleMode = z.enum(['automatic', 'custom', 'hierarchical'])
 
 /**
+ * RetrievalMethod
+ */
+export const zRetrievalMethod = z.enum([
+  'full_text_search',
+  'hybrid_search',
+  'keyword_search',
+  'semantic_search',
+])
+
+/**
+ * RetrievalSettingResponse
+ */
+export const zRetrievalSettingResponse = z.object({
+  retrieval_method: z.array(zRetrievalMethod),
+})
+
+/**
  * DocumentMetadataResponse
  */
 export const zDocumentMetadataResponse = z.object({
@@ -802,16 +812,6 @@ export const zRerankingModel = z.object({
   reranking_model_name: z.string().nullish(),
   reranking_provider_name: z.string().nullish(),
 })
-
-/**
- * RetrievalMethod
- */
-export const zRetrievalMethod = z.enum([
-  'full_text_search',
-  'hybrid_search',
-  'keyword_search',
-  'semantic_search',
-])
 
 /**
  * PreProcessingRule

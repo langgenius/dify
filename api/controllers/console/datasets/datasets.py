@@ -309,7 +309,7 @@ class IndexingEstimateResponse(IndexingEstimate):
 
 
 class RetrievalSettingResponse(ResponseModel):
-    retrieval_method: list[str]
+    retrieval_method: list[RetrievalMethod]
 
 
 class PartialMemberListResponse(ResponseModel):

@@ -1419,11 +1419,11 @@ class TestDatasetRetrievalSettingApi:
             patch("controllers.console.datasets.datasets.dify_config.VECTOR_STORE", "qdrant"),
             patch(
                 "controllers.console.datasets.datasets._get_retrieval_methods_by_vector_type",
-                return_value={"retrieval_method": ["semantic", "hybrid"]},
+                return_value={"retrieval_method": ["semantic_search", "hybrid_search"]},
             ),
         ):
             response = method(api)
-        assert "retrieval_method" in response
+        assert response["retrieval_method"] == ["semantic_search", "hybrid_search"]
 
 
 class TestDatasetRetrievalSettingMockApi:
@@ -1434,11 +1434,11 @@ class TestDatasetRetrievalSettingMockApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.datasets._get_retrieval_methods_by_vector_type",
-                return_value={"retrieval_method": ["semantic"]},
+                return_value={"retrieval_method": ["semantic_search"]},
             ),
         ):
             response = method(api, "milvus")
-        assert response["retrieval_method"] == ["semantic"]
+        assert response["retrieval_method"] == ["semantic_search"]
 
 
 class TestDatasetErrorDocs:

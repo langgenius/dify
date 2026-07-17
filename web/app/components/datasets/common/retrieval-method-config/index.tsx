@@ -1,18 +1,12 @@
 'use client'
-import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-import * as React from 'react'
-import { useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  FullTextSearch,
-  HybridSearch,
-  VectorSearch,
-} from '@/app/components/base/icons/src/vender/knowledge'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useProviderContext } from '@/context/provider-context'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { EffectColor } from '../../settings/chunk-structure/types'
 import OptionCard from '../../settings/option-card'
@@ -25,14 +19,17 @@ type Props = Readonly<{
   onChange: (value: RetrievalConfig) => void
 }>
 
-const RetrievalMethodConfig: FC<Props> = ({
+function RetrievalMethodConfig({
   disabled = false,
   value,
   showMultiModalTip = false,
   onChange,
-}) => {
+}: Props) {
   const { t } = useTranslation()
-  const { supportRetrievalMethods } = useProviderContext()
+  const { data: retrievalSetting } = useQuery(
+    consoleQuery.datasets.retrievalSetting.get.queryOptions(),
+  )
+  const supportRetrievalMethods = retrievalSetting?.retrieval_method ?? []
   const { defaultModel: rerankDefaultModel, currentModel: isRerankDefaultModelValid } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
@@ -107,11 +104,11 @@ const RetrievalMethodConfig: FC<Props> = ({
 
   return (
     <div className="flex flex-col gap-y-2">
-      {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
+      {supportRetrievalMethods.includes('semantic_search') && (
         <OptionCard
           id={RETRIEVE_METHOD.semantic}
           disabled={disabled}
-          icon={<VectorSearch className="size-4" />}
+          icon={<span className="i-custom-vender-knowledge-vector-search size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
           title={t(($) => $['retrieval.semantic_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.semantic_search.description'], { ns: 'dataset' })}
@@ -131,11 +128,11 @@ const RetrievalMethodConfig: FC<Props> = ({
           />
         </OptionCard>
       )}
-      {supportRetrievalMethods.includes(RETRIEVE_METHOD.fullText) && (
+      {supportRetrievalMethods.includes('full_text_search') && (
         <OptionCard
           id={RETRIEVE_METHOD.fullText}
           disabled={disabled}
-          icon={<FullTextSearch className="size-4" />}
+          icon={<span className="i-custom-vender-knowledge-full-text-search size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
           title={t(($) => $['retrieval.full_text_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.full_text_search.description'], { ns: 'dataset' })}
@@ -155,11 +152,11 @@ const RetrievalMethodConfig: FC<Props> = ({
           />
         </OptionCard>
       )}
-      {supportRetrievalMethods.includes(RETRIEVE_METHOD.hybrid) && (
+      {supportRetrievalMethods.includes('hybrid_search') && (
         <OptionCard
           id={RETRIEVE_METHOD.hybrid}
           disabled={disabled}
-          icon={<HybridSearch className="size-4" />}
+          icon={<span className="i-custom-vender-knowledge-hybrid-search size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
           title={t(($) => $['retrieval.hybrid_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.hybrid_search.description'], { ns: 'dataset' })}
@@ -183,4 +180,4 @@ const RetrievalMethodConfig: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(RetrievalMethodConfig)
+export default memo(RetrievalMethodConfig)
