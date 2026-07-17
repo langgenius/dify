@@ -8,9 +8,10 @@ import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import {
-  overlayLabelClassName,
-  overlayPopupAnimationClassName,
-  overlaySeparatorClassName,
+  floatingGroupLabelClassName,
+  floatingItemIndicatorClassName,
+  floatingPopupAnimationClassName,
+  floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
@@ -73,11 +74,11 @@ export function SelectLabel({ className, ...props }: BaseSelect.Label.Props) {
 }
 
 export function SelectGroupLabel({ className, ...props }: BaseSelect.GroupLabel.Props) {
-  return <BaseSelect.GroupLabel className={cn(overlayLabelClassName, className)} {...props} />
+  return <BaseSelect.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
 }
 
 export function SelectSeparator({ className, ...props }: BaseSelect.Separator.Props) {
-  return <BaseSelect.Separator className={cn(overlaySeparatorClassName, className)} {...props} />
+  return <BaseSelect.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
 }
 
 type SelectContentProps = {
@@ -124,7 +125,7 @@ export function SelectContent({
         <BaseSelect.Popup
           className={cn(
             'min-w-(--anchor-width) rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            overlayPopupAnimationClassName,
+            floatingPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}
@@ -165,10 +166,7 @@ export function SelectItemIndicator({
   ...props
 }: Omit<BaseSelect.ItemIndicator.Props, 'children'>) {
   return (
-    <BaseSelect.ItemIndicator
-      className={cn('ms-auto flex shrink-0 items-center text-text-accent', className)}
-      {...props}
-    >
+    <BaseSelect.ItemIndicator className={cn(floatingItemIndicatorClassName, className)} {...props}>
       <span className="i-ri-check-line h-4 w-4" aria-hidden />
     </BaseSelect.ItemIndicator>
   )

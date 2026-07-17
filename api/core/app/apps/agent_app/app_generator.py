@@ -21,6 +21,7 @@ from typing import Any, Literal
 from flask import Flask, current_app
 from pydantic import JsonValue
 from sqlalchemy import and_, or_, select
+from sqlalchemy.orm import Session
 
 from clients.agent_backend import AgentBackendRunEventAdapter
 from clients.agent_backend.factory import create_agent_backend_run_client
@@ -46,10 +47,11 @@ from core.app.entities.app_invoke_entities import (
     UserFrom,
 )
 from core.app.llm.model_access import build_dify_model_access
+from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from extensions.ext_database import db
-from models import Account, App, EndUser, Message
+from models import Account, App, AppModelConfig, EndUser, Message, MessageAnnotation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -61,6 +63,7 @@ from models.agent import (
     AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
+from models.model import load_annotation_reply_config
 from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
@@ -137,6 +140,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
+        session: Session,
         streaming: bool = True,
     ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]:
         if not streaming:
@@ -152,6 +156,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
             draft_type=args.get("draft_type"),
             user=user,
+            session=session,
         )
         runtime_session_snapshot_id = self._runtime_session_snapshot_id(
             invoke_from=invoke_from,
@@ -162,15 +167,19 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
+                app_model=app_model, conversation_id=conversation_id, user=user, session=session
             )
 
         # Build the EasyUI-shaped config from the Agent Soul so the chat pipeline
         # can persist usage; the answer itself comes from the agent backend.
-        app_model_config = app_model.app_model_config
+        app_model_config = (
+            session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
+        )
+        annotation_reply = load_annotation_reply_config(session, app_model.id) if app_model_config else None
         app_config = AgentAppConfigManager.get_app_config(
             app_model=app_model,
             agent_soul=agent_soul,
+            annotation_reply=annotation_reply,
             app_model_config=app_model_config,
             conversation=conversation,
         )
@@ -210,7 +219,11 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_runtime_exit_intent=agent_runtime_exit_intent,
         )
 
-        conversation, message = self._init_generate_records(application_generate_entity, conversation)
+        conversation, message = self._init_generate_records(
+            application_generate_entity,
+            conversation,
+            session=session,
+        )
 
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
@@ -253,6 +266,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         conversation_id: str,
         invoke_from: InvokeFrom,
+        session: Session,
     ) -> None:
         """Resume an Agent App conversation after a submitted ask_human HITL form.
 
@@ -263,19 +277,28 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         out of scope here — the message is persisted and can be re-fetched.
         """
         conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
+            app_model=app_model, conversation_id=conversation_id, user=user, session=session
         )
         agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
             app_model,
             invoke_from=invoke_from,
-            draft_type=self._resume_draft_type(app_model=app_model, conversation=conversation, user=user),
+            draft_type=self._resume_draft_type(
+                app_model=app_model, conversation=conversation, user=user, session=session
+            ),
             user=user,
+            session=session,
         )
+
+        app_model_config = (
+            session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
+        )
+        annotation_reply = load_annotation_reply_config(session, app_model.id) if app_model_config else None
 
         app_config = AgentAppConfigManager.get_app_config(
             app_model=app_model,
             agent_soul=agent_soul,
-            app_model_config=app_model.app_model_config,
+            annotation_reply=annotation_reply,
+            app_model_config=app_model_config,
             conversation=conversation,
         )
         model_conf = ModelConfigConverter.convert(app_config)
@@ -287,7 +310,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         # turn's query); the continuation is driven by deferred_tool_results and
         # the restored snapshot, not by re-processing this prompt. A blank prompt
         # would drop the user-prompt layer and fail the snapshot match.
-        paused_message = db.session.scalar(
+        paused_message = session.scalar(
             select(Message)
             .where(Message.conversation_id == conversation.id, Message.query != "")
             .order_by(Message.created_at.desc())
@@ -318,7 +341,11 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_config_version_kind=agent_config_version_kind,
         )
 
-        conversation, message = self._init_generate_records(application_generate_entity, conversation)
+        conversation, message = self._init_generate_records(
+            application_generate_entity,
+            conversation,
+            session=session,
+        )
 
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
@@ -357,7 +384,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
 
     @staticmethod
-    def _resume_draft_type(*, app_model: App, conversation: Any, user: Account | EndUser) -> str | None:
+    def _resume_draft_type(
+        *, app_model: App, conversation: Any, user: Account | EndUser, session: Session
+    ) -> str | None:
         if conversation.invoke_from != InvokeFrom.DEBUGGER:
             return None
         active_session = AgentAppRuntimeSessionStore().load_active_session_for_conversation(
@@ -367,7 +396,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
         snapshot_id = active_session.scope.agent_config_snapshot_id if active_session is not None else None
         if snapshot_id and isinstance(user, Account):
-            draft = db.session.scalar(
+            draft = session.scalar(
                 select(AgentConfigDraft).where(
                     AgentConfigDraft.tenant_id == app_model.tenant_id,
                     AgentConfigDraft.id == snapshot_id,
@@ -413,15 +442,31 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     # Apply app-level input guards (content moderation + annotation
                     # reply) before reaching the Agent backend, mirroring the EasyUI
                     # chat / agent-chat runners. These can short-circuit the turn.
-                    app_model = db.session.get(App, app_config.app_id)
-                    if app_model is None:
-                        raise AgentAppGeneratorError("App not found")
-                    handled, query = self._run_input_guards(
-                        application_generate_entity=application_generate_entity,
-                        app_model=app_model,
-                        message=message,
-                        queue_manager=queue_manager,
-                    )
+                    with session_factory.get_session_maker().begin() as session:
+                        app_model = session.get(App, app_config.app_id)
+                        if app_model is None:
+                            raise AgentAppGeneratorError("App not found")
+                        handled, query, annotation_reply = self._run_input_guards(
+                            session=session,
+                            application_generate_entity=application_generate_entity,
+                            app_model=app_model,
+                            message=message,
+                            queue_manager=queue_manager,
+                        )
+                    if annotation_reply:
+                        from core.app.apps.agent_app.app_runner import publish_text_answer
+                        from core.app.entities.queue_entities import QueueAnnotationReplyEvent
+
+                        queue_manager.publish(
+                            QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
+                            PublishFrom.APPLICATION_MANAGER,
+                        )
+                        publish_text_answer(
+                            queue_manager=queue_manager,
+                            model_name=application_generate_entity.model_conf.model,
+                            answer=annotation_reply.content,
+                            user_query=query,
+                        )
                     if handled:
                         return
                     query = _append_prompt_file_mappings(
@@ -436,11 +481,13 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     user_from=user_from,
                     invoke_from=application_generate_entity.invoke_from,
                 )
-                _, _, agent_soul = self._resolve_agent_by_id(
-                    tenant_id=app_config.tenant_id,
-                    agent_id=application_generate_entity.agent_id,
-                    snapshot_id=application_generate_entity.agent_config_snapshot_id,
-                )
+                with session_factory.create_session() as session:
+                    _, _, agent_soul = self._resolve_agent_by_id(
+                        tenant_id=app_config.tenant_id,
+                        agent_id=application_generate_entity.agent_id,
+                        snapshot_id=application_generate_entity.agent_config_snapshot_id,
+                        session=session,
+                    )
 
                 runner = self._build_runner(dify_context)
                 runner.run(
@@ -502,20 +549,18 @@ class AgentAppGenerator(MessageBasedAppGenerator):
     def _run_input_guards(
         self,
         *,
+        session: Session,
         application_generate_entity: AgentAppGenerateEntity,
         app_model: App,
         message: Message,
         queue_manager: AppQueueManager,
-    ) -> tuple[bool, str]:
+    ) -> tuple[bool, str, MessageAnnotation | None]:
         """Apply input moderation + annotation reply before the backend call.
 
-        Returns ``(handled, query)``: when ``handled`` is True a direct answer
-        has already been published (a blocked/preset moderation response or a
-        matched annotation) and the backend turn must be skipped. Otherwise
-        ``query`` is the possibly moderation-overridden query to send onward.
+        Returns ``(handled, query, annotation_reply)``. Annotation output is
+        published by the caller only after this transaction commits.
         """
         from core.app.apps.agent_app.app_runner import publish_text_answer
-        from core.app.entities.queue_entities import QueueAnnotationReplyEvent
         from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
         from core.moderation.base import ModerationError
         from core.moderation.input_moderation import InputModeration
@@ -538,7 +583,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             )
         except ModerationError as e:
             publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e), user_query=query)
-            return True, query
+            return True, query, None
 
         # annotation reply: a matching annotation answers the turn deterministically.
         if query:
@@ -548,21 +593,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 query=query,
                 user_id=application_generate_entity.user_id,
                 invoke_from=application_generate_entity.invoke_from,
+                session=session,
             )
             if annotation_reply:
-                queue_manager.publish(
-                    QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
-                    PublishFrom.APPLICATION_MANAGER,
-                )
-                publish_text_answer(
-                    queue_manager=queue_manager,
-                    model_name=model_name,
-                    answer=annotation_reply.content,
-                    user_query=query,
-                )
-                return True, query
+                return True, query, annotation_reply
 
-        return False, query
+        return False, query, None
 
     def _resolve_agent(
         self,
@@ -571,8 +607,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         draft_type: Any,
         user: Account | EndUser,
+        session: Session,
     ) -> tuple[Agent, str, Literal["snapshot", "draft", "build_draft"], AgentSoulConfig]:
-        agent = db.session.scalar(
+        agent = session.scalar(
             select(Agent)
             .where(
                 Agent.tenant_id == app_model.tenant_id,
@@ -603,6 +640,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 agent=agent,
                 draft_type=draft_type,
                 account_id=user.id if isinstance(user, Account) else None,
+                session=session,
             )
             agent_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
             config_version_kind: Literal["snapshot", "draft", "build_draft"] = (
@@ -617,6 +655,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             tenant_id=app_model.tenant_id,
             agent_id=agent.id,
             snapshot_id=agent.active_config_snapshot_id,
+            session=session,
         )
         return agent, snapshot.id, "snapshot", agent_soul
 
@@ -633,7 +672,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
     @staticmethod
     def _resolve_debug_draft(
-        *, tenant_id: str, agent: Agent, draft_type: Any, account_id: str | None
+        *, tenant_id: str, agent: Agent, draft_type: Any, account_id: str | None, session: Session
     ) -> AgentConfigDraft:
         effective_draft_type = (
             AgentConfigDraftType.DEBUG_BUILD
@@ -651,7 +690,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             stmt = stmt.where(AgentConfigDraft.account_id == account_id)
         else:
             stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
-        draft = db.session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
+        draft = session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
         if draft is not None:
             return draft
         if effective_draft_type == AgentConfigDraftType.DEBUG_BUILD:
@@ -660,6 +699,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             tenant_id=tenant_id,
             agent_id=agent.id,
             snapshot_id=agent.active_config_snapshot_id,
+            session=session,
         )
         draft = AgentConfigDraft(
             tenant_id=tenant_id,
@@ -672,20 +712,20 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             created_by=agent.created_by,
             updated_by=agent.updated_by,
         )
-        db.session.add(draft)
-        db.session.flush()
+        session.add(draft)
+        session.flush()
         return draft
 
     @staticmethod
     def _resolve_agent_by_id(
-        *, tenant_id: str, agent_id: str, snapshot_id: str | None
+        *, tenant_id: str, agent_id: str, snapshot_id: str | None, session: Session
     ) -> tuple[Agent, AgentConfigSnapshot | AgentConfigDraft, AgentSoulConfig]:
-        agent = db.session.scalar(select(Agent).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
+        agent = session.scalar(select(Agent).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
         if agent is None:
             raise AgentAppGeneratorError("Agent not found")
         if not snapshot_id:
             raise AgentAppGeneratorError("Agent has no published version")
-        snapshot = db.session.scalar(
+        snapshot = session.scalar(
             select(AgentConfigSnapshot).where(
                 AgentConfigSnapshot.tenant_id == tenant_id,
                 AgentConfigSnapshot.agent_id == agent_id,
@@ -695,7 +735,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         if snapshot is not None:
             agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
             return agent, snapshot, agent_soul
-        draft = db.session.scalar(
+        draft = session.scalar(
             select(AgentConfigDraft).where(
                 AgentConfigDraft.tenant_id == tenant_id,
                 AgentConfigDraft.agent_id == agent_id,

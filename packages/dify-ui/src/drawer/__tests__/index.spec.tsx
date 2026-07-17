@@ -38,7 +38,7 @@ describe('Drawer wrapper', () => {
 
       expect(document.body.querySelector('[role="dialog"]')).not.toBeInTheDocument()
 
-      asHTMLElement(screen.getByRole('button', { name: 'Open settings' }).element()).click()
+      await screen.getByRole('button', { name: 'Open settings' }).click()
 
       await vi.waitFor(() => {
         expect(document.body.querySelector('[role="dialog"]')).toBeInTheDocument()
@@ -51,7 +51,7 @@ describe('Drawer wrapper', () => {
       await expect.element(screen.getByText('Configure the current workspace.')).toBeInTheDocument()
       await expect.element(screen.getByTestId('drawer-backdrop')).toBeInTheDocument()
 
-      asHTMLElement(screen.getByRole('button', { name: 'Close drawer' }).element()).click()
+      await screen.getByRole('button', { name: 'Close drawer' }).click()
 
       await vi.waitFor(() => {
         expect(document.body.querySelector('[role="dialog"]')).not.toBeInTheDocument()

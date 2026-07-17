@@ -50,6 +50,8 @@ export function normalizeCurrentWorkspace(
     providers: initialWorkspaceInfo.providers,
     trial_credits: workspace.trial_credits ?? initialWorkspaceInfo.trial_credits,
     trial_credits_used: workspace.trial_credits_used ?? initialWorkspaceInfo.trial_credits_used,
+    trial_credits_exhausted_at:
+      workspace.trial_credits_exhausted_at ?? initialWorkspaceInfo.trial_credits_exhausted_at,
     next_credit_reset_date:
       workspace.next_credit_reset_date ?? initialWorkspaceInfo.next_credit_reset_date,
     trial_end_reason: workspace.trial_end_reason ?? undefined,

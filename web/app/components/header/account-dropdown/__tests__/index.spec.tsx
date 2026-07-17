@@ -3,6 +3,7 @@ import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-contex
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderToString } from 'react-dom/server'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -253,6 +254,13 @@ describe('AccountDropdown', () => {
 
       // Assert
       expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
+    })
+
+    it('should keep the account trigger disabled in server-rendered markup', () => {
+      const container = document.createElement('div')
+      container.innerHTML = renderToString(<AppSelector />)
+
+      expect(container.querySelector('button[aria-label="common.account.account"]')).toBeDisabled()
     })
 
     it('should show EDU badge for education accounts', () => {

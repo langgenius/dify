@@ -1553,6 +1553,29 @@ def test_build_config_layer_config_missing_mentions_warn_without_catalog():
     assert [w["code"] for w in warnings] == ["mention_target_missing"]
 
 
+def test_build_config_layer_config_excludes_missing_assets_from_runtime():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
+
+    soul = AgentSoulConfig.model_validate(
+        {
+            "prompt": {"system_prompt": "Use [§skill:missing-skill:Missing Skill§]."},
+            "config_skills": [{"name": "missing-skill", "file_id": "", "is_missing": True}],
+            "config_files": [{"name": "missing.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}],
+        }
+    )
+
+    config, warnings = build_config_layer_config(soul)
+
+    assert config.skills == []
+    assert config.files == []
+    assert config.mentioned_skill_names == []
+    assert [warning["code"] for warning in warnings] == [
+        "config_asset_missing",
+        "config_asset_missing",
+        "mention_target_missing",
+    ]
+
+
 # ── ENG-635: ask_human layer gating + feature manifest ───────────────────────
 
 

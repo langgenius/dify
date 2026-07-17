@@ -43,7 +43,6 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
@@ -399,7 +398,7 @@ class ChatApi(Resource):
                     app_model=app_model,
                     conversation_id=payload.conversation_id,
                     user=end_user,
-                    session=db.session(),
+                    session=session,
                 )
 
             response = AppGenerateService.generate(

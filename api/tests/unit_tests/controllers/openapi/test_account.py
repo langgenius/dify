@@ -4,7 +4,6 @@ import builtins
 import sys
 import uuid
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
@@ -171,7 +170,6 @@ def _stub_session_deps(monkeypatch: pytest.MonkeyPatch, rows):
     mod = sys.modules[_ACCOUNT_MOD]
     monkeypatch.setattr(mod, "get_auth_ctx", lambda: SimpleNamespace())
     monkeypatch.setattr(mod, "list_active_sessions", lambda *args, **kwargs: rows)
-    monkeypatch.setattr(mod, "db", MagicMock())
 
 
 def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch: pytest.MonkeyPatch):

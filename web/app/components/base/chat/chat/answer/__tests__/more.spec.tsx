@@ -41,6 +41,13 @@ describe('More', () => {
     expect(screen.queryByTestId('more-tps')).not.toBeInTheDocument()
   })
 
+  it('should omit the timestamp separator when time is empty', () => {
+    render(<More more={{ ...mockMoreData, time: '' }} />)
+
+    expect(screen.queryByTestId('more-time')).not.toBeInTheDocument()
+    expect(screen.queryByText('·')).not.toBeInTheDocument()
+  })
+
   it('should render nothing inside container if more prop is missing', () => {
     render(<More more={undefined} />)
     const containerDiv = screen.getByTestId('more-container')

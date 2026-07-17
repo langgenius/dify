@@ -244,41 +244,39 @@ describe('auth refresh route', () => {
     expect(response.headers.get('location')).toBe('/signin?redirect_url=%2F')
   })
 
-  it('should use the Cloud home as the fallback after a successful refresh', async () => {
+  it('should keep a Cloud staging fallback on the current deployment after refresh', async () => {
     mocks.isCloudEdition = true
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })))
     const { GET } = await import('../route')
 
     const response = await GET(
       createRequest(
-        'https://cloud.dify.ai/auth/refresh?redirect_url=https%3A%2F%2Fevil.example',
+        'https://saas.dify.dev/auth/refresh?redirect_url=https%3A%2F%2Fevil.example',
         'refresh_token=old-refresh',
       ),
     )
 
     expect(response.status).toBe(303)
-    expect(response.headers.get('location')).toBe('https://cloud.dify.ai/')
+    expect(response.headers.get('location')).toBe('/')
   })
 
-  it('should carry the Cloud fallback through signin when refresh fails', async () => {
+  it('should carry the current Cloud deployment fallback through signin when refresh fails', async () => {
     mocks.isCloudEdition = true
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
     const { GET } = await import('../route')
 
     const response = await GET(
       createRequest(
-        'https://cloud.dify.ai/auth/refresh?redirect_url=https%3A%2F%2Fevil.example',
+        'https://saas.dify.dev/auth/refresh?redirect_url=https%3A%2F%2Fevil.example',
         'refresh_token=expired',
       ),
     )
 
     expect(response.status).toBe(303)
-    expect(response.headers.get('location')).toBe(
-      '/signin?redirect_url=https%3A%2F%2Fcloud.dify.ai%2F',
-    )
+    expect(response.headers.get('location')).toBe('/signin?redirect_url=%2F')
   })
 
-  it('should use the Cloud home when a trusted absolute target loops back to auth refresh', async () => {
+  it('should use the current deployment home when a trusted target loops back to auth refresh', async () => {
     mocks.isCloudEdition = true
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })))
     const { GET } = await import('../route')
@@ -291,7 +289,7 @@ describe('auth refresh route', () => {
     )
 
     expect(response.status).toBe(303)
-    expect(response.headers.get('location')).toBe('https://cloud.dify.ai/')
+    expect(response.headers.get('location')).toBe('/')
   })
 
   it.each(['/auth/refresh/', '/auth/%72efresh'])(

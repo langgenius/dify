@@ -73,6 +73,7 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
+from services.dataset_ref_service import DatasetRefService
 from services.datasource_provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
@@ -110,6 +111,12 @@ class RagPipelineService:
             session_maker
         )
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+
+    @staticmethod
+    def get_pipeline_by_id(pipeline_id: str, tenant_id: str, *, session: Session) -> Pipeline | None:
+        return session.scalar(
+            select(Pipeline).where(Pipeline.id == pipeline_id, Pipeline.tenant_id == tenant_id).limit(1)
+        )
 
     @classmethod
     def get_pipeline_templates(
@@ -579,6 +586,7 @@ class RagPipelineService:
 
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
+            tenant_id=pipeline.tenant_id,
             user=account,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -1007,23 +1015,24 @@ class RagPipelineService:
                     dataset_id = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
                     pipeline_id = get_system_segment(variable_pool, SystemVariableKey.APP_ID)
                     if document_id and dataset_id and pipeline_id:
-                        document = self._session.scalar(
-                            select(Document)
-                            .join(Dataset, Dataset.id == Document.dataset_id)
+                        dataset = self._session.scalar(
+                            select(Dataset)
                             .where(
-                                Document.id == document_id.value,
-                                Document.tenant_id == tenant_id,
-                                Document.dataset_id == dataset_id.value,
+                                Dataset.id == dataset_id.value,
                                 Dataset.tenant_id == tenant_id,
                                 Dataset.pipeline_id == pipeline_id.value,
                             )
                             .limit(1)
                         )
-                        if document:
-                            document.indexing_status = IndexingStatus.ERROR
-                            document.error = error
-                            self._session.add(document)
-                            self._session.commit()
+                        if dataset:
+                            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+                            document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id.value)
+                            document = DatasetRefService.get_document_by_ref(document_ref, session=self._session)
+                            if document:
+                                document.indexing_status = IndexingStatus.ERROR
+                                document.error = error
+                                self._session.add(document)
+                                self._session.commit()
 
         return workflow_node_execution
 
@@ -1369,6 +1378,7 @@ class RagPipelineService:
         # Create repository and save the node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=db.engine,
+            tenant_id=pipeline.tenant_id,
             user=current_user,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -1466,6 +1476,7 @@ class RagPipelineService:
         if not workflow:
             raise ValueError("Workflow not found")
         PipelineGenerator().generate(
+            session=self._session,
             pipeline=pipeline,
             workflow=workflow,
             user=user,

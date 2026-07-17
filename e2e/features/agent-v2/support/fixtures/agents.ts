@@ -1,7 +1,6 @@
 import type {
   AgentAppComposerResponse,
   AgentDriveSkillListResponse,
-  AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import type { PreseededResource } from './common'
@@ -17,24 +16,20 @@ import {
   asRecord,
   asString,
   buildQuery,
+  failFixturePrerequisite,
   findConsoleResourceByName,
   hasNamedOrKeyedEntry,
-  skipBlockedPrecondition,
 } from './common'
-import { skipMissingReadyPreseededDataset } from './datasets'
-import { skipMissingAgentBuilderStableChatModel } from './models'
+import { requireReadyPreseededDataset } from './datasets'
+import { requireAgentBuilderStableChatModel } from './models'
 import {
   findToolEntry,
   hasToolEntry,
   hasUnauthorizedToolCredentialState,
-  skipMissingPreseededTool,
+  requirePreseededTool,
   splitToolDisplayName,
   splitToolResourceId,
 } from './tools'
-
-type AgentSoulDifyToolConfig = NonNullable<
-  NonNullable<AgentSoulConfig['tools']>['dify_tools']
->[number]
 
 const hasKnowledgeDataset = (soul: Record<string, unknown>, dataset: PreseededResource) => {
   const knowledge = asRecord(soul.knowledge)
@@ -80,19 +75,10 @@ const hasKnowledgeSet = (
   })
 }
 
-const getOAuth2ToolCredentialFixture = (toolItems: unknown[]) =>
-  toolItems.find((item) => {
-    const record = asRecord(item)
-
-    return (
-      record.credential_type === 'oauth2' && Boolean(asString(asRecord(record.credential_ref).id))
-    )
-  }) as AgentSoulDifyToolConfig | undefined
-
-export async function skipMissingPreseededAgent(
+export async function requirePreseededAgent(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | PreseededResource> {
+): Promise<PreseededResource> {
   const query = buildQuery({ limit: '20', name: resourceName, page: '1' })
   const resource = await findConsoleResourceByName({
     action: `Check preseeded Agent ${resourceName}`,
@@ -101,7 +87,7 @@ export async function skipMissingPreseededAgent(
   })
 
   if (!resource)
-    return skipBlockedPrecondition(world, `Preseeded Agent "${resourceName}" was not found.`)
+    return failFixturePrerequisite(world, `Preseeded Agent "${resourceName}" was not found.`)
 
   return {
     id: resource.id,
@@ -110,10 +96,10 @@ export async function skipMissingPreseededAgent(
   }
 }
 
-export async function skipMissingPreseededWorkflow(
+export async function requirePreseededWorkflow(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | PreseededResource> {
+): Promise<PreseededResource> {
   const query = buildQuery({ limit: '20', mode: 'workflow', name: resourceName, page: '1' })
   const resource = await findConsoleResourceByName({
     action: `Check preseeded workflow ${resourceName}`,
@@ -122,7 +108,7 @@ export async function skipMissingPreseededWorkflow(
   })
 
   if (!resource)
-    return skipBlockedPrecondition(world, `Preseeded workflow "${resourceName}" was not found.`)
+    return failFixturePrerequisite(world, `Preseeded workflow "${resourceName}" was not found.`)
 
   return {
     id: resource.id,
@@ -131,13 +117,12 @@ export async function skipMissingPreseededWorkflow(
   }
 }
 
-export async function skipMissingPreseededAgentDriveSkill(
+export async function requirePreseededAgentDriveSkill(
   world: DifyWorld,
   agentName: string,
   skillName: string,
-): Promise<'skipped' | PreseededResource> {
-  const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+): Promise<PreseededResource> {
+  const agent = await requirePreseededAgent(world, agentName)
 
   const ctx = await createApiContext()
   try {
@@ -147,7 +132,7 @@ export async function skipMissingPreseededAgentDriveSkill(
     const skill = body.items?.find((item) => item.name === skillName)
 
     if (!skill) {
-      return skipBlockedPrecondition(
+      return failFixturePrerequisite(
         world,
         `Preseeded Agent "${agentName}" does not include drive skill "${skillName}".`,
       )
@@ -163,34 +148,26 @@ export async function skipMissingPreseededAgentDriveSkill(
   }
 }
 
-export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
+export async function requirePreseededFullConfigAgentCoreConfiguration(
   world: DifyWorld,
   agentName: string,
-): Promise<'skipped' | PreseededResource> {
-  const stableModel = await skipMissingAgentBuilderStableChatModel(world)
-  if (stableModel === 'skipped') return stableModel
+): Promise<PreseededResource> {
+  const stableModel = await requireAgentBuilderStableChatModel(world)
 
-  const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+  const agent = await requirePreseededAgent(world, agentName)
 
-  const summarySkill = await skipMissingPreseededAgentDriveSkill(
+  await requirePreseededAgentDriveSkill(
     world,
     agentName,
     agentBuilderPreseededResources.summarySkill,
   )
-  if (summarySkill === 'skipped') return summarySkill
 
-  const jsonTool = await skipMissingPreseededTool(
-    world,
-    agentBuilderPreseededResources.jsonReplaceTool,
-  )
-  if (jsonTool === 'skipped') return jsonTool
+  const jsonTool = await requirePreseededTool(world, agentBuilderPreseededResources.jsonReplaceTool)
 
-  const knowledgeBase = await skipMissingReadyPreseededDataset(
+  const knowledgeBase = await requireReadyPreseededDataset(
     world,
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
-  if (knowledgeBase === 'skipped') return knowledgeBase
 
   const ctx = await createApiContext()
   try {
@@ -238,7 +215,7 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
       missing.push(agentBuilderPreseededResources.agentKnowledgeBase)
 
     if (missing.length > 0) {
-      return skipBlockedPrecondition(
+      return failFixturePrerequisite(
         world,
         `Preseeded Agent "${agentName}" is missing core fixture configuration: ${missing.join(', ')}.`,
       )
@@ -250,31 +227,24 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
   }
 }
 
-export async function skipMissingPreseededToolStatesAgentConfiguration(
+export async function requirePreseededToolStatesAgentConfiguration(
   world: DifyWorld,
   agentName: string,
-): Promise<'skipped' | PreseededResource> {
-  const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+): Promise<PreseededResource> {
+  const agent = await requirePreseededAgent(world, agentName)
 
-  const summarySkill = await skipMissingPreseededAgentDriveSkill(
+  await requirePreseededAgentDriveSkill(
     world,
     agentName,
     agentBuilderPreseededResources.summarySkill,
   )
-  if (summarySkill === 'skipped') return summarySkill
 
-  const jsonTool = await skipMissingPreseededTool(
-    world,
-    agentBuilderPreseededResources.jsonReplaceTool,
-  )
-  if (jsonTool === 'skipped') return jsonTool
+  const jsonTool = await requirePreseededTool(world, agentBuilderPreseededResources.jsonReplaceTool)
 
-  const tavilyTool = await skipMissingPreseededTool(
+  const tavilyTool = await requirePreseededTool(
     world,
     agentBuilderPreseededResources.tavilySearchTool,
   )
-  if (tavilyTool === 'skipped') return tavilyTool
 
   const ctx = await createApiContext()
   try {
@@ -327,7 +297,7 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
     }
 
     if (missing.length > 0) {
-      return skipBlockedPrecondition(
+      return failFixturePrerequisite(
         world,
         `Preseeded Agent "${agentName}" is missing tool state fixture configuration: ${missing.join(', ')}.`,
       )
@@ -339,76 +309,16 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
   }
 }
 
-export async function skipMissingPreseededOAuthToolAgentConfiguration(
+export async function requirePreseededDualRetrievalAgentConfiguration(
   world: DifyWorld,
   agentName: string,
-): Promise<'skipped' | PreseededResource> {
-  const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+): Promise<PreseededResource> {
+  const agent = await requirePreseededAgent(world, agentName)
 
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
-    await expectApiResponseOK(
-      response,
-      `Check preseeded Agent OAuth2 tool configuration ${agentName}`,
-    )
-    const body = (await response.json()) as AgentAppComposerResponse
-    const toolItems = asArray(asRecord(body.agent_soul?.tools).dify_tools)
-    const oauthTool = getOAuth2ToolCredentialFixture(toolItems)
-
-    if (!oauthTool) {
-      return skipBlockedPrecondition(
-        world,
-        `Preseeded Agent "${agentName}" is missing an OAuth2 tool with a credential reference.`,
-        {
-          owner: 'seed',
-          remediation:
-            'Seed an Agent v2 fixture that includes a built-in OAuth2 tool with credential_type oauth2 and credential_ref.id.',
-        },
-      )
-    }
-
-    return agent
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export async function getPreseededOAuthToolConfig(
-  agentId: string,
-): Promise<AgentSoulDifyToolConfig> {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agentId}/composer`)
-    await expectApiResponseOK(response, `Get preseeded Agent OAuth2 tool config ${agentId}`)
-    const body = (await response.json()) as AgentAppComposerResponse
-    const toolItems = asArray(asRecord(body.agent_soul?.tools).dify_tools)
-    const oauthTool = getOAuth2ToolCredentialFixture(toolItems)
-
-    if (!oauthTool)
-      throw new Error(
-        `Preseeded Agent ${agentId} does not include an OAuth2 tool credential fixture.`,
-      )
-
-    return oauthTool
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export async function skipMissingPreseededDualRetrievalAgentConfiguration(
-  world: DifyWorld,
-  agentName: string,
-): Promise<'skipped' | PreseededResource> {
-  const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
-
-  const knowledgeBase = await skipMissingReadyPreseededDataset(
+  const knowledgeBase = await requireReadyPreseededDataset(
     world,
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
-  if (knowledgeBase === 'skipped') return knowledgeBase
 
   const ctx = await createApiContext()
   try {
@@ -431,7 +341,7 @@ export async function skipMissingPreseededDualRetrievalAgentConfiguration(
     }
 
     if (missing.length > 0) {
-      return skipBlockedPrecondition(
+      return failFixturePrerequisite(
         world,
         `Preseeded Agent "${agentName}" is missing dual retrieval fixture configuration: ${missing.join(', ')}.`,
       )
