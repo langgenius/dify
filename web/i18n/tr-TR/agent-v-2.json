@@ -89,7 +89,6 @@
   "agentDetail.configure.chatFeatures.title": "Sohbet Özellikleri",
   "agentDetail.configure.clearSessionConfirm.description": "Bu işlem geçerli oturumu temizler ve henüz uygulanmamış Agent yapılandırma değişikliklerini vazgeçer.",
   "agentDetail.configure.clearSessionConfirm.title": "Oturumu temizleyip değişikliklerden vazgeçilsin mi?",
-  "agentDetail.configure.communityEditionIsolationTip": "Community Edition, son kullanıcılar veya çalıştırmalar arasında katı dosya sistemi yalıtımı sağlamaz. Veri yalıtımı veya sıkı uyumluluk gerektiğinde aynı CE ajanını birden fazla bağımsız son kullanıcıya açmayın.",
   "agentDetail.configure.files.add": "Dosya ekle",
   "agentDetail.configure.files.buildNote.generated": "Oluşturuldu",
   "agentDetail.configure.files.buildNote.richTooltip": "Agent'ın Build mode'da kurduğu şeylerin kaydı. Her konuşmanın başında bunu Prompt'unuzla birlikte okur. <docLink>Daha fazla bilgi</docLink>",
