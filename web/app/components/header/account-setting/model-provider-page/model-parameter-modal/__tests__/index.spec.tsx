@@ -404,9 +404,8 @@ describe('ModelParameterModal', () => {
   })
 
   it('should not append the first token timeout parameter for workflow panels that do not support it', () => {
-    // Being in a workflow is not enough: panels whose model config is not consumed
-    // by fetch_model_config (knowledge retrieval, tool/trigger model params) must
-    // not render a dead setting.
+    // Workflow context alone must not render it — that would be dead config on
+    // panels the backend does not consume.
     render(<ModelParameterModal {...defaultProps} isAdvancedMode isInWorkflow />)
 
     openSettings()

@@ -154,12 +154,9 @@ def _guarded_stream(
 ) -> Generator[Any, None, None]:
     """Iterate ``inner`` with the first-token-timeout ContextVar set.
 
-    Setting it inside the generator keeps it active for exactly the span of iteration,
-    which is when the plugin-daemon transport (`_stream_request`) reads it to arm the
-    first-token watchdog. Enforcement stays in the transport; this only carries the value.
-
-    This assumes the transport runs in the same thread as this iteration: a background-thread
-    SSE prefetch would not see the ContextVar and the gate would fail open (no enforcement).
+    Keeps the value active for exactly the span of iteration, which is when the
+    plugin-daemon transport reads it. Same-thread only: a background-thread SSE
+    prefetch would not see it and the gate fails open.
     """
     token = first_token_timeout_ctx.set(seconds)
     try:
@@ -171,15 +168,9 @@ def _guarded_stream(
 def _with_first_token_timeout[T](first_token_timeout: float | None, invoke: Callable[[], T]) -> T:
     """Run ``invoke`` with the first-token-timeout ContextVar applied.
 
-    ``first_token_timeout`` is in **seconds** and comes from
-    ``ModelInstance.first_token_timeout``, populated at the workflow model-config
-    boundary from ``completion_params`` (see ``core.app.llm.model_access``). This is
-    the single chokepoint both ``invoke_llm`` and ``invoke_llm_with_structured_output``
-    funnel through.
-
-    A streaming result is lazy, so its generator is wrapped to keep the ContextVar set
-    during iteration; a non-stream result is produced eagerly under the gate. A
-    non-positive timeout (None / 0 / negative) is treated as disabled.
+    ``first_token_timeout`` is seconds, from ``ModelInstance.first_token_timeout``.
+    A streaming result is lazy, so its generator is wrapped to keep the ContextVar
+    set during iteration; a non-positive timeout disables the gate.
     """
     if first_token_timeout is None or first_token_timeout <= 0:
         return invoke()

@@ -162,8 +162,7 @@ def test_read_timeout_after_first_line_is_transport_error(mocker: MockerFixture)
     first_token_timeout_ctx.set(0.5)
 
     # First token already seen -> a later read timeout is an inter-token stall, not a
-    # first-token timeout. With the gate on, the message names the configured window so
-    # the stall is traceable to the user's setting.
+    # first-token timeout.
     with pytest.raises(PluginDaemonInnerError) as exc_info:
         list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
     assert "0.5s first-token timeout window" in exc_info.value.message
@@ -196,14 +195,10 @@ def test_non_timeout_request_error_is_transport_error(mocker: MockerFixture) -> 
 
 
 def test_first_token_timeout_error_survives_graphon_invoke_error_transform() -> None:
-    """Pin the graphon behavior the error_type contract depends on.
-
-    Workflow observability surfaces error_type == "FirstTokenTimeoutError" only because
-    graphon's ``AIModel._transform_invoke_error`` returns the original exception unchanged:
-    ``InvokeError`` subclasses ``ValueError`` and the default mapping carries a
-    ``ValueError -> [ValueError]`` passthrough entry. If a graphon bump changes either
-    fact, the error type silently degrades to a generic ``InvokeError`` and per-type
-    error handling / observability breaks — this test turns that into a loud failure.
+    """error_type == "FirstTokenTimeoutError" relies on graphon passing the exception
+    through ``_transform_invoke_error`` unchanged (``InvokeError`` subclasses
+    ``ValueError``, whose mapping entry returns the original error). A graphon bump
+    breaking either fact would silently degrade the type — fail loudly here instead.
     """
     from graphon.model_runtime.errors.invoke import InvokeError
     from graphon.model_runtime.model_providers.base.ai_model import AIModel

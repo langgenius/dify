@@ -144,10 +144,8 @@ def _normalize_completion_params(
     returned config entity aligned here so callers do not need to duplicate
     normalization logic.
 
-    ``first_token_timeout_ms`` is user-facing config in milliseconds; it is consumed
-    here and never forwarded to providers. This is the only place the value is
-    converted to the seconds used everywhere downstream. Invalid values
-    (non-numeric, bool, non-positive) disable the gate.
+    ``first_token_timeout_ms`` never reaches providers; this is the only ms->s
+    conversion on the path. Invalid values disable the gate.
     """
     normalized_parameters = dict(completion_params)
     stop = normalized_parameters.pop("stop", [])

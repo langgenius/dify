@@ -40,9 +40,8 @@ export type ModelParameterModalProps = {
   renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
   isInWorkflow?: boolean
-  // Only LLM-compatible node panels (LLM / question classifier / parameter
-  // extractor) should pass this: the backend consumes the value solely on
-  // their model-config path, so rendering it elsewhere yields dead config.
+  // Pass only from panels whose model config the backend consumes
+  // (LLM / question classifier / parameter extractor); elsewhere it is dead config.
   supportFirstTokenTimeout?: boolean
   scope?: string
   nodesOutputVars?: NodeOutPutVar[]
