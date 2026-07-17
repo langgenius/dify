@@ -10,7 +10,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 import core.llm_generator.llm_generator as generator_module
-from core.app.app_config.entities import ModelConfig
 from core.llm_generator.llm_generator import LLMGenerator, _parse_string_list
 from models.dataset import Dataset
 
