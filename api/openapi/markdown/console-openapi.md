@@ -21092,7 +21092,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| retrieval_method | [ string ] |  | Yes |
+| retrieval_method | [ [RetrievalMethod](#retrievalmethod) ] |  | Yes |
 
 #### RetrieverResource
 
