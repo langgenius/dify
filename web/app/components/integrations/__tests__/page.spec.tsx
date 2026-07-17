@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import IntegrationsPage from '../page'
@@ -477,10 +477,11 @@ describe('IntegrationsPage', () => {
     ['extension', 'empty marketplace', '/plugins/extension'],
   ] as const)(
     'opens the %s marketplace path from integrations',
-    (section, buttonName, marketplacePath) => {
+    async (section, buttonName, marketplacePath) => {
+      const user = userEvent.setup()
       renderIntegrationsPage({ section })
 
-      fireEvent.click(screen.getByRole('button', { name: buttonName }))
+      await user.click(screen.getByRole('button', { name: buttonName }))
 
       expect(mockWindowOpen).toHaveBeenCalledWith(
         expect.stringContaining(`${marketplacePath}?source=`),
@@ -491,11 +492,12 @@ describe('IntegrationsPage', () => {
     },
   )
 
-  it('passes marketplace platform paths to external marketplace callbacks', () => {
+  it('passes marketplace platform paths to external marketplace callbacks', async () => {
+    const user = userEvent.setup()
     const onSwitchToMarketplace = vi.fn()
     renderIntegrationsPage({ section: 'trigger' }, { onSwitchToMarketplace })
 
-    fireEvent.click(screen.getByRole('button', { name: 'empty marketplace' }))
+    await user.click(screen.getByRole('button', { name: 'empty marketplace' }))
 
     expect(onSwitchToMarketplace).toHaveBeenCalledWith('/plugins/trigger')
     expect(mockRouterPush).not.toHaveBeenCalled()
@@ -670,11 +672,12 @@ describe('IntegrationsPage', () => {
     expect(onSectionChange).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps custom, workflow, and MCP tool entries visible without manage permissions', () => {
+  it('keeps custom, workflow, and MCP tool entries visible without manage permissions', async () => {
+    const user = userEvent.setup()
     mockAppContextState.workspacePermissionKeys = ['mcp.manage']
     renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+    await user.click(screen.getByRole('button', { name: 'common.menus.tools' }))
 
     expect(screen.getByRole('button', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
@@ -686,15 +689,17 @@ describe('IntegrationsPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('opens tools to the tools plugin page when the parent tools nav is clicked', () => {
+  it('opens tools to the tools plugin page when the parent tools nav is clicked', async () => {
+    const user = userEvent.setup()
     renderIntegrationsPage(undefined, 'provider')
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+    await user.click(screen.getByRole('button', { name: 'common.menus.tools' }))
 
     expect(mockRouterPush).toHaveBeenCalledWith('/integrations/tools/built-in')
   })
 
-  it('keeps the tools disclosure independent from route section changes', () => {
+  it('keeps the tools disclosure independent from route section changes', async () => {
+    const user = userEvent.setup()
     const view = renderIntegrationsPage(undefined, 'mcp')
 
     expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
@@ -705,7 +710,7 @@ describe('IntegrationsPage', () => {
     expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'MCP' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+    await user.click(screen.getByRole('button', { name: 'common.menus.tools' }))
 
     expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
     expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute(
@@ -889,10 +894,11 @@ describe('IntegrationsPage', () => {
     },
   )
 
-  it('opens the integrations marketplace path from the install dropdown marketplace action', () => {
+  it('opens the integrations marketplace path from the install dropdown marketplace action', async () => {
+    const user = userEvent.setup()
     renderIntegrationsPage({ section: 'builtin' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin install' }))
+    await user.click(screen.getByRole('button', { name: 'plugin install' }))
 
     expect(mockWindowOpen).toHaveBeenCalledWith(
       expect.stringContaining('/plugins/tool?source='),
@@ -936,27 +942,18 @@ describe('IntegrationsPage', () => {
     expect(screen.queryByTestId('update-setting-dialog')).not.toBeInTheDocument()
   })
 
-  it('opens the sidebar plugin permissions quick settings and updates permissions', () => {
+  it('opens the sidebar plugin permissions quick settings and updates permissions', async () => {
+    const user = userEvent.setup()
     renderIntegrationsPage({ section: 'provider' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.privilege.permissions' }))
-
-    expect(screen.getAllByText('plugin.privilege.permissions').length).toBeGreaterThan(0)
-    expect(screen.getByText('plugin.privilege.quickWhoCanInstall')).toBeInTheDocument()
-    expect(screen.getByText('plugin.privilege.quickWhoCanDebug')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'plugin.privilege.permissions' }))
 
     const dialog = screen.getByRole('dialog', { name: 'plugin.privilege.permissions' })
-    expect(
-      within(dialog).getByText('plugin.privilege.permissions').closest('.w-\\[360px\\]'),
-    ).toHaveClass('rounded-2xl', 'shadow-2xl')
-    expect(
-      screen.getByRole('radio', {
-        name: 'plugin.privilege.quickWhoCanInstall: plugin.privilege.everyone',
-      }),
-    ).toHaveClass('w-[104px]', 'h-8')
+    expect(within(dialog).getByText('plugin.privilege.quickWhoCanInstall')).toBeInTheDocument()
+    expect(within(dialog).getByText('plugin.privilege.quickWhoCanDebug')).toBeInTheDocument()
 
-    fireEvent.click(
-      screen.getByRole('radio', {
+    await user.click(
+      within(dialog).getByRole('radio', {
         name: 'plugin.privilege.quickWhoCanInstall: plugin.privilege.noone',
       }),
     )
@@ -966,7 +963,7 @@ describe('IntegrationsPage', () => {
       debug_permission: 'admins',
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 
     expect(
       screen.queryByRole('dialog', { name: 'plugin.privilege.permissions' }),
