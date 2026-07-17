@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  */
 
 let mockPostMarketplaceShouldFail = false
+const mockPostMarketplace = vi.hoisted(() => vi.fn())
 const mockPostMarketplaceResponse = {
   data: {
     plugins: [{ type: 'plugin', org: 'test', name: 'plugin1', tags: [] }],
@@ -16,12 +17,12 @@ const mockPostMarketplaceResponse = {
   },
 }
 
-vi.mock('@/service/base', () => ({
-  postMarketplace: vi.fn(async () => {
-    if (mockPostMarketplaceShouldFail) throw new Error('Mock API error')
-    return mockPostMarketplaceResponse
-  }),
-}))
+mockPostMarketplace.mockImplementation(async () => {
+  if (mockPostMarketplaceShouldFail) throw new Error('Mock API error')
+  return mockPostMarketplaceResponse
+})
+
+vi.mock('@/service/base', () => ({ postMarketplace: mockPostMarketplace }))
 
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',
@@ -169,8 +170,7 @@ describe('useMarketplacePlugins (integration)', () => {
 
   it('should show isLoading during initial fetch', async () => {
     // Delay the response so we can observe the loading state
-    const { postMarketplace } = await import('@/service/base')
-    vi.mocked(postMarketplace).mockImplementationOnce(
+    mockPostMarketplace.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           setTimeout(
@@ -234,8 +234,7 @@ describe('useMarketplacePlugins (integration)', () => {
         total: 1,
       },
     }
-    const { postMarketplace } = await import('@/service/base')
-    vi.mocked(postMarketplace).mockResolvedValueOnce(bundleResponse)
+    mockPostMarketplace.mockResolvedValueOnce(bundleResponse)
 
     const { useMarketplacePlugins } = await import('../hooks')
     const { Wrapper } = createWrapper()
@@ -323,8 +322,7 @@ describe('useMarketplacePlugins (integration)', () => {
   })
 
   it('should handle response with bundles field (bundles || plugins fallback)', async () => {
-    const { postMarketplace } = await import('@/service/base')
-    vi.mocked(postMarketplace).mockResolvedValueOnce({
+    mockPostMarketplace.mockResolvedValueOnce({
       data: {
         bundles: [
           { type: 'bundle', org: 'test', name: 'b1', tags: [], description: 'desc', labels: {} },
@@ -352,8 +350,7 @@ describe('useMarketplacePlugins (integration)', () => {
   })
 
   it('should handle response with no bundles and no plugins (empty fallback)', async () => {
-    const { postMarketplace } = await import('@/service/base')
-    vi.mocked(postMarketplace).mockResolvedValueOnce({
+    mockPostMarketplace.mockResolvedValueOnce({
       data: {
         total: 0,
       },

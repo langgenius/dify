@@ -89,6 +89,7 @@
   "agentDetail.configure.chatFeatures.title": "चैट सुविधाएँ",
   "agentDetail.configure.clearSessionConfirm.description": "यह मौजूदा सेशन साफ़ कर देगा और Agent कॉन्फ़िगरेशन के वे बदलाव छोड़ देगा जो अभी लागू नहीं हुए हैं।",
   "agentDetail.configure.clearSessionConfirm.title": "सेशन साफ़ करके बदलाव छोड़ें?",
+  "agentDetail.configure.communityEditionIsolationTip": "अस्वीकरण: Community Edition में sandbox, Docker के डिफ़ॉल्ट capability configuration के अंतर्गत non-root उपयोगकर्ता के रूप में चलता है और Agent की अपनी फ़ाइलों तथा session files के लिए केवल सीमित Landlock-आधारित सुरक्षा प्रदान करता है। सर्वर और सभी shell subprocesses एक ही PID namespace और container-level capability boundary साझा करते हैं, इसलिए इसे मज़बूत रूप से पृथक multi-layer security sandbox नहीं माना जाना चाहिए।",
   "agentDetail.configure.files.add": "फ़ाइल जोड़ें",
   "agentDetail.configure.files.buildNote.generated": "जनरेट किया गया",
   "agentDetail.configure.files.buildNote.richTooltip": "Build mode में एजेंट ने जो सेट अप किया उसका रिकॉर्ड। हर बातचीत की शुरुआत में यह इसे आपके Prompt के साथ पढ़ता है। <docLink>और जानें</docLink>",
