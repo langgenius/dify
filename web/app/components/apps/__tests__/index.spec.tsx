@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useContextSelector } from 'use-context-selector'
 import AppListContext from '@/context/app-list-context'
@@ -132,7 +134,13 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('../list', () => {
-  const MockList = () => {
+  const MockList = ({
+    onCreateLearnDify,
+    onTryLearnDify,
+  }: {
+    onCreateLearnDify?: (app: App) => void
+    onTryLearnDify?: (params: TryAppSelection) => void
+  }) => {
     const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
     return React.createElement(
       'div',
@@ -149,6 +157,19 @@ vi.mock('../list', () => {
             }),
         },
         'Open Preview',
+      ),
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          onClick: () => onTryLearnDify?.({ appId: mockTemplateApp.app_id, app: mockTemplateApp }),
+        },
+        'Preview Learn Dify template',
+      ),
+      React.createElement(
+        'button',
+        { type: 'button', onClick: () => onCreateLearnDify?.(mockTemplateApp) },
+        'Create Learn Dify template',
       ),
     )
   }
@@ -363,6 +384,24 @@ describe('Apps', () => {
           templateId: 'template-1',
         })
       })
+    })
+
+    it('should open the template preview from Learn Dify', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
+
+      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
+    })
+
+    it('should open the create modal from Learn Dify', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
+
+      expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
     })
 
     it('should track template preview creation after confirming a pending import', async () => {
