@@ -1008,7 +1008,7 @@ class TestTenantService:
         assert target_join.role == TenantAccountRole.ADMIN
 
     @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
-    def test_create_owner_tenant_if_not_exist_rbac_enabled_assigns_owner_role(
+    def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
         self, sqlite_session: Session, mock_external_service_dependencies
     ):
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
@@ -1034,7 +1034,7 @@ class TestTenantService:
             patch("services.account_service.RBACService") as mock_rbac_service,
             patch("services.account_service.tenant_was_created.send"),
         ):
-            TenantService.create_owner_tenant_if_not_exist(mock_account, is_setup=True, session=sqlite_session)
+            TenantService.create_owner_tenant(mock_account, is_setup=True, session=sqlite_session)
 
         mock_rbac_service.MemberRoles.replace.assert_called_once_with(
             tenant_id="tenant-rbac",
@@ -1476,16 +1476,9 @@ class TestRegisterService:
         with patch("services.account_service.AccountService.create_account") as mock_create_account:
             mock_create_account.return_value = mock_account
 
-            # Mock TenantService.create_tenant and create_tenant_member
             with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
+                patch("services.account_service.TenantService.create_owner_tenant") as mock_create_owner_tenant,
             ):
-                mock_tenant = MagicMock()
-                mock_tenant.id = "tenant-456"
-                mock_create_tenant.return_value = mock_tenant
-
                 # Execute test
                 result = RegisterService.register(
                     email="test@example.com",
@@ -1508,9 +1501,7 @@ class TestRegisterService:
                     timezone=None,
                     session=sqlite_session,
                 )
-                mock_create_tenant.assert_called_once_with("Test User's Workspace", session=sqlite_session)
-                mock_create_member.assert_called_once_with(mock_tenant, mock_account, sqlite_session, role="owner")
-                mock_event.send.assert_called_once_with(mock_tenant)
+                mock_create_owner_tenant.assert_called_once_with(mock_account, session=sqlite_session)
 
     def test_register_calls_default_workspace_join_when_enterprise_enabled(
         self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch

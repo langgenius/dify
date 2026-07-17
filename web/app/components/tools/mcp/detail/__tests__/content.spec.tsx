@@ -226,11 +226,6 @@ describe('MCPDetailContent', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('Test MCP Server'))!.toBeInTheDocument()
-    })
-
     it('should display MCP name', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('Test MCP Server'))!.toBeInTheDocument()

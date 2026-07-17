@@ -1,6 +1,7 @@
 import type { AgentComposerAgentResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { FlowType } from '@/types/common'
 import { SaveInlineAgentToRosterDialog } from '../save-inline-agent-to-roster-dialog'
 
 const mutationMock = vi.hoisted(() => ({
@@ -68,6 +69,25 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
+    snippets: {
+      bySnippetId: {
+        workflows: {
+          draft: {
+            nodes: {
+              byNodeId: {
+                agentComposer: {
+                  saveToRoster: {
+                    post: {
+                      mutationOptions: vi.fn(() => ({})),
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
 }))
 
@@ -90,7 +110,8 @@ const renderDialog = (agent: AgentComposerAgentResponse = inlineAgent) => {
 
   render(
     <SaveInlineAgentToRosterDialog
-      appId="app-1"
+      flowId="app-1"
+      flowType={FlowType.appFlow}
       formKey={1}
       initialAgent={agent}
       nodeId="node-1"
@@ -153,6 +174,46 @@ describe('SaveInlineAgentToRosterDialog', () => {
     )
     const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
     expect(mutationOptions).not.toHaveProperty('onError')
+  })
+
+  it('saves the inline agent to roster through the snippet composer API', async () => {
+    const user = userEvent.setup()
+    render(
+      <SaveInlineAgentToRosterDialog
+        flowId="snippet-1"
+        flowType={FlowType.snippet}
+        formKey={1}
+        initialAgent={inlineAgent}
+        nodeId="node-1"
+        open
+        onOpenChange={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      'Snippet Agent',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+    expect(mutationMock.mutate).toHaveBeenCalledWith(
+      {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'node-1',
+        },
+        body: expect.objectContaining({
+          variant: 'workflow',
+          save_strategy: 'save_to_roster',
+          new_agent_name: 'Snippet Agent',
+        }),
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
   })
 
   it('submits the visible default icon when the inline agent has no icon metadata', async () => {

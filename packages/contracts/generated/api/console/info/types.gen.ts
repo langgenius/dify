@@ -15,6 +15,7 @@ export type TenantInfoResponse = {
   role?: string | null
   status?: string | null
   trial_credits?: number | null
+  trial_credits_exhausted_at?: number | null
   trial_credits_used?: number | null
   trial_end_reason?: string | null
 }

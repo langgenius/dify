@@ -61,16 +61,33 @@ class WorkflowAgentNodeValidator:
 
     @classmethod
     def validate_draft_workflow(cls, *, session: Session, workflow: Workflow) -> None:
-        cls._validate_workflow(session=session, workflow=workflow, require_binding=False)
+        cls._validate_workflow(
+            session=session,
+            workflow=workflow,
+            require_binding=False,
+            validate_previous_node_topology=False,
+        )
 
     @classmethod
     def validate_published_workflow(cls, *, session: Session, workflow: Workflow) -> None:
-        cls._validate_workflow(session=session, workflow=workflow, require_binding=True)
+        cls._validate_workflow(
+            session=session,
+            workflow=workflow,
+            require_binding=True,
+            validate_previous_node_topology=True,
+        )
 
     @classmethod
-    def _validate_workflow(cls, *, session: Session, workflow: Workflow, require_binding: bool) -> None:
+    def _validate_workflow(
+        cls,
+        *,
+        session: Session,
+        workflow: Workflow,
+        require_binding: bool,
+        validate_previous_node_topology: bool,
+    ) -> None:
         graph = workflow.graph_dict
-        topology = _WorkflowGraphTopology.from_graph(graph)
+        topology = _WorkflowGraphTopology.from_graph(graph) if validate_previous_node_topology else None
         for node_id, node_data in cls.iter_agent_v2_nodes(graph):
             cls._validate_node_schema(node_id=node_id, node_data=node_data)
             binding = cls._find_binding(
@@ -185,12 +202,12 @@ class WorkflowAgentNodeValidator:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has invalid previous node output ref."
                 )
-            if topology is None:
-                continue
             if len(selector) < 2:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has incomplete previous node output ref."
                 )
+            if topology is None:
+                continue
             source_node_id = selector[0]
             if not topology.has_node(source_node_id):
                 raise WorkflowAgentNodeValidationError(

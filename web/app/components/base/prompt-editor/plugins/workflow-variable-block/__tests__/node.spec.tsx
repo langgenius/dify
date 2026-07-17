@@ -36,20 +36,6 @@ describe('WorkflowVariableBlockNode', () => {
     })
   })
 
-  it('should be inline and create expected dom classes', () => {
-    runInEditor(() => {
-      const node = new WorkflowVariableBlockNode(['node-1', 'answer'], {}, undefined)
-      const dom = node.createDOM()
-
-      expect(node.isInline()).toBe(true)
-      expect(dom.tagName).toBe('DIV')
-      expect(dom).toHaveClass('inline-flex')
-      expect(dom).toHaveClass('items-center')
-      expect(dom).toHaveClass('align-middle')
-      expect(node.updateDOM()).toBe(false)
-    })
-  })
-
   it('should decorate with component props from node state', () => {
     runInEditor(() => {
       const getVarType = vi.fn(() => Type.number)

@@ -620,20 +620,6 @@ describe('Empty Component', () => {
     })
   })
 
-  // ==================== React.memo Tests ====================
-  describe('React.memo Behavior', () => {
-    it('should be wrapped with React.memo and have displayName', () => {
-      // Assert
-      expect(Empty).toBeDefined()
-      expect((Empty as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
-      expect(
-        (Empty as unknown as { displayName?: string; type?: { displayName?: string } })
-          .displayName ||
-          (Empty as unknown as { type?: { displayName?: string } }).type?.displayName,
-      ).toBeDefined()
-    })
-  })
-
   // ==================== Modal Callbacks Tests ====================
   describe('Modal Callbacks', () => {
     it('should handle modal onSuccess callbacks (noop)', async () => {

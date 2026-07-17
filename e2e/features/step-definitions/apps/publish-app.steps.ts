@@ -3,7 +3,7 @@ import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 
 When('I open the publish panel', async function (this: DifyWorld) {
-  await this.getPage().getByRole('button', { name: 'Publish' }).first().click()
+  await this.getPage().getByRole('button', { name: 'Publish', exact: true }).click()
 })
 
 When('I publish the app', async function (this: DifyWorld) {

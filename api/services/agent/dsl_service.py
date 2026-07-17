@@ -11,17 +11,14 @@ from __future__ import annotations
 
 import copy
 import json
-import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import event, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from constants.model_template import default_app_templates
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
-from events.app_event import app_was_created
 from graphon.enums import BuiltinNodeTypes
 from models import Account
 from models.agent import (
@@ -41,7 +38,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from models.model import App, AppMode, AppModelConfig, IconType
+from models.model import App, AppModelConfig
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.dsl_entities import (
@@ -56,8 +53,6 @@ from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-
-logger = logging.getLogger(__name__)
 
 
 class AgentPackageImportResult(BaseModel):
@@ -249,7 +244,7 @@ class AgentDslService:
         raw_packages: Mapping[str, Any],
         account: Account,
     ) -> tuple[dict[str, Any], list[DslImportWarning]]:
-        """Materialize packages and bindings for a Workflow or Snippet draft."""
+        """Materialize every packaged Agent as a node-owned inline Agent."""
 
         graph = copy.deepcopy(dict(portable_graph))
         packages = {key: AgentPackage.model_validate(value) for key, value in raw_packages.items()}
@@ -264,7 +259,6 @@ class AgentDslService:
         for binding in previous_bindings:
             self.session.delete(binding)
         self.session.flush()
-        imported_roster: dict[str, AgentPackageImportResult] = {}
         warnings: list[DslImportWarning] = []
 
         for node_id, raw_node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph):
@@ -280,28 +274,17 @@ class AgentDslService:
                 raise ValueError(f"Workflow Agent node {node_id} references unknown package {package_ref!r}.")
 
             try:
-                binding_type = WorkflowAgentBindingType(str(raw_binding.get("binding_type")))
+                WorkflowAgentBindingType(str(raw_binding.get("binding_type")))
             except ValueError as exc:
                 raise ValueError(f"Workflow Agent node {node_id} has an invalid binding type.") from exc
 
-            if binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
-                imported = imported_roster.get(package_ref)
-                if imported is None:
-                    imported = self._create_imported_roster_agent_app(
-                        tenant_id=workflow.tenant_id,
-                        account=account,
-                        package=package,
-                        package_path=f"agent_packages.{package_ref}",
-                    )
-                    imported_roster[package_ref] = imported
-            else:
-                imported = self._create_imported_inline_agent(
-                    workflow=workflow,
-                    node_id=node_id,
-                    account=account,
-                    package=package,
-                    package_path=f"agent_packages.{package_ref}",
-                )
+            imported = self._create_imported_inline_agent(
+                workflow=workflow,
+                node_id=node_id,
+                account=account,
+                package=package,
+                package_path=f"agent_packages.{package_ref}",
+            )
 
             node_job = WorkflowNodeJobConfig.model_validate(node_data.get(AGENT_NODE_JOB_DSL_KEY) or {})
             self.session.add(
@@ -311,7 +294,7 @@ class AgentDslService:
                     workflow_id=workflow.id,
                     workflow_version=workflow.version,
                     node_id=node_id,
-                    binding_type=binding_type,
+                    binding_type=WorkflowAgentBindingType.INLINE_AGENT,
                     agent_id=imported.agent.id,
                     current_snapshot_id=imported.snapshot.id,
                     node_job_config=node_job,
@@ -320,7 +303,7 @@ class AgentDslService:
                 )
             )
             node_data["agent_binding"] = {
-                "binding_type": binding_type.value,
+                "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
                 "agent_id": imported.agent.id,
                 "current_snapshot_id": imported.snapshot.id,
             }
@@ -401,43 +384,6 @@ class AgentDslService:
                         )
                     )
         return dependencies
-
-    def _create_imported_roster_agent_app(
-        self,
-        *,
-        tenant_id: str,
-        account: Account,
-        package: AgentPackage,
-        package_path: str,
-    ) -> AgentPackageImportResult:
-        metadata = package.metadata
-        app_template = dict(default_app_templates[AppMode.AGENT]["app"])
-        app = App(**app_template)
-        app.name = metadata.name
-        app.description = metadata.description
-        app.mode = AppMode.AGENT
-        app.icon_type = self._app_icon_type(metadata.icon_type)
-        app.icon = metadata.icon
-        app.icon_background = metadata.icon_background
-        app.tenant_id = tenant_id
-        app.enable_site = True
-        app.enable_api = True
-        app.created_by = account.id
-        app.maintainer = account.id
-        app.updated_by = account.id
-        self.session.add(app)
-        self.session.flush()
-        app_was_created.send(app, account=account)
-        self._configure_visible_agent_app_after_commit(
-            tenant_id=tenant_id,
-            app_id=app.id,
-            account_id=account.id,
-        )
-        result = self.import_agent_app_package(app=app, account=account, package=package)
-        result.warnings = [
-            warning.model_copy(update={"path": f"{package_path}.{warning.path}"}) for warning in result.warnings
-        ]
-        return result
 
     def _create_imported_inline_agent(
         self,
@@ -654,28 +600,6 @@ class AgentDslService:
         )
         return next(candidate for candidate in candidates if candidate not in existing)
 
-    def _configure_visible_agent_app_after_commit(self, *, tenant_id: str, app_id: str, account_id: str) -> None:
-        """Apply external RBAC and web-app visibility only after the DB transaction commits."""
-
-        def configure(_session: Session) -> None:
-            try:
-                from services.enterprise import rbac_service as enterprise_rbac_service
-                from services.enterprise.enterprise_service import EnterpriseService
-                from services.feature_service import FeatureService
-
-                enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
-                    tenant_id,
-                    account_id,
-                    enterprise_rbac_service.RBACResourceType.APP,
-                    app_id,
-                )
-                if FeatureService.get_system_features().webapp_auth.enabled:
-                    EnterpriseService.WebAppAuth.update_app_access_mode(app_id, "private")
-            except Exception:
-                logger.exception("Failed to configure imported Agent App %s after commit", app_id)
-
-        event.listen(self.session, "after_commit", configure, once=True)
-
     def _require_agent(self, *, tenant_id: str, agent_id: str) -> Agent:
         agent = self.session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
         if agent is None:
@@ -701,10 +625,6 @@ class AgentDslService:
     @staticmethod
     def _agent_icon_type(value: str | None) -> AgentIconType | None:
         return AgentIconType(value) if value else None
-
-    @staticmethod
-    def _app_icon_type(value: str | None) -> IconType:
-        return IconType(value) if value else IconType.EMOJI
 
 
 def is_agent_v2_graph(graph: Mapping[str, Any]) -> bool:

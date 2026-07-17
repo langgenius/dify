@@ -4,6 +4,15 @@ import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { RosterToolbar } from '../roster-toolbar'
 
+vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
+  default: ({ show, onSuccess }: { show: boolean; onSuccess?: () => void }) =>
+    show ? (
+      <div role="dialog" aria-label="agentV2.roster.importDSL">
+        <button onClick={onSuccess}>Complete agent import</button>
+      </div>
+    ) : null,
+}))
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -17,15 +26,38 @@ const renderToolbar = ({
 } = {}) => {
   const queryClient = new QueryClient()
 
-  return renderWithNuqs(
+  const result = renderWithNuqs(
     <QueryClientProvider client={queryClient}>
       <RosterToolbar draftAgents={2} publishedAgents={1} />
     </QueryClientProvider>,
     { searchParams },
   )
+
+  return { ...result, queryClient }
 }
 
 describe('RosterToolbar', () => {
+  it('opens the shared create menu for blank Agent creation and DSL import', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderToolbar()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+    expect(screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /app\.importDSL/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('menuitem', { name: /app\.importDSL/ }))
+
+    expect(
+      await screen.findByRole('dialog', { name: 'agentV2.roster.importDSL' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Complete agent import' }))
+
+    expect(invalidateQueries).toHaveBeenCalledTimes(1)
+  })
+
   it('enables roster filters and emits the selected filter', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderToolbar()

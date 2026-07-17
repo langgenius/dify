@@ -280,7 +280,7 @@ describe('MenuItem', () => {
       expect(parentClick).not.toHaveBeenCalled()
     })
 
-    it('should not crash when no click handler is provided', () => {
+    it('should prevent the default action when no click handler is provided', () => {
       render(<MenuItem name="Edit" Icon={TestEditIcon} />)
 
       const event = createEvent.click(screen.getByText('Edit'))

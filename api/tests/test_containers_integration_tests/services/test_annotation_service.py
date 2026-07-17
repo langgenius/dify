@@ -9,7 +9,7 @@ from models import Account
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
-from services.app_ref_service import AnnotationRef
+from services.app_ref_service import AnnotationRef, AppRef
 from services.app_service import AppService, CreateAppParams
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -122,7 +122,7 @@ class TestAnnotationService:
 
     @staticmethod
     def _annotation_ref(app, annotation_id: str) -> AnnotationRef:
-        return AnnotationRef(tenant_id=app.tenant_id, app_id=app.id, annotation_id=annotation_id)
+        return AnnotationRef(app=AppRef(tenant_id=app.tenant_id, app_id=app.id), annotation_id=annotation_id)
 
     def _create_test_conversation(self, db_session_with_containers: Session, app, account, fake):
         """
@@ -624,8 +624,7 @@ class TestAnnotationService:
         non_existent_app_id = fake.uuid4()
         annotation_id = fake.uuid4()
         app_ref = AnnotationRef(
-            tenant_id=fake.uuid4(),
-            app_id=non_existent_app_id,
+            app=AppRef(tenant_id=fake.uuid4(), app_id=non_existent_app_id),
             annotation_id=annotation_id,
         )
 

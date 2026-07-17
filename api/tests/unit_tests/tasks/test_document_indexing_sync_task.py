@@ -1,19 +1,27 @@
-"""
-Unit tests for collaborator parameter wiring in document_indexing_sync_task.
+"""Unit tests for document sync persistence and external collaborator wiring.
 
-These tests intentionally stay in unit scope because they validate call arguments
-for external collaborators rather than SQL-backed state transitions.
+The task's Dataset and Document lookups use real SQLite transactions. Datasource,
+Notion extraction, index cleanup, and indexing remain mocked I/O boundaries.
 """
 
 import json
 import uuid
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.db import session_factory as session_factory_module
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.dataset import Dataset, Document
+from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_sync_task import document_indexing_sync_task
+
+pytestmark = pytest.mark.parametrize(
+    "sqlite_session",
+    [(Dataset, Document, DocumentSegment)],
+    indirect=True,
+)
 
 
 @pytest.fixture
@@ -47,52 +55,72 @@ def credential_id() -> str:
 
 
 @pytest.fixture
-def mock_dataset(dataset_id):
-    """Create a minimal dataset mock used by the task pre-check."""
-    dataset = Mock(spec=Dataset)
-    dataset.id = dataset_id
+def tenant_id() -> str:
+    """Generate the tenant that owns the persisted dataset and document."""
+    return str(uuid.uuid4())
+
+
+@pytest.fixture
+def dataset(sqlite_session: Session, dataset_id: str, tenant_id: str) -> Dataset:
+    """Persist the dataset resolved by the task's initial and cleanup transactions."""
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Notion dataset",
+        data_source_type=DataSourceType.NOTION_IMPORT,
+        created_by=str(uuid.uuid4()),
+    )
+    sqlite_session.add(dataset)
+    sqlite_session.commit()
     return dataset
 
 
 @pytest.fixture
-def mock_document(document_id, dataset_id, notion_workspace_id, notion_page_id, credential_id):
-    """Create a minimal notion document mock for collaborator parameter assertions."""
-    document = Mock(spec=Document)
-    document.id = document_id
-    document.dataset_id = dataset_id
-    document.tenant_id = str(uuid.uuid4())
-    document.data_source_type = "notion_import"
-    document.indexing_status = "completed"
-    document.doc_form = IndexStructureType.PARAGRAPH_INDEX
-    document.data_source_info_dict = {
-        "notion_workspace_id": notion_workspace_id,
-        "notion_page_id": notion_page_id,
-        "type": "page",
-        "last_edited_time": "2024-01-01T00:00:00Z",
-        "credential_id": credential_id,
-    }
+def document(
+    sqlite_session: Session,
+    dataset: Dataset,
+    document_id: str,
+    tenant_id: str,
+    notion_workspace_id: str,
+    notion_page_id: str,
+    credential_id: str,
+) -> Document:
+    """Persist a completed Notion document for collaborator and update assertions."""
+    document = Document(
+        id=document_id,
+        tenant_id=tenant_id,
+        dataset_id=dataset.id,
+        position=1,
+        data_source_type=DataSourceType.NOTION_IMPORT,
+        data_source_info=json.dumps(
+            {
+                "notion_workspace_id": notion_workspace_id,
+                "notion_page_id": notion_page_id,
+                "type": "page",
+                "last_edited_time": "2024-01-01T00:00:00Z",
+                "credential_id": credential_id,
+            }
+        ),
+        batch="batch-1",
+        name="Notion page",
+        created_from=DocumentCreatedFrom.API,
+        created_by=str(uuid.uuid4()),
+        indexing_status=IndexingStatus.COMPLETED,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
+    sqlite_session.add(document)
+    sqlite_session.commit()
     return document
 
 
-@pytest.fixture
-def mock_db_session(mock_document, mock_dataset):
-    """Mock session_factory.create_session to drive deterministic read-only task flow."""
-    with patch("tasks.document_indexing_sync_task.session_factory", autospec=True) as mock_session_factory:
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = []
-        session.scalar.side_effect = [mock_document, mock_dataset]
-
-        begin_cm = MagicMock()
-        begin_cm.__enter__.return_value = session
-        begin_cm.__exit__.return_value = False
-        session.begin.return_value = begin_cm
-
-        session_cm = MagicMock()
-        session_cm.__enter__.return_value = session
-        session_cm.__exit__.return_value = False
-
-        mock_session_factory.create_session.return_value = session_cm
-        yield session
+@pytest.fixture(autouse=True)
+def _bind_sqlite_session_factory(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    """Bind each task-owned session to the test's isolated SQLite database."""
+    monkeypatch.setattr(
+        session_factory_module,
+        "_session_maker",
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+    )
 
 
 @pytest.fixture
@@ -120,10 +148,9 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
 
     def test_notion_extractor_initialized_with_correct_params(
         self,
-        mock_db_session,
         mock_datasource_provider_service,
         mock_notion_extractor,
-        mock_document,
+        document: Document,
         dataset_id: str,
         document_id: str,
         notion_workspace_id: str,
@@ -142,22 +169,21 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
             notion_obj_id=notion_page_id,
             notion_page_type="page",
             notion_access_token=expected_token,
-            tenant_id=mock_document.tenant_id,
+            tenant_id=document.tenant_id,
         )
 
     def test_datasource_credentials_requested_correctly(
         self,
-        mock_db_session,
         mock_datasource_provider_service,
         mock_notion_extractor,
-        mock_document,
+        document: Document,
         dataset_id: str,
         document_id: str,
         credential_id: str,
     ):
         """Test that datasource credentials are requested with expected identifiers."""
         # Arrange
-        expected_tenant_id = mock_document.tenant_id
+        expected_tenant_id = document.tenant_id
 
         # Act
         document_indexing_sync_task(dataset_id, document_id)
@@ -172,28 +198,31 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
 
     def test_credential_id_missing_uses_none(
         self,
-        mock_db_session,
         mock_datasource_provider_service,
         mock_notion_extractor,
-        mock_document,
+        document: Document,
+        sqlite_session: Session,
         dataset_id: str,
         document_id: str,
     ):
         """Test that missing credential_id is forwarded as None."""
         # Arrange
-        mock_document.data_source_info_dict = {
-            "notion_workspace_id": "workspace-id",
-            "notion_page_id": "page-id",
-            "type": "page",
-            "last_edited_time": "2024-01-01T00:00:00Z",
-        }
+        document.data_source_info = json.dumps(
+            {
+                "notion_workspace_id": "workspace-id",
+                "notion_page_id": "page-id",
+                "type": "page",
+                "last_edited_time": "2024-01-01T00:00:00Z",
+            }
+        )
+        sqlite_session.commit()
 
         # Act
         document_indexing_sync_task(dataset_id, document_id)
 
         # Assert
         mock_datasource_provider_service.get_datasource_credentials.assert_called_once_with(
-            tenant_id=mock_document.tenant_id,
+            tenant_id=document.tenant_id,
             credential_id=None,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
@@ -210,14 +239,13 @@ class TestDataSourceInfoSerialization:
 
     def test_data_source_info_serialized_as_json_string(
         self,
-        mock_document,
-        mock_dataset,
+        document: Document,
+        sqlite_session: Session,
         dataset_id: str,
         document_id: str,
     ):
         """data_source_info must be serialized with json.dumps before DB write."""
         with (
-            patch("tasks.document_indexing_sync_task.session_factory") as mock_session_factory,
             patch("tasks.document_indexing_sync_task.DatasourceProviderService") as mock_service_class,
             patch("tasks.document_indexing_sync_task.NotionExtractor") as mock_extractor_class,
             patch("tasks.document_indexing_sync_task.IndexProcessorFactory") as mock_ipf,
@@ -239,32 +267,17 @@ class TestDataSourceInfoSerialization:
             mock_runner = MagicMock()
             mock_runner_class.return_value = mock_runner
 
-            # DB session mock — shared across all ``session_factory.create_session()`` calls.
-            session = MagicMock()
-            session.scalars.return_value.all.return_value = []
-            session.scalar.side_effect = [
-                mock_document,
-                mock_dataset,
-                mock_document,
-                mock_dataset,
-            ]
-
-            begin_cm = MagicMock()
-            begin_cm.__enter__.return_value = session
-            begin_cm.__exit__.return_value = False
-            session.begin.return_value = begin_cm
-
-            session_cm = MagicMock()
-            session_cm.__enter__.return_value = session
-            session_cm.__exit__.return_value = False
-            mock_session_factory.create_session.return_value = session_cm
-
             # Act
             document_indexing_sync_task(dataset_id, document_id)
 
             # Assert: data_source_info must be a JSON *string*, not a dict
-            assert isinstance(mock_document.data_source_info, str), (
-                f"data_source_info should be a JSON string, got {type(mock_document.data_source_info).__name__}"
+            sqlite_session.expire_all()
+            stored_document = sqlite_session.get(Document, document.id)
+            assert stored_document is not None
+            assert isinstance(stored_document.data_source_info, str), (
+                f"data_source_info should be a JSON string, got {type(stored_document.data_source_info).__name__}"
             )
-            parsed = json.loads(mock_document.data_source_info)
+            parsed = json.loads(stored_document.data_source_info)
             assert parsed["last_edited_time"] == "2024-02-01T00:00:00Z"
+            assert stored_document.indexing_status == IndexingStatus.PARSING
+            assert stored_document.processing_started_at is not None

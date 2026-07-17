@@ -84,7 +84,6 @@ describe('EmbeddedChatbot Header', () => {
     it('should render desktop header with branding by default', async () => {
       render(<Header title="Test Chatbot" />)
 
-      expect(screen.getByTestId('webapp-brand')).toBeInTheDocument()
       expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
     })
 
@@ -141,7 +140,7 @@ describe('EmbeddedChatbot Header', () => {
 
       render(<Header title="Test Chatbot" />)
 
-      expect(screen.queryByTestId('webapp-brand')).not.toBeInTheDocument()
+      expect(screen.queryByText('share.chat.poweredBy')).not.toBeInTheDocument()
     })
 
     it('should render divider only when currentConversationId is present', () => {

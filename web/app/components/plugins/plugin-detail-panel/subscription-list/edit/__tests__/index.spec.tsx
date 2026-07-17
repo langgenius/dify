@@ -374,10 +374,11 @@ describe('Edit Modal Components', () => {
     describe('Rendering', () => {
       it('should render modal with correct title', () => {
         render(<ManualEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal')).toHaveAttribute(
-          'data-title',
-          'pluginTrigger.subscription.list.item.actions.edit.title',
-        )
+        expect(
+          screen.getByRole('heading', {
+            name: 'pluginTrigger.subscription.list.item.actions.edit.title',
+          }),
+        ).toBeInTheDocument()
       })
 
       it('should render ReadmeEntrance when pluginDetail is provided', () => {
@@ -713,10 +714,11 @@ describe('Edit Modal Components', () => {
     describe('Rendering', () => {
       it('should render modal with correct title', () => {
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal')).toHaveAttribute(
-          'data-title',
-          'pluginTrigger.subscription.list.item.actions.edit.title',
-        )
+        expect(
+          screen.getByRole('heading', {
+            name: 'pluginTrigger.subscription.list.item.actions.edit.title',
+          }),
+        ).toBeInTheDocument()
       })
 
       it('should render ReadmeEntrance when pluginDetail is provided', () => {
@@ -994,10 +996,11 @@ describe('Edit Modal Components', () => {
     describe('Rendering - Step 1 (Credentials)', () => {
       it('should render modal with correct title', () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal')).toHaveAttribute(
-          'data-title',
-          'pluginTrigger.subscription.list.item.actions.edit.title',
-        )
+        expect(
+          screen.getByRole('heading', {
+            name: 'pluginTrigger.subscription.list.item.actions.edit.title',
+          }),
+        ).toBeInTheDocument()
       })
 
       it('should render EncryptedBottom in credentials step', () => {

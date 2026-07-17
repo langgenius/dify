@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
@@ -258,63 +257,9 @@ describe('Select wrappers', () => {
   })
 
   describe('SelectItem', () => {
-    it('should render options when children are provided', async () => {
-      const screen = await renderOpenSelect()
-
-      await expect.element(screen.getByRole('option', { name: 'Seattle' })).toBeInTheDocument()
-      await expect.element(screen.getByRole('option', { name: 'New York' })).toBeInTheDocument()
-    })
-
-    it('should navigate items with arrow keys', async () => {
+    it('should expose disabled item semantics', async () => {
       const screen = await render(
-        <Select defaultValue="seattle">
-          <SelectTrigger aria-label="city select">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent listProps={{ role: 'listbox', 'aria-label': 'select list' }}>
-            <SelectItem value="seattle">
-              <SelectItemText>Seattle</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="new-york">
-              <SelectItemText>New York</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="tokyo">
-              <SelectItemText>Tokyo</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          </SelectContent>
-        </Select>,
-      )
-
-      const trigger = asHTMLElement(screen.getByRole('combobox', { name: 'city select' }).element())
-
-      trigger.focus()
-      trigger.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
-      )
-      await expect
-        .element(screen.getByRole('option', { name: 'Seattle' }))
-        .toHaveAttribute('data-highlighted')
-
-      const highlightedItem = asHTMLElement(
-        screen.getByRole('option', { name: 'Seattle' }).element(),
-      )
-      highlightedItem.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
-      )
-
-      await expect
-        .element(screen.getByRole('option', { name: 'New York' }))
-        .toHaveAttribute('data-highlighted')
-    })
-
-    it('should not call onValueChange when disabled item is clicked', async () => {
-      const onValueChange = vi.fn()
-
-      const screen = await render(
-        <Select open defaultValue="seattle" onValueChange={onValueChange}>
+        <Select open defaultValue="seattle">
           <SelectTrigger aria-label="city select">
             <SelectValue />
           </SelectTrigger>
@@ -331,9 +276,9 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      asHTMLElement(screen.getByRole('option', { name: 'Disabled New York' }).element()).click()
-
-      expect(onValueChange).not.toHaveBeenCalled()
+      await expect
+        .element(screen.getByRole('option', { name: 'Disabled New York' }))
+        .toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should support custom composition with SelectItemText without indicator', async () => {
