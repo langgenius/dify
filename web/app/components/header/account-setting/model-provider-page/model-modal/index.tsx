@@ -43,6 +43,7 @@ import {
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import { useAppContext } from '@/context/app-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import {
   ConfigurationMethodEnum,
   FormTypeEnum,
@@ -280,6 +281,8 @@ const ModelModal: FC<ModelModalProps> = ({
       getForm()?.setFieldValue(field, value)
   }, [])
   const notAllowCustomCredential = provider.allow_custom_token === false
+  const isOfficialOpenAIProvider
+    = provider.provider === ModelProviderQuotaGetPaid.OPENAI || provider.provider === 'openai'
 
   const handleOpenChange = useCallback((open: boolean) => {
     if (!open)
@@ -356,6 +359,13 @@ const ModelModal: FC<ModelModalProps> = ({
                     ...formSchema,
                     name: formSchema.variable,
                     showRadioUI: formSchema.type === FormTypeEnum.radio,
+                    ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
+                      ? {
+                          description: t('modelProvider.auth.openAIResponsesAPITip', {
+                            ns: 'common',
+                          }),
+                        }
+                      : {}),
                   }
                 }) as FormSchema[]}
                 defaultValues={formValues}

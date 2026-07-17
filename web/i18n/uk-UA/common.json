@@ -331,6 +331,7 @@
   "modelProvider.auth.manageCredentials": "Керування обліковими даними",
   "modelProvider.auth.modelCredential": "Облікові дані моделі",
   "modelProvider.auth.modelCredentials": "Модельні облікові дані",
+  "modelProvider.auth.openAIResponsesAPITip": "Для GPT-5.6 і новіших моделей рекомендуємо використовувати Responses API.",
   "modelProvider.auth.providerManaged": "Постачальник управляє",
   "modelProvider.auth.providerManagedTip": "Поточна конфігурація розміщується провайдером.",
   "modelProvider.auth.removeModel": "Видалити модель",

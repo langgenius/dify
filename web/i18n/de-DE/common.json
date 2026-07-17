@@ -331,6 +331,7 @@
   "modelProvider.auth.manageCredentials": "Anmeldeinformationen verwalten",
   "modelProvider.auth.modelCredential": "Zeugnis des Modells",
   "modelProvider.auth.modelCredentials": "Modellanmeldeinformationen",
+  "modelProvider.auth.openAIResponsesAPITip": "Für GPT-5.6 und neuere Modelle empfehlen wir die Verwendung der Responses API.",
   "modelProvider.auth.providerManaged": "Anbieter verwaltet",
   "modelProvider.auth.providerManagedTip": "Die aktuelle Konfiguration wird vom Anbieter gehostet.",
   "modelProvider.auth.removeModel": "Modell entfernen",

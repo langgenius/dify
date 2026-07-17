@@ -1,5 +1,6 @@
 import type * as React from 'react'
 import type { Credential, CredentialFormSchema, ModelProvider } from '../../declarations'
+import type { FormSchema } from '@/app/components/base/form/types'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
@@ -90,8 +91,10 @@ vi.mock('../../hooks', () => ({
 vi.mock('@/app/components/base/form/form-scenarios/auth', async () => {
   const React = await import('react')
   const AuthForm = React.forwardRef(({
+    formSchemas,
     onChange,
   }: {
+    formSchemas: FormSchema[]
     onChange?: (field: string, value: string) => void
   }, ref: React.ForwardedRef<{ getFormValues: () => FormResponse, getForm: () => { setFieldValue: (field: string, value: string) => void } }>) => {
     React.useImperativeHandle(ref, () => ({
@@ -100,6 +103,12 @@ vi.mock('@/app/components/base/form/form-scenarios/auth', async () => {
     }))
     return (
       <div>
+        {formSchemas.map(
+          schema =>
+            typeof schema.description === 'string' && (
+              <div key={schema.name}>{schema.description}</div>
+            ),
+        )}
         <button type="button" onClick={() => onChange?.('__model_name', 'updated-model')}>Model Name Change</button>
       </div>
     )
@@ -218,7 +227,62 @@ describe('ModelModal', () => {
 
     fireEvent.click(screen.getByText('Add New'))
 
-    expect(screen.getByText('common.modelProvider.auth.modelCredential')).toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.auth.modelCredential'))!.toBeInTheDocument()
+  })
+
+  it('should show the Responses API tip only for official OpenAI credential forms', () => {
+    const tip = 'common.modelProvider.auth.openAIResponsesAPITip'
+    mockState.formSchemas = [
+      { variable: 'api_protocol', type: 'select' } as unknown as CredentialFormSchema,
+    ]
+
+    const officialOpenAI = renderModal({
+      provider: createProvider({ provider: 'langgenius/openai/openai' }),
+    })
+    expect(screen.getByText(tip))!.toBeInTheDocument()
+    officialOpenAI.unmount()
+
+    const legacyOpenAI = renderModal()
+    expect(screen.getByText(tip))!.toBeInTheDocument()
+    legacyOpenAI.unmount()
+
+    mockState.formSchemas = []
+    const openAIWithoutProtocolField = renderModal()
+    expect(screen.queryByText(tip)).not.toBeInTheDocument()
+    openAIWithoutProtocolField.unmount()
+
+    mockState.formSchemas = [
+      { variable: 'api_protocol', type: 'select' } as unknown as CredentialFormSchema,
+    ]
+    renderModal({
+      provider: createProvider({ provider: 'langgenius/azure_openai/azure_openai' }),
+    })
+    expect(screen.queryByText(tip)).not.toBeInTheDocument()
+  })
+
+  it('should show the Responses API tip when adding a new custom model credential', () => {
+    const tip = 'common.modelProvider.auth.openAIResponsesAPITip'
+    mockState.formSchemas = [
+      { variable: 'api_protocol', type: 'select' } as unknown as CredentialFormSchema,
+    ]
+    const customModel = renderModal({ mode: ModelModalModeEnum.configCustomModel })
+    expect(screen.getByText(tip))!.toBeInTheDocument()
+    customModel.unmount()
+
+    const modelCredential = renderModal({
+      mode: ModelModalModeEnum.configModelCredential,
+      model: { model: 'gpt-5.6', model_type: ModelTypeEnum.textGeneration },
+    })
+    expect(screen.getByText(tip))!.toBeInTheDocument()
+    modelCredential.unmount()
+
+    renderModal({ mode: ModelModalModeEnum.addCustomModelToModelList })
+
+    expect(screen.queryByText(tip)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Add New'))
+
+    expect(screen.getByText(tip))!.toBeInTheDocument()
   })
 
   it('should call onCancel when the cancel button is clicked', () => {
