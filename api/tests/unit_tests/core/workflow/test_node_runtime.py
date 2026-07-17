@@ -64,9 +64,17 @@ def attachment_session(sqlite_engine: Engine) -> Iterator[Session]:
         yield session
 
 
-def _persist_attachment(session: Session, *, segment_id: str, upload_file_id: str) -> UploadFile:
+def _persist_attachment(
+    session: Session,
+    *,
+    segment_id: str,
+    upload_file_id: str,
+    upload_file_tenant_id: str = "tenant-id",
+) -> UploadFile:
+    """Persist an attachment binding for the test tenant and its referenced upload file."""
+
     upload_file = UploadFile(
-        tenant_id="tenant-id",
+        tenant_id=upload_file_tenant_id,
         storage_type=StorageType.LOCAL,
         key="storage-key",
         name="diagram.png",
@@ -447,6 +455,39 @@ def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segmen
 
     assert files[0].related_id == upload_file_id
     assert files[0].filename == "diagram.png"
+
+
+def test_dify_retriever_attachment_loader_rejects_granted_upload_file_from_another_tenant(
+    monkeypatch: pytest.MonkeyPatch,
+    attachment_session: Session,
+) -> None:
+    from factories.file_factory import builders as file_builders
+
+    upload_file_id = str(uuid4())
+    segment_id = str(uuid4())
+    _persist_attachment(
+        attachment_session,
+        segment_id=segment_id,
+        upload_file_id=upload_file_id,
+        upload_file_tenant_id="other-tenant-id",
+    )
+    engine = attachment_session.get_bind()
+    assert engine is not None
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+    monkeypatch.setattr(file_builders.session_factory, "create_session", sessionmaker(engine, expire_on_commit=False))
+
+    loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
+    scope = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        grant_retriever_segment_access([segment_id])
+        with pytest.raises(ValueError, match="Invalid upload file"):
+            loader.load(segment_id=segment_id)
 
 
 def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user(
