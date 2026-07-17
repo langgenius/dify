@@ -158,7 +158,11 @@ def render_tuple(values: tuple[str, ...]) -> str:
     if not values:
         return "()"
     entries = ", ".join(json.dumps(value) for value in values)
-    return f"({entries}{',' if len(values) == 1 else ''})"
+    inline = f"({entries}{',' if len(values) == 1 else ''})"
+    if len(inline) <= 110:
+        return inline
+    multiline_entries = "".join(f"            {json.dumps(value)},\n" for value in values)
+    return f"(\n{multiline_entries}        )"
 
 
 def response_kind(operation: dict[str, Any]) -> str:
