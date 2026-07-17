@@ -129,8 +129,18 @@ function CredentialStatus({
     credentialType?: AgentProviderTool['credentialType'],
   ) => void
 }) {
-  const canSwitchCredential =
-    (tool.providerType ?? CollectionType.builtIn) === CollectionType.builtIn && tool.allowDelete
+  // Custom (api) tool providers do not use the plugin credential model at
+  // all — their credentials live on the `tool_api_providers` row, not in
+  // the plugin daemon. The unauthorized branch below would render
+  // `<Authorized>` whose `usePluginAuth` ends up calling
+  // `GET /workspaces/current/tool-provider/builtin/<api-id>/credential/...`
+  // which 500s with `PluginNotFoundError` because that id is not a
+  // builtin provider id. Mirror the `canSwitchCredential` gate so the
+  // entire component short-circuits for non-builtin providerType — both
+  // branches (unauthorized + authorized) — and no plugin-auth query ever
+  // fires (langgenius/dify#39169).
+  const isBuiltinProvider = (tool.providerType ?? CollectionType.builtIn) === CollectionType.builtIn
+  const canSwitchCredential = isBuiltinProvider && tool.allowDelete
   const handleAuthorizationItemClick = useCallback(
     (id: string) => {
       onCredentialChange(
@@ -148,6 +158,7 @@ function CredentialStatus({
   )
 
   if (tool.credentialVariant === 'none') return null
+  if (!isBuiltinProvider) return null
 
   if (tool.credentialVariant === 'unauthorized') {
     return <UnauthorizedCredentialStatus tool={tool} onCredentialChange={onCredentialChange} />
