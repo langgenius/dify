@@ -57,6 +57,7 @@ from dify_agent.adapters.shell.protocols import (
     ShellProviderProtocol,
     ShellResourceProtocol,
 )
+from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
@@ -737,7 +738,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             return text
         # Built-in: always redact the JWE token value.
         env = self._build_shell_command_env(include_agent_stub_env=True)
-        jwe_value = env.get("DIFY_AGENT_STUB_AUTH_JWE")
+        jwe_value = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
         if jwe_value and len(jwe_value) > 8:
             text = text.replace(jwe_value, "***")
         # Server-level + per-agent regex patterns.
