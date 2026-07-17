@@ -61,16 +61,22 @@ class TestBaseAppQueueManager:
             manager._check_for_sqlalchemy_models(bad)
 
     def test_stop_listen_defers_graph_runtime_state_cleanup_until_listener_exits(self):
-        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+        with (
+            patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis,
+            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+        ):
             mock_redis.setex.return_value = True
             mock_redis.get.return_value = None
             manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
+            runtime_state = SimpleNamespace(name="runtime-state")
+            manager.graph_runtime_state = runtime_state
 
-        runtime_state = SimpleNamespace(name="runtime-state")
-        manager.graph_runtime_state = runtime_state
+            manager.stop_listen()
 
-        manager.stop_listen()
-
-        assert manager.graph_runtime_state is runtime_state
-        assert list(manager.listen()) == []
-        assert manager.graph_runtime_state is None
+            assert manager.graph_runtime_state is runtime_state
+            assert list(manager.listen()) == []
+            assert manager.graph_runtime_state is None
+            graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+                "t1",
+                reason="Client response stream closed before app execution completed",
+            )

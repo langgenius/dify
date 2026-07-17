@@ -20,9 +20,9 @@ from typing import Protocol
 import httpx
 
 from agenton.compositor import LayerProviderInput
-from dify_agent.protocol.schemas import CreateRunRequest
+from dify_agent.protocol.schemas import CancelRunRequest, CancelRunResponse, CreateRunRequest
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
-from dify_agent.runtime.event_sink import RunEventSink, emit_run_failed
+from dify_agent.runtime.event_sink import RunEventSink, emit_run_cancelled, emit_run_failed
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.server.schemas import RunRecord
 
@@ -33,11 +33,19 @@ class SchedulerStoppingError(RuntimeError):
     """Raised when a create-run request arrives after shutdown has started."""
 
 
+class RunCancellationConflictError(RuntimeError):
+    """Raised when a run exists but can no longer be cancelled by this scheduler."""
+
+
 class RunStore(RunEventSink, Protocol):
     """Persistence boundary needed by the scheduler."""
 
     async def create_run(self) -> RunRecord:
         """Persist a new run record and return it with status ``running``."""
+        ...
+
+    async def get_run(self, run_id: str) -> RunRecord:
+        """Return the latest persisted run record."""
         ...
 
 
@@ -109,6 +117,38 @@ class RunScheduler:
             task.add_done_callback(lambda _task, run_id=record.run_id: self.active_tasks.pop(run_id, None))
             return record
 
+    async def cancel_run(self, run_id: str, request: CancelRunRequest) -> CancelRunResponse:
+        """Cancel one active task and persist an idempotent cancelled terminal state."""
+        async with self._lifecycle_lock:
+            record = await self.store.get_run(run_id)
+            if record.status == "cancelled":
+                return CancelRunResponse(run_id=run_id, status="cancelled")
+            if record.status != "running":
+                raise RunCancellationConflictError(f"run already finished with status {record.status!r}")
+
+            task = self.active_tasks.get(run_id)
+            if task is None:
+                raise RunCancellationConflictError("run is not active in this scheduler process")
+            _ = task.cancel(request.message or request.reason)
+
+        _ = await asyncio.gather(task, return_exceptions=True)
+
+        async with self._lifecycle_lock:
+            latest = await self.store.get_run(run_id)
+            if latest.status == "cancelled":
+                return CancelRunResponse(run_id=run_id, status="cancelled")
+            if latest.status != "running":
+                raise RunCancellationConflictError(f"run already finished with status {latest.status!r}")
+
+            _ = await emit_run_cancelled(
+                self.store,
+                run_id=run_id,
+                reason=request.reason,
+                message=request.message,
+            )
+            await self.store.update_status(run_id, "cancelled", request.message or request.reason)
+            return CancelRunResponse(run_id=run_id, status="cancelled")
+
     async def shutdown(self) -> None:
         """Stop accepting runs, wait briefly, then cancel and fail unfinished runs."""
         async with self._lifecycle_lock:
@@ -158,4 +198,4 @@ class RunScheduler:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
 
 
-__all__ = ["RunScheduler", "SchedulerStoppingError"]
+__all__ = ["RunCancellationConflictError", "RunScheduler", "SchedulerStoppingError"]

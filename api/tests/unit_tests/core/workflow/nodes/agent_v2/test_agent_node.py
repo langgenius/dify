@@ -1,3 +1,4 @@
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
@@ -5,11 +6,20 @@ from unittest.mock import MagicMock, patch
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
-from dify_agent.protocol import PydanticAIStreamRunEvent, RunStartedEvent, RunSucceededEvent, RunSucceededEventData
+from dify_agent.protocol import (
+    CancelRunRequest,
+    CancelRunResponse,
+    PydanticAIStreamRunEvent,
+    RunEvent,
+    RunStartedEvent,
+    RunSucceededEvent,
+    RunSucceededEventData,
+)
 from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
 from clients.agent_backend import (
     AgentBackendRunEventAdapter,
+    AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
@@ -214,6 +224,27 @@ class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
                 ),
             ),
         )
+
+
+class FailingStreamBackendClient(FakeAgentBackendRunClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.cancel_requests: list[CancelRunRequest | None] = []
+
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del run_id, after, should_stop
+        raise AgentBackendStreamError("stream reconnect attempts exhausted")
+        yield
+
+    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        self.cancel_requests.append(request)
+        return CancelRunResponse(run_id=run_id, status="cancelled")
 
 
 def _node(
@@ -666,6 +697,19 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
     assert isinstance(events[0], PauseRequestedEvent)
     assert isinstance(events[0].reason, HitlRequired)
     assert client.request is None  # no second Agent run was created
+
+
+def test_agent_node_cancels_backend_run_when_stream_fails():
+    client = FailingStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is not None
+    assert len(client.cancel_requests) == 1
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "event_stream_failed"
 
 
 def test_agent_node_records_stream_usage_metadata():
