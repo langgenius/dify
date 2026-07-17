@@ -759,6 +759,17 @@ class TestWeaviateVector(unittest.TestCase):
         assert wv._is_uuid("123e4567-e89b-12d3-a456-426614174000") is True
         assert wv._is_uuid("not-a-uuid") is False
 
+    def test_get_uuids_uses_doc_ids_when_documents_have_identical_content(self):
+        wv = WeaviateVector.__new__(WeaviateVector)
+        first_doc_id = "123e4567-e89b-12d3-a456-426614174000"
+        second_doc_id = "123e4567-e89b-12d3-a456-426614174001"
+        documents = [
+            Document(page_content="identical content", metadata={"doc_id": first_doc_id}),
+            Document(page_content="identical content", metadata={"doc_id": second_doc_id}),
+        ]
+
+        assert wv._get_uuids(documents) == [first_doc_id, second_doc_id]
+
     def test_delete_by_metadata_field_returns_when_collection_is_missing(self):
         wv = WeaviateVector.__new__(WeaviateVector)
         wv._collection_name = self.collection_name
@@ -803,45 +814,41 @@ class TestWeaviateVector(unittest.TestCase):
         assert wv.text_exists("segment-1") is False
         assert wv.text_exists("segment-1") is True
 
-    def test_delete_by_ids_handles_missing_collections_and_404s(self):
-        class FakeUnexpectedStatusCodeError(Exception):
-            def __init__(self, status_code):
-                super().__init__(f"status={status_code}")
-                self.status_code = status_code
-
+    def test_delete_by_ids_returns_for_empty_ids_or_missing_collection(self):
         wv = WeaviateVector.__new__(WeaviateVector)
         wv._collection_name = self.collection_name
         wv._client = MagicMock()
-        wv._client.collections.exists.side_effect = [False, True]
-        mock_col = MagicMock()
-        wv._client.collections.use.return_value = mock_col
-        mock_col.data.delete_by_id.side_effect = [FakeUnexpectedStatusCodeError(404), None]
 
-        with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError):
-            wv.delete_by_ids(["ignored"])
-            wv.delete_by_ids(["missing-id", "ok-id"])
+        wv.delete_by_ids([])
 
-        assert mock_col.data.delete_by_id.call_count == 2
+        wv._client.collections.exists.assert_not_called()
 
-    def test_delete_by_ids_reraises_non_404_errors(self):
-        class FakeUnexpectedStatusCodeError(Exception):
-            def __init__(self, status_code):
-                super().__init__(f"status={status_code}")
-                self.status_code = status_code
+        wv._client.collections.exists.return_value = False
+        wv.delete_by_ids(["missing-id"])
 
+        wv._client.collections.use.assert_not_called()
+
+    def test_delete_by_ids_deletes_objects_by_doc_id_property(self):
         wv = WeaviateVector.__new__(WeaviateVector)
         wv._collection_name = self.collection_name
         wv._client = MagicMock()
         wv._client.collections.exists.return_value = True
         mock_col = MagicMock()
         wv._client.collections.use.return_value = mock_col
-        mock_col.data.delete_by_id.side_effect = FakeUnexpectedStatusCodeError(500)
+        ids = ["segment-1", "segment-2"]
+        expected_filter = object()
 
-        with (
-            patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError),
-            pytest.raises(FakeUnexpectedStatusCodeError, match="status=500"),
-        ):
-            wv.delete_by_ids(["bad-id"])
+        with patch.object(weaviate_vector_module.Filter, "by_property") as mock_by_property:
+            mock_property_filter = MagicMock()
+            mock_by_property.return_value = mock_property_filter
+            mock_property_filter.contains_any.return_value = expected_filter
+
+            wv.delete_by_ids(ids)
+
+        mock_by_property.assert_called_once_with("doc_id")
+        mock_property_filter.contains_any.assert_called_once_with(ids)
+        mock_col.data.delete_many.assert_called_once_with(where=expected_filter)
+        mock_col.data.delete_by_id.assert_not_called()
 
     def test_json_serializable_converts_datetime(self):
         wv = WeaviateVector.__new__(WeaviateVector)

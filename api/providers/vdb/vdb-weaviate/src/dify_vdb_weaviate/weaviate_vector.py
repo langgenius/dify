@@ -20,7 +20,7 @@ from pydantic import BaseModel, model_validator
 from weaviate.classes.data import DataObject
 from weaviate.classes.init import Auth
 from weaviate.classes.query import Filter, MetadataQuery
-from weaviate.exceptions import UnexpectedStatusCodeError, WeaviateQueryError
+from weaviate.exceptions import WeaviateQueryError
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -278,22 +278,6 @@ class WeaviateVector(BaseVector):
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
     @override
-    def _get_uuids(self, documents: list[Document]) -> list[str]:
-        """
-        Generates deterministic UUIDs for documents based on their content.
-
-        Uses UUID5 with URL namespace to ensure consistent IDs for identical content.
-        """
-        URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
-
-        uuids = []
-        for doc in documents:
-            uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
-            uuids.append(str(uuid_val))
-
-        return uuids
-
-    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         """
         Adds documents with their embeddings to the collection.
@@ -377,21 +361,16 @@ class WeaviateVector(BaseVector):
     @override
     def delete_by_ids(self, ids: list[str]) -> None:
         """
-        Deletes objects by their UUID identifiers.
+        Deletes objects by their Dify document IDs.
 
-        Silently ignores 404 errors for non-existent IDs.
+        Filtering on the stored ``doc_id`` also removes objects created when
+        Weaviate object UUIDs were derived from document content.
         """
-        if not self._client.collections.exists(self._collection_name):
+        if not ids or not self._client.collections.exists(self._collection_name):
             return
 
         col = self._client.collections.use(self._collection_name)
-
-        for uid in ids:
-            try:
-                col.data.delete_by_id(uid)
-            except UnexpectedStatusCodeError as e:
-                if getattr(e, "status_code", None) != 404:
-                    raise
+        col.data.delete_many(where=Filter.by_property("doc_id").contains_any(ids))
 
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:

@@ -18,6 +18,12 @@ class WeaviateVectorTest(AbstractVectorTest):
             attributes=self.attributes,
         )
 
+    def delete_by_ids(self, ids: list[str]) -> None:
+        super().delete_by_ids(ids)
+
+        assert not self.vector.text_exists(ids[0])
+        assert not self.vector.text_exists(ids[-1])
+
 
 def test_weaviate_vector(setup_mock_redis):
     WeaviateVectorTest().run_all_tests()
