@@ -18,7 +18,7 @@ class TestFeatureApi:
 
         features = FeatureModel(
             knowledge_rate_limit=42,
-            vector_space=None,
+            vector_space=LimitationModel(size=5120, limit=20480),
         )
         get_features = mocker.patch("controllers.console.feature.FeatureService.get_features")
         get_features.return_value = features

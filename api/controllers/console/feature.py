@@ -30,7 +30,7 @@ class AppDslVersionResponse(ResponseModel):
 
 
 class FeatureResponse(FeatureModel):
-    vector_space: None = Field(default=None, exclude=True)
+    vector_space: LimitationModel | None = Field(default=None, exclude=True)
 
 
 register_response_schema_models(
