@@ -1,20 +1,9 @@
 import type { DifyWorld } from '../../../support/world'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
-import { agentBuilderPreseededResources } from '../agent-builder-resources'
 
 export type PreseededResource = NonNullable<
-  DifyWorld['agentBuilder']['preflight']['preseededResources'][string]
+  DifyWorld['agentBuilder']['fixtures']['preseededResources'][string]
 >
-
-export type E2EResourcePrecondition =
-  | {
-      ok: true
-      value: string
-    }
-  | {
-      ok: false
-      reason: string
-    }
 
 export type NamedResource = {
   id: string
@@ -30,60 +19,21 @@ export type LocalizedLabel = {
   zh_Hans?: string
 }
 
-export const readRequiredEnvResource = (
-  envName: string,
-  description: string,
-): E2EResourcePrecondition => {
-  const value = process.env[envName]?.trim()
-  if (value) return { ok: true, value }
-
-  return {
-    ok: false,
-    reason: `${description} requires ${envName}.`,
-  }
-}
-
-export function skipBlockedPrecondition(
+export function failFixturePrerequisite(
   world: DifyWorld,
   reason: string,
   options: {
     owner?: string
     remediation?: string
   } = {},
-): 'skipped' {
+): never {
   const owner = options.owner ?? 'seed/product'
   const remediation =
     options.remediation ??
     'Seed the required resource or align the product capability before running this scenario.'
-  const message = `Blocked precondition: ${reason} Owner: ${owner}. Remediation: ${remediation}`
-  console.warn(`[e2e] ${message}`)
+  const message = `Fixture prerequisite failed: ${reason} Owner: ${owner}. Remediation: ${remediation}`
   world.attach(message, 'text/plain')
-  return 'skipped'
-}
-
-export function skipMissingEnvResource(
-  world: DifyWorld,
-  envName: string,
-  description: string,
-): 'skipped' | string {
-  const resource = readRequiredEnvResource(envName, description)
-  if (resource.ok) return resource.value
-
-  return skipBlockedPrecondition(world, resource.reason)
-}
-
-export const requiredAgentBuilderPreseededResources = Object.values(agentBuilderPreseededResources)
-
-export function skipMissingAgentBuilderPreseed(
-  world: DifyWorld,
-  resourceName: string,
-  envName: string,
-): 'skipped' | string {
-  return skipMissingEnvResource(
-    world,
-    envName,
-    `Preseeded Agent Builder resource "${resourceName}"`,
-  )
+  throw new Error(message)
 }
 
 export const findConsoleResourceByName = async <T extends NamedResource = NamedResource>({

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { AgentOrchestrateHeader } from '../header'
 
 describe('AgentOrchestrateHeader', () => {
-  it('should render configure title without build mode copy by default', () => {
+  it('should render configure title without build mode copy or tooltip trigger by default', () => {
     render(<AgentOrchestrateHeader headingId="configure-heading" />)
 
     expect(
@@ -11,6 +11,7 @@ describe('AgentOrchestrateHeader', () => {
     expect(
       screen.queryByText('agentV2.agentDetail.configure.buildDraft.modeBadge'),
     ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('should render build mode copy when build draft is active', () => {

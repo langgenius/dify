@@ -1,8 +1,8 @@
 import type { DifyWorld } from '../features/support/world'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { skipMissingAgentBackendRuntime } from '../features/agent-v2/support/preflight/agent-backend'
+import { requireAgentBackendRuntime } from '../features/agent-v2/support/fixtures/agent-backend'
 
-describe('skipMissingAgentBackendRuntime', () => {
+describe('requireAgentBackendRuntime', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
@@ -26,7 +26,7 @@ describe('skipMissingAgentBackendRuntime', () => {
     const attach = vi.fn()
     const world = { attach } as unknown as DifyWorld
 
-    await expect(skipMissingAgentBackendRuntime(world)).resolves.toBe('http://agent-backend.test')
+    await expect(requireAgentBackendRuntime(world)).resolves.toBe('http://agent-backend.test')
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(attach).not.toHaveBeenCalled()
   })

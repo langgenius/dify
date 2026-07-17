@@ -89,7 +89,6 @@
   "agentDetail.configure.chatFeatures.title": "Chat Features",
   "agentDetail.configure.clearSessionConfirm.description": "This will clear the current session and discard unapplied Agent configuration changes.",
   "agentDetail.configure.clearSessionConfirm.title": "Clear session and discard changes?",
-  "agentDetail.configure.communityEditionIsolationTip": "Community Edition does not provide hard file system isolation between end users or runs. Do not expose the same CE agent to multiple independent end users where data isolation or strict compliance is required.",
   "agentDetail.configure.files.add": "Add file",
   "agentDetail.configure.files.buildNote.generated": "Generated",
   "agentDetail.configure.files.buildNote.richTooltip": "The agent's record of what it set up in Build mode. It reads this at the start of every conversation, alongside your Prompt. <docLink>Learn more</docLink>",

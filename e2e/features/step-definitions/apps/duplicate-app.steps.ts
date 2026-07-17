@@ -27,5 +27,21 @@ When('I click {string} in the app options menu', async function (this: DifyWorld
 })
 
 When('I confirm the app duplication', async function (this: DifyWorld) {
-  await this.getPage().getByRole('button', { name: 'Duplicate' }).click()
+  const sourceAppId = this.createdAppIds.at(-1)
+  if (!sourceAppId) throw new Error('No source app ID was recorded before duplication.')
+
+  const page = this.getPage()
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname.endsWith(`/console/api/apps/${sourceAppId}/copy`),
+  )
+
+  await page.getByRole('button', { exact: true, name: 'Duplicate' }).click()
+  const response = await responsePromise
+  expect(response.ok()).toBe(true)
+  const copiedApp = (await response.json()) as { id?: string }
+  if (!copiedApp.id) throw new Error('Duplicate app response did not include an app ID.')
+  expect(copiedApp.id).not.toBe(sourceAppId)
+  this.createdAppIds.push(copiedApp.id)
 })
