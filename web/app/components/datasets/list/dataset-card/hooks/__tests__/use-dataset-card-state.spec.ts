@@ -29,6 +29,7 @@ const dataset = {
 } as DataSet
 
 function renderDatasetCardState() {
+  const onSuccess = vi.fn()
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
@@ -40,16 +41,21 @@ function renderDatasetCardState() {
   })
   const wrapper = ({ children }: { children: ReactNode }) =>
     createElement(QueryClientProvider, { client: queryClient }, children)
+  const rendered = renderHook(useDatasetCardState, {
+    initialProps: { dataset, onSuccess },
+    wrapper,
+  })
 
-  return renderHook(useDatasetCardState, { initialProps: { dataset }, wrapper })
+  return { ...rendered, onSuccess }
 }
 
 describe('useDatasetCardState', () => {
-  it('shows the latest usage state each time delete confirmation is opened', async () => {
+  it('uses the latest usage state before deleting the dataset', async () => {
     mocks.request
       .mockResolvedValueOnce(Response.json({ is_using: false }))
       .mockResolvedValueOnce(Response.json({ is_using: true }))
-    const { result } = renderDatasetCardState()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    const { onSuccess, result } = renderDatasetCardState()
 
     await act(result.current.detectIsUsedByApp)
     expect(result.current.modalState.confirmMessage).toContain('deleteDatasetConfirmContent')
@@ -65,5 +71,14 @@ describe('useDatasetCardState', () => {
         String(url).endsWith('/datasets/dataset-1/use-check'),
       ),
     ).toBe(true)
+
+    await act(result.current.onConfirmDelete)
+
+    expect(mocks.request).toHaveBeenCalledTimes(3)
+    const deleteRequest = mocks.request.mock.calls[2]?.[2]?.request as Request
+    expect(deleteRequest.method).toBe('DELETE')
+    expect(deleteRequest.url).toContain('/datasets/dataset-1')
+    expect(result.current.modalState.showConfirmDelete).toBe(false)
+    expect(onSuccess).toHaveBeenCalledOnce()
   })
 })
