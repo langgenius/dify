@@ -59,7 +59,7 @@ function isFetchResponseError(error: unknown): error is FetchResponseError {
 const EmailChangeModal = ({ onClose, email }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const [step, setStep] = useState<Step>(STEP.newEmail)
+  const [step, setStep] = useState<Step>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [mail, setMail] = useState<string>('')
   const [time, setTime] = useState<number>(0)
