@@ -247,13 +247,19 @@ const FormInputItem: FC<Props> = ({
   }
 
   const handleVariableSelectorChange = (newValue: ValueSelector | string, variable: string) => {
+    const isClearedOptionalFile = formState.isFile && !schema.required && newValue.length === 0
     onChange({
       ...value,
-      [variable]: {
-        ...varInput,
-        type: VarKindType.variable,
-        value: normalizeVariableSelectorValue(newValue),
-      },
+      [variable]: isClearedOptionalFile
+        ? {
+            type: VarKindType.constant,
+            value: null,
+          }
+        : {
+            ...varInput,
+            type: VarKindType.variable,
+            value: normalizeVariableSelectorValue(newValue),
+          },
     })
   }
 

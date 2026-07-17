@@ -77,8 +77,22 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ onChange }: { onChange: (value: string[]) => void }) => (
-    <button onClick={() => onChange(['node-2', 'asset'])}>variable-picker</button>
+  default: ({
+    onChange,
+  }: {
+    onChange: (value: string[] | string, varKindType: VarKindType) => void
+  }) => (
+    <>
+      <button onClick={() => onChange(['node-2', 'asset'], VarKindType.constant)}>
+        variable-picker
+      </button>
+      <button onClick={() => onChange('', VarKindType.constant)}>
+        clear-variable-empty-string
+      </button>
+      <button onClick={() => onChange([], VarKindType.constant)}>
+        clear-variable-empty-selector
+      </button>
+    </>
   ),
 }))
 
@@ -430,6 +444,76 @@ describe('FormInputItem branches', () => {
       field: {
         type: VarKindType.variable,
         value: ['node-2', 'asset'],
+      },
+    })
+  })
+
+  it.each([
+    [FormTypeEnum.file, 'clear-variable-empty-string'],
+    [FormTypeEnum.files, 'clear-variable-empty-selector'],
+  ])('should reset a cleared optional %s selector to a null constant', (type, clearAction) => {
+    const { onChange } = renderFormInputItem({
+      schema: createSchema({ required: false, type }),
+      value: {
+        field: {
+          type: VarKindType.variable,
+          value: ['node-2', 'asset'],
+        },
+      },
+    })
+
+    fireEvent.click(screen.getByText(clearAction))
+
+    expect(onChange).toHaveBeenCalledWith({
+      field: {
+        type: VarKindType.constant,
+        value: null,
+      },
+    })
+  })
+
+  it('should preserve variable mode when a required file selector is cleared', () => {
+    const { onChange } = renderFormInputItem({
+      schema: createSchema({ required: true, type: FormTypeEnum.file }),
+      value: {
+        field: {
+          type: VarKindType.variable,
+          value: ['node-2', 'asset'],
+        },
+      },
+    })
+
+    fireEvent.click(screen.getByText('clear-variable-empty-string'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      field: {
+        type: VarKindType.variable,
+        value: '',
+      },
+    })
+  })
+
+  it('should preserve variable mode when an unrelated selector is cleared', () => {
+    const { onChange } = renderFormInputItem({
+      schema: createSchema({
+        _type: FormTypeEnum.boolean,
+        required: false,
+        type: FormTypeEnum.textInput,
+      }),
+      value: {
+        field: {
+          type: VarKindType.variable,
+          value: ['node-3', 'flag'],
+        },
+      },
+    })
+
+    fireEvent.click(screen.getByText('clear-variable-empty-selector'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      field: {
+        type: VarKindType.variable,
+        value: [],
       },
     })
   })
