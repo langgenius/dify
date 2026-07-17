@@ -50,7 +50,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'Jane')
+    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'Jane')
 
     const items = screen.getAllByTestId('member-selector-item')
     expect(items).toHaveLength(1)
@@ -67,7 +67,9 @@ describe('MemberSelector', () => {
 
     expect(mockOnSelect).toHaveBeenCalledWith('2')
     await waitFor(() => {
-      expect(screen.queryByTestId('member-selector-search')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: 'common.operation.search' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -76,7 +78,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'john@')
+    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'john@')
 
     const items = screen.getAllByTestId('member-selector-item')
     expect(items).toHaveLength(1)
@@ -111,7 +113,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'noname@')
+    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'noname@')
 
     const items = screen.getAllByTestId('member-selector-item')
     expect(items).toHaveLength(1)
@@ -132,7 +134,10 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'xyz-no-match-xyz')
+    await user.type(
+      screen.getByRole('textbox', { name: 'common.operation.search' }),
+      'xyz-no-match-xyz',
+    )
 
     expect(screen.queryByTestId('member-selector-item')).not.toBeInTheDocument()
   })
@@ -149,7 +154,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(screen.getByTestId('member-selector-trigger'))
-    await user.type(screen.getByTestId('member-selector-search'), 'john')
+    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'john')
 
     const items = screen.getAllByTestId('member-selector-item')
     expect(items).toHaveLength(1)

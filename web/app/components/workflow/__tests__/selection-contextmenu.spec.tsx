@@ -200,7 +200,7 @@ describe('SelectionContextmenu', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByTestId('selection-contextmenu-item-left')).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /operator.alignLeft/ })).toBeInTheDocument()
     })
   })
 
@@ -409,7 +409,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(20)
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(20)
@@ -442,7 +442,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-distributeHorizontal'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.distributeHorizontal/ }))
 
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(150)
   })
@@ -481,7 +481,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(40)
     expect(latestNodes.find((node) => node.id === 'other')?.position.x).toBe(40)
@@ -500,7 +500,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
   })
@@ -518,7 +518,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(0)
@@ -549,7 +549,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(0)

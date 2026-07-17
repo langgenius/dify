@@ -169,7 +169,7 @@ describe('checkbox list component', () => {
 
     render(<CheckboxList options={options} value={[]} onChange={onChange} disabled />)
 
-    await userEvent.click(screen.getByText('Option 1'))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Option 1' }))
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -234,10 +234,7 @@ describe('checkbox list component', () => {
 
     render(<CheckboxList options={options} value={[]} onChange={onChange} showSelectAll={false} />)
 
-    const optionLabel = screen.getByText('Option 1')
-    const optionRow = optionLabel.closest('label[data-testid="option-item"]')
-    expect(optionRow)!.toBeInTheDocument()
-    await userEvent.click(optionRow as HTMLElement)
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Option 1' }))
 
     expect(onChange).toHaveBeenCalledWith(['option1'])
   })
@@ -248,9 +245,7 @@ describe('checkbox list component', () => {
 
     render(<CheckboxList options={disabledOptions} value={[]} onChange={onChange} />)
 
-    const optionRow = screen.getByText('Option 1').closest('label[data-testid="option-item"]')
-    expect(optionRow)!.toBeInTheDocument()
-    await userEvent.click(optionRow as HTMLElement)
+    await userEvent.click(screen.getByText('Option 1'))
 
     expect(onChange).not.toHaveBeenCalled()
   })

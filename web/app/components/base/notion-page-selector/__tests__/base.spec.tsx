@@ -158,7 +158,7 @@ describe('NotionPageSelector Base', () => {
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={handleSelect} />)
 
     expect(screen.getByTestId('notion-page-selector-base')).toBeInTheDocument()
-    expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
+    expect(screen.getByText('Root 1')).toBeInTheDocument()
     const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
     await user.click(checkbox)
 
@@ -194,7 +194,7 @@ describe('NotionPageSelector Base', () => {
     expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-    expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
+    expect(screen.getByText('Root 1')).toBeInTheDocument()
   })
 
   it('should switch credential and reset selection when choosing a different workspace', async () => {
@@ -213,7 +213,7 @@ describe('NotionPageSelector Base', () => {
 
     const selectorBtn = screen.getByRole('combobox', { name: /Workspace 1/ })
     await user.click(selectorBtn)
-    const item2 = screen.getByTestId('notion-credential-item-c2')
+    const item2 = screen.getByRole('option', { name: /Workspace 2/ })
     await user.click(item2)
 
     expect(mockInvalidPreImportNotionPages).toHaveBeenCalledWith({
@@ -262,7 +262,7 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
     await user.click(screen.getByTestId('notion-page-preview-root-1'))
-    expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
+    expect(screen.getByText('Root 1')).toBeInTheDocument()
   })
 
   it('should call onSelectCredential with current credential on initial render', () => {

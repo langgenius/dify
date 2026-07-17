@@ -448,9 +448,9 @@ describe('WorkflowToolDrawer', () => {
 
       // Assert
       // Assert
-      expect(screen.getByTestId('drawer-title'))!.toHaveTextContent(
-        'workflow.common.workflowAsTool',
-      )
+      expect(
+        screen.getByRole('heading', { name: 'workflow.common.workflowAsTool' }),
+      ).toBeInTheDocument()
     })
 
     it('should render name input field', () => {

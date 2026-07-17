@@ -168,7 +168,7 @@ describe('SideBar', () => {
       mockUninstall.mockResolvedValue(undefined)
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
       fireEvent.click(await screen.findByText('common.operation.confirm'))
 
@@ -183,7 +183,7 @@ describe('SideBar', () => {
       mockUpdatePinStatus.mockResolvedValue(undefined)
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
       await waitFor(() => {
@@ -197,7 +197,7 @@ describe('SideBar', () => {
       mockUpdatePinStatus.mockResolvedValue(undefined)
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.unpin'))
 
       await waitFor(() => {
@@ -209,7 +209,7 @@ describe('SideBar', () => {
       mockInstalledApps = [createInstalledApp()]
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(await screen.findByText('explore.sidebar.delete.title')).toBeInTheDocument()
@@ -226,7 +226,7 @@ describe('SideBar', () => {
       mockIsUninstallPending = true
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(screen.getByText('common.operation.cancel')).toBeDisabled()
