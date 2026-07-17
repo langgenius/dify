@@ -5326,7 +5326,7 @@ Sync partner tenants bindings
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BillingResponse](#billingresponse)<br> |
+| 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 
 ### [GET] /code-based-extension
 Get code-based extension data by module name
@@ -6864,7 +6864,7 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [FeatureModel](#featuremodel)<br> |
+| 200 | Success | **application/json**: [FeatureResponse](#featureresponse)<br> |
 
 ### [GET] /features/vector-space
 **Get vector-space usage and limit for current tenant**
@@ -15715,6 +15715,12 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 | ---- | ---- | ----------- | -------- |
 | BillingResponse | object |  |  |
 
+#### BillingSubscriptionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string |  | Yes |
+
 #### BinaryFileResponse
 
 | Name | Type | Description | Required |
@@ -17960,7 +17966,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | settings | object |  | Yes |
 | tenant_id | string |  | Yes |
 
-#### FeatureModel
+#### FeatureResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -17981,7 +17987,6 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | model_load_balancing_enabled | boolean |  | Yes |
 | next_credit_reset_date | integer |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
-| vector_space | [LimitationModel](#limitationmodel) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
