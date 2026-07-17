@@ -89,7 +89,6 @@
   "agentDetail.configure.chatFeatures.title": "Funciones de chat",
   "agentDetail.configure.clearSessionConfirm.description": "Esto borrará la sesión actual y descartará los cambios de configuración del Agent que aún no se hayan aplicado.",
   "agentDetail.configure.clearSessionConfirm.title": "¿Borrar la sesión y descartar los cambios?",
-  "agentDetail.configure.communityEditionIsolationTip": "Community Edition no proporciona aislamiento estricto del sistema de archivos entre usuarios finales ni entre ejecuciones. No expongas el mismo agente CE a varios usuarios finales independientes cuando se requiera aislamiento de datos o cumplimiento estricto.",
   "agentDetail.configure.files.add": "Agregar archivo",
   "agentDetail.configure.files.buildNote.generated": "Generado",
   "agentDetail.configure.files.buildNote.richTooltip": "El registro del agente sobre lo que configuró en modo Build. Lo lee al inicio de cada conversación, junto con tu Prompt. <docLink>Más información</docLink>",

@@ -89,7 +89,6 @@
   "agentDetail.configure.chatFeatures.title": "ميزات الدردشة",
   "agentDetail.configure.clearSessionConfirm.description": "سيؤدي هذا إلى مسح الجلسة الحالية والتخلي عن تغييرات إعدادات Agent التي لم يتم تطبيقها بعد.",
   "agentDetail.configure.clearSessionConfirm.title": "مسح الجلسة والتخلي عن التغييرات؟",
-  "agentDetail.configure.communityEditionIsolationTip": "لا توفر Community Edition عزلاً صارماً لنظام الملفات بين المستخدمين النهائيين أو بين عمليات التشغيل. لا تعرض وكيل CE نفسه لعدة مستخدمين نهائيين مستقلين عندما يكون عزل البيانات أو الامتثال الصارم مطلوباً.",
   "agentDetail.configure.files.add": "إضافة ملف",
   "agentDetail.configure.files.buildNote.generated": "تم إنشاؤه",
   "agentDetail.configure.files.buildNote.richTooltip": "سجل الوكيل لما أعدّه في وضع Build. يقرأه في بداية كل محادثة إلى جانب Prompt الخاص بك. <docLink>معرفة المزيد</docLink>",

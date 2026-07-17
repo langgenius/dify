@@ -89,7 +89,6 @@
   "agentDetail.configure.chatFeatures.title": "Chatfuncties",
   "agentDetail.configure.clearSessionConfirm.description": "Dit wist de huidige sessie en negeert nog niet toegepaste configuratiewijzigingen van de Agent.",
   "agentDetail.configure.clearSessionConfirm.title": "Sessie wissen en wijzigingen negeren?",
-  "agentDetail.configure.communityEditionIsolationTip": "Community Edition biedt geen harde bestandssysteemisolatie tussen eindgebruikers of runs. Stel dezelfde CE-agent niet beschikbaar aan meerdere onafhankelijke eindgebruikers wanneer gegevensisolatie of strikte compliance vereist is.",
   "agentDetail.configure.files.add": "Bestand toevoegen",
   "agentDetail.configure.files.buildNote.generated": "Gegenereerd",
   "agentDetail.configure.files.buildNote.richTooltip": "Het verslag van de agent van wat hij in de Build-modus heeft ingesteld. Hij leest dit aan het begin van elk gesprek, samen met uw Prompt. <docLink>Meer informatie</docLink>",
