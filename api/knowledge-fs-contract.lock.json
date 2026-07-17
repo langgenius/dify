@@ -1,6 +1,5 @@
 {
   "commit": "4310e2d582d25e7de58183f27720afab01e123cf",
   "openapiSha256": "5827ca930ce38462bfd1b2bef387efbf37eb7ffcaedde4558af2fbaeccbfbc4b",
-  "repository": "https://github.com/langgenius/knowledge-fs",
-  "routesSha256": "97b1b4a8376785ef489133f0edb408052af26d06856ad540f200106da93cdc9e"
+  "repository": "https://github.com/langgenius/knowledge-fs"
 }

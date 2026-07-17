@@ -1,7 +1,7 @@
-"""Generate the backend KnowledgeFS operation catalog from its pinned OpenAPI document.
+"""Validate Dify Console KnowledgeFS declarations against a pinned OpenAPI document.
 
-The generated catalog contains upstream transport metadata only. Dify product exposure and RBAC policy are maintained
-separately and must never be inferred from HTTP methods or paths here.
+The OpenAPI document is exported only during development and CI. Runtime declarations live with Dify product policy;
+this module validates their transport metadata without generating a complete operation catalog.
 """
 
 from __future__ import annotations
@@ -13,31 +13,55 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, TypedDict
 
 API_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = API_ROOT.parent
 LOCK_PATH = API_ROOT / "knowledge-fs-contract.lock.json"
-ROUTES_PATH = API_ROOT / "services" / "knowledge_fs_contract_routes.py"
 DEFAULT_REPOSITORY = WORKSPACE_ROOT.parent / "knowledge-fs"
 OPENAPI_METHODS = ("delete", "get", "head", "options", "patch", "post", "put", "trace")
 PROXY_METHODS = frozenset({"delete", "get", "patch", "post", "put"})
 
-ContractOperation = tuple[
-    str,
-    str,
-    str,
-    str,
-    str | None,
-    int,
-    tuple[str, ...],
-    tuple[str, ...],
-    tuple[str, ...],
+
+class ContractDeclaration(TypedDict):
+    """KnowledgeFS transport contract declared by one Dify Console registry entry."""
+
+    operation_id: str
+    method: str
+    path: str
+    required_scope: str | None
+    response_kind: str
+    max_response_bytes: int
+    request_headers: tuple[str, ...]
+    response_headers: tuple[str, ...]
+    response_media_types: tuple[str, ...]
+
+
+type DeclarationField = Literal[
+    "method",
+    "path",
+    "required_scope",
+    "response_kind",
+    "max_response_bytes",
+    "request_headers",
+    "response_headers",
+    "response_media_types",
 ]
+
+DECLARATION_FIELDS: tuple[DeclarationField, ...] = (
+    "method",
+    "path",
+    "required_scope",
+    "response_kind",
+    "max_response_bytes",
+    "request_headers",
+    "response_headers",
+    "response_media_types",
+)
 
 
 def main() -> None:
-    """Generate or verify the committed backend operation catalog."""
+    """Update or verify the pinned KnowledgeFS commit and OpenAPI hash."""
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true")
@@ -65,10 +89,8 @@ def main() -> None:
             check=True,
         )
         openapi_content = openapi_path.read_bytes()
-        routes_content = render_routes(json.loads(openapi_content))
 
     openapi_sha256 = sha256(openapi_content)
-    routes_sha256 = sha256(routes_content.encode())
     if args.update_lock:
         LOCK_PATH.write_text(
             json.dumps(
@@ -76,103 +98,68 @@ def main() -> None:
                     "commit": commit,
                     "openapiSha256": openapi_sha256,
                     "repository": lock["repository"],
-                    "routesSha256": routes_sha256,
                 },
                 indent=2,
             )
             + "\n"
         )
-        ROUTES_PATH.write_text(routes_content)
         return
 
     if openapi_sha256 != lock["openapiSha256"]:
         raise RuntimeError(
             f"KnowledgeFS OpenAPI hash mismatch: expected {lock['openapiSha256']}, received {openapi_sha256}"
         )
-    if routes_sha256 != lock["routesSha256"]:
-        raise RuntimeError(
-            f"KnowledgeFS route hash mismatch: expected {lock['routesSha256']}, received {routes_sha256}"
-        )
-    if args.check and ROUTES_PATH.read_text() != routes_content:
-        raise RuntimeError("Committed KnowledgeFS routes drifted from the pinned OpenAPI document")
-    if not args.check:
-        ROUTES_PATH.write_text(routes_content)
 
 
-def render_routes(document: dict[str, Any]) -> str:
-    """Project supported OpenAPI operations into deterministic backend metadata."""
-    routes: list[ContractOperation] = []
-    operation_ids: set[str] = set()
+def validate_declarations(document: dict[str, Any], declarations: tuple[ContractDeclaration, ...]) -> None:
+    """Validate Dify Console declarations against matching pinned OpenAPI operations."""
+    operations_by_id: dict[str, list[tuple[str, str, dict[str, Any], dict[str, Any]]]] = {}
     for path, path_item in document.get("paths", {}).items():
-        if not path.startswith("/"):
-            raise ValueError(f"KnowledgeFS OpenAPI path must be absolute: {path}")
         for method in OPENAPI_METHODS:
             operation = path_item.get(method)
             if operation is None:
                 continue
-            if method not in PROXY_METHODS:
-                raise ValueError(f"KnowledgeFS proxy does not support {method.upper()} {path}")
-            operation_id = required_operation_id(operation)
-            if operation_id in operation_ids:
-                raise ValueError(f"KnowledgeFS OpenAPI has duplicate operationId: {operation_id}")
-            operation_ids.add(operation_id)
-            routes.append(
-                (
-                    operation_id,
-                    method.upper(),
-                    path[1:],
-                    response_kind(operation),
-                    required_scope(operation),
-                    required_max_response_bytes(operation),
-                    request_header_names(path_item, operation),
-                    response_header_names(operation),
-                    response_media_types(operation),
+            operation_id = operation.get("operationId")
+            if isinstance(operation_id, str) and operation_id:
+                operations_by_id.setdefault(operation_id, []).append((method, path, path_item, operation))
+
+    declared_ids: set[str] = set()
+    for declaration in declarations:
+        operation_id = declaration["operation_id"]
+        if operation_id in declared_ids:
+            raise ValueError(f"Dify Console registry has duplicate operationId: {operation_id}")
+        declared_ids.add(operation_id)
+
+        matches = operations_by_id.get(operation_id, [])
+        if not matches:
+            raise ValueError(f"KnowledgeFS OpenAPI has no operationId: {operation_id}")
+        if len(matches) > 1:
+            raise ValueError(f"KnowledgeFS OpenAPI has duplicate operationId: {operation_id}")
+
+        method, path, path_item, operation = matches[0]
+        if not path.startswith("/"):
+            raise ValueError(f"KnowledgeFS OpenAPI path must be absolute: {path}")
+        if method not in PROXY_METHODS:
+            raise ValueError(f"KnowledgeFS proxy does not support {method.upper()} {path}")
+        expected: ContractDeclaration = {
+            "operation_id": operation_id,
+            "method": method.upper(),
+            "path": path[1:],
+            "required_scope": required_scope(operation),
+            "response_kind": response_kind(operation),
+            "max_response_bytes": required_max_response_bytes(operation),
+            "request_headers": request_header_names(path_item, operation),
+            "response_headers": response_header_names(operation),
+            "response_media_types": response_media_types(operation),
+        }
+        for field in DECLARATION_FIELDS:
+            expected_value = expected[field]
+            received_value = declaration[field]
+            if received_value != expected_value:
+                raise ValueError(
+                    f"KnowledgeFS operation {operation_id} field {field} drifted: "
+                    f"expected {expected_value!r}, received {received_value!r}"
                 )
-            )
-
-    routes.sort(key=lambda route: (route_path_sort_key(route[2]), route[1]))
-    entries = "\n".join(render_operation(route) for route in routes)
-    return (
-        '"""Generated upstream KnowledgeFS operation contract catalog."""\n\n'
-        "from typing import Final\n\n"
-        "# Generated by api/dev/generate_knowledge_fs_contract.py. Do not edit.\n"
-        "ContractOperation = tuple[str, str, str, str, str | None, int, tuple[str, ...], tuple[str, ...], "
-        "tuple[str, ...]]\n"
-        "KNOWLEDGE_FS_CONTRACT_OPERATIONS: Final[tuple[ContractOperation, ...]] = (\n"
-        f"{entries}\n"
-        ")\n"
-    )
-
-
-def route_path_sort_key(path: str) -> tuple[tuple[int, str], ...]:
-    """Sort literal segments before parameters so overlapping templates resolve deterministically."""
-    return tuple((1, segment) if segment.startswith("{") else (0, segment) for segment in path.split("/"))
-
-
-def render_operation(operation: ContractOperation) -> str:
-    values = [
-        json.dumps(operation[0]),
-        json.dumps(operation[1]),
-        json.dumps(operation[2]),
-        json.dumps(operation[3]),
-        "None" if operation[4] is None else json.dumps(operation[4]),
-        str(operation[5]),
-        render_tuple(operation[6]),
-        render_tuple(operation[7]),
-        render_tuple(operation[8]),
-    ]
-    return "    (\n" + "".join(f"        {value},\n" for value in values) + "    ),"
-
-
-def render_tuple(values: tuple[str, ...]) -> str:
-    if not values:
-        return "()"
-    entries = ", ".join(json.dumps(value) for value in values)
-    inline = f"({entries}{',' if len(values) == 1 else ''})"
-    if len(inline) <= 110:
-        return inline
-    multiline_entries = "".join(f"            {json.dumps(value)},\n" for value in values)
-    return f"(\n{multiline_entries}        )"
 
 
 def response_kind(operation: dict[str, Any]) -> str:
@@ -190,13 +177,6 @@ def response_media_types(operation: dict[str, Any]) -> tuple[str, ...]:
         if status == "2XX" or (len(status) == 3 and status.startswith("2") and status.isdigit()):
             media_types.update(response.get("content", {}))
     return tuple(sorted(media_types))
-
-
-def required_operation_id(operation: dict[str, Any]) -> str:
-    operation_id = operation.get("operationId")
-    if not isinstance(operation_id, str) or not operation_id:
-        raise ValueError(f"KnowledgeFS operation has no valid operationId: {operation_id}")
-    return operation_id
 
 
 def required_scope(operation: dict[str, Any]) -> str | None:

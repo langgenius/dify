@@ -1,37 +1,19 @@
-"""Tests for the backend KnowledgeFS contract projection."""
+"""Tests for pinned KnowledgeFS declaration validation."""
 
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 import pytest
 
-from dev import generate_knowledge_fs_contract as contract_generator
-from dev.generate_knowledge_fs_contract import render_routes
-from services.knowledge_fs_contract_routes import KNOWLEDGE_FS_CONTRACT_OPERATIONS
+from dev import generate_knowledge_fs_contract as contract_validator
+from dev.generate_knowledge_fs_contract import ContractDeclaration, validate_declarations
 
 
-def test_committed_routes_preserve_the_upstream_trace_header_contract() -> None:
-    routes_without_request_trace = {
-        (method, path)
-        for _, method, path, _, _, _, request_headers, _, _ in KNOWLEDGE_FS_CONTRACT_OPERATIONS
-        if "x-trace-id" not in request_headers
-    }
-    routes_without_response_trace = {
-        (method, path)
-        for _, method, path, _, _, _, _, response_headers, _ in KNOWLEDGE_FS_CONTRACT_OPERATIONS
-        if "x-trace-id" not in response_headers
-    }
-
-    assert routes_without_request_trace == set()
-    assert routes_without_response_trace == set()
-
-
-def test_contract_cli_updates_checks_and_detects_committed_route_drift(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repository = tmp_path / "knowledge-fs"
     repository.mkdir()
     subprocess.run(["git", "init", "--quiet"], cwd=repository, check=True)
@@ -55,192 +37,230 @@ def test_contract_cli_updates_checks_and_detects_committed_route_drift(
         ["git", "rev-parse", "HEAD"], cwd=repository, check=True, capture_output=True, text=True
     ).stdout.strip()
 
-    document = {
-        "paths": {
-            "/health": {
-                "get": {
-                    "operationId": "getHealth",
-                    "parameters": [{"in": "header", "name": "X-Trace-Id"}],
-                    "responses": {
-                        "200": {
-                            "content": {"application/json": {}},
-                            "headers": {"X-Trace-Id": {}},
-                        }
-                    },
-                    "security": [],
-                    "x-knowledge-fs-max-response-bytes": 1_048_576,
-                }
-            }
-        }
-    }
+    document = {"paths": {"/health": {"get": operation(None, "getHealth", security=[])}}}
     executable_directory = tmp_path / "bin"
     executable_directory.mkdir()
     fake_pnpm = executable_directory / "pnpm"
-    fake_pnpm.write_text(
-        "#!/usr/bin/env python3\n"
-        "import sys\n"
-        "from pathlib import Path\n"
-        "output = Path(sys.argv[sys.argv.index('--output') + 1])\n"
-        f"output.write_text({json.dumps(document)!r})\n"
-    )
-    fake_pnpm.chmod(0o755)
+    write_fake_pnpm(fake_pnpm, document)
 
     lock_path = tmp_path / "knowledge-fs-contract.lock.json"
-    routes_path = tmp_path / "knowledge_fs_contract_routes.py"
     lock_path.write_text(
         json.dumps(
             {
                 "commit": "",
                 "openapiSha256": "",
                 "repository": "https://github.com/langgenius/knowledge-fs",
-                "routesSha256": "",
             }
         )
     )
-    monkeypatch.setattr(contract_generator, "LOCK_PATH", lock_path)
-    monkeypatch.setattr(contract_generator, "ROUTES_PATH", routes_path)
+    monkeypatch.setattr(contract_validator, "LOCK_PATH", lock_path)
     monkeypatch.setenv("KNOWLEDGE_FS_REPO", str(repository))
     monkeypatch.setenv("PATH", f"{executable_directory}{os.pathsep}{os.environ['PATH']}")
 
     monkeypatch.setattr(sys, "argv", ["generate_knowledge_fs_contract.py", "--update-lock"])
-    contract_generator.main()
+    contract_validator.main()
 
-    assert json.loads(lock_path.read_text())["commit"] == commit
-    assert '"x-trace-id"' in routes_path.read_text()
+    updated_lock = json.loads(lock_path.read_text())
+    assert updated_lock["commit"] == commit
+    assert set(updated_lock) == {"commit", "openapiSha256", "repository"}
 
     monkeypatch.setattr(sys, "argv", ["generate_knowledge_fs_contract.py", "--check"])
-    contract_generator.main()
+    contract_validator.main()
 
-    routes_path.write_text(f"{routes_path.read_text()}\n# drift\n")
-    with pytest.raises(RuntimeError, match="routes drifted"):
-        contract_generator.main()
+    write_fake_pnpm(fake_pnpm, {"paths": {}})
+    with pytest.raises(RuntimeError, match="OpenAPI hash mismatch"):
+        contract_validator.main()
 
 
-def test_render_routes_keeps_literal_paths_before_overlapping_parameters() -> None:
+def test_validate_declarations_accepts_matching_contract() -> None:
+    route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
+    route["parameters"] = [{"in": "header", "name": "X-Trace-Id"}]
+    route["responses"] = {
+        "200": {
+            "content": {"application/json": {}},
+            "headers": {"X-Trace-Id": {}},
+        }
+    }
+    document = {"paths": {"/knowledge-spaces": {"get": route}}}
+
+    validate_declarations(
+        document,
+        (
+            declaration(
+                request_headers=("x-trace-id",),
+                response_headers=("x-trace-id",),
+            ),
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("method", "POST"),
+        ("path", "spaces"),
+        ("required_scope", "knowledge-spaces:write"),
+        ("response_kind", "stream"),
+        ("max_response_bytes", 2_097_152),
+        ("request_headers", ("authorization",)),
+        ("response_headers", ("cache-control",)),
+        ("response_media_types", ("text/event-stream",)),
+    ],
+)
+def test_validate_declarations_reports_contract_field_drift(field: str, value: object) -> None:
     document = {
         "paths": {
-            "/items/{id}": {"delete": operation("knowledge-spaces:write", "deleteItem")},
-            "/items/bulk": {"delete": operation("knowledge-spaces:write", "deleteItems")},
+            "/knowledge-spaces": {
+                "get": operation("knowledge-spaces:read", "listKnowledgeSpaces"),
+            }
         }
     }
 
-    rendered = render_routes(document)
-
-    assert rendered.index('"items/bulk"') < rendered.index('"items/{id}"')
-    assert "Final[tuple[ContractOperation, ...]]" in rendered
+    with pytest.raises(ValueError, match=rf"listKnowledgeSpaces.*{field}.*expected.*received"):
+        validate_declarations(document, (declaration(**{field: value}),))
 
 
-def test_render_routes_preserves_transport_metadata() -> None:
-    route = operation("knowledge-spaces:read")
-    route["parameters"] = [{"in": "header", "name": "Last-Event-ID"}]
-    route["responses"] = {
-        "200": {
-            "content": {"text/event-stream": {}},
-            "headers": {"Cache-Control": {}},
+def test_validate_declarations_rejects_unknown_operation_id() -> None:
+    with pytest.raises(ValueError, match="no operationId: listKnowledgeSpaces"):
+        validate_declarations({"paths": {}}, (declaration(),))
+
+
+def test_validate_declarations_rejects_duplicate_declared_operation_ids() -> None:
+    document = {
+        "paths": {
+            "/knowledge-spaces": {
+                "get": operation("knowledge-spaces:read", "listKnowledgeSpaces"),
+            }
         }
     }
-    document = {"paths": {"/events": {"get": route}}}
 
-    rendered = render_routes(document)
-
-    assert '"stream"' in rendered
-    assert '"last-event-id"' in rendered
-    assert '"cache-control"' in rendered
-    assert '"text/event-stream"' in rendered
+    with pytest.raises(ValueError, match="registry has duplicate operationId: listKnowledgeSpaces"):
+        validate_declarations(document, (declaration(), declaration()))
 
 
-def test_render_routes_preserves_operation_identity_and_scope_without_dify_policy() -> None:
-    route = operation("knowledge-spaces:read")
-    route["operationId"] = "listKnowledgeSpaces"
-
-    rendered = render_routes({"paths": {"/knowledge-spaces": {"get": route}}})
-
-    assert '"listKnowledgeSpaces"' in rendered
-    assert '"knowledge-spaces:read"' in rendered
-    assert "dataset_" not in rendered
-
-
-def test_render_routes_emits_none_for_public_operation_scope() -> None:
-    route = operation("knowledge-spaces:read", "getHealth")
-    route.pop("x-knowledge-fs-required-scope")
-    route["security"] = []
-
-    rendered = render_routes({"paths": {"/health": {"get": route}}})
-
-    assert "        None,\n" in rendered
-    assert "        null,\n" not in rendered
-
-
-def test_render_routes_keeps_generated_metadata_within_the_formatter_line_limit() -> None:
-    route = operation("knowledge-spaces:read")
-    route["responses"] = {
-        "200": {
-            "content": {"application/octet-stream": {}},
-            "headers": {
-                "Cache-Control": {},
-                "Content-Disposition": {},
-                "Content-Security-Policy": {},
-                "X-Content-Type-Options": {},
-                "X-Document-Multimodal-Asset-Variant": {},
-                "X-Document-Multimodal-Item-Id": {},
-                "X-Trace-Id": {},
+def test_validate_declarations_rejects_duplicate_upstream_operation_ids() -> None:
+    document = {
+        "paths": {
+            "/knowledge-spaces": {
+                "get": operation("knowledge-spaces:read", "listKnowledgeSpaces"),
+            },
+            "/spaces": {
+                "get": operation("knowledge-spaces:read", "listKnowledgeSpaces"),
             },
         }
     }
 
-    rendered = render_routes({"paths": {"/assets/{id}": {"get": route}}})
-
-    assert max(len(line) for line in rendered.splitlines()) <= 120
-
-
-def test_render_routes_rejects_unsupported_proxy_methods() -> None:
-    document = {"paths": {"/events": {"head": operation("knowledge-spaces:read")}}}
-
-    with pytest.raises(ValueError, match="does not support HEAD /events"):
-        render_routes(document)
+    with pytest.raises(ValueError, match="OpenAPI has duplicate operationId: listKnowledgeSpaces"):
+        validate_declarations(document, (declaration(),))
 
 
-def test_render_routes_rejects_operations_without_a_supported_scope() -> None:
-    route = operation("knowledge-spaces:read")
-    route["x-knowledge-fs-required-scope"] = "knowledge-spaces:admin"
-
-    with pytest.raises(ValueError, match="no supported required scope"):
-        render_routes({"paths": {"/events": {"get": route}}})
-
-
-def test_render_routes_rejects_duplicate_operation_ids() -> None:
+def test_validate_declarations_ignores_undeclared_operations() -> None:
     document = {
         "paths": {
-            "/items/{id}": {"get": operation("knowledge-spaces:read", "getItem")},
-            "/items/latest": {"get": operation("knowledge-spaces:read", "getItem")},
+            "/knowledge-spaces": {
+                "get": operation("knowledge-spaces:read", "listKnowledgeSpaces"),
+            },
+            "/internal-maintenance": {
+                "head": {"responses": {"200": {}}},
+            },
         }
     }
 
-    with pytest.raises(ValueError, match="duplicate operationId: getItem"):
-        render_routes(document)
+    validate_declarations(document, (declaration(),))
+
+
+def test_validate_declarations_preserves_public_operation_scope() -> None:
+    document = {"paths": {"/health": {"get": operation(None, "getHealth", security=[])}}}
+
+    validate_declarations(
+        document,
+        (
+            declaration(
+                operation_id="getHealth",
+                path="health",
+                required_scope=None,
+            ),
+        ),
+    )
+
+
+def test_validate_declarations_rejects_unsupported_declared_method() -> None:
+    document = {
+        "paths": {
+            "/knowledge-spaces": {
+                "head": operation("knowledge-spaces:read", "listKnowledgeSpaces"),
+            }
+        }
+    }
+
+    with pytest.raises(ValueError, match="does not support HEAD /knowledge-spaces"):
+        validate_declarations(document, (declaration(method="HEAD"),))
+
+
+def test_validate_declarations_rejects_non_absolute_upstream_path() -> None:
+    document = {
+        "paths": {
+            "knowledge-spaces": {
+                "get": operation("knowledge-spaces:read", "listKnowledgeSpaces"),
+            }
+        }
+    }
+
+    with pytest.raises(ValueError, match="path must be absolute: knowledge-spaces"):
+        validate_declarations(document, (declaration(),))
 
 
 @pytest.mark.parametrize("value", [None, True, 0, "1048576"])
-def test_render_routes_rejects_invalid_response_byte_limits(value: object) -> None:
-    route = operation("knowledge-spaces:read")
+def test_validate_declarations_rejects_invalid_response_byte_limits(value: object) -> None:
+    route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
     route["x-knowledge-fs-max-response-bytes"] = value
 
     with pytest.raises(ValueError, match="no valid response byte limit"):
-        render_routes({"paths": {"/events": {"get": route}}})
+        validate_declarations({"paths": {"/knowledge-spaces": {"get": route}}}, (declaration(),))
 
 
-def test_render_routes_rejects_request_header_references() -> None:
-    route = operation("knowledge-spaces:read")
+def test_validate_declarations_rejects_request_header_references() -> None:
+    route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
     route["parameters"] = [{"$ref": "#/components/parameters/TraceId"}]
 
     with pytest.raises(ValueError, match="request header references are not supported"):
-        render_routes({"paths": {"/events": {"get": route}}})
+        validate_declarations({"paths": {"/knowledge-spaces": {"get": route}}}, (declaration(),))
 
 
-def operation(scope: str, operation_id: str = "testOperation") -> dict[str, object]:
-    return {
+def operation(scope: str | None, operation_id: str, **overrides: object) -> dict[str, object]:
+    value: dict[str, object] = {
         "operationId": operation_id,
         "responses": {"200": {"content": {"application/json": {}}}},
         "x-knowledge-fs-max-response-bytes": 1_048_576,
-        "x-knowledge-fs-required-scope": scope,
     }
+    if scope is not None:
+        value["x-knowledge-fs-required-scope"] = scope
+    value.update(overrides)
+    return value
+
+
+def declaration(**overrides: object) -> ContractDeclaration:
+    value: dict[str, object] = {
+        "operation_id": "listKnowledgeSpaces",
+        "method": "GET",
+        "path": "knowledge-spaces",
+        "required_scope": "knowledge-spaces:read",
+        "response_kind": "buffered",
+        "max_response_bytes": 1_048_576,
+        "request_headers": (),
+        "response_headers": (),
+        "response_media_types": ("application/json",),
+    }
+    value.update(overrides)
+    return cast(ContractDeclaration, value)
+
+
+def write_fake_pnpm(path: Path, document: dict[str, object]) -> None:
+    path.write_text(
+        "#!/usr/bin/env python3\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "output = Path(sys.argv[sys.argv.index('--output') + 1])\n"
+        f"output.write_text({json.dumps(document)!r})\n"
+    )
+    path.chmod(0o755)
