@@ -18,6 +18,7 @@ from dify_agent.protocol import (
 from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
 from clients.agent_backend import (
+    AgentBackendInternalEventType,
     AgentBackendRunEventAdapter,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
@@ -245,6 +246,38 @@ class FailingStreamBackendClient(FakeAgentBackendRunClient):
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         self.cancel_requests.append(request)
         return CancelRunResponse(run_id=run_id, status="cancelled")
+
+
+class EmptyStreamBackendClient(FailingStreamBackendClient):
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del run_id, after, should_stop
+        return
+        yield
+
+
+class GenericFailingStreamBackendClient(FailingStreamBackendClient):
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del run_id, after, should_stop
+        raise RuntimeError("unexpected stream failure")
+        yield
+
+
+class CancelFailingStreamBackendClient(FailingStreamBackendClient):
+    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        self.cancel_requests.append(request)
+        raise RuntimeError(f"failed to cancel {run_id}")
 
 
 def _node(
@@ -710,6 +743,65 @@ def test_agent_node_cancels_backend_run_when_stream_fails():
     assert len(client.cancel_requests) == 1
     assert client.cancel_requests[0] is not None
     assert client.cancel_requests[0].reason == "event_stream_failed"
+
+
+def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event():
+    client = EmptyStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is None
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "stream_ended_without_terminal_event"
+
+
+def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
+    client = GenericFailingStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is not None
+    assert failure.node_run_result.error == "unexpected stream failure"
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "event_stream_failed"
+
+
+def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
+    client = CancelFailingStreamBackendClient()
+    node = _node(agent_backend_client=client)
+    node.graph_runtime_state.graph_execution = SimpleNamespace(aborted=True)
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is not None
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "workflow_graph_aborted"
+    assert "Failed to cancel Workflow Agent backend run" in caplog.text
+
+
+def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
+    client = FakeAgentBackendRunClient()
+    node = _node(agent_backend_client=client)
+    node._agent_backend_client.cancel_run = MagicMock(  # type: ignore[method-assign]
+        return_value=CancelRunResponse(run_id="run-1", status="cancelled")
+    )
+    node._event_adapter.adapt = MagicMock(  # type: ignore[method-assign]
+        return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
+    )
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is not None
+    assert failure.node_run_result.error == (
+        "Unexpected internal event type <AgentBackendInternalEventType.RUN_FAILED: 'run_failed'>"
+    )
+    node._agent_backend_client.cancel_run.assert_called_once()
 
 
 def test_agent_node_records_stream_usage_metadata():
