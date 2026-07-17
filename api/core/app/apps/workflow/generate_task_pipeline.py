@@ -183,6 +183,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                             error=stream_response.data.error,
                             elapsed_time=stream_response.data.elapsed_time,
                             total_tokens=stream_response.data.total_tokens,
+                            prompt_tokens=stream_response.data.prompt_tokens,
+                            completion_tokens=stream_response.data.completion_tokens,
                             total_steps=stream_response.data.total_steps,
                             created_at=int(stream_response.data.created_at),
                             finished_at=int(stream_response.data.finished_at)
