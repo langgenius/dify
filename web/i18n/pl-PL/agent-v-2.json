@@ -89,6 +89,7 @@
   "agentDetail.configure.chatFeatures.title": "Funkcje czatu",
   "agentDetail.configure.clearSessionConfirm.description": "Spowoduje to wyczyszczenie bieżącej sesji i odrzucenie niezastosowanych zmian konfiguracji Agent.",
   "agentDetail.configure.clearSessionConfirm.title": "Wyczyścić sesję i odrzucić zmiany?",
+  "agentDetail.configure.communityEditionIsolationTip": "Zastrzeżenie: W Community Edition piaskownica działa jako użytkownik bez uprawnień root przy domyślnej konfiguracji capabilities platformy Docker i zapewnia jedynie ograniczoną ochronę opartą na Landlock dla własnych plików agenta oraz plików sesji. Serwer i wszystkie podprocesy powłoki współdzielą tę samą przestrzeń nazw PID oraz granicę capabilities na poziomie kontenera, dlatego nie należy jej uznawać za silnie izolowaną, wielowarstwową piaskownicę bezpieczeństwa.",
   "agentDetail.configure.files.add": "Dodaj plik",
   "agentDetail.configure.files.buildNote.generated": "Wygenerowano",
   "agentDetail.configure.files.buildNote.richTooltip": "Zapis agenta tego, co skonfigurował w trybie Build. Odczytuje go na początku każdej rozmowy razem z Twoim Promptem. <docLink>Dowiedz się więcej</docLink>",
