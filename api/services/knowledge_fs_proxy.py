@@ -1,11 +1,11 @@
-"""Transport-only forwarding for the allowlisted KnowledgeFS Console routes.
+"""Transport-only forwarding for the explicitly enabled KnowledgeFS Console operations.
 
 KnowledgeFS owns the request and response contract. This module binds short-lived
 account and workspace identities, enforces Dify's coarse workspace policy, and
-normalizes transport failures. The dedicated
-request path uses Dify's shared SSRF policy, accepts only exact contract
-operations, never follows redirects, bounds buffered identity responses, and
-rejects compressed responses.
+normalizes transport failures. Dify deliberately maintains a small product-facing
+operation registry instead of exposing the full upstream OpenAPI surface. The
+dedicated request path uses Dify's shared SSRF policy, never follows redirects,
+bounds buffered responses, and rejects compressed responses.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
-from typing import Literal, NamedTuple, Protocol, cast
+from typing import Final, Literal, NamedTuple, Protocol
 
 import httpx
 import jwt
@@ -24,20 +24,11 @@ from core.rbac import RBACPermission, RBACResourceScope
 from core.tools.errors import ToolSSRFError
 from models import Account
 from services.enterprise.rbac_service import RBACService
-from services.knowledge_fs_contract_routes import KNOWLEDGE_FS_CONTRACT_OPERATIONS
 
 type KnowledgeFSMethod = Literal["DELETE", "GET", "PATCH", "POST", "PUT"]
 type KnowledgeFSResponseKind = Literal["binary", "buffered", "stream"]
-type KnowledgeFSAccess = Literal["read", "write"]
-type KnowledgeFSRBACPermission = Literal[
-    "dataset_access_config",
-    "dataset_api_key_manage",
-    "dataset_create_and_management",
-    "dataset_document_download",
-    "dataset_edit",
-    "dataset_external_connect",
-    "dataset_readonly",
-]
+type KnowledgeFSRequiredScope = Literal["knowledge-spaces:read", "knowledge-spaces:write"]
+type KnowledgeFSRBACPermission = Literal["dataset_create_and_management", "dataset_readonly"]
 
 _JWT_AUDIENCE = "knowledge-fs"
 _JWT_ISSUER = "dify"
@@ -46,15 +37,44 @@ _MAX_BUFFERED_RESPONSE_BYTES = 1024 * 1024
 
 
 class KnowledgeFSOperation(NamedTuple):
+    operation_id: str
     method: KnowledgeFSMethod
     path: str
     response_kind: KnowledgeFSResponseKind
-    access: KnowledgeFSAccess
+    required_scope: KnowledgeFSRequiredScope
     rbac_permission: KnowledgeFSRBACPermission
     max_response_bytes: int
     request_headers: tuple[str, ...]
     response_headers: tuple[str, ...]
     response_media_types: tuple[str, ...]
+
+
+KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
+    KnowledgeFSOperation(
+        operation_id="listKnowledgeSpaces",
+        method="GET",
+        path="knowledge-spaces",
+        response_kind="buffered",
+        required_scope="knowledge-spaces:read",
+        rbac_permission="dataset_readonly",
+        max_response_bytes=1_048_576,
+        request_headers=("x-trace-id",),
+        response_headers=("x-trace-id",),
+        response_media_types=("application/json",),
+    ),
+    KnowledgeFSOperation(
+        operation_id="createKnowledgeSpace",
+        method="POST",
+        path="knowledge-spaces",
+        response_kind="buffered",
+        required_scope="knowledge-spaces:write",
+        rbac_permission="dataset_create_and_management",
+        max_response_bytes=1_048_576,
+        request_headers=("x-trace-id",),
+        response_headers=("x-trace-id",),
+        response_media_types=("application/json",),
+    ),
+)
 
 
 class KnowledgeFSUpstreamResponse(NamedTuple):
@@ -91,7 +111,6 @@ def authorize_knowledge_fs_request(
     *,
     account: Account,
     tenant_id: str,
-    method: KnowledgeFSMethod,
     operation: KnowledgeFSOperation,
 ) -> None:
     """Enforce Dify's workspace policy before KFS performs resource authorization.
@@ -99,23 +118,13 @@ def authorize_knowledge_fs_request(
     Args:
         account: Authenticated Dify account with its current workspace role.
         tenant_id: Current Dify workspace identifier.
-        method: Allowlisted upstream HTTP method.
-        operation: Generated KnowledgeFS operation metadata.
+        operation: Dify-maintained KnowledgeFS operation and policy metadata.
 
     Raises:
         KnowledgeFSAccessDeniedError: The account lacks a required legacy or enterprise permission.
     """
     permission = RBACPermission(operation.rbac_permission)
-    if permission == RBACPermission.DATASET_ACCESS_CONFIG and not account.is_admin_or_owner:
-        raise KnowledgeFSAccessDeniedError("KnowledgeFS access-policy changes require a workspace administrator")
-    if permission == RBACPermission.DATASET_API_KEY_MANAGE and (
-        (method == "DELETE" and not account.is_admin_or_owner)
-        or (method != "DELETE" and not account.has_edit_permission)
-    ):
-        raise KnowledgeFSAccessDeniedError("KnowledgeFS API-key changes require elevated workspace access")
-    if permission == RBACPermission.DATASET_EXTERNAL_CONNECT and not account.has_edit_permission:
-        raise KnowledgeFSAccessDeniedError("KnowledgeFS connections require workspace edit access")
-    if operation.access == "write" and not account.is_dataset_editor:
+    if operation.required_scope == "knowledge-spaces:write" and not account.is_dataset_editor:
         raise KnowledgeFSAccessDeniedError("KnowledgeFS mutations require dataset edit access")
     if not RBACService.CheckAccess.check(
         tenant_id,
@@ -143,7 +152,6 @@ def proxy_knowledge_fs_request(
     authorize_knowledge_fs_request(
         account=account,
         tenant_id=tenant_id,
-        method=method,
         operation=operation,
     )
     incoming_request_headers = {name.lower(): value for name, value in (request_headers or {}).items()}
@@ -213,7 +221,7 @@ def _forward_knowledge_fs_request(
             "exp": now + timedelta(seconds=_JWT_TTL_SECONDS),
             "iat": now,
             "iss": _JWT_ISSUER,
-            "scopes": [f"knowledge-spaces:{operation.access}"],
+            "scopes": [operation.required_scope],
             "sub": f"dify-workspace:{tenant_id}",
             "tenant_id": tenant_id,
         },
@@ -278,29 +286,9 @@ def _forward_knowledge_fs_request(
 
 def get_knowledge_fs_operation(method: KnowledgeFSMethod, path: str) -> KnowledgeFSOperation:
     """Resolve an exact operation and its transport/access contract metadata."""
-    for (
-        allowed_method,
-        template,
-        response_kind,
-        access,
-        rbac_permission,
-        max_response_bytes,
-        request_headers,
-        response_headers,
-        response_media_types,
-    ) in KNOWLEDGE_FS_CONTRACT_OPERATIONS:
-        if method == allowed_method and _matches_route_template(template, path):
-            return KnowledgeFSOperation(
-                method,
-                path,
-                response_kind=cast(KnowledgeFSResponseKind, response_kind),
-                access=cast(KnowledgeFSAccess, access),
-                rbac_permission=cast(KnowledgeFSRBACPermission, rbac_permission),
-                max_response_bytes=max_response_bytes,
-                request_headers=request_headers,
-                response_headers=response_headers,
-                response_media_types=response_media_types,
-            )
+    for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS:
+        if method == operation.method and _matches_route_template(operation.path, path):
+            return operation._replace(path=path)
     raise KnowledgeFSRouteNotAllowedError("KnowledgeFS route is not allowed")
 
 

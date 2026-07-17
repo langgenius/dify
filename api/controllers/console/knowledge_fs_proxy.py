@@ -3,7 +3,8 @@
 These raw Blueprint routes deliberately stay outside Dify's OpenAPI surface:
 KnowledgeFS owns the wire contract consumed by the frontend. The catch-all path
 avoids resource-specific Dify controllers, while the forwarding module consumes
-the exact operation templates generated from the pinned KnowledgeFS contract.
+only the operations explicitly enabled by Dify's product registry. The registry
+is validated against the pinned KnowledgeFS contract during development and CI.
 Console auth and contract-specific dataset RBAC run before forwarding. Request
 bodies are capped at 64 MiB, JSON and binary responses have separate bounds,
 SSE responses remain streaming with a bounded idle read timeout, and only safe

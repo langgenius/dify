@@ -11,6 +11,7 @@ import pytest
 
 from dev import generate_knowledge_fs_contract as contract_validator
 from dev.generate_knowledge_fs_contract import ContractDeclaration, validate_declarations
+from services.knowledge_fs_proxy import KNOWLEDGE_FS_CONSOLE_OPERATIONS, KnowledgeFSOperation
 
 
 def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -91,6 +92,31 @@ def test_validate_declarations_accepts_matching_contract() -> None:
                 response_headers=("x-trace-id",),
             ),
         ),
+    )
+
+
+def test_console_operation_registry_matches_contract() -> None:
+    list_route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
+    create_route = operation("knowledge-spaces:write", "createKnowledgeSpace")
+    for route in (list_route, create_route):
+        route["parameters"] = [{"in": "header", "name": "X-Trace-Id"}]
+        route["responses"] = {
+            "200": {
+                "content": {"application/json": {}},
+                "headers": {"X-Trace-Id": {}},
+            }
+        }
+
+    validate_declarations(
+        {
+            "paths": {
+                "/knowledge-spaces": {
+                    "get": list_route,
+                    "post": create_route,
+                }
+            }
+        },
+        tuple(_contract_declaration(operation) for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS),
     )
 
 
@@ -253,6 +279,20 @@ def declaration(**overrides: object) -> ContractDeclaration:
     }
     value.update(overrides)
     return cast(ContractDeclaration, value)
+
+
+def _contract_declaration(operation: KnowledgeFSOperation) -> ContractDeclaration:
+    return {
+        "operation_id": operation.operation_id,
+        "method": operation.method,
+        "path": operation.path,
+        "required_scope": operation.required_scope,
+        "response_kind": operation.response_kind,
+        "max_response_bytes": operation.max_response_bytes,
+        "request_headers": operation.request_headers,
+        "response_headers": operation.response_headers,
+        "response_media_types": operation.response_media_types,
+    }
 
 
 def write_fake_pnpm(path: Path, document: dict[str, object]) -> None:
