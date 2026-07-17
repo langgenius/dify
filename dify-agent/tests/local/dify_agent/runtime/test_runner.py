@@ -64,7 +64,12 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
-from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError, _run_failed_error_payload
+from dify_agent.runtime.runner import (
+    AgentRunRunner,
+    AgentRunValidationError,
+    RunSuccessOutcome,
+    _run_failed_error_payload,
+)
 from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 
@@ -162,6 +167,38 @@ def test_run_failed_error_payload_preserves_knowledge_error_code() -> None:
 
     assert message == "Knowledge base search failed with HTTP 400 (dataset_not_found): Dataset not found"
     assert reason == "dataset_not_found"
+
+
+def test_cancelled_runner_does_not_overwrite_cancelled_status_with_late_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def scenario() -> None:
+        sink = InMemoryRunEventSink()
+        cancelled = False
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-cancelled",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                is_cancelled=lambda: cancelled,
+            )
+
+            async def fail_after_cancel() -> RunSuccessOutcome:
+                nonlocal cancelled
+                cancelled = True
+                await sink.update_status("run-cancelled", "cancelled", "workflow stopped")
+                raise RuntimeError("late model failure")
+
+            monkeypatch.setattr(runner, "_run_agent", fail_after_cancel)
+            await runner.run()
+
+        assert sink.statuses["run-cancelled"] == "cancelled"
+        assert sink.errors["run-cancelled"] == "workflow stopped"
+        assert [event.type for event in sink.events["run-cancelled"]] == ["run_started"]
+
+    asyncio.run(scenario())
 
 
 def _request(
