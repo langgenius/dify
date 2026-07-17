@@ -346,11 +346,6 @@ describe('Form', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Form />)
-      expect(screen.getByRole('button', { name: /form\.save/i })).toBeInTheDocument()
-    })
-
     it('should render dataset name input with initial value', () => {
       render(<Form />)
       const nameInput = screen.getByDisplayValue('Test Dataset')

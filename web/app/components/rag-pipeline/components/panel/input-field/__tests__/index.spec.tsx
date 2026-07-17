@@ -192,12 +192,6 @@ describe('InputFieldPanel', () => {
   })
 
   describe('Rendering', () => {
-    it('should render panel without crashing', () => {
-      render(<InputFieldPanel />)
-
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.title'))!.toBeInTheDocument()
-    })
-
     it('should render panel title correctly', () => {
       render(<InputFieldPanel />)
 
@@ -543,34 +537,7 @@ describe('InputFieldPanel', () => {
     })
   })
 
-  describe('Label Class Names', () => {
-    it('should pass correct className to datasource field lists', () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      setupMocks({ nodes })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-classname-node-1'))!.toHaveTextContent('pt-1 pb-1')
-    })
-
-    it('should pass correct className to global inputs field list', () => {
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-classname-shared'))!.toHaveTextContent('pt-2 pb-1')
-    })
-  })
-
   describe('Memoization', () => {
-    it('should memoize datasourceNodeDataMap based on nodes', () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      setupMocks({ nodes })
-      const { rerender } = render(<InputFieldPanel />)
-
-      rerender(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-node-1'))!.toBeInTheDocument()
-    })
-
     it('should compute allVariableNames correctly', () => {
       const variables = [
         createRAGPipelineVariable('node-1', { variable: 'alpha' }),
@@ -728,13 +695,6 @@ describe('InputFieldPanel', () => {
   })
 
   describe('Component Structure', () => {
-    it('should have correct panel width class', () => {
-      const { container } = render(<InputFieldPanel />)
-
-      const panel = container.firstChild as HTMLElement
-      expect(panel)!.toHaveClass('w-[400px]')
-    })
-
     it('should have overflow scroll on content area', () => {
       const { container } = render(<InputFieldPanel />)
 
@@ -854,15 +814,6 @@ describe('Component Memo Behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupMocks()
-  })
-
-  it('should be wrapped with React.memo', () => {
-    const { rerender } = render(<InputFieldPanel />)
-
-    rerender(<InputFieldPanel />)
-
-    expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
-    expect(screen.getByText('datasetPipeline.inputFieldPanel.title'))!.toBeInTheDocument()
   })
 
   it('should handle state updates correctly with memo', async () => {

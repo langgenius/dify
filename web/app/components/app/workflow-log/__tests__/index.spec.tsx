@@ -243,21 +243,6 @@ describe('Logs Container', () => {
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
-          data: createMockLogsResponse([], 0),
-        }),
-      )
-
-      // Act
-      renderWithQueryClient(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByText('appLog.workflowTitle')).toBeInTheDocument()
-    })
-
     it('should render title and subtitle', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(

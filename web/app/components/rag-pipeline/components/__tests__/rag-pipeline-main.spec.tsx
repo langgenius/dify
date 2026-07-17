@@ -166,12 +166,6 @@ describe('RagPipelineMain', () => {
   })
 
   describe('rendering', () => {
-    it('should render without crashing', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
     it('should render RagPipelineChildren', () => {
       render(<RagPipelineMain {...defaultProps} />)
 

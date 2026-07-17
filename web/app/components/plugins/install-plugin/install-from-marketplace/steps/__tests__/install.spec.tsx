@@ -797,19 +797,4 @@ describe('Install Component (steps/install.tsx)', () => {
       expect(screen.queryByText(/difyVersionNotCompatible/)).not.toBeInTheDocument()
     })
   })
-
-  // ================================
-  // Component Memoization Tests
-  // ================================
-  describe('Component Memoization', () => {
-    it('should maintain stable component across rerenders with same props', () => {
-      const { rerender } = render(<Install {...defaultProps} />)
-
-      expect(screen.getByTestId('plugin-card')).toBeInTheDocument()
-
-      rerender(<Install {...defaultProps} />)
-
-      expect(screen.getByTestId('plugin-card')).toBeInTheDocument()
-    })
-  })
 })

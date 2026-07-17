@@ -42,15 +42,6 @@ describe('ActionButtons', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(
-        <ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />,
-        { wrapper: createWrapper({}) },
-      )
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render cancel button', () => {
       render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
         wrapper: createWrapper({}),

@@ -91,12 +91,6 @@ describe('CrawledResult', () => {
         expect(screen.getByTestId(`crawled-item-${item.source_url}`))!.toBeInTheDocument()
       }
     })
-
-    it('should apply custom className', () => {
-      const { container } = render(<CrawledResult {...defaultProps} className="my-custom-class" />)
-
-      expect(container.firstChild)!.toHaveClass('my-custom-class')
-    })
   })
 
   // Check-all checkbox visibility

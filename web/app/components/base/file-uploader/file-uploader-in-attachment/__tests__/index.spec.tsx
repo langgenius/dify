@@ -47,13 +47,6 @@ describe('FileUploaderInAttachmentWrapper', () => {
     vi.clearAllMocks()
   })
 
-  it('should render without crashing', () => {
-    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
-
-    // FileContextProvider wraps children with a Zustand context — verify children render
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-  })
-
   it('should render upload buttons when not disabled', () => {
     render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
 

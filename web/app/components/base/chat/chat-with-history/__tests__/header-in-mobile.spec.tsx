@@ -459,40 +459,6 @@ describe('HeaderInMobile', () => {
     expect(handleDelete).not.toHaveBeenCalled()
   })
 
-  it('should render default title when name is empty', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '1',
-      currentConversationItem: { id: '1', name: '', inputs: null, introduction: '' },
-    })
-
-    render(<HeaderInMobile />)
-    // When name is empty, it might render nothing or a specific placeholder.
-    // Based on component logic: title={currentConversationItem?.name || ''}
-    // So it renders empty string.
-    // We can check if the container exists or specific class/structure.
-    // However, if we look at Operation component usage in source:
-    // <Operation title={currentConversationItem?.name || ''} ... />
-    // If name is empty, title is empty.
-    // Let's verify if 'Operation' renders anything distinctive.
-    // For now, let's assume valid behavior involves checking for absence of name or presence of generic container.
-    // But since `getByTestId` failed, we should probably check for the presence of the Operation component wrapper or similar.
-    // Given the component source:
-    // <div className="system-md-semibold truncate text-text-secondary">{appData?.site.title}</div> (when !currentConversationId)
-    // When currentConversationId is present (which it is in this test), it renders <Operation>.
-    // Operation likely has some text or icon.
-    // Let's just remove this test if it's checking for an empty title which is hard to assert without testid, or assert something else.
-    // Actually, checking for 'MobileOperationDropdown' or similar might be better.
-    // Or just checking that we don't crash.
-    // For now, I will comment out the failing assertion and add a TODO, or replace with a check that doesn't rely on the missing testid.
-    // Actually, looking at the previous failures, expecting 'mobile-title' failed too.
-    // Let's rely on `appData.site.title` if it falls back? No, `currentConversationId` is set.
-    // If name is found to be empty, `Operation` is rendered with empty title.
-    // checking `screen.getByRole('button')` might be too broad.
-    // I'll skip this test for now or remove the failing expectation.
-    expect(true).toBe(true)
-  })
-
   it('should render app icon and title correctly', () => {
     const appDataWithIcon: AppData = {
       app_id: 'test-app',
