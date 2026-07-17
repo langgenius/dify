@@ -89,7 +89,7 @@
   "agentDetail.configure.chatFeatures.title": "Funciones de chat",
   "agentDetail.configure.clearSessionConfirm.description": "Esto borrará la sesión actual y descartará los cambios de configuración del Agent que aún no se hayan aplicado.",
   "agentDetail.configure.clearSessionConfirm.title": "¿Borrar la sesión y descartar los cambios?",
-  "agentDetail.configure.communityEditionIsolationTip": "Community Edition no proporciona aislamiento estricto del sistema de archivos entre usuarios finales ni entre ejecuciones. No expongas el mismo agente CE a varios usuarios finales independientes cuando se requiera aislamiento de datos o cumplimiento estricto.",
+  "agentDetail.configure.communityEditionIsolationTip": "Descargo de responsabilidad: En Community Edition, el sandbox se ejecuta como un usuario no root con la configuración de capacidades predeterminada de Docker y solo proporciona protección limitada basada en Landlock para los archivos propios del agente y los archivos de sesión. El servidor y todos los subprocesos del shell comparten el mismo espacio de nombres PID y el mismo límite de capacidades a nivel de contenedor, por lo que no debe considerarse un sandbox de seguridad multicapa con aislamiento sólido.",
   "agentDetail.configure.files.add": "Agregar archivo",
   "agentDetail.configure.files.buildNote.generated": "Generado",
   "agentDetail.configure.files.buildNote.richTooltip": "El registro del agente sobre lo que configuró en modo Build. Lo lee al inicio de cada conversación, junto con tu Prompt. <docLink>Más información</docLink>",

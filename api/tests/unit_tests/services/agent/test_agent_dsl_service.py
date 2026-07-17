@@ -1,6 +1,6 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock, call
+from unittest.mock import Mock
 
 import pytest
 from pydantic import ValidationError
@@ -19,7 +19,6 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from models.model import App, IconType
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
@@ -361,7 +360,7 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypat
     assert session.flush.call_count == 2
 
 
-def test_import_workflow_packages_replaces_bindings_and_reuses_roster_package() -> None:
+def test_import_workflow_packages_materializes_every_package_binding_as_inline() -> None:
     package = make_portable_agent_package(_agent(), AgentSoulConfig())
     graph = {
         "nodes": [
@@ -388,18 +387,15 @@ def test_import_workflow_packages_replaces_bindings_and_reuses_roster_package() 
     session = Mock()
     session.scalars.return_value.all.return_value = [old_binding]
     service = AgentDslService(session)
-    roster_result = SimpleNamespace(
-        agent=SimpleNamespace(id="roster-agent"),
-        snapshot=SimpleNamespace(id="roster-snapshot"),
-        warnings=[DslImportWarning(code="roster", path="agent", message="roster warning")],
-    )
-    inline_result = SimpleNamespace(
-        agent=SimpleNamespace(id="inline-agent"),
-        snapshot=SimpleNamespace(id="inline-snapshot"),
-        warnings=[DslImportWarning(code="inline", path="agent", message="inline warning")],
-    )
-    service._create_imported_roster_agent_app = Mock(return_value=roster_result)
-    service._create_imported_inline_agent = Mock(return_value=inline_result)
+    imported_results = [
+        SimpleNamespace(
+            agent=SimpleNamespace(id=f"inline-agent-{index}"),
+            snapshot=SimpleNamespace(id=f"inline-snapshot-{index}"),
+            warnings=[DslImportWarning(code=f"inline-{index}", path="agent", message="inline warning")],
+        )
+        for index in range(1, 4)
+    ]
+    service._create_imported_inline_agent = Mock(side_effect=imported_results)
     workflow = SimpleNamespace(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -416,15 +412,25 @@ def test_import_workflow_packages_replaces_bindings_and_reuses_roster_package() 
     )
 
     session.delete.assert_called_once_with(old_binding)
-    service._create_imported_roster_agent_app.assert_called_once()
-    service._create_imported_inline_agent.assert_called_once()
-    assert [warning.code for warning in warnings] == ["roster", "roster", "inline"]
-    assert result["nodes"][0]["data"]["agent_binding"]["agent_id"] == "roster-agent"
-    assert result["nodes"][2]["data"]["agent_binding"]["agent_id"] == "inline-agent"
+    assert service._create_imported_inline_agent.call_count == 3
+    assert [call.kwargs["node_id"] for call in service._create_imported_inline_agent.call_args_list] == [
+        "roster-1",
+        "roster-2",
+        "inline",
+    ]
+    assert [warning.code for warning in warnings] == ["inline-1", "inline-2", "inline-3"]
+    bindings = [result["nodes"][index]["data"]["agent_binding"] for index in range(3)]
+    assert [binding["agent_id"] for binding in bindings] == [
+        "inline-agent-1",
+        "inline-agent-2",
+        "inline-agent-3",
+    ]
+    assert all(binding["binding_type"] == WorkflowAgentBindingType.INLINE_AGENT.value for binding in bindings)
     assert AGENT_NODE_JOB_DSL_KEY not in result["nodes"][0]["data"]
     assert json.loads(workflow.graph) == result
     added_bindings = [item.args[0] for item in session.add.call_args_list]
     assert all(isinstance(binding, WorkflowAgentNodeBinding) for binding in added_bindings)
+    assert all(binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT for binding in added_bindings)
 
 
 @pytest.mark.parametrize(
@@ -544,35 +550,6 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypat
         "model:provider/retrieval",
         "model:provider/rerank",
     ]
-
-
-def test_create_imported_roster_agent_app_prefixes_warnings(monkeypatch) -> None:
-    session = Mock()
-    service = AgentDslService(session)
-    service._configure_visible_agent_app_after_commit = Mock()
-    result = SimpleNamespace(
-        agent=_agent(),
-        snapshot=_snapshot(),
-        warnings=[DslImportWarning(code="setup", path="soul.model", message="setup")],
-    )
-    service.import_agent_app_package = Mock(return_value=result)
-    send = Mock()
-    monkeypatch.setattr("services.agent.dsl_service.app_was_created.send", send)
-
-    imported = service._create_imported_roster_agent_app(
-        tenant_id="tenant-1",
-        account=SimpleNamespace(id="account-1"),
-        package=make_portable_agent_package(_agent(), AgentSoulConfig()),
-        package_path="agent_packages.agent_1",
-    )
-
-    app = session.add.call_args.args[0]
-    assert isinstance(app, App)
-    assert app.name == "Portable Agent"
-    assert app.enable_site is True
-    assert app.enable_api is True
-    send.assert_called_once_with(app, account=SimpleNamespace(id="account-1"), session=session)
-    assert imported.warnings[0].path == "agent_packages.agent_1.soul.model"
 
 
 def test_create_imported_inline_agent_uses_import_provenance() -> None:
@@ -724,51 +701,6 @@ def test_unique_roster_name_uses_first_available_suffix() -> None:
     assert result == "Agent import 2"
 
 
-def test_configure_visible_agent_app_runs_after_commit(monkeypatch) -> None:
-    session = Mock()
-    listener = Mock()
-    monkeypatch.setattr("services.agent.dsl_service.event.listen", listener)
-    service = AgentDslService(session)
-
-    service._configure_visible_agent_app_after_commit(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        account_id="account-1",
-    )
-
-    listener.assert_called_once_with(session, "after_commit", listener.call_args.args[2], once=True)
-    configure = listener.call_args.args[2]
-    from services.enterprise import rbac_service
-    from services.enterprise.enterprise_service import EnterpriseService
-    from services.feature_service import FeatureService
-
-    sync = Mock()
-    update_access = Mock()
-    monkeypatch.setattr(rbac_service, "try_sync_creator_access_policy_member_bindings", sync)
-    monkeypatch.setattr(EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
-    monkeypatch.setattr(
-        FeatureService,
-        "get_system_features",
-        Mock(return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
-    )
-    configure(session)
-    update_access.assert_not_called()
-
-    FeatureService.get_system_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
-    configure(session)
-    update_access.assert_called_once_with("app-1", "private")
-    assert sync.call_args_list == [
-        call("tenant-1", "account-1", rbac_service.RBACResourceType.APP, "app-1"),
-        call("tenant-1", "account-1", rbac_service.RBACResourceType.APP, "app-1"),
-    ]
-
-    monkeypatch.setattr(rbac_service, "try_sync_creator_access_policy_member_bindings", Mock(side_effect=RuntimeError))
-    logger = Mock()
-    monkeypatch.setattr("services.agent.dsl_service.logger", logger)
-    configure(session)
-    logger.exception.assert_called_once()
-
-
 def test_require_helpers_and_graph_detection() -> None:
     session = Mock()
     service = AgentDslService(session)
@@ -787,7 +719,5 @@ def test_require_helpers_and_graph_detection() -> None:
 
     assert AgentDslService._agent_icon_type(AgentIconType.EMOJI.value) == AgentIconType.EMOJI
     assert AgentDslService._agent_icon_type(None) is None
-    assert AgentDslService._app_icon_type(IconType.IMAGE.value) == IconType.IMAGE
-    assert AgentDslService._app_icon_type(None) == IconType.EMOJI
     assert is_agent_v2_graph({"nodes": [_agent_node("agent")]}) is True
     assert is_agent_v2_graph({"nodes": ["invalid", {"data": {"type": "start"}}]}) is False

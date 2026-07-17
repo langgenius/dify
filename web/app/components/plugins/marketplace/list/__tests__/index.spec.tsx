@@ -24,6 +24,7 @@ vi.mock('#i18n', async () => {
           'plugin.marketplace.noPluginFound': 'No plugins found',
           'plugin.detailPanel.operation.install': 'Install',
           'plugin.detailPanel.operation.detail': 'Detail',
+          'plugin.task.installed': 'Installed',
         }
         return translations[fullKey] || key
       }),
@@ -49,6 +50,19 @@ const { mockMarketplaceData, mockMoreClick } = vi.hoisted(() => {
 vi.mock('../../state', () => ({
   useMarketplaceData: () => mockMarketplaceData,
 }))
+
+const mockUseCheckInstalled = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
+  default: mockUseCheckInstalled,
+}))
+
+beforeEach(() => {
+  mockUseCheckInstalled.mockReturnValue({
+    installedInfo: undefined,
+    isLoading: false,
+    error: null,
+  })
+})
 
 vi.mock('../../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
@@ -989,6 +1003,64 @@ describe('CardWrapper (via List integration)', () => {
       expect(screen.getByText('Install')).toBeInTheDocument()
       // Should render detail button
       expect(screen.getByText('Detail')).toBeInTheDocument()
+    })
+
+    it('should render installed state for every card with an installed plugin id', () => {
+      const installedPlugin = createMockPlugin({
+        name: 'installed-plugin',
+        plugin_id: 'plugin-a',
+      })
+      const duplicateInstalledPlugin = createMockPlugin({
+        name: 'installed-plugin-duplicate',
+        plugin_id: 'plugin-a',
+      })
+      const uninstalledPlugin = createMockPlugin({
+        name: 'uninstalled-plugin',
+        plugin_id: 'plugin-b',
+      })
+      mockUseCheckInstalled.mockReturnValue({
+        installedInfo: {
+          'plugin-a': {
+            installedId: 'installation-a',
+            installedVersion: '1.0.0',
+            uniqueIdentifier: 'plugin-a@1.0.0',
+          },
+        },
+        isLoading: false,
+        error: null,
+      })
+
+      render(
+        <List
+          marketplaceCollections={[]}
+          marketplaceCollectionPluginsMap={{}}
+          plugins={[installedPlugin, duplicateInstalledPlugin, uninstalledPlugin]}
+          showInstallButton={true}
+        />,
+      )
+
+      expect(screen.getAllByRole('button', { name: 'Installed' })).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'Install' })).toBeInTheDocument()
+    })
+
+    it('should keep install available while installation status is pending', () => {
+      const plugin = createMockPlugin({ name: 'pending-status-plugin' })
+      mockUseCheckInstalled.mockReturnValue({
+        installedInfo: undefined,
+        isLoading: true,
+        error: null,
+      })
+
+      render(
+        <List
+          marketplaceCollections={[]}
+          marketplaceCollectionPluginsMap={{}}
+          plugins={[plugin]}
+          showInstallButton={true}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Install' })).not.toHaveAttribute('aria-disabled')
     })
 
     it('should call showInstallFromMarketplace when install button is clicked', () => {

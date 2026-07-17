@@ -1,4 +1,40 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+// oxlint-disable-next-line no-restricted-imports -- This spec directly tests the legacy request owner.
+import { request } from '../base'
+
+const mocks = vi.hoisted(() => ({
+  isClient: true,
+  baseFetch: vi.fn(),
+  refreshAccessTokenOrReLogin: vi.fn(),
+}))
+
+vi.mock('@/utils/client', () => ({
+  get isClient() {
+    return mocks.isClient
+  },
+  get isServer() {
+    return !mocks.isClient
+  },
+}))
+
+vi.mock('@/utils/var', () => ({
+  basePath: '/app',
+}))
+
+vi.mock('../fetch', () => ({
+  base: mocks.baseFetch,
+  ContentType: {
+    audio: 'audio/mpeg',
+    download: 'application/octet-stream',
+    downloadZip: 'application/zip',
+    json: 'application/json',
+  },
+  getBaseOptions: vi.fn(() => ({})),
+}))
+
+vi.mock('../refresh-token', () => ({
+  refreshAccessTokenOrReLogin: mocks.refreshAccessTokenOrReLogin,
+}))
 
 const createUnauthorizedResponse = () =>
   new Response(
@@ -15,89 +51,23 @@ const createUnauthorizedResponse = () =>
     },
   )
 
-async function loadServerRequest() {
-  vi.resetModules()
-
-  const mockBaseFetch = vi.fn(async () => {
-    throw createUnauthorizedResponse()
-  })
-  const mockRefreshAccessTokenOrReLogin = vi.fn()
-
-  vi.doMock('@/utils/client', () => ({
-    isClient: false,
-    isServer: true,
-  }))
-  vi.doMock('../fetch', () => ({
-    base: mockBaseFetch,
-    ContentType: {
-      audio: 'audio/mpeg',
-      download: 'application/octet-stream',
-      downloadZip: 'application/zip',
-      json: 'application/json',
-    },
-    getBaseOptions: vi.fn(() => ({})),
-  }))
-  vi.doMock('../refresh-token', () => ({
-    refreshAccessTokenOrReLogin: mockRefreshAccessTokenOrReLogin,
-  }))
-
-  const { request } = await import('../base')
-
-  return {
-    request,
-    mockRefreshAccessTokenOrReLogin,
-  }
-}
-
 type ClientRequestOptions = {
   response: Response
   refreshError?: Error
 }
 
-async function loadClientRequest({ response, refreshError }: ClientRequestOptions) {
-  vi.resetModules()
-
-  const mockBaseFetch = vi.fn(async () => {
-    throw response
-  })
-  const mockRefreshAccessTokenOrReLogin = refreshError
-    ? vi.fn().mockRejectedValue(refreshError)
-    : vi.fn()
-
-  vi.doMock('@/utils/client', () => ({
-    isClient: true,
-    isServer: false,
-  }))
-  vi.doMock('@/utils/var', () => ({
-    basePath: '/app',
-  }))
-  vi.doMock('../fetch', () => ({
-    base: mockBaseFetch,
-    ContentType: {
-      audio: 'audio/mpeg',
-      download: 'application/octet-stream',
-      downloadZip: 'application/zip',
-      json: 'application/json',
-    },
-    getBaseOptions: vi.fn(() => ({})),
-  }))
-  vi.doMock('../refresh-token', () => ({
-    refreshAccessTokenOrReLogin: mockRefreshAccessTokenOrReLogin,
-  }))
-
-  const { request } = await import('../base')
-
-  return {
-    request,
-    mockRefreshAccessTokenOrReLogin,
-  }
+function arrangeClientRequest({ response, refreshError }: ClientRequestOptions) {
+  mocks.baseFetch.mockRejectedValue(response)
+  if (refreshError) mocks.refreshAccessTokenOrReLogin.mockRejectedValue(refreshError)
 }
 
 describe('request 401 handling', () => {
   const originalLocation = globalThis.location
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    mocks.isClient = true
+    mocks.baseFetch.mockReset()
+    mocks.refreshAccessTokenOrReLogin.mockReset()
     Object.defineProperty(globalThis, 'location', {
       value: {
         origin: 'https://example.com',
@@ -118,40 +88,40 @@ describe('request 401 handling', () => {
       writable: true,
       configurable: true,
     })
-    vi.resetModules()
-    vi.restoreAllMocks()
   })
 
   it('should not run browser auth recovery when handling 401 on the server', async () => {
-    const { request, mockRefreshAccessTokenOrReLogin } = await loadServerRequest()
+    const response = createUnauthorizedResponse()
+    mocks.isClient = false
+    mocks.baseFetch.mockRejectedValue(response)
 
-    await expect(request('/account/profile')).rejects.toMatchObject({ status: 401 })
+    await expect(request('/account/profile')).rejects.toBe(response)
 
-    expect(mockRefreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+    expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
   })
 
   it('should preserve the current URL when a 401 response cannot be parsed', async () => {
     const response = new Response('not-json', { status: 401 })
-    const { request, mockRefreshAccessTokenOrReLogin } = await loadClientRequest({ response })
+    arrangeClientRequest({ response })
 
     await expect(request('/account/profile')).rejects.toBe(response)
 
     expect(globalThis.location.href).toBe(
       `https://example.com/app/signin?redirect_url=${encodeURIComponent('/app/apps?category=agent#recent')}`,
     )
-    expect(mockRefreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+    expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
   })
 
   it('should preserve the current URL when token refresh fails', async () => {
     const response = createUnauthorizedResponse()
-    const { request, mockRefreshAccessTokenOrReLogin } = await loadClientRequest({
+    arrangeClientRequest({
       response,
       refreshError: new Error('refresh failed'),
     })
 
     await expect(request('/account/profile')).rejects.toBe(response)
 
-    expect(mockRefreshAccessTokenOrReLogin).toHaveBeenCalledOnce()
+    expect(mocks.refreshAccessTokenOrReLogin).toHaveBeenCalledOnce()
     expect(globalThis.location.href).toBe(
       `https://example.com/app/signin?redirect_url=${encodeURIComponent('/app/apps?category=agent#recent')}`,
     )

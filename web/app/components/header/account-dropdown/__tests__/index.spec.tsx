@@ -3,13 +3,17 @@ import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-contex
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderToString } from 'react-dom/server'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import AccountSection from '@/app/components/main-nav/components/account-section'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
+import { createAccountProfileQueryClient } from '@/test/account-profile-query'
 import AppSelector from '../index'
 
 type DeepPartial<T> =
@@ -146,15 +150,17 @@ vi.mock('@/config', async (importOriginal) => {
 })
 vi.mock('@/env', () => mockEnv)
 
+const baseUserProfile = {
+  id: '1',
+  name: 'Test User',
+  email: 'test@example.com',
+  avatar: '',
+  avatar_url: 'avatar.png',
+  is_password_set: false,
+}
+
 const baseAppContextValue: AppContextStateMockState = {
-  userProfile: {
-    id: '1',
-    name: 'Test User',
-    email: 'test@example.com',
-    avatar: '',
-    avatar_url: 'avatar.png',
-    is_password_set: false,
-  },
+  userProfile: baseUserProfile,
   mutateUserProfile: vi.fn(),
   currentWorkspace: {
     id: '1',
@@ -200,7 +206,12 @@ describe('AccountDropdown', () => {
     ui: React.ReactElement,
     options: { systemFeatures?: DeepPartial<GetSystemFeaturesResponse> } = {},
   ) => {
+    const queryClient = createAccountProfileQueryClient({
+      ...baseUserProfile,
+      ...(mockAppContextState.current?.userProfile ?? {}),
+    })
     return renderWithSystemFeatures(ui, {
+      queryClient,
       systemFeatures: options.systemFeatures ?? { branding: { enabled: false } },
     })
   }
@@ -237,6 +248,29 @@ describe('AccountDropdown', () => {
   })
 
   describe('Rendering', () => {
+    it('should show the signed-in account in the main navigation menu', async () => {
+      const user = userEvent.setup()
+      const queryClient = createAccountProfileQueryClient({
+        id: 'current-user',
+        name: 'Current User',
+        email: 'current@example.com',
+        avatar_url: 'current-avatar.png',
+      })
+
+      renderWithSystemFeatures(<AccountSection />, {
+        queryClient,
+        systemFeatures: { branding: { enabled: false } },
+      })
+
+      expect(screen.getByText('Current User')).toBeInTheDocument()
+      expect(screen.queryByText('Test User')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'common.account.account' }))
+
+      expect(await screen.findByText('current@example.com')).toBeInTheDocument()
+      expect(screen.queryByText('test@example.com')).not.toBeInTheDocument()
+    })
+
     it('should render user profile correctly', () => {
       // Act
       renderWithRouter(<AppSelector />)
@@ -253,6 +287,13 @@ describe('AccountDropdown', () => {
 
       // Assert
       expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
+    })
+
+    it('should keep the account trigger disabled in server-rendered markup', () => {
+      const container = document.createElement('div')
+      container.innerHTML = renderToString(<AppSelector />)
+
+      expect(container.querySelector('button[aria-label="common.account.account"]')).toBeDisabled()
     })
 
     it('should show EDU badge for education accounts', () => {

@@ -12,7 +12,7 @@ import {
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../agent-builder-resources'
-import { buildQuery, findConsoleResourceByName, skipBlockedPrecondition } from './common'
+import { buildQuery, failFixturePrerequisite, findConsoleResourceByName } from './common'
 
 type DocumentIndexingStatus =
   | 'cleaning'
@@ -23,14 +23,6 @@ type DocumentIndexingStatus =
   | 'waiting'
 
 const completedDocumentIndexingStatus: DocumentIndexingStatus = 'completed'
-const activeDocumentIndexingStatuses = new Set<string>([
-  'cleaning',
-  'indexing',
-  'parsing',
-  'splitting',
-  'waiting',
-])
-
 export const getPreseededDataset = async (resourceName: string) => {
   const query = buildQuery({ keyword: resourceName, limit: '20', page: '1' })
 
@@ -117,39 +109,27 @@ const datasetHasEnabledSegmentContainingTokens = async (
   }
 }
 
-export const toDatasetResource = (resource: DatasetListItemResponse): PreseededResource => ({
+const toDatasetResource = (resource: DatasetListItemResponse): PreseededResource => ({
   id: resource.id,
   kind: 'dataset',
   name: resource.name,
 })
 
-export async function skipMissingPreseededDataset(
+export async function requireReadyPreseededDataset(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | PreseededResource> {
+): Promise<PreseededResource> {
   const resource = await getPreseededDataset(resourceName)
 
   if (!resource)
-    return skipBlockedPrecondition(world, `Preseeded dataset "${resourceName}" was not found.`)
-
-  return toDatasetResource(resource)
-}
-
-export async function skipMissingReadyPreseededDataset(
-  world: DifyWorld,
-  resourceName: string,
-): Promise<'skipped' | PreseededResource> {
-  const resource = await getPreseededDataset(resourceName)
-
-  if (!resource)
-    return skipBlockedPrecondition(world, `Preseeded dataset "${resourceName}" was not found.`)
+    return failFixturePrerequisite(world, `Preseeded dataset "${resourceName}" was not found.`)
 
   if (resource.document_count < 1) {
-    return skipBlockedPrecondition(world, `Preseeded dataset "${resourceName}" has no documents.`)
+    return failFixturePrerequisite(world, `Preseeded dataset "${resourceName}" has no documents.`)
   }
 
   if (resource.total_available_documents !== resource.document_count) {
-    return skipBlockedPrecondition(
+    return failFixturePrerequisite(
       world,
       `Preseeded dataset "${resourceName}" has ${resource.total_available_documents}/${resource.document_count} available documents.`,
     )
@@ -157,7 +137,7 @@ export async function skipMissingReadyPreseededDataset(
 
   const statuses = await getDatasetIndexingStatuses(resource.id, resourceName)
   if (statuses.length < 1) {
-    return skipBlockedPrecondition(
+    return failFixturePrerequisite(
       world,
       `Preseeded dataset "${resourceName}" has no document indexing status.`,
     )
@@ -167,7 +147,7 @@ export async function skipMissingReadyPreseededDataset(
     (item) => item.indexing_status !== completedDocumentIndexingStatus,
   )
   if (incompleteStatus) {
-    return skipBlockedPrecondition(
+    return failFixturePrerequisite(
       world,
       `Preseeded dataset "${resourceName}" includes document ${incompleteStatus.id} with indexing status "${incompleteStatus.indexing_status ?? 'missing'}".`,
     )
@@ -186,7 +166,7 @@ export async function skipMissingReadyPreseededDataset(
     )
 
     if (!hasExpectedToken) {
-      return skipBlockedPrecondition(
+      return failFixturePrerequisite(
         world,
         `Preseeded dataset "${resourceName}" has no enabled segment containing "${requiredTokens.join('" and "')}".`,
         {
@@ -194,33 +174,6 @@ export async function skipMissingReadyPreseededDataset(
         },
       )
     }
-  }
-
-  return toDatasetResource(resource)
-}
-
-export async function skipMissingIndexingPreseededDataset(
-  world: DifyWorld,
-  resourceName: string,
-): Promise<'skipped' | PreseededResource> {
-  const resource = await getPreseededDataset(resourceName)
-
-  if (!resource)
-    return skipBlockedPrecondition(world, `Preseeded dataset "${resourceName}" was not found.`)
-
-  const statuses = await getDatasetIndexingStatuses(resource.id, resourceName)
-  const indexingStatus = statuses.find((item) =>
-    activeDocumentIndexingStatuses.has(item.indexing_status ?? ''),
-  )
-
-  if (!indexingStatus) {
-    const actualStatuses =
-      statuses.map((item) => item.indexing_status ?? 'missing').join(', ') || 'none'
-
-    return skipBlockedPrecondition(
-      world,
-      `Preseeded dataset "${resourceName}" is not indexing or queued; document statuses: ${actualStatuses}.`,
-    )
   }
 
   return toDatasetResource(resource)

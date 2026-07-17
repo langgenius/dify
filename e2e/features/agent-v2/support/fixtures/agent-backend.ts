@@ -1,5 +1,5 @@
 import type { DifyWorld } from '../../../support/world'
-import { skipBlockedPrecondition } from './common'
+import { failFixturePrerequisite } from './common'
 
 const isTruthyEnv = (value: string | undefined) => value === '1' || value === 'true'
 
@@ -54,7 +54,7 @@ const checkRuntimeEndpoint = async ({
     const response = await fetch(healthURL)
     if (response.ok) return undefined
 
-    return skipBlockedPrecondition(
+    return failFixturePrerequisite(
       world,
       `${title} did not respond successfully at ${healthURL}: ${response.status} ${response.statusText}.`,
       {
@@ -65,18 +65,18 @@ const checkRuntimeEndpoint = async ({
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
 
-    return skipBlockedPrecondition(world, `${title} is unreachable at ${healthURL}: ${message}.`, {
+    return failFixturePrerequisite(world, `${title} is unreachable at ${healthURL}: ${message}.`, {
       owner: 'e2e/runtime',
       remediation,
     })
   }
 }
 
-export async function skipMissingAgentBackendRuntime(world: DifyWorld) {
+export async function requireAgentBackendRuntime(world: DifyWorld) {
   const agentBackendURL = getAgentBackendURL()
 
   if (!agentBackendURL) {
-    return skipBlockedPrecondition(
+    return failFixturePrerequisite(
       world,
       'Agent v2 runtime backend is not configured. This scenario needs the standalone dify-agent run server, not just an active model provider.',
       {

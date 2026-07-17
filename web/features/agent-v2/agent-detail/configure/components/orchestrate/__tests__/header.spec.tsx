@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AgentOrchestrateHeader } from '../header'
 
 describe('AgentOrchestrateHeader', () => {
-  it('should render configure title without build mode copy by default', () => {
+  it('should render the community edition isolation disclaimer', async () => {
+    const user = userEvent.setup()
     render(<AgentOrchestrateHeader headingId="configure-heading" />)
 
     expect(
@@ -11,6 +13,16 @@ describe('AgentOrchestrateHeader', () => {
     expect(
       screen.queryByText('agentV2.agentDetail.configure.buildDraft.modeBadge'),
     ).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.communityEditionIsolationTip',
+      }),
+    )
+
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.communityEditionIsolationTip'),
+    ).toBeInTheDocument()
   })
 
   it('should render build mode copy when build draft is active', () => {

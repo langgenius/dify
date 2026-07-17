@@ -46,6 +46,45 @@ describe('agent composer store conversions', () => {
     ])
   })
 
+  it('should preserve missing file and skill references without file ids in autosave config', () => {
+    const baseConfig = {
+      config_files: [
+        {
+          file_id: '',
+          file_kind: 'upload_file',
+          is_missing: true,
+          name: 'missing.pdf',
+        },
+      ],
+      config_skills: [
+        {
+          file_id: '',
+          file_kind: 'tool_file',
+          is_missing: true,
+          name: 'Missing Skill',
+        },
+      ],
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+
+    const autosaveConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(autosaveConfig.config_files).toEqual([
+      expect.objectContaining({
+        file_id: '',
+        is_missing: true,
+        name: 'missing.pdf',
+      }),
+    ])
+    expect(autosaveConfig.config_skills).toEqual([
+      expect.objectContaining({
+        file_id: '',
+        is_missing: true,
+        name: 'Missing Skill',
+      }),
+    ])
+  })
+
   it('rebases draft baselines through the composer state action', () => {
     const store = createStore()
     const nextDraft = {
