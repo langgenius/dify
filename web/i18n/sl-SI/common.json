@@ -331,6 +331,7 @@
   "modelProvider.auth.manageCredentials": "Upravljanje poverilnic",
   "modelProvider.auth.modelCredential": "Poverilnice modela",
   "modelProvider.auth.modelCredentials": "Model akreditivi",
+  "modelProvider.auth.openAIResponsesAPITip": "Za GPT-5.6 in novejše modele priporočamo uporabo Responses API.",
   "modelProvider.auth.providerManaged": "Zagotavlja upravljano",
   "modelProvider.auth.providerManagedTip": "Trenutna konfiguracija je gostovana pri ponudniku.",
   "modelProvider.auth.removeModel": "Odstrani model",

@@ -331,6 +331,7 @@
   "modelProvider.auth.manageCredentials": "Kimlik Bilgilerini Yönet",
   "modelProvider.auth.modelCredential": "Model kimlik bilgileri",
   "modelProvider.auth.modelCredentials": "Model kimlik bilgileri",
+  "modelProvider.auth.openAIResponsesAPITip": "GPT-5.6 ve sonraki modeller için Responses API'yi kullanmanızı öneririz.",
   "modelProvider.auth.providerManaged": "Sağlayıcı yönetimi",
   "modelProvider.auth.providerManagedTip": "Mevcut yapılandırma sağlayıcı tarafından barındırılmaktadır.",
   "modelProvider.auth.removeModel": "Modeli Kaldır",

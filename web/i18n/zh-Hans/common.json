@@ -331,6 +331,7 @@
   "modelProvider.auth.manageCredentials": "管理凭据",
   "modelProvider.auth.modelCredential": "模型凭据",
   "modelProvider.auth.modelCredentials": "模型凭据",
+  "modelProvider.auth.openAIResponsesAPITip": "使用 GPT-5.6 及以上模型时，建议使用 Responses API。",
   "modelProvider.auth.providerManaged": "由模型供应商管理",
   "modelProvider.auth.providerManagedTip": "使用模型供应商提供的单组凭据。",
   "modelProvider.auth.removeModel": "移除模型",
