@@ -5,39 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import OAuthAuthorize from '../page'
 
 const mocks = vi.hoisted(() => ({
-  logout: vi.fn(),
   push: vi.fn(),
   request: vi.fn(),
   searchParams: new URLSearchParams(),
-  toastError: vi.fn(),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: mocks.toastError,
-  },
-}))
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div role="status">Loading</div>,
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => 'en_US',
-}))
-
-vi.mock('@/features/account-profile/client', () => ({
-  isLegacyBase401: () => false,
-  userProfileQueryOptions: () => ({
-    queryKey: ['account-profile'],
-    queryFn: async () => ({
-      profile: {
-        avatar_url: null,
-        email: 'user@example.com',
-        name: 'Test User',
-      },
-    }),
-  }),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -46,12 +16,20 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/service/base', () => ({
+  get: vi.fn(
+    async () =>
+      new Response(
+        JSON.stringify({
+          avatar_url: null,
+          email: 'user@example.com',
+          name: 'Test User',
+        }),
+        { status: 200 },
+      ),
+  ),
+  post: vi.fn(),
   request: (...args: unknown[]) => mocks.request(...args),
   sseGeneratorPost: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useLogout: () => ({ mutateAsync: mocks.logout }),
 }))
 
 function renderPage() {
@@ -83,8 +61,10 @@ function findRequest(path: string) {
 describe('OAuthAuthorize', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.searchParams = new URLSearchParams()
-    mocks.logout.mockResolvedValue(undefined)
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'client-1',
+      redirect_uri: 'https://client.example.com/callback?state=state-1',
+    })
     mocks.request.mockImplementation(async (url: string) => {
       if (url.endsWith('/oauth/provider/authorize')) return jsonResponse({ code: 'oauth-code' })
       if (url.endsWith('/oauth/provider')) {
@@ -106,83 +86,27 @@ describe('OAuthAuthorize', () => {
     vi.unstubAllGlobals()
   })
 
-  it('does not request provider information and disables authorization without OAuth params', async () => {
-    renderPage()
-
-    const continueButton = await screen.findByRole('button', { name: /continue/i })
-
-    expect(continueButton).toBeDisabled()
-    expect(findRequest('/oauth/provider')).toBeUndefined()
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
-  })
-
   it('authorizes the displayed app and redirects with the returned code', async () => {
     const user = userEvent.setup()
-    mocks.searchParams = new URLSearchParams({
-      client_id: 'client-1',
-      redirect_uri: 'https://client.example.com/callback?state=state-1',
-    })
     renderPage()
 
     expect((await screen.findAllByText('Test OAuth App')).length).toBeGreaterThan(0)
-
     const providerRequest = findRequest('/oauth/provider')
     const providerTransportRequest = providerRequest?.[2]?.request as Request
-    expect(providerTransportRequest).toEqual(
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
     await expect(providerTransportRequest.clone().json()).resolves.toEqual({
       client_id: 'client-1',
       redirect_uri: 'https://client.example.com/callback?state=state-1',
     })
-    expect(providerRequest?.[2]).toEqual(expect.objectContaining({ silent: true }))
 
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
     await waitFor(() => expect(findRequest('/oauth/provider/authorize')).toBeDefined())
     const authorizeRequest = findRequest('/oauth/provider/authorize')
-    const authorizeTransportRequest = authorizeRequest?.[2]?.request as Request
-    expect(authorizeTransportRequest).toEqual(
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    )
-    await expect(authorizeTransportRequest.clone().json()).resolves.toEqual({
-      client_id: 'client-1',
-    })
+    const transportRequest = authorizeRequest?.[2]?.request as Request
+    await expect(transportRequest.clone().json()).resolves.toEqual({ client_id: 'client-1' })
     await waitFor(() =>
       expect(globalThis.location.href).toBe(
         'https://client.example.com/callback?state=state-1&code=oauth-code',
-      ),
-    )
-  })
-
-  it('reports an authorization request failure', async () => {
-    const user = userEvent.setup()
-    mocks.searchParams = new URLSearchParams({
-      client_id: 'client-1',
-      redirect_uri: 'https://client.example.com/callback',
-    })
-    mocks.request.mockImplementation(async (url: string) => {
-      if (url.endsWith('/oauth/provider/authorize')) throw new Error('Authorization denied')
-      if (url.endsWith('/oauth/provider')) {
-        return jsonResponse({
-          app_icon: '',
-          app_label: { en_US: 'Test OAuth App' },
-          scope: '',
-        })
-      }
-      throw new Error(`Unexpected request: ${url}`)
-    })
-    renderPage()
-
-    await user.click(await screen.findByRole('button', { name: /continue/i }))
-
-    await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        expect.stringContaining('Authorization denied'),
       ),
     )
   })

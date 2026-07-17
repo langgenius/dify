@@ -85,7 +85,6 @@ export default function OAuthAuthorize() {
   } = useQuery(
     consoleQuery.oauth.provider.post.queryOptions({
       input: hasOAuthParams ? { body: { client_id, redirect_uri } } : skipToken,
-      enabled: hasOAuthParams,
       context: { silent: true },
     }),
   )
