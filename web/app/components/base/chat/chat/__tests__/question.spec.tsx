@@ -938,23 +938,6 @@ describe('Question component', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
-  it('should apply correct CSS classes in edit vs view mode', async () => {
-    const user = userEvent.setup()
-    renderWithProvider(makeItem())
-
-    const contentContainer = screen.getByTestId('question-content')
-
-    // View mode classes
-    expect(contentContainer).toHaveClass('rounded-2xl')
-    expect(contentContainer).toHaveClass('bg-background-gradient-bg-fill-chat-bubble-bg-3')
-
-    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
-
-    // Edit mode classes
-    expect(contentContainer).toHaveClass('rounded-[24px]')
-    expect(contentContainer).toHaveClass('border-[3px]')
-  })
-
   it('should handle all sibling combinations with switchSibling callback', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()

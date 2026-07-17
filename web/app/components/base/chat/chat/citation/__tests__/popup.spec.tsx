@@ -618,14 +618,6 @@ describe('Popup', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing with minimum required props', () => {
-      expect(() => render(<Popup data={makeData()} />)).not.toThrow()
-    })
-
-    it('should render without crashing with an empty sources array', () => {
-      expect(() => render(<Popup data={makeData({ sources: [] })} />)).not.toThrow()
-    })
-
     it('should render correctly when source has no score (undefined)', async () => {
       const user = userEvent.setup()
       render(

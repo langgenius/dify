@@ -290,9 +290,4 @@ describe('PluginAuthInAgent Component', () => {
     fireEvent.click(popupItem!)
     expect(onAuthorizationItemClick).toHaveBeenCalledWith('specific-cred-id')
   })
-
-  it('should be memoized', async () => {
-    const PluginAuthInAgentModule = await import('../plugin-auth-in-agent')
-    expect(typeof PluginAuthInAgentModule.default).toBe('object')
-  })
 })

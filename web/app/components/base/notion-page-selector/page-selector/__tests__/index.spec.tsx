@@ -184,24 +184,6 @@ describe('PageSelector', () => {
     expect(handleSelect).toHaveBeenCalledWith(new Set(['child-1']))
   })
 
-  it('should handle preview when onPreview is not provided', async () => {
-    const user = userEvent.setup()
-    render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    const previewBtn = screen.getByTestId('notion-page-preview-root-1')
-    await user.click(previewBtn)
-    // Should not crash
-  })
-
   it('should handle toggle when item is already expanded', async () => {
     const user = userEvent.setup()
     render(

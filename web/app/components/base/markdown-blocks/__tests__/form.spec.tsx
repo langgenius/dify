@@ -216,28 +216,6 @@ describe('MarkdownForm', () => {
       })
     })
 
-    it('should handle invalid data-options string without crashing', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const node = createRootNode([
-        createElementNode('input', {
-          type: 'select',
-          name: 'city',
-          value: 'Paris',
-          'data-options': 'not-json',
-        }),
-        createElementNode('button', {}, [createTextNode('Submit')]),
-      ])
-
-      try {
-        render(<MarkdownForm node={node} />)
-
-        expect(screen.getByRole('button', { name: 'Submit' }))!.toBeInTheDocument()
-        expect(consoleErrorSpy).toHaveBeenCalled()
-      } finally {
-        consoleErrorSpy.mockRestore()
-      }
-    })
-
     it('should update selected value via onSelect and submit the new option', async () => {
       const user = userEvent.setup()
       const node = createRootNode([

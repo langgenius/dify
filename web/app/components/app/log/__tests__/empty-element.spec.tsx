@@ -69,14 +69,6 @@ describe('EmptyElement', () => {
 
       expect(screen.getByText('table.empty.element.content', { exact: false })).toBeInTheDocument()
     })
-
-    it('should render ThreeDotsIcon SVG', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
-      const { container } = render(<EmptyElement appDetail={appDetail} />)
-
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-    })
   })
 
   describe('App Mode Handling', () => {

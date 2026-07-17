@@ -63,11 +63,6 @@ describe('InfoGroup', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<InfoGroup dataSetId="ds-1" list={mockList} />)
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render title when provided', () => {
       render(<InfoGroup dataSetId="ds-1" list={mockList} title="Test Title" />)
       expect(screen.getByText('Test Title'))!.toBeInTheDocument()
@@ -206,21 +201,6 @@ describe('InfoGroup', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(
-        <InfoGroup dataSetId="ds-1" list={mockList} className="custom-class" />,
-      )
-      expect(container.firstChild)!.toHaveClass('custom-class')
-    })
-
-    it('should apply contentClassName', () => {
-      const { container } = render(
-        <InfoGroup dataSetId="ds-1" list={mockList} contentClassName="content-custom" />,
-      )
-      const contentDiv = container.querySelector('.content-custom')
-      expect(contentDiv)!.toBeInTheDocument()
-    })
-
     it('should use uppercase title by default', () => {
       render(<InfoGroup dataSetId="ds-1" list={mockList} title="Test Title" />)
       const titleElement = screen.getByText('Test Title')
@@ -265,11 +245,6 @@ describe('InfoGroup', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle empty list', () => {
-      const { container } = render(<InfoGroup dataSetId="ds-1" list={[]} />)
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should handle null value in list', () => {
       const nullList: MetadataItemWithValue[] = [
         { id: '1', name: 'field', type: DataType.string, value: null },

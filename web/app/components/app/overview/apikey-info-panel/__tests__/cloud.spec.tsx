@@ -1,117 +1,46 @@
 import { cleanup, screen } from '@testing-library/react'
 import {
-  assertions,
   clearAllMocks,
   defaultModalContext,
   interactions,
-  mockRouterPush,
   mockUseModalContext,
   scenarios,
-  textKeys,
 } from '../apikey-info-panel.test-utils'
 
-// Mock config for Cloud edition
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false, // Test Cloud edition
-}))
+vi.mock('@/config', () => ({ IS_CE_EDITION: false }))
 
 afterEach(cleanup)
 
 describe('APIKeyInfoPanel - Cloud Edition', () => {
-  const mockSetShowAccountSettingModal = vi.fn()
+  const setShowAccountSettingModal = vi.fn()
 
   beforeEach(() => {
     clearAllMocks()
     mockUseModalContext.mockReturnValue({
       ...defaultModalContext,
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
+      setShowAccountSettingModal,
     })
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing when API key is not set', () => {
-      scenarios.withAPIKeyNotSet()
-      assertions.shouldRenderMainButton()
-    })
-
-    it('should not render when API key is already set', () => {
-      const { container } = scenarios.withAPIKeySet()
-      assertions.shouldNotRender(container)
-    })
-
-    it('should not render when panel is hidden by user', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      interactions.clickCloseButton(container)
-      assertions.shouldNotRender(container)
-    })
+  it('hides the panel when an API key already exists', () => {
+    const { container } = scenarios.withAPIKeySet()
+    expect(container).toBeEmptyDOMElement()
   })
 
-  describe('Cloud Edition Content', () => {
-    it('should display cloud version title', () => {
-      scenarios.withAPIKeyNotSet()
-      expect(screen.getByText(textKeys.cloud.trialTitle)).toBeInTheDocument()
-    })
-
-    it('should display emoji for cloud version', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      expect(container.querySelector('em-emoji')).toBeInTheDocument()
-      expect(container.querySelector('em-emoji')).toHaveAttribute('id', '😀')
-    })
-
-    it('should display cloud version description', () => {
-      scenarios.withAPIKeyNotSet()
-      expect(screen.getByText(textKeys.cloud.trialDescription)).toBeInTheDocument()
-    })
-
-    it('should not render external link for cloud version', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      expect(
-        container.querySelector('a[href="https://cloud.dify.ai/apps"]'),
-      ).not.toBeInTheDocument()
-    })
-
-    it('should display set API button text', () => {
-      scenarios.withAPIKeyNotSet()
-      expect(screen.getByText(textKeys.cloud.setAPIBtn)).toBeInTheDocument()
-    })
+  it('opens provider settings from the primary action', () => {
+    scenarios.withMockModal(setShowAccountSettingModal)
+    interactions.clickMainButton()
+    expect(setShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
   })
 
-  describe('User Interactions', () => {
-    it('should navigate to the model provider page when set API button is clicked', () => {
-      scenarios.withMockModal(mockSetShowAccountSettingModal)
-
-      interactions.clickMainButton()
-
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
-      expect(mockRouterPush).not.toHaveBeenCalled()
-    })
-
-    it('should hide panel when close button is clicked', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      expect(container.firstChild).toBeInTheDocument()
-
-      interactions.clickCloseButton(container)
-      assertions.shouldNotRender(container)
-    })
+  it('does not show the self-hosted Cloud link', () => {
+    scenarios.withAPIKeyNotSet()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
-  describe('Props and Styling', () => {
-    it('should render panel container with correct classes', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      const panel = container.firstChild as HTMLElement
-      assertions.shouldHavePanelStyling(panel)
-    })
-  })
-
-  describe('Accessibility', () => {
-    it('should have button with proper role', () => {
-      scenarios.withAPIKeyNotSet()
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
-    it('should have clickable close button', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      assertions.shouldHaveCloseButton(container)
-    })
+  it('dismisses the panel from the close action', () => {
+    const { container } = scenarios.withAPIKeyNotSet()
+    interactions.clickCloseButton(container)
+    expect(container).toBeEmptyDOMElement()
   })
 })

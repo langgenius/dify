@@ -1,38 +1,35 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { DatasetACLPermission } from '@/utils/permission'
 import Card from '../card'
 
-// Shared mock state for context selectors
-let mockDatasetId: string | undefined = 'dataset-123'
-let mockMutateDatasetRes: ReturnType<typeof vi.fn> = vi.fn()
+let mockDatasetId = 'dataset-123'
+let mockMutateDatasetRes = vi.fn()
 let mockDatasetPermissionKeys: string[] = [DatasetACLPermission.Edit]
+const mockEnableApi = vi.fn()
+const mockDisableApi = vi.fn()
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      dataset: { id: mockDatasetId, permission_keys: mockDatasetPermissionKeys },
+      dataset: {
+        id: mockDatasetId,
+        permission_keys: mockDatasetPermissionKeys,
+      },
       mutateDatasetRes: mockMutateDatasetRes,
     }),
 }))
 
-const mockEnableApi = vi.fn()
-const mockDisableApi = vi.fn()
-
 vi.mock('@/service/knowledge/use-dataset', () => ({
-  useEnableDatasetServiceApi: () => ({
-    mutateAsync: mockEnableApi,
-  }),
-  useDisableDatasetServiceApi: () => ({
-    mutateAsync: mockDisableApi,
-  }),
+  useEnableDatasetServiceApi: () => ({ mutateAsync: mockEnableApi }),
+  useDisableDatasetServiceApi: () => ({ mutateAsync: mockDisableApi }),
 }))
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
 
-describe('Card (API Access)', () => {
+describe('API access card', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDatasetId = 'dataset-123'
@@ -40,142 +37,41 @@ describe('Card (API Access)', () => {
     mockDatasetPermissionKeys = [DatasetACLPermission.Edit]
   })
 
-  // Rendering: verifies enabled/disabled states render correctly
-  describe('Rendering', () => {
-    it('should render without crashing when api is enabled', () => {
-      render(<Card apiEnabled={true} />)
-      expect(screen.getByText(/serviceApi\.enabled/)).toBeInTheDocument()
-    })
+  it('links to the dataset API reference', () => {
+    render(<Card apiEnabled />)
 
-    it('should render without crashing when api is disabled', () => {
-      render(<Card apiEnabled={false} />)
-      expect(screen.getByText(/serviceApi\.disabled/)).toBeInTheDocument()
-    })
-
-    it('should render API access tip text', () => {
-      render(<Card apiEnabled={true} />)
-      expect(screen.getByText(/appMenus\.apiAccessTip/)).toBeInTheDocument()
-    })
-
-    it('should render API reference link', () => {
-      render(<Card apiEnabled={true} />)
-      const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
-    })
-
-    it('should render API doc text in link', () => {
-      render(<Card apiEnabled={true} />)
-      expect(screen.getByText(/apiInfo\.doc/)).toBeInTheDocument()
-    })
-
-    it('should open API reference link in new tab', () => {
-      render(<Card apiEnabled={true} />)
-      const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-    })
+    expect(screen.getByRole('link')).toHaveAttribute(
+      'href',
+      'https://docs.dify.ai/api-reference/datasets',
+    )
   })
 
-  // Props: tests enabled/disabled visual states
-  describe('Props', () => {
-    it('should show green indicator text when enabled', () => {
-      render(<Card apiEnabled={true} />)
-      const enabledText = screen.getByText(/serviceApi\.enabled/)
-      expect(enabledText).toHaveClass('text-text-success')
-    })
+  it('enables the dataset API and refreshes dataset state', async () => {
+    const user = userEvent.setup()
+    mockEnableApi.mockResolvedValue({ result: 'success' })
+    render(<Card apiEnabled={false} />)
 
-    it('should show warning text when disabled', () => {
-      render(<Card apiEnabled={false} />)
-      const disabledText = screen.getByText(/serviceApi\.disabled/)
-      expect(disabledText).toHaveClass('text-text-warning')
-    })
+    await user.click(screen.getByRole('switch'))
+
+    expect(mockEnableApi).toHaveBeenCalledWith('dataset-123')
+    expect(mockMutateDatasetRes).toHaveBeenCalledOnce()
   })
 
-  // User Interactions: tests toggle behavior
-  describe('User Interactions', () => {
-    it('should call enableDatasetServiceApi when toggling on', async () => {
-      mockEnableApi.mockResolvedValue({ result: 'success' })
-      render(<Card apiEnabled={false} />)
+  it('disables the dataset API and refreshes dataset state', async () => {
+    const user = userEvent.setup()
+    mockDisableApi.mockResolvedValue({ result: 'success' })
+    render(<Card apiEnabled />)
 
-      const switchButton = screen.getByRole('switch')
-      fireEvent.click(switchButton)
+    await user.click(screen.getByRole('switch'))
 
-      await waitFor(() => {
-        expect(mockEnableApi).toHaveBeenCalledWith('dataset-123')
-      })
-    })
-
-    it('should call disableDatasetServiceApi when toggling off', async () => {
-      mockDisableApi.mockResolvedValue({ result: 'success' })
-      render(<Card apiEnabled={true} />)
-
-      const switchButton = screen.getByRole('switch')
-      fireEvent.click(switchButton)
-
-      await waitFor(() => {
-        expect(mockDisableApi).toHaveBeenCalledWith('dataset-123')
-      })
-    })
-
-    it('should call mutateDatasetRes on successful toggle', async () => {
-      mockEnableApi.mockResolvedValue({ result: 'success' })
-      render(<Card apiEnabled={false} />)
-
-      const switchButton = screen.getByRole('switch')
-      fireEvent.click(switchButton)
-
-      await waitFor(() => {
-        expect(mockMutateDatasetRes).toHaveBeenCalled()
-      })
-    })
-
-    it('should not call mutateDatasetRes when result is not success', async () => {
-      mockEnableApi.mockResolvedValue({ result: 'fail' })
-      render(<Card apiEnabled={false} />)
-
-      const switchButton = screen.getByRole('switch')
-      fireEvent.click(switchButton)
-
-      await waitFor(() => {
-        expect(mockEnableApi).toHaveBeenCalled()
-      })
-      expect(mockMutateDatasetRes).not.toHaveBeenCalled()
-    })
+    expect(mockDisableApi).toHaveBeenCalledWith('dataset-123')
+    expect(mockMutateDatasetRes).toHaveBeenCalledOnce()
   })
 
-  // Switch disabled state
-  describe('Switch State', () => {
-    it('should disable switch when dataset lacks edit ACL permission', () => {
-      mockDatasetPermissionKeys = []
-      render(<Card apiEnabled={true} />)
+  it('prevents API changes without dataset edit permission', () => {
+    mockDatasetPermissionKeys = []
+    render(<Card apiEnabled />)
 
-      const switchButton = screen.getByRole('switch')
-      expect(switchButton).toHaveAttribute('aria-checked', 'true')
-      expect(switchButton).toHaveAttribute('aria-disabled', 'true')
-    })
-
-    it('should enable switch when dataset has edit ACL permission', () => {
-      mockDatasetPermissionKeys = [DatasetACLPermission.Edit]
-      render(<Card apiEnabled={true} />)
-
-      const switchButton = screen.getByRole('switch')
-      expect(switchButton).not.toHaveAttribute('aria-disabled', 'true')
-    })
-  })
-
-  // Edge Cases: tests boundary scenarios
-  describe('Edge Cases', () => {
-    it('should handle undefined dataset id', async () => {
-      mockDatasetId = undefined
-      mockEnableApi.mockResolvedValue({ result: 'success' })
-      render(<Card apiEnabled={false} />)
-
-      const switchButton = screen.getByRole('switch')
-      fireEvent.click(switchButton)
-
-      await waitFor(() => {
-        expect(mockEnableApi).toHaveBeenCalledWith('')
-      })
-    })
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
   })
 })

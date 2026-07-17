@@ -101,12 +101,6 @@ describe('RetrievalMethodConfig', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderComponent()
-
-      expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
-    })
-
     it('should render all three retrieval methods when all are supported', () => {
       renderComponent()
 
@@ -624,13 +618,6 @@ describe('RetrievalMethodConfig', () => {
 
   // Tests for component memoization
   describe('Component Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      // Verify the component is wrapped with React.memo by checking its displayName or type
-      expect(RetrievalMethodConfig).toBeDefined()
-      // React.memo components have a $$typeof property
-      expect((RetrievalMethodConfig as unknown as { $$typeof: symbol }).$$typeof).toBeDefined()
-    })
-
     it('should not re-render when props are the same', () => {
       const onChange = vi.fn()
       const value = createMockRetrievalConfig()
@@ -660,7 +647,6 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      // Should not crash
       expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     })
 
@@ -826,14 +812,6 @@ describe('RetrievalMethodConfig', () => {
 
   // Tests for all prop variations
   describe('Prop Variations', () => {
-    it('should render with minimum required props', () => {
-      const { container } = render(
-        <RetrievalMethodConfig value={createMockRetrievalConfig()} onChange={vi.fn()} />,
-      )
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render with all props set', () => {
       renderComponent({
         disabled: true,

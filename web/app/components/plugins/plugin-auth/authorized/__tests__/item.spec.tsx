@@ -646,13 +646,4 @@ describe('Item Component', () => {
       expect(nameElement?.getAttribute('title')).toBe(longName)
     })
   })
-
-  // ==================== Memoization Test ====================
-  describe('Memoization', () => {
-    it('should be memoized', async () => {
-      const ItemModule = await import('../item')
-      // memo returns an object with $$typeof
-      expect(typeof ItemModule.default).toBe('object')
-    })
-  })
 })

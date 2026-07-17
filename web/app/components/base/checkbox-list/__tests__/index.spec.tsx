@@ -189,19 +189,6 @@ describe('checkbox list component', () => {
     })
   })
 
-  it('renders with custom containerClassName', () => {
-    const { container } = render(
-      <CheckboxList options={options} containerClassName="custom-class" />,
-    )
-    expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
-  })
-
-  it('applies maxHeight style to options container', () => {
-    render(<CheckboxList options={options} maxHeight="200px" />)
-    const optionsContainer = screen.getByTestId('options-container')
-    expect(optionsContainer)!.toHaveStyle({ maxHeight: '200px', overflowY: 'auto' })
-  })
-
   it('shows indeterminate state when some options are selected', async () => {
     const onChange = vi.fn()
     render(

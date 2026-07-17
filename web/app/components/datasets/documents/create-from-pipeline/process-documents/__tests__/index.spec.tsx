@@ -76,18 +76,6 @@ describe('ProcessDocuments', () => {
   })
 
   describe('Rendering', () => {
-    // Tests basic rendering functionality
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<ProcessDocuments {...props} />)
-
-      // Assert - check for Header title from Form component
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-      ).toBeInTheDocument()
-    })
-
     it('should render Form and Actions components', () => {
       const props = createDefaultProps()
 
@@ -332,11 +320,6 @@ describe('ProcessDocuments', () => {
 
   // Component Memoization Testing
   describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert - verify component has memo wrapper
-      expect(ProcessDocuments.$$typeof).toBe(Symbol.for('react.memo'))
-    })
-
     it('should render correctly after rerender with same props', () => {
       const props = createDefaultProps()
 
