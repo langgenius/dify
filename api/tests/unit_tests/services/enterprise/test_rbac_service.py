@@ -1,11 +1,9 @@
 """Unit tests for services.enterprise.rbac_service.
 
-The enterprise RBAC client is almost pure glue: each method turns a single
-``EnterpriseRequest.send_inner_rbac_request`` call into a pydantic response
-model. Rather than spinning up an HTTP server we monkeypatch that helper and
-assert on the arguments it received; that catches both routing regressions
-(wrong method / wrong path / wrong params) and model-shape regressions in
-one place.
+Most enterprise RBAC methods turn a single ``EnterpriseRequest.send_inner_rbac_request``
+call into a pydantic response model. Rather than spinning up an HTTP server, these tests
+monkeypatch that helper and assert on the request arguments and response shape. The legacy
+fallbacks use SQLite to verify their database reads and committed role updates.
 """
 
 from __future__ import annotations
@@ -762,10 +760,12 @@ class TestMemberRoles:
         assert call.params == {"account_id": "acct-2"}
         assert call.json == {"role_ids": ["workspace.owner", "workspace.editor"]}
 
-    def test_replace_updates_legacy_join_role_when_rbac_disabled(self, mock_send: MagicMock, sqlite_session: Session):
+    def test_replace_commits_legacy_join_role_when_rbac_disabled(self, mock_send: MagicMock, sqlite_session: Session):
         target_join = TenantAccountJoin(tenant_id="tenant-1", account_id="acct-2", role=svc.TenantAccountRole.NORMAL)
         sqlite_session.add(target_join)
         sqlite_session.commit()
+        target_join_id = target_join.id
+        engine = sqlite_session.get_bind()
 
         with patch(f"{MODULE}.dify_config.RBAC_ENABLED", False):
             out = svc.RBACService.MemberRoles.replace(
@@ -773,9 +773,15 @@ class TestMemberRoles:
             )
 
         mock_send.assert_not_called()
-        persisted_join = sqlite_session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.id == target_join.id))
-        assert persisted_join is not None
-        assert persisted_join.role == svc.TenantAccountRole.EDITOR
+        # Closing the writer rolls back any uncommitted update and prevents its identity map
+        # from satisfying the verification query.
+        sqlite_session.close()
+        with Session(engine) as verification_session:
+            persisted_join = verification_session.scalar(
+                select(TenantAccountJoin).where(TenantAccountJoin.id == target_join_id)
+            )
+            assert persisted_join is not None
+            assert persisted_join.role == svc.TenantAccountRole.EDITOR
         assert out.account_id == "acct-2"
         assert out.roles[0].id == "editor"
         assert "app.acl.preview" in out.roles[0].permission_keys
