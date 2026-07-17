@@ -12,9 +12,15 @@ The entry requires both a non-enterprise workspace plan and the existing `NEXT_P
 
 ## Internal Modules
 
-None.
+- `types.ts` defines provider, connection, sync, command, pagination, and safe-error contracts.
+- `repository.ts` defines the replaceable frontend data boundary.
+- `mock/scenarios.ts` owns named deterministic fixtures and consistency validation.
+- `mock/repository.ts` owns in-memory mutations and explicitly controlled sync transitions.
+- `composition.tsx` injects Organization context and either a mock or future repository adapter.
+- `hooks.ts` is the only React Query access layer used by feature components.
 
 ## External Modules
 
 - `app/components/header/account-setting`
 - `config`
+- `@tanstack/react-query`

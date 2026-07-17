@@ -6,11 +6,11 @@
 
 ## 2. Typed Mock Data Boundary
 
-- [ ] 2.1 Write failing unit tests for repository scenario consistency, single-active-provider behavior, deterministic state transitions, summary/detail count agreement, and secret sanitization.
-- [ ] 2.2 Add Contacts-owned TypeScript view models, command types, repository interface, query keys, and typed result taxonomy for integration, provider definitions, sync runs, and sync items.
-- [ ] 2.3 Implement named deterministic mock scenarios covering loading, load failure, no permission, provider unavailable, all six connection states, mutation failures, active sync, success, partial success, failure, detail failure, and paginated results.
-- [ ] 2.4 Implement the in-memory mock repository so mutations update only mock state, queued/running transitions are controllable with fake timers or explicit advancement, and secret input is discarded after recording configuration state.
-- [ ] 2.5 Add a feature composition boundary and React Query hooks that inject the repository, invalidate precise query keys after mutations, and make no backend or provider network requests.
+- [x] 2.1 Write failing unit tests for repository scenario consistency, single-active-provider behavior, deterministic state transitions, summary/detail count agreement, and secret sanitization.
+- [x] 2.2 Add Contacts-owned TypeScript view models, command types, repository interface, query keys, and typed result taxonomy for integration, provider definitions, sync runs, and sync items.
+- [x] 2.3 Implement named deterministic mock scenarios covering loading, load failure, no permission, provider unavailable, all six connection states, mutation failures, active sync, success, partial success, failure, detail failure, and paginated results.
+- [x] 2.4 Implement the in-memory mock repository so mutations update only mock state, queued/running transitions are controllable with fake timers or explicit advancement, and secret input is discarded after recording configuration state.
+- [x] 2.5 Add a feature composition boundary and React Query hooks that inject the repository, invalidate precise query keys after mutations, and make no backend or provider network requests.
 
 ## 3. IM Platform Binding UI
 
