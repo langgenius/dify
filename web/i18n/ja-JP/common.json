@@ -332,6 +332,7 @@
   "modelProvider.auth.manageCredentials": "認証情報を管理",
   "modelProvider.auth.modelCredential": "モデルの資格情報",
   "modelProvider.auth.modelCredentials": "モデルの資格情報",
+  "modelProvider.auth.openAIResponsesAPITip": "GPT-5.6 以降のモデルでは、Responses API の使用をお勧めします。",
   "modelProvider.auth.providerManaged": "プロバイダー管理",
   "modelProvider.auth.providerManagedTip": "現在の設定はプロバイダーによってホストされています。",
   "modelProvider.auth.removeModel": "モデルを削除",
