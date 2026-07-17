@@ -172,7 +172,6 @@ export const CheckboxList = ({
                   className="gap-0"
                 >
                   <FieldLabel
-                    data-testid="option-item"
                     className={cn(
                       'flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-state-base-hover',
                       (option.disabled || disabled) && 'cursor-not-allowed opacity-50',

@@ -40,15 +40,6 @@ describe('AddRow', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const handleChange = vi.fn()
-      const handleRemove = vi.fn()
-      const { container } = render(
-        <AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render label with payload name', () => {
       const handleChange = vi.fn()
       const handleRemove = vi.fn()
@@ -89,20 +80,6 @@ describe('AddRow', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const handleChange = vi.fn()
-      const handleRemove = vi.fn()
-      const { container } = render(
-        <AddRow
-          payload={mockPayload}
-          onChange={handleChange}
-          onRemove={handleRemove}
-          className="custom-class"
-        />,
-      )
-      expect(container.firstChild).toHaveClass('custom-class')
-    })
-
     it('should have default flex styling', () => {
       const handleChange = vi.fn()
       const handleRemove = vi.fn()

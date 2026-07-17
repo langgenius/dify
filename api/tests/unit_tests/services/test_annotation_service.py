@@ -32,7 +32,7 @@ def _make_app_ref(app: MagicMock) -> AppRef:
 
 
 def _make_annotation_ref(app: MagicMock, annotation_id: str = "ann-1") -> AnnotationRef:
-    return AnnotationRef(tenant_id=app.tenant_id, app_id=app.id, annotation_id=annotation_id)
+    return AnnotationRef(app=AppRef(tenant_id=app.tenant_id, app_id=app.id), annotation_id=annotation_id)
 
 
 def _make_user(user_id: str = "user-1") -> MagicMock:
@@ -82,6 +82,7 @@ def _assert_statement_binds_annotation(stmt: Any, annotation_id: str, app_id: st
     statement = str(compiled)
     assert "message_annotations.id" in statement
     assert "message_annotations.app_id" in statement
+    assert "JOIN apps" not in statement
     assert annotation_id in compiled.params.values()
     assert app_id in compiled.params.values()
 
@@ -731,6 +732,7 @@ class TestAppAnnotationServiceDirectManipulation:
             statement = str(compiled)
             assert "message_annotations.id IN" in statement
             assert "message_annotations.app_id" in statement
+            assert "JOIN apps" not in statement
             assert ["ann-1", "ann-2"] in compiled.params.values()
             assert app.id in compiled.params.values()
             mock_task.delay.assert_called_once_with(annotation1.id, app.id, tenant_id, setting.collection_binding_id)

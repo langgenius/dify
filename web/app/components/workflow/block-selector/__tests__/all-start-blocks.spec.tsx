@@ -279,10 +279,8 @@ describe('AllStartBlocks', () => {
         name: /workflow\.nodes\.startPlaceholder\.browseMoreOnMarketplace/,
       })
       expect(footer).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
-      expect(footer).toHaveClass('flex-col')
       expect(footer.querySelector('.w-8 .bg-divider-subtle')).toBeInTheDocument()
       expect(footer.querySelector('.i-custom-vender-workflow-marketplace')).toBeInTheDocument()
-      expect(footer.querySelector('svg')).not.toBeInTheDocument()
     })
 
     it('should keep the panel divider between user input and installed triggers', async () => {

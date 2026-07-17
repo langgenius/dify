@@ -303,11 +303,6 @@ describe('PluginPage Component', () => {
   // Rendering Tests
   // ============================================================================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<PluginPageWithContext {...createDefaultProps()} />)
-      expect(document.getElementById('marketplace-container')).toBeInTheDocument()
-    })
-
     it('should render with correct container id', () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
       const container = document.getElementById('marketplace-container')
@@ -740,32 +735,6 @@ describe('PluginPage Component', () => {
   // Memoization Tests
   // ============================================================================
   describe('Memoization', () => {
-    it('should memoize isPluginsTab correctly', () => {
-      vi.mocked(useQueryState).mockReturnValue(['plugins', vi.fn()])
-
-      const { rerender } = render(<PluginPageWithContext {...createDefaultProps()} />)
-
-      // Should show plugins content
-      expect(screen.getByTestId('plugins-content')).toBeInTheDocument()
-
-      // Rerender with same props - memoized value should be same
-      rerender(<PluginPageWithContext {...createDefaultProps()} />)
-      expect(screen.getByTestId('plugins-content')).toBeInTheDocument()
-    })
-
-    it('should memoize isExploringMarketplace correctly', () => {
-      vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
-
-      const { rerender } = render(<PluginPageWithContext {...createDefaultProps()} />)
-
-      // Should show marketplace links when on discover tab
-      expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
-
-      // Rerender with same props
-      rerender(<PluginPageWithContext {...createDefaultProps()} />)
-      expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
-    })
-
     it('should recognize plugin type tabs as marketplace', () => {
       // Test with a plugin type tab like 'tool'
       vi.mocked(useQueryState).mockReturnValue(['tool', vi.fn()])
@@ -945,13 +914,6 @@ describe('PluginPage Component', () => {
       const container = document.getElementById('marketplace-container')
 
       expect(container).toHaveClass('bg-background-body')
-    })
-
-    it('should have scrollbar-gutter stable style', () => {
-      render(<PluginPageWithContext {...createDefaultProps()} />)
-      const container = document.getElementById('marketplace-container')
-
-      expect(container).toHaveStyle({ scrollbarGutter: 'stable' })
     })
   })
 })

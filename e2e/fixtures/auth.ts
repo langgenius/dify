@@ -3,7 +3,6 @@ import { Buffer } from 'node:buffer'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { waitForConsoleHome } from '../support/home'
 import { apiURL, defaultBaseURL, defaultLocale } from '../test-env'
 
 export type AuthSessionMetadata = {
@@ -37,7 +36,6 @@ export const readAuthSessionMetadata = async () => {
   return JSON.parse(content) as AuthSessionMetadata
 }
 
-const appURL = (baseURL: string, pathname: string) => new URL(pathname, baseURL).toString()
 const apiEndpoint = (pathname: string) => new URL(pathname, apiURL).toString()
 
 type SetupStatusResponse = {
@@ -142,18 +140,10 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
     baseURL,
     locale: defaultLocale,
   })
-  const page = await context.newPage()
 
   try {
     const { mode, usedInitPassword } = await ensureAdminAccount(context, deadline)
     await loginAdmin(context, deadline)
-
-    console.warn('[e2e] auth bootstrap: verifying console home')
-    await page.goto(appURL(baseURL, '/'), {
-      timeout: getRemainingTimeout(deadline),
-      waitUntil: 'domcontentloaded',
-    })
-    await waitForConsoleHome(page, getRemainingTimeout(deadline))
 
     await context.storageState({ path: authStatePath })
 

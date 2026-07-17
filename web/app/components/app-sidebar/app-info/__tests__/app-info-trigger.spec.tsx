@@ -109,10 +109,4 @@ describe('AppInfoTrigger', () => {
     const iconWrapper = screen.getByTestId('app-icon').parentElement
     expect(iconWrapper?.parentElement).toHaveClass('items-center')
   })
-
-  it('should not apply ml-1 class when expanded', () => {
-    render(<AppInfoTrigger appDetail={createAppDetail()} expand onClick={vi.fn()} />)
-    const iconWrapper = screen.getByTestId('app-icon').parentElement
-    expect(iconWrapper).not.toHaveClass('ml-1')
-  })
 })

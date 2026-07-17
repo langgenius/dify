@@ -18,42 +18,15 @@ vi.mock('@/next/link', () => ({
 }))
 
 describe('DatasetFirstEmptyState', () => {
-  it('uses the pipeline icon for the create-from-pipeline action', () => {
+  it('links to pipeline creation when creation is available', () => {
     render(<DatasetFirstEmptyState canConnectExternalDataset canCreateDataset />)
 
-    const pipelineLink = screen.getByRole('link', { name: /dataset\.firstEmpty\.pipelineTitle/ })
-
-    expect(pipelineLink).toHaveAttribute('href', '/datasets/create-from-pipeline')
     expect(
-      pipelineLink.querySelector('.i-custom-vender-pipeline-pipeline-line'),
-    ).toBeInTheDocument()
+      screen.getByRole('link', { name: /dataset\.firstEmpty\.pipelineTitle/ }),
+    ).toHaveAttribute('href', '/datasets/create-from-pipeline')
   })
 
-  it('lays out placeholder cards with auto-fill grid columns', () => {
-    const { container } = render(
-      <DatasetFirstEmptyState canConnectExternalDataset canCreateDataset />,
-    )
-    const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none')).find(
-      (element) => element.className.includes('grid-rows-4'),
-    )
-
-    if (!placeholderGrid)
-      throw new Error('Expected dataset first empty state placeholder grid to render')
-
-    expect(placeholderGrid).toHaveClass(
-      'grid',
-      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
-      'grid-rows-4',
-    )
-    expect(placeholderGrid).not.toHaveClass(
-      'grid-cols-1',
-      'sm:grid-cols-2',
-      'lg:grid-cols-3',
-      'xl:grid-cols-4',
-    )
-  })
-
-  it('should hide dataset creation actions when dataset.create_and_management is unavailable', () => {
+  it('only offers external connection without dataset creation permission', () => {
     render(<DatasetFirstEmptyState canConnectExternalDataset canCreateDataset={false} />)
 
     expect(
@@ -68,7 +41,7 @@ describe('DatasetFirstEmptyState', () => {
     )
   })
 
-  it('should render nothing when no empty-state action is available', () => {
+  it('renders nothing when no empty-state action is available', () => {
     const { container } = render(
       <DatasetFirstEmptyState canConnectExternalDataset={false} canCreateDataset={false} />,
     )

@@ -409,13 +409,6 @@ describe('DatasetUpdateForm', () => {
 
   // Rendering Tests - Verify component renders correctly in different states
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DatasetUpdateForm />)
-
-      expect(screen.getByTestId('top-bar'))!.toBeInTheDocument()
-      expect(screen.getByTestId('step-one'))!.toBeInTheDocument()
-    })
-
     it('should render TopBar with correct active index for step 1', () => {
       render(<DatasetUpdateForm />)
 

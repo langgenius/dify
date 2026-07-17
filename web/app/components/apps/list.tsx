@@ -1,6 +1,8 @@
 'use client'
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
+import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   keepPreviousData,
@@ -42,9 +44,11 @@ type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 
 type Props = Readonly<{
   controlRefreshList?: number
+  onCreateLearnDify?: (app: App) => void
+  onTryLearnDify?: (params: TryAppSelection) => void
 }>
 
-function List({ controlRefreshList = 0 }: Props) {
+function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -270,8 +274,10 @@ function List({ controlRefreshList = 0 }: Props) {
         {showFirstEmptyState ? (
           <FirstEmptyState
             onCreateBlank={openCreateBlankModal}
+            onCreateLearnDify={onCreateLearnDify}
             onCreateTemplate={openCreateTemplateDialog}
             onImportDSL={openCreateFromDSLModal}
+            onTryLearnDify={onTryLearnDify}
             showLearnDify={systemFeatures.enable_learn_app}
           />
         ) : (

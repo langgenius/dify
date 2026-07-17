@@ -7,7 +7,7 @@ type ChunkLabelProps = {
   characterCount: number
 }
 
-export const ChunkLabel: FC<ChunkLabelProps> = (props) => {
+const ChunkLabel: FC<ChunkLabelProps> = (props) => {
   const { label, characterCount } = props
   return (
     <div className="flex items-center text-xs font-medium text-text-tertiary">

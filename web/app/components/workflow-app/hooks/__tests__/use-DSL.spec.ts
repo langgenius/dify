@@ -115,6 +115,35 @@ describe('useDSLByCanEdit', () => {
     )
   })
 
+  it('should download workflow DSL containing portable Agent packages unchanged', async () => {
+    const agentDSL = `version: 0.7.0
+agent_packages:
+  agent_1:
+    schema_version: 1
+workflow:
+  graph:
+    nodes:
+      - data:
+          type: agent
+          version: '2'
+          agent_binding:
+            binding_type: inline_agent
+            package_ref: agent_1
+`
+    mockExportAppConfig.mockResolvedValue({ data: agentDSL })
+    const { result } = renderHook(() => useDSLByCanEdit(true))
+
+    await act(async () => {
+      await result.current.handleExportDSL()
+    })
+
+    const [{ data, fileName }] = mockDownloadBlob.mock.calls[0] as [
+      { data: Blob; fileName: string },
+    ]
+    expect(await data.text()).toBe(agentDSL)
+    expect(fileName).toBe('Workflow App.yml')
+  })
+
   it('should forward include and workflow id arguments when exporting dsl directly', async () => {
     const { result } = renderHook(() => useDSLByCanEdit(true))
 

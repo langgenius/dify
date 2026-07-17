@@ -293,6 +293,11 @@ def test_agent_app_list_and_create_use_agent_route(
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
+        "load_reference_counts_by_agent_id",
+        lambda _self, **kwargs: {"agent-list": 2},
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
         "load_or_create_agent_app_debug_conversation_ids_by_agent_id",
         lambda _self, **kwargs: {"agent-list": "debug-conversation-list"},
     )
@@ -326,6 +331,7 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["data"][0]["debug_conversation_id"] == "debug-conversation-list"
     assert listed["data"][0]["role"] == "List role"
     assert listed["data"][0]["active_config_is_published"] is False
+    assert listed["data"][0]["reference_count"] == 2
     assert listed["data"][0]["published_reference_count"] == 1
     assert listed["data"][0]["published_references"] == [
         {

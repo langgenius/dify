@@ -50,7 +50,6 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
     isRestoring
   )
   const canEditWorkflow = accessControl.canEdit && !workflowOperationReadOnly
-  const canCommentWorkflow = accessControl.canComment && !workflowOperationReadOnly
   const shouldHideImportApp = flowType === FlowType.snippet || isSnippetCanvas()
 
   const renderAddBlockTrigger = useCallback(() => {
@@ -105,7 +104,7 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
             {t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}
           </ContextMenuItem>
         )}
-        {canCommentWorkflow && isCommentModeAvailable && (
+        {!workflowOperationReadOnly && isCommentModeAvailable && (
           <ContextMenuItem
             disabled={!!pendingComment}
             className={cn(

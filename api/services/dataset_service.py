@@ -4163,9 +4163,9 @@ class SegmentService:
             select(ChildChunk)
             .where(
                 ChildChunk.id == child_chunk_id,
-                ChildChunk.tenant_id == segment_ref.tenant_id,
-                ChildChunk.dataset_id == segment_ref.dataset_id,
-                ChildChunk.document_id == segment_ref.document_id,
+                ChildChunk.tenant_id == segment_ref.document.dataset.tenant_id,
+                ChildChunk.dataset_id == segment_ref.document.dataset.dataset_id,
+                ChildChunk.document_id == segment_ref.document.document_id,
                 ChildChunk.segment_id == segment_ref.segment_id,
             )
             .limit(1)
@@ -4219,9 +4219,9 @@ class SegmentService:
             select(DocumentSegment)
             .where(
                 DocumentSegment.id == segment_ref.segment_id,
-                DocumentSegment.tenant_id == segment_ref.tenant_id,
-                DocumentSegment.dataset_id == segment_ref.dataset_id,
-                DocumentSegment.document_id == segment_ref.document_id,
+                DocumentSegment.tenant_id == segment_ref.document.dataset.tenant_id,
+                DocumentSegment.dataset_id == segment_ref.document.dataset.dataset_id,
+                DocumentSegment.document_id == segment_ref.document.document_id,
             )
             .limit(1)
         )

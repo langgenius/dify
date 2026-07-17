@@ -169,7 +169,7 @@ describe('EditWorkspaceModal', () => {
 
     expect(getSaveButton()).toBeDisabled()
     expect(input).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByTestId('edit-workspace-error')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
   })
 
   it('should not submit when the form is submitted while save is disabled', async () => {
