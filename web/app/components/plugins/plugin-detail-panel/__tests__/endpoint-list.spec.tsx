@@ -1,59 +1,41 @@
-import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { PluginDetail } from '../../types'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EndpointList from '../endpoint-list'
 
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
-}))
+const mockRequest = vi.hoisted(() => vi.fn())
+const mockInvalidateInstalledPluginList = vi.hoisted(() => vi.fn())
 
-const mockEndpoints = [
-  {
-    id: 'ep-1',
-    name: 'Endpoint 1',
-    url: 'https://api.example.com',
-    declaration: { settings: [], endpoints: [] },
-  },
-]
-
-let mockEndpointListData: { endpoints: typeof mockEndpoints } | undefined
-
-const mockInvalidateEndpointList = vi.fn()
-const mockInvalidateInstalledPluginList = vi.fn()
-const mockCreateEndpoint = vi.fn()
-
-vi.mock('@/service/use-endpoints', () => ({
-  useEndpointList: () => ({ data: mockEndpointListData }),
-  useInvalidateEndpointList: () => mockInvalidateEndpointList,
-  useCreateEndpoint: ({ onSuccess }: { onSuccess: () => void }) => ({
-    mutate: (data: unknown) => {
-      mockCreateEndpoint(data)
-      onSuccess()
-    },
-  }),
-}))
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
+  return { ...actual, request: mockRequest }
+})
 
 vi.mock('@/service/use-plugins', () => ({
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
 }))
 
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  toolCredentialToFormSchemas: (schemas: unknown[]) => schemas,
+vi.mock('../endpoint-card', () => ({
+  default: ({ data }: { data: { name: string } }) => <div>{data.name}</div>,
 }))
 
-vi.mock('../endpoint-card', () => ({
-  default: ({ data }: { data: { name: string } }) => (
-    <div data-testid="endpoint-card">{data.name}</div>
-  ),
-}))
+const submittedState = { name: 'New Endpoint', api_key: 'secret' }
 
 vi.mock('../endpoint-modal', () => ({
-  default: ({ onCancel, onSaved }: { onCancel: () => void; onSaved: (state: unknown) => void }) => (
-    <div data-testid="endpoint-modal">
-      <button data-testid="modal-cancel" onClick={onCancel}>
+  default: ({
+    onCancel,
+    onSaved,
+  }: {
+    onCancel: () => void
+    onSaved: (value: typeof submittedState) => void
+  }) => (
+    <div role="dialog" aria-label="endpoint form">
+      <button type="button" onClick={onCancel}>
         Cancel
       </button>
-      <button data-testid="modal-save" onClick={() => onSaved({ name: 'New Endpoint' })}>
+      <button type="button" onClick={() => onSaved(submittedState)}>
         Save
       </button>
     </div>
@@ -69,7 +51,6 @@ const createPluginDetail = (): PluginDetail => ({
   plugin_unique_identifier: 'test-uid',
   declaration: {
     endpoint: { settings: [], endpoints: [] },
-    tool: undefined,
   } as unknown as PluginDetail['declaration'],
   installation_id: 'install-1',
   tenant_id: 'tenant-1',
@@ -85,136 +66,103 @@ const createPluginDetail = (): PluginDetail => ({
   alternative_plugin_id: '',
 })
 
+const endpoint = {
+  id: 'ep-1',
+  created_at: '2024-01-01',
+  updated_at: '2024-01-02',
+  settings: {},
+  tenant_id: 'tenant-1',
+  plugin_id: 'test-plugin',
+  expired_at: '',
+  declaration: { settings: [], endpoints: [] },
+  name: 'Endpoint 1',
+  enabled: true,
+  url: 'https://api.example.com',
+  hook_id: 'hook-1',
+}
+
+const renderEndpointList = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: 0 },
+      mutations: { retry: false },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <EndpointList detail={createPluginDetail()} />
+    </QueryClientProvider>,
+  )
+}
+
 describe('EndpointList', () => {
-  const getAddButton = () =>
-    screen.getByRole('button', { name: 'plugin.detailPanel.endpointModalTitle' })
+  let endpoints = [endpoint]
+  const requests: Array<{ body?: unknown; method: string; url: string }> = []
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockEndpointListData = { endpoints: mockEndpoints }
+    endpoints = [endpoint]
+    requests.length = 0
+    mockRequest.mockImplementation(
+      async (url: string, _init: RequestInit, options: { request: Request }) => {
+        const method = options.request.method
+        const body = method === 'GET' ? undefined : await options.request.clone().json()
+        requests.push({ body, method, url })
+
+        if (method === 'GET') {
+          return new Response(JSON.stringify({ endpoints }), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        if (method === 'POST') {
+          return new Response(JSON.stringify({ success: true }), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        throw new Error(`Unexpected request: ${method} ${url}`)
+      },
+    )
   })
 
-  describe('Rendering', () => {
-    it('should render endpoint list', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
+  it('renders endpoints returned by the generated list query', async () => {
+    renderEndpointList()
 
-      expect(screen.getByText('plugin.detailPanel.endpoints'))!.toBeInTheDocument()
-    })
-
-    it('should render endpoint cards', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(screen.getByTestId('endpoint-card'))!.toBeInTheDocument()
-      expect(screen.getByText('Endpoint 1'))!.toBeInTheDocument()
-    })
-
-    it('should return null when no data', () => {
-      mockEndpointListData = undefined
-      const { container } = render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(container)!.toBeEmptyDOMElement()
-    })
-
-    it('should show empty message when no endpoints', () => {
-      mockEndpointListData = { endpoints: [] }
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(screen.getByText('plugin.detailPanel.endpointsEmpty'))!.toBeInTheDocument()
-    })
-
-    it('should render add button', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(getAddButton()).toBeInTheDocument()
+    expect(await screen.findByText('Endpoint 1')).toBeInTheDocument()
+    expect(requests[0]).toMatchObject({
+      method: 'GET',
+      url: expect.stringContaining('/workspaces/current/endpoints/list/plugin'),
     })
   })
 
-  describe('User Interactions', () => {
-    it('should show modal when add button clicked', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
+  it('shows the empty state when the plugin has no endpoints', async () => {
+    endpoints = []
+    renderEndpointList()
 
-      fireEvent.click(getAddButton())
-
-      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
-    })
-
-    it('should hide modal when cancel clicked', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      fireEvent.click(getAddButton())
-      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('modal-cancel'))
-      expect(screen.queryByTestId('endpoint-modal')).not.toBeInTheDocument()
-    })
-
-    it('should call createEndpoint when save clicked', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      fireEvent.click(getAddButton())
-      fireEvent.click(screen.getByTestId('modal-save'))
-
-      expect(mockCreateEndpoint).toHaveBeenCalled()
-    })
+    expect(await screen.findByText('plugin.detailPanel.endpointsEmpty')).toBeInTheDocument()
   })
 
-  describe('Border Style', () => {
-    it('should render with border style based on tool existence', () => {
-      const detail = createPluginDetail()
-      detail.declaration.tool = {} as PluginDetail['declaration']['tool']
-      render(<EndpointList detail={detail} />)
+  it('creates an endpoint through the canonical API and refreshes the list', async () => {
+    const user = userEvent.setup()
+    renderEndpointList()
+    await screen.findByText('Endpoint 1')
 
-      expect(screen.getByText('plugin.detailPanel.endpoints'))!.toBeInTheDocument()
-    })
-  })
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.endpointModalTitle' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
-  describe('Multiple Endpoints', () => {
-    it('should render multiple endpoint cards', () => {
-      mockEndpointListData = {
-        endpoints: [
-          {
-            id: 'ep-1',
-            name: 'Endpoint 1',
-            url: 'https://api1.example.com',
-            declaration: { settings: [], endpoints: [] },
-          },
-          {
-            id: 'ep-2',
-            name: 'Endpoint 2',
-            url: 'https://api2.example.com',
-            declaration: { settings: [], endpoints: [] },
-          },
-        ],
-      }
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(screen.getAllByTestId('endpoint-card')).toHaveLength(2)
-    })
-  })
-
-  describe('Create Endpoint Flow', () => {
-    it('should invalidate endpoint list after successful create', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      fireEvent.click(getAddButton())
-      fireEvent.click(screen.getByTestId('modal-save'))
-
-      return waitFor(() => {
-        expect(mockInvalidateEndpointList).toHaveBeenCalledWith('test-plugin')
-        expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(requests).toContainEqual({
+        method: 'POST',
+        url: expect.stringMatching(/\/workspaces\/current\/endpoints$/),
+        body: {
+          plugin_unique_identifier: 'test-uid',
+          name: 'New Endpoint',
+          settings: { api_key: 'secret' },
+        },
       })
     })
-
-    it('should pass correct params to createEndpoint', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      fireEvent.click(getAddButton())
-      fireEvent.click(screen.getByTestId('modal-save'))
-
-      expect(mockCreateEndpoint).toHaveBeenCalledWith({
-        pluginUniqueID: 'test-uid',
-        state: { name: 'New Endpoint' },
-      })
-    })
+    expect(submittedState).toEqual({ name: 'New Endpoint', api_key: 'secret' })
+    expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
+    expect(screen.queryByRole('dialog', { name: 'endpoint form' })).not.toBeInTheDocument()
   })
 })

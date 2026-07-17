@@ -2,22 +2,18 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useDocLink } from '@/context/i18n'
-import {
-  useCreateEndpoint,
-  useEndpointList,
-  useInvalidateEndpointList,
-} from '@/service/use-endpoints'
+import { consoleQuery } from '@/service/client'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import EndpointCard from './endpoint-card'
 import EndpointModal from './endpoint-modal'
-import { NAME_FIELD } from './utils'
+import { endpointPluginSettingsToFormSchemas, NAME_FIELD } from './utils'
 
 type Props = Readonly<{
   detail: PluginDetail
@@ -33,35 +29,56 @@ type EndpointListContentProps = Readonly<{
 const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const queryClient = useQueryClient()
   const pluginUniqueID = detail.plugin_unique_identifier
   const showTopBorder = detail.declaration.tool
-  const { data } = useEndpointList(detail.plugin_id)
-  const invalidateEndpointList = useInvalidateEndpointList()
+  const endpointListQueryOptions =
+    consoleQuery.workspaces.current.endpoints.list.plugin.get.queryOptions({
+      input: {
+        query: {
+          plugin_id: detail.plugin_id,
+          page: 1,
+          page_size: 100,
+        },
+      },
+    })
+  const { data } = useQuery(endpointListQueryOptions)
+  const invalidateEndpointList = () =>
+    queryClient.invalidateQueries({ queryKey: endpointListQueryOptions.queryKey })
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const [isShowEndpointModal, { setTrue: showEndpointModal, setFalse: hideEndpointModal }] =
     useBoolean(false)
 
   const formSchemas = useMemo(() => {
-    return toolCredentialToFormSchemas([NAME_FIELD, ...declaration.settings])
+    return [NAME_FIELD, ...endpointPluginSettingsToFormSchemas(declaration.settings)]
   }, [declaration.settings])
 
-  const { mutate: createEndpoint } = useCreateEndpoint({
-    onSuccess: async () => {
-      await invalidateEndpointList(detail.plugin_id)
-      invalidateInstalledPluginList()
-      hideEndpointModal()
-    },
-    onError: () => {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-    },
-  })
+  const { mutate: createEndpoint } = useMutation(
+    consoleQuery.workspaces.current.endpoints.post.mutationOptions({
+      onSuccess: async () => {
+        await invalidateEndpointList()
+        invalidateInstalledPluginList()
+        hideEndpointModal()
+      },
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      },
+    }),
+  )
 
-  const handleCreate = (state: Record<string, any>) =>
+  const handleCreate = (state: Record<string, unknown>) => {
+    const { name, ...settings } = state
+    if (typeof name !== 'string') return
+
     createEndpoint({
-      pluginUniqueID,
-      state,
+      body: {
+        plugin_unique_identifier: pluginUniqueID,
+        name,
+        settings,
+      },
     })
+  }
 
   if (!data) return null
 
@@ -123,21 +140,23 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
         </div>
       )}
       <div className="flex flex-col gap-2">
-        {data.endpoints.map((item) => (
-          <EndpointCard
-            key={item.id}
-            data={item}
-            handleChange={() => {
-              invalidateEndpointList(detail.plugin_id)
-              invalidateInstalledPluginList()
-            }}
-            pluginDetail={detail}
-          />
-        ))}
+        {data.endpoints.map((item) =>
+          item.declaration ? (
+            <EndpointCard
+              key={item.id}
+              data={{ ...item, declaration: item.declaration }}
+              handleChange={() => {
+                void invalidateEndpointList()
+                invalidateInstalledPluginList()
+              }}
+              pluginDetail={detail}
+            />
+          ) : null,
+        )}
       </div>
       {isShowEndpointModal && (
         <EndpointModal
-          formSchemas={formSchemas as any}
+          formSchemas={formSchemas}
           onCancel={hideEndpointModal}
           onSaved={handleCreate}
           pluginDetail={detail}

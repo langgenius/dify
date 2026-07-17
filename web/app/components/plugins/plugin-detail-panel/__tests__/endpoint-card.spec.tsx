@@ -1,95 +1,53 @@
-import type { EndpointListItem, PluginDetail } from '../../types'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import type { PluginDetail } from '../../types'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EndpointCard from '../endpoint-card'
 
-const mockHandleChange = vi.fn()
-const mockEnableEndpoint = vi.fn()
-const mockDisableEndpoint = vi.fn()
-const mockDeleteEndpoint = vi.fn()
-const mockUpdateEndpoint = vi.fn()
-const mockToastNotify = vi.fn()
+const mockRequest = vi.hoisted(() => vi.fn())
+const mockToastError = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
+  return { ...actual, request: mockRequest }
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(
-    (message: string, options?: { type?: string }) =>
-      mockToastNotify({ type: options?.type, message }),
-    {
-      success: (message: string) => mockToastNotify({ type: 'success', message }),
-      error: (message: string) => mockToastNotify({ type: 'error', message }),
-      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-      info: (message: string) => mockToastNotify({ type: 'info', message }),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    },
-  ),
+  toast: { error: mockToastError },
 }))
 
-// Flags to control whether operations should fail
-const failureFlags = {
-  enable: false,
-  disable: false,
-  delete: false,
-  update: false,
-}
+vi.mock('@/app/components/tools/utils/to-form-schema', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/tools/utils/to-form-schema')>()
+  return { ...actual, addDefaultValue: (value: unknown) => value }
+})
 
-vi.mock('@/service/use-endpoints', () => ({
-  useEnableEndpoint: ({ onSuccess, onError }: { onSuccess: () => void; onError: () => void }) => ({
-    mutate: (id: string) => {
-      mockEnableEndpoint(id)
-      if (failureFlags.enable) onError()
-      else onSuccess()
-    },
-  }),
-  useDisableEndpoint: ({ onSuccess, onError }: { onSuccess: () => void; onError: () => void }) => ({
-    mutate: (id: string) => {
-      mockDisableEndpoint(id)
-      if (failureFlags.disable) onError()
-      else onSuccess()
-    },
-  }),
-  useDeleteEndpoint: ({ onSuccess, onError }: { onSuccess: () => void; onError: () => void }) => ({
-    mutate: (id: string) => {
-      mockDeleteEndpoint(id)
-      if (failureFlags.delete) onError()
-      else onSuccess()
-    },
-  }),
-  useUpdateEndpoint: ({ onSuccess, onError }: { onSuccess: () => void; onError: () => void }) => ({
-    mutate: (data: unknown) => {
-      mockUpdateEndpoint(data)
-      if (failureFlags.update) onError()
-      else onSuccess()
-    },
-  }),
-}))
-
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status: string }) => (
-    <span data-testid="indicator" data-status={status} />
-  ),
-}))
-
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  toolCredentialToFormSchemas: (schemas: unknown[]) => schemas,
-  addDefaultValue: (value: unknown) => value,
-}))
+const submittedState = { name: 'Updated Endpoint', api_key: 'updated-secret' }
 
 vi.mock('../endpoint-modal', () => ({
-  default: ({ onCancel, onSaved }: { onCancel: () => void; onSaved: (state: unknown) => void }) => (
-    <div data-testid="endpoint-modal">
-      <button data-testid="modal-cancel" onClick={onCancel}>
+  default: ({
+    onCancel,
+    onSaved,
+  }: {
+    onCancel: () => void
+    onSaved: (value: typeof submittedState) => void
+  }) => (
+    <div role="dialog" aria-label="endpoint form">
+      <button type="button" onClick={onCancel}>
         Cancel
       </button>
-      <button data-testid="modal-save" onClick={() => onSaved({ name: 'Updated' })}>
+      <button type="button" onClick={() => onSaved(submittedState)}>
         Save
       </button>
     </div>
   ),
 }))
 
-const mockEndpointData: EndpointListItem = {
+type EndpointData = ComponentProps<typeof EndpointCard>['data']
+
+const endpoint: EndpointData = {
   id: 'ep-1',
   name: 'Test Endpoint',
   url: 'https://api.example.com',
@@ -104,13 +62,13 @@ const mockEndpointData: EndpointListItem = {
   declaration: {
     settings: [],
     endpoints: [
-      { path: '/api/test', method: 'GET' },
+      { path: '/api/test', method: 'GET', hidden: false },
       { path: '/api/hidden', method: 'POST', hidden: true },
     ],
   },
 }
 
-const mockPluginDetail: PluginDetail = {
+const pluginDetail: PluginDetail = {
   id: 'test-id',
   created_at: '2024-01-01',
   updated_at: '2024-01-02',
@@ -132,356 +90,129 @@ const mockPluginDetail: PluginDetail = {
   alternative_plugin_id: '',
 }
 
+const renderEndpointCard = (data: EndpointData = endpoint, handleChange = vi.fn()) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+
+  return {
+    handleChange,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <EndpointCard pluginDetail={pluginDetail} data={data} handleChange={handleChange} />
+      </QueryClientProvider>,
+    ),
+  }
+}
+
 describe('EndpointCard', () => {
+  const requests: Array<{ body?: unknown; method: string; url: string }> = []
+
   beforeEach(() => {
     vi.clearAllMocks()
-    // Reset failure flags
-    failureFlags.enable = false
-    failureFlags.disable = false
-    failureFlags.delete = false
-    failureFlags.update = false
-    // Polyfill document.execCommand for copy-to-clipboard in the test DOM runtime
-    if (typeof document.execCommand !== 'function') {
-      document.execCommand = vi.fn().mockReturnValue(true)
-    }
+    requests.length = 0
+    mockRequest.mockImplementation(
+      async (url: string, _init: RequestInit, options: { request: Request }) => {
+        const method = options.request.method
+        const body = method === 'DELETE' ? undefined : await options.request.clone().json()
+        requests.push({ body, method, url })
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+    )
   })
 
-  afterEach(() => {
-    vi.useRealTimers()
+  it('renders only visible endpoint routes', () => {
+    renderEndpointCard()
+
+    expect(screen.getByText('https://api.example.com/api/test')).toBeInTheDocument()
+    expect(screen.queryByText('https://api.example.com/api/hidden')).not.toBeInTheDocument()
   })
 
-  const waitForAlertDialogToClose = async () => {
+  it('enables a disabled endpoint through the generated mutation', async () => {
+    const user = userEvent.setup()
+    const handleChange = vi.fn()
+    renderEndpointCard({ ...endpoint, enabled: false }, handleChange)
+
+    await user.click(screen.getByRole('switch'))
+
     await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    })
-  }
-
-  describe('Rendering', () => {
-    it('should render endpoint name', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      expect(screen.getByText('Test Endpoint'))!.toBeInTheDocument()
-    })
-
-    it('should render visible endpoints only', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      expect(screen.getByText('GET'))!.toBeInTheDocument()
-      expect(screen.getByText('https://api.example.com/api/test'))!.toBeInTheDocument()
-      expect(screen.queryByText('POST')).not.toBeInTheDocument()
-    })
-
-    it('should show active status when enabled', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      expect(screen.getByText('plugin.detailPanel.serviceOk'))!.toBeInTheDocument()
-      expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-status', 'success')
-    })
-
-    it('should show disabled status when not enabled', () => {
-      const disabledData = { ...mockEndpointData, enabled: false }
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={disabledData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      expect(screen.getByText('plugin.detailPanel.disabled'))!.toBeInTheDocument()
-      expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-status', 'disabled')
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should show disable confirm when switching off', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('switch'))
-
-      expect(screen.getByText('plugin.detailPanel.endpointDisableTip'))!.toBeInTheDocument()
-    })
-
-    it('should call disableEndpoint when confirm disable', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('switch'))
-      // Click confirm button in the Confirm dialog
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-      expect(mockDisableEndpoint).toHaveBeenCalledWith('ep-1')
-    })
-
-    it('should show delete confirm when delete clicked', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1]!)
-
-      expect(screen.getByText('plugin.detailPanel.endpointDeleteTip'))!.toBeInTheDocument()
-    })
-
-    it('should call deleteEndpoint when confirm delete', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1]!)
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-      expect(mockDeleteEndpoint).toHaveBeenCalledWith('ep-1')
-    })
-
-    it('should show edit modal when edit clicked', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0]!)
-
-      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
-    })
-
-    it('should call updateEndpoint when save in modal', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0]!)
-      fireEvent.click(screen.getByTestId('modal-save'))
-
-      expect(mockUpdateEndpoint).toHaveBeenCalled()
-    })
-  })
-
-  describe('Copy Functionality', () => {
-    it('should reset copy state after timeout', async () => {
-      vi.useFakeTimers()
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[2]!)
-
-      act(() => {
-        vi.advanceTimersByTime(2000)
+      expect(requests).toContainEqual({
+        method: 'POST',
+        url: expect.stringContaining('/workspaces/current/endpoints/enable'),
+        body: { endpoint_id: 'ep-1' },
       })
-
-      expect(screen.getByText('Test Endpoint'))!.toBeInTheDocument()
+      expect(handleChange).toHaveBeenCalled()
     })
   })
 
-  describe('Edge Cases', () => {
-    it('should handle empty endpoints', () => {
-      const dataWithNoEndpoints = {
-        ...mockEndpointData,
-        declaration: { settings: [], endpoints: [] },
-      }
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={dataWithNoEndpoints}
-          handleChange={mockHandleChange}
-        />,
-      )
+  it('disables an endpoint only after confirmation', async () => {
+    const user = userEvent.setup()
+    renderEndpointCard()
 
-      expect(screen.getByText('Test Endpoint'))!.toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('switch'))
+    expect(requests).toHaveLength(0)
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    it('should call handleChange after enable', () => {
-      const disabledData = { ...mockEndpointData, enabled: false }
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={disabledData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('switch'))
-
-      expect(mockHandleChange).toHaveBeenCalled()
-    })
-
-    it('should hide disable confirm and revert state when cancel clicked', async () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('switch'))
-      expect(screen.getByText('plugin.detailPanel.endpointDisableTip'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-      await waitForAlertDialogToClose()
-
-      expect(screen.getByRole('switch'))!.toHaveAttribute('aria-checked', 'true')
-    })
-
-    it('should hide delete confirm when cancel clicked', async () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1]!)
-      expect(screen.getByText('plugin.detailPanel.endpointDeleteTip'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-      await waitForAlertDialogToClose()
-    })
-
-    it('should hide edit modal when cancel clicked', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0]!)
-      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('modal-cancel'))
-
-      expect(screen.queryByTestId('endpoint-modal')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(requests).toContainEqual({
+        method: 'POST',
+        url: expect.stringContaining('/workspaces/current/endpoints/disable'),
+        body: { endpoint_id: 'ep-1' },
+      })
     })
   })
 
-  describe('Error Handling', () => {
-    it('should show error toast when enable fails', () => {
-      failureFlags.enable = true
-      const disabledData = { ...mockEndpointData, enabled: false }
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={disabledData}
-          handleChange={mockHandleChange}
-        />,
-      )
+  it('deletes an endpoint through the canonical DELETE route', async () => {
+    const user = userEvent.setup()
+    renderEndpointCard()
 
-      fireEvent.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-      expect(mockEnableEndpoint).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(requests).toContainEqual({
+        method: 'DELETE',
+        url: expect.stringMatching(/\/workspaces\/current\/endpoints\/ep-1$/),
+        body: undefined,
+      })
     })
+  })
 
-    it('should show error toast when disable fails', () => {
-      failureFlags.disable = true
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
+  it('updates without mutating the form state object', async () => {
+    const user = userEvent.setup()
+    renderEndpointCard()
 
-      fireEvent.click(screen.getByRole('switch'))
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
-      expect(mockDisableEndpoint).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(requests).toContainEqual({
+        method: 'PATCH',
+        url: expect.stringMatching(/\/workspaces\/current\/endpoints\/ep-1$/),
+        body: {
+          name: 'Updated Endpoint',
+          settings: { api_key: 'updated-secret' },
+        },
+      })
     })
+    expect(submittedState).toEqual({ name: 'Updated Endpoint', api_key: 'updated-secret' })
+  })
 
-    it('should show error toast when delete fails', () => {
-      failureFlags.delete = true
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
+  it('restores the enabled state when disable is cancelled', async () => {
+    const user = userEvent.setup()
+    renderEndpointCard()
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1]!)
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(mockDeleteEndpoint).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
     })
-
-    it('should show error toast when update fails', () => {
-      render(
-        <EndpointCard
-          pluginDetail={mockPluginDetail}
-          data={mockEndpointData}
-          handleChange={mockHandleChange}
-        />,
-      )
-
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0]!)
-
-      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
-
-      failureFlags.update = true
-      fireEvent.click(screen.getByTestId('modal-save'))
-
-      expect(mockUpdateEndpoint).toHaveBeenCalled()
-      expect(mockHandleChange).not.toHaveBeenCalled()
-    })
+    expect(requests).toHaveLength(0)
   })
 })
