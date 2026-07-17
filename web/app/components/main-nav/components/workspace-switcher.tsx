@@ -13,7 +13,8 @@ import {
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
+import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
+import { WorkspaceMenuItemContent } from './workspace-menu-content'
 
 const workspaceSwitchActionButtonClassName =
   'flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid'
@@ -194,7 +195,7 @@ export function WorkspaceSwitcher({ workspaces, onSwitchWorkspace }: WorkspaceSw
               }}
             >
               <WorkspaceMenuItemContent
-                icon={<WorkspaceIcon name={workspaceName} className="h-5 w-5 rounded-md" />}
+                icon={<WorkspaceAvatar name={workspaceName} size="xs" />}
                 label={workspaceName}
                 trailing={
                   workspace.current ? (

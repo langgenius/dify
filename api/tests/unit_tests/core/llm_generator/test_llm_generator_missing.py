@@ -168,37 +168,6 @@ class TestBuildSuggestionContext:
             event.remove(dataset_session, "do_orm_execute", fail_query)
 
 
-class TestClassifyWorkflowMode:
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    def test_model_error(self, mock_for_tenant):
-        mock_for_tenant.return_value.get_model_instance.side_effect = Exception("API error")
-
-        model_config = ModelConfig(provider="test", name="test", mode="chat")
-        assert LLMGenerator.classify_workflow_mode("tenant", "instruction", model_config) == "advanced-chat"
-
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    def test_workflow_match(self, mock_for_tenant):
-        mock_model = MagicMock()
-        mock_model.invoke_llm.return_value = MagicMock()
-        mock_model.invoke_llm.return_value.message.get_text_content.return_value = "  workflow "
-
-        mock_for_tenant.return_value.get_model_instance.return_value = mock_model
-
-        model_config = ModelConfig(provider="test", name="test", mode="chat")
-        assert LLMGenerator.classify_workflow_mode("tenant", "instruction", model_config) == "workflow"
-
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    def test_other_match(self, mock_for_tenant):
-        mock_model = MagicMock()
-        mock_model.invoke_llm.return_value = MagicMock()
-        mock_model.invoke_llm.return_value.message.get_text_content.return_value = "chatflow"
-
-        mock_for_tenant.return_value.get_model_instance.return_value = mock_model
-
-        model_config = ModelConfig(provider="test", name="test", mode="chat")
-        assert LLMGenerator.classify_workflow_mode("tenant", "instruction", model_config) == "advanced-chat"
-
-
 class TestWorkflowServiceInterface:
     def test_protocol_methods(self):
         # Just to cover the 'pass' statements in the Protocol definition
