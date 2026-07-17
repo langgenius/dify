@@ -1,0 +1,81 @@
+## ADDED Requirements
+
+### Requirement: Workspace console MUST expose human-input contact directory APIs
+系统 MUST 在 `/console/api/workspaces/current/human-input` 下提供 workspace Contact Directory API，覆盖 Contact 列表浏览、EE 下的 `Platform contact` candidate / add、`External contact` 的创建与编辑，以及一个统一的批量 remove API。列表接口 MUST 支持 `all / workspace / platform / external` 四个分组语义。
+
+#### Scenario: 按 group 浏览当前 workspace Contact
+- **WHEN** a workspace admin calls `GET /console/api/workspaces/current/human-input/contacts?group=platform`
+- **THEN** 系统 MUST 返回当前 workspace 已收录的 `Platform contact` 集合，也就是非当前 workspace member 的 contact
+
+#### Scenario: EE 搜索 Platform contact candidate
+- **WHEN** an EE workspace admin calls `GET /console/api/workspaces/current/human-input/organization-candidates`
+- **THEN** 系统 MUST 返回当前 Organization 内可加入当前 workspace Contact 的 member candidate，并在加入后把它们落成为 `Platform contact`
+
+#### Scenario: CE / SaaS 调用 Platform contact candidate or add endpoint
+- **WHEN** a CE or SaaS workspace admin calls `GET /console/api/workspaces/current/human-input/organization-candidates` or `POST /console/api/workspaces/current/human-input/contacts/platform`
+- **THEN** 系统 MAY 保留这些路由实现，但 MUST 允许在运行时返回 edition-not-supported 类错误
+
+#### Scenario: 创建合法 external contact
+- **WHEN** a workspace admin calls `POST /console/api/workspaces/current/human-input/contacts/external` with a valid non-Dify email
+- **THEN** 系统 MUST 创建 `External contact` 并返回创建后的 contact payload
+
+#### Scenario: 更新 external contact
+- **WHEN** a workspace admin calls `PATCH /console/api/workspaces/current/human-input/contacts/external/<contact_id>`
+- **THEN** 系统 MUST 只更新该 `External contact` 的可编辑字段，而 MUST NOT 把它提升为 `organization contact`
+
+#### Scenario: 批量 remove mixed platform and external contacts
+- **WHEN** a workspace admin calls `POST /console/api/workspaces/current/human-input/contacts/remove` with both `Platform contact` and `External contact` identifiers
+- **THEN** 系统 MUST 允许在一个批量请求里同时处理这两类 contact，并对 `Platform contact` 执行当前 workspace scope 内的移除，对 `External contact` 执行 contact 删除
+
+#### Scenario: Remove platform contact 只影响当前 workspace
+- **WHEN** a workspace admin removes one `Platform contact` through `POST /console/api/workspaces/current/human-input/contacts/remove`
+- **THEN** 系统 MUST 只把该 `Platform contact` 从当前 workspace Contact 中移除，而 MUST NOT 删除其 Organization member 身份
+
+#### Scenario: Workspace contact 不走 contacts remove API
+- **WHEN** a workspace admin tries to include one `workspace contact` in `POST /console/api/workspaces/current/human-input/contacts/remove`
+- **THEN** 系统 MUST 拒绝该条目或整个请求，并 MUST 要求改走 membership management 流程，而 MUST NOT 在 Human Input Contact API 中额外引入 workspace member removal
+
+### Requirement: Workspace console MUST expose IM integration, sync, identity search, and override APIs
+系统 MUST 在 `/console/api/workspaces/current/human-input` 下提供 Organization 级 IM integration、manual sync、IM identity candidate 查询和 workspace IM override API。manual sync 结果 MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。
+
+#### Scenario: 读取当前 IM integration 摘要
+- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-integration`
+- **THEN** 系统 MUST 返回当前唯一 IM channel 的配置摘要和连接状态；若尚未配置，MUST 返回 `Not configured`
+
+#### Scenario: 手动触发一次 IM sync
+- **WHEN** a workspace owner or admin calls `POST /console/api/workspaces/current/human-input/im-sync-runs`
+- **THEN** 系统 MUST 创建一条新的 sync run，并返回 run identifier 与初始状态
+
+#### Scenario: 查看单次 sync detail
+- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/<sync_run_id>`
+- **THEN** 系统 MUST 返回该 run 的 `added / not_matched / failed / removed / skipped` 详情 bucket
+
+#### Scenario: 为 contact 设置 workspace IM override
+- **WHEN** a workspace admin calls `PUT /console/api/workspaces/current/human-input/contacts/<contact_id>/im-override` with one synced identity
+- **THEN** 系统 MUST 将该 identity 绑定为当前 workspace override，而 MUST NOT 改写 Organization 级 global IM identity
+
+### Requirement: Draft human-input editor MUST expose preview, run, and message template test APIs
+系统 MUST 继续提供 draft `form/preview` 与 `form/run` API，并新增 `message-template/test`。新测试接口 MUST 使用 `DebugChannel` 作为 `channel` 参数，而 MUST NOT 继续依赖旧 `delivery_method_id`。
+
+#### Scenario: 预览表单仍然只依赖 draft inputs
+- **WHEN** a workflow editor calls `POST /console/api/apps/<app_id>/workflows/draft/human-input/nodes/<node_id>/form/preview`
+- **THEN** 系统 MUST 继续只基于 `inputs` 渲染 preview，而 MUST NOT 要求 runtime form token
+
+#### Scenario: 运行 draft form submit
+- **WHEN** a workflow editor calls `POST /console/api/apps/<app_id>/workflows/draft/human-input/nodes/<node_id>/form/run`
+- **THEN** 系统 MUST 接收 `form_inputs`、`inputs` 和 `action`，并返回 draft run result
+
+#### Scenario: 发送 message template 测试消息
+- **WHEN** a workflow editor calls `POST /console/api/apps/<app_id>/workflows/draft/human-input/nodes/<node_id>/message-template/test` with `channel=EMAIL`
+- **THEN** 系统 MUST 按当前 node 的 `MessageTemplateConfig` 渲染测试消息，并向当前编辑者可达的对应 debug channel 发送测试消息
+
+### Requirement: New console contracts MUST use `human-input` paths and Pydantic DTOs
+本 change 新增或重定义的 console API MUST 使用 `human-input` 作为 URL part，MUST 继续使用 Pydantic model 定义 Request / Response，并且在语义相同处 MUST 复用现有 DSL / runtime enum，而不是重新发明 transport-only enum。
+
+#### Scenario: 文档路径不出现 `hitl`
+- **WHEN** the generated console API contract is reviewed
+- **THEN** 所有新路径 MUST 使用 `human-input`，而 MUST NOT 出现 `hitl` path segment
+
+#### Scenario: message template test 复用 DebugChannel
+- **WHEN** the request model for `message-template/test` is defined
+- **THEN** 系统 MUST 复用 `DebugChannel` 作为 `channel` 字段类型，而 MUST NOT 新增一个语义重复的 debug-channel enum

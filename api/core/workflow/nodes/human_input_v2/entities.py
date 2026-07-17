@@ -46,14 +46,23 @@ class MessageTemplateConfig(BaseModel):
     body: str
 
 
-class DebugChannel(enum.StrEnum):
-    EMAIL = enum.auto()
+class IMProvider(enum.StrEnum):
     FEISHU = enum.auto()
     SLACK = enum.auto()
     DING_TALK = enum.auto()
     MS_TEAMS = enum.auto()
     WE_COM = enum.auto()
     LARK = enum.auto()
+
+
+class DebugChannel(enum.StrEnum):
+    EMAIL = enum.auto()
+    FEISHU = IMProvider.FEISHU.value
+    SLACK = IMProvider.SLACK.value
+    DING_TALK = IMProvider.DING_TALK.value
+    MS_TEAMS = IMProvider.MS_TEAMS.value
+    WE_COM = IMProvider.WE_COM.value
+    LARK = IMProvider.LARK.value
 
 
 class DebugModeConfig(BaseModel):
@@ -66,7 +75,7 @@ class HumanInputNodeData(BaseNodeData):
 
     type: NodeType = BuiltinNodeTypes.HUMAN_INPUT
 
-    recpients_spec: list[RecipientConfig]
+    recipients_spec: list[RecipientConfig]
 
     message_template: MessageTemplateConfig
     debug_mode: DebugModeConfig
