@@ -37,12 +37,14 @@ type ProviderAddedCardProps = {
   notConfigured?: boolean
   provider: ModelProvider
   pluginDetail?: PluginDetail
+  rbacEnabled: boolean
 }
 const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   layout = 'list',
   notConfigured,
   provider,
   pluginDetail,
+  rbacEnabled,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
@@ -79,7 +81,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     !IS_CE_EDITION
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
-  const canAccessCredentials = canUseCredential || canCreateCredential || canManageCredential
+  const canAccessCredentials = rbacEnabled
+    ? canUseCredential || canCreateCredential || canManageCredential
+    : canManageCredential
   const showCredential = supportsPredefinedModel && canAccessCredentials
   const showCustomModelActions = supportsCustomizableModel && canConfigureModels
 

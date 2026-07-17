@@ -258,6 +258,7 @@ const ModelProviderPage = ({
       enableMarketplace={enableMarketplace}
       searchText={searchText}
       pluginDetailMap={pluginDetailMap}
+      rbacEnabled={systemFeatures.rbac_enabled}
       onOpenMarketplace={onOpenMarketplace}
     />
   )

@@ -22,6 +22,7 @@ type ModelProviderPageBodyProps = {
   enableMarketplace: boolean
   searchText: string
   pluginDetailMap: Map<string, PluginDetail>
+  rbacEnabled: boolean
   onOpenMarketplace?: () => void
 }
 
@@ -95,6 +96,7 @@ function EmptyProviderState({ enableMarketplace }: { enableMarketplace: boolean 
 type ProviderCardListProps = {
   providers: ModelProvider[]
   pluginDetailMap: Map<string, PluginDetail>
+  rbacEnabled: boolean
   notConfigured?: boolean
 }
 
@@ -104,7 +106,12 @@ function isDebuggingProvider(provider: ModelProvider, pluginDetailMap: Map<strin
   )
 }
 
-function ProviderCardList({ providers, pluginDetailMap, notConfigured }: ProviderCardListProps) {
+function ProviderCardList({
+  providers,
+  pluginDetailMap,
+  rbacEnabled,
+  notConfigured,
+}: ProviderCardListProps) {
   const sortedProviders = [...providers].sort((a, b) => {
     const aIsDebuggingPlugin = isDebuggingProvider(a, pluginDetailMap)
     const bIsDebuggingPlugin = isDebuggingProvider(b, pluginDetailMap)
@@ -125,6 +132,7 @@ function ProviderCardList({ providers, pluginDetailMap, notConfigured }: Provide
             notConfigured={notConfigured}
             provider={provider}
             pluginDetail={pluginDetail}
+            rbacEnabled={rbacEnabled}
           />
         )
       })}
@@ -144,6 +152,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   enableMarketplace,
   searchText,
   pluginDetailMap,
+  rbacEnabled,
   onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
@@ -165,6 +174,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
         <ProviderCardList
           providers={filteredConfiguredProviders}
           pluginDetailMap={pluginDetailMap}
+          rbacEnabled={rbacEnabled}
         />
       )}
       {showNotConfiguredProviders && (
@@ -176,6 +186,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
             providers={filteredNotConfiguredProviders}
             notConfigured
             pluginDetailMap={pluginDetailMap}
+            rbacEnabled={rbacEnabled}
           />
         </div>
       )}
