@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { consoleQuery } from '@/service/client'
 import {
   fetchTryAppDatasets,
@@ -8,12 +9,13 @@ import {
 } from './try-app'
 
 export const useGetTryAppInfo = (appId: string) => {
+  const { systemFeatures } = useGlobalPublicStore()
   return useQuery({
     queryKey: consoleQuery.trialApps.byAppId.get.queryKey({ input: { params: { app_id: appId } } }),
     queryFn: () => {
       return fetchTryAppInfo(appId)
     },
-    enabled: !!appId,
+    enabled: !!appId && systemFeatures.enable_trial_app,
   })
 }
 
