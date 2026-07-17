@@ -6,7 +6,7 @@ type CaptureEditorPluginProps = {
   onReady: (editor: LexicalEditor) => void
 }
 
-export const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
+export function CaptureEditorPlugin({ onReady }: CaptureEditorPluginProps) {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {

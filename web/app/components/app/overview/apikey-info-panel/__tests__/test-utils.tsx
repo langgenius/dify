@@ -9,7 +9,7 @@ import {
   useModalContextSelector as actualUseModalContextSelector,
 } from '@/context/modal-context'
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
-import APIKeyInfoPanel from './index'
+import APIKeyInfoPanel from '../index'
 
 const { mockRouterPush } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
@@ -161,43 +161,6 @@ export const scenarios = {
     }),
 }
 
-// Common test assertions
-export const assertions = {
-  // Should render main button
-  shouldRenderMainButton: () => {
-    const button = screen.getByRole('button', { name: mainButtonName })
-    expect(button).toBeInTheDocument()
-    return button
-  },
-
-  // Should not render at all
-  shouldNotRender: (container: HTMLElement) => {
-    expect(container.firstChild).toBeNull()
-  },
-
-  // Should have correct panel styling
-  shouldHavePanelStyling: (panel: HTMLElement) => {
-    expect(panel).toHaveClass(
-      'border-components-panel-border',
-      'bg-components-panel-bg',
-      'relative',
-      'mb-6',
-      'rounded-2xl',
-      'border',
-      'p-8',
-      'shadow-md',
-    )
-  },
-
-  // Should have close button
-  shouldHaveCloseButton: (container: HTMLElement) => {
-    const closeButton = container.querySelector('.absolute.right-4.top-4')
-    expect(closeButton).toBeInTheDocument()
-    expect(closeButton).toHaveClass('cursor-pointer')
-    return closeButton
-  },
-}
-
 // Common user interactions
 export const interactions = {
   // Click the main button
@@ -237,4 +200,4 @@ export function clearAllMocks() {
 }
 
 // Export mock functions for external access
-export { defaultModalContext, mockRouterPush, mockUseModalContext }
+export { defaultModalContext, mockUseModalContext }

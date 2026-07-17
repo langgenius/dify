@@ -6,7 +6,7 @@ import {
   mockUseModalContext,
   scenarios,
   textKeys,
-} from '../apikey-info-panel.test-utils'
+} from './test-utils'
 
 vi.mock('@/config', () => ({ IS_CE_EDITION: true }))
 

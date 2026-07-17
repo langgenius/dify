@@ -1743,11 +1743,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/input/index.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
   "web/app/components/base/logo/dify-logo.tsx": {
     "react/only-export-components": {
       "count": 2

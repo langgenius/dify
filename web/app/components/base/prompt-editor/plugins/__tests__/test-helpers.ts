@@ -24,7 +24,7 @@ export const renderLexicalEditor = ({
 }: RenderLexicalEditorProps): RenderLexicalEditorResult => {
   let editor: LexicalEditor | null = null
 
-  const utils = render(
+  const renderResult = render(
     createElement(
       LexicalComposer,
       {
@@ -46,7 +46,7 @@ export const renderLexicalEditor = ({
   )
 
   return {
-    ...utils,
+    ...renderResult,
     getEditor: () => editor,
   }
 }
