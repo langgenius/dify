@@ -1,8 +1,8 @@
 ## 1. Frontend Scope and Design Baseline
 
-- [ ] 1.1 Identify the EE enterprise-management and CE / SaaS workspace-management mount points for Contacts, define the shared Organization context contract, and verify that no entry is added under `web/features/agent-v2/roster/`.
-- [ ] 1.2 Inspect the six referenced Figma nodes with authorized access and record a frontend acceptance matrix for layout, overlay type, fields, statuses, table columns, responsive behavior, and visible copy.
-- [ ] 1.3 Define the existing product feature gate used to expose the mock-backed Contacts IM platform entry and its rollback behavior.
+- [x] 1.1 Identify the EE enterprise-management and CE / SaaS workspace-management mount points for Contacts, define the shared Organization context contract, and verify that no entry is added under `web/features/agent-v2/roster/`.
+- [x] 1.2 Inspect the six referenced Figma nodes with authorized access and record a frontend acceptance matrix for layout, overlay type, fields, statuses, table columns, responsive behavior, and visible copy.
+- [x] 1.3 Define the existing product feature gate used to expose the mock-backed Contacts IM platform entry and its rollback behavior.
 
 ## 2. Typed Mock Data Boundary
 
