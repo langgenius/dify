@@ -362,10 +362,9 @@ const ModelModal: FC<ModelModalProps> = ({
                     showRadioUI: formSchema.type === FormTypeEnum.radio,
                     ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
                       ? {
-                          description: t(
-                            ($) => $['modelProvider.auth.openAIResponsesAPITip'],
-                            { ns: 'common' },
-                          ),
+                          description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
+                            ns: 'common',
+                          }),
                         }
                       : {}),
                   }
