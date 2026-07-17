@@ -34,6 +34,7 @@ function createWrapper() {
 }
 
 let mockPostMarketplaceShouldFail = false
+const mockPostMarketplace = vi.hoisted(() => vi.fn())
 const mockPostMarketplaceResponse = {
   data: {
     plugins: [
@@ -45,12 +46,12 @@ const mockPostMarketplaceResponse = {
   },
 }
 
-vi.mock('@/service/base', () => ({
-  postMarketplace: vi.fn(() => {
-    if (mockPostMarketplaceShouldFail) return Promise.reject(new Error('Mock API error'))
-    return Promise.resolve(mockPostMarketplaceResponse)
-  }),
-}))
+mockPostMarketplace.mockImplementation(() => {
+  if (mockPostMarketplaceShouldFail) return Promise.reject(new Error('Mock API error'))
+  return Promise.resolve(mockPostMarketplaceResponse)
+})
+
+vi.mock('@/service/base', () => ({ postMarketplace: mockPostMarketplace }))
 
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',
@@ -308,8 +309,7 @@ describe('Hooks queryFn Coverage', () => {
   })
 
   it('should expose page and total from infinite query data', async () => {
-    const { postMarketplace } = await import('@/service/base')
-    vi.mocked(postMarketplace)
+    mockPostMarketplace
       .mockResolvedValueOnce({
         data: {
           plugins: [
@@ -420,8 +420,7 @@ describe('Hooks queryFn Coverage', () => {
   })
 
   it('should test getNextPageParam via fetchNextPage behavior', async () => {
-    const { postMarketplace } = await import('@/service/base')
-    vi.mocked(postMarketplace)
+    mockPostMarketplace
       .mockResolvedValueOnce({
         data: { plugins: [], total: 100 },
       })

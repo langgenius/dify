@@ -89,6 +89,7 @@
   "agentDetail.configure.chatFeatures.title": "Chat 功能",
   "agentDetail.configure.clearSessionConfirm.description": "這會清空目前會話，並丟棄尚未套用的 Agent 設定變更。",
   "agentDetail.configure.clearSessionConfirm.title": "清空會話並放棄變更？",
+  "agentDetail.configure.communityEditionIsolationTip": "免責聲明：在 Community Edition 中，sandbox 以非 root 使用者身分執行，採用 Docker 預設 capability 設定，並且只透過 Landlock 為 Agent 自有檔案和工作階段檔案提供有限保護。伺服器和所有 shell 子程序共用同一個 PID namespace 和容器層級 capability 邊界，因此不應將其視為具備強隔離能力的多層安全 sandbox。",
   "agentDetail.configure.files.add": "新增檔案",
   "agentDetail.configure.files.buildNote.generated": "已生成",
   "agentDetail.configure.files.buildNote.richTooltip": "Agent 在建置模式中完成的設定都記錄在這裡。每次對話開始時，它會連同提示詞一起讀取這份記錄。<docLink>了解更多</docLink>",

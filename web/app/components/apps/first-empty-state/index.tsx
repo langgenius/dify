@@ -1,6 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { useTranslation } from 'react-i18next'
 import LearnDify from '@/app/components/explore/learn-dify'
 import FirstEmptyActionCard from './action-card'
@@ -20,12 +22,21 @@ type EmptyCreateAction = {
 
 type Props = {
   onCreateBlank: () => void
+  onCreateLearnDify?: (app: App) => void
   onCreateTemplate: () => void
   onImportDSL: () => void
+  onTryLearnDify?: (params: TryAppSelection) => void
   showLearnDify: boolean
 }
 
-function FirstEmptyState({ onCreateBlank, onCreateTemplate, onImportDSL, showLearnDify }: Props) {
+function FirstEmptyState({
+  onCreateBlank,
+  onCreateLearnDify,
+  onCreateTemplate,
+  onImportDSL,
+  onTryLearnDify,
+  showLearnDify,
+}: Props) {
   const { t } = useTranslation()
 
   const actions: EmptyCreateAction[] = [
@@ -109,9 +120,12 @@ function FirstEmptyState({ onCreateBlank, onCreateTemplate, onImportDSL, showLea
       </div>
       {showLearnDify && (
         <LearnDify
+          canCreate
           className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
           dismissible={false}
           itemLimit={4}
+          onCreate={onCreateLearnDify}
+          onTry={onTryLearnDify}
           showDescription
           title={t(($) => $['firstEmpty.learnDifyTitle'], { ns: 'app' })}
         />

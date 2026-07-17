@@ -28,8 +28,8 @@ class TestWebhookServiceUnit:
     """Unit tests for WebhookService using isolated SQLite sessions for database boundaries."""
 
     def test_trigger_workflow_execution_propagates_quota_error_without_error_log(
-        self, flask_sqlite_engine: Engine
-    ) -> None:
+        self, caplog: pytest.LogCaptureFixture, flask_sqlite_engine: Engine
+    ):
         webhook_trigger = MagicMock(
             webhook_id="webhook-123",
             tenant_id="tenant-123",
@@ -40,6 +40,7 @@ class TestWebhookServiceUnit:
         quota_charge = MagicMock()
         quota_error = QuotaExceededError(feature="workflow", tenant_id="tenant-123", required=1)
 
+        caplog.set_level(logging.INFO)
         with (
             patch(
                 "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
@@ -50,8 +51,6 @@ class TestWebhookServiceUnit:
                 "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
                 side_effect=quota_error,
             ),
-            patch("services.trigger.webhook_service.logger.info") as mock_log_info,
-            patch("services.trigger.webhook_service.logger.exception") as mock_log_exception,
         ):
             with pytest.raises(QuotaExceededError) as exc_info:
                 WebhookService.trigger_workflow_execution(
@@ -62,13 +61,13 @@ class TestWebhookServiceUnit:
 
         assert exc_info.value is quota_error
         quota_charge.refund.assert_called_once_with()
-        mock_log_info.assert_called_once_with(
-            "Tenant %s quota exceeded for feature %s, skipping webhook trigger %s",
-            webhook_trigger.tenant_id,
-            quota_error.feature,
-            webhook_trigger.webhook_id,
+
+        # Verify logs using caplog instead of mock_log
+        assert len(caplog.records) == 1
+        assert caplog.records[0].levelno == logging.INFO
+        assert caplog.records[0].message == (
+            "Tenant tenant-123 quota exceeded for feature workflow, skipping webhook trigger webhook-123"
         )
-        mock_log_exception.assert_not_called()
 
     def test_trigger_workflow_execution_success(self, flask_sqlite_engine: Engine) -> None:
         webhook_trigger = MagicMock(
