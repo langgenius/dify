@@ -54,8 +54,7 @@ class TestWebhookServiceUnit:
         assert len(caplog.records) == 1
         assert caplog.records[0].levelno == logging.INFO
         assert caplog.records[0].message == (
-            "Tenant tenant-123 quota exceeded for feature workflow, "
-            "skipping webhook trigger webhook-123"
+            "Tenant tenant-123 quota exceeded for feature workflow, skipping webhook trigger webhook-123"
         )
 
     def test_extract_webhook_data_json(self):
