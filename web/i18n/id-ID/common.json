@@ -332,6 +332,7 @@
   "modelProvider.auth.manageCredentials": "Kelola Kredensial",
   "modelProvider.auth.modelCredential": "Kredensial model",
   "modelProvider.auth.modelCredentials": "Kredensial model",
+  "modelProvider.auth.openAIResponsesAPITip": "Untuk GPT-5.6 dan model yang lebih baru, kami menyarankan penggunaan Responses API.",
   "modelProvider.auth.providerManaged": "Penyedia dikelola",
   "modelProvider.auth.providerManagedTip": "Konfigurasi saat ini dihosting oleh penyedia.",
   "modelProvider.auth.removeModel": "Hapus Model",
