@@ -1,13 +1,12 @@
 'use client'
-import type { FC } from 'react'
 import type {
-  ExternalKnowledgeBaseHitTesting,
-  ExternalKnowledgeBaseHitTestingResponse,
-  HitTesting,
+  ExternalHitTestingRecordResponse,
+  ExternalHitTestingResponse,
   HitTestingRecord,
   HitTestingResponse,
-  Query,
-} from '@/models/datasets'
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { FC } from 'react'
+import type { Query, HitTestingRecord as TestingHistoryRecord } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -19,6 +18,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { useMutation } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -32,11 +32,8 @@ import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { consoleQuery } from '@/service/client'
 import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
-import {
-  useExternalKnowledgeBaseHitTesting,
-  useHitTesting,
-} from '@/service/knowledge/use-hit-testing'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 import EmptyRecords from './components/empty-records'
@@ -59,11 +56,9 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const isMobile = media === MediaType.mobile
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>()
-  const [externalHitResult, setExternalHitResult] = useState<
-    ExternalKnowledgeBaseHitTestingResponse | undefined
-  >()
+  const [externalHitResult, setExternalHitResult] = useState<ExternalHitTestingResponse>()
   const [queries, setQueries] = useState<Query[]>([])
-  const [queryInputKey, setQueryInputKey] = useState(Date.now())
+  const [queryInputKey, setQueryInputKey] = useState(() => Date.now())
 
   const [currPage, setCurrPage] = useState<number>(0)
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
@@ -98,32 +93,42 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel },
   ] = useBoolean(!isMobile)
 
-  const { mutateAsync: hitTestingMutation, isPending: isHitTestingPending } =
-    useHitTesting(datasetId)
+  const { mutateAsync: hitTestingMutation, isPending: isHitTestingPending } = useMutation(
+    consoleQuery.datasets.byDatasetId.hitTesting.post.mutationOptions(),
+  )
   const {
     mutateAsync: externalKnowledgeBaseHitTestingMutation,
     isPending: isExternalKnowledgeBaseHitTestingPending,
-  } = useExternalKnowledgeBaseHitTesting(datasetId)
+  } = useMutation(consoleQuery.datasets.byDatasetId.externalHitTesting.post.mutationOptions())
 
   const isRetrievalLoading = isHitTestingPending || isExternalKnowledgeBaseHitTestingPending
 
-  const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
+  const renderHitResults = (results: HitTestingRecord[]) => (
     <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
       <div className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
         {t(($) => $['hit.title'], { ns: 'datasetHitTesting', num: results.length })}
       </div>
       <div className="grow space-y-2 overflow-y-auto">
-        {results.map((record, idx) =>
-          isExternal ? (
-            <ResultItemExternal
-              key={idx}
-              positionId={idx + 1}
-              payload={record as ExternalKnowledgeBaseHitTesting}
-            />
-          ) : (
-            <ResultItem key={idx} payload={record as HitTesting} />
-          ),
-        )}
+        {results.map((record) => (
+          <ResultItem key={record.segment.id} payload={record} />
+        ))}
+      </div>
+    </div>
+  )
+
+  const renderExternalHitResults = (results: ExternalHitTestingRecordResponse[]) => (
+    <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
+      <div className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
+        {t(($) => $['hit.title'], { ns: 'datasetHitTesting', num: results.length })}
+      </div>
+      <div className="grow space-y-2 overflow-y-auto">
+        {results.map((record, index) => (
+          <ResultItemExternal
+            key={`${record.title ?? ''}:${record.content ?? ''}:${record.score ?? ''}`}
+            positionId={index + 1}
+            payload={record}
+          />
+        ))}
       </div>
     </div>
   )
@@ -139,7 +144,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     </div>
   )
 
-  const handleClickRecord = useCallback((record: HitTestingRecord) => {
+  const handleClickRecord = useCallback((record: TestingHistoryRecord) => {
     setQueries(record.queries)
     setQueryInputKey(Date.now())
   }, [])
@@ -174,6 +179,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}
+          datasetId={datasetId}
           hitTestingMutation={hitTestingMutation}
           externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
           canRunRetrievalRecall={canRunRetrievalRecall}
@@ -226,7 +232,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
               if (hitResult?.records.length) return renderHitResults(hitResult.records)
 
-              return renderHitResults(externalHitResult?.records || [])
+              return renderExternalHitResults(externalHitResult?.records || [])
             })()
           )}
         </div>

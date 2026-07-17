@@ -1,6 +1,6 @@
 'use client'
+import type { HitTestingRecord } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
-import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -20,7 +20,7 @@ import Score from './score'
 const i18nPrefix = ''
 
 type ChunkDetailModalProps = {
-  payload: HitTesting
+  payload: HitTestingRecord
   onHide: () => void
 }
 

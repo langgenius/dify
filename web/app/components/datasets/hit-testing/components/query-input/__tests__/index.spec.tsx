@@ -102,6 +102,7 @@ describe('QueryInput', () => {
     onClickRetrievalMethod: vi.fn(),
     retrievalConfig: { search_method: 'semantic_search' } as RetrievalConfig,
     isEconomy: false,
+    datasetId: 'dataset-1',
     canRunRetrievalRecall: true,
     hitTestingMutation: vi.fn(),
     externalKnowledgeBaseHitTestingMutation: vi.fn(),
@@ -391,7 +392,7 @@ describe('QueryInput', () => {
   describe('Submit Handlers', () => {
     it('should call hitTestingMutation on submit for non-external mode', async () => {
       const mockMutation = vi.fn(async (_req, opts) => {
-        const response = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
+        const response = { query: { content: '' }, records: [] }
         opts?.onSuccess?.(response)
         return response
       })
@@ -403,8 +404,11 @@ describe('QueryInput', () => {
       await waitFor(() => {
         expect(mockMutation).toHaveBeenCalledWith(
           expect.objectContaining({
-            query: 'test query',
-            retrieval_model: expect.objectContaining({ search_method: 'semantic_search' }),
+            params: { dataset_id: 'dataset-1' },
+            body: expect.objectContaining({
+              query: 'test query',
+              retrieval_model: expect.objectContaining({ search_method: 'semantic_search' }),
+            }),
           }),
           expect.objectContaining({ onSuccess: expect.any(Function) }),
         )
@@ -416,7 +420,7 @@ describe('QueryInput', () => {
     it('should call onSubmit callback after successful hit testing', async () => {
       const mockOnSubmit = vi.fn()
       const mockMutation = vi.fn(async (_req, opts) => {
-        const response = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
+        const response = { query: { content: '' }, records: [] }
         opts?.onSuccess?.(response)
         return response
       })
@@ -433,7 +437,7 @@ describe('QueryInput', () => {
     })
 
     it('should use keywordSearch when isEconomy is true', async () => {
-      const mockResponse = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
+      const mockResponse = { query: { content: '' }, records: [] }
       const mockMutation = vi.fn(async (_req, opts) => {
         opts?.onSuccess?.(mockResponse)
         return mockResponse
@@ -446,7 +450,9 @@ describe('QueryInput', () => {
       await waitFor(() => {
         expect(mockMutation).toHaveBeenCalledWith(
           expect.objectContaining({
-            retrieval_model: expect.objectContaining({ search_method: 'keyword_search' }),
+            body: expect.objectContaining({
+              retrieval_model: expect.objectContaining({ search_method: 'keyword_search' }),
+            }),
           }),
           expect.anything(),
         )
@@ -474,11 +480,14 @@ describe('QueryInput', () => {
       await waitFor(() => {
         expect(mockExternalMutation).toHaveBeenCalledWith(
           expect.objectContaining({
-            query: 'test query',
-            external_retrieval_model: expect.objectContaining({
-              top_k: 4,
-              score_threshold: 0.5,
-              score_threshold_enabled: false,
+            params: { dataset_id: 'dataset-1' },
+            body: expect.objectContaining({
+              query: 'test query',
+              external_retrieval_model: expect.objectContaining({
+                top_k: 4,
+                score_threshold: 0.5,
+                score_threshold_enabled: false,
+              }),
             }),
           }),
           expect.objectContaining({ onSuccess: expect.any(Function) }),
@@ -504,7 +513,7 @@ describe('QueryInput', () => {
           },
         },
       ]
-      const mockResponse = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
+      const mockResponse = { query: { content: '' }, records: [] }
       const mockMutation = vi.fn(async (_req, opts) => {
         opts?.onSuccess?.(mockResponse)
         return mockResponse
@@ -517,8 +526,9 @@ describe('QueryInput', () => {
       await waitFor(() => {
         expect(mockMutation).toHaveBeenCalledWith(
           expect.objectContaining({
-            // uploadedId is mapped from file_info.id
-            attachment_ids: expect.arrayContaining(['img-id']),
+            body: expect.objectContaining({
+              attachment_ids: expect.arrayContaining(['img-id']),
+            }),
           }),
           expect.anything(),
         )

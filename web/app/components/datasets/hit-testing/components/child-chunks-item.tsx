@@ -1,6 +1,6 @@
 'use client'
+import type { HitTestingChildChunk } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { HitTestingChildChunk } from '@/models/datasets'
 import * as React from 'react'
 import { SliceContent } from '../../formatted-text/flavours/shared'
 import Score from './score'

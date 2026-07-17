@@ -1,5 +1,10 @@
+import type {
+  ExternalHitTestingResponse,
+  HitTestingRecord,
+  HitTestingResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
-import type { DataSet, HitTesting, HitTestingRecord, HitTestingResponse } from '@/models/datasets'
+import type { DataSet, HitTestingRecord as TestingHistoryRecord } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -7,6 +12,13 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
+
+const mockRequest = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
+  return { ...actual, request: mockRequest }
+})
 
 vi.mock('@langgenius/dify-ui/pagination', () => ({
   Pagination: ({
@@ -170,8 +182,6 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 const mockRecordsRefetch = vi.fn()
-const mockHitTestingMutateAsync = vi.fn()
-const mockExternalHitTestingMutateAsync = vi.fn()
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetTestingRecords: vi.fn(() => ({
@@ -193,17 +203,6 @@ vi.mock('jotai', async (importOriginal) => {
 
   return createDatasetAccessJotaiMock(importOriginal)
 })
-
-vi.mock('@/service/knowledge/use-hit-testing', () => ({
-  useHitTesting: vi.fn(() => ({
-    mutateAsync: mockHitTestingMutateAsync,
-    isPending: false,
-  })),
-  useExternalKnowledgeBaseHitTesting: vi.fn(() => ({
-    mutateAsync: mockExternalHitTestingMutateAsync,
-    isPending: false,
-  })),
-}))
 
 // Mock breakpoints hook
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -304,13 +303,6 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(() => () => 'https://docs.example.com'),
 }))
 
-// Mock provider context for retrieval method config
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(() => ({
-    supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
-  })),
-}))
-
 // Mock model list hook - include all exports used by child components
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: vi.fn(() => ({
@@ -362,37 +354,50 @@ const renderWithProviders = (ui: React.ReactElement) => {
 
 // Test Factories
 
-const createMockSegment = (overrides = {}) => ({
+const createMockSegment = (overrides = {}): HitTestingRecord['segment'] => ({
+  answer: null,
+  completed_at: null,
+  created_at: 1609459200,
+  created_by: 'user-1',
+  disabled_at: null,
+  disabled_by: null,
   id: 'segment-1',
   document: {
     id: 'doc-1',
     data_source_type: 'upload_file',
     name: 'test-document.pdf',
-    doc_type: 'book' as const,
+    doc_type: 'book',
+    doc_metadata: null,
   },
+  document_id: 'doc-1',
+  enabled: true,
+  error: null,
   content: 'Test segment content',
   sign_content: 'Test signed content',
+  status: 'completed',
+  stopped_at: null,
+  indexing_at: null,
+  index_node_id: null,
   position: 1,
   word_count: 100,
   tokens: 50,
   keywords: ['test', 'keyword'],
   hit_count: 5,
   index_node_hash: 'hash-123',
-  answer: '',
   ...overrides,
 })
 
-const createMockHitTesting = (overrides = {}): HitTesting => ({
-  segment: createMockSegment() as HitTesting['segment'],
-  content: createMockSegment() as HitTesting['content'],
+const createMockHitTesting = (overrides = {}): HitTestingRecord => ({
+  segment: createMockSegment(),
   score: 0.85,
-  tsne_position: { x: 0.5, y: 0.5 },
-  child_chunks: null,
+  tsne_position: null,
+  child_chunks: [],
   files: [],
+  summary: null,
   ...overrides,
 })
 
-const createMockRecord = (overrides = {}): HitTestingRecord => ({
+const createMockRecord = (overrides = {}): TestingHistoryRecord => ({
   id: 'record-1',
   source: 'hit_testing',
   source_app_id: 'app-1',
@@ -422,11 +427,35 @@ const _createMockRetrievalConfig = (overrides = {}): RetrievalConfig =>
 // HitTestingPage integration tests
 
 describe('HitTestingPage', () => {
+  const requests: Array<{ body?: unknown; method: string; url: string }> = []
+  let hitTestingResponse: HitTestingResponse = { query: { content: '' }, records: [] }
+  let externalHitTestingResponse: ExternalHitTestingResponse = {
+    query: { content: '' },
+    records: [],
+  }
+
   beforeEach(async () => {
     vi.clearAllMocks()
     mockRecordsRefetch.mockReset()
-    mockHitTestingMutateAsync.mockReset()
-    mockExternalHitTestingMutateAsync.mockReset()
+    requests.length = 0
+    hitTestingResponse = { query: { content: '' }, records: [] }
+    externalHitTestingResponse = { query: { content: '' }, records: [] }
+    mockRequest.mockImplementation(
+      async (url: string, _init: RequestInit, options: { request: Request }) => {
+        const method = options.request.method
+        const body = method === 'GET' ? undefined : await options.request.clone().json()
+        requests.push({ body, method, url })
+
+        const response = url.includes('/external-hit-testing')
+          ? externalHitTestingResponse
+          : url.includes('/hit-testing')
+            ? hitTestingResponse
+            : { retrieval_method: ['semantic_search', 'full_text_search', 'hybrid_search'] }
+        return new Response(JSON.stringify(response), {
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+    )
     Object.assign(mockDataset, {
       provider: 'vendor',
       indexing_technique: 'high_quality',
@@ -444,17 +473,6 @@ describe('HitTestingPage', () => {
       refetch: mockRecordsRefetch,
       isLoading: false,
     } as unknown as ReturnType<typeof useDatasetTestingRecords>)
-
-    const { useHitTesting, useExternalKnowledgeBaseHitTesting } =
-      await import('@/service/knowledge/use-hit-testing')
-    vi.mocked(useHitTesting).mockReturnValue({
-      mutateAsync: mockHitTestingMutateAsync,
-      isPending: false,
-    } as unknown as ReturnType<typeof useHitTesting>)
-    vi.mocked(useExternalKnowledgeBaseHitTesting).mockReturnValue({
-      mutateAsync: mockExternalHitTestingMutateAsync,
-      isPending: false,
-    } as unknown as ReturnType<typeof useExternalKnowledgeBaseHitTesting>)
 
     const useBreakpoints = await import('@/hooks/use-breakpoints')
     vi.mocked(useBreakpoints.default).mockReturnValue(
@@ -550,14 +568,10 @@ describe('HitTestingPage', () => {
 
   it('saves retrieval settings, submits a query, refreshes history, and renders results', async () => {
     const user = userEvent.setup()
-    const response: HitTestingResponse = {
-      query: { content: 'Test query', tsne_position: { x: 0, y: 0 } },
+    hitTestingResponse = {
+      query: { content: 'Test query' },
       records: [createMockHitTesting()],
     }
-    mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
-      options?.onSuccess?.(response)
-      return response
-    })
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByText(/semantic_search/))
@@ -567,8 +581,10 @@ describe('HitTestingPage', () => {
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
 
     await waitFor(() => {
-      expect(mockHitTestingMutateAsync).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(requests).toContainEqual({
+        method: 'POST',
+        url: expect.stringMatching(/\/datasets\/dataset-1\/hit-testing$/),
+        body: expect.objectContaining({
           query: 'Test query',
           attachment_ids: [],
           retrieval_model: expect.objectContaining({
@@ -576,8 +592,7 @@ describe('HitTestingPage', () => {
             top_k: 8,
           }),
         }),
-        expect.objectContaining({ onSuccess: expect.any(Function) }),
-      )
+      })
     })
     expect(mockRecordsRefetch).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('test-document.pdf')).toBeInTheDocument()
@@ -586,7 +601,7 @@ describe('HitTestingPage', () => {
   it('submits external retrieval settings and renders external results', async () => {
     const user = userEvent.setup()
     Object.assign(mockDataset, { provider: 'external' })
-    const response = {
+    externalHitTestingResponse = {
       query: { content: 'External query' },
       records: [
         {
@@ -597,11 +612,6 @@ describe('HitTestingPage', () => {
         },
       ],
     }
-    mockExternalHitTestingMutateAsync.mockImplementation(async (_params, options) => {
-      options?.onSuccess?.(response)
-      return response
-    })
-
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByRole('button', { name: /settingTitle/ }))
     await user.click(screen.getByRole('button', { name: 'Change Top K' }))
@@ -610,8 +620,10 @@ describe('HitTestingPage', () => {
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
 
     await waitFor(() => {
-      expect(mockExternalHitTestingMutateAsync).toHaveBeenCalledWith(
-        {
+      expect(requests).toContainEqual({
+        method: 'POST',
+        url: expect.stringMatching(/\/datasets\/dataset-1\/external-hit-testing$/),
+        body: {
           query: 'External query',
           external_retrieval_model: {
             top_k: 8,
@@ -619,10 +631,9 @@ describe('HitTestingPage', () => {
             score_threshold_enabled: false,
           },
         },
-        expect.objectContaining({ onSuccess: expect.any(Function) }),
-      )
+      })
     })
-    expect(mockHitTestingMutateAsync).not.toHaveBeenCalled()
+    expect(requests.some(({ url }) => url.endsWith('/datasets/dataset-1/hit-testing'))).toBe(false)
     expect(mockRecordsRefetch).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('External content')).toBeInTheDocument()
   })

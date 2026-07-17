@@ -1,8 +1,7 @@
 'use client'
+import type { HitTestingRecord } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
-import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -19,7 +18,7 @@ import ResultItemMeta from './result-item-meta'
 
 const i18nPrefix = ''
 type ResultItemProps = {
-  payload: HitTesting
+  payload: HitTestingRecord
 }
 
 const ResultItem = ({ payload }: ResultItemProps) => {
@@ -31,7 +30,6 @@ const ResultItem = ({ payload }: ResultItemProps) => {
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const fileType = extensionToFileType(extension)
   const [isFold, { toggle: toggleFold }] = useBoolean(false)
-  const Icon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
   const [isShowDetailModal, { setTrue: showDetailModal, setFalse: hideDetailModal }] =
     useBoolean(false)
@@ -81,7 +79,13 @@ const ResultItem = ({ payload }: ResultItemProps) => {
                 toggleFold()
               }}
             >
-              <Icon className={cn('size-4', isFold && 'opacity-50')} />
+              <span
+                aria-hidden
+                className={cn(
+                  'size-4',
+                  isFold ? 'i-ri-arrow-right-s-line opacity-50' : 'i-ri-arrow-down-s-line',
+                )}
+              />
               <div className="text-xs font-semibold uppercase">
                 {t(($) => $[`${i18nPrefix}hitChunks`], {
                   ns: 'datasetHitTesting',

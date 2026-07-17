@@ -1,6 +1,6 @@
 'use client'
+import type { ExternalHitTestingRecordResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useBoolean } from 'ahooks'
@@ -12,13 +12,15 @@ import ResultItemMeta from './result-item-meta'
 
 const i18nPrefix = ''
 type Props = {
-  readonly payload: ExternalKnowledgeBaseHitTesting
+  readonly payload: ExternalHitTestingRecordResponse
   readonly positionId: number
 }
 
 const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
   const { t } = useTranslation()
-  const { content, title, score } = payload
+  const { score } = payload
+  const content = payload.content ?? ''
+  const title = payload.title ?? ''
   const [isShowDetailModal, { setTrue: showDetailModal, setFalse: hideDetailModal }] =
     useBoolean(false)
 
@@ -33,7 +35,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
         labelPrefix="Chunk"
         positionId={positionId}
         wordCount={content.length}
-        score={score}
+        score={score ?? null}
       />
 
       {/* Main */}
@@ -66,7 +68,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
                 labelPrefix="Chunk"
                 positionId={positionId}
                 wordCount={content.length}
-                score={score}
+                score={score ?? null}
               />
               <div className="mt-2 min-h-0 flex-1 overflow-y-auto body-md-regular break-all text-text-secondary">
                 {content}

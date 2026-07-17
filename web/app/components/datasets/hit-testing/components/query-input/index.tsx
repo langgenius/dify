@@ -1,18 +1,17 @@
+import type {
+  ExternalHitTestingPayload,
+  ExternalHitTestingResponse,
+  HitTestingPayload,
+  HitTestingResponse,
+  RetrievalMethod,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { UseMutateAsyncFunction } from '@tanstack/react-query'
 import type { ChangeEvent } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
-import type {
-  Attachment,
-  ExternalKnowledgeBaseHitTestingRequest,
-  ExternalKnowledgeBaseHitTestingResponse,
-  HitTestingRequest,
-  HitTestingResponse,
-  Query,
-} from '@/models/datasets'
+import type { Attachment, Query } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiEqualizer2Line, RiPlayCircleLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +26,7 @@ import Textarea from './textarea'
 type QueryInputProps = {
   onUpdateList: () => void
   setHitResult: (res: HitTestingResponse) => void
-  setExternalHitResult: (res: ExternalKnowledgeBaseHitTestingResponse) => void
+  setExternalHitResult: (res: ExternalHitTestingResponse) => void
   loading: boolean
   queries: Query[]
   setQueries: (v: Query[]) => void
@@ -35,15 +34,35 @@ type QueryInputProps = {
   onClickRetrievalMethod: () => void
   retrievalConfig: RetrievalConfig
   isEconomy: boolean
+  datasetId: string
   canRunRetrievalRecall?: boolean
   onSubmit?: () => void
-  hitTestingMutation: UseMutateAsyncFunction<HitTestingResponse, Error, HitTestingRequest, unknown>
-  externalKnowledgeBaseHitTestingMutation: UseMutateAsyncFunction<
-    ExternalKnowledgeBaseHitTestingResponse,
+  hitTestingMutation: UseMutateAsyncFunction<
+    HitTestingResponse,
     Error,
-    ExternalKnowledgeBaseHitTestingRequest,
+    { body: HitTestingPayload; params: { dataset_id: string } },
     unknown
   >
+  externalKnowledgeBaseHitTestingMutation: UseMutateAsyncFunction<
+    ExternalHitTestingResponse,
+    Error,
+    { body: ExternalHitTestingPayload; params: { dataset_id: string } },
+    unknown
+  >
+}
+
+const normalizeRetrievalMethod = (method: RETRIEVE_METHOD): RetrievalMethod => {
+  switch (method) {
+    case 'semantic_search':
+      return 'semantic_search'
+    case 'full_text_search':
+      return 'full_text_search'
+    case 'hybrid_search':
+      return 'hybrid_search'
+    case 'keyword_search':
+    case 'invertedIndex':
+      return 'keyword_search'
+  }
 }
 
 const QueryInput = ({
@@ -57,6 +76,7 @@ const QueryInput = ({
   onClickRetrievalMethod,
   retrievalConfig,
   isEconomy,
+  datasetId,
   canRunRetrievalRecall = true,
   onSubmit: _onSubmit,
   hitTestingMutation,
@@ -152,11 +172,16 @@ const QueryInput = ({
 
     await hitTestingMutation(
       {
-        query: text,
-        attachment_ids: images.map((image) => image.uploadedId),
-        retrieval_model: {
-          ...retrievalConfig,
-          search_method: isEconomy ? RETRIEVE_METHOD.keywordSearch : retrievalConfig.search_method,
+        params: { dataset_id: datasetId },
+        body: {
+          query: text,
+          attachment_ids: images.map((image) => image.uploadedId),
+          retrieval_model: {
+            ...retrievalConfig,
+            search_method: normalizeRetrievalMethod(
+              isEconomy ? RETRIEVE_METHOD.keywordSearch : retrievalConfig.search_method,
+            ),
+          },
         },
       },
       {
@@ -176,6 +201,7 @@ const QueryInput = ({
     onUpdateList,
     _onSubmit,
     images,
+    datasetId,
     setHitResult,
   ])
 
@@ -184,11 +210,14 @@ const QueryInput = ({
 
     await externalKnowledgeBaseHitTestingMutation(
       {
-        query: text,
-        external_retrieval_model: {
-          top_k: externalRetrievalSettings.top_k,
-          score_threshold: externalRetrievalSettings.score_threshold,
-          score_threshold_enabled: externalRetrievalSettings.score_threshold_enabled,
+        params: { dataset_id: datasetId },
+        body: {
+          query: text,
+          external_retrieval_model: {
+            top_k: externalRetrievalSettings.top_k,
+            score_threshold: externalRetrievalSettings.score_threshold,
+            score_threshold_enabled: externalRetrievalSettings.score_threshold_enabled,
+          },
         },
       },
       {
@@ -201,6 +230,7 @@ const QueryInput = ({
   }, [
     canRunRetrievalRecall,
     text,
+    datasetId,
     externalRetrievalSettings,
     externalKnowledgeBaseHitTestingMutation,
     onUpdateList,
@@ -232,7 +262,7 @@ const QueryInput = ({
         }
         className="w-[88px]"
       >
-        <RiPlayCircleLine className="mr-1 size-4" />
+        <span aria-hidden className="mr-1 i-ri-play-circle-line size-4" />
         {t(($) => $['input.testing'], { ns: 'datasetHitTesting' })}
       </Button>
     )
@@ -265,7 +295,10 @@ const QueryInput = ({
               size="small"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
             >
-              <RiEqualizer2Line className="size-3.5 text-components-button-secondary-text" />
+              <span
+                aria-hidden
+                className="i-ri-equalizer-2-line size-3.5 text-components-button-secondary-text"
+              />
               <div className="flex items-center justify-center gap-1 px-[3px]">
                 <span className="system-xs-medium text-components-button-secondary-text">
                   {t(($) => $.settingTitle, { ns: 'datasetHitTesting' })}
@@ -281,7 +314,10 @@ const QueryInput = ({
               <div className="text-xs font-medium text-text-secondary uppercase">
                 {t(($) => $[`retrieval.${retrievalMethod}.title`], { ns: 'dataset' })}
               </div>
-              <RiEqualizer2Line className="size-4 text-components-menu-item-text"></RiEqualizer2Line>
+              <span
+                aria-hidden
+                className="i-ri-equalizer-2-line size-4 text-components-menu-item-text"
+              />
             </div>
           )}
           {isSettingsOpen && (
