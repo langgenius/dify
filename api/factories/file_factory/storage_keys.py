@@ -32,11 +32,11 @@ class StorageKeyLoader:
         self._access_controller = access_controller
 
     def _load_upload_files(self, upload_file_ids: Sequence[uuid.UUID]) -> Mapping[uuid.UUID, UploadFile]:
-        stmt = select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
-        scoped_stmt = self._access_controller.apply_upload_file_filters(
-            stmt,
-            fallback_tenant_id=self._tenant_id,
+        stmt = select(UploadFile).where(
+            UploadFile.id.in_(upload_file_ids),
+            UploadFile.tenant_id == self._tenant_id,
         )
+        scoped_stmt = self._access_controller.apply_upload_file_filters(stmt)
         return {uuid.UUID(upload_file.id): upload_file for upload_file in self._session.scalars(scoped_stmt)}
 
     def _load_tool_files(self, tool_file_ids: Sequence[uuid.UUID]) -> Mapping[uuid.UUID, ToolFile]:

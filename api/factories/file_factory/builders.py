@@ -204,9 +204,12 @@ def _build_from_local_file(
     except ValueError as exc:
         raise ValueError("Invalid upload file id format") from exc
 
-    stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
+    stmt = select(UploadFile).where(
+        UploadFile.id == upload_file_id,
+        UploadFile.tenant_id == tenant_id,
+    )
     with session_factory.create_session() as session:
-        row = session.scalar(access_controller.apply_upload_file_filters(stmt, fallback_tenant_id=tenant_id))
+        row = session.scalar(access_controller.apply_upload_file_filters(stmt))
         if row is None:
             raise ValueError("Invalid upload file")
 
@@ -246,11 +249,12 @@ def _build_from_remote_url(
         except ValueError as exc:
             raise ValueError("Invalid upload file id format") from exc
 
-        stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
+        stmt = select(UploadFile).where(
+            UploadFile.id == upload_file_id,
+            UploadFile.tenant_id == tenant_id,
+        )
         with session_factory.create_session() as session:
-            upload_file = session.scalar(
-                access_controller.apply_upload_file_filters(stmt, fallback_tenant_id=tenant_id)
-            )
+            upload_file = session.scalar(access_controller.apply_upload_file_filters(stmt))
             if upload_file is None:
                 raise ValueError("Invalid upload file")
 
@@ -362,11 +366,12 @@ def _build_from_datasource_file(
     if not datasource_file_id:
         raise ValueError(f"DatasourceFile {datasource_file_id} not found")
 
-    stmt = select(UploadFile).where(UploadFile.id == datasource_file_id)
+    stmt = select(UploadFile).where(
+        UploadFile.id == datasource_file_id,
+        UploadFile.tenant_id == tenant_id,
+    )
     with session_factory.create_session() as session:
-        datasource_file = session.scalar(
-            access_controller.apply_upload_file_filters(stmt, fallback_tenant_id=tenant_id)
-        )
+        datasource_file = session.scalar(access_controller.apply_upload_file_filters(stmt))
         if datasource_file is None:
             raise ValueError(f"DatasourceFile {mapping.get('datasource_file_id')} not found")
 

@@ -10,7 +10,6 @@ from core.workflow.file_reference import build_file_reference, parse_file_refere
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models import ToolFile, UploadFile
-from models.enums import CreatorUserRole
 
 
 def _make_session_ctx_mock(scalar_return=None):
@@ -392,27 +391,6 @@ def test_build_from_mapping_scopes_upload_file_to_end_user(mock_upload_file):
     whereclause = str(stmt.whereclause)
     assert "upload_files.created_by_role" in whereclause
     assert "upload_files.created_by" in whereclause
-
-
-def test_build_from_mapping_allows_account_owned_upload_file_across_tenants(mock_upload_file):
-    scope = FileAccessScope(
-        tenant_id=TEST_TENANT_ID,
-        user_id="account-id",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.EXPLORE,
-    )
-
-    with bind_file_access_scope(scope):
-        build_from_mapping(mapping=local_file_mapping(), tenant_id=TEST_TENANT_ID)
-
-    stmt = mock_upload_file.call_args.args[0]
-    whereclause = str(stmt.whereclause)
-    assert whereclause.count("upload_files.tenant_id") == 1
-    assert "upload_files.created_by_role" in whereclause
-    assert "upload_files.created_by" in whereclause
-    assert " OR " in whereclause
-    assert CreatorUserRole.ACCOUNT in stmt.compile().params.values()
-    assert "account-id" in stmt.compile().params.values()
 
 
 def test_build_from_mapping_scopes_tool_file_to_end_user():

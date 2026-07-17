@@ -17,9 +17,10 @@ from .scope import FileAccessScope, get_current_file_access_scope
 class DatabaseFileAccessController(FileAccessControllerProtocol):
     """Workflow-layer authorization helper for database-backed file lookups.
 
-    Account executions may access files in the app tenant or files uploaded by
-    that account. End-user lookups remain tenant-scoped and additionally require
-    ownership or an execution-local grant.
+    Tenant scoping remains mandatory. When the current execution belongs to an
+    end user, the lookup is additionally constrained to that end user's file
+    ownership markers, plus upload files explicitly granted by the current
+    execution context.
     """
 
     _scope_getter: Callable[[], FileAccessScope | None]
@@ -40,25 +41,16 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         self,
         stmt: Select[tuple[UploadFile]],
         *,
-        fallback_tenant_id: str | None = None,
         scope: FileAccessScope | None = None,
     ) -> Select[tuple[UploadFile]]:
         resolved_scope = scope or self.current_scope()
         if resolved_scope is None:
-            return stmt.where(UploadFile.tenant_id == fallback_tenant_id) if fallback_tenant_id else stmt
-
-        if not resolved_scope.requires_user_ownership:
-            return stmt.where(
-                or_(
-                    UploadFile.tenant_id == resolved_scope.tenant_id,
-                    and_(
-                        UploadFile.created_by_role == CreatorUserRole.ACCOUNT,
-                        UploadFile.created_by == resolved_scope.user_id,
-                    ),
-                )
-            )
+            return stmt
 
         scoped_stmt = stmt.where(UploadFile.tenant_id == resolved_scope.tenant_id)
+        if not resolved_scope.requires_user_ownership:
+            return scoped_stmt
+
         user_owned_filter = and_(
             UploadFile.created_by_role == CreatorUserRole.END_USER,
             UploadFile.created_by == resolved_scope.user_id,
