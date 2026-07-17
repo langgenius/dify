@@ -89,7 +89,6 @@
   "agentDetail.configure.chatFeatures.title": "Chat 功能",
   "agentDetail.configure.clearSessionConfirm.description": "這會清空目前會話，並丟棄尚未套用的 Agent 設定變更。",
   "agentDetail.configure.clearSessionConfirm.title": "清空會話並放棄變更？",
-  "agentDetail.configure.communityEditionIsolationTip": "Community Edition 不會在最終使用者之間或不同執行之間提供嚴格的檔案系統隔離。如果需要資料隔離或嚴格合規，請勿將同一個 CE Agent 暴露給多個相互獨立的最終使用者。",
   "agentDetail.configure.files.add": "新增檔案",
   "agentDetail.configure.files.buildNote.generated": "已生成",
   "agentDetail.configure.files.buildNote.richTooltip": "Agent 在建置模式中完成的設定都記錄在這裡。每次對話開始時，它會連同提示詞一起讀取這份記錄。<docLink>了解更多</docLink>",
