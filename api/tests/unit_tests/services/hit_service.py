@@ -588,7 +588,6 @@ class TestHitTestingServiceCompactRetrieveResponse:
             HitTestingTestDataFactory.create_retrieval_record_mock(content="Doc 1", score=0.95),
             HitTestingTestDataFactory.create_retrieval_record_mock(content="Doc 2", score=0.85),
         ]
-        session = MagicMock()
 
         with patch(
             "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
@@ -604,7 +603,8 @@ class TestHitTestingServiceCompactRetrieveResponse:
             assert result["records"][0]["content"] == "Doc 1"
             assert result["records"][0]["score"] == 0.95
             mock_format.assert_called_once()
-            assert mock_format.call_args.args[0] is not session
+            assert mock_format.call_args.args[0] is not db_session
+            assert mock_format.call_args.args[0].get_bind() is db_session.get_bind()
             assert mock_format.call_args.args[1] == documents
 
     def test_compact_retrieve_response_empty_documents(self, db_session: Session):
@@ -617,7 +617,6 @@ class TestHitTestingServiceCompactRetrieveResponse:
         # Arrange
         query = "test query"
         documents = []
-        session = MagicMock()
 
         with patch(
             "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
@@ -631,7 +630,8 @@ class TestHitTestingServiceCompactRetrieveResponse:
             assert result["query"]["content"] == query
             assert result["records"] == []
             mock_format.assert_called_once()
-            assert mock_format.call_args.args[0] is not session
+            assert mock_format.call_args.args[0] is not db_session
+            assert mock_format.call_args.args[0].get_bind() is db_session.get_bind()
             assert mock_format.call_args.args[1] == documents
 
 
