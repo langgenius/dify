@@ -8,7 +8,8 @@
  * Validates cross-component state propagation when the user switches between
  * cloud / self-hosted categories and monthly / yearly plan ranges.
  */
-import { cleanup, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { cleanup, render as renderWithTestingLibrary, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
@@ -54,21 +55,6 @@ vi.mock('jotai', async (importOriginal) => {
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
   useGetPricingPageLanguage: () => 'en',
-}))
-
-// ─── Service mocks ───────────────────────────────────────────────────────────
-vi.mock('@/service/billing', () => ({
-  fetchSubscriptionUrls: vi.fn().mockResolvedValue({ url: 'https://pay.example.com' }),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    billing: {
-      invoices: {
-        get: vi.fn().mockResolvedValue({ url: 'https://invoice.example.com' }),
-      },
-    },
-  },
 }))
 
 vi.mock('@/hooks/use-async-window-open', () => ({
@@ -145,6 +131,17 @@ const setupContexts = (
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...appOverrides,
   }
+}
+
+const render = (ui: React.ReactNode) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  return renderWithTestingLibrary(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

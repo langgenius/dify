@@ -518,7 +518,7 @@ class TestBillingServiceSubscriptionInfo:
         interval = "monthly"
         email = "user@example.com"
         tenant_id = "tenant-123"
-        expected_response = {"payment_link": "https://payment.example.com/checkout"}
+        expected_response = {"url": "https://payment.example.com/checkout"}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1456,7 +1456,7 @@ class TestBillingServiceEdgeCases:
         # Arrange
         plan = "professional"
         interval = "yearly"
-        expected_response = {"payment_link": "https://payment.example.com/checkout"}
+        expected_response = {"url": "https://payment.example.com/checkout"}
         mock_send_request.return_value = expected_response
 
         # Act - empty email and tenant_id
@@ -1786,9 +1786,9 @@ class TestBillingServiceIntegrationScenarios:
         assert current_info["subscription"]["plan"] == "sandbox"
 
         # Step 2: Get payment link for upgrade
-        mock_send_request.return_value = {"payment_link": "https://payment.example.com/upgrade"}
+        mock_send_request.return_value = {"url": "https://payment.example.com/upgrade"}
         payment_link = BillingService.get_subscription("professional", "monthly", "user@example.com", tenant_id)
-        assert "payment_link" in payment_link
+        assert "url" in payment_link
 
         # Step 3: Verify new rate limits after upgrade
         mock_send_request.return_value = {"limit": 100, "subscription_plan": CloudPlan.PROFESSIONAL}

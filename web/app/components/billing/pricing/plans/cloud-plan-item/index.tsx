@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -17,8 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { fetchSubscriptionUrls } from '@/service/billing'
-import { consoleClient } from '@/service/client'
+import { consoleQuery } from '@/service/client'
 import { BillingPermission, hasPermission } from '@/utils/permission'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
@@ -43,6 +43,7 @@ type CloudPlanItemProps = {
 
 const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, canPay }) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === Plan.sandbox
@@ -97,7 +98,9 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
 
         await openAsyncWindow(
           async () => {
-            const res = await consoleClient.billing.invoices.get()
+            const res = await queryClient.fetchQuery(
+              consoleQuery.billing.invoices.get.queryOptions(),
+            )
             if (res.url) return res.url
             throw new Error('Failed to open billing page')
           },
@@ -112,6 +115,8 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
 
       if (isFreePlan) return
 
+      const billingPlan = plan === Plan.professional ? 'professional' : 'team'
+
       if (!canManageBilling) {
         toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
         return
@@ -122,7 +127,16 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
         return
       }
 
-      const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
+      const res = await queryClient.fetchQuery(
+        consoleQuery.billing.subscription.get.queryOptions({
+          input: {
+            query: {
+              plan: billingPlan,
+              interval: isYear ? 'year' : 'month',
+            },
+          },
+        }),
+      )
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = res.url
     } finally {

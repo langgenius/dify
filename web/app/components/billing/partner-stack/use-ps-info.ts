@@ -1,9 +1,10 @@
+import { useMutation } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import Cookies from 'js-cookie'
 import { useCallback } from 'react'
 import { PARTNER_STACK_CONFIG } from '@/config'
 import { useSearchParams } from '@/next/navigation'
-import { useBindPartnerStackInfo } from '@/service/use-billing'
+import { consoleQuery } from '@/service/client'
 
 const usePSInfo = () => {
   const searchParams = useSearchParams()
@@ -20,7 +21,9 @@ const usePSInfo = () => {
   const isPSChanged =
     psInfoInCookie?.partnerKey !== psPartnerKey || psInfoInCookie?.clickId !== psClickId
   const [hasBind, { setTrue: setBind }] = useBoolean(false)
-  const { mutateAsync } = useBindPartnerStackInfo()
+  const { mutateAsync } = useMutation(
+    consoleQuery.billing.partners.byPartnerKey.tenants.put.mutationOptions(),
+  )
   // Save to top domain. cloud.dify.ai => .dify.ai
   const domain = globalThis.location?.hostname.replace('cloud', '')
 
@@ -46,8 +49,8 @@ const usePSInfo = () => {
       let shouldRemoveCookie = false
       try {
         await mutateAsync({
-          partnerKey: psPartnerKey,
-          clickId: psClickId,
+          params: { partner_key: psPartnerKey },
+          body: { click_id: psClickId },
         })
         shouldRemoveCookie = true
       } catch (error: unknown) {

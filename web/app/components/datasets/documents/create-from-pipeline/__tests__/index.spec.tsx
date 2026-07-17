@@ -1,4 +1,7 @@
-import { render, waitFor } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { render as renderWithoutQueryClient, waitFor } from '@testing-library/react'
+import { createTestQueryClient } from '@/__tests__/utils/mock-system-features'
+import { consoleQuery } from '@/service/client'
 import CreateFromPipeline from '../index'
 
 let mockDatasetPermissionKeys = ['dataset.acl.use']
@@ -99,13 +102,6 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/service/use-billing', () => ({
-  useCurrentPlanVectorSpace: () => ({
-    data: { size: 50, limit: 100 },
-    isFetching: false,
-  }),
-}))
-
 vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({
     data: { file_size_limit: 15, batch_count_limit: 5 },
@@ -186,6 +182,17 @@ vi.mock('../hooks', () => ({
     handleCredentialChange: vi.fn(),
   }),
 }))
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryKey(), {
+    size: 50,
+    limit: 100,
+  })
+  return renderWithoutQueryClient(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  )
+}
 
 describe('CreateFromPipeline permission guard', () => {
   beforeEach(() => {

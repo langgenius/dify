@@ -8,12 +8,20 @@
  * Also covers education button visibility based on context flags.
  */
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import {
+  cleanup,
+  render as renderWithoutQueryClient,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { createTestQueryClient } from '@/__tests__/utils/mock-system-features'
 import { defaultPlan } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
 import { Plan } from '@/app/components/billing/type'
+import { consoleQuery } from '@/service/client'
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockProviderCtx: Record<string, unknown> = {}
@@ -79,17 +87,6 @@ vi.mock('@/service/use-education', () => ({
   useEducationVerify: () => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
-  }),
-}))
-
-vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: () => ({
-    data: 'https://billing.example.com',
-    isFetching: false,
-    refetch: vi.fn(),
-  }),
-  useCurrentPlanVectorSpace: () => ({
-    data: undefined,
   }),
 }))
 
@@ -171,6 +168,18 @@ const setupContexts = (
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...appOverrides,
   }
+}
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient()
+  const plan = mockProviderCtx.plan as ReturnType<typeof createPlanData>
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryKey(), {
+    size: plan.usage.vectorSpace,
+    limit: plan.total.vectorSpace,
+  })
+  return renderWithoutQueryClient(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

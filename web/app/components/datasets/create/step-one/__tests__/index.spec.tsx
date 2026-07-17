@@ -1,18 +1,25 @@
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render as renderWithoutQueryClient, screen } from '@testing-library/react'
+import { createTestQueryClient } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { DataSourceType } from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
 import StepOne from '../index'
 
 // Mock config for website crawl features
-vi.mock('@/config', () => ({
-  IS_CLOUD_EDITION: false,
-  ENABLE_WEBSITE_FIRECRAWL: true,
-  ENABLE_WEBSITE_JINAREADER: false,
-  ENABLE_WEBSITE_WATERCRAWL: false,
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: false,
+    ENABLE_WEBSITE_FIRECRAWL: true,
+    ENABLE_WEBSITE_JINAREADER: false,
+    ENABLE_WEBSITE_WATERCRAWL: false,
+  }
+})
 
 // Mock dataset detail context
 let mockDatasetDetail: DataSet | undefined
@@ -36,16 +43,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: mockPlan,
     enableBilling: mockEnableBilling,
-  }),
-}))
-
-vi.mock('@/service/use-billing', () => ({
-  useCurrentPlanVectorSpace: () => ({
-    data: {
-      size: mockPlan.usage.vectorSpace,
-      limit: mockPlan.total.vectorSpace,
-    },
-    isFetching: false,
   }),
 }))
 
@@ -210,6 +207,19 @@ const defaultProps = {
   } as CrawlOptions,
   onCrawlOptionsChange: vi.fn(),
   authedDataSourceList: [] as DataSourceAuth[],
+}
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryKey(), {
+    size: mockPlan.usage.vectorSpace,
+    limit: mockPlan.total.vectorSpace,
+  })
+  return renderWithoutQueryClient(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
 }
 
 // NOTE: Child component unit tests (usePreviewState, DataSourceTypeSelector,

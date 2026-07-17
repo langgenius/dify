@@ -9,6 +9,7 @@
  */
 import type { BasicPlan } from '@/app/components/billing/type'
 import { toast, ToastHost } from '@langgenius/dify-ui/toast'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -19,8 +20,7 @@ import { Plan } from '@/app/components/billing/type'
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockAppCtx: Record<string, unknown> = {}
-const mockFetchSubscriptionUrls = vi.fn()
-const mockInvoices = vi.fn()
+const mockRequest = vi.fn()
 const mockOpenAsyncWindow = vi.fn()
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
@@ -52,20 +52,10 @@ vi.mock('jotai', async (importOriginal) => {
   return createAppContextStateJotaiMock(importOriginal)
 })
 
-// ─── Service mocks ───────────────────────────────────────────────────────────
-vi.mock('@/service/billing', () => ({
-  fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    billing: {
-      invoices: {
-        get: () => mockInvoices(),
-      },
-    },
-  },
-}))
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
+  return { ...actual, request: (...args: unknown[]) => mockRequest(...args) }
+})
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => mockOpenAsyncWindow,
@@ -100,15 +90,25 @@ const renderCloudPlanItem = ({
   planRange = PlanRange.monthly,
   canPay = true,
 }: RenderCloudPlanItemOptions = {}) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
   return render(
     <>
       <ToastHost timeout={0} />
       <CloudPlanItem currentPlan={currentPlan} plan={plan} planRange={planRange} canPay={canPay} />
     </>,
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      ),
+    },
   )
 }
 
 const getPlanButton = (name: string) => screen.getByRole('button', { name })
+const getRequestedUrl = (callIndex = 0) =>
+  new URL(String(mockRequest.mock.calls[callIndex]?.[0]), 'http://localhost')
 
 // ═══════════════════════════════════════════════════════════════════════════════
 describe('Cloud Plan Payment Flow', () => {
@@ -117,8 +117,16 @@ describe('Cloud Plan Payment Flow', () => {
     cleanup()
     toast.dismiss()
     setupAppContext()
-    mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://pay.example.com/checkout' })
-    mockInvoices.mockResolvedValue({ url: 'https://billing.example.com/invoices' })
+    mockRequest.mockImplementation(async (input: string) => {
+      const url = new URL(input, 'http://localhost')
+      const response = url.pathname.endsWith('/billing/invoices')
+        ? { url: 'https://billing.example.com/invoices' }
+        : { url: 'https://pay.example.com/checkout' }
+      return new Response(JSON.stringify(response), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    mockOpenAsyncWindow.mockImplementation(async (getUrl: () => Promise<string>) => getUrl())
   })
 
   // ─── 1. Plan Display ────────────────────────────────────────────────────
@@ -230,9 +238,8 @@ describe('Cloud Plan Payment Flow', () => {
 
   // ─── 4. Payment URL Flow ────────────────────────────────────────────────
   describe('Payment URL flow', () => {
-    it('should call fetchSubscriptionUrls with plan and "month" for monthly range', async () => {
+    it('should request a monthly professional checkout when the user upgrades', async () => {
       const user = userEvent.setup()
-      // Simulate clicking on a professional plan button (user is on sandbox)
       renderCloudPlanItem({
         currentPlan: Plan.sandbox,
         plan: Plan.professional,
@@ -243,11 +250,15 @@ describe('Cloud Plan Payment Flow', () => {
       await user.click(button)
 
       await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
+        expect(mockRequest).toHaveBeenCalledTimes(1)
       })
+      const requestedUrl = getRequestedUrl()
+      expect(requestedUrl.pathname.endsWith('/billing/subscription')).toBe(true)
+      expect(requestedUrl.searchParams.get('plan')).toBe(Plan.professional)
+      expect(requestedUrl.searchParams.get('interval')).toBe('month')
     })
 
-    it('should call fetchSubscriptionUrls with plan and "year" for yearly range', async () => {
+    it('should request a yearly team checkout when the user upgrades', async () => {
       const user = userEvent.setup()
       renderCloudPlanItem({
         currentPlan: Plan.sandbox,
@@ -259,8 +270,11 @@ describe('Cloud Plan Payment Flow', () => {
       await user.click(button)
 
       await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.team, 'year')
+        expect(mockRequest).toHaveBeenCalledTimes(1)
       })
+      const requestedUrl = getRequestedUrl()
+      expect(requestedUrl.searchParams.get('plan')).toBe(Plan.team)
+      expect(requestedUrl.searchParams.get('interval')).toBe('year')
     })
 
     it('should open invoice management for current paid plan', async () => {
@@ -273,8 +287,9 @@ describe('Cloud Plan Payment Flow', () => {
       await waitFor(() => {
         expect(mockOpenAsyncWindow).toHaveBeenCalled()
       })
-      // Should NOT call fetchSubscriptionUrls (invoice, not subscription)
-      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+      await waitFor(() => {
+        expect(getRequestedUrl().pathname.endsWith('/billing/invoices')).toBe(true)
+      })
     })
 
     it('should not do anything when clicking on sandbox free plan button', async () => {
@@ -284,9 +299,8 @@ describe('Cloud Plan Payment Flow', () => {
       const button = getPlanButton('billing.plansCommon.currentPlan')
       await user.click(button)
 
-      // Wait a tick and verify no actions were taken
       await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+        expect(mockRequest).not.toHaveBeenCalled()
         expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
       })
     })
@@ -306,8 +320,9 @@ describe('Cloud Plan Payment Flow', () => {
       await user.click(button)
 
       await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
+        expect(mockRequest).toHaveBeenCalledTimes(1)
       })
+      expect(getRequestedUrl().searchParams.get('plan')).toBe(Plan.professional)
     })
 
     it('should show error toast when billing manage permission is missing for plan changes', async () => {
@@ -324,7 +339,7 @@ describe('Cloud Plan Payment Flow', () => {
       await waitFor(() => {
         expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
       })
-      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+      expect(mockRequest).not.toHaveBeenCalled()
     })
 
     it('should open billing portal when subscription management permission is granted without manager role', async () => {
@@ -341,7 +356,7 @@ describe('Cloud Plan Payment Flow', () => {
       await waitFor(() => {
         expect(mockOpenAsyncWindow).toHaveBeenCalled()
       })
-      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+      expect(getRequestedUrl().pathname.endsWith('/billing/invoices')).toBe(true)
     })
 
     it('should show error toast when subscription management permission is missing for current paid plan', async () => {

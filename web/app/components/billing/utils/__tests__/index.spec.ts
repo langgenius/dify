@@ -1,4 +1,4 @@
-import type { CurrentPlanInfoBackend } from '../../type'
+import type { FeatureResponse } from '@dify/contracts/api/console/features/types.gen'
 import { DocumentProcessingPriority, Plan } from '../../type'
 import { getPlanVectorSpaceLimitMB, parseCurrentPlan, parseVectorSpaceToMB } from '../index'
 
@@ -50,13 +50,12 @@ describe('billing utils', () => {
 
   // parseCurrentPlan tests
   describe('parseCurrentPlan', () => {
-    const createMockPlanData = (
-      overrides: Partial<CurrentPlanInfoBackend> = {},
-    ): CurrentPlanInfoBackend => ({
+    const createMockPlanData = (overrides: Partial<FeatureResponse> = {}): FeatureResponse => ({
       billing: {
         enabled: true,
         subscription: {
           plan: Plan.sandbox,
+          interval: '',
         },
       },
       members: {
@@ -75,6 +74,16 @@ describe('billing utils', () => {
         size: 20,
         limit: 0,
       },
+      api_rate_limit: {
+        usage: 0,
+        limit: 5000,
+        reset_date: 0,
+      },
+      trigger_event: {
+        usage: 0,
+        limit: 3000,
+        reset_date: 0,
+      },
       docs_processing: DocumentProcessingPriority.standard,
       can_replace_logo: false,
       model_load_balancing_enabled: false,
@@ -85,6 +94,7 @@ describe('billing utils', () => {
       },
       webapp_copyright_enabled: false,
       workspace_members: {
+        enabled: false,
         size: 1,
         limit: 1,
       },
@@ -93,6 +103,8 @@ describe('billing utils', () => {
         publish_enabled: false,
       },
       human_input_email_delivery_enabled: false,
+      knowledge_rate_limit: 10,
+      next_credit_reset_date: 0,
       ...overrides,
     })
 
@@ -137,6 +149,7 @@ describe('billing utils', () => {
           enabled: true,
           subscription: {
             plan: Plan.professional,
+            interval: 'month',
           },
         },
       })
@@ -162,7 +175,7 @@ describe('billing utils', () => {
         api_rate_limit: {
           usage: 100,
           limit: 5000,
-          reset_date: null,
+          reset_date: 0,
         },
       })
       const result = parseCurrentPlan(data)
@@ -176,7 +189,7 @@ describe('billing utils', () => {
         trigger_event: {
           usage: 50,
           limit: 3000,
-          reset_date: null,
+          reset_date: 0,
         },
       })
       const result = parseCurrentPlan(data)
@@ -198,7 +211,7 @@ describe('billing utils', () => {
         api_rate_limit: {
           usage: 0,
           limit: 0,
-          reset_date: null,
+          reset_date: 0,
         },
       })
       const result = parseCurrentPlan(data)
@@ -208,7 +221,7 @@ describe('billing utils', () => {
         api_rate_limit: {
           usage: 0,
           limit: -1,
-          reset_date: null,
+          reset_date: 0,
         },
       })
       const result2 = parseCurrentPlan(data2)
@@ -298,14 +311,6 @@ describe('billing utils', () => {
       })
       const result = parseCurrentPlan(data)
       expect(result.reset.apiRateLimit).toBeNull()
-    })
-
-    it('should handle missing apps field', () => {
-      const data = createMockPlanData()
-      // @ts-expect-error - Testing edge case
-      delete data.apps
-      const result = parseCurrentPlan(data)
-      expect(result.usage.buildApps).toBe(0)
     })
 
     it('should return null for unrecognized date format', () => {

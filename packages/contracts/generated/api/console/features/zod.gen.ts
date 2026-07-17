@@ -64,9 +64,9 @@ export const zBillingModel = z.object({
 })
 
 /**
- * FeatureModel
+ * FeatureResponse
  */
-export const zFeatureModel = z.object({
+export const zFeatureResponse = z.object({
   annotation_quota_limit: zLimitationModel.default({ limit: 10, size: 0 }),
   api_rate_limit: zQuota.default({
     limit: 5000,
@@ -95,7 +95,6 @@ export const zFeatureModel = z.object({
     reset_date: 0,
     usage: 0,
   }),
-  vector_space: zLimitationModel.nullable().default({ limit: 5, size: 0 }),
   webapp_copyright_enabled: z.boolean().default(false),
   workspace_members: zLicenseLimitationModel.default({
     enabled: false,
@@ -107,7 +106,7 @@ export const zFeatureModel = z.object({
 /**
  * Success
  */
-export const zGetFeaturesResponse = zFeatureModel
+export const zGetFeaturesResponse = zFeatureResponse
 
 /**
  * Success

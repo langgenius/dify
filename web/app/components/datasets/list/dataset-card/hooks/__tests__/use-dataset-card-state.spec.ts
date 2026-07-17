@@ -1,5 +1,8 @@
+import type { ReactNode } from 'react'
 import type { DataSet } from '@/models/datasets'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook as renderHookWithoutQueryClient, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
@@ -21,6 +24,7 @@ const mockCheckUsage = vi.fn()
 const mockDeleteDataset = vi.fn()
 const mockExportPipeline = vi.fn()
 const mockPush = vi.fn()
+const mockRequest = vi.hoisted(() => vi.fn())
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -28,14 +32,27 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/service/use-dataset-card', () => ({
-  useCheckDatasetUsage: () => ({ mutateAsync: mockCheckUsage }),
-  useDeleteDataset: () => ({ mutateAsync: mockDeleteDataset }),
-}))
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
+  return { ...actual, request: mockRequest }
+})
 
 vi.mock('@/service/use-pipeline', () => ({
   useExportPipelineDSL: () => ({ mutateAsync: mockExportPipeline }),
 }))
+
+const renderHook = (callback: () => ReturnType<typeof useDatasetCardState>) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+  return renderHookWithoutQueryClient(callback, {
+    wrapper: ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children),
+  })
+}
 
 describe('useDatasetCardState', () => {
   const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
@@ -67,6 +84,22 @@ describe('useDatasetCardState', () => {
     mockCheckUsage.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
     mockExportPipeline.mockResolvedValue({ data: 'yaml content' })
+    mockRequest.mockImplementation(
+      async (url: string, _init: RequestInit, options: { request: Request }) => {
+        const datasetId = decodeURIComponent(url.match(/\/datasets\/([^/]+)/)?.[1] ?? '')
+        if (url.endsWith('/use-check')) {
+          const data = await mockCheckUsage(datasetId)
+          return new Response(JSON.stringify(data), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        if (options.request.method === 'DELETE') {
+          await mockDeleteDataset(datasetId)
+          return new Response(null, { status: 204 })
+        }
+        throw new Error(`Unexpected request: ${options.request.method} ${url}`)
+      },
+    )
   })
 
   afterEach(() => {

@@ -1,12 +1,13 @@
 import base64
 import json
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from werkzeug.exceptions import BadRequest
 
-from controllers.console.billing.billing import PartnerTenants
+from controllers.console.billing.billing import PartnerTenants, Subscription
 from models.account import Account
 
 
@@ -252,3 +253,27 @@ class TestPartnerTenants:
                 with pytest.raises(BadRequest) as exc_info:
                     resource.put(partner_key_encoded)
                 assert "Invalid partner information" in str(exc_info.value)
+
+
+class TestSubscription:
+    def test_get_returns_checkout_url(self):
+        account = MagicMock(spec=Account)
+        account.email = "test@example.com"
+
+        with (
+            Flask(__name__).test_request_context("/billing/subscription?plan=professional&interval=month"),
+            patch("controllers.console.billing.billing.BillingService") as billing_service,
+            patch("controllers.console.billing.billing.db") as database,
+        ):
+            billing_service.get_subscription.return_value = {"url": "https://billing.example.com/checkout"}
+
+            result = unwrap(Subscription.get)(Subscription(), "tenant-123", account)
+
+        assert result == {"url": "https://billing.example.com/checkout"}
+        billing_service.is_tenant_owner_or_admin.assert_called_once_with(account, session=database.session())
+        billing_service.get_subscription.assert_called_once_with(
+            "professional",
+            "month",
+            "test@example.com",
+            "tenant-123",
+        )

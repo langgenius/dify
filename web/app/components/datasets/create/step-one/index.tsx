@@ -5,6 +5,7 @@ import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiFolder6Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +16,7 @@ import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
-import { useCurrentPlanVectorSpace } from '@/service/use-billing'
+import { consoleQuery } from '@/service/client'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import FileUploader from '../file-uploader'
 import Website from '../website'
@@ -134,8 +135,11 @@ const StepOne = ({
   const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
   const hasNotion = notionPages.length > 0
   const shouldCheckVectorSpace = enableBilling && (allFileLoaded || hasNotion)
-  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } =
-    useCurrentPlanVectorSpace(shouldCheckVectorSpace)
+  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } = useQuery(
+    consoleQuery.features.vectorSpace.get.queryOptions({
+      enabled: shouldCheckVectorSpace,
+    }),
+  )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
   const isVectorSpaceFull =
     !!vectorSpace && vectorSpace.limit > 0 && vectorSpace.size >= vectorSpace.limit

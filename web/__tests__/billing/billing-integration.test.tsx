@@ -1,7 +1,9 @@
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import { render, screen } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { render as renderWithoutQueryClient, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { createTestQueryClient } from '@/__tests__/utils/mock-system-features'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -14,6 +16,7 @@ import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-lim
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
+import { consoleQuery } from '@/service/client'
 
 let mockProviderCtx: Record<string, unknown> = {}
 let mockAppCtx: Record<string, unknown> = {}
@@ -72,20 +75,6 @@ vi.mock('@/context/modal-context', () => ({
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
   useGetPricingPageLanguage: () => 'en',
-}))
-
-// ─── Service mocks ──────────────────────────────────────────────────────────
-const mockRefetch = vi.fn().mockResolvedValue({ data: 'https://billing.example.com' })
-vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: () => ({
-    data: 'https://billing.example.com',
-    isFetching: false,
-    refetch: mockRefetch,
-  }),
-  useBindPartnerStackInfo: () => ({ mutateAsync: vi.fn() }),
-  useCurrentPlanVectorSpace: () => ({
-    data: undefined,
-  }),
 }))
 
 vi.mock('@/service/use-education', () => ({
@@ -157,6 +146,21 @@ const setupAppContext = (overrides: Record<string, unknown> = {}) => {
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...overrides,
   }
+}
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient()
+  const plan = mockProviderCtx.plan as ReturnType<typeof createPlanData> | undefined
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryKey(), {
+    size: plan?.usage.vectorSpace ?? 0,
+    limit: plan?.total.vectorSpace ?? 0,
+  })
+  queryClient.setQueryData(consoleQuery.billing.invoices.get.queryKey(), {
+    url: 'https://billing.example.com',
+  })
+  return renderWithoutQueryClient(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  )
 }
 
 // Vitest hoists vi.mock() calls, so imports above will use mocked modules

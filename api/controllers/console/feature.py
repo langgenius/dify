@@ -1,4 +1,5 @@
 from flask_restx import Resource
+from pydantic import Field
 
 from controllers.common.schema import register_response_schema_models
 from fields.base import ResponseModel
@@ -28,10 +29,14 @@ class AppDslVersionResponse(ResponseModel):
     app_dsl_version: str
 
 
+class FeatureResponse(FeatureModel):
+    vector_space: None = Field(default=None, exclude=True)
+
+
 register_response_schema_models(
     console_ns,
     AppDslVersionResponse,
-    FeatureModel,
+    FeatureResponse,
     LimitationModel,
     SystemFeatureModel,
     TrialModelsResponse,
@@ -45,7 +50,7 @@ class FeatureApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[FeatureModel.__name__],
+        console_ns.models[FeatureResponse.__name__],
     )
     @setup_required
     @login_required
@@ -54,12 +59,13 @@ class FeatureApi(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         """Get feature configuration for current tenant"""
-        payload = FeatureService.get_features(
-            current_tenant_id,
-            exclude_vector_space=True,
-        ).model_dump()
-        payload.pop("vector_space", None)
-        return payload
+        return dump_response(
+            FeatureResponse,
+            FeatureService.get_features(
+                current_tenant_id,
+                exclude_vector_space=True,
+            ),
+        )
 
 
 @console_ns.route("/features/vector-space")

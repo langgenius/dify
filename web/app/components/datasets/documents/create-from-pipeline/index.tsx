@@ -4,6 +4,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { Node } from '@/app/components/workflow/types'
 import type { FileIndexingEstimateResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -19,7 +20,7 @@ import {
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
-import { useCurrentPlanVectorSpace } from '@/service/use-billing'
+import { consoleQuery } from '@/service/client'
 import { useFileUploadConfig } from '@/service/use-common'
 import { usePublishedPipelineInfo } from '@/service/use-pipeline'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -117,8 +118,11 @@ const CreateFormPipeline = () => {
       onlineDocuments.length > 0 ||
       websitePages.length > 0 ||
       selectedFileIds.length > 0)
-  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } =
-    useCurrentPlanVectorSpace(shouldCheckVectorSpace)
+  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } = useQuery(
+    consoleQuery.features.vectorSpace.get.queryOptions({
+      enabled: shouldCheckVectorSpace,
+    }),
+  )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
   const isVectorSpaceFull =
     !!vectorSpace && vectorSpace.limit > 0 && vectorSpace.size >= vectorSpace.limit

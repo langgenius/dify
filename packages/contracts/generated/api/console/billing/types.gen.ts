@@ -16,6 +16,10 @@ export type BillingResponse = {
   [key: string]: unknown
 }
 
+export type BillingSubscriptionResponse = {
+  url: string
+}
+
 export type GetBillingInvoicesData = {
   body?: never
   path?: never
@@ -61,7 +65,7 @@ export type GetBillingSubscriptionData = {
 }
 
 export type GetBillingSubscriptionResponses = {
-  200: BillingResponse
+  200: BillingSubscriptionResponse
 }
 
 export type GetBillingSubscriptionResponse =

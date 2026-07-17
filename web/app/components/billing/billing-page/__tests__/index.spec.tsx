@@ -1,15 +1,23 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import {
+  fireEvent,
+  render as renderWithoutQueryClient,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import { createTestQueryClient } from '@/__tests__/utils/mock-system-features'
+import { consoleQuery } from '@/service/client'
 import Billing from '../index'
 
-let currentBillingUrl: string | null = 'https://billing'
+let currentBillingUrl = 'https://billing'
 let fetching = false
 let isManager = true
 let enableBilling = true
 let workspacePermissionKeys: string[] = ['billing.subscription.manage']
-let billingUrlEnabled = false
 
-const refetchMock = vi.fn()
+const fetchBillingUrlMock = vi.fn()
 const openAsyncWindowMock = vi.fn()
+const mockRequest = vi.hoisted(() => vi.fn())
 
 type BillingUrlCallback = () => Promise<string | null>
 type BillingWindowOptions = {
@@ -19,20 +27,14 @@ type BillingWindowOptions = {
 }
 type OpenAsyncWindowCall = [BillingUrlCallback, BillingWindowOptions]
 
-vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: (enabled: boolean) => {
-    billingUrlEnabled = enabled
-    return {
-      data: currentBillingUrl,
-      isFetching: fetching,
-      refetch: refetchMock,
-    }
-  },
-}))
-
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => openAsyncWindowMock,
 }))
+
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
+  return { ...actual, request: mockRequest }
+})
 
 vi.mock('@/context/account-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
@@ -86,6 +88,23 @@ vi.mock('../../plan', () => ({
   default: ({ loc }: { loc: string }) => <div data-testid="plan-component" data-loc={loc} />,
 }))
 
+const render = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(consoleQuery.billing.invoices.get.queryKey(), {
+    url: currentBillingUrl,
+  })
+  if (fetching) {
+    void queryClient.fetchQuery({
+      queryKey: consoleQuery.billing.invoices.get.queryKey(),
+      queryFn: () => new Promise(() => {}),
+      staleTime: 0,
+    })
+  }
+  return renderWithoutQueryClient(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  )
+}
+
 describe('Billing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -93,9 +112,14 @@ describe('Billing', () => {
     fetching = false
     isManager = true
     enableBilling = true
-    billingUrlEnabled = false
     workspacePermissionKeys = ['billing.subscription.manage']
-    refetchMock.mockResolvedValue({ data: 'https://billing' })
+    fetchBillingUrlMock.mockResolvedValue({ url: 'https://billing' })
+    mockRequest.mockImplementation(async () => {
+      const data = await fetchBillingUrlMock()
+      return new Response(JSON.stringify(data), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
   })
 
   it('hides the billing action when subscription management permission is granted without manager role', () => {
@@ -106,7 +130,6 @@ describe('Billing', () => {
     expect(
       screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
     ).not.toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(false)
   })
 
   it('hides the billing action when subscription management permission is missing or billing is disabled', () => {
@@ -115,7 +138,6 @@ describe('Billing', () => {
     expect(
       screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
     ).not.toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(false)
 
     vi.clearAllMocks()
     workspacePermissionKeys = ['billing.subscription.manage']
@@ -124,7 +146,6 @@ describe('Billing', () => {
     expect(
       screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
     ).not.toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(false)
   })
 
   it('opens the billing window with the immediate url when the button is clicked', async () => {
@@ -143,7 +164,7 @@ describe('Billing', () => {
 
   it('returns the refetched url from the async callback', async () => {
     const newUrl = 'https://new-billing-url'
-    refetchMock.mockResolvedValue({ data: newUrl })
+    fetchBillingUrlMock.mockResolvedValue({ url: newUrl })
     render(<Billing />)
 
     const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
@@ -155,11 +176,11 @@ describe('Billing', () => {
     // Execute the async callback passed to openAsyncWindow
     const result = await asyncCallback()
     expect(result).toBe(newUrl)
-    expect(refetchMock).toHaveBeenCalled()
+    expect(fetchBillingUrlMock).toHaveBeenCalled()
   })
 
   it('returns null when refetch returns no url', async () => {
-    refetchMock.mockResolvedValue({ data: null })
+    fetchBillingUrlMock.mockResolvedValue({ url: '' })
     render(<Billing />)
 
     const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })

@@ -1,6 +1,8 @@
-import type { BasicPlan, BillingQuota, CurrentPlanInfoBackend } from '../type'
+import type { FeatureResponse, Quota } from '@dify/contracts/api/console/features/types.gen'
+import type { BasicPlan } from '../type'
 import dayjs from 'dayjs'
 import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
+import { Plan } from '../type'
 
 /**
  * Parse vectorSpace string from ALL_PLANS config and convert to MB
@@ -67,16 +69,22 @@ const getResetInDaysFromDate = (resetDate?: number | null) => {
   return diff
 }
 
-export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
-  const planType = data.billing.subscription.plan
+const isBasicPlan = (plan: string): plan is BasicPlan => {
+  return plan === Plan.sandbox || plan === Plan.professional || plan === Plan.team
+}
+
+export const parseCurrentPlan = (data: FeatureResponse) => {
+  const planType = isBasicPlan(data.billing.subscription.plan)
+    ? data.billing.subscription.plan
+    : Plan.sandbox
   const planPreset = ALL_PLANS[planType]
   const vectorSpaceLimit = getPlanVectorSpaceLimitMB(planType)
   const resolveRateLimit = (limit?: number, fallback?: number) => {
     const value = limit ?? fallback ?? 0
     return parseRateLimit(value)
   }
-  const getQuotaUsage = (quota?: BillingQuota) => quota?.usage ?? 0
-  const getQuotaResetInDays = (quota?: BillingQuota) => {
+  const getQuotaUsage = (quota?: Quota) => quota?.usage ?? 0
+  const getQuotaResetInDays = (quota?: Quota) => {
     if (!quota) return null
     return getResetInDaysFromDate(quota.reset_date)
   }
@@ -85,7 +93,7 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
     type: planType,
     usage: {
       vectorSpace: 0,
-      buildApps: data.apps?.size || 0,
+      buildApps: data.apps.size,
       teamMembers: data.members.size,
       annotatedResponse: data.annotation_quota_limit.size,
       documentsUploadQuota: data.documents_upload_quota.size,
@@ -94,15 +102,15 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
     },
     total: {
       vectorSpace: vectorSpaceLimit,
-      buildApps: parseLimit(data.apps?.limit) || 0,
+      buildApps: parseLimit(data.apps.limit),
       teamMembers: parseLimit(data.members.limit),
       annotatedResponse: parseLimit(data.annotation_quota_limit.limit),
       documentsUploadQuota: parseLimit(data.documents_upload_quota.limit),
       apiRateLimit: resolveRateLimit(
-        data.api_rate_limit?.limit,
+        data.api_rate_limit.limit,
         planPreset?.apiRateLimit ?? NUM_INFINITE,
       ),
-      triggerEvents: resolveRateLimit(data.trigger_event?.limit, planPreset?.triggerEvents),
+      triggerEvents: resolveRateLimit(data.trigger_event.limit, planPreset?.triggerEvents),
     },
     reset: {
       apiRateLimit: getQuotaResetInDays(data.api_rate_limit),

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +8,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { useBillingUrl } from '@/service/use-billing'
+import { consoleQuery } from '@/service/client'
 import { BillingPermission, hasPermission } from '@/utils/permission'
 import PlanComp from '../plan'
 
@@ -23,7 +24,12 @@ const Billing: FC = () => {
     data: billingUrl,
     isFetching,
     refetch,
-  } = useBillingUrl(enableBilling && canManageBillingSubscription)
+  } = useQuery(
+    consoleQuery.billing.invoices.get.queryOptions({
+      enabled: enableBilling && canManageBillingSubscription,
+      select: (response) => response.url,
+    }),
+  )
   const openAsyncWindow = useAsyncWindowOpen()
 
   const handleOpenBilling = async () => {

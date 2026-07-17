@@ -4,7 +4,7 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type FeatureModel = {
+export type FeatureResponse = {
   annotation_quota_limit: LimitationModel
   api_rate_limit: Quota
   apps: LimitationModel
@@ -22,7 +22,6 @@ export type FeatureModel = {
   model_load_balancing_enabled: boolean
   next_credit_reset_date: number
   trigger_event: Quota
-  vector_space: LimitationModel | null
   webapp_copyright_enabled: boolean
   workspace_members: LicenseLimitationModel
 }
@@ -71,7 +70,7 @@ export type GetFeaturesData = {
 }
 
 export type GetFeaturesResponses = {
-  200: FeatureModel
+  200: FeatureResponse
 }
 
 export type GetFeaturesResponse = GetFeaturesResponses[keyof GetFeaturesResponses]

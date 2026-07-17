@@ -159,6 +159,13 @@ class TenantFeaturePlanUsageDict(TypedDict):
     history_id: str
 
 
+class BillingSubscriptionResult(TypedDict):
+    url: str
+
+
+_billing_subscription_result_adapter = TypeAdapter(BillingSubscriptionResult)
+
+
 class LangContentDict(TypedDict):
     lang: str
     title: str
@@ -342,9 +349,17 @@ class BillingService:
         }
 
     @classmethod
-    def get_subscription(cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""):
+    def get_subscription(
+        cls,
+        plan: str,
+        interval: str,
+        prefilled_email: str = "",
+        tenant_id: str = "",
+    ) -> BillingSubscriptionResult:
         params = {"plan": plan, "interval": interval, "prefilled_email": prefilled_email, "tenant_id": tenant_id}
-        return cls._send_request("GET", "/subscription/payment-link", params=params)
+        return _billing_subscription_result_adapter.validate_python(
+            cls._send_request("GET", "/subscription/payment-link", params=params)
+        )
 
     @classmethod
     def get_model_provider_payment_link(cls, provider_name: str, tenant_id: str, account_id: str, prefilled_email: str):
