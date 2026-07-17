@@ -1378,3 +1378,149 @@ def test_resource_context_reraises_non_expired_attach_error() -> None:
 
     with pytest.raises(ShellProviderError, match="some other error"):
         asyncio.run(scenario())
+
+
+# ---------------------------------------------------------------------------
+# Output redaction tests
+# ---------------------------------------------------------------------------
+
+
+def _layer_with_redaction(
+    *,
+    commands: FakeCommands,
+    config: DifyShellLayerConfig | None = None,
+    shell_redact_patterns: list[str] | None = None,
+    token_value: str = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0.fake-long-jwe-token-value",
+) -> tuple[DifyShellLayer, FakeProvider]:
+    """Create a layer with agent_stub env injection and optional redaction patterns."""
+    provider = FakeProvider(resource=FakeResource(commands=commands))
+    layer = DifyShellLayer.from_config_with_settings(
+        config or DifyShellLayerConfig(),
+        shell_provider=provider,
+        shell_home_root="/home",
+        shell_redact_patterns=shell_redact_patterns,
+        agent_stub_api_base_url="http://localhost:5050/agent-stub",
+        agent_stub_token_factory=lambda execution_context, session_id: token_value,
+    )
+    return layer, provider
+
+
+def test_redact_output_replaces_jwe_token_value() -> None:
+    """The JWE token value should always be redacted from shell output."""
+    token = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0.super-secret-token-12345"
+
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        return _command_result(
+            "job-1",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output=f"DIFY_AGENT_STUB_AUTH_JWE={token}\n",
+            offset=100,
+        )
+
+    commands = FakeCommands(run_handler=run_handler, tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=100))
+    layer, _provider = _layer_with_redaction(commands=commands, token_value=token)
+    _bind_execution_context(layer)
+    layer.runtime_state = _runtime_state()
+    tools = {tool.name: tool for tool in layer.tools}
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_run"].function_schema.call({"script": "env"}, None)  # pyright: ignore[reportArgumentType]
+            _, output = _parse_tagged_observation(result)
+            assert token not in output
+            assert "***" in output
+
+    asyncio.run(scenario())
+
+
+def test_redact_output_applies_server_level_patterns() -> None:
+    """Server-level regex patterns from env var should redact matching content."""
+
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        return _command_result(
+            "job-1",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output="api_key=sk-proj-abc123xyz\n",
+            offset=30,
+        )
+
+    commands = FakeCommands(run_handler=run_handler, tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=30))
+    layer, _provider = _layer_with_redaction(
+        commands=commands,
+        shell_redact_patterns=[r"sk-proj-[A-Za-z0-9]+"],
+    )
+    _bind_execution_context(layer)
+    layer.runtime_state = _runtime_state()
+    tools = {tool.name: tool for tool in layer.tools}
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_run"].function_schema.call({"script": "cat .env"}, None)  # pyright: ignore[reportArgumentType]
+            _, output = _parse_tagged_observation(result)
+            assert "sk-proj-abc123xyz" not in output
+            assert "api_key=***" in output
+
+    asyncio.run(scenario())
+
+
+def test_redact_output_applies_per_agent_config_patterns() -> None:
+    """Per-agent redact_patterns from DifyShellLayerConfig should also apply."""
+
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        return _command_result(
+            "job-1",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output="token: ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890\n",
+            offset=50,
+        )
+
+    commands = FakeCommands(run_handler=run_handler, tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=50))
+    config = DifyShellLayerConfig(redact_patterns=[r"ghp_[A-Za-z0-9]{36}"])
+    layer, _provider = _layer_with_redaction(commands=commands, config=config)
+    _bind_execution_context(layer)
+    layer.runtime_state = _runtime_state()
+    tools = {tool.name: tool for tool in layer.tools}
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_run"].function_schema.call({"script": "echo $TOKEN"}, None)  # pyright: ignore[reportArgumentType]
+            _, output = _parse_tagged_observation(result)
+            assert "ghp_" not in output
+            assert "token: ***" in output
+
+    asyncio.run(scenario())
+
+
+def test_redact_output_skips_short_jwe_values() -> None:
+    """JWE values ≤8 chars should not be redacted to avoid false positives."""
+
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        return _command_result(
+            "job-1",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output="short\n",
+            offset=6,
+        )
+
+    commands = FakeCommands(run_handler=run_handler, tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=6))
+    # Token value is short — should NOT be redacted even if it appears in output.
+    layer, _provider = _layer_with_redaction(commands=commands, token_value="short")
+    _bind_execution_context(layer)
+    layer.runtime_state = _runtime_state()
+    tools = {tool.name: tool for tool in layer.tools}
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_run"].function_schema.call({"script": "echo hi"}, None)  # pyright: ignore[reportArgumentType]
+            _, output = _parse_tagged_observation(result)
+            assert "short" in output
+
+    asyncio.run(scenario())
