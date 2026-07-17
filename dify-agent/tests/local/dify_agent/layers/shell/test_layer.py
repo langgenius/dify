@@ -1419,7 +1419,10 @@ def test_redact_output_replaces_jwe_token_value() -> None:
             offset=100,
         )
 
-    commands = FakeCommands(run_handler=run_handler, tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=100))
+    commands = FakeCommands(
+        run_handler=run_handler,
+        tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=100),
+    )
     layer, _provider = _layer_with_redaction(commands=commands, token_value=token)
     _bind_execution_context(layer)
     layer.runtime_state = _runtime_state()
@@ -1448,7 +1451,10 @@ def test_redact_output_applies_server_level_patterns() -> None:
             offset=30,
         )
 
-    commands = FakeCommands(run_handler=run_handler, tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=30))
+    commands = FakeCommands(
+        run_handler=run_handler,
+        tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=30),
+    )
     layer, _provider = _layer_with_redaction(
         commands=commands,
         shell_redact_patterns=[r"sk-proj-[A-Za-z0-9]+"],
@@ -1480,7 +1486,10 @@ def test_redact_output_applies_per_agent_config_patterns() -> None:
             offset=50,
         )
 
-    commands = FakeCommands(run_handler=run_handler, tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=50))
+    commands = FakeCommands(
+        run_handler=run_handler,
+        tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=50),
+    )
     config = DifyShellLayerConfig(redact_patterns=[r"ghp_[A-Za-z0-9]{36}"])
     layer, _provider = _layer_with_redaction(commands=commands, config=config)
     _bind_execution_context(layer)
@@ -1510,7 +1519,10 @@ def test_redact_output_skips_short_jwe_values() -> None:
             offset=6,
         )
 
-    commands = FakeCommands(run_handler=run_handler, tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=6))
+    commands = FakeCommands(
+        run_handler=run_handler,
+        tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=6),
+    )
     # Token value is short — should NOT be redacted even if it appears in output.
     layer, _provider = _layer_with_redaction(commands=commands, token_value="short")
     _bind_execution_context(layer)
