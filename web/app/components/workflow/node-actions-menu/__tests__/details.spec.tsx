@@ -31,6 +31,7 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
     ignoreNodeIds,
     forceEnableStartTab,
     allowUserInputSelection,
+    isolateKeyboardEvents,
   }: any) => (
     <div>
       <div>{trigger()}</div>
@@ -39,6 +40,7 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
       <div>{`ignore:${(ignoreNodeIds || []).join(',')}`}</div>
       <div>{`force-start:${String(forceEnableStartTab)}`}</div>
       <div>{`allow-start:${String(allowUserInputSelection)}`}</div>
+      <div>{`isolate-keyboard:${String(isolateKeyboardEvents)}`}</div>
       <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
         select-http
       </button>
@@ -172,6 +174,7 @@ describe('node actions menu details', () => {
     expect(screen.getByText('ignore:')).toBeInTheDocument()
     expect(screen.getByText('force-start:false')).toBeInTheDocument()
     expect(screen.getByText('allow-start:false')).toBeInTheDocument()
+    expect(screen.getByText('isolate-keyboard:true')).toBeInTheDocument()
     expect(handleNodeChange).toHaveBeenCalledWith(
       'node-1',
       BlockEnum.HttpRequest,
