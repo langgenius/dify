@@ -559,25 +559,26 @@ class TestSegmentServiceMutations:
                 self.commit_count_at_exit = self._session.commit.call_count
                 return False
 
+        session = MagicMock()
+
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.VectorService") as vector_service,
+            patch("services.dataset_service.VectorService"),
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-1"),
             patch("services.dataset_service.uuid.uuid4", return_value="node-1"),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
         ):
-            recording_lock = RecordingLock(mock_db.session)
+            recording_lock = RecordingLock(session)
             mock_redis.lock.return_value = recording_lock
 
-            mock_db.session.scalar.return_value = None
-            mock_db.session.get.return_value = SimpleNamespace(id="segment-1")
+            session.scalar.return_value = None
+            session.get.return_value = SimpleNamespace(id="segment-1")
 
             SegmentService.create_segment(
                 args=args,
                 document=document,
                 dataset=dataset,
-                session=mock_db.session,
+                session=session,
             )
 
         assert recording_lock.commit_count_at_exit is not None
