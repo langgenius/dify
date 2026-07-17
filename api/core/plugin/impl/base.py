@@ -99,11 +99,10 @@ def _get_plugin_daemon_request_timeout() -> httpx.Timeout | None:
 def _resolve_stream_timeout(first_token_timeout: float | None) -> httpx.Timeout | None:
     """Fold a first-token budget into the timeout a streaming daemon request uses.
 
-    The daemon withholds the response headers until the model's first token and sends no
-    heartbeat before it, so httpx's ``read`` timeout measures time-to-first-token. A
-    positive budget therefore replaces that component -- deliberately a replacement, so a
-    slow reasoning model may exceed ``PLUGIN_DAEMON_TIMEOUT``. A context-scoped override is
-    a ceiling its caller asked for, so it is only ever narrowed.
+    The budget deliberately replaces the ``read`` component rather than narrowing it, so it
+    may exceed ``PLUGIN_DAEMON_TIMEOUT`` for slow reasoning models -- but a context-scoped
+    override is a ceiling its caller asked for and is only ever narrowed.
+    ``httpx.Timeout(base, read=x)`` rejects a ``Timeout`` base, so the rest is copied.
     """
     base = _get_plugin_daemon_request_timeout()
     if not first_token_timeout or first_token_timeout <= 0:
@@ -116,7 +115,6 @@ def _resolve_stream_timeout(first_token_timeout: float | None) -> httpx.Timeout 
 
     if base is None:
         return httpx.Timeout(None, read=read)
-    # ``httpx.Timeout(base, read=x)`` is rejected when ``base`` is a ``Timeout``.
     return httpx.Timeout(connect=base.connect, read=read, write=base.write, pool=base.pool)
 
 
@@ -259,7 +257,6 @@ class BasePluginClient:
         url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
 
         first_token_timeout = first_token_timeout_ctx.get()
-        # Non-positive (None / 0 / negative) disables the gate; the read timeout stays default.
         first_token_gate = bool(first_token_timeout and first_token_timeout > 0)
         stream_kwargs: dict[str, Any] = {
             "method": method,
@@ -267,6 +264,7 @@ class BasePluginClient:
             "headers": headers,
             "params": params,
             "files": files,
+            # The daemon sends nothing before the first token, so the read timeout gates TTFT.
             "timeout": _resolve_stream_timeout(first_token_timeout),
         }
         if isinstance(prepared_data, dict):
@@ -279,9 +277,8 @@ class BasePluginClient:
         try:
             with _httpx_client.stream(**stream_kwargs) as response:
                 for raw_line in response.iter_lines():
-                    # Blank keep-alive frames don't count as the first token, but each is still a
-                    # successful read that refreshes httpx's read window -- first-token gating relies
-                    # on the daemon sending no keep-alive before the first token.
+                    # Blank frames don't count as the first token, yet each read refreshes the
+                    # read window -- gating relies on no keep-alives before the first token.
                     if not raw_line:
                         continue
                     line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
@@ -293,16 +290,13 @@ class BasePluginClient:
                     first_token_seen = True
                     yield line
         except httpx.ReadTimeout as e:
-            # Gate on: a read timeout before the first line means the first token was too slow.
-            # After the first line (inter-token stall), or with the gate off, it's a plain
-            # transport error.
             if first_token_gate and not first_token_seen:
                 raise FirstTokenTimeoutError(f"The first token was not received within {first_token_timeout}s.") from e
             logger.exception("Stream request to Plugin Daemon Service failed")
             message = "Request to Plugin Daemon Service failed"
             if first_token_gate:
-                # The narrowed read window also bounds inter-token gaps; name the setting
-                # so a mid-stream stall is traceable to the user's configuration.
+                # An inter-token stall past the read window is a plain transport error,
+                # but name the window so it stays traceable to the user's setting.
                 message += f" (stream stalled beyond the {first_token_timeout}s first-token timeout window)"
             raise PluginDaemonInnerError(code=-500, message=message) from e
         except httpx.RequestError:
