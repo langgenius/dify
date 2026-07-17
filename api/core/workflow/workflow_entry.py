@@ -16,6 +16,7 @@ from core.workflow.node_factory import (
     is_start_node_type,
     resolve_workflow_node_class,
 )
+from core.workflow.response_stream_filter import DifyResponseStreamFilter
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -65,8 +66,39 @@ def iter_dify_graph_engine_events(
     yield from filter_graph_events(
         engine.run(),
         context=GraphEventFilterContext.from_engine(engine),
-        filters=[response_stream_filter or ResponseStreamFilter()],
+        filters=[response_stream_filter or DifyResponseStreamFilter()],
     )
+
+
+class ResponseFilteredChildEngine:
+    """Wraps a child GraphEngine so its events pass through Dify's response stream filter.
+
+    Container nodes (iteration/loop) consume child engine events directly,
+    bypassing ``iter_dify_graph_engine_events``, so the child engine must
+    synthesize streaming for response nodes inside its own graph. The parent
+    filter passes the forwarded chunks through (see ``DifyResponseStreamFilter``).
+
+    ``GraphEngine`` is ``@final``, so this wraps rather than subclasses it and
+    explicitly delegates the members container nodes access on the returned
+    engine: ``run``, ``graph_runtime_state`` and ``request_abort``.
+    """
+
+    def __init__(self, engine: GraphEngine) -> None:
+        self._engine = engine
+
+    def run(self) -> Generator[GraphEngineEvent, None, None]:
+        yield from filter_graph_events(
+            self._engine.run(),
+            context=GraphEventFilterContext.from_engine(self._engine),
+            filters=[DifyResponseStreamFilter()],
+        )
+
+    @property
+    def graph_runtime_state(self) -> GraphRuntimeState:
+        return self._engine.graph_runtime_state
+
+    def request_abort(self, reason: str | None = None) -> None:
+        self._engine.request_abort(reason)
 
 
 class _WorkflowChildEngineBuilder:
@@ -103,7 +135,7 @@ class _WorkflowChildEngineBuilder:
         parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
         variable_pool: VariablePool | None = None,
-    ) -> GraphEngine:
+    ) -> ResponseFilteredChildEngine:
         """Build a child engine with a fresh runtime state and only child-safe layers."""
         child_graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
@@ -137,7 +169,7 @@ class _WorkflowChildEngineBuilder:
             child_engine_builder=self,
         )
         child_engine.layer(LLMQuotaLayer(tenant_id=self.tenant_id))
-        return child_engine
+        return ResponseFilteredChildEngine(child_engine)
 
 
 class _NodeConfigDict(TypedDict):
@@ -206,7 +238,7 @@ class WorkflowEntry:
             command_channel = InMemoryChannel()
 
         self.command_channel = command_channel
-        self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
+        self._response_stream_filter = response_stream_filter or DifyResponseStreamFilter()
         execution_context = capture_current_context()
         graph_runtime_state.execution_context = execution_context
         self._child_engine_builder = _WorkflowChildEngineBuilder(tenant_id=tenant_id)
