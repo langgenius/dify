@@ -44,7 +44,7 @@ vi.mock('@/service/use-pipeline', () => ({
 const renderHook = (callback: () => ReturnType<typeof useDatasetCardState>) => {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
+      queries: { retry: false, staleTime: 5 * 60 * 1000 },
       mutations: { retry: false },
     },
   })
@@ -196,6 +196,27 @@ describe('useDatasetCardState', () => {
         await result.current.detectIsUsedByApp()
       })
 
+      expect(result.current.modalState.confirmMessage).toContain('datasetUsedByApp')
+    })
+
+    it('should refresh usage before every delete confirmation', async () => {
+      mockCheckUsage
+        .mockResolvedValueOnce({ is_using: false })
+        .mockResolvedValueOnce({ is_using: true })
+      const dataset = createMockDataset()
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
+
+      await act(async () => {
+        await result.current.detectIsUsedByApp()
+      })
+      expect(result.current.modalState.confirmMessage).toContain('deleteDatasetConfirmContent')
+
+      await act(async () => {
+        result.current.closeConfirmDelete()
+        await result.current.detectIsUsedByApp()
+      })
+
+      expect(mockCheckUsage).toHaveBeenCalledTimes(2)
       expect(result.current.modalState.confirmMessage).toContain('datasetUsedByApp')
     })
   })

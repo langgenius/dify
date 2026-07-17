@@ -93,6 +93,8 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         consoleQuery.datasets.byDatasetId.useCheck.get.queryOptions({
           input: { params: { dataset_id: dataset.id } },
           context: { silent: true },
+          staleTime: 0,
+          retry: false,
         }),
       )
       const message = isUsedByApp
