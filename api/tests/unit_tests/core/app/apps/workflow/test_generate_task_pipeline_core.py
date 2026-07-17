@@ -79,7 +79,13 @@ def _make_pipeline():
         extras={},
         call_depth=0,
     )
-    workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={})
+    workflow = SimpleNamespace(
+        id="workflow-id",
+        tenant_id="tenant",
+        features_dict={},
+        environment_variables=[],
+        conversation_variables=[],
+    )
     user = SimpleNamespace(id="user", session_id="session")
 
     pipeline = WorkflowAppGenerateTaskPipeline(
@@ -505,7 +511,13 @@ class TestWorkflowGenerateTaskPipeline:
             extras={},
             call_depth=0,
         )
-        workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={})
+        workflow = SimpleNamespace(
+            id="workflow-id",
+            tenant_id="tenant",
+            features_dict={},
+            environment_variables=[],
+            conversation_variables=[],
+        )
         queue_manager = SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None)
         end_user = EndUser(tenant_id="tenant", type="session", name="user", session_id="session-id")
         end_user.id = "end-user-id"

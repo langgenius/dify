@@ -433,7 +433,13 @@ class TestHitlServiceApi:
         )
         pipeline = AdvancedChatAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
-            workflow=SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={}),
+            workflow=SimpleNamespace(
+                id="workflow-id",
+                tenant_id="tenant",
+                features_dict={},
+                environment_variables=[],
+                conversation_variables=[],
+            ),
             queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
             conversation=SimpleNamespace(id="conv-id", mode=AppMode.ADVANCED_CHAT),
             message=SimpleNamespace(
@@ -526,7 +532,13 @@ class TestHitlServiceApi:
         )
         pipeline = WorkflowAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
-            workflow=SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={}),
+            workflow=SimpleNamespace(
+                id="workflow-id",
+                tenant_id="tenant",
+                features_dict={},
+                environment_variables=[],
+                conversation_variables=[],
+            ),
             queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
             user=SimpleNamespace(id="user", session_id="session"),
             stream=False,
