@@ -137,12 +137,16 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
       command.retainSecret &&
       this.seed.integration.provider === command.provider &&
       this.seed.integration.secretConfigured
+    const retainingCurrentValues =
+      !command.replaceActiveProvider &&
+      this.seed.integration.provider === command.provider &&
+      Boolean(this.seed.integration.displayIdentifier)
     const hasReplacementSecret = Boolean(command.secret?.trim())
     const missingRequiredField = provider.requiredFields.some((definition) => {
       if (!definition.required) return false
       if (definition.field === ContactImProviderField.Secret)
         return !retainingCurrentSecret && !hasReplacementSecret
-      return !command.values[definition.field]?.trim()
+      return !retainingCurrentValues && !command.values[definition.field]?.trim()
     })
 
     if (missingRequiredField)

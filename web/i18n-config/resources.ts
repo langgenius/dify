@@ -7,6 +7,7 @@ import type appOverview from '../i18n/en-US/app-overview.json'
 import type app from '../i18n/en-US/app.json'
 import type billing from '../i18n/en-US/billing.json'
 import type common from '../i18n/en-US/common.json'
+import type contacts from '../i18n/en-US/contacts.json'
 import type custom from '../i18n/en-US/custom.json'
 import type datasetCreation from '../i18n/en-US/dataset-creation.json'
 import type datasetDocuments from '../i18n/en-US/dataset-documents.json'
@@ -46,6 +47,7 @@ type RawResources = {
   agentV2: typeof agentV2
   billing: typeof billing
   common: typeof common
+  contacts: typeof contacts
   custom: typeof custom
   dataset: typeof dataset
   datasetCreation: typeof datasetCreation
@@ -147,6 +149,7 @@ export const namespaces = [
   'agentV2',
   'billing',
   'common',
+  'contacts',
   'custom',
   'dataset',
   'datasetCreation',

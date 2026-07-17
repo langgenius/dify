@@ -14,11 +14,11 @@
 
 ## 3. IM Platform Binding UI
 
-- [ ] 3.1 Write failing component tests for the non-enterprise Contacts entry, enterprise-plan exclusion, CE / SaaS permission variants, initial loading/error/empty states, provider availability, and the six connection-status presentations.
-- [ ] 3.2 Implement the shared Contacts IM platform management surface, status summary, provider selection, diagnostics, recent-sync summary, and feature-gated mount points with `@langgenius/dify-ui/*` primitives.
-- [ ] 3.3 Write failing component tests for credential and mock OAuth flows, required-field errors, pending-state duplicate prevention, mutation failure recovery, provider replacement confirmation, and disconnect behavior.
-- [ ] 3.4 Implement the shared binding overlay and typed provider-specific form adapters, including mock authorization recovery, callback copy interaction, replacement/disconnect confirmation, and repository refresh after mutations.
-- [ ] 3.5 Write and satisfy security regression tests proving that configured secrets are represented only by a boolean/state marker and never appear in fixtures, DOM output, logs, snapshots, or retained mutation payloads.
+- [x] 3.1 Write failing component tests for the non-enterprise Contacts entry, enterprise-plan exclusion, CE / SaaS permission variants, initial loading/error/empty states, provider availability, and the six connection-status presentations.
+- [x] 3.2 Implement the shared Contacts IM platform management surface, status summary, provider selection, diagnostics, recent-sync summary, and feature-gated mount points with `@langgenius/dify-ui/*` primitives.
+- [x] 3.3 Write failing component tests for credential and mock OAuth flows, required-field errors, pending-state duplicate prevention, mutation failure recovery, provider replacement confirmation, and disconnect behavior.
+- [x] 3.4 Implement the shared binding overlay and typed provider-specific form adapters, including mock authorization recovery, callback copy interaction, replacement/disconnect confirmation, and repository refresh after mutations.
+- [x] 3.5 Write and satisfy security regression tests proving that configured secrets are represented only by a boolean/state marker and never appear in fixtures, DOM output, logs, snapshots, or retained mutation payloads.
 
 ## 4. Manual Directory Sync and Details UI
 

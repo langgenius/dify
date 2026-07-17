@@ -68,13 +68,14 @@ describe('Contact IM repository hooks', () => {
     const { queryClient, wrapper } = createHarness(repository)
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const { result } = renderHook(() => useSaveContactImCredentials(), { wrapper })
+    const secret = 'discard-after-save'
 
     await act(async () => {
-      await result.current.mutateAsync({
+      await result.current.saveCredentials({
         provider: ContactImProvider.Slack,
         replaceActiveProvider: false,
         retainSecret: false,
-        secret: 'discard-after-save',
+        secret,
         values: { appId: 'app-hooks' },
       })
     })
@@ -92,6 +93,42 @@ describe('Contact IM repository hooks', () => {
         repository.queryKey,
       ),
     })
+    expect(JSON.stringify(queryClient.getMutationCache().getAll())).not.toContain(secret)
+    queryClient.clear()
+  })
+
+  it('does not retain or log a secret after a rejected mutation', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.SaveFailure,
+    })
+    const { queryClient, wrapper } = createHarness(repository)
+    const { result } = renderHook(() => useSaveContactImCredentials(), { wrapper })
+    const secret = 'never-log-or-cache-this-secret'
+    const consoleSpies = [
+      vi.spyOn(console, 'error').mockImplementation(() => undefined),
+      vi.spyOn(console, 'log').mockImplementation(() => undefined),
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined),
+    ]
+    let caughtError: unknown
+
+    await act(async () => {
+      caughtError = await result.current
+        .saveCredentials({
+          provider: ContactImProvider.Slack,
+          replaceActiveProvider: false,
+          retainSecret: false,
+          secret,
+          values: { appId: 'safe-app-id' },
+        })
+        .catch((error: unknown) => error)
+    })
+
+    expect(JSON.stringify(caughtError)).not.toContain(secret)
+    expect(JSON.stringify(queryClient.getMutationCache().getAll())).not.toContain(secret)
+    expect(JSON.stringify(consoleSpies.flatMap((spy) => spy.mock.calls))).not.toContain(secret)
+
+    for (const spy of consoleSpies) spy.mockRestore()
     queryClient.clear()
   })
 })

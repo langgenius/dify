@@ -18,6 +18,9 @@ The entry requires both a non-enterprise workspace plan and the existing `NEXT_P
 - `mock/repository.ts` owns in-memory mutations and explicitly controlled sync transitions.
 - `composition.tsx` injects Organization context and either a mock or future repository adapter.
 - `hooks.ts` is the only React Query access layer used by feature components.
+- `management-surface.tsx` owns binding status, provider selection, diagnostics, and confirmations.
+- `binding-dialog.tsx` and `provider-form-adapters.ts` own credential and mock OAuth flows.
+- `account-setting-page.tsx` is the non-enterprise workspace-settings composition root.
 
 ## External Modules
 

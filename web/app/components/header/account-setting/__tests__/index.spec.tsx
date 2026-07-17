@@ -3,6 +3,7 @@ import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-contex
 import { fireEvent, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { Plan } from '@/app/components/billing/type'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ACCOUNT_SETTING_TAB } from '../constants'
@@ -10,6 +11,7 @@ import AccountSetting from '../index'
 
 const mockResetModelProviderListExpanded = vi.fn()
 const mockConfig = vi.hoisted(() => ({
+  ENABLE_FEATURE_PREVIEW: true,
   IS_CLOUD_EDITION: true,
 }))
 const mockAppContextState = vi.hoisted(() => ({
@@ -20,6 +22,9 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
+    get ENABLE_FEATURE_PREVIEW() {
+      return mockConfig.ENABLE_FEATURE_PREVIEW
+    },
     get IS_CLOUD_EDITION() {
       return mockConfig.IS_CLOUD_EDITION
     },
@@ -70,6 +75,10 @@ vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(() => '/'),
   useParams: vi.fn(() => ({})),
   useSearchParams: vi.fn(() => ({ get: vi.fn() })),
+}))
+
+vi.mock('@/features/contacts/im-platform/account-setting-page', () => ({
+  ContactsImPlatformAccountSettingPage: () => <div data-testid="contacts-im-platform-page" />,
 }))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -252,6 +261,7 @@ describe('AccountSetting', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConfig.ENABLE_FEATURE_PREVIEW = true
     mockConfig.IS_CLOUD_EDITION = true
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
@@ -272,6 +282,7 @@ describe('AccountSetting', () => {
       expect(screen.getAllByText('common.settings.workspace').length).toBeGreaterThan(0)
       expect(screen.queryByText('common.settings.provider'))!.not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
       expect(
         screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' }),
       ).toBeInTheDocument()
@@ -547,6 +558,49 @@ describe('AccountSetting', () => {
       ).not.toBeInTheDocument()
     })
 
+    it('should hide the IM platform entry for enterprise-plan workspaces', () => {
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        enableBilling: true,
+        enableReplaceWebAppLogo: true,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.enterprise,
+        },
+      })
+
+      renderAccountSetting()
+
+      expect(
+        screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should hide the IM platform entry when feature preview is disabled', () => {
+      mockConfig.ENABLE_FEATURE_PREVIEW = false
+
+      renderAccountSetting()
+
+      expect(
+        screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should reject an enterprise-plan IM platform deep link', () => {
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.enterprise,
+        },
+      })
+
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
+
+      expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
+    })
+
     it('should hide workflow log archives from custom RBAC roles that are not owner or admin', () => {
       // Arrange
       const contextWithRoleManagePermissionButNotManager = {
@@ -614,6 +668,14 @@ describe('AccountSetting', () => {
       // Assert
       expect(mockOnTabChange).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
       expect(screen.getAllByText('common.settings.billing').length).toBeGreaterThan(1)
+    })
+
+    it('should mount the Contacts-owned IM platform page from its entry', () => {
+      renderAccountSetting()
+
+      fireEvent.click(screen.getByRole('button', { name: 'contacts.imPlatform.title' }))
+
+      expect(screen.getByTestId('contacts-im-platform-page')).toBeInTheDocument()
     })
 
     it('should navigate through various tabs and show correct details', () => {

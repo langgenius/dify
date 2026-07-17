@@ -7,6 +7,7 @@ import type {
   SaveContactImCredentialsCommand,
 } from './types'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRef } from 'react'
 import {
   useContactsImPlatformOrganization,
   useContactsImPlatformRepository,
@@ -160,15 +161,42 @@ export const useSaveContactImCredentials = () => {
   const organization = useContactsImPlatformOrganization()
   const repository = useContactsImPlatformRepository()
   const invalidateOrganizationQueries = useInvalidateOrganizationQueries()
+  const commandRef = useRef<SaveCredentialsInput | null>(null)
+  const inFlightRef = useRef(false)
 
-  return useMutation({
-    mutationFn: (input: SaveCredentialsInput) =>
-      repository.saveCredentials({
+  const mutation = useMutation({
+    mutationFn: () => {
+      const input = commandRef.current
+      commandRef.current = null
+
+      if (!input) throw new Error('Contact IM credential command is required')
+
+      return repository.saveCredentials({
         ...input,
         organizationId: organization.organizationId,
-      }),
+      })
+    },
     onSuccess: invalidateOrganizationQueries,
   })
+
+  const saveCredentials = async (input: SaveCredentialsInput) => {
+    if (inFlightRef.current) throw new Error('Contact IM credential save is already running')
+
+    inFlightRef.current = true
+    commandRef.current = input
+
+    try {
+      return await mutation.mutateAsync()
+    } finally {
+      commandRef.current = null
+      inFlightRef.current = false
+    }
+  }
+
+  return {
+    ...mutation,
+    saveCredentials,
+  }
 }
 
 export const useAuthorizeContactImProvider = () => {

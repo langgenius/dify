@@ -8,13 +8,16 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BillingPage from '@/app/components/billing/billing-page'
+import { Plan } from '@/app/components/billing/type'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { IS_CLOUD_EDITION } from '@/config'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { ContactsImPlatformAccountSettingPage } from '@/features/contacts/im-platform/account-setting-page'
+import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { BillingPermission, hasPermission } from '@/utils/permission'
@@ -54,16 +57,18 @@ export default function AccountSetting({
 }: IAccountSettingProps) {
   const resetModelProviderListExpanded = useResetModelProviderListExpanded()
   const { t } = useTranslation()
-  const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
+  const { enableBilling, enableReplaceWebAppLogo, plan } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling =
     enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
   const canViewWorkflowLogArchives = IS_CLOUD_EDITION && isCurrentWorkspaceManager
+  const canViewContactsImPlatform = isContactsImPlatformEnabled(plan.type === Plan.enterprise)
   // Keep legacy `language` deep links opening Preferences during the tab rename migration.
   const normalizedActiveTab =
     activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
@@ -74,6 +79,8 @@ export default function AccountSetting({
       normalizedActiveTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES &&
       !canViewWorkflowLogArchives
     )
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    if (normalizedActiveTab === ACCOUNT_SETTING_TAB.IM_PLATFORM && !canViewContactsImPlatform)
       return ACCOUNT_SETTING_TAB.MEMBERS
     if (
       (normalizedActiveTab === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS ||
@@ -97,6 +104,12 @@ export default function AccountSetting({
       name: t(($) => $['settings.members'], { ns: 'common' }),
       icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.IM_PLATFORM,
+      name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
+      icon: <span className={cn('i-ri-contacts-book-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-contacts-book-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
@@ -157,6 +170,8 @@ export default function AccountSetting({
     const visibleTabs: AccountSettingTab[] = []
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
+
+    if (canViewContactsImPlatform) visibleTabs.push(ACCOUNT_SETTING_TAB.IM_PLATFORM)
 
     if (canManageWorkspaceRoles) {
       visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
@@ -290,6 +305,12 @@ export default function AccountSetting({
                 <ModelProviderPage searchText={searchValue} onSearchTextChange={setSearchValue} />
               )}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.IM_PLATFORM && (
+                <ContactsImPlatformAccountSettingPage
+                  canManage={isCurrentWorkspaceManager}
+                  organizationId={currentWorkspace.id}
+                />
+              )}
               {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
                 <PermissionsPage containerRef={scrollContainerRef} />
               )}
