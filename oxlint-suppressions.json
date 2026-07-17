@@ -261,11 +261,6 @@
       "count": 1
     }
   },
-  "web/app/account/oauth/authorize/page.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app-sidebar/app-info/app-info-modals.tsx": {
     "jsx_a11y/label-has-associated-control": {
       "count": 1
@@ -6698,11 +6693,6 @@
     }
   },
   "web/service/use-models.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/use-oauth.ts": {
     "no-restricted-imports": {
       "count": 1
     }
