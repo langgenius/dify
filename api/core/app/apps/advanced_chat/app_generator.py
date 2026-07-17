@@ -222,6 +222,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     else UUID_NIL
                 ),
                 user_id=user.id,
+                user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
                 extras=extras,
@@ -357,6 +358,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             query="",
             files=[],
             user_id=user.id,
+            user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -452,6 +454,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             query="",
             files=[],
             user_id=user.id,
+            user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -677,13 +680,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     InvokeFrom.SERVICE_API,
                 }
 
-                if is_external_api_call:
-                    # For external API calls, use end user's session ID
-                    end_user = session.scalar(select(EndUser).where(EndUser.id == application_generate_entity.user_id))
-                    system_user_id = end_user.session_id if end_user else ""
-                else:
-                    # For internal calls, use the original user ID
-                    system_user_id = application_generate_entity.user_id
+                # For external API calls, use end user's session ID
+                # For internal calls, use the original user ID
+                system_user_id = (
+                    application_generate_entity.user_session_id
+                    if is_external_api_call
+                    else application_generate_entity.user_id
+                )
 
                 app = session.scalar(select(App).where(App.id == application_generate_entity.app_config.app_id))
                 if app is None:

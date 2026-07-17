@@ -169,6 +169,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 query=query,
                 files=list(file_objs),
                 user_id=user.id,
+                user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
                 extras={
@@ -358,6 +359,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 query=message.query,
                 files=list(file_objs),
                 user_id=user.id,
+                user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
                 stream=stream,
                 invoke_from=invoke_from,
                 extras={},
