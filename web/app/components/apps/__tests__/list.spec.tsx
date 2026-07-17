@@ -1,4 +1,6 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -28,6 +30,36 @@ const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
   vi.fn((_options: unknown) => ({
     onlineUsersMap: {},
   })),
+)
+
+const mockLearnDifyApp = vi.hoisted(
+  () =>
+    ({
+      app_id: 'learn-dify-template',
+      app: {
+        id: 'learn-dify-template-source',
+        mode: 'chat',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#fff',
+        icon_url: '',
+        name: 'Learn Dify Template',
+        description: 'Learn how to build with Dify',
+        use_icon_as_answer_icon: false,
+      },
+      description: 'Learn how to build with Dify',
+      copyright: '',
+      privacy_policy: null,
+      custom_disclaimer: null,
+      categories: ['Assistant'],
+      position: 1,
+      is_listed: true,
+      install_count: 0,
+      installed: false,
+      editable: false,
+      is_agent: false,
+      can_trial: true,
+    }) satisfies App,
 )
 
 const mockReplace = vi.fn()
@@ -436,7 +468,33 @@ vi.mock('../empty', () => ({
 }))
 
 vi.mock('@/app/components/explore/learn-dify', () => ({
-  default: ({ title }: { title?: string }) => React.createElement('section', null, title),
+  default: ({
+    title,
+    onCreate,
+    onTry,
+  }: {
+    title?: string
+    onCreate?: (app: App) => void
+    onTry?: (params: TryAppSelection) => void
+  }) =>
+    React.createElement(
+      'section',
+      null,
+      title,
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          onClick: () => onTry?.({ appId: mockLearnDifyApp.app_id, app: mockLearnDifyApp }),
+        },
+        'Preview Learn Dify template',
+      ),
+      React.createElement(
+        'button',
+        { type: 'button', onClick: () => onCreate?.(mockLearnDifyApp) },
+        'Create Learn Dify template',
+      ),
+    ),
 }))
 
 const intersectionCallbacks: IntersectionObserverCallback[] = []
@@ -462,6 +520,8 @@ beforeAll(() => {
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
 type RenderListOptions = {
+  onCreateLearnDify?: (app: App) => void
+  onTryLearnDify?: (params: TryAppSelection) => void
   systemFeatures?: Partial<GetSystemFeaturesResponse>
 }
 
@@ -472,7 +532,7 @@ const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   })
   return renderWithNuqs(
     <SystemFeaturesWrapper>
-      <List />
+      <List onCreateLearnDify={options.onCreateLearnDify} onTryLearnDify={options.onTryLearnDify} />
     </SystemFeaturesWrapper>,
     { searchParams },
   )
@@ -752,6 +812,28 @@ describe('List', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /app\.importDSL/ }))
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+    })
+
+    it('should forward Learn Dify template interactions', async () => {
+      const user = userEvent.setup()
+      const onCreateLearnDify = vi.fn()
+      const onTryLearnDify = vi.fn()
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList('', {
+        onCreateLearnDify,
+        onTryLearnDify,
+        systemFeatures: { enable_learn_app: true },
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
+      expect(onTryLearnDify).toHaveBeenCalledWith({
+        appId: mockLearnDifyApp.app_id,
+        app: mockLearnDifyApp,
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
+      expect(onCreateLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
     })
 
     it('should pass workflow app ids to online users hook', () => {
