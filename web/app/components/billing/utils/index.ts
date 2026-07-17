@@ -73,12 +73,16 @@ const isBasicPlan = (plan: string): plan is BasicPlan => {
   return plan === Plan.sandbox || plan === Plan.professional || plan === Plan.team
 }
 
+const isPlan = (plan: string): plan is Plan => {
+  return isBasicPlan(plan) || plan === Plan.enterprise
+}
+
 export const parseCurrentPlan = (data: FeatureResponse) => {
-  const planType = isBasicPlan(data.billing.subscription.plan)
+  const planType = isPlan(data.billing.subscription.plan)
     ? data.billing.subscription.plan
     : Plan.sandbox
-  const planPreset = ALL_PLANS[planType]
-  const vectorSpaceLimit = getPlanVectorSpaceLimitMB(planType)
+  const planPreset = isBasicPlan(planType) ? ALL_PLANS[planType] : undefined
+  const vectorSpaceLimit = isBasicPlan(planType) ? getPlanVectorSpaceLimitMB(planType) : 0
   const resolveRateLimit = (limit?: number, fallback?: number) => {
     const value = limit ?? fallback ?? 0
     return parseRateLimit(value)

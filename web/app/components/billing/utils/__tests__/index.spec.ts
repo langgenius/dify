@@ -114,6 +114,20 @@ describe('billing utils', () => {
       expect(result.type).toBe(Plan.sandbox)
     })
 
+    it('should preserve enterprise plan identity', () => {
+      const data = createMockPlanData({
+        billing: {
+          enabled: true,
+          subscription: {
+            plan: Plan.enterprise,
+            interval: 'year',
+          },
+        },
+      })
+
+      expect(parseCurrentPlan(data).type).toBe(Plan.enterprise)
+    })
+
     it('should parse usage values correctly', () => {
       const data = createMockPlanData()
       const result = parseCurrentPlan(data)
