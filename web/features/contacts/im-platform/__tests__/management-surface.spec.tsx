@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { ContactImPlatformRepository } from '../repository'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -8,6 +9,17 @@ import { ContactsImPlatformManagementSurface } from '../management-surface'
 import { createContactImMockRepository } from '../mock/repository'
 import { ContactImMockScenario } from '../mock/scenarios'
 import { ContactImConnectionStatus, ContactImProvider } from '../types'
+
+const mockNavigation = vi.hoisted(() => ({
+  replace: vi.fn(),
+  searchParams: new URLSearchParams(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/contacts/settings',
+  useRouter: () => ({ replace: mockNavigation.replace }),
+  useSearchParams: () => mockNavigation.searchParams,
+}))
 
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(() => true),
@@ -21,16 +33,20 @@ const organization = {
 
 const renderSurface = ({
   canManage = true,
+  repository,
   scenario = ContactImMockScenario.NotConfigured,
 }: {
   canManage?: boolean
+  repository?: ContactImPlatformRepository
   scenario?: ContactImMockScenario
 } = {}) => {
   const scopedOrganization = { ...organization, canManage }
-  const repository = createContactImMockRepository({
-    organization: scopedOrganization,
-    scenario,
-  })
+  const scopedRepository =
+    repository ??
+    createContactImMockRepository({
+      organization: scopedOrganization,
+      scenario,
+    })
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
@@ -39,7 +55,7 @@ const renderSurface = ({
   })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <ContactsImPlatformProvider organization={scopedOrganization} repository={repository}>
+      <ContactsImPlatformProvider organization={scopedOrganization} repository={scopedRepository}>
         {children}
       </ContactsImPlatformProvider>
     </QueryClientProvider>
@@ -47,10 +63,15 @@ const renderSurface = ({
 
   return {
     queryClient,
-    repository,
+    repository: scopedRepository,
     ...render(<ContactsImPlatformManagementSurface />, { wrapper }),
   }
 }
+
+beforeEach(() => {
+  mockNavigation.replace.mockReset()
+  mockNavigation.searchParams = new URLSearchParams()
+})
 
 describe('Contacts IM platform management surface', () => {
   it('shows a dedicated loading state without treating it as not configured', () => {
@@ -301,5 +322,131 @@ describe('Contacts IM platform binding flows', () => {
     await expect(repository.getIntegration(organization.organizationId)).resolves.toMatchObject({
       provider: ContactImProvider.Slack,
     })
+  })
+})
+
+describe('Contacts IM platform manual sync', () => {
+  it('enables manual sync only for a manageable connected provider with directory capability', async () => {
+    renderSurface({ scenario: ContactImMockScenario.Connected })
+
+    const syncButton = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.action.syncNow',
+    })
+    await waitFor(() => expect(syncButton).toBeEnabled())
+  })
+
+  it.each([
+    [ContactImMockScenario.Configured, 'contacts.imPlatform.sync.notConnected', true],
+    [ContactImMockScenario.NoPermission, 'contacts.imPlatform.sync.noPermission', false],
+  ])('blocks sync for %s and explains why', async (scenario, reason, canManage) => {
+    renderSurface({ canManage, scenario })
+
+    expect(await screen.findByText(reason)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.syncNow' }),
+    ).toBeDisabled()
+  })
+
+  it('blocks sync when the connected provider lacks directory capability', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    const integration = await repository.getIntegration(organization.organizationId)
+    vi.spyOn(repository, 'getIntegration').mockResolvedValue({
+      ...integration,
+      capabilities: { directorySync: false },
+    })
+    renderSurface({ repository })
+
+    expect(await screen.findByText('contacts.imPlatform.sync.unsupported')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.syncNow' }),
+    ).toBeDisabled()
+  })
+
+  it('restores an existing active run without starting another one', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.ActiveSync,
+    })
+    const startSync = vi.spyOn(repository, 'startSync')
+    renderSurface({ repository })
+
+    expect(await screen.findByText('contacts.imPlatform.sync.status.queued')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.syncing' }),
+    ).toBeDisabled()
+    expect(startSync).not.toHaveBeenCalled()
+  })
+
+  it('prevents duplicate sync starts while the mutation is pending', async () => {
+    const user = userEvent.setup()
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    let resolveStart: ((value: Awaited<ReturnType<typeof repository.startSync>>) => void) | null =
+      null
+    const startSyncImplementation = repository.startSync.bind(repository)
+    const startSync = vi.spyOn(repository, 'startSync').mockImplementation(async (command) => {
+      const run = await startSyncImplementation(command)
+      return new Promise((resolve) => {
+        resolveStart = resolve
+        void run
+      })
+    })
+    renderSurface({ repository })
+    const syncButton = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.action.syncNow',
+    })
+
+    await user.click(syncButton)
+    expect(syncButton).toHaveAttribute('aria-disabled', 'true')
+    await user.click(syncButton)
+    expect(startSync).toHaveBeenCalledTimes(1)
+
+    await act(async () => resolveStart?.(await repository.getSyncRun('mock-sync-1')))
+  })
+
+  it('keeps sync retryable after a start failure', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.SyncStartFailure })
+    const syncButton = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.action.syncNow',
+    })
+    await waitFor(() => expect(syncButton).toBeEnabled())
+    await user.click(syncButton)
+
+    expect(await screen.findByText('contacts.imPlatform.sync.startFailed')).toBeInTheDocument()
+    await waitFor(() => expect(syncButton).toBeEnabled())
+  })
+
+  it.each([
+    [ContactImMockScenario.SyncSuccess, 'contacts.imPlatform.sync.status.success'],
+    [ContactImMockScenario.SyncPartialSuccess, 'contacts.imPlatform.sync.status.partial_success'],
+    [ContactImMockScenario.SyncFailure, 'contacts.imPlatform.sync.status.failure'],
+  ])('presents the latest %s summary', async (scenario, statusLabel) => {
+    renderSurface({ scenario })
+
+    expect(await screen.findByText(statusLabel)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.viewDetails' }),
+    ).toBeEnabled()
+  })
+
+  it('restores sync details from sync_run_id and removes it when closed', async () => {
+    const user = userEvent.setup()
+    mockNavigation.searchParams = new URLSearchParams({
+      sync_run_id: 'mock-sync-success',
+    })
+    renderSurface({ scenario: ContactImMockScenario.SyncSuccess })
+
+    expect(
+      await screen.findByRole('heading', { name: 'contacts.imPlatform.details.title' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(mockNavigation.replace).toHaveBeenCalledWith('/contacts/settings', { scroll: false })
   })
 })

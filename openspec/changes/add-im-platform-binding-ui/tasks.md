@@ -22,10 +22,10 @@
 
 ## 4. Manual Directory Sync and Details UI
 
-- [ ] 4.1 Write failing component and hook tests for sync eligibility, no-permission and unsupported-provider gates, duplicate-trigger prevention, active-run restoration, controlled polling, and polling termination at every terminal state.
-- [ ] 4.2 Implement the manual sync trigger, queued/running presentation, success/partial-success/failure summaries, latest completed result retention, and targeted query refresh behavior.
-- [ ] 4.3 Write failing component tests for `sync_run_id` URL restoration, result taxonomy and counts, missing-field placeholders, unmatched read-only behavior, filters, pagination, page retry, and sensitive-error sanitization.
-- [ ] 4.4 Implement the Figma-aligned sync details surface with run metadata, result summary, filter controls, incrementally loaded rows, per-item safe reasons, error recovery, and no Contact or IM Binding mutation actions.
+- [x] 4.1 Write failing component and hook tests for sync eligibility, no-permission and unsupported-provider gates, duplicate-trigger prevention, active-run restoration, controlled polling, and polling termination at every terminal state.
+- [x] 4.2 Implement the manual sync trigger, queued/running presentation, success/partial-success/failure summaries, latest completed result retention, and targeted query refresh behavior.
+- [x] 4.3 Write failing component tests for `sync_run_id` URL restoration, result taxonomy and counts, missing-field placeholders, unmatched read-only behavior, filters, pagination, page retry, and sensitive-error sanitization.
+- [x] 4.4 Implement the Figma-aligned sync details surface with run metadata, result summary, filter controls, incrementally loaded rows, per-item safe reasons, error recovery, and no Contact or IM Binding mutation actions.
 
 ## 5. Product Quality and Verification
 

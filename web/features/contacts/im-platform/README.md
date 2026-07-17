@@ -20,6 +20,9 @@ The entry requires both a non-enterprise workspace plan and the existing `NEXT_P
 - `hooks.ts` is the only React Query access layer used by feature components.
 - `management-surface.tsx` owns binding status, provider selection, diagnostics, and confirmations.
 - `binding-dialog.tsx` and `provider-form-adapters.ts` own credential and mock OAuth flows.
+- `sync-section.tsx` owns manual-trigger eligibility, active-run recovery, and summary presentation.
+- `sync-details-dialog.tsx` owns the URL-addressable, filtered, paginated, read-only result view.
+- `sync-run-url-state.ts` keeps the selected run in the `sync_run_id` query parameter.
 - `account-setting-page.tsx` is the non-enterprise workspace-settings composition root.
 
 ## External Modules

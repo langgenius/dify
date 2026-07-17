@@ -23,13 +23,14 @@ import {
   useTestContactImConnection,
 } from './hooks'
 import { ContactImProviderCard } from './provider-card'
+import { ContactImSyncDetailsDialog } from './sync-details-dialog'
+import { useContactImSyncRunUrlState } from './sync-run-url-state'
+import { ContactImDirectorySyncSection } from './sync-section'
 import {
   ContactImConnectionStatus,
   ContactImProvider,
   ContactImProviderAvailability,
   ContactImStatusReason,
-  ContactImSyncResult,
-  ContactImSyncStatus,
   ContactImUnavailableReason,
 } from './types'
 
@@ -58,6 +59,7 @@ export function ContactsImPlatformManagementSurface() {
   const [replacementProvider, setReplacementProvider] =
     useState<ContactImProviderDefinition | null>(null)
   const [disconnectOpen, setDisconnectOpen] = useState(false)
+  const [syncRunId, setSyncRunId] = useContactImSyncRunUrlState()
 
   if (integrationQuery.isPending || providersQuery.isPending) {
     return (
@@ -132,21 +134,6 @@ export function ContactsImPlatformManagementSurface() {
     [ContactImUnavailableReason.NotReleased]: t(
       ($) => $['imPlatform.provider.unavailableReason.not_released'],
     ),
-  }
-  const syncStatusLabels = {
-    [ContactImSyncStatus.Failure]: t(($) => $['imPlatform.sync.status.failure']),
-    [ContactImSyncStatus.PartialSuccess]: t(($) => $['imPlatform.sync.status.partial_success']),
-    [ContactImSyncStatus.Queued]: t(($) => $['imPlatform.sync.status.queued']),
-    [ContactImSyncStatus.Running]: t(($) => $['imPlatform.sync.status.running']),
-    [ContactImSyncStatus.Success]: t(($) => $['imPlatform.sync.status.success']),
-  }
-  const syncCountLabels = {
-    [ContactImSyncResult.CreatedBinding]: t(($) => $['imPlatform.sync.count.created_binding']),
-    [ContactImSyncResult.Failed]: t(($) => $['imPlatform.sync.count.failed']),
-    [ContactImSyncResult.Matched]: t(($) => $['imPlatform.sync.count.matched']),
-    [ContactImSyncResult.Skipped]: t(($) => $['imPlatform.sync.count.skipped']),
-    [ContactImSyncResult.Unmatched]: t(($) => $['imPlatform.sync.count.unmatched']),
-    [ContactImSyncResult.UpdatedBinding]: t(($) => $['imPlatform.sync.count.updated_binding']),
   }
   const currentStatusLabel = statusLabels[integration.status]
   const formatDate = (value: string) =>
@@ -311,39 +298,11 @@ export function ContactsImPlatformManagementSurface() {
         )}
       </div>
 
-      {integration.lastSync && (
-        <div className="mt-5 rounded-xl border border-divider-subtle bg-components-panel-bg p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="system-sm-semibold text-text-primary">
-                {t(($) => $['imPlatform.sync.title'])}
-              </div>
-              <div className="mt-1 system-xs-regular text-text-tertiary">
-                {t(($) => $['imPlatform.sync.lastSynced'], {
-                  date: formatDate(
-                    integration.lastSync.completedAt ?? integration.lastSync.startedAt,
-                  ),
-                  user: integration.lastSync.startedBy,
-                })}
-              </div>
-            </div>
-            <div className="rounded-md bg-background-default-subtle px-2 py-1 system-xs-medium text-text-secondary">
-              {syncStatusLabels[integration.lastSync.status]}
-            </div>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {Object.values(ContactImSyncResult).map((result) => (
-              <div
-                key={result}
-                className="rounded-lg border border-divider-subtle bg-background-default-subtle px-2 py-1 system-xs-regular text-text-secondary"
-              >
-                {syncCountLabels[result]}{' '}
-                <span className="font-semibold">{integration.lastSync?.counts[result] ?? 0}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <ContactImDirectorySyncSection
+        formatDate={formatDate}
+        integration={integration}
+        onViewDetails={setSyncRunId}
+      />
 
       {bindingTarget && (
         <ContactImBindingDialog
@@ -354,6 +313,16 @@ export function ContactsImPlatformManagementSurface() {
           replaceActiveProvider={bindingTarget.replaceActiveProvider}
           onOpenChange={(open) => {
             if (!open) setBindingTarget(null)
+          }}
+        />
+      )}
+
+      {syncRunId && (
+        <ContactImSyncDetailsDialog
+          open
+          runId={syncRunId}
+          onOpenChange={(open) => {
+            if (!open) setSyncRunId(null)
           }}
         />
       )}

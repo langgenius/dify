@@ -3,11 +3,16 @@ import type { ContactImPlatformRepository } from '../repository'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { ContactsImPlatformProvider } from '../composition'
-import { useContactImIntegration, useSaveContactImCredentials } from '../hooks'
+import {
+  CONTACT_IM_SYNC_POLL_INTERVAL_MS,
+  useContactImIntegration,
+  useContactImSyncRun,
+  useSaveContactImCredentials,
+} from '../hooks'
 import { createContactImMockRepository } from '../mock/repository'
 import { ContactImMockScenario } from '../mock/scenarios'
 import { contactImPlatformQueryKeys } from '../query-keys'
-import { ContactImProvider } from '../types'
+import { ContactImProvider, ContactImSyncStatus } from '../types'
 
 const organization = {
   canManage: true,
@@ -130,5 +135,76 @@ describe('Contact IM repository hooks', () => {
 
     for (const spy of consoleSpies) spy.mockRestore()
     queryClient.clear()
+  })
+
+  it('polls an active run under timer control and stops at its terminal state', async () => {
+    vi.useFakeTimers()
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.ActiveSync,
+    })
+    const getSyncRun = vi.spyOn(repository, 'getSyncRun')
+    const { queryClient, wrapper } = createHarness(repository)
+    const { result, unmount } = renderHook(() => useContactImSyncRun('mock-active-sync'), {
+      wrapper,
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.data?.status).toBe(ContactImSyncStatus.Queued)
+
+    await repository.advanceSync('mock-active-sync')
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CONTACT_IM_SYNC_POLL_INTERVAL_MS + 1)
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.data?.status).toBe(ContactImSyncStatus.Running)
+
+    await repository.advanceSync('mock-active-sync')
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CONTACT_IM_SYNC_POLL_INTERVAL_MS + 1)
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.data?.status).toBe(ContactImSyncStatus.PartialSuccess)
+    const terminalCallCount = getSyncRun.mock.calls.length
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CONTACT_IM_SYNC_POLL_INTERVAL_MS * 3)
+    })
+    expect(getSyncRun).toHaveBeenCalledTimes(terminalCallCount)
+
+    unmount()
+    queryClient.clear()
+    vi.useRealTimers()
+  })
+
+  it.each([
+    [ContactImMockScenario.SyncSuccess, 'mock-sync-success', ContactImSyncStatus.Success],
+    [
+      ContactImMockScenario.SyncPartialSuccess,
+      'mock-sync-partial',
+      ContactImSyncStatus.PartialSuccess,
+    ],
+    [ContactImMockScenario.SyncFailure, 'mock-sync-failure', ContactImSyncStatus.Failure],
+  ])('does not poll the %s terminal scenario', async (scenario, runId, status) => {
+    vi.useFakeTimers()
+    const repository = createContactImMockRepository({ organization, scenario })
+    const getSyncRun = vi.spyOn(repository, 'getSyncRun')
+    const { queryClient, wrapper } = createHarness(repository)
+    const { result, unmount } = renderHook(() => useContactImSyncRun(runId), { wrapper })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.data?.status).toBe(status)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CONTACT_IM_SYNC_POLL_INTERVAL_MS * 3)
+    })
+    expect(getSyncRun).toHaveBeenCalledTimes(1)
+
+    unmount()
+    queryClient.clear()
+    vi.useRealTimers()
   })
 })

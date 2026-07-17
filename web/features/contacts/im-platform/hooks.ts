@@ -7,15 +7,21 @@ import type {
   SaveContactImCredentialsCommand,
 } from './types'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   useContactsImPlatformOrganization,
   useContactsImPlatformRepository,
 } from './composition-context'
 import { contactImPlatformQueryKeys } from './query-keys'
+import { ContactImSyncStatus } from './types'
 
 type SaveCredentialsInput = Omit<SaveContactImCredentialsCommand, 'organizationId'>
 type AuthorizeProviderInput = Omit<AuthorizeContactImProviderCommand, 'organizationId'>
+
+export const CONTACT_IM_SYNC_POLL_INTERVAL_MS = 2_000
+
+const isActiveSyncStatus = (status: ContactImSyncStatus | undefined) =>
+  status === ContactImSyncStatus.Queued || status === ContactImSyncStatus.Running
 
 const getIntegrationQueryOptions = (
   repository: ContactImPlatformRepository,
@@ -109,9 +115,43 @@ export const useContactImActiveSync = () => {
 }
 
 export const useContactImSyncRun = (runId: string | null) => {
+  const organization = useContactsImPlatformOrganization()
   const repository = useContactsImPlatformRepository()
+  const queryClient = useQueryClient()
+  const refreshedTerminalRunIdRef = useRef<string | null>(null)
+  const query = useQuery({
+    ...getSyncRunQueryOptions(repository, runId),
+    refetchInterval: ({ state }) =>
+      isActiveSyncStatus(state.data?.status) ? CONTACT_IM_SYNC_POLL_INTERVAL_MS : false,
+  })
 
-  return useQuery(getSyncRunQueryOptions(repository, runId))
+  useEffect(() => {
+    const run = query.data
+
+    if (!run || isActiveSyncStatus(run.status) || refreshedTerminalRunIdRef.current === run.id)
+      return
+
+    refreshedTerminalRunIdRef.current = run.id
+    void Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: contactImPlatformQueryKeys.integration(
+          organization.organizationId,
+          repository.queryKey,
+        ),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: contactImPlatformQueryKeys.activeSync(
+          organization.organizationId,
+          repository.queryKey,
+        ),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [...contactImPlatformQueryKeys.syncRun(run.id, repository.queryKey), 'items'],
+      }),
+    ])
+  }, [organization.organizationId, query.data, queryClient, repository, repository.queryKey])
+
+  return query
 }
 
 export const useContactImSyncItems = ({
