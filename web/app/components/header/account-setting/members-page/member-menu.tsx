@@ -22,6 +22,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import { useOptionalContactsManagement } from '@/features/contacts/management/composition-context'
+import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
+import { MemberRemovalContactImpactDialog } from '@/features/contacts/management/member-removal-dialog'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
@@ -33,6 +36,10 @@ type MemberMenuProps = {
   canTransferOwnership?: boolean
   allowMultipleRoles?: boolean
   onTransferOwnership?: () => void
+}
+
+type MembersCache = {
+  accounts: Member[] | null
 }
 
 const MemberMenu = ({
@@ -48,11 +55,18 @@ const MemberMenu = ({
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
+  const contactsManagement = useOptionalContactsManagement()
 
   const isOwner = member.role === 'owner'
   const canAssignRoles = !isOwner && !isCurrentUser
   const canRemove = !isOwner && !isCurrentUser
   const showTransferOwnership = isOwner && canTransferOwnership
+  const useContactsAwareRemoval = Boolean(
+    isContactsManagementEnabled() &&
+    member.status !== 'pending' &&
+    contactsManagement.context &&
+    contactsManagement.repository,
+  )
 
   const selectedRoles = member.roles || []
   const memberName = member.name || member.email
@@ -104,6 +118,20 @@ const MemberMenu = ({
     } finally {
       setRemoving(false)
     }
+  }, [member.id, queryClient, t])
+
+  const handleContactsRemovalSuccess = useCallback(() => {
+    queryClient.setQueriesData<MembersCache>(
+      { queryKey: commonQueryKeys.members },
+      (cachedMembers) => {
+        if (!cachedMembers?.accounts) return cachedMembers
+        return {
+          ...cachedMembers,
+          accounts: cachedMembers.accounts.filter((account) => account.id !== member.id),
+        }
+      },
+    )
+    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }, [member.id, queryClient, t])
 
   const handleTransferOwnership = useCallback(() => {
@@ -163,29 +191,38 @@ const MemberMenu = ({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <AlertDialog
-        open={removeConfirmOpen}
-        onOpenChange={(open) => !open && setRemoveConfirmOpen(false)}
-      >
-        <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['members.removeFromTeamConfirmTitle'], { ns: 'common', memberName })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'common' })}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={removing} onClick={handleRemove}>
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+      {useContactsAwareRemoval ? (
+        <MemberRemovalContactImpactDialog
+          member={member}
+          open={removeConfirmOpen}
+          onOpenChange={setRemoveConfirmOpen}
+          onRemoved={handleContactsRemovalSuccess}
+        />
+      ) : (
+        <AlertDialog
+          open={removeConfirmOpen}
+          onOpenChange={(open) => !open && setRemoveConfirmOpen(false)}
+        >
+          <AlertDialogContent backdropProps={{ forceRender: true }}>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t(($) => $['members.removeFromTeamConfirmTitle'], { ns: 'common', memberName })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'common' })}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton disabled={removing} onClick={handleRemove}>
+                {t(($) => $['operation.confirm'], { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
       {assignModalOpen && (
         <AssignRolesModal
           selectedRoles={selectedRoles}

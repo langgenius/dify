@@ -166,13 +166,14 @@ mock context 提供 `can_view_contacts`、`can_manage_contacts` 和 `can_manage_
 ### 10. Overlay、文案和测试遵循 web 规范
 
 - Dialog、drawer、popover、toast 等使用 `@langgenius/dify-ui/*`。
-- 用户可见文案进入 `web/i18n/en-US/`，并同步所有受支持 locale。
+- 用户可见文案进入 `web/i18n/en-US/` 与 `web/i18n/zh-Hans/`；其他 locale 的
+  `contacts` namespace 按现有加载策略回退到英文。
 - 测试优先覆盖可观察行为与回归风险，使用 Vitest、Testing Library 和确定性 repository。
 - 关键场景覆盖键盘操作、焦点恢复、错误关联、状态通知和窄屏布局。
 
 ## Risks / Trade-offs
 
-- [Figma 节点细节尚未通过授权访问核对] → 实施第一步建立逐节点 acceptance matrix，再冻结 overlay 类型、字段、列、文案和 responsive 行为。
+- [后续 Figma 更新造成实现漂移] → 以 `figma-acceptance.md` 记录的十二个节点验收基线为准，并在后续设计变更中显式更新矩阵。
 - [Mock view model 与未来 API 漂移] → 组件依赖稳定 UI view model，由未来 adapter 负责 DTO 映射。
 - [Contacts 与 Members 出现重复状态] → repository composition 层提供单一 mock scenario，并在 member mutation 后精确刷新两个 feature 的 query。
 - [Mock 权限被误认为安全边界] → 使用 feature gate，并在交付说明和测试命名中明确其仅为展示状态。
@@ -193,9 +194,12 @@ mock context 提供 `can_view_contacts`、`can_manage_contacts` 和 `can_manage_
 
 后端能力完成后另建 change：冻结正式 contract、实现 API repository adapter、启用服务端权限与冲突校验，并替换 mock composition。
 
-## Open Questions
+## Resolved Figma Questions
 
-- 各 Figma 节点最终使用独立页面、drawer 还是 dialog，需要在实施前通过授权设计访问确认。
-- 列表列、详情 action 和 External contact 附加字段的最终集合，需要以 Figma acceptance matrix 为准。
-- EE 的 `Keep as Platform contact` 控件默认值和影响说明文案，需要按设计节点确认。
-- Contact 详情中的 channel summary 是否包含 workspace IM override 操作；若设计包含该操作，应另建 capability，不在本 change 中顺带实现。
+- 逐节点验收结果记录在 `figma-acceptance.md`。详情采用列表右侧 320px panel，
+  创建与成员移除采用 dialog。
+- 列表展示名称、Email、类型、只读 channel summary 与加入时间；详情不提供没有
+  typed action 的编辑、删除、合并或 IM override 操作。
+- EE 的 `Keep as Platform contact` 默认勾选；CE / SaaS 不显示该控件。
+- `1649:8221` 的 workspace IM override 属于 `add-im-platform-binding-ui`，仅作为跨
+  change 参考，不进入本 repository 或 UI。

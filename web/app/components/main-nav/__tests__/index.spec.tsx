@@ -382,6 +382,10 @@ describe('MainNav', () => {
       'href',
       '/datasets',
     )
+    expect(screen.getByRole('link', { name: /contacts.directory.title/ })).toHaveAttribute(
+      'href',
+      '/contacts',
+    )
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute(
       'href',
       '/integrations/model-provider',
@@ -529,6 +533,7 @@ describe('MainNav', () => {
       'href',
       '/datasets',
     )
+    expect(screen.queryByRole('link', { name: /contacts.directory.title/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute(
       'href',
       '/integrations/model-provider',
@@ -563,6 +568,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /contacts.directory.title/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()

@@ -13,8 +13,10 @@ import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import {
   isCurrentWorkspaceDatasetOperatorAtom,
   isCurrentWorkspaceEditorAtom,
+  isCurrentWorkspaceManagerAtom,
 } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
@@ -30,12 +32,15 @@ const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { 
 
 export function MainNav({ className }: MainNavProps) {
   const { t } = useTranslation()
+  const { t: tContacts } = useTranslation('contacts')
   const pathname = usePathname()
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const agentV2Enabled = isAgentV2Enabled()
+  const contactsEnabled = isContactsManagementEnabled()
   const showEnvTag =
     langGeniusVersionInfo.current_env === 'TESTING' ||
     langGeniusVersionInfo.current_env === 'DEVELOPMENT'
@@ -47,22 +52,36 @@ export function MainNav({ className }: MainNavProps) {
         isMainNavRouteVisible(route, {
           agentV2Enabled,
           canUseAppDeploy,
+          canViewContacts: isCurrentWorkspaceManager,
+          contactsEnabled,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled: systemFeatures.enable_marketplace,
         }),
-      ).map((route) => ({
-        href: route.href,
-        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'common' }),
-        active: route.active,
-        icon: route.icon,
-        activeIcon: route.activeIcon,
-      })),
+      ).map((route) => {
+        const label =
+          'label' in route
+            ? route.label
+            : route.key === 'contacts'
+              ? tContacts(($) => $['directory.title'])
+              : t(($) => $[route.labelKey], { ns: 'common' })
+
+        return {
+          href: route.href,
+          label,
+          active: route.active,
+          icon: route.icon,
+          activeIcon: route.activeIcon,
+        }
+      }),
     [
       agentV2Enabled,
       canUseAppDeploy,
+      contactsEnabled,
       isCurrentWorkspaceDatasetOperator,
+      isCurrentWorkspaceManager,
       systemFeatures.enable_marketplace,
       t,
+      tContacts,
     ],
   )
 
