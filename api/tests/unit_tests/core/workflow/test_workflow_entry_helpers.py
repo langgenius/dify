@@ -933,6 +933,20 @@ class TestMappingUserInputsBranches:
 
         variable_pool.add.assert_not_called()
 
+    @pytest.mark.parametrize("input_value", [False, 0, ""])
+    def test_preserves_explicit_falsy_user_inputs(self, input_value):
+        variable_pool = MagicMock()
+        variable_pool.get.return_value = None
+
+        workflow_entry.WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping={"node.input": ["target", "input"]},
+            user_inputs={"node.input": input_value},
+            variable_pool=variable_pool,
+            tenant_id="tenant-id",
+        )
+
+        variable_pool.add.assert_called_once_with(["target", "input"], input_value)
+
     def test_merges_structured_output_values(self):
         variable_pool = MagicMock()
         variable_pool.get.side_effect = [
