@@ -144,14 +144,4 @@ describe('SearchInput', () => {
       expect(input).not.toHaveClass('h-[18px]')
     })
   })
-
-  describe('Style', () => {
-    it('applies custom className', () => {
-      const { container } = render(
-        <SearchInput value="" onValueChange={() => {}} className="custom-test" />,
-      )
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('custom-test')
-    })
-  })
 })

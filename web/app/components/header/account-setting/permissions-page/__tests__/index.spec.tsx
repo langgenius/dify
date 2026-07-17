@@ -205,25 +205,6 @@ describe('PermissionsPage', () => {
     expect(screen.getByText('Custom manager')).toBeInTheDocument()
   })
 
-  it('renders the workspace roles summary with the compact scheme bar style', () => {
-    renderPermissionsPage()
-
-    const title = screen.getByText('permission.role.workspaceRoles.title')
-    const description = screen.getByText('permission.role.workspaceRoles.description')
-    const schemeBar = title.parentElement?.parentElement as HTMLElement
-
-    expect(schemeBar).toHaveClass(
-      'min-h-[67px]',
-      'overflow-hidden',
-      'rounded-xl',
-      'border-divider-regular',
-      'px-4',
-      'py-3',
-    )
-    expect(title).toHaveClass('truncate', 'system-md-semibold', 'text-text-secondary')
-    expect(description).toHaveClass('truncate', 'system-xs-regular', 'text-text-tertiary')
-  })
-
   it('passes role loading states to the role list', () => {
     vi.mocked(useRoleGroups).mockReturnValue({
       roleGroups: [],

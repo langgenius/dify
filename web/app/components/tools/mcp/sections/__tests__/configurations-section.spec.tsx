@@ -19,12 +19,6 @@ describe('ConfigurationsSection', () => {
   const getSseReadTimeoutInput = () => getVisibleNumberInput(1)
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ConfigurationsSection {...defaultProps} />)
-      expect(getTimeoutInput()).toHaveValue('30')
-      expect(getSseReadTimeoutInput()).toHaveValue('300')
-    })
-
     it('should render timeout input with correct value', () => {
       render(<ConfigurationsSection {...defaultProps} />)
       expect(getTimeoutInput()).toHaveValue('30')

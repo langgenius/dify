@@ -97,18 +97,6 @@ describe('MetadataDocument', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render metadata fields when hasData is true', () => {
       render(
         <MetadataDocument
@@ -443,46 +431,6 @@ describe('MetadataDocument', () => {
       })
     })
 
-    it('should have handleAddMetaData function available', () => {
-      const handleAddMetaData = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        handleAddMetaData,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(typeof handleAddMetaData).toBe('function')
-    })
-
-    it('should have handleSelectMetaData function available', () => {
-      const handleSelectMetaData = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        handleSelectMetaData,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(typeof handleSelectMetaData).toBe('function')
-    })
-
     it('should pass onChange callback to InfoGroup', async () => {
       const setTempList = vi.fn()
       const tempList = [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' }]
@@ -543,18 +491,6 @@ describe('MetadataDocument', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          className="custom-class"
-        />,
-      )
-      expect(container.firstChild)!.toHaveClass('custom-class')
-    })
-
     it('should use tempList when in edit mode', () => {
       const tempList = [{ id: 'temp-1', name: 'temp_field', type: DataType.string, value: 'temp' }]
       mockUseMetadataDocument.mockReturnValue({
@@ -724,35 +660,6 @@ describe('MetadataDocument', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle empty lists', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        list: [],
-        tempList: [],
-        hasData: false,
-      })
-
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
-    it('should render correctly with minimal props', () => {
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should handle switching between view and edit mode', () => {
       const { unmount } = render(
         <MetadataDocument

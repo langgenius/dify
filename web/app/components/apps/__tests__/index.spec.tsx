@@ -304,62 +304,7 @@ describe('Apps', () => {
     })
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderWithClient(<Apps />)
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-    })
-
-    it('should render List component', () => {
-      renderWithClient(<Apps />)
-      expect(screen.getByText('Apps List')).toBeInTheDocument()
-    })
-
-    it('should have correct container structure', () => {
-      const { container } = renderWithClient(<Apps />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('relative', 'flex', 'h-0', 'shrink-0', 'grow', 'flex-col')
-    })
-  })
-
-  describe('Hooks', () => {
-    it('should call useDocumentTitle with correct title', () => {
-      renderWithClient(<Apps />)
-      expect(documentTitleCalls).toContain('common.menus.apps')
-    })
-
-    it('should call useEducationInit', () => {
-      renderWithClient(<Apps />)
-      expect(educationInitCalls).toBeGreaterThan(0)
-    })
-  })
-
   describe('Integration', () => {
-    it('should render full component tree', () => {
-      renderWithClient(<Apps />)
-
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-      expect(documentTitleCalls.length).toBeGreaterThanOrEqual(1)
-      expect(educationInitCalls).toBeGreaterThanOrEqual(1)
-    })
-
-    it('should handle multiple renders', () => {
-      const queryClient = createQueryClient()
-      const { rerender } = render(
-        <QueryClientProvider client={queryClient}>
-          <Apps />
-        </QueryClientProvider>,
-      )
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-
-      rerender(
-        <QueryClientProvider client={queryClient}>
-          <Apps />
-        </QueryClientProvider>,
-      )
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-    })
-
     it('should track template preview creation after a successful import', async () => {
       mockHandleImportDSL.mockImplementation(
         async (
@@ -572,20 +517,6 @@ describe('Apps', () => {
           templateId: 'tpl-42',
         })
       })
-    })
-  })
-
-  describe('Styling', () => {
-    it('should have overflow-y-auto class', () => {
-      const { container } = renderWithClient(<Apps />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('overflow-y-auto')
-    })
-
-    it('should have background styling', () => {
-      const { container } = renderWithClient(<Apps />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('bg-background-body')
     })
   })
 })

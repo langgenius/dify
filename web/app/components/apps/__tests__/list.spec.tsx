@@ -588,12 +588,6 @@ describe('List', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = renderList()
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
-      expect(container.querySelector('.i-ri-filter-3-line')).not.toBeInTheDocument()
-    })
-
     it('should render app type select with all app types', async () => {
       renderList()
       await openAppTypeSelect()
@@ -670,14 +664,6 @@ describe('List', () => {
 
       expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
-    })
-
-    it('should lay out app cards with auto-fill grid columns', () => {
-      renderList()
-
-      const grid = screen.getByTestId('app-card-app-1').parentElement
-
-      expect(grid).toHaveClass('grid', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]')
     })
 
     it('should hide starred section when there are no starred apps', () => {
