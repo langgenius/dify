@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "Menambahkan kredensial model",
   "modelProvider.auth.addNewModel": "Tambahkan model baru",
   "modelProvider.auth.addNewModelCredential": "Menambahkan kredensial model baru",
+  "modelProvider.auth.openAIResponsesAPITip": "Untuk GPT-5.6 dan model yang lebih baru, kami menyarankan penggunaan Responses API.",
   "modelProvider.auth.apiKeyModal.desc": "Setelah mengonfigurasi kredensial, semua anggota dalam ruang kerja dapat menggunakan model ini saat mengatur aplikasi.",
   "modelProvider.auth.apiKeyModal.title": "Konfigurasi Otorisasi Kunci API",
   "modelProvider.auth.apiKeys": "Kunci API",

@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "Modellberechtigungen hinzufügen",
   "modelProvider.auth.addNewModel": "Neues Modell hinzufügen",
   "modelProvider.auth.addNewModelCredential": "Hinzufügen neuer Modellanmeldeinformationen",
+  "modelProvider.auth.openAIResponsesAPITip": "Für GPT-5.6 und neuere Modelle empfehlen wir die Verwendung der Responses API.",
   "modelProvider.auth.apiKeyModal.desc": "Nachdem die Anmeldeinformationen konfiguriert wurden, können alle Mitglieder des Arbeitsbereichs dieses Modell beim Orchestrieren von Anwendungen verwenden.",
   "modelProvider.auth.apiKeyModal.title": "API-Schlüssel-Autorisierungskonfiguration",
   "modelProvider.auth.apiKeys": "API-Schlüssel",

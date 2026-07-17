@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "Model kimlik bilgisi ekle",
   "modelProvider.auth.addNewModel": "Yeni model ekle",
   "modelProvider.auth.addNewModelCredential": "Yeni model kimlik bilgisi ekleme",
+  "modelProvider.auth.openAIResponsesAPITip": "GPT-5.6 ve sonraki modeller için Responses API'yi kullanmanızı öneririz.",
   "modelProvider.auth.apiKeyModal.desc": "Kimlik bilgileri yapılandırıldıktan sonra, çalışma alanındaki tüm üyeler bu modeli uygulamaları düzenlerken kullanabilir.",
   "modelProvider.auth.apiKeyModal.title": "API Anahtar Yetkilendirme Yapılandırması",
   "modelProvider.auth.apiKeys": "API Anahtarları",

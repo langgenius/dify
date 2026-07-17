@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "مدرک مدل را اضافه کنید",
   "modelProvider.auth.addNewModel": "مدل جدید اضافه کن",
   "modelProvider.auth.addNewModelCredential": "افزودن اعتبار مدل جدید",
+  "modelProvider.auth.openAIResponsesAPITip": "برای مدل‌های GPT-5.6 و جدیدتر، استفاده از Responses API را توصیه می‌کنیم.",
   "modelProvider.auth.apiKeyModal.desc": "پس از پیکربندی اعتبارنامه‌ها، تمامی اعضای درون فضای کاری می‌توانند از این مدل هنگام نظم‌دهی به برنامه‌ها استفاده کنند.",
   "modelProvider.auth.apiKeyModal.title": "پیکربندی مجوز کلید API",
   "modelProvider.auth.apiKeys": "کلیدهای API",

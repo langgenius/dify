@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "Dodaj dane uwierzytelniające modelu",
   "modelProvider.auth.addNewModel": "Dodaj nowy model",
   "modelProvider.auth.addNewModelCredential": "Dodawanie nowego poświadczenia modelu",
+  "modelProvider.auth.openAIResponsesAPITip": "W przypadku modelu GPT-5.6 i nowszych zalecamy korzystanie z interfejsu Responses API.",
   "modelProvider.auth.apiKeyModal.desc": "Po skonfigurowaniu poświadczeń wszyscy członkowie w przestrzeni roboczej mogą korzystać z tego modelu podczas orkiestracji aplikacji.",
   "modelProvider.auth.apiKeyModal.title": "Konfiguracja autoryzacji klucza API",
   "modelProvider.auth.apiKeys": "Klucze API",

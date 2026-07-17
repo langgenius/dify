@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "Додати облікові дані моделі",
   "modelProvider.auth.addNewModel": "Додати нову модель",
   "modelProvider.auth.addNewModelCredential": "Додайте нові облікові дані моделі",
+  "modelProvider.auth.openAIResponsesAPITip": "Для GPT-5.6 і новіших моделей рекомендуємо використовувати Responses API.",
   "modelProvider.auth.apiKeyModal.desc": "Після налаштування облікових даних усі учасники в робочій області можуть використовувати цю модель під час оркестрування програм.",
   "modelProvider.auth.apiKeyModal.title": "Конфігурація авторизації API-ключа",
   "modelProvider.auth.apiKeys": "API ключі",

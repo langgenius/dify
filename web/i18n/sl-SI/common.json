@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "Dodajte poverilnice modela",
   "modelProvider.auth.addNewModel": "Dodaj nov model",
   "modelProvider.auth.addNewModelCredential": "Dodajanje poverilnic novega modela",
+  "modelProvider.auth.openAIResponsesAPITip": "Za GPT-5.6 in novejše modele priporočamo uporabo Responses API.",
   "modelProvider.auth.apiKeyModal.desc": "Po konfiguraciji poverilnic lahko vsi člani v delovnem prostoru uporabljajo ta model pri usklajevanju aplikacij.",
   "modelProvider.auth.apiKeyModal.title": "Konfiguracija avtorizacije ključev API",
   "modelProvider.auth.apiKeys": "API ključi",

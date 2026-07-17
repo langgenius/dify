@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "Add model credential",
   "modelProvider.auth.addNewModel": "Add new model",
   "modelProvider.auth.addNewModelCredential": "Add new model credential",
+  "modelProvider.auth.openAIResponsesAPITip": "Voor GPT-5.6 en nieuwere modellen raden we het gebruik van de Responses API aan.",
   "modelProvider.auth.apiKeyModal.desc": "After configuring credentials, all members within the workspace can use this model when orchestrating applications.",
   "modelProvider.auth.apiKeyModal.title": "API Key Authorization Configuration",
   "modelProvider.auth.apiKeys": "API Keys",

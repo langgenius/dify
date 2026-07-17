@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "मॉडल क्रेडेंशियल जोड़ें",
   "modelProvider.auth.addNewModel": "नया मॉडल जोड़ें",
   "modelProvider.auth.addNewModelCredential": "नई मॉडल क्रेडेंशियल जोड़ें",
+  "modelProvider.auth.openAIResponsesAPITip": "GPT-5.6 और बाद के मॉडल के लिए, हम Responses API का उपयोग करने की सलाह देते हैं।",
   "modelProvider.auth.apiKeyModal.desc": "क्रेडेंशियल्स कॉन्फ़िगर करने के बाद, कार्यक्षेत्र के सभी सदस्यों को एप्लिकेशन को व्यवस्थित करते समय इस मॉडल का उपयोग करने की अनुमति होती है।",
   "modelProvider.auth.apiKeyModal.title": "एपीआई कुंजी प्राधिकरण कॉन्फ़िगरेशन",
   "modelProvider.auth.apiKeys": "एपीआई कुंजी",

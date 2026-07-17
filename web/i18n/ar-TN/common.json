@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "إضافة بيانات اعتماد النموذج",
   "modelProvider.auth.addNewModel": "إضافة نموذج جديد",
   "modelProvider.auth.addNewModelCredential": "إضافة بيانات اعتماد نموذج جديدة",
+  "modelProvider.auth.openAIResponsesAPITip": "بالنسبة إلى نماذج GPT-5.6 والإصدارات الأحدث، نوصي باستخدام Responses API.",
   "modelProvider.auth.apiKeyModal.desc": "بعد تكوين بيانات الاعتماد، يمكن لجميع الأعضاء داخل مساحة العمل استخدام هذا النموذج عند تنظيم التطبيقات.",
   "modelProvider.auth.apiKeyModal.title": "تكوين تفويض مفتاح API",
   "modelProvider.auth.apiKeys": "مفاتيح API",

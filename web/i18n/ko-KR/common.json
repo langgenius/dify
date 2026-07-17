@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "모델 자격 증명 추가",
   "modelProvider.auth.addNewModel": "새 모델 추가하기",
   "modelProvider.auth.addNewModelCredential": "새 모델 자격 증명 추가",
+  "modelProvider.auth.openAIResponsesAPITip": "GPT-5.6 이상 모델에서는 Responses API 사용을 권장합니다.",
   "modelProvider.auth.apiKeyModal.desc": "자격증명을 구성한 후에는 작업 공간 내의 모든 구성원이 애플리케이션을 조정할 때 이 모델을 사용할 수 있습니다.",
   "modelProvider.auth.apiKeyModal.title": "API 키 인증 구성",
   "modelProvider.auth.apiKeys": "API 키",

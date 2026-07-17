@@ -318,6 +318,7 @@
   "modelProvider.auth.addModelCredential": "Aggiungi le credenziali del modello",
   "modelProvider.auth.addNewModel": "Aggiungi un nuovo modello",
   "modelProvider.auth.addNewModelCredential": "Aggiungere nuove credenziali del modello",
+  "modelProvider.auth.openAIResponsesAPITip": "Per GPT-5.6 e modelli successivi, consigliamo di utilizzare la Responses API.",
   "modelProvider.auth.apiKeyModal.desc": "Dopo aver configurato le credenziali, tutti i membri all'interno dello spazio di lavoro possono utilizzare questo modello quando orchestrano applicazioni.",
   "modelProvider.auth.apiKeyModal.title": "Configurazione dell'autorizzazione della chiave API",
   "modelProvider.auth.apiKeys": "Chiavi API",
