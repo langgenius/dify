@@ -158,4 +158,32 @@ describe('OAuthAuthorize', () => {
       ),
     )
   })
+
+  it('reports an authorization request failure', async () => {
+    const user = userEvent.setup()
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'client-1',
+      redirect_uri: 'https://client.example.com/callback',
+    })
+    mocks.request.mockImplementation(async (url: string) => {
+      if (url.endsWith('/oauth/provider/authorize')) throw new Error('Authorization denied')
+      if (url.endsWith('/oauth/provider')) {
+        return jsonResponse({
+          app_icon: '',
+          app_label: { en_US: 'Test OAuth App' },
+          scope: '',
+        })
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    })
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /continue/i }))
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        expect.stringContaining('Authorization denied'),
+      ),
+    )
+  })
 })
