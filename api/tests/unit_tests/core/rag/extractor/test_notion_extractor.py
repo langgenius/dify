@@ -451,6 +451,8 @@ class TestNotionMetadataAndCredentialMethods:
 
         extractor.update_last_edited_time(document)
 
+        # Closing the writer session rolls back an uncommitted update before the independent read below.
+        notion_extractor.db.session.close()
         with session_maker() as verification_session:
             stored_document = verification_session.get(DocumentModel, document.id)
             assert stored_document is not None
