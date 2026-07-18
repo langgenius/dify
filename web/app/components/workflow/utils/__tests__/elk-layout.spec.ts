@@ -277,15 +277,23 @@ describe('getLayoutByELK', () => {
     expect(portIds[portIds.length - 1]).toContain('false')
   })
 
-  it('should sort HumanInput edges with __timeout last', async () => {
+  it('should sort Human Input v2 action edges with __timeout last', async () => {
     const nodes = [
       makeWorkflowNode({
         id: 'hi-1',
         data: {
           type: BlockEnum.HumanInput,
+          version: '2',
           title: '',
           desc: '',
+          recpients_spec: [{ type: 'initiator' }],
+          message_template: { subject: 'Review', body: 'Body' },
+          debug_mode: { enabled: false, channels: [] },
+          form_content: '',
+          inputs: [],
           user_actions: [{ id: 'a1' }, { id: 'a2' }],
+          timeout: 36,
+          timeout_unit: 'hour',
         },
       }),
       makeWorkflowNode({ id: 'x', data: { type: BlockEnum.Code, title: '', desc: '' } }),

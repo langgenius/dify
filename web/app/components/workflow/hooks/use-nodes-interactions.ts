@@ -30,7 +30,7 @@ import {
   X_OFFSET,
   Y_OFFSET,
 } from '../constants'
-import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { getNodeUsedVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useCreateInlineAgentBinding } from '../nodes/agent-v2/hooks'
 import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '../nodes/agent-v2/types'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
@@ -1017,7 +1017,8 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
-          nodeType !== BlockEnum.HumanInput
+          nodeType !== BlockEnum.HumanInput &&
+          nodeType !== BlockEnum.HumanInputV2
         ) {
           newNode.data._connectedSourceHandleIds = [sourceHandle]
         }
@@ -1052,6 +1053,7 @@ export const useNodesInteractions = () => {
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
           nodeType !== BlockEnum.HumanInput &&
+          nodeType !== BlockEnum.HumanInputV2 &&
           nodeType !== BlockEnum.LoopEnd
         ) {
           newEdge = {
@@ -1213,6 +1215,7 @@ export const useNodesInteractions = () => {
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
           nodeType !== BlockEnum.HumanInput &&
+          nodeType !== BlockEnum.HumanInputV2 &&
           nodeType !== BlockEnum.LoopEnd
         ) {
           newNextEdge = {
@@ -2079,6 +2082,18 @@ export const useNodesInteractions = () => {
         })
         nodesToPaste.push(...newChildren)
       }
+    })
+
+    nodesToPaste.forEach((node, index) => {
+      const remappedNode = getNodeUsedVars(node).reduce((currentNode, selector) => {
+        if (!Array.isArray(selector) || !selector.length) return currentNode
+        const mappedNodeId = idMapping[selector[0]!]
+        if (!mappedNodeId) return currentNode
+
+        return updateNodeVars(currentNode, selector, [mappedNodeId, ...selector.slice(1)])
+      }, node)
+      nodesToPaste[index] = remappedNode
+      pastedNodesMap[remappedNode.id] = remappedNode
     })
 
     const sourceEdges = validatedClipboardEdges

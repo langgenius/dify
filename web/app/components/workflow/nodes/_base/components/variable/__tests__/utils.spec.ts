@@ -1,5 +1,6 @@
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
+import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
@@ -50,6 +51,43 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 
 describe('variable utils', () => {
   describe('toNodeAvailableVars', () => {
+    it('exposes shared form and action outputs for Human Input v2', () => {
+      const node = createNode<HumanInputV2NodeType>({
+        type: BlockEnum.HumanInput,
+        version: '2',
+        title: 'Human Input v2',
+        desc: '',
+        recpients_spec: [{ type: 'initiator' }],
+        message_template: { subject: 'Review', body: 'Body' },
+        debug_mode: { enabled: false, channels: [] },
+        form_content: '',
+        inputs: [
+          {
+            type: InputVarType.paragraph,
+            output_variable_name: 'review_note',
+            default: { type: 'constant', selector: [], value: '' },
+          },
+        ],
+        user_actions: [],
+        timeout: 36,
+        timeout_unit: 'hour',
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).toEqual([
+        { variable: 'review_note', type: VarType.string },
+        { variable: '__action_id', type: VarType.string },
+        { variable: '__action_value', type: VarType.string },
+        { variable: '__rendered_content', type: VarType.string },
+      ])
+    })
+
     it('uses Agent v2 default declared outputs for agent nodes', () => {
       const node = createNode<AgentV2NodeType>({
         type: BlockEnum.Agent,
@@ -199,6 +237,45 @@ describe('variable utils', () => {
       )
     })
 
+    it('reads Human Input v2 recipient, template, form and input dependencies', () => {
+      const node = createNode<HumanInputV2NodeType>({
+        type: BlockEnum.HumanInput,
+        version: '2',
+        title: 'Human Input v2',
+        desc: '',
+        recpients_spec: [
+          { type: 'dynamic_email', selector: ['start', 'recipient_email'] },
+          { type: 'initiator' },
+        ],
+        message_template: {
+          subject: 'Review {{#conversation.topic#}}',
+          body: 'Body {{#env.TEMPLATE#}}',
+        },
+        debug_mode: { enabled: false, channels: [] },
+        form_content: 'Form {{#start.request#}}',
+        inputs: [
+          {
+            type: InputVarType.paragraph,
+            output_variable_name: 'comment',
+            default: { type: 'variable', selector: ['env', 'DEFAULT_COMMENT'], value: '' },
+          },
+        ],
+        user_actions: [],
+        timeout: 36,
+        timeout_unit: 'hour',
+      })
+
+      expect(getNodeUsedVars(node)).toEqual(
+        expect.arrayContaining([
+          ['start', 'recipient_email'],
+          ['conversation', 'topic'],
+          ['env', 'TEMPLATE'],
+          ['start', 'request'],
+          ['env', 'DEFAULT_COMMENT'],
+        ]),
+      )
+    })
+
     it('should read variables from agent task', () => {
       const node = createNode<AgentV2NodeType>({
         type: BlockEnum.Agent,
@@ -322,6 +399,39 @@ describe('variable utils', () => {
           selector: ['env', 'RENAMED_KEY'],
         },
       })
+    })
+
+    it('renames Human Input v2 references without adding v1 delivery methods', () => {
+      const node = createNode<HumanInputV2NodeType>({
+        type: BlockEnum.HumanInput,
+        version: '2',
+        title: 'Human Input v2',
+        desc: '',
+        recpients_spec: [{ type: 'dynamic_email', selector: ['start', 'email'] }],
+        message_template: {
+          subject: 'Subject {{#start.email#}}',
+          body: 'Body {{#start.email#}}',
+        },
+        debug_mode: { enabled: true, channels: ['email'] },
+        form_content: 'Form {{#start.email#}}',
+        inputs: [],
+        user_actions: [],
+        timeout: 36,
+        timeout_unit: 'hour',
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'email'], ['start', 'owner_email'])
+      const data = updatedNode.data as HumanInputV2NodeType
+
+      expect(data.recpients_spec).toEqual([
+        { type: 'dynamic_email', selector: ['start', 'owner_email'] },
+      ])
+      expect(data.message_template).toEqual({
+        subject: 'Subject {{#start.owner_email#}}',
+        body: 'Body {{#start.owner_email#}}',
+      })
+      expect(data.form_content).toBe('Form {{#start.owner_email#}}')
+      expect(data).not.toHaveProperty('delivery_methods')
     })
   })
 })
