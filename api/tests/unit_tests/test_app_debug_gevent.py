@@ -1,4 +1,3 @@
-
 import ast
 from pathlib import Path
 
@@ -40,9 +39,7 @@ def _is_main_guard(node: ast.stmt) -> bool:
 
 
 def _contains_call(node: ast.AST, dotted_target: str) -> bool:
-    return any(
-        isinstance(child, ast.Call) and _dotted_name(child.func) == dotted_target for child in ast.walk(node)
-    )
+    return any(isinstance(child, ast.Call) and _dotted_name(child.func) == dotted_target for child in ast.walk(node))
 
 
 def _first_call_lineno(tree: ast.AST, dotted_target: str) -> int | None:
@@ -82,9 +79,7 @@ def test_monkey_patch_runs_before_app_factory_import() -> None:
     # Act
     patch_lineno = _first_call_lineno(module, "monkey.patch_all")
     app_factory_import_linenos = [
-        node.lineno
-        for node in ast.walk(module)
-        if isinstance(node, ast.ImportFrom) and node.module == "app_factory"
+        node.lineno for node in ast.walk(module) if isinstance(node, ast.ImportFrom) and node.module == "app_factory"
     ]
 
     # Assert
