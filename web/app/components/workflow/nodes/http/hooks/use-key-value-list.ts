@@ -4,13 +4,19 @@ import { uniqueId } from 'es-toolkit/compat'
 import { useCallback, useEffect, useState } from 'react'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
+const splitFirst = (value: string, separator: string) => {
+  const index = value.indexOf(separator)
+  if (index === -1) return [value, '']
+  return [value.slice(0, index), value.slice(index + separator.length)]
+}
+
 const strToKeyValueList = (value: string) => {
   return value.split('\n').map((item) => {
-    const [key, ...others] = item.split(':')
+    const [key, valueStr] = splitFirst(item, ':')
     return {
       id: uniqueId(UNIQUE_ID_PREFIX),
-      key: key!.trim(),
-      value: others.join(':').trim(),
+      key: key.trim(),
+      value: valueStr.trim(),
     }
   })
 }
