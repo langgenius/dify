@@ -4,7 +4,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   createPreviewCardHandle,
   PreviewCard,
-  PreviewCardContent,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -16,6 +15,7 @@ import { BlockEnum as BlockEnumValues } from '../types'
 import { BlockSelectorRow } from './block-selector-row'
 // import { useNodeMetaData } from '../hooks'
 import { START_BLOCKS } from './constants'
+import { BlockSelectorPreviewCardContent } from './preview-card'
 
 type StartBlocksProps = {
   searchText: string
@@ -235,20 +235,18 @@ function StartBlockPreviewCard({ payload, t }: StartBlockPreviewCardProps) {
   ].includes(block.type)
 
   return (
-    <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 pt-3 pb-2.5">
-      <div>
-        <BlockIcon size="md" className="mb-2" type={block.type} />
-        <div className="mb-1 system-md-medium text-text-primary">
-          {t(($) => $[`blocks.${block.type}`], { ns: 'workflow' })}
-        </div>
-        <div className="system-xs-regular wrap-break-word text-text-secondary">{description}</div>
-        {showDifyTeamAuthor && (
-          <div className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $.author, { ns: 'tools' })} {t(($) => $.difyTeam, { ns: 'workflow' })}
-          </div>
-        )}
+    <BlockSelectorPreviewCardContent>
+      <BlockIcon size="md" className="mb-2" type={block.type} />
+      <div className="mb-1 system-md-medium text-text-primary">
+        {t(($) => $[`blocks.${block.type}`], { ns: 'workflow' })}
       </div>
-    </PreviewCardContent>
+      <div className="system-xs-regular wrap-break-word text-text-secondary">{description}</div>
+      {showDifyTeamAuthor && (
+        <div className="mt-1 system-xs-regular text-text-tertiary">
+          {t(($) => $.author, { ns: 'tools' })} {t(($) => $.difyTeam, { ns: 'workflow' })}
+        </div>
+      )}
+    </BlockSelectorPreviewCardContent>
   )
 }
 

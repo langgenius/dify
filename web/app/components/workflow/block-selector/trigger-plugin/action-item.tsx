@@ -3,12 +3,13 @@ import type { ComponentProps, FC } from 'react'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { Event } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
+import { BlockSelectorPreviewCardContent } from '../preview-card'
 
 type Props = Readonly<{
   provider: TriggerWithProvider
@@ -113,22 +114,20 @@ export function TriggerPluginActionPreviewCard({ payload }: TriggerPluginActionP
   if (!payload) return null
 
   return (
-    <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
-      <div>
-        <BlockIcon
-          size="md"
-          className="mb-2"
-          type={BlockEnum.TriggerPlugin}
-          toolIcon={payload.provider.icon}
-        />
-        <div className="mb-1 text-sm/5 text-text-primary">
-          {payload.payload.label[payload.language]}
-        </div>
-        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
-          {payload.payload.description[payload.language]}
-        </div>
+    <BlockSelectorPreviewCardContent>
+      <BlockIcon
+        size="md"
+        className="mb-2"
+        type={BlockEnum.TriggerPlugin}
+        toolIcon={payload.provider.icon}
+      />
+      <div className="mb-1 text-sm/5 text-text-primary">
+        {payload.payload.label[payload.language]}
       </div>
-    </PreviewCardContent>
+      <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+        {payload.payload.description[payload.language]}
+      </div>
+    </BlockSelectorPreviewCardContent>
   )
 }
 

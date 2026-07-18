@@ -8,7 +8,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   createPreviewCardHandle,
   PreviewCard,
-  PreviewCardContent,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { useEffect, useMemo, useState } from 'react'
@@ -27,6 +26,7 @@ import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { BlockSelectorRow } from './block-selector-row'
+import { BlockSelectorPreviewCardContent } from './preview-card'
 import { TriggerPluginActionPreviewCard } from './trigger-plugin/action-item'
 import TriggerPluginItem from './trigger-plugin/item'
 
@@ -367,20 +367,18 @@ function FeaturedTriggerPreviewCard({ payload }: FeaturedTriggerPreviewCardProps
   if (!payload) return null
 
   return (
-    <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
-      <div>
-        <BlockIcon
-          size="md"
-          className="mb-2"
-          type={BlockEnum.TriggerPlugin}
-          toolIcon={payload.plugin.icon}
-        />
-        <div className="mb-1 text-sm/5 text-text-primary">{payload.label}</div>
-        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
-          {payload.description}
-        </div>
+    <BlockSelectorPreviewCardContent>
+      <BlockIcon
+        size="md"
+        className="mb-2"
+        type={BlockEnum.TriggerPlugin}
+        toolIcon={payload.plugin.icon}
+      />
+      <div className="mb-1 text-sm/5 text-text-primary">{payload.label}</div>
+      <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+        {payload.description}
       </div>
-    </PreviewCardContent>
+    </BlockSelectorPreviewCardContent>
   )
 }
 

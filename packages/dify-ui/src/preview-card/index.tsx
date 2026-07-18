@@ -25,6 +25,7 @@ export type { Placement }
  */
 export const PreviewCard = BasePreviewCard.Root
 export const PreviewCardTrigger = BasePreviewCard.Trigger
+export const PreviewCardViewport = BasePreviewCard.Viewport
 export const createPreviewCardHandle = BasePreviewCard.createHandle
 
 type PreviewCardContentProps = {

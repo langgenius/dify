@@ -3,7 +3,6 @@ import type { BlockClassificationEnum } from './types'
 import {
   createPreviewCardHandle,
   PreviewCard,
-  PreviewCardContent,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { groupBy } from 'es-toolkit/compat'
@@ -16,6 +15,7 @@ import { BlockEnum } from '../types'
 import { AgentBlockItem } from './agent-selector'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
+import { BlockSelectorPreviewCardContent } from './preview-card'
 
 type BlocksProps = {
   searchText: string
@@ -198,15 +198,13 @@ function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
   const { block } = payload
 
   return (
-    <PreviewCardContent placement="right" popupClassName="w-[200px] border-none px-3 py-2">
-      <div>
-        <BlockIcon size="md" className="mb-2" type={block.metaData.type} />
-        <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
-        <div className="system-xs-regular wrap-break-word text-text-tertiary">
-          {block.metaData.description}
-        </div>
+    <BlockSelectorPreviewCardContent>
+      <BlockIcon size="md" className="mb-2" type={block.metaData.type} />
+      <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
+      <div className="system-xs-regular wrap-break-word text-text-tertiary">
+        {block.metaData.description}
       </div>
-    </PreviewCardContent>
+    </BlockSelectorPreviewCardContent>
   )
 }
 
