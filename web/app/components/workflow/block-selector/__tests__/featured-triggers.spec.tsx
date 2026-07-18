@@ -106,7 +106,12 @@ describe('FeaturedTriggers', () => {
 
       render(<FeaturedTriggers plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />)
 
-      await user.click(screen.getByRole('button', { name: /workflow\.tabs\.featuredTools/ }))
+      const trigger = screen.getByRole('button', { name: /workflow\.tabs\.featuredTools/ })
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+      await user.click(trigger)
+
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
       expect(
         screen.queryByRole('link', { name: 'workflow.tabs.noFeaturedTriggers' }),
@@ -141,10 +146,10 @@ describe('FeaturedTriggers', () => {
       expect(screen.getByText('Provider 4')).toBeInTheDocument()
       expect(screen.queryByText('Provider 5')).not.toBeInTheDocument()
 
-      await user.click(screen.getByText('workflow.tabs.showMoreFeatured'))
+      await user.click(screen.getByRole('button', { name: 'workflow.tabs.showMoreFeatured' }))
       expect(screen.getByText('Provider 5')).toBeInTheDocument()
 
-      await user.click(screen.getByText('workflow.tabs.showLessFeatured'))
+      await user.click(screen.getByRole('button', { name: 'workflow.tabs.showLessFeatured' }))
       expect(screen.queryByText('Provider 5')).not.toBeInTheDocument()
     })
   })
@@ -189,6 +194,17 @@ describe('FeaturedTriggers', () => {
           event_name: 'created',
           event_label: 'Created',
         }),
+      )
+    })
+
+    it('should use the marketplace details page as the preview destination for uninstalled triggers', () => {
+      render(
+        <FeaturedTriggers plugins={[createPlugin()]} providerMap={new Map()} onSelect={vi.fn()} />,
+      )
+
+      expect(screen.getByRole('link', { name: 'Plugin One' })).toHaveAttribute(
+        'href',
+        'https://marketplace.test/plugins/org/trigger-plugin',
       )
     })
 

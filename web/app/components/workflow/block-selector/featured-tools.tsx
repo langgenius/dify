@@ -5,6 +5,7 @@ import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -22,9 +23,11 @@ import { useFeaturedToolsCollapsed } from '@/app/components/workflow/block-selec
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
+import { getMarketplaceUrl } from '@/utils/var'
 import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
+import { BlockSelectorRow } from './block-selector-row'
 import { BlockSelectorPreviewCardContent } from './preview-card'
 import Tools from './tools'
 import { ToolTypeEnum } from './types'
@@ -117,25 +120,22 @@ const FeaturedTools = ({
   const showEmptyState = !isLoading && totalVisible === 0
 
   return (
-    <div className="px-3 pt-2 pb-3">
-      <button
-        type="button"
-        className="flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary"
-        onClick={() => setIsCollapsed((prev) => !prev)}
-      >
+    <Collapsible
+      className="px-3 pt-2 pb-3"
+      open={!isCollapsed}
+      onOpenChange={(open) => setIsCollapsed(!open)}
+    >
+      <CollapsibleTrigger className="min-h-0 justify-start gap-0 rounded-md px-0 py-1 text-text-primary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-primary data-panel-open:text-text-primary">
         <span className="system-xs-medium text-text-primary">
           {t(($) => $['tabs.featuredTools'], { ns: 'workflow' })}
         </span>
         <span
-          className={cn(
-            'i-custom-vender-solid-arrows-arrow-down-round-fill',
-            'ml-0.5 size-4 text-text-tertiary transition-transform',
-            isCollapsed ? '-rotate-90' : 'rotate-0',
-          )}
+          aria-hidden
+          className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none"
         />
-      </button>
+      </CollapsibleTrigger>
 
-      {!isCollapsed && (
+      <CollapsiblePanel>
         <>
           {isLoading && (
             <div className="py-3">
@@ -191,8 +191,10 @@ const FeaturedTools = ({
           )}
 
           {!isLoading && totalVisible > 0 && canToggleVisibility && (
-            <div
-              className="group mt-1 flex cursor-pointer items-center gap-x-2 rounded-lg py-1 pr-2 pl-3 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
+            <button
+              type="button"
+              aria-expanded={isExpanded}
+              className="group mt-1 flex w-full cursor-pointer items-center gap-x-2 rounded-lg border-0 bg-transparent py-1 pr-2 pl-3 text-left text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => {
                 setVisibleCount((count) => {
                   if (count >= maxAvailable) return INITIAL_VISIBLE_COUNT
@@ -201,12 +203,21 @@ const FeaturedTools = ({
                 })
               }}
             >
-              <div className="flex items-center px-1 text-text-tertiary transition-colors group-hover:text-text-secondary">
-                <span className="i-ri-more-line size-4 group-hover:hidden" />
+              <div className="flex items-center px-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
+                <span
+                  aria-hidden
+                  className="i-ri-more-line size-4 group-hover:hidden group-focus-visible:hidden"
+                />
                 {isExpanded ? (
-                  <span className="i-custom-vender-solid-arrows-arrow-up-double-line hidden size-4 group-hover:block" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-solid-arrows-arrow-up-double-line hidden size-4 group-hover:block group-focus-visible:block"
+                  />
                 ) : (
-                  <span className="i-custom-vender-solid-arrows-arrow-down-double-line hidden size-4 group-hover:block" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-solid-arrows-arrow-down-double-line hidden size-4 group-hover:block group-focus-visible:block"
+                  />
                 )}
               </div>
               <div className="system-xs-regular">
@@ -214,16 +225,16 @@ const FeaturedTools = ({
                   ns: 'workflow',
                 })}
               </div>
-            </div>
+            </button>
           )}
         </>
-      )}
+      </CollapsiblePanel>
       <PreviewCard handle={previewCardHandle}>
         {({ payload }) => (
           <FeaturedToolPreviewCard payload={payload as FeaturedToolPreviewPayload | undefined} />
         )}
       </PreviewCard>
-    </div>
+    </Collapsible>
   )
 }
 
@@ -266,63 +277,75 @@ function FeaturedToolUninstalledItem({
     }
   }, [actionOpen])
 
-  const row = (
-    <div className="group flex h-8 w-full items-center rounded-lg pr-1 pl-3 hover:bg-state-base-hover">
-      <div className="flex h-full min-w-0 items-center">
+  const detailsLink = (
+    <Link
+      className="flex h-full min-w-0 flex-1 items-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      href={getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`)}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <div className="flex min-w-0 items-center">
         <BlockIcon type={BlockEnum.Tool} toolIcon={plugin.icon} />
         <div className="ml-2 min-w-0">
           <div className="truncate system-sm-medium text-text-secondary">{label}</div>
         </div>
       </div>
-      <div className="ml-auto flex h-full items-center gap-1 pl-1">
-        <span
-          className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}
-        >
-          {installCountLabel}
-        </span>
-        <div
-          className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
-        >
-          {canInstallPlugin && (
-            <button
-              type="button"
-              className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
-              onClick={() => {
-                setActionOpen(false)
-                setIsInstallModalOpen(true)
-              }}
-            >
-              {t(($) => $.installAction, { ns: 'plugin' })}
-            </button>
-          )}
-          <Action
-            open={actionOpen}
-            onOpenChange={setActionOpen}
-            author={plugin.org}
-            name={plugin.name}
-            version={plugin.latest_version}
-          />
-        </div>
-      </div>
-    </div>
+    </Link>
   )
 
   return (
     <>
-      {description ? (
-        // Preview is supplementary: icon / label / brief are all reachable from
-        // the InstallFromMarketplace modal that opens on click, so hover/focus-only
-        // activation is a11y-safe. See packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-        <PreviewCardTrigger
-          delay={150}
-          closeDelay={150}
-          handle={previewCardHandle}
-          payload={{ plugin, label, description }}
-          render={row}
-        />
-      ) : (
-        row
-      )}
+      <BlockSelectorRow as="div" className="group pr-1 focus-within:bg-state-base-hover">
+        {description ? (
+          <PreviewCardTrigger
+            delay={150}
+            closeDelay={150}
+            handle={previewCardHandle}
+            payload={{ plugin, label, description }}
+            render={detailsLink}
+          />
+        ) : (
+          detailsLink
+        )}
+        <div className="relative ml-auto flex h-full items-center pl-1">
+          <span
+            className={cn(
+              'system-xs-regular text-text-tertiary',
+              actionOpen ? 'hidden' : 'group-focus-within:hidden group-hover:hidden',
+            )}
+          >
+            {installCountLabel}
+          </span>
+          <div
+            className={cn(
+              'absolute right-0 flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text opacity-0 transition-opacity motion-reduce:transition-none [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0',
+              actionOpen
+                ? 'pointer-events-auto opacity-100'
+                : 'pointer-events-none group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+            )}
+          >
+            {canInstallPlugin && (
+              <button
+                type="button"
+                className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={() => {
+                  setActionOpen(false)
+                  setIsInstallModalOpen(true)
+                }}
+              >
+                {t(($) => $.installAction, { ns: 'plugin' })}
+              </button>
+            )}
+            <Action
+              open={actionOpen}
+              onOpenChange={setActionOpen}
+              author={plugin.org}
+              name={plugin.name}
+              version={plugin.latest_version}
+            />
+          </div>
+        </div>
+      </BlockSelectorRow>
       {isInstallModalOpen && canInstallPlugin && (
         <PluginInstallPermissionProvider
           canInstallPlugin={canInstallPlugin}

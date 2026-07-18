@@ -20,6 +20,14 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
+vi.mock('@/app/components/workflow/block-selector/market-place-plugin/action', () => ({
+  default: () => <div data-testid="marketplace-action" />,
+}))
+
+vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
+  default: () => <div data-testid="install-from-marketplace" />,
+}))
+
 vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
   getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
@@ -59,7 +67,7 @@ describe('FeaturedTools', () => {
     expect(screen.getByText('Provider 1')).toBeInTheDocument()
     expect(screen.queryByText('Provider 6')).not.toBeInTheDocument()
 
-    await user.click(screen.getByText('workflow.tabs.showMoreFeatured'))
+    await user.click(screen.getByRole('button', { name: 'workflow.tabs.showMoreFeatured' }))
 
     expect(screen.getByText('Provider 6')).toBeInTheDocument()
   })
@@ -75,8 +83,26 @@ describe('FeaturedTools', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.tabs.featuredTools')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.tabs.featuredTools' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
     expect(screen.queryByText('Provider One')).not.toBeInTheDocument()
+  })
+
+  it('uses the marketplace details page as the preview destination for uninstalled tools', () => {
+    render(
+      <FeaturedTools
+        plugins={[createPlugin({ name: 'plugin-one' })]}
+        providerMap={new Map()}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Plugin One' })).toHaveAttribute(
+      'href',
+      'https://marketplace.test/plugins/org/plugin-one',
+    )
   })
 
   it('shows the marketplace empty state when no featured tools are available', () => {
