@@ -1,9 +1,13 @@
 import type { TFunction } from 'i18next'
-import type { NodeDefault, Var } from '../../types'
-import type { DeliveryMethod, EmailConfig, FormInputItem, HumanInputNodeType } from './types'
+import type { NodeDefault } from '../../types'
+import type { DeliveryMethod, EmailConfig, HumanInputNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
+import {
+  buildHumanInputOutputVars,
+  getHumanInputSharedValidationError,
+} from './shared/default-utils'
 import { DeliveryMethodType } from './types'
 
 const i18nPrefix = 'nodes.humanInput.errorMsg'
@@ -13,23 +17,6 @@ const metaData = genNodeMetaData({
   sort: 1,
   type: BlockEnum.HumanInput,
 })
-
-const getFormInputVarType = (input: FormInputItem): VarType => {
-  if (input.type === 'file') return VarType.file
-
-  if (input.type === 'file-list') return VarType.arrayFile
-
-  return VarType.string
-}
-
-const buildOutputVars = (inputs: FormInputItem[]): Var[] => {
-  return inputs.map((input) => {
-    return {
-      variable: input.output_variable_name,
-      type: getFormInputVarType(input),
-    }
-  })
-}
 
 const isEmailConfigComplete = (config?: EmailConfig): boolean => {
   if (!config) return false
@@ -76,26 +63,7 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     if (!errorMessages && hasIncompleteEnabledEmailConfig(payload.delivery_methods))
       errorMessages = t(($) => $[`${i18nPrefix}.emailConfigIncomplete`], { ns: 'workflow' })
 
-    if (!errorMessages && !payload.user_actions.length)
-      errorMessages = t(($) => $[`${i18nPrefix}.noUserActions`], { ns: 'workflow' })
-
-    if (!errorMessages && payload.user_actions.length > 0) {
-      const actionIds = payload.user_actions.map((action) => action.id)
-      const hasDuplicateIds = actionIds.length !== new Set(actionIds).size
-      if (hasDuplicateIds)
-        errorMessages = t(($) => $[`${i18nPrefix}.duplicateActionId`], { ns: 'workflow' })
-    }
-
-    if (!errorMessages && payload.user_actions.length > 0) {
-      const hasEmptyId = payload.user_actions.some((action) => !action.id?.trim())
-      if (hasEmptyId) errorMessages = t(($) => $[`${i18nPrefix}.emptyActionId`], { ns: 'workflow' })
-    }
-
-    if (!errorMessages && payload.user_actions.length > 0) {
-      const hasEmptyTitle = payload.user_actions.some((action) => !action.title?.trim())
-      if (hasEmptyTitle)
-        errorMessages = t(($) => $[`${i18nPrefix}.emptyActionTitle`], { ns: 'workflow' })
-    }
+    if (!errorMessages) errorMessages = getHumanInputSharedValidationError(payload, t)
 
     return {
       isValid: !errorMessages,
@@ -103,7 +71,7 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     }
   },
   getOutputVars(payload, _allPluginInfoList, _ragVars) {
-    return buildOutputVars(payload.inputs)
+    return buildHumanInputOutputVars(payload.inputs)
   },
 }
 

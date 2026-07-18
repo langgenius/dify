@@ -241,7 +241,7 @@ describe('DSL Import with Human Input Node', () => {
 
       render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
 
-      expect(screen.getByText('Timeout'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.humanInput.timeout.title'))!.toBeInTheDocument()
     })
 
     it('should hide delivery method labels when no methods are configured', () => {
@@ -258,7 +258,7 @@ describe('DSL Import with Human Input Node', () => {
 
       render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
 
-      expect(screen.getByText('Timeout'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.humanInput.timeout.title'))!.toBeInTheDocument()
     })
 
     it('should render with only webapp delivery method', () => {

@@ -62,7 +62,7 @@ describe('human-input/node', () => {
     expect(screen.getByText('email')).toBeInTheDocument()
     expect(screen.getByText('approve')).toBeInTheDocument()
     expect(screen.getByText('reject')).toBeInTheDocument()
-    expect(screen.getByText('Timeout')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.timeout.title')).toBeInTheDocument()
     expect(screen.getByText('handle:approve')).toBeInTheDocument()
     expect(screen.getByText('handle:reject')).toBeInTheDocument()
     expect(screen.getByText('handle:__timeout')).toBeInTheDocument()
@@ -82,7 +82,7 @@ describe('human-input/node', () => {
     expect(
       screen.queryByText('workflow.nodes.humanInput.deliveryMethod.title'),
     ).not.toBeInTheDocument()
-    expect(screen.getByText('Timeout')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.timeout.title')).toBeInTheDocument()
     expect(screen.getByText('handle:__timeout')).toBeInTheDocument()
   })
 })

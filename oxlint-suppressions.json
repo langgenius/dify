@@ -5045,11 +5045,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/if-else/components/condition-list/condition-input.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
