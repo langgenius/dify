@@ -1,6 +1,6 @@
 """Unit tests for DocumentService behaviors in dataset_service."""
 
-from services.dataset_ref_service import DatasetRef
+from services.dataset_ref_service import DatasetRefService
 
 from .dataset_service_test_helpers import (
     Account,
@@ -130,7 +130,7 @@ class TestDocumentServiceMutations:
         ):
             session.scalars.return_value.all.return_value = [document]
 
-            dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
+            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
             DocumentService.delete_documents(
                 dataset_ref,
                 ["doc-1", "other-doc"],

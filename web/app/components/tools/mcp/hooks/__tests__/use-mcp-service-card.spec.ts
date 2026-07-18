@@ -313,15 +313,6 @@ describe('useMCPServiceCardState', () => {
   })
 
   describe('Handler Functions', () => {
-    it('should have handleGenCode function', () => {
-      const appInfo = createMockAppInfo()
-      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
-        wrapper: createWrapper(),
-      })
-
-      expect(typeof result.current.handleGenCode).toBe('function')
-    })
-
     it('should call handleGenCode and invalidate server detail', async () => {
       const appInfo = createMockAppInfo()
       const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
@@ -334,24 +325,6 @@ describe('useMCPServiceCardState', () => {
 
       // handleGenCode should complete without error
       expect(result.current.genLoading).toBe(false)
-    })
-
-    it('should have handleStatusChange function', () => {
-      const appInfo = createMockAppInfo()
-      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
-        wrapper: createWrapper(),
-      })
-
-      expect(typeof result.current.handleStatusChange).toBe('function')
-    })
-
-    it('should have invalidateBasicAppConfig function', () => {
-      const appInfo = createMockAppInfo()
-      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
-        wrapper: createWrapper(),
-      })
-
-      expect(typeof result.current.invalidateBasicAppConfig).toBe('function')
     })
 
     it('should call invalidateBasicAppConfig', () => {

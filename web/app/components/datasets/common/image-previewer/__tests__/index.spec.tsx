@@ -55,19 +55,6 @@ describe('ImagePreviewer', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      const onClose = vi.fn()
-      const images = createMockImages()
-
-      await act(async () => {
-        render(<ImagePreviewer images={images} onClose={onClose} />)
-      })
-
-      // Should render in portal
-      // Should render in portal
-      expect(document.body.querySelector('.image-previewer'))!.toBeInTheDocument()
-    })
-
     it('should render close button', async () => {
       const onClose = vi.fn()
       const images = createMockImages()

@@ -72,6 +72,7 @@ jobs:
               - 'docker/volumes/sandbox/conf/**'
             cli:
               - 'cli/**'
+              - 'packages/contracts/**'
               - 'packages/tsconfig/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
@@ -105,6 +106,7 @@ jobs:
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/envs/middleware.env.example'
               - '.github/workflows/web-e2e.yml'
+              - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
             vdb:
               - 'api/core/rag/datasource/**'

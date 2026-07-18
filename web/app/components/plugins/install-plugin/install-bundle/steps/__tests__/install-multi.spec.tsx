@@ -271,12 +271,6 @@ describe('InstallMulti Component', () => {
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<InstallMulti {...defaultProps} />)
-
-      expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
-    })
-
     it('should render PackageItem for package type dependency', () => {
       render(<InstallMulti {...defaultProps} />)
 

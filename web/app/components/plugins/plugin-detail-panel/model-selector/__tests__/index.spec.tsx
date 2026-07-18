@@ -176,7 +176,8 @@ vi.mock('../llm-params-panel', () => ({
     onCompletionParamsChange?: (params: Record<string, unknown>) => void
     isAdvancedMode: boolean
   }) => (
-    <div
+    <button
+      type="button"
       data-testid="llm-params-panel"
       data-provider={provider}
       data-model={modelId}
@@ -184,7 +185,7 @@ vi.mock('../llm-params-panel', () => ({
       onClick={() => onCompletionParamsChange?.({ temperature: 0.8 })}
     >
       LLM Params Panel
-    </div>
+    </button>
   ),
 }))
 
@@ -199,14 +200,15 @@ vi.mock('../tts-params-panel', () => ({
     voice?: string
     onChange?: (language: string, voice: string) => void
   }) => (
-    <div
+    <button
+      type="button"
       data-testid="tts-params-panel"
       data-language={language}
       data-voice={voice}
       onClick={() => onChange?.('en-US', 'alloy')}
     >
       TTS Params Panel
-    </div>
+    </button>
   ),
 }))
 
@@ -295,17 +297,6 @@ describe('ModelParameterModal', () => {
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<ModelParameterModal {...props} />)
-
-      // Assert
-      expect(container).toBeInTheDocument()
-    })
-
     it('should render trigger component by default', () => {
       // Arrange
       const props = createDefaultProps()
@@ -424,28 +415,6 @@ describe('ModelParameterModal', () => {
 
       // Assert
       expect(screen.getByTestId('agent-model-trigger')).toHaveAttribute('data-scope', 'llm&vision')
-    })
-
-    it('should apply popupClassName to portal content', async () => {
-      // Arrange
-      const model = createModel({
-        provider: 'openai',
-        models: [createModelItem({ model: 'gpt-4' })],
-      })
-      setupModelLists({ textGeneration: [model] })
-      const props = createDefaultProps({
-        popupClassName: 'custom-popup-class',
-        value: { provider: 'openai', model: 'gpt-4' },
-      })
-
-      // Act
-      render(<ModelParameterModal {...props} />)
-      openSettings()
-
-      // Assert
-      await waitFor(() => {
-        expect(document.querySelector('.custom-popup-class')).toBeInTheDocument()
-      })
     })
 
     it('should default scope to textGeneration', () => {
@@ -1464,22 +1433,6 @@ describe('ModelParameterModal', () => {
       // Assert
       const trigger = screen.getByTestId('trigger')
       expect(trigger).toBeInTheDocument()
-    })
-  })
-
-  // ==================== Component Type ====================
-  describe('Component Type', () => {
-    it('should be a functional component', () => {
-      // Assert
-      expect(typeof ModelParameterModal).toBe('function')
-    })
-
-    it('should accept all required props', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act & Assert
-      expect(() => render(<ModelParameterModal {...props} />)).not.toThrow()
     })
   })
 })

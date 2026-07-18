@@ -100,6 +100,7 @@ class AgentConfigSkillItemResponse(ResponseModel):
     id: str
     name: str
     file_id: str | None = None
+    is_missing: bool = False
     description: str = ""
     size: int | None = None
     mime_type: str | None = None
@@ -110,6 +111,7 @@ class AgentConfigFileItemResponse(ResponseModel):
     id: str
     name: str
     file_id: str | None = None
+    is_missing: bool = False
     size: int | None = None
     mime_type: str | None = None
     hash: str | None = None

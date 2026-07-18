@@ -38,18 +38,22 @@ type ListWithCollectionProps = {
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
+  installedPluginIds?: ReadonlySet<string>
 }
 
 type PluginCardProps = {
   plugin: Plugin
   showInstallButton?: boolean
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
+  isInstalled?: boolean
 }
 
-const PluginCard = ({ plugin, showInstallButton, cardRender }: PluginCardProps) => {
+const PluginCard = ({ plugin, showInstallButton, cardRender, isInstalled }: PluginCardProps) => {
   if (cardRender) return cardRender(plugin)
 
-  return <CardWrapper plugin={plugin} showInstallButton={showInstallButton} />
+  return (
+    <CardWrapper plugin={plugin} showInstallButton={showInstallButton} isInstalled={isInstalled} />
+  )
 }
 
 const ListWithCollection = ({
@@ -59,6 +63,7 @@ const ListWithCollection = ({
   cardContainerClassName,
   cardRender,
   onCollectionMoreClick,
+  installedPluginIds,
 }: ListWithCollectionProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -143,6 +148,7 @@ const ListWithCollection = ({
                               plugin={plugin}
                               showInstallButton={showInstallButton}
                               cardRender={cardRender}
+                              isInstalled={installedPluginIds?.has(plugin.plugin_id)}
                             />
                           </div>
                         ))}
@@ -158,6 +164,7 @@ const ListWithCollection = ({
                       plugin={plugin}
                       showInstallButton={showInstallButton}
                       cardRender={cardRender}
+                      isInstalled={installedPluginIds?.has(plugin.plugin_id)}
                     />
                   ))}
                 </div>

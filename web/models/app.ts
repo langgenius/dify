@@ -26,6 +26,13 @@ export enum DSLImportStatus {
   FAILED = 'failed',
 }
 
+export type DSLImportWarning = {
+  code: string
+  path: string
+  message: string
+  details: Record<string, unknown>
+}
+
 export type AppListResponse = {
   data: App[]
   has_more: boolean
@@ -46,6 +53,7 @@ export type DSLImportResponse = {
   error: string
   leaked_dependencies: Dependency[]
   permission_keys: string[]
+  warnings?: DSLImportWarning[]
 }
 
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig

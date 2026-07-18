@@ -32,6 +32,7 @@ class CreditPoolBalance:
     pool_type: str
     quota_limit: int
     quota_used: int
+    exhausted_at: int | None = None
 
     @property
     def remaining_credits(self) -> int:
@@ -133,6 +134,7 @@ class CreditPoolService:
                 pool_type=normalized_pool_type,
                 quota_limit=balance["quota"],
                 quota_used=balance["usage"],
+                exhausted_at=balance.get("exhausted_at"),
             )
 
         session = cls._require_session(session)

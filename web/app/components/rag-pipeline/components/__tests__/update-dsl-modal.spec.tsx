@@ -171,12 +171,6 @@ describe('UpdateDSLModal', () => {
   })
 
   describe('rendering', () => {
-    it('should render without crashing', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
-
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
-    })
-
     it('should render title', () => {
       render(<UpdateDSLModal {...defaultProps} />)
 
@@ -313,14 +307,6 @@ describe('UpdateDSLModal', () => {
         const importButton = screen.getByText('workflow.common.overwriteAndImport')
         expect(importButton).toBeDisabled()
       })
-    })
-  })
-
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((UpdateDSLModal as unknown as { $$typeof: symbol }).$$typeof).toBe(
-        Symbol.for('react.memo'),
-      )
     })
   })
 

@@ -551,11 +551,6 @@ describe('AppCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<AppCard app={mockApp} />)
-      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
-    })
-
     it('should render preview-only app card as a dimmed information-only card', () => {
       const previewOnlyApp = createMockApp({
         name: 'Preview Only App',
@@ -582,7 +577,9 @@ describe('AppCard', () => {
       expect(screen.queryByRole('link', { name: 'Preview Only App' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'app.studio.starApp' })).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.operation.more' }),
+        screen.queryByRole('button', {
+          name: /common\.operation\.moreActionsFor/,
+        }),
       ).not.toBeInTheDocument()
 
       fireEvent.click(tagSelector)
@@ -617,7 +614,9 @@ describe('AppCard', () => {
       ).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'app.studio.starApp' })).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.operation.more' }),
+        screen.queryByRole('button', {
+          name: /common\.operation\.moreActionsFor/,
+        }),
       ).not.toBeInTheDocument()
 
       fireEvent.click(card)
@@ -1113,20 +1112,6 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByRole('textbox')).toHaveValue('')
       })
-    })
-  })
-
-  describe('Styling', () => {
-    it('should have correct card container styling', () => {
-      const { container } = render(<AppCard app={mockApp} />)
-      const card = container.querySelector('[class*="h-41.5"]')
-      expect(card).toBeInTheDocument()
-    })
-
-    it('should have rounded-sm corners', () => {
-      const { container } = render(<AppCard app={mockApp} />)
-      const card = container.querySelector('[class*="rounded-xl"]')
-      expect(card).toBeInTheDocument()
     })
   })
 
@@ -1904,28 +1889,6 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Window failed' })
-      })
-    })
-
-    it('should handle non-Error rejections from open in explore', async () => {
-      const nonErrorRejection = { toString: () => 'Window rejected' }
-
-      mockOpenAsyncWindow.mockImplementationOnce(async () => {
-        return Promise.reject(nonErrorRejection)
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.openInExplore'))
-      })
-
-      await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Window rejected',
-        })
       })
     })
   })

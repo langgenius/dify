@@ -1,8 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('SegmentedControl wrappers', () => {
   it('renders a segmented control with Base UI pressed state', async () => {
     const screen = await render(
@@ -25,7 +23,7 @@ describe('SegmentedControl wrappers', () => {
       </SegmentedControl>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Two' }).element()).click()
+    await screen.getByRole('button', { name: 'Two' }).click()
 
     await expect
       .element(screen.getByRole('button', { name: 'One' }))
@@ -44,7 +42,7 @@ describe('SegmentedControl wrappers', () => {
       </SegmentedControl>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Two' }).element()).click()
+    await screen.getByRole('button', { name: 'Two' }).click()
 
     expect(onValueChange).toHaveBeenCalledWith(['two'], expect.anything())
     await expect
@@ -61,7 +59,7 @@ describe('SegmentedControl wrappers', () => {
       </SegmentedControl>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'One' }).element()).click()
+    await screen.getByRole('button', { name: 'One' }).click()
 
     expect(onValueChange).toHaveBeenCalledWith([], expect.anything())
     await expect
