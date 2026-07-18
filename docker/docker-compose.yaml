@@ -226,7 +226,7 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:1.16.0
     environment:
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -276,7 +276,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:1.16.0
     profiles:
       - collaboration
     environment:
@@ -302,7 +302,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:1.16.0
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -351,7 +351,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:1.16.0
     environment:
       MODE: beat
     depends_on:
@@ -384,7 +384,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.16.0-rc1
+    image: langgenius/dify-web:1.16.0
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -537,7 +537,7 @@ services:
 
   # Local sandbox for Dify Agent shell workspaces.
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.16.0-rc1
+    image: langgenius/dify-agent-local-sandbox:1.16.0
     restart: always
     env_file:
       - path: ./envs/core-services/local-sandbox.env
@@ -642,7 +642,7 @@ services:
 
   # Dify Agent backend service.
   agent_backend:
-    image: langgenius/dify-agent-backend:1.16.0-rc1
+    image: langgenius/dify-agent-backend:1.16.0
     restart: always
     env_file:
       - path: ./envs/core-services/dify-agent.env

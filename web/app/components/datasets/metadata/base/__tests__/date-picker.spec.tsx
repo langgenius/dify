@@ -48,12 +48,6 @@ const render = (ui: ReactElement) => {
 
 describe('WrappedDatePicker', () => {
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const handleChange = vi.fn()
-      render(<WrappedDatePicker onChange={handleChange} />)
-      expect(screen.getByRole('group', { name: 'Date picker' })).toBeInTheDocument()
-    })
-
     it('should render placeholder text when no value', () => {
       const handleChange = vi.fn()
       render(<WrappedDatePicker onChange={handleChange} />)

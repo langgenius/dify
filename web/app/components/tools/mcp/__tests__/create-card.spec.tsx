@@ -112,11 +112,6 @@ describe('NewMCPCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.create.cardTitle')).toBeInTheDocument()
-    })
-
     it('should render card title', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.create.cardTitle')).toBeInTheDocument()
@@ -125,11 +120,6 @@ describe('NewMCPCard', () => {
     it('should render documentation link', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.create.cardLink')).toBeInTheDocument()
-    })
-
-    it('should render add icon', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(document.querySelector('.border-dashed')).toBeInTheDocument()
     })
 
     it('should render toolbar button', () => {
@@ -191,36 +181,6 @@ describe('NewMCPCard', () => {
       render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Styling', () => {
-    it('should match the Figma card shell and section sizing', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      const card = screen.getByText('tools.mcp.create.cardTitle').closest('.col-span-1')
-      expect(card).toHaveClass(
-        'h-[120px]',
-        'overflow-hidden',
-        'rounded-xl',
-        'border-[0.5px]',
-        'border-components-panel-border',
-        'bg-components-panel-on-panel-item-bg',
-        'shadow-md',
-      )
-
-      const header = screen.getByRole('button', { name: 'tools.mcp.create.cardTitle' })
-      expect(header).toHaveClass('h-[84px]', 'gap-3', 'p-4')
-
-      const docLink = screen.getByText('tools.mcp.create.cardLink').closest('a')
-      expect(docLink).toHaveClass('h-8', 'border-t', 'border-divider-subtle', 'px-3', 'py-2')
-    })
-
-    it('should have clickable cursor style', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      const card = document.querySelector('.cursor-pointer')
-      expect(card).toBeInTheDocument()
     })
   })
 

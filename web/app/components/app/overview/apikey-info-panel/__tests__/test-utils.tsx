@@ -1,0 +1,203 @@
+import type { RenderOptions } from '@testing-library/react'
+import type { Mock, MockedFunction } from 'vitest'
+import type { ModalContextState } from '@/context/modal-context'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { noop } from 'es-toolkit/function'
+import { defaultPlan } from '@/app/components/billing/config'
+import {
+  useModalContext as actualUseModalContext,
+  useModalContextSelector as actualUseModalContextSelector,
+} from '@/context/modal-context'
+import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
+import APIKeyInfoPanel from '../index'
+
+const { mockRouterPush } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+}))
+
+// Mock the modules before importing the functions
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(),
+}))
+
+vi.mock('@/context/modal-context', () => ({
+  useModalContext: vi.fn(),
+  useModalContextSelector: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
+
+// Type casting for mocks
+const mockUseProviderContext = actualUseProviderContext as MockedFunction<
+  typeof actualUseProviderContext
+>
+const mockUseModalContext = actualUseModalContext as MockedFunction<typeof actualUseModalContext>
+const mockUseModalContextSelector = actualUseModalContextSelector as MockedFunction<
+  typeof actualUseModalContextSelector
+>
+
+// Default mock data
+const defaultProviderContext = {
+  modelProviders: [],
+  refreshModelProviders: noop,
+  isLoadingModelProviders: false,
+  textGenerationModelList: [],
+  supportRetrievalMethods: [],
+  isAPIKeySet: false,
+  plan: defaultPlan,
+  isFetchedPlan: false,
+  isFetchedPlanInfo: false,
+  enableBilling: false,
+  onPlanInfoChanged: noop,
+  enableReplaceWebAppLogo: false,
+  modelLoadBalancingEnabled: false,
+  datasetOperatorEnabled: false,
+  enableEducationPlan: false,
+  isEducationWorkspace: false,
+  isEducationAccount: false,
+  allowRefreshEducationVerify: false,
+  educationAccountExpireAt: null,
+  isLoadingEducationAccountInfo: false,
+  isFetchingEducationAccountInfo: false,
+  webappCopyrightEnabled: false,
+  licenseLimit: {
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
+  },
+  refreshLicenseLimit: noop,
+  isAllowTransferWorkspace: false,
+  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
+  humanInputEmailDeliveryEnabled: false,
+}
+
+const defaultModalContext: ModalContextState = {
+  setShowAccountSettingModal: noop,
+  setShowModerationSettingModal: noop,
+  setShowExternalDataToolModal: noop,
+  setShowPricingModal: noop,
+  setShowAnnotationFullModal: noop,
+  setShowModelModal: noop,
+  setShowExternalKnowledgeAPIModal: noop,
+  setShowModelLoadBalancingModal: noop,
+  setShowOpeningModal: noop,
+  setShowUpdatePluginModal: noop,
+  setShowEducationExpireNoticeModal: noop,
+  setShowTriggerEventsLimitModal: noop,
+}
+
+type MockOverrides = {
+  providerContext?: Partial<typeof defaultProviderContext>
+  modalContext?: Partial<typeof defaultModalContext>
+}
+
+type APIKeyInfoPanelRenderOptions = {
+  mockOverrides?: MockOverrides
+} & Omit<RenderOptions, 'wrapper'>
+
+const mainButtonName = /appOverview\.apiKeyInfo\.setAPIBtn/
+
+// Setup function to configure mocks
+function setupMocks(overrides: MockOverrides = {}) {
+  mockUseProviderContext.mockReturnValue({
+    ...defaultProviderContext,
+    ...overrides.providerContext,
+  })
+
+  mockUseModalContext.mockReturnValue({
+    ...defaultModalContext,
+    ...overrides.modalContext,
+  })
+
+  mockUseModalContextSelector.mockImplementation((selector) =>
+    selector({
+      ...defaultModalContext,
+      ...overrides.modalContext,
+    }),
+  )
+}
+
+// Custom render function
+function renderAPIKeyInfoPanel(options: APIKeyInfoPanelRenderOptions = {}) {
+  const { mockOverrides, ...renderOptions } = options
+
+  setupMocks(mockOverrides)
+
+  return render(<APIKeyInfoPanel />, renderOptions)
+}
+
+// Helper functions for common test scenarios
+export const scenarios = {
+  // Render with API key not set (default)
+  withAPIKeyNotSet: (overrides: MockOverrides = {}) =>
+    renderAPIKeyInfoPanel({
+      mockOverrides: {
+        providerContext: { isAPIKeySet: false },
+        ...overrides,
+      },
+    }),
+
+  // Render with API key already set
+  withAPIKeySet: (overrides: MockOverrides = {}) =>
+    renderAPIKeyInfoPanel({
+      mockOverrides: {
+        providerContext: { isAPIKeySet: true },
+        ...overrides,
+      },
+    }),
+
+  // Render with mock modal function
+  withMockModal: (mockSetShowAccountSettingModal: Mock, overrides: MockOverrides = {}) =>
+    renderAPIKeyInfoPanel({
+      mockOverrides: {
+        modalContext: { setShowAccountSettingModal: mockSetShowAccountSettingModal },
+        ...overrides,
+      },
+    }),
+}
+
+// Common user interactions
+export const interactions = {
+  // Click the main button
+  clickMainButton: () => {
+    const button = screen.getByRole('button', { name: mainButtonName })
+    fireEvent.click(button)
+    return button
+  },
+
+  // Click the close button
+  clickCloseButton: (container: HTMLElement) => {
+    const closeButton = container.querySelector('.absolute.right-4.top-4')
+    if (closeButton) fireEvent.click(closeButton)
+    return closeButton
+  },
+}
+
+// Text content keys for assertions
+export const textKeys = {
+  button: mainButtonName,
+  selfHost: {
+    titleRow1: /appOverview\.apiKeyInfo\.selfHost\.title\.row1/,
+    titleRow2: /appOverview\.apiKeyInfo\.selfHost\.title\.row2/,
+    setAPIBtn: /appOverview\.apiKeyInfo\.setAPIBtn/,
+    tryCloud: /appOverview\.apiKeyInfo\.tryCloud/,
+  },
+  cloud: {
+    trialTitle: /appOverview\.apiKeyInfo\.cloud\.trial\.title/,
+    trialDescription: /appOverview\.apiKeyInfo\.cloud\.trial\.description/,
+    setAPIBtn: /appOverview\.apiKeyInfo\.setAPIBtn/,
+  },
+}
+
+// Setup and cleanup utilities
+export function clearAllMocks() {
+  vi.clearAllMocks()
+}
+
+// Export mock functions for external access
+export { defaultModalContext, mockUseModalContext }

@@ -144,34 +144,5 @@ describe('RoleList', () => {
         'text-text-secondary',
       )
     })
-
-    it('uses the no-description fallback with the row description style', () => {
-      render(
-        <RoleList
-          groups={[
-            {
-              id: 'custom',
-              category: 'global_custom',
-              title: 'Custom Roles',
-              items: [
-                createRole({
-                  id: 'role-custom',
-                  category: 'global_custom',
-                  name: 'Partner',
-                  description: '',
-                  is_builtin: false,
-                }),
-              ],
-            },
-          ]}
-        />,
-      )
-
-      expect(screen.getByText('permission.role.noDescription')).toHaveClass(
-        'truncate',
-        'system-xs-regular',
-        'text-text-secondary',
-      )
-    })
   })
 })

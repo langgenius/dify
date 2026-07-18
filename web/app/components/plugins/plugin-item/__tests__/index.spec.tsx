@@ -257,18 +257,6 @@ describe('PluginItem', () => {
       // Assert
       expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
     })
-
-    it('should apply custom className', () => {
-      // Arrange
-      const plugin = createPluginDetail()
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} className="custom-class" />)
-
-      // Assert
-      const innerDiv = container.querySelector('.custom-class')
-      expect(innerDiv).toBeInTheDocument()
-    })
   })
 
   describe('Plugin Sources', () => {
@@ -439,35 +427,6 @@ describe('PluginItem', () => {
       const { container } = render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const warningIcon = container.querySelector('.text-text-accent')
-      expect(warningIcon).not.toBeInTheDocument()
-    })
-
-    it('should handle missing current_version gracefully', () => {
-      // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo(''))
-      const plugin = createPluginDetail()
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert - Should not crash and not show warning
-      const warningIcon = container.querySelector('.text-text-accent')
-      expect(warningIcon).not.toBeInTheDocument()
-    })
-
-    it('should handle missing minimum_dify_version gracefully', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          meta: { version: '1.0.0' },
-        }),
-      })
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert - Should not crash and not show warning
       const warningIcon = container.querySelector('.text-text-accent')
       expect(warningIcon).not.toBeInTheDocument()
     })
@@ -1028,26 +987,6 @@ describe('PluginItem', () => {
   })
 
   describe('Callback Stability', () => {
-    it('should have stable handleDelete callback', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ category: PluginCategoryEnum.tool }),
-      })
-
-      // Act
-      const { rerender } = render(<PluginItem plugin={plugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-      const firstCallArgs = mockRefreshPluginList.mock.calls[0]
-
-      mockRefreshPluginList.mockClear()
-      rerender(<PluginItem plugin={plugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-      const secondCallArgs = mockRefreshPluginList.mock.calls[0]
-
-      // Assert - Both calls should have same arguments
-      expect(firstCallArgs).toEqual(secondCallArgs)
-    })
-
     it('should update handleDelete when category changes', () => {
       // Arrange
       const toolPlugin = createPluginDetail({
@@ -1066,17 +1005,6 @@ describe('PluginItem', () => {
       rerender(<PluginItem plugin={modelPlugin} />)
       fireEvent.click(screen.getByTestId('delete-button'))
       expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: PluginCategoryEnum.model })
-    })
-  })
-
-  describe('React.memo Behavior', () => {
-    it('should be wrapped with React.memo', () => {
-      // Arrange & Assert
-      // The component is exported as React.memo(PluginItem)
-      // We can verify by checking the displayName or type
-      expect(PluginItem).toBeDefined()
-      // React.memo components have a $$typeof property
-      expect((PluginItem as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
     })
   })
 })

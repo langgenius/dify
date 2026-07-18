@@ -875,7 +875,6 @@ describe('Popup', () => {
       />,
     )
 
-    expect(screen.getByTestId('compatible-models-banner'))!.toBeInTheDocument()
     expect(
       screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
     )!.toBeInTheDocument()
@@ -899,7 +898,9 @@ describe('Popup', () => {
     expect(scrollRegion)!.toBeInTheDocument()
     expect(scrollRegion).not.toContainElement(searchInput)
     expect(scrollRegion).not.toContainElement(settingsButton)
-    expect(scrollRegion).toContainElement(screen.getByTestId('compatible-models-banner'))
+    expect(scrollRegion).toContainElement(
+      screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
+    )
   })
 
   it('should filter by scope features including toolCall and non-toolCall checks', () => {

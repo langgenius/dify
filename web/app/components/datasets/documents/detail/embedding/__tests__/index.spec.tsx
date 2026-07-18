@@ -106,16 +106,6 @@ describe('EmbeddingDetail', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
-
-      render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
-
-      await waitFor(() => {
-        expect(screen.getByText(/embedding\.processing/i)).toBeInTheDocument()
-      })
-    })
-
     it('should render with provided datasetId and documentId props', async () => {
       mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
 

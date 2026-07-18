@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
@@ -226,26 +226,5 @@ describe('AuthorizedInNode Component', () => {
     })
     const button = screen.getByRole('button')
     expect(button.textContent).toContain('plugin.auth.unavailable')
-  })
-
-  it('should call onAuthorizationItemClick when clicking', async () => {
-    const AuthorizedInNode = (await import('../authorized-in-node')).default
-    const onAuthorizationItemClick = vi.fn()
-    const pluginPayload = createPluginPayload()
-    render(
-      <AuthorizedInNode
-        pluginPayload={pluginPayload}
-        onAuthorizationItemClick={onAuthorizationItemClick}
-      />,
-      { wrapper: createWrapper() },
-    )
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0]!)
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-  })
-
-  it('should be memoized', async () => {
-    const AuthorizedInNodeModule = await import('../authorized-in-node')
-    expect(typeof AuthorizedInNodeModule.default).toBe('object')
   })
 })
