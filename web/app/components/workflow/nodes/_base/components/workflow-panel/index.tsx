@@ -43,6 +43,7 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { isHumanInputV2NodeData } from '@/app/components/workflow/nodes/human-input-v2/types'
 import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
@@ -231,7 +232,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
   const nodeMetaType = getNodeCatalogType(data)
-  const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
+  const isSupportSingleRun = !isHumanInputV2NodeData(data) && canRunBySingle(data.type, isChildNode)
   const appDetail = useAppStore((state) => state.appDetail)
 
   const hasClickRunning = useRef(false)

@@ -56,6 +56,12 @@ describe('useAvailableNodesMetaData', () => {
       type: BlockEnum.Start,
       title: 'workflow.blocks.start',
     })
+    expect(result.current.nodesMap?.[BlockEnum.HumanInput]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.HumanInputV2]?.defaultValue).toMatchObject({
+      type: BlockEnum.HumanInput,
+      version: '2',
+      recpients_spec: [],
+    })
   })
 
   it('should use explicit docs pages and skip nodes without generated docs pages', () => {

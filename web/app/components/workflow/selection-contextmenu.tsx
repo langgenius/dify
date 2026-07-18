@@ -106,6 +106,7 @@ const unsupportedSnippetNodeTypes = new Set([
   BlockEnum.End,
   BlockEnum.Start,
   BlockEnum.HumanInput,
+  BlockEnum.HumanInputV2,
   BlockEnum.KnowledgeRetrieval,
 ])
 

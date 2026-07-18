@@ -55,6 +55,21 @@ describe('getNodeCatalogType', () => {
       }),
     ).toBe(BlockEnum.Agent)
   })
+
+  it('routes only exact persisted Human Input v2 data to its catalog identity', () => {
+    const humanInput = (version?: unknown) =>
+      ({
+        title: 'Human Input',
+        desc: '',
+        type: BlockEnum.HumanInput,
+        ...(version === undefined ? {} : { version }),
+      }) as CommonNodeType
+
+    expect(getNodeCatalogType(humanInput('2'))).toBe(BlockEnum.HumanInputV2)
+    expect(getNodeCatalogType(humanInput())).toBe(BlockEnum.HumanInput)
+    expect(getNodeCatalogType(humanInput('1'))).toBe(BlockEnum.HumanInput)
+    expect(getNodeCatalogType(humanInput(2))).toBe(BlockEnum.HumanInput)
+  })
 })
 
 describe('generateNewNode', () => {
