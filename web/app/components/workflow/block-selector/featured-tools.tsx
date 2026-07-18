@@ -30,7 +30,7 @@ import { BlockEnum } from '../types'
 import { BlockSelectorRow } from './block-selector-row'
 import { BlockSelectorPreviewCardContent } from './preview-card'
 import Tools from './tools'
-import { ToolTypeEnum } from './types'
+import { ToolType } from './types'
 import { ViewType } from './view-type-select'
 
 const MAX_RECOMMENDED_COUNT = 15
@@ -163,7 +163,7 @@ const FeaturedTools = ({
                 tools={visibleInstalledProviders}
                 onSelect={onSelect}
                 canNotSelectMultiple
-                toolType={ToolTypeEnum.All}
+                toolType={ToolType.All}
                 viewType={ViewType.flat}
                 hasSearchText={false}
                 selectedTools={selectedTools}

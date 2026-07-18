@@ -26,7 +26,7 @@ import FeaturedTools from './featured-tools'
 import { useToolTabs } from './hooks'
 import { RAGToolRecommendations } from './rag-tool-recommendations'
 import Tools from './tools'
-import { ToolTypeEnum } from './types'
+import { ToolType } from './types'
 import ViewTypeSelect, { ViewType } from './view-type-select'
 
 const marketplaceFooterClassName =
@@ -78,7 +78,7 @@ const AllTools = ({
   const { t } = useTranslation()
   const language = useGetLanguage()
   const tabs = useToolTabs()
-  const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
+  const [activeTab, setActiveTab] = useState<ToolType>(ToolType.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
   const trimmedSearchText = searchText.trim()
   const hasSearchText = trimmedSearchText.length > 0
@@ -105,12 +105,12 @@ const AllTools = ({
   }, [allProviders])
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
-    if (activeTab === ToolTypeEnum.All)
+    if (activeTab === ToolType.All)
       mergedTools = [...buildInTools, ...customTools, ...workflowTools, ...mcpTools]
-    if (activeTab === ToolTypeEnum.BuiltIn) mergedTools = buildInTools
-    if (activeTab === ToolTypeEnum.Custom) mergedTools = customTools
-    if (activeTab === ToolTypeEnum.Workflow) mergedTools = workflowTools
-    if (activeTab === ToolTypeEnum.MCP) mergedTools = mcpTools
+    if (activeTab === ToolType.BuiltIn) mergedTools = buildInTools
+    if (activeTab === ToolType.Custom) mergedTools = customTools
+    if (activeTab === ToolType.Workflow) mergedTools = workflowTools
+    if (activeTab === ToolType.MCP) mergedTools = mcpTools
 
     const normalizedSearch = trimmedSearchText.toLowerCase()
     const getLocalizedText = (text?: Record<string, string> | null) => {
@@ -186,9 +186,9 @@ const AllTools = ({
 
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
-  const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
+  const isSupportGroupView = activeTab === ToolType.All || activeTab === ToolType.BuiltIn
 
-  const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolTypeEnum.All && !hasFilter
+  const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolType.All && !hasFilter
   const hasToolsListContent = tools.length > 0 || isShowRAGRecommendations
   const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
   const shouldShowEmptyState = hasFilter && !hasToolsListContent && !hasPluginContent
@@ -196,7 +196,7 @@ const AllTools = ({
     showFeatured &&
     enable_marketplace &&
     !isInRAGPipeline &&
-    activeTab === ToolTypeEnum.All &&
+    activeTab === ToolType.All &&
     !hasFilter
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
@@ -208,10 +208,10 @@ const AllTools = ({
     [onSelect],
   )
   const toolsListTitle = useMemo(() => {
-    if (activeTab === ToolTypeEnum.BuiltIn) return t(($) => $.allToolPlugins, { ns: 'tools' })
-    if (activeTab === ToolTypeEnum.Custom) return t(($) => $.allSwaggerAPIAsTool, { ns: 'tools' })
-    if (activeTab === ToolTypeEnum.Workflow) return t(($) => $.allWorkflowAsTool, { ns: 'tools' })
-    if (activeTab === ToolTypeEnum.MCP) return t(($) => $.allMCP, { ns: 'tools' })
+    if (activeTab === ToolType.BuiltIn) return t(($) => $.allToolPlugins, { ns: 'tools' })
+    if (activeTab === ToolType.Custom) return t(($) => $.allSwaggerAPIAsTool, { ns: 'tools' })
+    if (activeTab === ToolType.Workflow) return t(($) => $.allWorkflowAsTool, { ns: 'tools' })
+    if (activeTab === ToolType.MCP) return t(($) => $.allMCP, { ns: 'tools' })
     return t(($) => $.allTools, { ns: 'tools' })
   }, [activeTab, t])
 

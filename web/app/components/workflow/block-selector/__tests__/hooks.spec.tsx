@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { useTabs, useToolTabs } from '../hooks'
-import { TabsEnum, ToolTypeEnum } from '../types'
+import { TabType, ToolType } from '../types'
 
 describe('block-selector hooks', () => {
   beforeEach(() => {
@@ -11,12 +11,12 @@ describe('block-selector hooks', () => {
     const { result } = renderHook(() =>
       useTabs({
         noStart: false,
-        defaultActiveTab: TabsEnum.Start,
+        defaultActiveTab: TabType.Start,
       }),
     )
 
-    expect(result.current.tabs.find((tab) => tab.key === TabsEnum.Start)?.disabled).toBeFalsy()
-    expect(result.current.initialTab).toBe(TabsEnum.Start)
+    expect(result.current.tabs.find((tab) => tab.key === TabType.Start)?.disabled).toBeFalsy()
+    expect(result.current.initialTab).toBe(TabType.Start)
   })
 
   it('disables the start tab when an unconfigured start placeholder exists', () => {
@@ -24,14 +24,14 @@ describe('block-selector hooks', () => {
       useTabs({
         noStart: false,
         hasStartPlaceholderNode: true,
-        defaultActiveTab: TabsEnum.Start,
+        defaultActiveTab: TabType.Start,
       }),
     )
 
-    const startTab = result.current.tabs.find((tab) => tab.key === TabsEnum.Start)
+    const startTab = result.current.tabs.find((tab) => tab.key === TabType.Start)
     expect(startTab?.disabled).toBe(true)
     expect(startTab?.disabledTip).toBe('workflow.tabs.unconfiguredStartDisabledTip')
-    expect(result.current.initialTab).toBe(TabsEnum.Blocks)
+    expect(result.current.initialTab).toBe(TabType.Blocks)
   })
 
   it('chooses the enabled start panel when blocks, sources, and tools are unavailable', () => {
@@ -45,33 +45,33 @@ describe('block-selector hooks', () => {
       }),
     )
 
-    expect(result.current.tabs.find((tab) => tab.key === TabsEnum.Start)?.disabled).toBeFalsy()
-    expect(result.current.initialTab).toBe(TabsEnum.Start)
+    expect(result.current.tabs.find((tab) => tab.key === TabType.Start)?.disabled).toBeFalsy()
+    expect(result.current.initialTab).toBe(TabType.Start)
   })
 
   it('returns the MCP tab only when it is not hidden', () => {
     const { result: visible } = renderHook(() => useToolTabs())
     const { result: hidden } = renderHook(() => useToolTabs(true))
 
-    expect(visible.current.some((tab) => tab.key === ToolTypeEnum.MCP)).toBe(true)
-    expect(hidden.current.some((tab) => tab.key === ToolTypeEnum.MCP)).toBe(false)
+    expect(visible.current.some((tab) => tab.key === ToolType.MCP)).toBe(true)
+    expect(hidden.current.some((tab) => tab.key === ToolType.MCP)).toBe(false)
   })
 
   it('includes the snippets tab by default', () => {
     const { result } = renderHook(() => useTabs({}))
 
-    expect(result.current.tabs.some((tab) => tab.key === TabsEnum.Snippets)).toBe(true)
+    expect(result.current.tabs.some((tab) => tab.key === TabType.Snippets)).toBe(true)
   })
 
   it('hides the snippets tab and falls back when snippets are disabled', () => {
     const { result } = renderHook(() =>
       useTabs({
-        defaultActiveTab: TabsEnum.Snippets,
+        defaultActiveTab: TabType.Snippets,
         noSnippets: true,
       }),
     )
 
-    expect(result.current.tabs.some((tab) => tab.key === TabsEnum.Snippets)).toBe(false)
-    expect(result.current.initialTab).toBe(TabsEnum.Blocks)
+    expect(result.current.tabs.some((tab) => tab.key === TabType.Snippets)).toBe(false)
+    expect(result.current.initialTab).toBe(TabType.Blocks)
   })
 })

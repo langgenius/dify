@@ -11,7 +11,7 @@ import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
 import { BlockEnum } from '../../types'
 import Blocks from '../blocks'
-import { BlockClassificationEnum } from '../types'
+import { BlockClassification } from '../types'
 
 const runtimeState = vi.hoisted(() => ({
   appType: 'workflow' as string | undefined,
@@ -53,7 +53,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const createBlock = (
   type: BlockEnum,
   title: string,
-  classification = BlockClassificationEnum.Default,
+  classification: BlockClassification = BlockClassification.Default,
   sort = 0,
 ): NodeDefault => ({
   metaData: {
@@ -142,7 +142,7 @@ describe('Blocks', () => {
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.LoopEnd, BlockEnum.KnowledgeBase]}
         blocks={[
           createBlock(BlockEnum.LLM, 'LLM'),
-          createBlock(BlockEnum.LoopEnd, 'Exit Loop', BlockClassificationEnum.Logic),
+          createBlock(BlockEnum.LoopEnd, 'Exit Loop', BlockClassification.Logic),
           createBlock(BlockEnum.KnowledgeBase, 'Knowledge Retrieval'),
         ]}
       />,
@@ -247,8 +247,8 @@ describe('Blocks', () => {
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.LLM, BlockEnum.AgentV2]}
             blocks={[
-              createBlock(BlockEnum.LLM, 'LLM', BlockClassificationEnum.Default, 0),
-              createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3),
+              createBlock(BlockEnum.LLM, 'LLM', BlockClassification.Default, 0),
+              createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3),
             ]}
           />
         </HooksStoreContext>
@@ -336,7 +336,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={vi.fn()}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
@@ -394,7 +394,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
@@ -437,7 +437,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,

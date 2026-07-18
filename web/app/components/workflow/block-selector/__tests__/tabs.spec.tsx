@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { SelectorContent } from '../tabs'
-import { TabsEnum } from '../types'
+import { TabType } from '../types'
 
 const render = (ui: React.ReactElement) =>
   renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
@@ -87,15 +87,15 @@ describe('Tabs', () => {
   })
 
   const baseProps = {
-    defaultTab: TabsEnum.Start,
+    defaultTab: TabType.Start,
     searchInputRef: React.createRef<HTMLInputElement>(),
     onSelect: vi.fn(),
     onRequestClose: vi.fn(),
     blocks: [],
     tabs: [
-      { key: TabsEnum.Start, name: 'Start' },
-      { key: TabsEnum.Blocks, name: 'Blocks', disabled: true },
-      { key: TabsEnum.Tools, name: 'Tools' },
+      { key: TabType.Start, name: 'Start' },
+      { key: TabType.Blocks, name: 'Blocks', disabled: true },
+      { key: TabType.Tools, name: 'Tools' },
     ],
   }
 
@@ -132,7 +132,7 @@ describe('Tabs', () => {
   })
 
   it('should sync normalized tools into workflow store state', () => {
-    render(<SelectorContent {...baseProps} defaultTab={TabsEnum.Tools} />)
+    render(<SelectorContent {...baseProps} defaultTab={TabType.Tools} />)
 
     expect(screen.getByText('tools-content'))!.toBeInTheDocument()
     expect(screen.getByText('/console/tool.svg'))!.toBeInTheDocument()
@@ -163,7 +163,7 @@ describe('Tabs', () => {
           <button
             type="button"
             onClick={() =>
-              setTabs((currentTabs) => currentTabs.filter((tab) => tab.key !== TabsEnum.Tools))
+              setTabs((currentTabs) => currentTabs.filter((tab) => tab.key !== TabType.Tools))
             }
           >
             Remove tools
@@ -191,8 +191,8 @@ describe('Tabs', () => {
     render(
       <SelectorContent
         {...baseProps}
-        defaultTab={TabsEnum.Sources}
-        tabs={[...baseProps.tabs, { key: TabsEnum.Sources, name: 'Sources' }]}
+        defaultTab={TabType.Sources}
+        tabs={[...baseProps.tabs, { key: TabType.Sources, name: 'Sources' }]}
         dataSources={[{ name: 'dataset', icon: '/dataset.svg' } as never]}
       />,
     )
@@ -203,7 +203,7 @@ describe('Tabs', () => {
   it('should keep the previous workflow store state when tool references do not change', () => {
     mockToolsState.buildInTools = [{ icon: '/console/already-prefixed.svg', name: 'tool' }]
 
-    render(<SelectorContent {...baseProps} defaultTab={TabsEnum.Tools} />)
+    render(<SelectorContent {...baseProps} defaultTab={TabType.Tools} />)
 
     const previousState = {
       buildInTools: mockToolsState.buildInTools,
@@ -224,7 +224,7 @@ describe('Tabs', () => {
     mockToolsState.workflowTools = [{ icon: '/workflow.svg', name: 'workflow' }]
     mockToolsState.mcpTools = [{ icon: '/mcp.svg', name: 'mcp' }]
 
-    render(<SelectorContent {...baseProps} defaultTab={TabsEnum.Tools} />)
+    render(<SelectorContent {...baseProps} defaultTab={TabType.Tools} />)
 
     expect(screen.getByText('object-icon'))!.toBeInTheDocument()
 
@@ -258,7 +258,7 @@ describe('Tabs', () => {
   it('should skip normalization when a tool list is undefined', () => {
     mockToolsState.buildInTools = undefined
 
-    render(<SelectorContent {...baseProps} defaultTab={TabsEnum.Tools} />)
+    render(<SelectorContent {...baseProps} defaultTab={TabType.Tools} />)
 
     expect(screen.getByText('tools-content'))!.toBeInTheDocument()
   })
@@ -266,7 +266,7 @@ describe('Tabs', () => {
   it('should force start content to render and invalidate built-in tools after featured installs', async () => {
     const user = userEvent.setup()
 
-    render(<SelectorContent {...baseProps} defaultTab={TabsEnum.Tools} />)
+    render(<SelectorContent {...baseProps} defaultTab={TabType.Tools} />)
 
     await user.click(screen.getByRole('button', { name: 'Install featured tool' }))
 
@@ -275,7 +275,7 @@ describe('Tabs', () => {
   })
 
   it('should compose start content directly without tab semantics in standalone mode', () => {
-    render(<SelectorContent {...baseProps} standalonePanel={TabsEnum.Start} />)
+    render(<SelectorContent {...baseProps} standalonePanel={TabType.Start} />)
 
     expect(screen.getByText('start-content'))!.toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()

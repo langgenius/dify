@@ -13,18 +13,18 @@ import Blocks from './blocks'
 import DataSources from './data-sources'
 import Snippets from './snippets'
 import { ToolPanel } from './tool-panel'
-import { TabsEnum } from './types'
+import { TabType } from './types'
 
 type TabConfig = {
-  key: TabsEnum
+  key: TabType
   name: string
   disabled?: boolean
   disabledTip?: ReactNode
 }
 
 type SelectorContentProps = {
-  defaultTab: TabsEnum
-  standalonePanel?: TabsEnum
+  defaultTab: TabType
+  standalonePanel?: TabType
   tabs: TabConfig[]
   searchInputRef: Ref<HTMLInputElement>
   onSelect: OnSelectBlock
@@ -92,11 +92,11 @@ function SelectorContent({
   const [tags, setTags] = useState<string[]>([])
   const fallbackDisabledTip = t(($) => $['tabs.startDisabledTip'], { ns: 'workflow' })
 
-  const renderSearchFilter = (tab: TabsEnum, inputRef?: Ref<HTMLInputElement>) => {
-    if (tab === TabsEnum.Snippets) return null
+  const renderSearchFilter = (tab: TabType, inputRef?: Ref<HTMLInputElement>) => {
+    if (tab === TabType.Snippets) return null
 
     const filter = (() => {
-      if (tab === TabsEnum.Start) {
+      if (tab === TabType.Start) {
         return (
           <SearchBox
             ref={inputRef}
@@ -110,7 +110,7 @@ function SelectorContent({
         )
       }
 
-      if (tab === TabsEnum.Tools) {
+      if (tab === TabType.Tools) {
         return (
           <SearchBox
             ref={inputRef}
@@ -129,12 +129,12 @@ function SelectorContent({
           ref={inputRef}
           value={searchText}
           placeholder={
-            tab === TabsEnum.Blocks
+            tab === TabType.Blocks
               ? t(($) => $['tabs.searchBlock'], { ns: 'workflow' })
               : t(($) => $['tabs.searchDataSource'], { ns: 'workflow' })
           }
           aria-label={
-            tab === TabsEnum.Blocks
+            tab === TabType.Blocks
               ? t(($) => $['tabs.searchBlock'], { ns: 'workflow' })
               : t(($) => $['tabs.searchDataSource'], { ns: 'workflow' })
           }
@@ -146,10 +146,10 @@ function SelectorContent({
     return <div className="relative m-2">{filter}</div>
   }
 
-  const renderPanel = (tab: TabsEnum, inputRef?: Ref<HTMLInputElement>) => {
+  const renderPanel = (tab: TabType, inputRef?: Ref<HTMLInputElement>) => {
     const searchFilter = renderSearchFilter(tab, inputRef)
 
-    if (tab === TabsEnum.Start) {
+    if (tab === TabType.Start) {
       return (
         <>
           {searchFilter}
@@ -168,7 +168,7 @@ function SelectorContent({
       )
     }
 
-    if (tab === TabsEnum.Blocks) {
+    if (tab === TabType.Blocks) {
       return (
         <>
           {searchFilter}
@@ -184,7 +184,7 @@ function SelectorContent({
       )
     }
 
-    if (tab === TabsEnum.Sources) {
+    if (tab === TabType.Sources) {
       return (
         <>
           {searchFilter}
@@ -195,7 +195,7 @@ function SelectorContent({
       )
     }
 
-    if (tab === TabsEnum.Tools) {
+    if (tab === TabType.Tools) {
       return (
         <>
           {searchFilter}
@@ -225,7 +225,7 @@ function SelectorContent({
       <div className="w-full min-w-0">
         {renderPanel(
           standalonePanel,
-          standalonePanel === TabsEnum.Snippets ? undefined : searchInputRef,
+          standalonePanel === TabType.Snippets ? undefined : searchInputRef,
         )}
       </div>
     )
@@ -255,7 +255,7 @@ function SelectorContent({
         >
           {renderPanel(
             tab.key,
-            tab.key === defaultTab && tab.key !== TabsEnum.Snippets ? searchInputRef : undefined,
+            tab.key === defaultTab && tab.key !== TabType.Snippets ? searchInputRef : undefined,
           )}
         </TabsPanel>
       ))}

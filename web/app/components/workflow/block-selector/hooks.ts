@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BLOCKS } from './constants'
-import { TabsEnum, ToolTypeEnum } from './types'
+import { TabType, ToolType } from './types'
 
 export const useBlocks = () => {
   const { t } = useTranslation()
@@ -31,7 +31,7 @@ export const useTabs = ({
   noTools?: boolean
   noSnippets?: boolean
   noStart?: boolean
-  defaultActiveTab?: TabsEnum
+  defaultActiveTab?: TabType
   hasStartPlaceholderNode?: boolean
   disableStartTab?: boolean
   forceEnableStartTab?: boolean
@@ -47,29 +47,29 @@ export const useTabs = ({
   const tabs = useMemo(() => {
     const tabConfigs = [
       {
-        key: TabsEnum.Blocks,
+        key: TabType.Blocks,
         name: t(($) => $['tabs.blocks'], { ns: 'workflow' }),
         show: !noBlocks,
       },
       {
-        key: TabsEnum.Sources,
+        key: TabType.Sources,
         name: t(($) => $['tabs.sources'], { ns: 'workflow' }),
         show: !noSources,
       },
       {
-        key: TabsEnum.Tools,
+        key: TabType.Tools,
         name: t(($) => $['tabs.tools'], { ns: 'workflow' }),
         show: !noTools,
       },
       {
-        key: TabsEnum.Start,
+        key: TabType.Start,
         name: t(($) => $['tabs.start'], { ns: 'workflow' }),
         show: shouldShowStartTab,
         disabled: shouldDisableStartTab,
         disabledTip: shouldDisableStartTab ? startDisabledTip : undefined,
       },
       {
-        key: TabsEnum.Snippets,
+        key: TabType.Snippets,
         name: t(($) => $['tabs.snippets'], { ns: 'workflow' }),
         show: !noSnippets,
       },
@@ -88,22 +88,22 @@ export const useTabs = ({
   ])
 
   const initialTab = useMemo(() => {
-    const getValidTabKey = (targetKey?: TabsEnum) => {
+    const getValidTabKey = (targetKey?: TabType) => {
       if (!targetKey) return undefined
       const tab = tabs.find((tabItem) => tabItem.key === targetKey)
       if (!tab || tab.disabled) return undefined
       return tab.key
     }
-    const fallbackTab = tabs.find((tab) => !tab.disabled)?.key ?? TabsEnum.Blocks
+    const fallbackTab = tabs.find((tab) => !tab.disabled)?.key ?? TabType.Blocks
     const preferredDefault = getValidTabKey(defaultActiveTab)
     if (preferredDefault) return preferredDefault
 
-    const preferredOrder: TabsEnum[] = []
-    if (!noBlocks) preferredOrder.push(TabsEnum.Blocks)
-    if (!noTools) preferredOrder.push(TabsEnum.Tools)
-    if (!noSources) preferredOrder.push(TabsEnum.Sources)
-    if (!noStart) preferredOrder.push(TabsEnum.Start)
-    if (!noSnippets) preferredOrder.push(TabsEnum.Snippets)
+    const preferredOrder: TabType[] = []
+    if (!noBlocks) preferredOrder.push(TabType.Blocks)
+    if (!noTools) preferredOrder.push(TabType.Tools)
+    if (!noSources) preferredOrder.push(TabType.Sources)
+    if (!noStart) preferredOrder.push(TabType.Start)
+    if (!noSnippets) preferredOrder.push(TabType.Snippets)
 
     for (const tabKey of preferredOrder) {
       const validKey = getValidTabKey(tabKey)
@@ -121,27 +121,27 @@ export const useTabs = ({
 
 export const useToolTabs = (isHideMCPTools?: boolean) => {
   const { t } = useTranslation()
-  const tabs = [
+  const tabs: Array<{ key: ToolType; name: string }> = [
     {
-      key: ToolTypeEnum.All,
+      key: ToolType.All,
       name: t(($) => $['tabs.allTool'], { ns: 'workflow' }),
     },
     {
-      key: ToolTypeEnum.BuiltIn,
+      key: ToolType.BuiltIn,
       name: t(($) => $['tabs.plugin'], { ns: 'workflow' }),
     },
     {
-      key: ToolTypeEnum.Custom,
+      key: ToolType.Custom,
       name: t(($) => $['tabs.customTool'], { ns: 'workflow' }),
     },
     {
-      key: ToolTypeEnum.Workflow,
+      key: ToolType.Workflow,
       name: t(($) => $['tabs.workflowTool'], { ns: 'workflow' }),
     },
   ]
   if (!isHideMCPTools) {
     tabs.push({
-      key: ToolTypeEnum.MCP,
+      key: ToolType.MCP,
       name: 'MCP',
     })
   }

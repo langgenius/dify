@@ -7,7 +7,7 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import type { TabsEnum } from './types'
+import type { TabType } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
@@ -46,7 +46,7 @@ export type NodeSelectorProps = {
   noBlocks?: boolean
   noTools?: boolean
   showStartTab?: boolean
-  defaultActiveTab?: TabsEnum
+  defaultActiveTab?: TabType
   ignoreNodeIds?: string[]
   forceEnableStartTab?: boolean // Force enabling Start tab regardless of existing trigger/user input nodes (e.g., when changing Start node type).
   allowUserInputSelection?: boolean // Override user-input availability; default logic blocks it when triggers exist.

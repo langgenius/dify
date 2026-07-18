@@ -1,5 +1,5 @@
 import type { NodeDefault, OnSelectBlock } from '../types'
-import type { BlockClassificationEnum } from './types'
+import type { BlockClassification } from './types'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -90,7 +90,7 @@ const Blocks = ({
   const isEmpty = Object.values(groups).every((list) => !list.length)
 
   const renderGroup = useCallback(
-    (classification: BlockClassificationEnum) => {
+    (classification: BlockClassification) => {
       const list = [...groups[classification]!].sort((a, b) => {
         if (a.metaData.type === BlockEnum.AgentV2) return -1
         if (b.metaData.type === BlockEnum.AgentV2) return 1

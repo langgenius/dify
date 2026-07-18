@@ -7,7 +7,7 @@ import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import NodeSelector from '../main'
-import { BlockClassificationEnum, TabsEnum } from '../types'
+import { BlockClassification, TabType } from '../types'
 
 vi.mock('reactflow', () => ({
   useStoreApi: () => ({
@@ -50,7 +50,7 @@ vi.mock('@/service/use-tools', () => ({
 
 const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
   metaData: {
-    classification: BlockClassificationEnum.Default,
+    classification: BlockClassification.Default,
     sort: 0,
     type,
     title,
@@ -364,7 +364,7 @@ describe('NodeSelector', () => {
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
         showStartTab
-        defaultActiveTab={TabsEnum.Start}
+        defaultActiveTab={TabType.Start}
       />,
       {
         initialStoreState: {
@@ -397,7 +397,7 @@ describe('NodeSelector', () => {
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start, BlockEnum.TriggerPlugin]}
         showStartTab
-        defaultActiveTab={TabsEnum.Start}
+        defaultActiveTab={TabType.Start}
       />,
       {
         initialStoreState: {
