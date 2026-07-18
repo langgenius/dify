@@ -7,13 +7,12 @@ import {
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { memo, useCallback, useEffect, useMemo } from 'react'
+import { Fragment, memo, useCallback, useEffect, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import BlockIcon from '../block-icon'
 import { BlockEnum as BlockEnumValues } from '../types'
 import { BlockSelectorRow } from './block-selector-row'
-// import { useNodeMetaData } from '../hooks'
 import { START_BLOCKS } from './constants'
 import { BlockSelectorPreviewCardContent } from './preview-card'
 
@@ -30,6 +29,8 @@ type StartBlocksProps = {
 }
 type StartBlockPreviewPayload = {
   block: (typeof START_BLOCKS)[number]
+  label: string
+  description: string
 }
 
 const StartBlocks = ({
@@ -46,7 +47,7 @@ const StartBlocks = ({
   const { t } = useTranslation()
   const nodes = useNodes()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<StartBlockPreviewPayload>(), [])
-  // const nodeMetaData = useNodeMetaData()
+  const previewDescriptionBaseId = useId()
 
   const filteredBlocks = useMemo(() => {
     // Check if Start node already exists in workflow
@@ -99,22 +100,24 @@ const StartBlocks = ({
     onContentStateChange?.(!isEmpty)
   }, [isEmpty, onContentStateChange])
 
-  // Preview is supplementary: the block icon, title and description all become
-  // reachable from the inspector + canvas once the row is clicked to insert
-  // the start node, so hover/focus-only activation is a11y-safe. See
-  // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
   const renderBlock = useCallback(
     (block: (typeof START_BLOCKS)[number]) => {
       const isUserInput = block.type === BlockEnumValues.Start
       const isUserInputDisabled = isUserInput && showUserInputDisabled
       const isRowDisabled = disabled || (isUserInput && showUserInputAdded) || isUserInputDisabled
       const label = t(($) => $[`blocks.${block.type}`], { ns: 'workflow' })
+      const description =
+        block.type === BlockEnumValues.Start
+          ? t(($) => $['nodes.start.userInputTipDescription'], { ns: 'workflow' })
+          : t(($) => $[`blocksAbout.${block.type}`], { ns: 'workflow' })
+      const previewDescriptionId = `${previewDescriptionBaseId}-${block.type}`
       const disabledReason = t(($) => $['nodes.startPlaceholder.userInputConflictTip'], {
         ns: 'workflow',
       })
       const row = (
         <BlockSelectorRow
           aria-disabled={isRowDisabled}
+          aria-describedby={previewDescriptionId}
           aria-label={isUserInputDisabled ? `${label}. ${disabledReason}` : label}
           disabled={isRowDisabled}
           onClick={() => {
@@ -153,34 +156,44 @@ const StartBlocks = ({
 
       if (isUserInputDisabled) {
         return (
-          <Tooltip key={block.type}>
-            <TooltipTrigger render={row} />
-            <TooltipContent
-              placement="right"
-              sideOffset={8}
-              className="max-w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg"
-            >
-              <p className="system-xs-regular text-text-secondary">{disabledReason}</p>
-            </TooltipContent>
-          </Tooltip>
+          <Fragment key={block.type}>
+            <Tooltip>
+              <TooltipTrigger render={row} />
+              <TooltipContent
+                placement="right"
+                sideOffset={8}
+                className="max-w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg"
+              >
+                <p className="system-xs-regular text-text-secondary">{disabledReason}</p>
+              </TooltipContent>
+            </Tooltip>
+            <span id={previewDescriptionId} className="sr-only">
+              {description}
+            </span>
+          </Fragment>
         )
       }
 
       return (
-        <PreviewCardTrigger
-          key={block.type}
-          delay={150}
-          closeDelay={150}
-          handle={previewCardHandle}
-          payload={{ block }}
-          render={row}
-        />
+        <Fragment key={block.type}>
+          <PreviewCardTrigger
+            delay={150}
+            closeDelay={150}
+            handle={previewCardHandle}
+            payload={{ block, label, description }}
+            render={row}
+          />
+          <span id={previewDescriptionId} className="sr-only">
+            {description}
+          </span>
+        </Fragment>
       )
     },
     [
       disabled,
       onSelect,
       previewCardHandle,
+      previewDescriptionBaseId,
       showMostCommonBadge,
       showUserInputAdded,
       showUserInputDisabled,
@@ -223,11 +236,7 @@ type StartBlockPreviewCardProps = {
 function StartBlockPreviewCard({ payload, t }: StartBlockPreviewCardProps) {
   if (!payload) return null
 
-  const { block } = payload
-  const description =
-    block.type === BlockEnumValues.Start
-      ? t(($) => $['nodes.start.userInputTipDescription'], { ns: 'workflow' })
-      : t(($) => $[`blocksAbout.${block.type}`], { ns: 'workflow' })
+  const { block, label, description } = payload
   const showDifyTeamAuthor = [
     BlockEnumValues.Start,
     BlockEnumValues.TriggerWebhook,
@@ -237,9 +246,7 @@ function StartBlockPreviewCard({ payload, t }: StartBlockPreviewCardProps) {
   return (
     <BlockSelectorPreviewCardContent>
       <BlockIcon size="md" className="mb-2" type={block.type} />
-      <div className="mb-1 system-md-medium text-text-primary">
-        {t(($) => $[`blocks.${block.type}`], { ns: 'workflow' })}
-      </div>
+      <div className="mb-1 system-md-medium text-text-primary">{label}</div>
       <div className="system-xs-regular wrap-break-word text-text-secondary">{description}</div>
       {showDifyTeamAuthor && (
         <div className="mt-1 system-xs-regular text-text-tertiary">

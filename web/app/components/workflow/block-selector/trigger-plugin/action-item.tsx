@@ -39,12 +39,14 @@ const TriggerPluginActionItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const previewDescriptionId = React.useId()
+  const previewDescription = payload.description[language]
 
   const row = (
     <button
       type="button"
+      aria-describedby={previewDescription ? previewDescriptionId : undefined}
       disabled={disabled}
-      key={payload.name}
       className={cn(
         'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-[21px] text-left focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
         disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
@@ -75,11 +77,7 @@ const TriggerPluginActionItem: FC<Props> = ({
         })
       }}
     >
-      <div
-        className={cn(
-          'truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary',
-        )}
-      >
+      <div className="truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary">
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (
@@ -91,18 +89,20 @@ const TriggerPluginActionItem: FC<Props> = ({
   )
 
   return (
-    // Preview is supplementary: provider icon, event label and description are all
-    // reachable from the node inspector after the row is clicked to add the trigger,
-    // so hover/focus-only activation is a11y-safe. See
-    // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-    <PreviewCardTrigger
-      key={payload.name}
-      delay={150}
-      closeDelay={150}
-      handle={previewCardHandle}
-      payload={{ provider, payload, language }}
-      render={row}
-    />
+    <>
+      <PreviewCardTrigger
+        delay={150}
+        closeDelay={150}
+        handle={previewCardHandle}
+        payload={{ provider, payload, language }}
+        render={row}
+      />
+      {previewDescription && (
+        <span id={previewDescriptionId} className="sr-only">
+          {previewDescription}
+        </span>
+      )}
+    </>
   )
 }
 

@@ -6,7 +6,7 @@ import {
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { groupBy } from 'es-toolkit/compat'
-import { memo, useCallback, useMemo } from 'react'
+import { Fragment, memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
@@ -37,6 +37,7 @@ const Blocks = ({
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<BlockPreviewPayload>(), [])
+  const previewDescriptionBaseId = useId()
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
   const blocks =
@@ -139,38 +140,49 @@ const Blocks = ({
               )
             }
 
+            const previewDescriptionId = block.metaData.description
+              ? `${previewDescriptionBaseId}-${block.metaData.type}`
+              : undefined
+
             return (
-              <PreviewCardTrigger
-                key={block.metaData.type}
-                delay={150}
-                closeDelay={150}
-                handle={previewCardHandle}
-                payload={{ block }}
-                render={
-                  <button
-                    type="button"
-                    className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                    onClick={() => onSelect(block.metaData.type)}
-                  >
-                    <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
-                    <span className="min-w-0 grow truncate text-sm text-text-secondary">
-                      {block.metaData.title}
-                    </span>
-                    {block.metaData.type === BlockEnum.LoopEnd && (
-                      <Badge
-                        text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflow' })}
-                        className="ml-2 shrink-0"
-                      />
-                    )}
-                  </button>
-                }
-              />
+              <Fragment key={block.metaData.type}>
+                <PreviewCardTrigger
+                  delay={150}
+                  closeDelay={150}
+                  handle={previewCardHandle}
+                  payload={{ block }}
+                  render={
+                    <button
+                      type="button"
+                      aria-describedby={previewDescriptionId}
+                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      onClick={() => onSelect(block.metaData.type)}
+                    >
+                      <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
+                      <span className="min-w-0 grow truncate text-sm text-text-secondary">
+                        {block.metaData.title}
+                      </span>
+                      {block.metaData.type === BlockEnum.LoopEnd && (
+                        <Badge
+                          text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflow' })}
+                          className="ml-2 shrink-0"
+                        />
+                      )}
+                    </button>
+                  }
+                />
+                {previewDescriptionId && (
+                  <span id={previewDescriptionId} className="sr-only">
+                    {block.metaData.description}
+                  </span>
+                )}
+              </Fragment>
             )
           })}
         </div>
       )
     },
-    [groups, onSelect, previewCardHandle, t, store],
+    [groups, onSelect, previewCardHandle, previewDescriptionBaseId, t, store],
   )
 
   return (

@@ -130,7 +130,7 @@ const FeaturedTriggers = ({
       open={!isCollapsed}
       onOpenChange={(open) => setIsCollapsed(!open)}
     >
-      <CollapsibleTrigger className="min-h-0 justify-start gap-0 rounded-md px-4 py-1 text-text-primary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-primary data-panel-open:text-text-primary">
+      <CollapsibleTrigger className="min-h-0 justify-start gap-0 rounded-md px-4 py-1 hover:not-data-disabled:bg-transparent">
         <span className="system-xs-medium text-text-primary">
           {t(($) => $['tabs.featuredTools'], { ns: 'workflow' })}
         </span>
@@ -141,92 +141,89 @@ const FeaturedTriggers = ({
       </CollapsibleTrigger>
 
       <CollapsiblePanel>
-        <>
-          {isLoading && (
-            <div className="py-3">
-              <Loading type="app" />
-            </div>
-          )}
+        {isLoading && (
+          <div className="py-3">
+            <Loading type="app" />
+          </div>
+        )}
 
-          {showEmptyState && (
-            <p className="px-4 py-2 system-xs-regular text-text-tertiary">
-              <Link
-                className="text-text-accent"
-                href={getMarketplaceCategoryUrl(PluginCategoryEnum.trigger)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t(($) => $['tabs.noFeaturedTriggers'], { ns: 'workflow' })}
-              </Link>
-            </p>
-          )}
-
-          {!showEmptyState && !isLoading && (
-            <div className="mt-1 p-1">
-              {visibleInstalledProviders.map((provider) => (
-                <TriggerPluginItem
-                  key={provider.id}
-                  payload={provider}
-                  hasSearchText={false}
-                  previewCardHandle={triggerActionPreviewCardHandle}
-                  onSelect={onSelect}
-                />
-              ))}
-
-              {visibleUninstalledPlugins.map((plugin) => (
-                <div key={plugin.plugin_id} className="mb-1 last-of-type:mb-0">
-                  <FeaturedTriggerUninstalledItem
-                    plugin={plugin}
-                    language={language}
-                    previewCardHandle={previewCardHandle}
-                    onInstallSuccess={async () => {
-                      await onInstallSuccess?.()
-                    }}
-                    t={t}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!isLoading && totalVisible > 0 && canToggleVisibility && (
-            <button
-              type="button"
-              aria-expanded={isExpanded}
-              className="group mt-1 flex w-full cursor-pointer items-center gap-x-2 rounded-lg border-0 bg-transparent py-1 pr-2 pl-3 text-left text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={() => {
-                setVisibleCount((count) => {
-                  if (count >= maxAvailable) return INITIAL_VISIBLE_COUNT
-
-                  return Math.min(count + INITIAL_VISIBLE_COUNT, maxAvailable)
-                })
-              }}
+        {showEmptyState && (
+          <p className="px-4 py-2 system-xs-regular text-text-tertiary">
+            <Link
+              className="text-text-accent"
+              href={getMarketplaceCategoryUrl(PluginCategoryEnum.trigger)}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              <div className="flex items-center px-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
+              {t(($) => $['tabs.noFeaturedTriggers'], { ns: 'workflow' })}
+            </Link>
+          </p>
+        )}
+
+        {!showEmptyState && !isLoading && (
+          <div className="mt-1 p-1">
+            {visibleInstalledProviders.map((provider) => (
+              <TriggerPluginItem
+                key={provider.id}
+                payload={provider}
+                hasSearchText={false}
+                previewCardHandle={triggerActionPreviewCardHandle}
+                onSelect={onSelect}
+              />
+            ))}
+
+            {visibleUninstalledPlugins.map((plugin) => (
+              <div key={plugin.plugin_id} className="mb-1 last-of-type:mb-0">
+                <FeaturedTriggerUninstalledItem
+                  plugin={plugin}
+                  language={language}
+                  previewCardHandle={previewCardHandle}
+                  onInstallSuccess={async () => {
+                    await onInstallSuccess?.()
+                  }}
+                  t={t}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && totalVisible > 0 && canToggleVisibility && (
+          <button
+            type="button"
+            className="group mt-1 flex w-full cursor-pointer touch-manipulation items-center gap-x-2 rounded-lg border-0 bg-transparent py-1 pr-2 pl-3 text-left text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+            onClick={() => {
+              setVisibleCount((count) => {
+                if (count >= maxAvailable) return INITIAL_VISIBLE_COUNT
+
+                return Math.min(count + INITIAL_VISIBLE_COUNT, maxAvailable)
+              })
+            }}
+          >
+            <div className="flex items-center px-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
+              <span
+                aria-hidden
+                className="i-ri-more-line size-4 group-hover:hidden group-focus-visible:hidden"
+              />
+              {isExpanded ? (
                 <span
                   aria-hidden
-                  className="i-ri-more-line size-4 group-hover:hidden group-focus-visible:hidden"
+                  className="i-custom-vender-solid-arrows-arrow-up-double-line hidden size-4 group-hover:block group-focus-visible:block"
                 />
-                {isExpanded ? (
-                  <span
-                    aria-hidden
-                    className="i-custom-vender-solid-arrows-arrow-up-double-line hidden size-4 group-hover:block group-focus-visible:block"
-                  />
-                ) : (
-                  <span
-                    aria-hidden
-                    className="i-custom-vender-solid-arrows-arrow-down-double-line hidden size-4 group-hover:block group-focus-visible:block"
-                  />
-                )}
-              </div>
-              <div className="system-xs-regular">
-                {t(($) => $[isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured'], {
-                  ns: 'workflow',
-                })}
-              </div>
-            </button>
-          )}
-        </>
+              ) : (
+                <span
+                  aria-hidden
+                  className="i-custom-vender-solid-arrows-arrow-down-double-line hidden size-4 group-hover:block group-focus-visible:block"
+                />
+              )}
+            </div>
+            <div className="system-xs-regular">
+              {t(($) => $[isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured'], {
+                ns: 'workflow',
+              })}
+            </div>
+          </button>
+        )}
       </CollapsiblePanel>
       <PreviewCard handle={previewCardHandle}>
         {({ payload }) => (
@@ -324,7 +321,9 @@ function FeaturedTriggerUninstalledItem({
           <span
             className={cn(
               'system-xs-regular text-text-tertiary',
-              actionOpen ? 'hidden' : 'group-focus-within:hidden group-hover:hidden',
+              actionOpen
+                ? 'hidden'
+                : 'group-focus-within:hidden group-hover:hidden [@media(hover:none)]:hidden',
             )}
           >
             {installCountLabel}
@@ -334,7 +333,7 @@ function FeaturedTriggerUninstalledItem({
               'absolute right-0 flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text opacity-0 transition-opacity motion-reduce:transition-none [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0',
               actionOpen
                 ? 'pointer-events-auto opacity-100'
-                : 'pointer-events-none group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+                : 'pointer-events-none group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100',
             )}
           >
             {canInstallPlugin && (

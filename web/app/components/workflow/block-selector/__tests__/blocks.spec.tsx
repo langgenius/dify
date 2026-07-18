@@ -148,12 +148,14 @@ describe('Blocks', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'LLM' })).toBeInTheDocument()
+    const llmButton = screen.getByRole('button', { name: 'LLM' })
+    expect(llmButton).toBeInTheDocument()
+    expect(llmButton).toHaveAccessibleDescription('LLM description')
     expect(screen.getByText('Exit Loop')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.loop.loopNode')).toBeInTheDocument()
     expect(screen.queryByText('Knowledge Retrieval')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'LLM' }))
+    await user.click(llmButton)
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.LLM)
   })
