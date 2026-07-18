@@ -502,7 +502,7 @@ class IndexingRunner:
     def filter_string(text):
         text = re.sub(r"<\|", "<", text)
         text = re.sub(r"\|>", ">", text)
-        text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xEF\xBF\xBE]", "", text)
+        text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", text)
         # Unicode  U+FFFE
         text = re.sub("\ufffe", "", text)
         return text
