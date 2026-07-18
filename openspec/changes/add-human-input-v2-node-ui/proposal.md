@@ -36,7 +36,7 @@
 - v2 应复用现有 form editor、form inputs、user actions、timeout、输出变量和 branch handle 能力，避免复制无版本差异的逻辑；共享前必须消除对 v1 `delivery_methods` 的隐式依赖。
 - Contact recipient option source 必须通过可替换的前端 provider 边界接入；本 change 不新增 Contact API。后端 Contact 数据源未完成时可使用 typed mock options 做组件与交互验证。
 - 本 change 不修改 `api/core/workflow/nodes/human_input_v2/entities.py`，并接受 graphon 尚未注册 v2 runtime 的当前状态；运行时接入属于后续 change。
-- 需要同步 `web/i18n/*`，使用 `@langgenius/dify-ui/*` overlay primitives，并为版本共存、DSL round-trip、recipient 状态、debug mode 和 message template 增加 Vitest / Testing Library 测试。
+- 需要同步 `web/i18n/en-US/` 与 `web/i18n/zh-Hans/`，本 change 不修改其他 locale；使用 `@langgenius/dify-ui/*` overlay primitives，并为版本共存、DSL round-trip、recipient 状态、debug mode 和 message template 增加 Vitest / Testing Library 测试。
 - 设计验收来源：
   - Node recipient 状态：Figma nodes `25096:30986`、`25096:32299`、`25096:32351`、`25096:32400`
   - Recipient 配置：Figma node `25094:31750`

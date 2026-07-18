@@ -45,7 +45,7 @@ DebugChannel
 | Debug mode          | `25212:78480`                                              |
 | Message template    | `25170:22597`                                              |
 
-当前环境无法读取这些 Figma 节点的具体图层内容，因此实施前必须通过授权访问建立逐节点 acceptance matrix，不能凭节点标题推断最终布局或文案。
+实施开始时已通过授权访问读取全部八个 Figma 节点，并将逐节点布局、文案、状态、键盘、只读和响应式验收记录在 `figma-acceptance.md`。实现与视觉核对以该矩阵为准。
 
 ## Goals / Non-Goals
 
@@ -57,7 +57,7 @@ DebugChannel
 - 复用 v1/v2 共同的 form content、inputs、user actions、timeout、outputs 和 branch behavior。
 - 为 Contact recipient 使用可替换的前端 option-provider 边界，在没有 Contact API 时以 typed mock options 验证 UI。
 - 覆盖 DSL import、前端编辑、复制粘贴、变量重命名与导出前数据的 round-trip。
-- 遵循 dify-ui、i18n、可访问性和 Vitest / Testing Library 规范。
+- 遵循 dify-ui、英语与简体中文 i18n、可访问性和 Vitest / Testing Library 规范；本 change 不修改其他 locale。
 
 **Non-Goals:**
 
