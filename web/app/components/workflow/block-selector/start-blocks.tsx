@@ -159,13 +159,7 @@ const StartBlocks = ({
           <Fragment key={block.type}>
             <Tooltip>
               <TooltipTrigger render={row} />
-              <TooltipContent
-                placement="right"
-                sideOffset={8}
-                className="max-w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg"
-              >
-                <p className="system-xs-regular text-text-secondary">{disabledReason}</p>
-              </TooltipContent>
+              <TooltipContent className="rounded-xl">{disabledReason}</TooltipContent>
             </Tooltip>
             <span id={previewDescriptionId} className="sr-only">
               {description}
