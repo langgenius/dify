@@ -2112,11 +2112,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/search-input/__tests__/index.spec.tsx": {
-    "jsx_a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/components/base/search-input/index.stories.tsx": {
     "jsx_a11y/label-has-associated-control": {
       "count": 3
@@ -3346,11 +3341,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/marketplace/search-box/index.tsx": {
-    "jsx_a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/marketplace/search-box/tags-filter.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4105,22 +4095,9 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/all-tools.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/block-selector/constants.tsx": {
     "react/only-export-components": {
       "count": 3
-    }
-  },
-  "web/app/components/workflow/block-selector/hooks.ts": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/components/workflow/block-selector/index-bar.tsx": {
@@ -4128,29 +4105,7 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/main.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-autofocus": {
-      "count": 4
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/block-selector/market-place-plugin/list.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/rag-tool-recommendations/index.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -4164,19 +4119,6 @@
     },
     "jsx_a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/snippets/index.tsx": {
-    "jsx_a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/tabs.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "web/app/components/workflow/block-selector/tool-picker.tsx": {

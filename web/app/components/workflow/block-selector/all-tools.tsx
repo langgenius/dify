@@ -1,4 +1,4 @@
-import type { Dispatch, RefObject, SetStateAction } from 'react'
+import type { RefObject } from 'react'
 import type { Plugin } from '../../plugins/types'
 import type { BlockEnum, ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
@@ -24,7 +24,7 @@ import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
 import FeaturedTools from './featured-tools'
 import { useToolTabs } from './hooks'
-import RAGToolRecommendations from './rag-tool-recommendations'
+import { RAGToolRecommendations } from './rag-tool-recommendations'
 import Tools from './tools'
 import { ToolTypeEnum } from './types'
 import ViewTypeSelect, { ViewType } from './view-type-select'
@@ -45,7 +45,7 @@ type AllToolsProps = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-  onTagsChange?: Dispatch<SetStateAction<string[]>>
+  onTagsChange?: (tags: string[]) => void
   isInRAGPipeline?: boolean
   featuredPlugins?: Plugin[]
   featuredLoading?: boolean
@@ -84,6 +84,10 @@ const AllTools = ({
   const hasSearchText = trimmedSearchText.length > 0
   const hasTags = tags.length > 0
   const hasFilter = hasSearchText || hasTags
+  const handleLoadMoreRAGTools = () => {
+    if (!onTagsChange || tags.includes('rag')) return
+    onTagsChange([...tags, 'rag'])
+  }
   const isMatchingKeywords = (text: string, keywords: string) => {
     return text.toLowerCase().includes(keywords.toLowerCase())
   }
@@ -216,17 +220,19 @@ const AllTools = ({
       <div className="flex items-center justify-between border-b border-divider-subtle px-3">
         <div className="flex h-8 items-center space-x-1">
           {tabs.map((tab) => (
-            <div
+            <button
+              type="button"
               className={cn(
-                'flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover',
+                'flex h-6 cursor-pointer items-center rounded-md border-0 bg-transparent px-2 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 'text-xs font-medium text-text-secondary',
                 activeTab === tab.key && 'bg-state-base-hover-alt',
               )}
               key={tab.key}
+              aria-pressed={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
             >
               {tab.name}
-            </div>
+            </button>
           ))}
         </div>
         {isSupportGroupView && <ViewTypeSelect viewType={activeView} onChange={setActiveView} />}
@@ -242,7 +248,7 @@ const AllTools = ({
               <RAGToolRecommendations
                 viewType={isSupportGroupView ? activeView : ViewType.flat}
                 onSelect={handleRAGSelect}
-                onTagsChange={onTagsChange}
+                onLoadMore={handleLoadMoreRAGTools}
               />
             )}
             {shouldShowFeatured && (

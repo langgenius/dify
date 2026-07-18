@@ -1,10 +1,8 @@
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BLOCKS } from './constants'
 import { TabsEnum, ToolTypeEnum } from './types'
-
-const startNodesDocsTipLinkKey = 'startNodesDocs' as const
 
 export const useBlocks = () => {
   const { t } = useTranslation()
@@ -69,10 +67,6 @@ export const useTabs = ({
         show: shouldShowStartTab,
         disabled: shouldDisableStartTab,
         disabledTip: shouldDisableStartTab ? startDisabledTip : undefined,
-        disabledTipLinkKey:
-          shouldDisableStartTab && !disableStartTab && hasStartPlaceholderNode
-            ? startNodesDocsTipLinkKey
-            : undefined,
       },
       {
         key: TabsEnum.Snippets,
@@ -91,21 +85,15 @@ export const useTabs = ({
     shouldShowStartTab,
     shouldDisableStartTab,
     startDisabledTip,
-    disableStartTab,
-    hasStartPlaceholderNode,
   ])
 
-  const getValidTabKey = useCallback(
-    (targetKey?: TabsEnum) => {
+  const initialTab = useMemo(() => {
+    const getValidTabKey = (targetKey?: TabsEnum) => {
       if (!targetKey) return undefined
       const tab = tabs.find((tabItem) => tabItem.key === targetKey)
       if (!tab || tab.disabled) return undefined
       return tab.key
-    },
-    [tabs],
-  )
-
-  const initialTab = useMemo(() => {
+    }
     const fallbackTab = tabs.find((tab) => !tab.disabled)?.key ?? TabsEnum.Blocks
     const preferredDefault = getValidTabKey(defaultActiveTab)
     if (preferredDefault) return preferredDefault
@@ -123,22 +111,11 @@ export const useTabs = ({
     }
 
     return fallbackTab
-  }, [defaultActiveTab, noBlocks, noSources, noTools, noSnippets, noStart, tabs, getValidTabKey])
-  const [activeTab, setActiveTab] = useState(initialTab)
-  const resetActiveTab = useCallback(() => {
-    setActiveTab(initialTab)
-  }, [initialTab])
-
-  useEffect(() => {
-    const currentTab = tabs.find((tab) => tab.key === activeTab)
-    if (!currentTab || currentTab.disabled) resetActiveTab()
-  }, [tabs, activeTab, resetActiveTab])
+  }, [defaultActiveTab, noBlocks, noSources, noTools, noSnippets, noStart, tabs])
 
   return {
     tabs,
-    activeTab,
-    setActiveTab,
-    resetActiveTab,
+    initialTab,
   }
 }
 

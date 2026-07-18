@@ -50,7 +50,6 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         noBlocks={true}
         showStartTab={true}
         defaultActiveTab={TabsEnum.Start}
-        forceShowStartContent={true}
         availableBlocksTypes={[
           BlockEnum.TriggerSchedule,
           BlockEnum.TriggerWebhook,
