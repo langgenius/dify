@@ -3,7 +3,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import { BLUR_COMMAND, FOCUS_COMMAND } from 'lexical'
 import OnBlurBlock from '../on-blur-or-focus-block'
-import { CaptureEditorPlugin } from '../test-utils'
+import { CaptureEditorPlugin } from './test-utils'
 
 const renderOnBlurBlock = (props?: { onBlur?: () => void; onFocus?: () => void }) => {
   let editor: LexicalEditor | null = null

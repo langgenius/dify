@@ -103,11 +103,6 @@ describe('DocumentTableRow', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('test-document.txt'))!.toBeInTheDocument()
-    })
-
     it('should render index number correctly', () => {
       render(<DocumentTableRow {...defaultProps} index={5} />, { wrapper: createWrapper() })
       expect(screen.getByText('6'))!.toBeInTheDocument()
@@ -349,14 +344,6 @@ describe('DocumentTableRow', () => {
       const doc = createMockDoc({ name: '<script>test</script>.txt' })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
       expect(screen.getByText('<script>test</script>.txt'))!.toBeInTheDocument()
-    })
-
-    it('should memoize the component', () => {
-      const wrapper = createWrapper()
-      const { rerender } = render(<DocumentTableRow {...defaultProps} />, { wrapper })
-
-      rerender(<DocumentTableRow {...defaultProps} />)
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
   })
 })

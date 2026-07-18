@@ -166,7 +166,7 @@ function ConfigSnapshotProbe() {
   const draft = useAtomValue(agentComposerDraftAtom)
   const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
 
-  return <pre data-testid="config-snapshot-probe">{JSON.stringify(configSnapshot)}</pre>
+  return <pre aria-label="config snapshot">{JSON.stringify(configSnapshot)}</pre>
 }
 
 function renderAgentSkills({
@@ -268,6 +268,49 @@ describe('AgentSkills', () => {
     }))
   })
 
+  it('should prevent missing skills from being previewed or downloaded', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({
+      initialDraft: {
+        ...defaultAgentSoulConfigFormState,
+        skills: [
+          {
+            id: 'Missing Skill',
+            name: 'Missing Skill',
+            fileId: 'missing-skill-id',
+            isMissing: true,
+          },
+          {
+            id: 'Available Skill',
+            name: 'Available Skill',
+            fileId: 'available-skill-id',
+          },
+        ],
+      },
+    })
+
+    const warning = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.skills.missing',
+    })
+    expect(warning.querySelector('.i-ri-alert-fill')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', {
+        name: 'agentV2.agentDetail.configure.skills.missing',
+      }),
+    ).toHaveLength(1)
+
+    const missingSkill = screen.getByRole('button', { name: 'Missing Skill' })
+    expect(missingSkill).toBeDisabled()
+    expect(
+      screen.queryByRole('button', {
+        name: /common\.operation\.download Missing Skill/,
+      }),
+    ).not.toBeInTheDocument()
+
+    await user.click(missingSkill)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('should delete a configured skill by config name', async () => {
     const { container } = renderAgentSkills()
 
@@ -329,7 +372,7 @@ describe('AgentSkills', () => {
     })
 
     expect(screen.getByText('Invoice Helper')).toBeInTheDocument()
-    const snapshot = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
+    const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([
       expect.objectContaining({
         name: 'Invoice Helper',

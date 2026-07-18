@@ -22,7 +22,6 @@ export default function ThemeSwitcher() {
         )}
         onClick={() => handleThemeChange('system')}
         aria-label="System theme"
-        data-testid="system-theme-container"
       >
         <div className="p-0.5">
           <span className="i-ri-computer-line size-4" />
@@ -41,7 +40,6 @@ export default function ThemeSwitcher() {
         )}
         onClick={() => handleThemeChange('light')}
         aria-label="Light theme"
-        data-testid="light-theme-container"
       >
         <div className="p-0.5">
           <span className="i-ri-sun-line size-4" />
@@ -60,7 +58,6 @@ export default function ThemeSwitcher() {
         )}
         onClick={() => handleThemeChange('dark')}
         aria-label="Dark theme"
-        data-testid="dark-theme-container"
       >
         <div className="p-0.5">
           <span className="i-ri-moon-line size-4" />

@@ -180,11 +180,6 @@ describe('DocumentList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('table'))!.toBeInTheDocument()
-    })
-
     it('should render all documents', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('Document 1.txt'))!.toBeInTheDocument()

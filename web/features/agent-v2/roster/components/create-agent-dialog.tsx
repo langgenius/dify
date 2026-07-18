@@ -23,11 +23,16 @@ import { getAgentDetailPath } from '../../agent-detail/routes'
 import { defaultAgentIcon } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
-export function CreateAgentDialog() {
+type CreateAgentDialogProps = {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps = {}) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -46,7 +51,8 @@ export function CreateAgentDialog() {
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
+    if (open === undefined) setUncontrolledOpen(nextOpen)
+    onOpenChange?.(nextOpen)
     if (!nextOpen) resetForm()
   }
 
@@ -80,11 +86,17 @@ export function CreateAgentDialog() {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogTrigger render={<Button variant="primary" className="h-8 gap-0.5 px-3" />}>
-          <span aria-hidden className="i-ri-add-line size-4" />
-          <span className="px-0.5 system-sm-medium">{t(($) => $['roster.createAgent'])}</span>
-        </DialogTrigger>
+      <Dialog
+        open={open ?? uncontrolledOpen}
+        onOpenChange={handleOpenChange}
+        disablePointerDismissal
+      >
+        {open === undefined && (
+          <DialogTrigger render={<Button variant="primary" className="h-8 gap-0.5 px-3" />}>
+            <span aria-hidden className="i-ri-add-line size-4" />
+            <span className="px-0.5 system-sm-medium">{t(($) => $['roster.createAgent'])}</span>
+          </DialogTrigger>
+        )}
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
           <DialogCloseButton />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">

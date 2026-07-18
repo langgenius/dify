@@ -47,7 +47,7 @@ def _make_generate_entity(app_config: WorkflowUIBasedAppConfig) -> AdvancedChatA
 
 
 @pytest.fixture(autouse=True)
-def _mock_db_session(monkeypatch: pytest.MonkeyPatch):
+def mock_db_session(monkeypatch: pytest.MonkeyPatch):
     session = MagicMock()
 
     def refresh_side_effect(obj):
@@ -64,20 +64,24 @@ def _mock_db_session(monkeypatch: pytest.MonkeyPatch):
     return session
 
 
-def test_init_generate_records_sets_conversation_metadata():
+def test_init_generate_records_sets_conversation_metadata(mock_db_session):
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 
     generator = AdvancedChatAppGenerator()
 
-    conversation, _ = generator._init_generate_records(entity, conversation=None)
+    conversation, _ = generator._init_generate_records(
+        entity,
+        conversation=None,
+        session=mock_db_session,
+    )
 
     assert entity.conversation_id == "generated-conversation-id"
     assert conversation.id == "generated-conversation-id"
     assert entity.is_new_conversation is True
 
 
-def test_init_generate_records_marks_existing_conversation():
+def test_init_generate_records_marks_existing_conversation(mock_db_session):
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 
@@ -103,7 +107,11 @@ def test_init_generate_records_marks_existing_conversation():
 
     generator = AdvancedChatAppGenerator()
 
-    conversation, _ = generator._init_generate_records(entity, conversation=existing_conversation)
+    conversation, _ = generator._init_generate_records(
+        entity,
+        conversation=existing_conversation,
+        session=mock_db_session,
+    )
 
     assert entity.conversation_id == "existing-conversation-id"
     assert conversation is existing_conversation
@@ -155,6 +163,7 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(monke
     )
 
     captured: dict[str, object] = {}
+    session = MagicMock()
 
     def fake_generate(self, **kwargs):
         captured.update(kwargs)
@@ -170,10 +179,12 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(monke
         invoke_from=InvokeFrom.SERVICE_API,
         workflow_run_id="workflow-run-id",
         streaming=False,
+        session=session,
     )
 
     assert result == {"status": "ok"}
     assert captured["conversation"] is None
+    assert captured["session"] is session
     application_generate_entity = captured["application_generate_entity"]
     assert isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
     assert application_generate_entity.conversation_id is None

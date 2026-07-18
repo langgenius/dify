@@ -1,6 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, within } from 'storybook/test'
 import { toast, ToastHost } from '.'
+
+const longToastTitle =
+  'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
+const longToastDescription =
+  'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
 
 const buttonClassName =
   'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
@@ -224,9 +230,8 @@ const ActionExamples = () => {
   }
 
   const createLongCopyToast = () => {
-    toast.info('Knowledge ingestion in progress', {
-      description:
-        'This longer example helps validate line wrapping, close button alignment, and action button placement when the content spans multiple rows.',
+    toast.error(longToastTitle, {
+      description: longToastDescription,
       actionProps: {
         children: 'View details',
         onClick: () => {
@@ -369,4 +374,14 @@ type Story = StoryObj<typeof meta>
 
 export const DocsPattern: Story = {
   render: () => <ToastDocsDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Long content' }))
+
+    const title = await body.findByText(longToastTitle)
+    const description = await body.findByText(longToastDescription)
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+    expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth)
+  },
 }

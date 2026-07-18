@@ -80,11 +80,6 @@ describe('ExternalKnowledgeSection', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ExternalKnowledgeSection {...defaultProps} />)
-      expect(screen.getByText(/form\.retrievalSetting\.title/i)).toBeInTheDocument()
-    })
-
     it('should render retrieval settings section', () => {
       render(<ExternalKnowledgeSection {...defaultProps} />)
       expect(screen.getByText(/form\.retrievalSetting\.title/i)).toBeInTheDocument()

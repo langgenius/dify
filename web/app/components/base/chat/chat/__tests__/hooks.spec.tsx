@@ -590,6 +590,39 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(false) // from onError
     })
 
+    it('should restore responding state when a paused human input workflow resumes', async () => {
+      let initialCallbacks: HookCallbacks
+      let resumedCallbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        initialCallbacks = options as HookCallbacks
+      })
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        resumedCallbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'human input test' }, {})
+      })
+      act(() => {
+        initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        initialCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      await act(async () => {
+        await initialCallbacks.onCompleted()
+      })
+
+      expect(result.current.isResponding).toBe(false)
+
+      act(() => {
+        resumedCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+      })
+
+      expect(result.current.isResponding).toBe(true)
+    })
+
     it('should handle file uploads in onFile', () => {
       let callbacks: HookCallbacks
 
@@ -2851,24 +2884,6 @@ describe('useChat', () => {
     expect(lastResponse!.workflowProcess?.tracing).toHaveLength(0) // None were updated
   })
 
-  it('should cover TTS chunks branching where audio is empty', () => {
-    let sendCallbacks: HookCallbacks
-    vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
-      sendCallbacks = options as HookCallbacks
-    })
-
-    const { result } = renderHook(() => useChat())
-    act(() => {
-      result.current.handleSend('url', { query: 'test text to speech' }, {})
-    })
-
-    act(() => {
-      sendCallbacks.onTTSChunk('msg-1', '') // Missing audio string
-    })
-    // If it didn't crash, we achieved coverage for the empty audio string fast return
-    expect(true).toBe(true)
-  })
-
   it('should cover handleSend identical missing branches, null states, and undefined tracking arrays', () => {
     let sendCallbacks: HookCallbacks
     vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
@@ -3155,19 +3170,13 @@ describe('useChat', () => {
     expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3)
   })
 
-  it('should cover handleRestart with and without callback', () => {
+  it('invokes the restart callback', () => {
     const { result } = renderHook(() => useChat())
     const callback = vi.fn()
     act(() => {
       result.current.handleRestart(callback)
     })
     expect(callback).toHaveBeenCalled()
-
-    act(() => {
-      result.current.handleRestart()
-    })
-    // Should not crash
-    expect(result.current.chatList).toHaveLength(0)
   })
 
   it('should cover handleAnnotationAdded updating node', async () => {

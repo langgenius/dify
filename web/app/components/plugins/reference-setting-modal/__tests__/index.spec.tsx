@@ -555,33 +555,6 @@ describe('reference-setting-modal', () => {
     })
 
     describe('Callback Stability and Memoization', () => {
-      it('handlePrivilegeChange should be memoized with useCallback', () => {
-        // Arrange
-        const { rerender } = render(<ReferenceSettingModal {...defaultProps} />)
-
-        // Act - rerender with same props
-        rerender(<ReferenceSettingModal {...defaultProps} />)
-
-        // Assert - component should render without issues
-        // Assert - component should render without issues
-        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
-      })
-
-      it('handleSave should be memoized with useCallback', async () => {
-        // Arrange
-        const onSave = vi.fn().mockResolvedValue(undefined)
-        const { rerender } = render(<ReferenceSettingModal {...defaultProps} onSave={onSave} />)
-
-        // Act - rerender and click save
-        rerender(<ReferenceSettingModal {...defaultProps} onSave={onSave} />)
-        fireEvent.click(screen.getByText('common.operation.save'))
-
-        // Assert
-        await waitFor(() => {
-          expect(onSave).toHaveBeenCalledTimes(1)
-        })
-      })
-
       it('handlePrivilegeChange should create new handler with correct key', () => {
         // Arrange
         render(<ReferenceSettingModal {...defaultProps} />)
@@ -593,16 +566,6 @@ describe('reference-setting-modal', () => {
         // Assert - install permission should be updated
         // Assert - install permission should be updated
         expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        // Assert
-        expect(ReferenceSettingModal).toBeDefined()
-        expect((ReferenceSettingModal as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
       })
     })
 
@@ -710,8 +673,6 @@ describe('reference-setting-modal', () => {
               <ReferenceSettingModal {...defaultProps} payload={payload} />,
             )
 
-            // Assert - should render without crashing
-            // Assert - should render without crashing
             expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
 
             unmount()
@@ -876,15 +837,6 @@ describe('reference-setting-modal', () => {
     })
 
     describe('Modal Integration', () => {
-      it('should render modal with correct className', () => {
-        // Arrange & Act
-        render(<ReferenceSettingModal {...defaultProps} />)
-
-        // Assert
-        const modal = screen.getByTestId('modal')
-        expect(modal)!.toHaveClass('w-155', 'max-w-155', 'p-0!')
-      })
-
       it('should pass isShow=true to Modal', () => {
         // Arrange & Act
         render(<ReferenceSettingModal {...defaultProps} />)

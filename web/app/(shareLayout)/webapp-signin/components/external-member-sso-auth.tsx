@@ -6,7 +6,6 @@ import { useCallback, useEffect } from 'react'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import { IS_CLOUD_EDITION } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { SSOProtocol } from '@/features/system-features/constants'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -29,7 +28,7 @@ const ExternalMemberSSOAuth = () => {
   const handleSSOLogin = useCallback(async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
 
