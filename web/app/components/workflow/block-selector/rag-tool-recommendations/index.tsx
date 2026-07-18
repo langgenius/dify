@@ -57,7 +57,7 @@ export function RAGToolRecommendations({
         <span
           aria-hidden="true"
           className={cn(
-            'ml-1 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 text-text-tertiary transition-transform',
+            'ml-1 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 text-text-tertiary transition-transform motion-reduce:transition-none',
             isCollapsed && '-rotate-90',
           )}
         />
