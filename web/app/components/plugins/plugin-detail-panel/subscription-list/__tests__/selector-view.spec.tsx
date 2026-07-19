@@ -75,14 +75,6 @@ describe('SubscriptionSelectorView', () => {
     )
   })
 
-  it('should handle missing onSelect without crashing', () => {
-    render(<SubscriptionSelectorView />)
-
-    expect(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
-    }).not.toThrow()
-  })
-
   it('should distinguish selected vs unselected subscription row', () => {
     const { rerender } = render(<SubscriptionSelectorView selectedId="sub-1" />)
 

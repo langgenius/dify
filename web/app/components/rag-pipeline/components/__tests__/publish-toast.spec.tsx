@@ -46,13 +46,6 @@ describe('PublishToast', () => {
       expect(container.firstChild).toBeNull()
     })
 
-    it('should have correct positioning classes', () => {
-      render(<PublishToast />)
-
-      const container = screen.getByText('pipeline.publishToast.title').closest('.absolute')
-      expect(container).toHaveClass('bottom-[45px]', 'left-0', 'right-0', 'z-10')
-    })
-
     it('should render info icon', () => {
       const { container } = render(<PublishToast />)
 

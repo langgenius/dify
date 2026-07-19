@@ -1,5 +1,5 @@
 import type { ElkNode, LayoutOptions } from 'elkjs/lib/elk-api'
-import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { HumanInputSharedNodeType } from '@/app/components/workflow/nodes/human-input/shared/types'
 import type { CaseItem, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
 import type {
   QuestionClassifierNodeType,
@@ -320,7 +320,7 @@ const sortHumanInputOutEdges = (humanInputNode: Node, outEdges: Edge[]): Edge[] 
     const handleB = edgeB.sourceHandle
 
     if (handleA && handleB) {
-      const userActions = (humanInputNode.data as HumanInputNodeType).user_actions || []
+      const userActions = (humanInputNode.data as HumanInputSharedNodeType).user_actions || []
       if (handleA === '__timeout') return 1
       if (handleB === '__timeout') return -1
 

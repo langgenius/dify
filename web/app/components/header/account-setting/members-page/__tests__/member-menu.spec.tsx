@@ -5,11 +5,18 @@ import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { ContactsManagementMockProvider } from '@/features/contacts/management/composition'
+import {
+  ContactsMockScenario,
+  createContactsMockScenario,
+} from '@/features/contacts/management/mock/scenarios'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
 import MemberMenu from '../member-menu'
+
+const mockIsContactsManagementEnabled = vi.hoisted(() => vi.fn(() => true))
 
 vi.mock('@/service/access-control/use-member-roles')
 vi.mock('@/service/access-control/use-workspace-roles')
@@ -20,6 +27,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
   },
+}))
+vi.mock('@/features/contacts/management/feature-flag', () => ({
+  isContactsManagementEnabled: () => mockIsContactsManagementEnabled(),
 }))
 
 const createRole = (overrides: Partial<Role>): Role => ({
@@ -72,6 +82,7 @@ describe('MemberMenu', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsContactsManagementEnabled.mockReturnValue(true)
     mockUpdateRolesOfMember.mockResolvedValue(undefined)
     vi.mocked(deleteMemberOrCancelInvitation).mockResolvedValue({ result: 'success' })
     vi.mocked(useUpdateRolesOfMember).mockReturnValue({
@@ -150,6 +161,17 @@ describe('MemberMenu', () => {
     )
   })
 
+  it.each([
+    ['workspace owner', { ...member, role: 'owner' as const }, false],
+    ['current member', member, true],
+  ])('keeps the existing protection for the %s', (_case, protectedMember, isCurrentUser) => {
+    renderWithSystemFeatures(<MemberMenu member={protectedMember} isCurrentUser={isCurrentUser} />)
+
+    expect(
+      screen.queryByRole('button', { name: /members\.memberActions/i }),
+    ).not.toBeInTheDocument()
+  })
+
   it('should require confirmation before removing a member', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
@@ -178,5 +200,77 @@ describe('MemberMenu', () => {
     })
     expect(queryClient.getQueryState(membersQueryKey)?.isInvalidated).toBe(true)
     expect(toast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
+  })
+
+  it('uses the mock Contacts-aware flow for an active member without calling the real service', async () => {
+    const user = userEvent.setup()
+    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+    const queryClient = createQueryClient()
+    const membersQueryKey = [...commonQueryKeys.members, 'en-US']
+    const activeMember = { ...member, id: 'member-owner' }
+    queryClient.setQueryData(membersQueryKey, { accounts: [activeMember] })
+
+    renderWithSystemFeatures(
+      <ContactsManagementMockProvider scenario={scenario}>
+        <MemberMenu member={activeMember} isCurrentUser={false} />
+      </ContactsManagementMockProvider>,
+      { queryClient },
+    )
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
+
+    const dialog = screen.getByRole('alertdialog', {
+      name: /contacts\.memberRemoval\.title/,
+    })
+    expect(within(dialog).getByRole('checkbox', { name: /keepPlatform/ })).toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(deleteMemberOrCancelInvitation).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData<{ accounts: Member[] }>(membersQueryKey)?.accounts).toEqual([])
+    expect(toast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
+  })
+
+  it('keeps the existing invitation cancellation path when Contacts mock is enabled', async () => {
+    const user = userEvent.setup()
+    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+
+    renderWithSystemFeatures(
+      <ContactsManagementMockProvider scenario={scenario}>
+        <MemberMenu member={{ ...member, status: 'pending' }} isCurrentUser={false} />
+      </ContactsManagementMockProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
+    const dialog = screen.getByRole('alertdialog', {
+      name: /common\.members\.removeFromTeamConfirmTitle/,
+    })
+    expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: /common\.operation\.confirm/i }))
+
+    await waitFor(() => expect(deleteMemberOrCancelInvitation).toHaveBeenCalledOnce())
+  })
+
+  it('keeps the production removal path when the Contacts feature gate is disabled', async () => {
+    const user = userEvent.setup()
+    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+    mockIsContactsManagementEnabled.mockReturnValue(false)
+
+    renderWithSystemFeatures(
+      <ContactsManagementMockProvider scenario={scenario}>
+        <MemberMenu member={member} isCurrentUser={false} />
+      </ContactsManagementMockProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
+    const dialog = screen.getByRole('alertdialog', {
+      name: /common\.members\.removeFromTeamConfirmTitle/,
+    })
+    await user.click(within(dialog).getByRole('button', { name: /common\.operation\.confirm/i }))
+
+    await waitFor(() => expect(deleteMemberOrCancelInvitation).toHaveBeenCalledOnce())
   })
 })

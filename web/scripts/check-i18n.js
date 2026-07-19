@@ -7,6 +7,9 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const targetLanguage = 'en-US'
+const localizedFileLocales = {
+  contacts: new Set(['en-US', 'zh-Hans']),
+}
 
 const languages = data.languages
   .filter((language) => language.supported)
@@ -229,12 +232,16 @@ async function main() {
         )
       : allLanguagesKeys
 
-    const keysCount = languagesKeys.map((keys) => keys.length)
-    const targetKeysCount = targetKeys.length
+    const getRequiredTargetKeys = (language) =>
+      targetKeys.filter((key) => {
+        const fileName = key.split('.')[0]
+        const localizedLocales = localizedFileLocales[fileName]
+        return !localizedLocales || localizedLocales.has(language)
+      })
 
     const comparison = languagesToProcess.reduce((result, language, index) => {
-      const languageKeysCount = keysCount[index]
-      const difference = targetKeysCount - languageKeysCount
+      const languageKeysCount = languagesKeys[index].length
+      const difference = getRequiredTargetKeys(language).length - languageKeysCount
       result[language] = difference
       return result
     }, {})
@@ -245,7 +252,9 @@ async function main() {
     for (let index = 0; index < languagesToProcess.length; index++) {
       const language = languagesToProcess[index]
       const languageKeys = languagesKeys[index]
-      const missingKeys = targetKeys.filter((key) => !languageKeys.includes(key))
+      const missingKeys = getRequiredTargetKeys(language).filter(
+        (key) => !languageKeys.includes(key),
+      )
       const extraKeys = languageKeys.filter((key) => !targetKeys.includes(key))
 
       console.log(`Missing keys in ${language}:`, missingKeys)

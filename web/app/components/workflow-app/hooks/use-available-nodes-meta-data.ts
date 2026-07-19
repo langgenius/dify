@@ -12,6 +12,7 @@ import TriggerPluginDefault from '@/app/components/workflow/nodes/trigger-plugin
 import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-schedule/default'
 import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { getNodePersistedType } from '@/app/components/workflow/utils/node'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { docPathProductAvailability } from '@/types/doc-paths'
@@ -86,7 +87,7 @@ export const useAvailableNodesMetaData = () => {
           },
           defaultValue: {
             ...node.defaultValue,
-            type: metaData.type === BlockEnum.AgentV2 ? BlockEnum.Agent : metaData.type,
+            type: getNodePersistedType(metaData.type),
             title,
           },
         }

@@ -7,6 +7,7 @@ import dataSourceEmptyDefault from '@/app/components/workflow/nodes/data-source-
 import dataSourceDefault from '@/app/components/workflow/nodes/data-source/default'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { getNodePersistedType } from '@/app/components/workflow/utils/node'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 
@@ -20,6 +21,7 @@ export const useAvailableNodesMetaData = () => {
       ...WORKFLOW_COMMON_NODES.filter(
         (node) =>
           node.metaData.type !== BlockEnum.HumanInput &&
+          node.metaData.type !== BlockEnum.HumanInputV2 &&
           (agentV2Enabled
             ? node.metaData.type !== BlockEnum.Agent
             : node.metaData.type !== BlockEnum.AgentV2),
@@ -62,7 +64,7 @@ export const useAvailableNodesMetaData = () => {
           },
           defaultValue: {
             ...node.defaultValue,
-            type: metaData.type === BlockEnum.AgentV2 ? BlockEnum.Agent : metaData.type,
+            type: getNodePersistedType(metaData.type),
             title,
           },
         }

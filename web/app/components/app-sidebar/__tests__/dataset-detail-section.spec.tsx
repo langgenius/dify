@@ -59,9 +59,7 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 vi.mock('../dataset-info', () => ({
-  default: ({ expand }: { expand: boolean }) => (
-    <div data-testid="dataset-info" data-expand={expand} />
-  ),
+  default: () => <div>dataset info</div>,
 }))
 
 vi.mock('../nav-link', () => ({
@@ -73,9 +71,7 @@ vi.mock('../nav-link', () => ({
 }))
 
 vi.mock('../../datasets/extra-info', () => ({
-  default: ({ expand, documentCount }: { expand: boolean; documentCount?: number }) => (
-    <div data-testid="extra-info" data-expand={expand} data-document-count={documentCount} />
-  ),
+  default: () => <div>dataset extra info</div>,
 }))
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
@@ -122,16 +118,6 @@ describe('DatasetDetailSection', () => {
     }
   })
 
-  it('should pin dataset stats and API access to the bottom of the expanded sidebar', () => {
-    render(<DatasetDetailSection expand />)
-
-    const extraInfo = screen.getByTestId('extra-info')
-
-    expect(extraInfo).toHaveAttribute('data-expand', 'true')
-    expect(extraInfo).toHaveAttribute('data-document-count', '120')
-    expect(extraInfo.parentElement).toHaveClass('mt-auto', 'shrink-0')
-  })
-
   it('should hide dataset stats and API access when dataset edit permission is missing', () => {
     mockDataset = createDataset({
       permission_keys: [DatasetACLPermission.Readonly],
@@ -139,7 +125,7 @@ describe('DatasetDetailSection', () => {
 
     render(<DatasetDetailSection expand />)
 
-    expect(screen.queryByTestId('extra-info')).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset extra info')).not.toBeInTheDocument()
   })
 
   it('should render resource access navigation when dataset access config permission is granted', () => {

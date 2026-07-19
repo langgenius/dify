@@ -4,6 +4,7 @@ import assignerDefault from '@/app/components/workflow/nodes/assigner/default'
 import codeDefault from '@/app/components/workflow/nodes/code/default'
 import documentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import httpRequestDefault from '@/app/components/workflow/nodes/http/default'
+import humanInputV2Default from '@/app/components/workflow/nodes/human-input-v2/default'
 import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import ifElseDefault from '@/app/components/workflow/nodes/if-else/default'
 import iterationStartDefault from '@/app/components/workflow/nodes/iteration-start/default'
@@ -42,4 +43,5 @@ export const WORKFLOW_COMMON_NODES = [
   listOperatorDefault,
   toolDefault,
   humanInputDefault,
+  humanInputV2Default,
 ]

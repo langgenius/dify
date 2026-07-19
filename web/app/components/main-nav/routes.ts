@@ -1,6 +1,6 @@
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 
-type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'appDeployEditor'
+type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'appDeployEditor' | 'contactsManager'
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
@@ -13,12 +13,14 @@ export type MainNavRouteConfig = {
   icon: string
   activeIcon: string
   visibility: MainNavRouteVisibility
-  feature?: 'agentV2' | 'marketplace'
+  feature?: 'agentV2' | 'contacts' | 'marketplace'
 } & ({ label: string; labelKey?: never } | { label?: never; labelKey: string })
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
   canUseAppDeploy: boolean
+  canViewContacts: boolean
+  contactsEnabled: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
 }
@@ -74,6 +76,16 @@ export const MAIN_NAV_ROUTES = [
     visibility: 'all',
   },
   {
+    key: 'contacts',
+    href: '/contacts',
+    labelKey: 'directory.title',
+    active: (path: string) => isPathUnderRoute(path, '/contacts'),
+    icon: 'i-ri-contacts-book-2-line',
+    activeIcon: 'i-ri-contacts-book-2-fill',
+    visibility: 'contactsManager',
+    feature: 'contacts',
+  },
+  {
     key: 'integrations',
     href: buildIntegrationPath('provider'),
     labelKey: 'mainNav.integrations',
@@ -113,9 +125,13 @@ export function isMainNavRouteVisible(
 
   if (route.feature === 'marketplace' && !options.marketplaceEnabled) return false
 
+  if (route.feature === 'contacts' && !options.contactsEnabled) return false
+
   if (route.visibility === 'all') return true
 
   if (route.visibility === 'notDatasetOperator') return !options.isCurrentWorkspaceDatasetOperator
+
+  if (route.visibility === 'contactsManager') return options.canViewContacts
 
   return options.canUseAppDeploy
 }

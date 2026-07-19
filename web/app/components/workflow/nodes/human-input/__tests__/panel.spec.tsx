@@ -338,10 +338,20 @@ describe('human-input/panel', () => {
     expect(screen.getByRole('button', { name: 'delivery-method:editable' })).toBeInTheDocument()
     expect(screen.getByText('form-content:collapsed')).toBeInTheDocument()
     expect(screen.getByText('approve:editable')).toBeInTheDocument()
-    expect(screen.getByText('review_result:string:Form input value')).toBeInTheDocument()
-    expect(screen.getByText('__action_id:string:Action ID user triggered')).toBeInTheDocument()
-    expect(screen.getByText('__action_value:string:Selected action value')).toBeInTheDocument()
-    expect(screen.getByText('__rendered_content:string:Rendered content')).toBeInTheDocument()
+    expect(
+      screen.getByText('review_result:string:workflow.nodes.humanInput.output.formInput'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('__action_id:string:workflow.nodes.humanInput.output.actionId'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('__action_value:string:workflow.nodes.humanInput.output.actionValue'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '__rendered_content:string:workflow.nodes.humanInput.output.renderedContent',
+      ),
+    ).toBeInTheDocument()
     expect(mockDeliveryMethod).toHaveBeenCalledWith(
       expect.objectContaining({
         nodesOutputVars: [
@@ -382,7 +392,7 @@ describe('human-input/panel', () => {
     expect(config.handleFormInputItemRemove).toHaveBeenCalledWith('name')
     expect(config.handleUserActionAdd).toHaveBeenCalledWith({
       id: 'action_2',
-      title: 'Button Text 2',
+      title: 'workflow.nodes.humanInput.userActions.defaultTitle:{"index":2}',
       button_style: UserActionButtonType.Default,
     })
     expect(config.handleUserActionChange).toHaveBeenCalledWith(0, {
@@ -449,7 +459,11 @@ describe('human-input/panel', () => {
 
     renderPanel()
 
-    expect(screen.getByText('attachment:file:Form input value')).toBeInTheDocument()
-    expect(screen.getByText('attachments:array[file]:Form input value')).toBeInTheDocument()
+    expect(
+      screen.getByText('attachment:file:workflow.nodes.humanInput.output.formInput'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('attachments:array[file]:workflow.nodes.humanInput.output.formInput'),
+    ).toBeInTheDocument()
   })
 })

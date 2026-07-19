@@ -33,6 +33,7 @@ const workflowBlockTypeSelectors: Record<BlockEnum, SelectorParam<'workflow'>> =
   [BlockEnum.LoopStart]: ($) => $['blocks.loop-start'],
   [BlockEnum.LoopEnd]: ($) => $['blocks.loop-end'],
   [BlockEnum.HumanInput]: ($) => $['blocks.human-input'],
+  [BlockEnum.HumanInputV2]: ($) => $['blocks.human-input-v2'],
   [BlockEnum.DataSource]: ($) => $['blocks.datasource'],
   [BlockEnum.DataSourceEmpty]: ($) => $['blocks.datasource-empty'],
   [BlockEnum.KnowledgeBase]: ($) => $['blocks.knowledge-index'],

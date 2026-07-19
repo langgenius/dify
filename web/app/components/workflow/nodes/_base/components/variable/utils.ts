@@ -17,6 +17,7 @@ import type { ToolNodeType } from '../../../tool/types'
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
@@ -56,6 +57,8 @@ import {
 import { getAgentV2OutputVars } from '@/app/components/workflow/nodes/agent-v2/output-variables'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
+import HumanInputV2NodeDefault from '@/app/components/workflow/nodes/human-input-v2/default'
+import { isHumanInputV2NodeData } from '@/app/components/workflow/nodes/human-input-v2/types'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
@@ -613,10 +616,13 @@ const formatItem = (
     }
 
     case BlockEnum.HumanInput: {
-      const outputSchema =
-        HumanInputNodeDefault.getOutputVars?.(data as HumanInputNodeType, allPluginInfoList, [], {
-          schemaTypeDefinitions,
-        }) || []
+      const outputSchema = isHumanInputV2NodeData(data)
+        ? HumanInputV2NodeDefault.getOutputVars?.(data, allPluginInfoList, [], {
+            schemaTypeDefinitions,
+          }) || []
+        : HumanInputNodeDefault.getOutputVars?.(data as HumanInputNodeType, allPluginInfoList, [], {
+            schemaTypeDefinitions,
+          }) || []
       res.vars = [...outputSchema, ...HUMAN_INPUT_OUTPUT_STRUCT]
       break
     }
@@ -1412,6 +1418,30 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
 
     case BlockEnum.HumanInput: {
+      if (isHumanInputV2NodeData(data)) {
+        const payload = data
+        const dynamicRecipientSelectors = payload.recpients_spec.flatMap((recipient) =>
+          recipient.type === 'dynamic_email' ? [recipient.selector] : [],
+        )
+        const inputSelectors = payload.inputs.flatMap((input) => {
+          if (input.type === InputVarType.paragraph && input.default.type === 'variable')
+            return [input.default.selector]
+          if (input.type === InputVarType.select && input.option_source.type === 'variable')
+            return [input.option_source.selector]
+          return []
+        })
+        res = [
+          ...matchNotSystemVars([
+            payload.form_content,
+            payload.message_template.subject,
+            payload.message_template.body,
+          ]),
+          ...dynamicRecipientSelectors,
+          ...inputSelectors,
+        ]
+        break
+      }
+
       const payload = data as HumanInputNodeType
       const formContent = payload.form_content
       const mailTemplates = payload.delivery_methods.flatMap((method) => {
@@ -1863,6 +1893,49 @@ export const updateNodeVars = (
         break
       }
       case BlockEnum.HumanInput: {
+        if (isHumanInputV2NodeData(data)) {
+          const payload = data as HumanInputV2NodeType
+          payload.form_content = replaceOldVarInText(
+            payload.form_content,
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.message_template.subject = replaceOldVarInText(
+            payload.message_template.subject,
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.message_template.body = replaceOldVarInText(
+            payload.message_template.body,
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.recpients_spec = payload.recpients_spec.map((recipient) => {
+            if (
+              recipient.type === 'dynamic_email' &&
+              recipient.selector.join('.') === oldVarSelector.join('.')
+            )
+              return { ...recipient, selector: newVarSelector }
+            return recipient
+          })
+          payload.inputs = payload.inputs.map((input) => {
+            if (
+              input.type === InputVarType.paragraph &&
+              input.default.type === 'variable' &&
+              input.default.selector.join('.') === oldVarSelector.join('.')
+            )
+              input.default.selector = newVarSelector
+            if (
+              input.type === InputVarType.select &&
+              input.option_source.type === 'variable' &&
+              input.option_source.selector.join('.') === oldVarSelector.join('.')
+            )
+              input.option_source.selector = newVarSelector
+            return input
+          })
+          break
+        }
+
         const payload = data as HumanInputNodeType
         payload.form_content = replaceOldVarInText(
           payload.form_content,

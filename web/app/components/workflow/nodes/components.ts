@@ -20,8 +20,9 @@ import EndNode from './end/node'
 import EndPanel from './end/panel'
 import HttpNode from './http/node'
 import HttpPanel from './http/panel'
-import HumanInputNode from './human-input/node'
-import HumanInputPanel from './human-input/panel'
+import { WorkflowHumanInputNode, WorkflowHumanInputPanel } from './human-input-router'
+import { HumanInputV2Node } from './human-input-v2/node'
+import { HumanInputV2Panel } from './human-input-v2/panel'
 import IfElseNode from './if-else/node'
 import IfElsePanel from './if-else/panel'
 import IterationNode from './iteration/node'
@@ -102,7 +103,8 @@ export const NodeComponentMap = {
   [BlockEnum.AgentV2]: AgentV2Node,
   [BlockEnum.DataSource]: DataSourceNode,
   [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
-  [BlockEnum.HumanInput]: HumanInputNode,
+  [BlockEnum.HumanInput]: WorkflowHumanInputNode,
+  [BlockEnum.HumanInputV2]: HumanInputV2Node,
   [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
   [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,
@@ -133,7 +135,8 @@ export const PanelComponentMap = {
   [BlockEnum.AgentV2]: AgentV2Panel,
   [BlockEnum.DataSource]: DataSourcePanel,
   [BlockEnum.KnowledgeBase]: KnowledgeBasePanel,
-  [BlockEnum.HumanInput]: HumanInputPanel,
+  [BlockEnum.HumanInput]: WorkflowHumanInputPanel,
+  [BlockEnum.HumanInputV2]: HumanInputV2Panel,
   [BlockEnum.TriggerSchedule]: TriggerSchedulePanel,
   [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
   [BlockEnum.TriggerPlugin]: TriggerPluginPanel,

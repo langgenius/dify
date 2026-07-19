@@ -106,6 +106,7 @@ const unsupportedSnippetNodeTypes = new Set([
   BlockEnum.End,
   BlockEnum.Start,
   BlockEnum.HumanInput,
+  BlockEnum.HumanInputV2,
   BlockEnum.KnowledgeRetrieval,
 ])
 
@@ -459,7 +460,6 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
               return (
                 <ContextMenuItem
                   key={item.alignType}
-                  data-testid={`selection-contextmenu-item-${item.alignType}`}
                   onClick={() => handleAlignNodes(item.alignType)}
                 >
                   <span

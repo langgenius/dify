@@ -108,12 +108,6 @@ describe('FireCrawl', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<FireCrawl {...defaultProps} />)
-
-      expect(screen.getByText(/firecrawlTitle/i))!.toBeInTheDocument()
-    })
-
     it('should render Header component with correct props', () => {
       render(<FireCrawl {...defaultProps} />)
 
@@ -736,16 +730,6 @@ describe('FireCrawl', () => {
         // Total should be capped to limit (5)
         expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
       })
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<FireCrawl {...defaultProps} />)
-
-      rerender(<FireCrawl {...defaultProps} />)
-
-      expect(screen.getByText(/firecrawlTitle/i))!.toBeInTheDocument()
     })
   })
 })

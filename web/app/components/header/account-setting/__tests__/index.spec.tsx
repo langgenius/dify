@@ -635,7 +635,7 @@ describe('AccountSetting', () => {
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES })
 
       // Assert
-      expect(screen.queryByTestId('workflow-log-archives-page')).not.toBeInTheDocument()
+      expect(screen.queryByText('appLog.archives.upgradeTip.title')).not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
     })
 
@@ -695,7 +695,7 @@ describe('AccountSetting', () => {
 
       // Workflow Log Archives
       fireEvent.click(screen.getByRole('button', { name: 'appLog.archives.title' }))
-      expect(screen.getByTestId('workflow-log-archives-page')).toBeInTheDocument()
+      expect(screen.getByText('appLog.archives.upgradeTip.title')).toBeInTheDocument()
 
       // Members
       fireEvent.click(screen.getAllByText('common.settings.members')[0]!)

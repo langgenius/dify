@@ -630,7 +630,6 @@ describe('ChatItem', () => {
         payload: { message: 'Hello', files: [] },
       })
 
-      // Should still call handleSend without crashing
       expect(handleSend).toHaveBeenCalled()
     })
 

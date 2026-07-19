@@ -1,3 +1,4 @@
+import type { HumanInputV2NodeType } from '../../nodes/human-input-v2/types'
 import type { Edge, Node } from '../../types'
 import { act } from '@testing-library/react'
 import { createEdge, createNode } from '../../__tests__/fixtures'
@@ -649,6 +650,165 @@ describe('useNodesInteractions', () => {
       }),
     )
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
+  })
+
+  it('creates Human Input v2 from its catalog identity with persisted Human Input type', () => {
+    currentNodes = [
+      createNode({
+        id: 'node-1',
+        width: 100,
+        data: { type: BlockEnum.Code, title: 'Code', desc: '' },
+      }),
+    ]
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = []
+    rfState.setNodes.mockImplementation((nextNodes) => {
+      rfState.nodes = nextNodes
+    })
+    runtimeNodesMetaDataMap.value = {
+      [BlockEnum.HumanInputV2]: {
+        defaultValue: {
+          type: BlockEnum.HumanInput,
+          title: 'Human Input v2',
+          desc: '',
+          version: '2',
+          recpients_spec: [],
+          message_template: { subject: '', body: '' },
+          debug_mode: { enabled: false, channels: [] },
+          form_content: '',
+          inputs: [],
+          user_actions: [],
+          timeout: 36,
+          timeout_unit: 'hour',
+        },
+        metaData: { isSingleton: false },
+      },
+    }
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: { nodes: currentNodes, edges: [] },
+    })
+
+    act(() => {
+      result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInputV2 }, { prevNodeId: 'node-1' })
+    })
+
+    const node = rfState.nodes.find((node) => node.data.version === '2')
+    expect(node?.data).toMatchObject({
+      type: BlockEnum.HumanInput,
+      version: '2',
+      recpients_spec: [],
+      timeout: 36,
+      timeout_unit: 'hour',
+    })
+    expect(node?.data).not.toHaveProperty('delivery_methods')
+    expect(node?.data._connectedSourceHandleIds).toEqual([])
+  })
+
+  it('pastes Human Input v2 without losing wire data and remaps copied dependencies', async () => {
+    currentNodes = [
+      createNode({ id: 'existing-node', data: { type: BlockEnum.Code, title: 'Code', desc: '' } }),
+    ]
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = []
+    runtimeNodesMetaDataMap.value = {
+      [BlockEnum.Code]: {
+        defaultValue: {
+          type: BlockEnum.Code,
+          title: 'Code',
+          desc: '',
+          variables: [],
+          code_language: 'python3',
+          code: '',
+          outputs: {},
+        },
+        metaData: { isSingleton: false },
+      },
+      [BlockEnum.HumanInputV2]: {
+        defaultValue: {
+          type: BlockEnum.HumanInput,
+          version: '2',
+          recpients_spec: [],
+          message_template: { subject: '', body: '' },
+          debug_mode: { enabled: false, channels: [] },
+          form_content: '',
+          inputs: [],
+          user_actions: [],
+          timeout: 36,
+          timeout_unit: 'hour',
+        },
+        metaData: { isSingleton: false },
+      },
+    }
+    const copiedSourceNode = createNode({
+      id: 'source-copy',
+      data: {
+        type: BlockEnum.Code,
+        title: 'Email source',
+        desc: '',
+        variables: [],
+        code_language: 'python3',
+        code: '',
+        outputs: { email: { type: 'string', children: null } },
+      },
+    })
+    const copiedNode = createNode({
+      id: 'human-input-v2-copy',
+      data: {
+        type: BlockEnum.HumanInput,
+        version: '2',
+        title: 'Review request',
+        desc: '',
+        recpients_spec: [
+          { type: 'initiator' },
+          { type: 'dynamic_email', selector: ['source-copy', 'email'] },
+          { type: 'onetime_email', email: 'owner@example.com' },
+        ],
+        message_template: {
+          subject: 'Review {{#source-copy.email#}}',
+          body: 'Body {{#source-copy.email#}}',
+        },
+        debug_mode: { enabled: true, channels: ['email', 'slack'] },
+        form_content: '{{#source-copy.email#}}',
+        inputs: [],
+        user_actions: [],
+        timeout: 36,
+        timeout_unit: 'hour',
+      },
+    })
+    const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: { nodes: currentNodes, edges: [] },
+    })
+    store.setState({
+      clipboardElements: [copiedSourceNode, copiedNode] as never,
+      clipboardEdges: [] as never,
+      mousePosition: { pageX: 60, pageY: 80 } as never,
+    })
+
+    await act(async () => {
+      await result.current.handleNodesPaste()
+    })
+
+    const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+    const pasted = pastedNodes.find((node) => (node.data as { version?: unknown }).version === '2')
+    const pastedData = pasted?.data as HumanInputV2NodeType
+    const copiedData = copiedNode.data as HumanInputV2NodeType
+    const pastedSource = pastedNodes.find(
+      (node) => node.data.type === BlockEnum.Code && node.id !== 'existing-node',
+    )
+    expect(pastedData.type).toBe(BlockEnum.HumanInput)
+    expect(pastedData.recpients_spec).toEqual([
+      { type: 'initiator' },
+      { type: 'dynamic_email', selector: [pastedSource?.id, 'email'] },
+      { type: 'onetime_email', email: 'owner@example.com' },
+    ])
+    expect(pastedData.message_template).toEqual({
+      subject: `Review {{#${pastedSource?.id}.email#}}`,
+      body: `Body {{#${pastedSource?.id}.email#}}`,
+    })
+    expect(pastedData.form_content).toBe(`{{#${pastedSource?.id}.email#}}`)
+    expect(pastedData.debug_mode).toEqual(copiedData.debug_mode)
+    expect(pastedData).not.toHaveProperty('recipients_spec')
   })
 
   it('cancels selection state with collaborative nodes snapshot', () => {

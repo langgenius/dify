@@ -215,16 +215,7 @@ describe('DSL Import with Human Input Node', () => {
     })
   })
 
-  // ── Node component: renders without crashing for all data variations ──
   describe('HumanInputNode Component', () => {
-    it('should render without crashing with full DSL data', () => {
-      const node = createHumanInputNode()
-
-      expect(() => {
-        render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
-      }).not.toThrow()
-    })
-
     it('should display delivery method labels when methods are present', () => {
       const node = createHumanInputNode()
 
@@ -250,75 +241,24 @@ describe('DSL Import with Human Input Node', () => {
 
       render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
 
-      expect(screen.getByText('Timeout'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.humanInput.timeout.title'))!.toBeInTheDocument()
     })
 
-    it('should render without crashing when delivery_methods is empty', () => {
+    it('should hide delivery method labels when no methods are configured', () => {
       const node = createHumanInputNode({ delivery_methods: [] })
 
-      expect(() => {
-        render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
-      }).not.toThrow()
+      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
 
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
       expect(screen.queryByText('webapp')).not.toBeInTheDocument()
       expect(screen.queryByText('email')).not.toBeInTheDocument()
     })
 
-    it('should render without crashing when user_actions is empty', () => {
+    it('should keep the timeout branch when no user actions are configured', () => {
       const node = createHumanInputNode({ user_actions: [] })
 
-      expect(() => {
-        render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
-      }).not.toThrow()
+      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
 
-      // Timeout handle should still exist
-      // Timeout handle should still exist
-      expect(screen.getByText('Timeout'))!.toBeInTheDocument()
-    })
-
-    it('should render without crashing when both delivery_methods and user_actions are empty', () => {
-      const node = createHumanInputNode({
-        delivery_methods: [],
-        user_actions: [],
-        form_content: '',
-        inputs: [],
-      })
-
-      expect(() => {
-        render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
-      }).not.toThrow()
+      expect(screen.getByText('workflow.nodes.humanInput.timeout.title'))!.toBeInTheDocument()
     })
 
     it('should render with only webapp delivery method', () => {

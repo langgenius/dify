@@ -26,7 +26,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   default: (...args: unknown[]) => mockUseNodeCrud(...args),
 }))
 
-vi.mock('../use-form-content', () => ({
+vi.mock('../../shared/use-form-content', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseFormContent(...args),
 }))
