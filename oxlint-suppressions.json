@@ -3239,9 +3239,6 @@
   "web/app/components/plugins/install-plugin/install-bundle/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
-    },
-    "react/only-export-components": {
-      "count": 1
     }
   },
   "web/app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
