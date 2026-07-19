@@ -21852,6 +21852,7 @@ The subscription constructor of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| _is_collaborative | boolean |  | No |
 | conversation_variables | [ object ] |  | No |
 | environment_variables | [ object ] |  | No |
 | features | object |  | Yes |
