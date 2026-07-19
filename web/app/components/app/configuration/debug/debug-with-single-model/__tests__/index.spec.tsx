@@ -6,7 +6,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Collection } from '@/app/components/tools/types'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { DatasetConfigs, ModelConfig } from '@/models/debug'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
@@ -17,6 +17,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
 import { PromptMode } from '@/models/debug'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import DebugWithSingleModel from '../index'
 
@@ -307,7 +308,7 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: mockUseProviderContext,
 }))
 
-const mockAppContext = {
+const mockConsoleState = {
   userProfile: {
     id: 'user-1',
     avatar_url: 'https://example.com/avatar.png',
@@ -317,14 +318,14 @@ const mockAppContext = {
   isCurrentWorkspaceManager: false,
   isCurrentWorkspaceOwner: false,
   isCurrentWorkspaceDatasetOperator: false,
-  mutateUserProfile: vi.fn(),
+  refreshUserProfile: vi.fn(),
 }
 
-const { mockUseAppContext } = vi.hoisted(() => ({
-  mockUseAppContext: vi.fn(),
+const { mockConsoleStateReader } = vi.hoisted(() => ({
+  mockConsoleStateReader: vi.fn(),
 }))
 
-mockUseAppContext.mockReturnValue(mockAppContext)
+mockConsoleStateReader.mockReturnValue(mockConsoleState)
 
 type FeatureState = {
   moreLikeThis: { enabled: boolean }
@@ -602,7 +603,7 @@ describe('DebugWithSingleModel', () => {
     // Reset mock implementations using module-level mocks
     mockUseDebugConfigurationContext.mockReturnValue(mockDebugConfigContext)
     mockUseProviderContext.mockReturnValue(mockProviderContext)
-    mockUseAppContext.mockReturnValue(mockAppContext)
+    mockConsoleStateReader.mockReturnValue(mockConsoleState)
     mockUseConfigFromDebugContext.mockReturnValue(mockConfigFromDebugContext)
     mockUseFormattingChangedSubscription.mockReturnValue(undefined)
     mockFeaturesState = { ...defaultFeatures }
@@ -936,8 +937,8 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should handle missing user profile', () => {
-      mockUseAppContext.mockReturnValue({
-        ...mockAppContext,
+      mockConsoleStateReader.mockReturnValue({
+        ...mockConsoleState,
         userProfile: {
           id: '',
           avatar_url: '',

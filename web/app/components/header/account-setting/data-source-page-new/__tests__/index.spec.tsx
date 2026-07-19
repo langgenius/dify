@@ -3,7 +3,6 @@ import type { DataSourceAuth } from '../types'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
 import { useTheme } from 'next-themes'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -18,6 +17,7 @@ import {
   useInstalledPluginList,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useDataSourceAuthUpdate, useMarketplaceAllPlugins } from '../hooks'
 import DataSourcePage from '../index'
 
@@ -227,7 +227,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage stickyToolbar />, {
+      renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
         systemFeatures: { enable_marketplace: false },
       })
 
@@ -257,7 +257,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage stickyToolbar />, {
+      renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -276,7 +276,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
       })
 
@@ -296,7 +296,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as ReturnType<typeof useInstalledPluginList>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
       })
 
@@ -311,7 +311,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
       fireEvent.change(screen.getByPlaceholderText('common.operation.search'), {
@@ -333,7 +333,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -349,7 +349,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -364,7 +364,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -380,7 +380,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
       })
 

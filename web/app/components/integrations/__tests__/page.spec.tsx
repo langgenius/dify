@@ -8,7 +8,7 @@ const { mockRouterPush, mockWindowOpen } = vi.hoisted(() => ({
   mockWindowOpen: vi.fn(),
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
 }))
 
@@ -319,7 +319,7 @@ describe('IntegrationsPage', () => {
     mockCanManagement.mockReturnValue(true)
     mockCanDebugger.mockReturnValue(true)
     mockCanSetPermissions.mockReturnValue(true)
-    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
     mockReferenceSetting.mockReturnValue({
       permission: {
         install_permission: 'everyone',
@@ -555,7 +555,7 @@ describe('IntegrationsPage', () => {
   })
 
   it('renders the MCP route as read-only without mcp.manage', () => {
-    mockAppContextState.workspacePermissionKeys = ['tool.manage']
+    mockConsoleState.workspacePermissionKeys = ['tool.manage']
 
     renderIntegrationsPage(undefined, 'mcp')
 
@@ -565,7 +565,7 @@ describe('IntegrationsPage', () => {
   it.each(['custom-tool', 'workflow-tool'] as const)(
     'renders the %s route as read-only without tool.manage',
     (section) => {
-      mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+      mockConsoleState.workspacePermissionKeys = ['mcp.manage']
 
       renderIntegrationsPage(undefined, section)
 
@@ -674,7 +674,7 @@ describe('IntegrationsPage', () => {
 
   it('keeps custom, workflow, and MCP tool entries visible without manage permissions', async () => {
     const user = userEvent.setup()
-    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
     renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
 
     await user.click(screen.getByRole('button', { name: 'common.menus.tools' }))
