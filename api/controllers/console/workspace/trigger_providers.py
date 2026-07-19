@@ -53,7 +53,7 @@ class TriggerSubscriptionBuilderCreatePayload(BaseModel):
 
 
 class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
-    credentials: dict[str, Any]
+    credentials: dict[str, Any] | None = None
 
 
 class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
