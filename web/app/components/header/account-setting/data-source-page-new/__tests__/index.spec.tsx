@@ -88,11 +88,9 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  __esModule: true,
   default: () => (
-    <button type="button">
+    <button type="button" aria-label="plugin.autoUpdate.autoUpdate">
       plugin.autoUpdate.autoUpdate
-      <span>plugin.autoUpdate.strategy.fixOnly.name</span>
     </button>
   ),
 }))
@@ -241,8 +239,9 @@ describe('DataSourcePage Component', () => {
         'px-6',
         'pb-2',
       )
-      expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
-      expect(screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')[0]).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+      ).toBeInTheDocument()
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.notSetUpTitle')).toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.installFirst')).toBeInTheDocument()

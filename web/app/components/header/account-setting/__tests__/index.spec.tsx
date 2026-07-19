@@ -1,6 +1,7 @@
 import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -78,39 +79,26 @@ vi.mock('next-themes', () => ({
   })),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: vi.fn(() => ({ data: null, isLoading: false })),
-  useLanguage: vi.fn(() => 'en-US'),
-  useUpdateDefaultModel: vi.fn(() => ({ trigger: vi.fn() })),
-  useUpdateModelList: vi.fn(() => vi.fn()),
-  useInvalidateDefaultModel: vi.fn(() => vi.fn()),
-  useModelList: vi.fn(() => ({ data: [], isLoading: false })),
-  useSystemDefaultModelAndModelList: vi.fn(() => [null, vi.fn()]),
-  useMarketplaceAllPlugins: vi.fn(() => ({ plugins: [], isLoading: false })),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/atoms', () => ({
   useResetModelProviderListExpanded: () => mockResetModelProviderListExpanded,
 }))
 
-vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
-  usePluginSettingsAccess: () => ({ canSetPluginPreferences: true }),
+vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
+  default: ({
+    onSearchTextChange,
+    searchText,
+  }: {
+    onSearchTextChange?: (value: string) => void
+    searchText: string
+  }) => (
+    <input
+      type="search"
+      aria-label="common.operation.search"
+      value={searchText}
+      onChange={(event) => onSearchTextChange?.(event.target.value)}
+    />
+  ),
 }))
-
-vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({ data: { plugins: [] } }),
-}))
-
-vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  default: () => null,
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/install-from-marketplace',
-  () => ({
-    default: () => null,
-  }),
-)
 
 vi.mock('@/service/use-datasource', () => ({
   useGetDataSourceListAuth: vi.fn(() => ({ data: { result: [] } })),
@@ -697,18 +685,17 @@ describe('AccountSetting', () => {
       expect(mockOnCancel).toHaveBeenCalled()
     })
 
-    it('should update search value in provider tab', () => {
+    it('should keep provider search controlled at the account setting boundary', async () => {
       // Arrange
+      const user = userEvent.setup()
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PROVIDER })
 
       // Act
       const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-      fireEvent.change(input, { target: { value: 'test-search' } })
+      await user.type(input, 'test-search')
 
       // Assert
-      // Assert
       expect(input)!.toHaveValue('test-search')
-      expect(screen.getByPlaceholderText('common.modelProvider.searchModels'))!.toBeInTheDocument()
     })
 
     it('should handle scroll event in panel', () => {
