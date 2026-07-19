@@ -10,9 +10,12 @@ import Install from '../install'
 const mockInstallOrUpdate = vi.fn()
 const mockHandleRefetch = vi.fn()
 let mockInstallResponse: 'success' | 'failed' | 'running' = 'success'
+let mockInstallResponseFor: ((dependency: Dependency) => TaskStatus) | undefined
 
 vi.mock('@/service/use-plugins', () => ({
-  useInstallOrUpdate: (options: { onSuccess: (res: InstallStatusResponse[]) => void }) => {
+  useInstallOrUpdate: (options: {
+    onSuccess: (res: InstallStatusResponse[], variables: { payload: Dependency[] }) => void
+  }) => {
     mockInstallOrUpdate.mockImplementation((params: { payload: Dependency[] }) => {
       // Call onSuccess with mock response based on mockInstallResponse
       const getStatus = () => {
@@ -20,12 +23,12 @@ vi.mock('@/service/use-plugins', () => ({
         if (mockInstallResponse === 'failed') return TaskStatus.failed
         return TaskStatus.running
       }
-      const mockResponse: InstallStatusResponse[] = params.payload.map(() => ({
-        status: getStatus(),
-        taskId: 'mock-task-id',
-        uniqueIdentifier: 'mock-uid',
+      const mockResponse: InstallStatusResponse[] = params.payload.map((dependency, index) => ({
+        status: mockInstallResponseFor?.(dependency) ?? getStatus(),
+        taskId: `mock-task-id-${index}`,
+        uniqueIdentifier: `mock-uid-${index}`,
       }))
-      options.onSuccess(mockResponse)
+      options.onSuccess(mockResponse, params)
     })
     return {
       mutate: mockInstallOrUpdate,
@@ -256,6 +259,8 @@ describe('Install Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockInstallResponse = 'success'
+    mockInstallResponseFor = undefined
   })
 
   // ==================== Rendering Tests ====================
@@ -547,6 +552,73 @@ describe('Install Component', () => {
       await waitFor(() => {
         expect(mockEmit).toHaveBeenCalledWith('plugin:install:success', expect.any(Array))
       })
+    })
+
+    it('keeps settled results aligned after a plugin is deselected and reselected', async () => {
+      mockInstallResponseFor = (dependency) =>
+        dependency.type === 'github' ? TaskStatus.success : TaskStatus.failed
+      render(<Install {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('selected-plugins-count')).toHaveTextContent('2')
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('toggle-plugin-0'))
+      })
+      await waitFor(() => {
+        expect(screen.getByTestId('selected-plugins-count')).toHaveTextContent('1')
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('toggle-plugin-0'))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText(/plugin\.installModal\.install/i))
+      })
+
+      expect(mockInstallOrUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: [defaultProps.allPlugins[1], defaultProps.allPlugins[0]],
+          plugin: [
+            expect.objectContaining({ plugin_id: 'test-plugin-1' }),
+            expect.objectContaining({ plugin_id: 'test-plugin-0' }),
+          ],
+        }),
+      )
+      await waitFor(() => {
+        expect(mockEmit).toHaveBeenCalledWith('plugin:install:success', [
+          'test-plugin-1/Test Plugin 1',
+        ])
+      })
+    })
+
+    it('keeps polled results aligned after a plugin is deselected and reselected', async () => {
+      mockInstallResponseFor = (dependency) =>
+        dependency.type === 'github' ? TaskStatus.running : TaskStatus.failed
+      mockCheck.mockResolvedValue({ status: TaskStatus.success })
+      render(<Install {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('selected-plugins-count')).toHaveTextContent('2')
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('toggle-plugin-0'))
+      })
+      await waitFor(() => {
+        expect(screen.getByTestId('selected-plugins-count')).toHaveTextContent('1')
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('toggle-plugin-0'))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByText(/plugin\.installModal\.install/i))
+      })
+
+      await waitFor(() => {
+        expect(mockEmit).toHaveBeenCalledWith('plugin:install:success', [
+          'test-plugin-1/Test Plugin 1',
+        ])
+      })
+      expect(mockCheck).toHaveBeenCalledOnce()
     })
 
     it('should disable install button when no plugins are selected', async () => {

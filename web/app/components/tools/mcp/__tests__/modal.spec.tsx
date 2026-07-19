@@ -266,7 +266,7 @@ describe('MCPModal', () => {
     expect(payload).not.toHaveProperty('authentication')
   })
 
-  it('preserves zero timeout values through edit hydration and submission', async () => {
+  it('falls back to safe timeout defaults when persisted values are zero', async () => {
     const { onConfirm, user } = renderModal({
       data: createEditData({
         configuration: {
@@ -284,7 +284,7 @@ describe('MCPModal', () => {
 
     await waitFor(() => {
       expect(onConfirm).toHaveBeenCalledWith(
-        expect.objectContaining({ configuration: { timeout: 0, sse_read_timeout: 0 } }),
+        expect.objectContaining({ configuration: { timeout: 30, sse_read_timeout: 300 } }),
       )
     })
   })

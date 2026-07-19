@@ -39,6 +39,11 @@ type Props = Readonly<{
   isHideButton?: boolean
 }>
 
+type SelectedEntry = {
+  dependency: Dependency
+  plugin: Plugin
+}
+
 const Install: FC<Props> = ({
   allPlugins,
   onStartToInstall,
@@ -49,9 +54,9 @@ const Install: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const emit = useMittContextSelector((s) => s.emit)
-  const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
-  const [selectedIndexes, setSelectedIndexes] = React.useState<number[]>([])
-  const selectedPluginsNum = selectedPlugins.length
+  const [selectedEntries, setSelectedEntries] = React.useState<SelectedEntry[]>([])
+  const selectedPlugins = selectedEntries.map(({ plugin }) => plugin)
+  const selectedPluginsNum = selectedEntries.length
   const installMultiRef = useRef<ExposeRefs>(null)
   const { refreshPluginList } = useRefreshPluginList()
   const [isSelectAll, setIsSelectAll] = useState(false)
@@ -81,41 +86,45 @@ const Install: FC<Props> = ({
   }, [onCancel, stop])
 
   const { handleRefetch } = usePluginTaskList()
-  const getSelectedVersionInfo = useCallback(() => {
-    return selectedPlugins.map((plugin) => {
-      const pluginDetail = installedInfo?.[getPluginKey(plugin)]
-      return {
-        hasInstalled: !!pluginDetail,
-        installedVersion: pluginDetail?.installedVersion,
-        toInstallVersion: plugin.version,
-      }
-    })
-  }, [installedInfo, selectedPlugins])
+  const getSelectedVersionInfo = useCallback(
+    (plugins: Plugin[]) => {
+      return plugins.map((plugin) => {
+        const pluginDetail = installedInfo?.[getPluginKey(plugin)]
+        return {
+          hasInstalled: !!pluginDetail,
+          installedVersion: pluginDetail?.installedVersion,
+          toInstallVersion: plugin.version,
+        }
+      })
+    },
+    [installedInfo],
+  )
 
   // Install from marketplace and github
   const { mutate: installOrUpdate, isPending: isInstalling } = useInstallOrUpdate({
-    onSuccess: async (res: InstallStatusResponse[]) => {
+    onSuccess: async (res: InstallStatusResponse[], variables) => {
+      const { payload: selectedDependencies, plugin: installedPlugins } = variables
       const isAllSettled = res.every(
         (r) => r.status === TaskStatus.success || r.status === TaskStatus.failed,
       )
       // if all settled, return the install status
       if (isAllSettled) {
         onInstalled(
-          selectedPlugins,
+          installedPlugins,
           res.map((r, i) => {
             return {
               success: r.status === TaskStatus.success,
-              isFromMarketPlace: allPlugins[selectedIndexes[i]!]!.type === 'marketplace',
+              isFromMarketPlace: selectedDependencies[i]?.type === 'marketplace',
             }
           }),
-          getSelectedVersionInfo(),
+          getSelectedVersionInfo(installedPlugins),
         )
         const hasInstallSuccess = res.some((r) => r.status === TaskStatus.success)
         if (hasInstallSuccess) {
           refreshPluginList(undefined, true)
           emit(
             'plugin:install:success',
-            selectedPlugins.flatMap((plugin, index) =>
+            installedPlugins.flatMap((plugin, index) =>
               res[index]?.status === TaskStatus.success
                 ? [`${plugin.plugin_id}/${plugin.name}`]
                 : [],
@@ -131,7 +140,7 @@ const Install: FC<Props> = ({
           if (item.status !== TaskStatus.running) {
             return {
               success: item.status === TaskStatus.success,
-              isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
+              isFromMarketPlace: selectedDependencies[index]?.type === 'marketplace',
             }
           }
           const { status } = await check({
@@ -140,16 +149,16 @@ const Install: FC<Props> = ({
           })
           return {
             success: status === TaskStatus.success,
-            isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
+            isFromMarketPlace: selectedDependencies[index]?.type === 'marketplace',
           }
         }),
       )
-      onInstalled(selectedPlugins, installStatus, getSelectedVersionInfo())
+      onInstalled(installedPlugins, installStatus, getSelectedVersionInfo(installedPlugins))
       const hasInstallSuccess = installStatus.some((r) => r.success)
       if (hasInstallSuccess) {
         emit(
           'plugin:install:success',
-          selectedPlugins.flatMap((plugin, index) =>
+          installedPlugins.flatMap((plugin, index) =>
             installStatus[index]?.success ? [`${plugin.plugin_id}/${plugin.name}`] : [],
           ),
         )
@@ -159,41 +168,44 @@ const Install: FC<Props> = ({
   const handleInstall = () => {
     onStartToInstall?.()
     installOrUpdate({
-      payload: allPlugins.filter((_d, index) => selectedIndexes.includes(index)),
-      plugin: selectedPlugins,
+      payload: selectedEntries.map(({ dependency }) => dependency),
+      plugin: selectedEntries.map(({ plugin }) => plugin),
       installedInfo: installedInfo!,
     })
   }
   const [isIndeterminate, setIsIndeterminate] = useState(false)
-  const handleSelectAll = useCallback((plugins: Plugin[], selectedIndexes: number[]) => {
-    setSelectedPlugins(plugins)
-    setSelectedIndexes(selectedIndexes)
-    setIsSelectAll(true)
-    setIsIndeterminate(false)
-  }, [])
+  const handleSelectAll = useCallback(
+    (plugins: Plugin[], selectedIndexes: number[]) => {
+      setSelectedEntries(
+        selectedIndexes.map((selectedIndex, index) => ({
+          dependency: allPlugins[selectedIndex]!,
+          plugin: plugins[index]!,
+        })),
+      )
+      setIsSelectAll(true)
+      setIsIndeterminate(false)
+    },
+    [allPlugins],
+  )
   const handleDeSelectAll = useCallback(() => {
-    setSelectedPlugins([])
-    setSelectedIndexes([])
+    setSelectedEntries([])
     setIsSelectAll(false)
     setIsIndeterminate(false)
   }, [])
 
   const handleSelect = useCallback(
     (plugin: Plugin, selectedIndex: number, allPluginsLength: number) => {
-      const isSelected = !!selectedPlugins.find((p) => p.plugin_id === plugin.plugin_id)
-      let nextSelectedPlugins
-      if (isSelected)
-        nextSelectedPlugins = selectedPlugins.filter((p) => p.plugin_id !== plugin.plugin_id)
-      else nextSelectedPlugins = [...selectedPlugins, plugin]
-      setSelectedPlugins(nextSelectedPlugins)
-      const nextSelectedIndexes = isSelected
-        ? selectedIndexes.filter((i) => i !== selectedIndex)
-        : [...selectedIndexes, selectedIndex]
-      setSelectedIndexes(nextSelectedIndexes)
-      if (nextSelectedPlugins.length === 0) {
+      const isSelected = selectedEntries.some(
+        ({ plugin: item }) => item.plugin_id === plugin.plugin_id,
+      )
+      const nextSelectedEntries = isSelected
+        ? selectedEntries.filter(({ plugin: item }) => item.plugin_id !== plugin.plugin_id)
+        : [...selectedEntries, { dependency: allPlugins[selectedIndex]!, plugin }]
+      setSelectedEntries(nextSelectedEntries)
+      if (nextSelectedEntries.length === 0) {
         setIsSelectAll(false)
         setIsIndeterminate(false)
-      } else if (nextSelectedPlugins.length === allPluginsLength) {
+      } else if (nextSelectedEntries.length === allPluginsLength) {
         setIsSelectAll(true)
         setIsIndeterminate(false)
       } else {
@@ -201,7 +213,7 @@ const Install: FC<Props> = ({
         setIsSelectAll(false)
       }
     },
-    [selectedPlugins, selectedIndexes],
+    [allPlugins, selectedEntries],
   )
 
   const { canInstallPluginFromMarketplace } = useCanInstallPluginFromMarketplace()

@@ -3,7 +3,7 @@ import type {
   PluginDeclaration,
   UpdateFromGitHubPayload,
 } from '../../../types'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
@@ -195,6 +195,26 @@ describe('InstallFromGitHub', () => {
 
     expect(mockToastError).toHaveBeenCalledWith('plugin.error.inValidGitHubUrl')
     expect(mockFetchReleases).not.toHaveBeenCalled()
+  })
+
+  it('stays on the repository step when a valid repository has no releases', async () => {
+    const user = userEvent.setup()
+    mockFetchReleases.mockResolvedValueOnce([])
+    render(<InstallFromGitHub onClose={onClose} onSuccess={onSuccess} />)
+
+    const repositoryInput = screen.getByRole('textbox', {
+      name: 'plugin.installFromGitHub.gitHubRepo',
+    })
+    await user.type(repositoryInput, 'https://github.com/acme/empty')
+    await user.click(screen.getByRole('button', { name: 'plugin.installModal.next' }))
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith('plugin.error.noReleasesFound')
+    })
+    expect(repositoryInput).toHaveValue('https://github.com/acme/empty')
+    expect(
+      screen.queryByRole('combobox', { name: 'plugin.installFromGitHub.selectVersion' }),
+    ).not.toBeInTheDocument()
   })
 
   it('returns to the repository field without losing the entered URL', async () => {

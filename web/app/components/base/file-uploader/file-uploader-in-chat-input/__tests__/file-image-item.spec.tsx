@@ -10,9 +10,7 @@ vi.mock('@/utils/download', () => ({
 }))
 
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
-  default: ({ title, url }: { title: string; url: string }) => (
-    <div role="dialog" aria-label={title} data-url={url} />
-  ),
+  default: ({ url }: { url: string }) => <div data-testid="image-preview" data-url={url} />,
 }))
 
 const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
@@ -47,7 +45,7 @@ describe('FileImageItem', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.view photo.png' }))
 
-    expect(screen.getByRole('dialog', { name: 'photo.png' })).toHaveAttribute('data-url', base64Url)
+    expect(screen.getByTestId('image-preview')).toHaveAttribute('data-url', base64Url)
     expect(
       screen.getByRole('button', { name: 'common.operation.download photo.png' }),
     ).toBeInTheDocument()

@@ -31,12 +31,12 @@ vi.mock('@/service/use-plugins', () => ({
   useInstallOrUpdate: ({
     onSuccess,
   }: {
-    onSuccess: (results: InstallStatusResponse[]) => Promise<void>
+    onSuccess: (results: InstallStatusResponse[], variables: unknown) => Promise<void>
   }) => ({
     isPending: false,
     mutate: (payload: unknown) => {
       mockInstallOrUpdate(payload)
-      void onSuccess(mockInstallResults.value)
+      void onSuccess(mockInstallResults.value, payload)
     },
   }),
   usePluginTaskList: () => ({ handleRefetch: vi.fn() }),

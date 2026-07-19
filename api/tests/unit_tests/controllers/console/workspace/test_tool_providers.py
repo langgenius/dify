@@ -762,3 +762,39 @@ def test_resolve_identity_mode_off_is_passthrough_when_not_enterprise(
     monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", False)
 
     assert controller_module._resolve_identity_mode(None, current=identity_mode.OFF) == identity_mode.OFF
+
+
+def test_mcp_update_forwards_dynamic_registration_clear_contract(
+    app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch
+):
+    service = MagicMock()
+    service.get_provider.return_value = MagicMock(identity_mode="off")
+    service_class = MagicMock(return_value=service)
+    validation_result = MagicMock()
+    service_class.validate_server_url_standalone.return_value = validation_result
+    transaction_factory = MagicMock()
+    transaction_factory.return_value.begin.return_value.__enter__.return_value = MagicMock()
+    monkeypatch.setattr(controller_module, "MCPToolManageService", service_class)
+    monkeypatch.setattr(controller_module, "sessionmaker", transaction_factory)
+    monkeypatch.setattr(controller_module, "db", MagicMock(engine=MagicMock()))
+
+    with app.test_request_context(
+        "/workspaces/current/tool-provider/mcp",
+        method="PUT",
+        json={
+            "provider_id": "provider-1",
+            "server_url": "[__HIDDEN__]",
+            "name": "Demo MCP",
+            "icon": "🔗",
+            "icon_type": "emoji",
+            "icon_background": "#000000",
+            "server_identifier": "demo-mcp",
+            "configuration": {"timeout": 30, "sse_read_timeout": 300},
+            "is_dynamic_registration": True,
+        },
+    ):
+        api = controller_module.ToolProviderMCPApi()
+        response = unwrap(api.put)(api, "tenant-1")
+
+    assert response == {"result": "success"}
+    assert service.update_provider.call_args.kwargs["is_dynamic_registration"] is True

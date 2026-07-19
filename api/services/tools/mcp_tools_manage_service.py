@@ -195,6 +195,7 @@ class MCPToolManageService:
         headers: dict[str, str] | None = None,
         configuration: MCPConfiguration,
         authentication: MCPAuthentication | None = None,
+        is_dynamic_registration: bool | None = None,
         validation_result: ServerUrlValidationResult | None = None,
         identity_mode: IdentityMode = IdentityMode.OFF,
     ) -> None:
@@ -205,6 +206,9 @@ class MCPToolManageService:
             validation_result: Pre-validation result from validate_server_url_standalone.
                               If provided and contains reconnect_result, it will be used
                               instead of performing network operations.
+            is_dynamic_registration: If True, clear manual OAuth credentials and authentication state.
+                                     If None or False, preserve the existing credentials unless replacements
+                                     are provided.
         """
         mcp_provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
 
@@ -254,8 +258,11 @@ class MCPToolManageService:
             if headers is not None:
                 mcp_provider.encrypted_headers = self._process_headers(headers, mcp_provider, tenant_id)
 
-            # Update credentials if provided
-            if authentication and authentication.client_id:
+            if is_dynamic_registration:
+                mcp_provider.encrypted_credentials = EMPTY_CREDENTIALS_JSON
+                mcp_provider.authed = False
+                mcp_provider.tools = EMPTY_TOOLS_JSON
+            elif authentication and authentication.client_id:
                 mcp_provider.encrypted_credentials = self._process_credentials(authentication, mcp_provider, tenant_id)
 
             # Update user-identity forwarding mode. The controller has already

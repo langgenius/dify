@@ -10,23 +10,17 @@ vi.mock('@/utils/download', () => ({
 }))
 
 vi.mock('../../audio-preview', () => ({
-  default: ({ title, url }: { title: string; url: string }) => (
-    <div role="dialog" aria-label={title} data-url={url} />
-  ),
+  default: ({ url }: { url: string }) => <div data-testid="audio-preview" data-url={url} />,
 }))
 
 vi.mock('../../video-preview', () => ({
-  default: ({ title, url }: { title: string; url: string }) => (
-    <div role="dialog" aria-label={title} data-url={url} />
-  ),
+  default: ({ url }: { url: string }) => <div data-testid="video-preview" data-url={url} />,
 }))
 
 vi.mock('../../dynamic-pdf-preview', () => ({
   default: ({ url, onCancel }: { url: string; onCancel: () => void }) => (
-    <div role="dialog" aria-label="PDF preview" data-url={url}>
-      <button type="button" onClick={onCancel}>
-        Close preview
-      </button>
+    <div data-testid="pdf-preview" data-url={url}>
+      <button type="button" data-testid="close-preview" onClick={onCancel} />
     </div>
   ),
 }))
@@ -54,16 +48,16 @@ describe('FileItem (chat-input)', () => {
   })
 
   it.each([
-    ['audio', createFile({ name: 'audio.mp3', type: 'audio/mpeg' }), 'audio.mp3'],
-    ['video', createFile({ name: 'video.mp4', type: 'video/mp4' }), 'video.mp4'],
-    ['PDF', createFile(), 'PDF preview'],
-  ])('opens the %s preview from a named button', async (_, file, dialogName) => {
+    ['audio', createFile({ name: 'audio.mp3', type: 'audio/mpeg' }), 'audio-preview'],
+    ['video', createFile({ name: 'video.mp4', type: 'video/mp4' }), 'video-preview'],
+    ['PDF', createFile(), 'pdf-preview'],
+  ])('opens the %s preview from a named button', async (_, file, previewTestId) => {
     const user = userEvent.setup()
     render(<FileItem file={file} canPreview />)
 
     await user.click(screen.getByRole('button', { name: `common.operation.view ${file.name}` }))
 
-    expect(screen.getByRole('dialog', { name: dialogName })).toHaveAttribute('data-url', file.url)
+    expect(screen.getByTestId(previewTestId)).toHaveAttribute('data-url', file.url)
   })
 
   it('previews a base64-only PDF from a named button', async () => {
@@ -73,10 +67,7 @@ describe('FileItem (chat-input)', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.view document.pdf' }))
 
-    expect(screen.getByRole('dialog', { name: 'PDF preview' })).toHaveAttribute(
-      'data-url',
-      base64Url,
-    )
+    expect(screen.getByTestId('pdf-preview')).toHaveAttribute('data-url', base64Url)
   })
 
   it('releases a local preview source when the preview closes', async () => {
@@ -96,12 +87,9 @@ describe('FileItem (chat-input)', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'common.operation.view document.pdf' }))
-    expect(screen.getByRole('dialog', { name: 'PDF preview' })).toHaveAttribute(
-      'data-url',
-      localPreviewUrl,
-    )
+    expect(screen.getByTestId('pdf-preview')).toHaveAttribute('data-url', localPreviewUrl)
 
-    await user.click(screen.getByRole('button', { name: 'Close preview' }))
+    await user.click(screen.getByTestId('close-preview'))
     expect(revokeObjectURL).toHaveBeenCalledWith(localPreviewUrl)
     expect(revokeObjectURL).toHaveBeenCalledTimes(1)
 
@@ -126,10 +114,7 @@ describe('FileItem (chat-input)', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'common.operation.view document.pdf' }))
-    expect(screen.getByRole('dialog', { name: 'PDF preview' })).toHaveAttribute(
-      'data-url',
-      localPreviewUrl,
-    )
+    expect(screen.getByTestId('pdf-preview')).toHaveAttribute('data-url', localPreviewUrl)
 
     unmount()
     expect(revokeObjectURL).toHaveBeenCalledTimes(1)

@@ -135,8 +135,8 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
               },
             }),
         configuration: {
-          timeout: state.timeout ?? 30,
-          sse_read_timeout: state.sseReadTimeout ?? 300,
+          timeout: state.timeout || 30,
+          sse_read_timeout: state.sseReadTimeout || 300,
         },
         // Edit-mode data may carry idp_token; clamp to off when SSO is no
         // longer available so a stale row can't keep forwarding configured.

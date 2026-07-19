@@ -795,20 +795,22 @@ export const useUploadGitHub = (payload: { repo: string; version: string; packag
   })
 }
 
+type InstallOrUpdateVariables = {
+  payload: Dependency[]
+  plugin: Plugin[]
+  installedInfo: Record<string, VersionInfo>
+}
+
 export const useInstallOrUpdate = ({
   onSuccess,
 }: {
-  onSuccess?: (res: InstallStatusResponse[]) => void
+  onSuccess?: (res: InstallStatusResponse[], variables: InstallOrUpdateVariables) => void
 }) => {
   const queryClient = useQueryClient()
   const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
 
   return useMutation({
-    mutationFn: (data: {
-      payload: Dependency[]
-      plugin: Plugin[]
-      installedInfo: Record<string, VersionInfo>
-    }) => {
+    mutationFn: (data: InstallOrUpdateVariables) => {
       const { payload, plugin, installedInfo } = data
 
       return Promise.all(

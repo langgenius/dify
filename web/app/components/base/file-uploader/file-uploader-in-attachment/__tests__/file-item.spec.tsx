@@ -11,11 +11,9 @@ vi.mock('@/utils/download', () => ({
 }))
 
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
-  default: ({ title, url, onCancel }: { title: string; url: string; onCancel: () => void }) => (
-    <div role="dialog" aria-label={title} data-url={url}>
-      <button type="button" onClick={onCancel}>
-        Close preview
-      </button>
+  default: ({ url, onCancel }: { url: string; onCancel: () => void }) => (
+    <div data-testid="image-preview" data-url={url}>
+      <button type="button" data-testid="close-preview" onClick={onCancel} />
     </div>
   ),
 }))
@@ -128,7 +126,7 @@ describe('FileInAttachmentItem', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.view photo.png' }))
 
-    expect(screen.getByRole('dialog', { name: 'photo.png' })).toHaveAttribute('data-url', base64Url)
+    expect(screen.getByTestId('image-preview')).toHaveAttribute('data-url', base64Url)
   })
 
   it('does not expose preview or download actions without a file source', async () => {

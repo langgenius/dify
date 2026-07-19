@@ -295,6 +295,10 @@ class MCPProviderCreatePayload(MCPProviderBasePayload):
 
 class MCPProviderUpdatePayload(MCPProviderBasePayload):
     provider_id: str
+    is_dynamic_registration: bool | None = Field(
+        default=None,
+        description="Whether to clear manual OAuth credentials and return to dynamic client registration",
+    )
 
 
 class MCPProviderDeletePayload(BaseModel):
@@ -1444,6 +1448,7 @@ class ToolProviderMCPApi(Resource):
                 headers=payload.headers or {},
                 configuration=configuration,
                 authentication=authentication,
+                is_dynamic_registration=payload.is_dynamic_registration,
                 validation_result=validation_result,
                 identity_mode=identity_mode,
             )
