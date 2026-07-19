@@ -115,9 +115,11 @@ const Install: FC<Props> = ({
           refreshPluginList(undefined, true)
           emit(
             'plugin:install:success',
-            selectedPlugins.map((p) => {
-              return `${p.plugin_id}/${p.name}`
-            }),
+            selectedPlugins.flatMap((plugin, index) =>
+              res[index]?.status === TaskStatus.success
+                ? [`${plugin.plugin_id}/${plugin.name}`]
+                : [],
+            ),
           )
         }
         return
@@ -147,9 +149,9 @@ const Install: FC<Props> = ({
       if (hasInstallSuccess) {
         emit(
           'plugin:install:success',
-          selectedPlugins.map((p) => {
-            return `${p.plugin_id}/${p.name}`
-          }),
+          selectedPlugins.flatMap((plugin, index) =>
+            installStatus[index]?.success ? [`${plugin.plugin_id}/${plugin.name}`] : [],
+          ),
         )
       }
     },

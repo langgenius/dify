@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Dependency } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,6 +45,8 @@ const InstallBundle: FC<Props> = ({
       return t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' })
     if (step === InstallStep.installed)
       return t(($) => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
+    if (step === InstallStep.installFailed)
+      return t(($) => $[`${i18nPrefix}.installFailed`], { ns: 'plugin' })
 
     return t(($) => $[`${i18nPrefix}.installPlugin`], { ns: 'plugin' })
   }, [step, t])
@@ -69,7 +71,9 @@ const InstallBundle: FC<Props> = ({
         <DialogCloseButton />
 
         <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <div className="self-stretch title-2xl-semi-bold text-text-primary">{getTitle()}</div>
+          <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
+            {getTitle()}
+          </DialogTitle>
         </div>
         <ReadyToInstall
           step={step}

@@ -2,7 +2,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid } from 'uuid'
@@ -50,8 +49,14 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
           {t(($) => $['mcp.modal.noHeaders'], { ns: 'tools' })}
         </div>
         {!readonly && (
-          <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
-            <RiAddLine className="mr-1 size-4" />
+          <Button
+            type="button"
+            variant="secondary"
+            size="small"
+            onClick={handleAddItem}
+            className="w-full"
+          >
+            <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
             {t(($) => $['mcp.modal.addHeader'], { ns: 'tools' })}
           </Button>
         )}
@@ -85,6 +90,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
           >
             <div className="w-1/2 border-r border-divider-regular">
               <Input
+                aria-label={`${t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })} ${index + 1}`}
                 value={item.key}
                 onChange={(e) => handleItemChange(index, 'key', e.target.value)}
                 placeholder={t(($) => $['mcp.modal.headerKeyPlaceholder'], { ns: 'tools' })}
@@ -94,6 +100,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
             </div>
             <div className="flex w-1/2 items-center">
               <Input
+                aria-label={`${t(($) => $['mcp.modal.headerValue'], { ns: 'tools' })} ${index + 1}`}
                 value={item.value}
                 onChange={(e) => handleItemChange(index, 'value', e.target.value)}
                 placeholder={t(($) => $['mcp.modal.headerValuePlaceholder'], { ns: 'tools' })}
@@ -101,8 +108,15 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
                 readOnly={readonly}
               />
               {!readonly && !!headersItems.length && (
-                <ActionButton onClick={() => handleRemoveItem(index)} className="mr-2">
-                  <RiDeleteBinLine className="size-4 text-text-destructive" />
+                <ActionButton
+                  aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${item.key || index + 1}`}
+                  onClick={() => handleRemoveItem(index)}
+                  className="mr-2"
+                >
+                  <span
+                    className="i-ri-delete-bin-line size-4 text-text-destructive"
+                    aria-hidden="true"
+                  />
                 </ActionButton>
               )}
             </div>
@@ -110,8 +124,14 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
         ))}
       </div>
       {!readonly && (
-        <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
-          <RiAddLine className="mr-1 size-4" />
+        <Button
+          type="button"
+          variant="secondary"
+          size="small"
+          onClick={handleAddItem}
+          className="w-full"
+        >
+          <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
           {t(($) => $['mcp.modal.addHeader'], { ns: 'tools' })}
         </Button>
       )}

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
@@ -34,8 +34,12 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
             className="mr-2"
             checked={isDynamicRegistration}
             onCheckedChange={onDynamicRegistrationChange}
+            aria-labelledby="mcp-dynamic-client-registration-label"
           />
-          <span className="system-sm-medium text-text-secondary">
+          <span
+            id="mcp-dynamic-client-registration-label"
+            className="system-sm-medium text-text-secondary"
+          >
             {t(($) => $['mcp.modal.useDynamicClientRegistration'], { ns: 'tools' })}
           </span>
         </div>
@@ -53,32 +57,38 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
           </div>
         )}
       </div>
-      <div>
-        <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-          <span className="system-sm-medium text-text-secondary">
-            {t(($) => $['mcp.modal.clientID'], { ns: 'tools' })}
-          </span>
-        </div>
-        <Input
+      <Field name="client_id" className="gap-0">
+        <FieldLabel
+          className={cn(
+            'mb-1 flex h-6 items-center system-sm-medium text-text-secondary',
+            isDynamicRegistration && 'opacity-50',
+          )}
+        >
+          {t(($) => $['mcp.modal.clientID'], { ns: 'tools' })}
+        </FieldLabel>
+        <FieldControl
           value={clientID}
           onChange={(e) => onClientIDChange(e.target.value)}
           placeholder={t(($) => $['mcp.modal.clientID'], { ns: 'tools' })}
           disabled={isDynamicRegistration}
         />
-      </div>
-      <div>
-        <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-          <span className="system-sm-medium text-text-secondary">
-            {t(($) => $['mcp.modal.clientSecret'], { ns: 'tools' })}
-          </span>
-        </div>
-        <Input
+      </Field>
+      <Field name="client_secret" className="gap-0">
+        <FieldLabel
+          className={cn(
+            'mb-1 flex h-6 items-center system-sm-medium text-text-secondary',
+            isDynamicRegistration && 'opacity-50',
+          )}
+        >
+          {t(($) => $['mcp.modal.clientSecret'], { ns: 'tools' })}
+        </FieldLabel>
+        <FieldControl
           value={credentials}
           onChange={(e) => onCredentialsChange(e.target.value)}
           placeholder={t(($) => $['mcp.modal.clientSecretPlaceholder'], { ns: 'tools' })}
           disabled={isDynamicRegistration}
         />
-      </div>
+      </Field>
     </>
   )
 }

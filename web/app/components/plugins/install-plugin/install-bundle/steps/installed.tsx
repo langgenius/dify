@@ -21,14 +21,17 @@ type Props = Readonly<{
 const Installed: FC<Props> = ({ list, installStatus, versionInfo, onCancel, isHideButton }) => {
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
+  const installedCount = installStatus.filter(({ success }) => success).length
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
         <p className="system-md-regular text-text-secondary">
-          {t(($) => $['installModal.installedSuccessfullyCountDesc'], {
-            ns: 'plugin',
-            num: list.length,
-          })}
+          {installedCount
+            ? t(($) => $['installModal.installedSuccessfullyCountDesc'], {
+                ns: 'plugin',
+                num: installedCount,
+              })
+            : t(($) => $['installModal.installFailedDesc'], { ns: 'plugin' })}
         </p>
         <div className="flex flex-wrap content-start items-start gap-1 space-y-1 self-stretch rounded-2xl bg-background-section-burn p-2">
           {list.map((plugin, index) => {

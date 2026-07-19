@@ -94,9 +94,9 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = useState(() => data?.server_identifier || '')
-  const [timeout, setMcpTimeout] = useState(() => data?.configuration?.timeout || 30)
+  const [timeout, setTimeout] = useState(() => data?.configuration?.timeout ?? 30)
   const [sseReadTimeout, setSseReadTimeout] = useState(
-    () => data?.configuration?.sse_read_timeout || 300,
+    () => data?.configuration?.sse_read_timeout ?? 300,
   )
   const [headers, setHeaders] = useState<HeaderItem[]>(() => getInitialHeaders(data))
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
@@ -181,7 +181,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       setAppIcon,
       setShowAppIconPicker,
       setServerIdentifier,
-      setTimeout: setMcpTimeout,
+      setTimeout,
       setSseReadTimeout,
       setHeaders,
       setAuthMethod: handleAuthMethodChange,

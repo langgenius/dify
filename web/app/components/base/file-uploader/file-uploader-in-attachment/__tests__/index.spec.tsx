@@ -1,6 +1,7 @@
 import type { FileEntity } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
 import FileUploaderInAttachmentWrapper from '../index'
 
@@ -107,7 +108,8 @@ describe('FileUploaderInAttachmentWrapper', () => {
     expect(screen.getByText(/fileUploader\.pasteFileLink/)).toBeInTheDocument()
   })
 
-  it('should call handleRemoveFile when remove button is clicked', () => {
+  it('should call handleRemoveFile when remove button is clicked', async () => {
+    const user = userEvent.setup()
     const files = [createFile({ id: 'f1', name: 'a.txt' })]
 
     render(
@@ -118,11 +120,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    // Find the file item row, then locate the delete button within it
-    const fileNameEl = screen.getByText(/a\.txt/i)
-    const fileRow = fileNameEl.closest('[title="a.txt"]')?.parentElement?.parentElement
-    const deleteBtn = fileRow?.querySelector('button:last-of-type')
-    fireEvent.click(deleteBtn!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove a.txt' }))
 
     expect(mockHandleRemoveFile).toHaveBeenCalledWith('f1')
   })
@@ -185,10 +183,11 @@ describe('FileUploaderInAttachmentWrapper', () => {
     expect(disabledButtons.length).toBeGreaterThan(0)
   })
 
-  it('should call handleReUploadFile when reupload button is clicked', () => {
+  it('should call handleReUploadFile when reupload button is clicked', async () => {
+    const user = userEvent.setup()
     const files = [createFile({ id: 'f1', name: 'a.txt', progress: -1 })]
 
-    const { container } = render(
+    render(
       <FileUploaderInAttachmentWrapper
         value={files}
         onChange={vi.fn()}
@@ -196,10 +195,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    // ReplayLine is inside ActionButton (a <button>) with data-icon attribute
-    const replayIcon = container.querySelector('svg[data-icon="ReplayLine"]')
-    const replayBtn = replayIcon!.closest('button')
-    fireEvent.click(replayBtn!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry a.txt' }))
 
     expect(mockHandleReUploadFile).toHaveBeenCalledWith('f1')
   })

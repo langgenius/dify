@@ -29,6 +29,7 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
         <NumberField value={timeout} min={0} onValueChange={(value) => onTimeoutChange(value ?? 0)}>
           <NumberFieldGroup>
             <NumberFieldInput
+              aria-label={t(($) => $['mcp.modal.timeout'], { ns: 'tools' })}
               placeholder={t(($) => $['mcp.modal.timeoutPlaceholder'], { ns: 'tools' })}
             />
           </NumberFieldGroup>
@@ -47,6 +48,7 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
         >
           <NumberFieldGroup>
             <NumberFieldInput
+              aria-label={t(($) => $['mcp.modal.sseReadTimeout'], { ns: 'tools' })}
               placeholder={t(($) => $['mcp.modal.timeoutPlaceholder'], { ns: 'tools' })}
             />
           </NumberFieldGroup>

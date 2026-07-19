@@ -2,7 +2,7 @@ import type { FileEntity } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ProgressCircle } from '@langgenius/dify-ui/progress'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
@@ -32,14 +32,45 @@ const FileItem = ({
   const { t } = useTranslation()
   const { id, name, type, progress, url, base64Url, isRemote } = file
   const [previewUrl, setPreviewUrl] = useState('')
+  const localPreviewUrlRef = useRef<string | null>(null)
   const ext = getFileExtension(name, type, isRemote)
   const uploadError = progress === -1
   const [typeCategory = '', typeSubtype = ''] = type?.split('/') ?? []
 
-  let tmp_preview_url = url || base64Url
-  if (!tmp_preview_url && file?.originalFile)
-    tmp_preview_url = URL.createObjectURL(file.originalFile.slice()).toString()
+  const previewSource = url || base64Url
   const download_url = url ? `${url}&as_attachment=true` : base64Url
+  const canOpenPreview = Boolean(
+    canPreview &&
+    (previewSource || file.originalFile) &&
+    (typeCategory === 'audio' || typeCategory === 'video' || typeSubtype === 'pdf'),
+  )
+  const fileNameClassName = 'mb-1 line-clamp-2 h-8 system-xs-medium break-all text-text-tertiary'
+
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrlRef.current) URL.revokeObjectURL(localPreviewUrlRef.current)
+    }
+  }, [])
+
+  const openPreview = () => {
+    if (previewSource) {
+      setPreviewUrl(previewSource)
+      return
+    }
+    if (!file.originalFile) return
+
+    const localPreviewUrl = URL.createObjectURL(file.originalFile.slice())
+    localPreviewUrlRef.current = localPreviewUrl
+    setPreviewUrl(localPreviewUrl)
+  }
+
+  const closePreview = () => {
+    setPreviewUrl('')
+    if (!localPreviewUrlRef.current) return
+
+    URL.revokeObjectURL(localPreviewUrlRef.current)
+    localPreviewUrlRef.current = null
+  }
 
   return (
     <>
@@ -54,8 +85,8 @@ const FileItem = ({
       >
         {showDeleteAction && (
           <Button
-            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
-            className="absolute -top-1.5 -right-1.5 z-11 hidden size-5 rounded-full p-0 group-hover/file-item:flex"
+            aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${name}`}
+            className="pointer-events-none absolute -top-1.5 -right-1.5 z-11 flex size-5 rounded-full p-0 opacity-0 outline-hidden group-hover/file-item:pointer-events-auto group-hover/file-item:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={() => onRemove?.(id)}
           >
             <span
@@ -64,13 +95,24 @@ const FileItem = ({
             />
           </Button>
         )}
-        <div
-          className="mb-1 line-clamp-2 h-8 cursor-pointer system-xs-medium break-all text-text-tertiary"
-          title={name}
-          onClick={() => canPreview && setPreviewUrl(tmp_preview_url || '')}
-        >
-          {name}
-        </div>
+        {canOpenPreview ? (
+          <button
+            type="button"
+            className={cn(
+              fileNameClassName,
+              'w-full cursor-pointer rounded-sm text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+            )}
+            title={name}
+            aria-label={`${t(($) => $['operation.view'], { ns: 'common' })} ${name}`}
+            onClick={openPreview}
+          >
+            {name}
+          </button>
+        ) : (
+          <div className={fileNameClassName} title={name}>
+            {name}
+          </div>
+        )}
         <div className="relative flex items-center justify-between">
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
             <FileTypeIcon size="sm" type={getFileAppearanceType(name, type)} className="mr-1" />
@@ -84,9 +126,9 @@ const FileItem = ({
           </div>
           {showDownloadAction && download_url && (
             <ActionButton
-              aria-label={t(($) => $['operation.download'], { ns: 'common' })}
+              aria-label={`${t(($) => $['operation.download'], { ns: 'common' })} ${name}`}
               size="m"
-              className="absolute -top-1 -right-1 hidden group-hover/file-item:flex"
+              className="pointer-events-none absolute -top-1 -right-1 flex opacity-0 outline-hidden group-hover/file-item:pointer-events-auto group-hover/file-item:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={(e) => {
                 e.stopPropagation()
                 downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
@@ -105,7 +147,7 @@ const FileItem = ({
           {uploadError && (
             <button
               type="button"
-              aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
+              aria-label={`${t(($) => $['operation.retry'], { ns: 'common' })} ${name}`}
               className="size-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={() => onReUpload?.(id)}
             >
@@ -115,18 +157,13 @@ const FileItem = ({
         </div>
       </div>
       {typeCategory === 'audio' && canPreview && previewUrl && (
-        <AudioPreview title={name} url={previewUrl} onCancel={() => setPreviewUrl('')} />
+        <AudioPreview title={name} url={previewUrl} onCancel={closePreview} />
       )}
       {typeCategory === 'video' && canPreview && previewUrl && (
-        <VideoPreview title={name} url={previewUrl} onCancel={() => setPreviewUrl('')} />
+        <VideoPreview title={name} url={previewUrl} onCancel={closePreview} />
       )}
       {typeSubtype === 'pdf' && canPreview && previewUrl && (
-        <PdfPreview
-          url={previewUrl}
-          onCancel={() => {
-            setPreviewUrl('')
-          }}
-        />
+        <PdfPreview url={previewUrl} onCancel={closePreview} />
       )}
     </>
   )

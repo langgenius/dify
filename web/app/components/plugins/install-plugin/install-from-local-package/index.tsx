@@ -2,7 +2,7 @@
 
 import type { Dependency, PluginCategoryEnum, PluginDeclaration } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -100,7 +100,9 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
         <DialogCloseButton />
 
         <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <div className="self-stretch title-2xl-semi-bold text-text-primary">{getTitle()}</div>
+          <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
+            {getTitle()}
+          </DialogTitle>
         </div>
         {step === InstallStep.uploading && (
           <Uploading

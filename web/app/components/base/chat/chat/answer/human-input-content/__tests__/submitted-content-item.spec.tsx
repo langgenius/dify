@@ -84,7 +84,7 @@ describe('SubmittedContentItem', () => {
     )
 
     expect(screen.getByTestId('submitted-field-evidence')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: 'evidence.png' })).toHaveAttribute(
       'src',
       'https://example.com/evidence.png',
     )

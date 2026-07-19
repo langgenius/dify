@@ -93,7 +93,7 @@ describe('SubmittedFieldValues', () => {
     render(<SubmittedFieldValues fields={fields} values={values} />)
 
     expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
-    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: 'evidence-1.png' })).toHaveAttribute(
       'src',
       'https://example.com/evidence-1.png',
     )
@@ -122,7 +122,7 @@ describe('SubmittedFieldValues', () => {
 
     expect(screen.getByTestId('submitted-field-summary')).toHaveTextContent('Unstructured summary')
     expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
-    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: 'evidence-1.png' })).toHaveAttribute(
       'src',
       'https://example.com/evidence-1.png',
     )

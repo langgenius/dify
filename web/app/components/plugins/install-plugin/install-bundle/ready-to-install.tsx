@@ -34,7 +34,11 @@ const ReadyToInstall: FC<Props> = ({
       setInstallStatus(installStatus)
       setInstalledPlugins(plugins)
       setInstalledVersionInfo(versionInfo)
-      onStepChange(InstallStep.installed)
+      onStepChange(
+        installStatus.some(({ success }) => success)
+          ? InstallStep.installed
+          : InstallStep.installFailed,
+      )
       setIsInstalling(false)
     },
     [onStepChange, setIsInstalling],
@@ -50,7 +54,7 @@ const ReadyToInstall: FC<Props> = ({
           isFromMarketPlace={isFromMarketPlace}
         />
       )}
-      {step === InstallStep.installed && (
+      {[InstallStep.installed, InstallStep.installFailed].includes(step) && (
         <Installed
           list={installedPlugins}
           installStatus={installStatus}

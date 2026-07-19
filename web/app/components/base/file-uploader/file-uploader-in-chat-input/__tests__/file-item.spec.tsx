@@ -1,21 +1,31 @@
 import type { FileEntity } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
+import { downloadUrl } from '@/utils/download'
 import FileItem from '../file-item'
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
-vi.mock('@/utils/format', () => ({
-  formatFileSize: (size: number) => `${size}B`,
+vi.mock('../../audio-preview', () => ({
+  default: ({ title, url }: { title: string; url: string }) => (
+    <div role="dialog" aria-label={title} data-url={url} />
+  ),
+}))
+
+vi.mock('../../video-preview', () => ({
+  default: ({ title, url }: { title: string; url: string }) => (
+    <div role="dialog" aria-label={title} data-url={url} />
+  ),
 }))
 
 vi.mock('../../dynamic-pdf-preview', () => ({
   default: ({ url, onCancel }: { url: string; onCancel: () => void }) => (
-    <div data-testid="pdf-preview" data-url={url}>
-      <button data-testid="pdf-close" onClick={onCancel}>
-        Close PDF
+    <div role="dialog" aria-label="PDF preview" data-url={url}>
+      <button type="button" onClick={onCancel}>
+        Close preview
       </button>
     </div>
   ),
@@ -39,300 +49,148 @@ describe('FileItem (chat-input)', () => {
     vi.clearAllMocks()
   })
 
-  it('should render file name', () => {
-    render(<FileItem file={createFile()} />)
-
-    expect(screen.getByText(/document\.pdf/i)).toBeInTheDocument()
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
-  it('should render file extension and size', () => {
-    const { container } = render(<FileItem file={createFile()} />)
+  it.each([
+    ['audio', createFile({ name: 'audio.mp3', type: 'audio/mpeg' }), 'audio.mp3'],
+    ['video', createFile({ name: 'video.mp4', type: 'video/mp4' }), 'video.mp4'],
+    ['PDF', createFile(), 'PDF preview'],
+  ])('opens the %s preview from a named button', async (_, file, dialogName) => {
+    const user = userEvent.setup()
+    render(<FileItem file={file} canPreview />)
 
-    // Extension and size are rendered as text nodes in the metadata div
-    expect(container.textContent).toContain('pdf')
-    expect(container.textContent).toContain('2048B')
+    await user.click(screen.getByRole('button', { name: `common.operation.view ${file.name}` }))
+
+    expect(screen.getByRole('dialog', { name: dialogName })).toHaveAttribute('data-url', file.url)
   })
 
-  it('should render FileTypeIcon', () => {
-    const { container } = render(<FileItem file={createFile()} />)
+  it('previews a base64-only PDF from a named button', async () => {
+    const user = userEvent.setup()
+    const base64Url = 'data:application/pdf;base64,abc'
+    render(<FileItem file={createFile({ url: undefined, base64Url })} canPreview />)
 
-    const fileTypeIcon = container.querySelector('svg')
-    expect(fileTypeIcon).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.view document.pdf' }))
+
+    expect(screen.getByRole('dialog', { name: 'PDF preview' })).toHaveAttribute(
+      'data-url',
+      base64Url,
+    )
   })
 
-  it('should render delete button when showDeleteAction is true', () => {
-    render(<FileItem file={createFile()} showDeleteAction />)
+  it('releases a local preview source when the preview closes', async () => {
+    const user = userEvent.setup()
+    const localPreviewUrl = 'blob:http://localhost/file-preview'
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue(localPreviewUrl)
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
+    const { unmount } = render(
+      <FileItem
+        file={createFile({
+          url: undefined,
+          base64Url: undefined,
+          originalFile: new File(['PDF'], 'document.pdf', { type: 'application/pdf' }),
+        })}
+        canPreview
+      />,
+    )
 
-    expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.view document.pdf' }))
+    expect(screen.getByRole('dialog', { name: 'PDF preview' })).toHaveAttribute(
+      'data-url',
+      localPreviewUrl,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Close preview' }))
+    expect(revokeObjectURL).toHaveBeenCalledWith(localPreviewUrl)
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1)
+
+    unmount()
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1)
   })
 
-  it('should call onRemove when delete button is clicked', () => {
+  it('releases an open local preview source when the file item unmounts', async () => {
+    const user = userEvent.setup()
+    const localPreviewUrl = 'blob:http://localhost/file-preview'
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue(localPreviewUrl)
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
+    const { unmount } = render(
+      <FileItem
+        file={createFile({
+          url: undefined,
+          base64Url: undefined,
+          originalFile: new File(['PDF'], 'document.pdf', { type: 'application/pdf' }),
+        })}
+        canPreview
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.view document.pdf' }))
+    expect(screen.getByRole('dialog', { name: 'PDF preview' })).toHaveAttribute(
+      'data-url',
+      localPreviewUrl,
+    )
+
+    unmount()
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1)
+    expect(revokeObjectURL).toHaveBeenCalledWith(localPreviewUrl)
+  })
+
+  it.each([
+    ['remote URL', createFile(), 'https://example.com/document.pdf&as_attachment=true'],
+    [
+      'base64 URL',
+      createFile({ url: undefined, base64Url: 'data:application/pdf;base64,abc' }),
+      'data:application/pdf;base64,abc',
+    ],
+  ])('downloads the available %s from a named action', async (_, file, expectedUrl) => {
+    const user = userEvent.setup()
+    render(<FileItem file={file} showDownloadAction />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.download document.pdf' }))
+
+    expect(downloadUrl).toHaveBeenCalledWith({
+      url: expectedUrl,
+      fileName: 'document.pdf',
+      target: '_blank',
+    })
+  })
+
+  it('removes the file from a named action', async () => {
+    const user = userEvent.setup()
     const onRemove = vi.fn()
     render(<FileItem file={createFile()} showDeleteAction onRemove={onRemove} />)
-    const delete_button = screen.getByRole('button', { name: 'common.operation.remove' })
-    fireEvent.click(delete_button)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove document.pdf' }))
+
     expect(onRemove).toHaveBeenCalledWith('file-1')
   })
 
-  it('should render progress circle when file is uploading', () => {
-    const { container } = render(
-      <FileItem file={createFile({ progress: 50, uploadedId: undefined })} />,
-    )
-
-    const progressSvg = container.querySelector('svg circle')
-    expect(progressSvg).toBeInTheDocument()
-  })
-
-  it('should render replay icon when upload failed', () => {
-    render(<FileItem file={createFile({ progress: -1 })} />)
-
-    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
-  })
-
-  it('should call onReUpload when replay icon is clicked', () => {
+  it('retries a failed upload from a named action', async () => {
+    const user = userEvent.setup()
     const onReUpload = vi.fn()
     render(<FileItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
 
-    const replayIcon = screen.getByRole('button', { name: 'common.operation.retry' })
-    fireEvent.click(replayIcon!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry document.pdf' }))
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
   })
 
-  it('should show audio preview when audio file name is clicked', async () => {
+  it('does not expose preview or download actions without a file source', () => {
     render(
       <FileItem
-        file={createFile({
-          name: 'audio.mp3',
-          type: 'audio/mpeg',
-          url: 'https://example.com/audio.mp3',
-        })}
+        file={createFile({ url: undefined, base64Url: undefined, originalFile: undefined })}
         canPreview
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/audio\.mp3/i))
-
-    const audioElement = document.querySelector('audio')
-    expect(audioElement).toBeInTheDocument()
-  })
-
-  it('should show video preview when video file name is clicked', () => {
-    render(
-      <FileItem
-        file={createFile({
-          name: 'video.mp4',
-          type: 'video/mp4',
-          url: 'https://example.com/video.mp4',
-        })}
-        canPreview
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/video\.mp4/i))
-
-    const videoElement = document.querySelector('video')
-    expect(videoElement).toBeInTheDocument()
-  })
-
-  it('should show pdf preview when pdf file name is clicked', () => {
-    render(
-      <FileItem
-        file={createFile({
-          name: 'doc.pdf',
-          type: 'application/pdf',
-          url: 'https://example.com/doc.pdf',
-        })}
-        canPreview
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/doc\.pdf/i))
-
-    expect(screen.getByTestId('pdf-preview')).toBeInTheDocument()
-  })
-
-  it('should close audio preview', () => {
-    render(
-      <FileItem
-        file={createFile({
-          name: 'audio.mp3',
-          type: 'audio/mpeg',
-          url: 'https://example.com/audio.mp3',
-        })}
-        canPreview
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/audio\.mp3/i))
-    expect(document.querySelector('audio')).toBeInTheDocument()
-
-    const deleteButton = screen.getByRole('button', { name: 'common.operation.close' })
-    fireEvent.click(deleteButton)
-
-    expect(document.querySelector('audio')).not.toBeInTheDocument()
-  })
-
-  it('should render download button when showDownloadAction is true and url exists', () => {
-    render(<FileItem file={createFile()} showDownloadAction />)
-
-    expect(screen.getByRole('button', { name: 'common.operation.download' })).toBeInTheDocument()
-  })
-
-  it('should call downloadUrl when download button is clicked', async () => {
-    const { downloadUrl } = await import('@/utils/download')
-    render(<FileItem file={createFile()} showDownloadAction />)
-
-    const downloadBtn = screen.getByRole('button', { name: 'common.operation.download' })
-    fireEvent.click(downloadBtn)
-
-    expect(downloadUrl).toHaveBeenCalled()
-  })
-
-  it('should not render download button when showDownloadAction is false', () => {
-    render(<FileItem file={createFile()} showDownloadAction={false} />)
-
-    const buttons = screen.queryAllByRole('button')
-    expect(buttons).toHaveLength(0)
-  })
-
-  it('should not show preview when canPreview is false', () => {
-    render(
-      <FileItem
-        file={createFile({
-          name: 'audio.mp3',
-          type: 'audio/mpeg',
-        })}
-        canPreview={false}
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/audio\.mp3/i))
-
-    expect(document.querySelector('audio')).not.toBeInTheDocument()
-  })
-
-  it('should not throw when file type is missing', () => {
-    expect(() => {
-      render(
-        <FileItem
-          file={createFile({
-            name: 'generated.png',
-            type: undefined as unknown as string,
-            supportFileType: 'document',
-          })}
-          canPreview
-        />,
-      )
-    }).not.toThrow()
-  })
-
-  it('should close video preview', () => {
-    render(
-      <FileItem
-        file={createFile({
-          name: 'video.mp4',
-          type: 'video/mp4',
-          url: 'https://example.com/video.mp4',
-        })}
-        canPreview
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/video\.mp4/i))
-    expect(document.querySelector('video')).toBeInTheDocument()
-
-    const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
-    fireEvent.click(closeBtn)
-
-    expect(document.querySelector('video')).not.toBeInTheDocument()
-  })
-
-  it('should close pdf preview', () => {
-    render(
-      <FileItem
-        file={createFile({
-          name: 'doc.pdf',
-          type: 'application/pdf',
-          url: 'https://example.com/doc.pdf',
-        })}
-        canPreview
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/doc\.pdf/i))
-    expect(screen.getByTestId('pdf-preview')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('pdf-close'))
-    expect(screen.queryByTestId('pdf-preview')).not.toBeInTheDocument()
-  })
-
-  it('should use createObjectURL when no url or base64Url but has originalFile', () => {
-    const mockUrl = 'blob:http://localhost/test-blob'
-    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(mockUrl)
-
-    const file = createFile({
-      name: 'audio.mp3',
-      type: 'audio/mpeg',
-      url: undefined,
-      base64Url: undefined,
-      originalFile: new File(['content'], 'audio.mp3', { type: 'audio/mpeg' }),
-    })
-    render(<FileItem file={file} canPreview />)
-
-    fireEvent.click(screen.getByText(/audio\.mp3/i))
-
-    expect(document.querySelector('audio')).toBeInTheDocument()
-    expect(createObjectURLSpy).toHaveBeenCalled()
-    createObjectURLSpy.mockRestore()
-  })
-
-  it('should not use createObjectURL when no originalFile and no urls', () => {
-    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL')
-    const file = createFile({
-      name: 'audio.mp3',
-      type: 'audio/mpeg',
-      url: undefined,
-      base64Url: undefined,
-      originalFile: undefined,
-    })
-    render(<FileItem file={file} canPreview />)
-
-    fireEvent.click(screen.getByText(/audio\.mp3/i))
-    expect(createObjectURLSpy).not.toHaveBeenCalled()
-    createObjectURLSpy.mockRestore()
-    expect(document.querySelector('audio')).not.toBeInTheDocument()
-  })
-
-  it('should not render download button when download_url is falsy', () => {
-    render(
-      <FileItem file={createFile({ url: undefined, base64Url: undefined })} showDownloadAction />,
-    )
-
-    const buttons = screen.queryAllByRole('button')
-    expect(buttons).toHaveLength(0)
-  })
-
-  it('should render download button when base64Url is available as download_url', () => {
-    render(
-      <FileItem
-        file={createFile({ url: undefined, base64Url: 'data:application/pdf;base64,abc' })}
         showDownloadAction
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'common.operation.download' })).toBeInTheDocument()
-  })
-
-  it('should not render extension separator when ext is empty', () => {
-    render(<FileItem file={createFile({ name: 'noext' })} />)
-
-    expect(screen.getByText(/noext/)).toBeInTheDocument()
-  })
-
-  it('should not render file size when size is 0', () => {
-    render(<FileItem file={createFile({ size: 0 })} />)
-
-    expect(screen.queryByText(/0B/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.view document.pdf' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.download document.pdf' }),
+    ).not.toBeInTheDocument()
+    expect(downloadUrl).not.toHaveBeenCalled()
   })
 })

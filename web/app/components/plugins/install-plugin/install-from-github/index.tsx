@@ -4,7 +4,7 @@ import type { PluginCategoryEnum, PluginDeclaration, UpdateFromGitHubPayload } f
 import type { InstallState } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -76,6 +76,8 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
     : []
 
   const getTitle = useCallback(() => {
+    if (state.step === InstallStepFromGitHub.uploadFailed)
+      return t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' })
     if (state.step === InstallStepFromGitHub.installed)
       return t(($) => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
     if (state.step === InstallStepFromGitHub.installFailed)
@@ -190,7 +192,9 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
 
         <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
           <div className="flex grow flex-col items-start gap-1">
-            <div className="self-stretch title-2xl-semi-bold text-text-primary">{getTitle()}</div>
+            <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
+              {getTitle()}
+            </DialogTitle>
             <div className="self-stretch system-xs-regular text-text-tertiary">
               {![
                 InstallStepFromGitHub.uploadFailed,
