@@ -42,6 +42,8 @@ def test_dispatch_human_input_email_task_dispatches_form_deliveries(
     sqlite_session.commit()
     registry = object()
     dispatcher = MagicMock()
+    default_registry = MagicMock(return_value=registry)
+    dispatcher_factory = MagicMock(return_value=dispatcher)
 
     monkeypatch.setattr(task_module, "mail", mail)
     monkeypatch.setattr(
@@ -50,8 +52,8 @@ def test_dispatch_human_input_email_task_dispatches_form_deliveries(
         lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
     )
     monkeypatch.setattr(task_module, "_load_variable_pool", lambda _workflow_run_id: "pool")
-    monkeypatch.setattr(task_module.HumanInputFormDeliveryProviderRegistry, "default", lambda **_kwargs: registry)
-    monkeypatch.setattr(task_module, "HumanInputFormDeliveryDispatcher", lambda registry: dispatcher)
+    monkeypatch.setattr(task_module.HumanInputFormDeliveryProviderRegistry, "default", default_registry)
+    monkeypatch.setattr(task_module, "HumanInputFormDeliveryDispatcher", dispatcher_factory)
 
     task_module.dispatch_human_input_email_task(
         form_id=form.id,
@@ -59,9 +61,12 @@ def test_dispatch_human_input_email_task_dispatches_form_deliveries(
         session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False),
     )
 
+    default_registry.assert_called_once_with(mail_client=mail)
+    dispatcher_factory.assert_called_once_with(registry=registry)
     dispatcher.dispatch_form.assert_called_once()
     dispatch_kwargs = dispatcher.dispatch_form.call_args.kwargs
-    assert dispatch_kwargs["form"] is form
+    assert dispatch_kwargs["session"].bind is sqlite_engine
+    assert dispatch_kwargs["form"].id == form.id
     assert dispatch_kwargs["variable_pool"] == "pool"
     assert dispatch_kwargs["delivery_method_types"] == (task_module.DeliveryMethodType.EMAIL,)
 

@@ -22,6 +22,7 @@ from services import human_input_form_delivery_provider as provider_module
 from services.human_input_form_delivery_provider import (
     EmailHumanInputFormDeliveryProvider,
     HumanInputFormDeliveryContext,
+    HumanInputFormDeliveryDispatcher,
     HumanInputFormDeliveryProviderRegistry,
 )
 
@@ -42,6 +43,24 @@ class _DummyProvider:
 
     def send(self, *, context: HumanInputFormDeliveryContext) -> None:
         self.contexts.append(context)
+
+
+class _ScalarResult:
+    def __init__(self, values: list[object]) -> None:
+        self._values = values
+
+    def all(self) -> list[object]:
+        return self._values
+
+
+class _DummySession:
+    def __init__(self, values: list[list[object]]) -> None:
+        self._values = values
+        self.statements: list[object] = []
+
+    def scalars(self, statement: object) -> _ScalarResult:
+        self.statements.append(statement)
+        return _ScalarResult(self._values.pop(0))
 
 
 def _make_form() -> HumanInputForm:
@@ -118,6 +137,33 @@ def test_registry_skips_unsupported_delivery_method(caplog: pytest.LogCaptureFix
         assert registry.dispatch(context=context) is False
 
     assert "No human input form delivery provider registered" in caplog.text
+
+
+def test_dispatcher_loads_delivery_recipients_and_dispatches_context() -> None:
+    provider = _DummyProvider()
+    dispatcher = HumanInputFormDeliveryDispatcher(registry=HumanInputFormDeliveryProviderRegistry([provider]))
+    form = _make_form()
+    delivery = _make_delivery(method_type=DeliveryMethodType.EMAIL)
+    recipient = _make_recipient(
+        payload=EmailExternalRecipientPayload(email="external@example.com").model_dump_json(),
+    )
+    variable_pool = VariablePool()
+    session = _DummySession([[delivery], [recipient]])
+
+    dispatcher.dispatch_form(
+        session=session,
+        form=form,
+        variable_pool=variable_pool,
+        delivery_method_types=(DeliveryMethodType.EMAIL,),
+    )
+
+    assert len(session.statements) == 2
+    assert len(provider.contexts) == 1
+    context = provider.contexts[0]
+    assert context.form is form
+    assert context.delivery is delivery
+    assert context.recipients == [recipient]
+    assert context.variable_pool is variable_pool
 
 
 def test_email_provider_renders_form_link_per_recipient(monkeypatch: pytest.MonkeyPatch) -> None:
