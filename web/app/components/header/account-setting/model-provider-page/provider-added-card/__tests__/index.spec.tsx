@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { ModelProvider } from '../../declarations'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -8,6 +8,7 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
 let mockIsCurrentWorkspaceManager = true
+let mockRbacEnabled = false
 let mockWorkspacePermissionKeys: string[] = [
   'plugin.model_config',
   'credential.use',
@@ -85,6 +86,14 @@ vi.mock('jotai', async (importOriginal) => {
     await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
+
+vi.mock('@/hooks/use-credential-permissions', () => ({
+  useCredentialPermissions: () => ({
+    canUseCredential: mockWorkspacePermissionKeys.includes('credential.use'),
+    canCreateCredential: mockWorkspacePermissionKeys.includes('credential.create'),
+    canManageCredential: mockWorkspacePermissionKeys.includes('credential.manage'),
+  }),
+}))
 
 // Mock internal components to simplify testing of the index file
 vi.mock('../credential-panel', () => ({
@@ -183,10 +192,14 @@ const modelProviderModelsResponse = {
   ],
 }
 
+const TestProviderAddedCard = (
+  props: Omit<ComponentProps<typeof ProviderAddedCard>, 'rbacEnabled'>,
+) => <ProviderAddedCard {...props} rbacEnabled={mockRbacEnabled} />
+
 describe('ProviderAddedCard', () => {
   const mockProvider = {
     provider: 'langgenius/openai/openai',
-    configurate_methods: ['predefinedModel'],
+    configurate_methods: [ConfigurationMethodEnum.predefinedModel],
     system_configuration: { enabled: true },
     supported_model_types: ['llm'],
   } as unknown as ModelProvider
@@ -194,6 +207,7 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
+    mockRbacEnabled = false
     mockWorkspacePermissionKeys = [
       'plugin.model_config',
       'credential.use',
@@ -203,14 +217,32 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should render provider added card component', () => {
-    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
+    renderWithQueryClient(<TestProviderAddedCard provider={mockProvider} />)
     expect(screen.getByTestId('provider-added-card')).toBeInTheDocument()
     expect(screen.getByTestId('provider-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
+  })
+
+  it('should hide credential controls from legacy use-only members', () => {
+    mockWorkspacePermissionKeys = ['credential.use']
+
+    renderWithQueryClient(<TestProviderAddedCard provider={mockProvider} />)
+
+    expect(screen.queryByTestId('credential-panel')).not.toBeInTheDocument()
+  })
+
+  it('should use credential permissions when RBAC is enabled', () => {
+    mockRbacEnabled = true
+    mockWorkspacePermissionKeys = ['credential.use']
+
+    renderWithQueryClient(<TestProviderAddedCard provider={mockProvider} />)
+
+    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
   })
 
   it('should open, refresh and collapse model list', async () => {
     mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
-    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
+    renderWithQueryClient(<TestProviderAddedCard provider={mockProvider} />)
 
     const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
     fireEvent.click(showModelsBtn)
@@ -245,7 +277,7 @@ describe('ProviderAddedCard', () => {
     })
     mockFetchModelProviderModels.mockReturnValue(promise)
 
-    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
+    renderWithQueryClient(<TestProviderAddedCard provider={mockProvider} />)
     const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
 
     // First call sets loading to true
@@ -269,7 +301,7 @@ describe('ProviderAddedCard', () => {
     mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
     renderWithQueryClient(
       <>
-        <ProviderAddedCard provider={mockProvider} />
+        <TestProviderAddedCard provider={mockProvider} />
         <ExternalExpandControls />
       </>,
     )
@@ -291,7 +323,7 @@ describe('ProviderAddedCard', () => {
       ...mockProvider,
       provider: 'custom/provider',
     } as unknown as ModelProvider
-    renderWithQueryClient(<ProviderAddedCard provider={providerWithoutQuota} notConfigured />)
+    renderWithQueryClient(<TestProviderAddedCard provider={providerWithoutQuota} notConfigured />)
     expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
@@ -300,7 +332,9 @@ describe('ProviderAddedCard', () => {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
-    const { unmount } = renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
+    const { unmount } = renderWithQueryClient(
+      <TestProviderAddedCard provider={customConfigProvider} />,
+    )
 
     expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
     expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
@@ -308,7 +342,7 @@ describe('ProviderAddedCard', () => {
     unmount()
     mockIsCurrentWorkspaceManager = false
     mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
-    renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
+    renderWithQueryClient(<TestProviderAddedCard provider={customConfigProvider} />)
     expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
   })
 
@@ -319,7 +353,7 @@ describe('ProviderAddedCard', () => {
     } as unknown as ModelProvider
     mockWorkspacePermissionKeys = ['plugin.model_config']
 
-    renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
+    renderWithQueryClient(<TestProviderAddedCard provider={customConfigProvider} />)
 
     expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
     expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
