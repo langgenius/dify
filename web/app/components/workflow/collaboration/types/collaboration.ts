@@ -59,6 +59,26 @@ export type CollaborationUpdate = {
   timestamp: number
 }
 
+export type WorkflowSyncResult = {
+  hash: string
+  updatedAt: number
+}
+
+export type WorkflowSyncAcknowledgement =
+  | ({ success: true } & WorkflowSyncResult)
+  | { success: false; error?: string }
+
+export type WorkflowSyncRequest = {
+  requestId?: string
+  acknowledge: (result: WorkflowSyncAcknowledgement) => void
+}
+
+export type GraphReloadRequest = {
+  generation: number
+  token: number
+  attempt: number
+}
+
 export type RestoreIntentData = {
   versionId: string
   versionName?: string

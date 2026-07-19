@@ -26,6 +26,15 @@ export type SyncDraftCallback = {
   onSettled?: () => void
 }
 
+export type SyncDraftResult = {
+  hash: string
+  updatedAt: number
+}
+
+export type SyncDraftOptions = {
+  forceLocal?: boolean
+}
+
 export type WorkflowAccessControl = {
   canEdit: boolean
   canComment: boolean
@@ -46,7 +55,8 @@ type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
-  ) => Promise<void>
+    options?: SyncDraftOptions,
+  ) => Promise<SyncDraftResult | null | void>
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: (notUpdateCanvas?: boolean) => void
   handleBackupDraft: () => void
@@ -106,7 +116,7 @@ export type Shape = {
 } & CommonHooksFnMap
 
 export const createHooksStore = ({
-  doSyncWorkflowDraft = async () => noop(),
+  doSyncWorkflowDraft = async () => null,
   syncWorkflowDraftWhenPageClose = noop,
   handleRefreshWorkflowDraft = noop,
   handleBackupDraft = noop,

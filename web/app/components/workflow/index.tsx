@@ -384,11 +384,15 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
     const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
       if (document.visibilityState === 'hidden') {
+        // Update the local guard synchronously. Waiting for the server's leader
+        // status would leave a window where this hidden tab saves a stale canvas.
+        collaborationManager.emitGraphViewState(false)
         syncWorkflowDraftWhenPageClose()
         return
       }
 
       if (document.visibilityState === 'visible') {
+        collaborationManager.emitGraphViewState(true)
         const { isListening, workflowRunningData } = workflowStore.getState()
         const status = workflowRunningData?.result?.status
         // Avoid resetting UI state when user comes back while a run is active or listening for triggers
@@ -397,11 +401,11 @@ export const Workflow: FC<WorkflowProps> = memo(
         // While this tab was hidden the canvas was frozen (rAF paused), but the CRDT doc kept
         // receiving remote edits. Restore from the CRDT instead of the DB draft — the DB may
         // hold the stale snapshot this very tab saved while hidden, and re-importing it would
-        // broadcast a rollback to everyone. An empty CRDT means the doc was never seeded, so
-        // fall back to the DB refresh.
-        const collaborationActive =
-          collaborationManager.isConnected() && collaborationManager.getNodes().length > 0
-        if (collaborationActive) {
+        // broadcast a rollback to everyone. A trusted CRDT remains authoritative when empty.
+        const collaborationConnected = collaborationManager.isConnected()
+        if (collaborationConnected && !collaborationManager.canRestoreGraphFromCrdt()) return
+
+        if (collaborationConnected) {
           collaborationManager.refreshGraphSynchronously()
           setTimeout(() => handleRefreshWorkflowDraft(true), 500)
         } else {
@@ -412,6 +416,8 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     // Also add beforeunload handler as additional safety net for tab close
     const handleBeforeUnload = useCallback(() => {
+      if (collaborationManager.canRestoreGraphFromCrdt())
+        collaborationManager.refreshGraphSynchronously()
       syncWorkflowDraftWhenPageClose()
     }, [syncWorkflowDraftWhenPageClose])
 

@@ -4267,11 +4267,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow-app/hooks/use-workflow-refresh-draft.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow-app/hooks/use-workflow-run-callbacks.ts": {
     "no-restricted-imports": {
       "count": 2
