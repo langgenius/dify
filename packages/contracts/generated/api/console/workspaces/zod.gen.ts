@@ -1500,6 +1500,7 @@ export const zMcpProviderUpdatePayload = z.object({
   icon_background: z.string().optional().default(''),
   icon_type: z.string(),
   identity_mode: zIdentityMode.nullish(),
+  is_dynamic_registration: z.boolean().nullish(),
   name: z.string(),
   provider_id: z.string(),
   server_identifier: z.string(),

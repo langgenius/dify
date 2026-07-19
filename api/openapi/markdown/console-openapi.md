@@ -18807,6 +18807,7 @@ Enum class for large language model mode.
 | icon_background | string |  | No |
 | icon_type | string |  | Yes |
 | identity_mode | [IdentityMode](#identitymode) |  | No |
+| is_dynamic_registration | boolean | Whether to clear manual OAuth credentials and return to dynamic client registration | No |
 | name | string |  | Yes |
 | provider_id | string |  | Yes |
 | server_identifier | string |  | Yes |

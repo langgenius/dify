@@ -839,6 +839,7 @@ export type McpProviderUpdatePayload = {
   icon_background?: string
   icon_type: string
   identity_mode?: IdentityMode | null
+  is_dynamic_registration?: boolean | null
   name: string
   provider_id: string
   server_identifier: string
