@@ -226,7 +226,7 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:1.16.0
     environment:
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -238,6 +238,9 @@ services:
       PLUGIN_DAEMON_TIMEOUT: ${PLUGIN_DAEMON_TIMEOUT:-600.0}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
       AGENT_BACKEND_BASE_URL: ${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: ${AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS:-30}
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: ${AGENT_BACKEND_STREAM_MAX_RECONNECTS:-3}
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: ${AGENT_BACKEND_RUN_TIMEOUT_SECONDS:-1200}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -273,7 +276,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:1.16.0
     profiles:
       - collaboration
     environment:
@@ -299,7 +302,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:1.16.0
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -308,6 +311,9 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
       AGENT_BACKEND_BASE_URL: ${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: ${AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS:-30}
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: ${AGENT_BACKEND_STREAM_MAX_RECONNECTS:-3}
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: ${AGENT_BACKEND_RUN_TIMEOUT_SECONDS:-1200}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -345,7 +351,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:1.16.0
     environment:
       MODE: beat
     depends_on:
@@ -378,7 +384,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.16.0-rc1
+    image: langgenius/dify-web:1.16.0
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -397,6 +403,7 @@ services:
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       EXPERIMENTAL_ENABLE_VINEXT: ${EXPERIMENTAL_ENABLE_VINEXT:-false}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
+      WORKFLOW_GENERATION_TIMEOUT_MS: ${WORKFLOW_GENERATION_TIMEOUT_MS:-180000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       ALLOW_EMBED: ${ALLOW_EMBED:-false}
       ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
@@ -530,7 +537,7 @@ services:
 
   # Local sandbox for Dify Agent shell workspaces.
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.16.0-rc1
+    image: langgenius/dify-agent-local-sandbox:1.16.0
     restart: always
     env_file:
       - path: ./envs/core-services/local-sandbox.env
@@ -635,7 +642,7 @@ services:
 
   # Dify Agent backend service.
   agent_backend:
-    image: langgenius/dify-agent-backend:1.16.0-rc1
+    image: langgenius/dify-agent-backend:1.16.0
     restart: always
     env_file:
       - path: ./envs/core-services/dify-agent.env

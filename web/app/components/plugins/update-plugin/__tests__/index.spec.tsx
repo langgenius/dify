@@ -273,15 +273,6 @@ describe('update-plugin', () => {
       })
     })
 
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        // Verify the component is wrapped with React.memo
-        expect(UpdatePlugin).toBeDefined()
-        // The component should have $$typeof indicating it's a memo component
-        expect((UpdatePlugin as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
-      })
-    })
-
     describe('Props Passing', () => {
       it('should pass correct props to UpdateFromGitHub', () => {
         // Arrange
@@ -360,13 +351,6 @@ describe('update-plugin', () => {
 
         // Assert
         expect(screen.getByTestId('install-from-github')).toBeInTheDocument()
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(FromGitHub).toBeDefined()
-        expect((FromGitHub as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
       })
     })
 
@@ -723,15 +707,6 @@ describe('update-plugin', () => {
           expect(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' })).toBeInTheDocument()
         })
         expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(UpdateFromMarketplace).toBeDefined()
-        expect((UpdateFromMarketplace as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
       })
     })
 
@@ -1098,15 +1073,6 @@ describe('update-plugin', () => {
 
         // Assert
         expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(PluginVersionPicker).toBeDefined()
-        expect((PluginVersionPicker as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
       })
     })
   })

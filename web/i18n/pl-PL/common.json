@@ -332,6 +332,7 @@
   "modelProvider.auth.manageCredentials": "Zarządzanie poświadczeniami",
   "modelProvider.auth.modelCredential": "Poświadczenie modelu",
   "modelProvider.auth.modelCredentials": "Uprawnienia modelu",
+  "modelProvider.auth.openAIResponsesAPITip": "W przypadku modelu GPT-5.6 i nowszych zalecamy korzystanie z interfejsu Responses API.",
   "modelProvider.auth.providerManaged": "Zarządzane przez dostawcę",
   "modelProvider.auth.providerManagedTip": "Bieżąca konfiguracja jest hostowana przez dostawcę.",
   "modelProvider.auth.removeModel": "Usuń model",

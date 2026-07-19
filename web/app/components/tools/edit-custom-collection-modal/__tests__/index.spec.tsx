@@ -577,8 +577,6 @@ describe('EditCustomCollectionModal', () => {
     it('should handle empty URL', () => {
       renderModal({ payload: payloadWithVariousUrls('') })
 
-      // Should not crash and show the row
-      // Should not crash and show the row
       expect(screen.getByText('testOp'))!.toBeInTheDocument()
     })
 

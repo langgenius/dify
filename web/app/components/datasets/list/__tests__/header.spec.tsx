@@ -40,14 +40,12 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
       {children}
     </button>
   ),
-  DropdownMenuSeparator: ({ className }: { className?: string }) => (
-    <hr data-testid="create-menu-separator" className={className} />
-  ),
+  DropdownMenuSeparator: () => <hr />,
   DropdownMenuTrigger: ({ render }: { render: React.ReactNode }) => render,
 }))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: () => <div data-testid="tag-filter" />,
+  TagFilter: () => <div />,
 }))
 
 vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
@@ -93,7 +91,7 @@ describe('DatasetListHeader', () => {
     expect(menuItem.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
   })
 
-  it('should hide dataset creation actions when dataset.create_and_management is unavailable', () => {
+  it('hides dataset creation actions without create permission', () => {
     render(<DatasetListHeader {...defaultProps} canCreateDataset={false} />)
 
     expect(
@@ -105,7 +103,7 @@ describe('DatasetListHeader', () => {
     expect(screen.getByRole('menuitem', { name: /dataset\.connectDataset/ })).toBeInTheDocument()
   })
 
-  it('should hide external API panel entry when dataset.external.connect is unavailable', () => {
+  it('hides the external API entry without external-connect permission', () => {
     render(<DatasetListHeader {...defaultProps} canConnectExternalDataset={false} />)
 
     expect(
@@ -113,7 +111,7 @@ describe('DatasetListHeader', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should hide the create menu when no creation or connection action is available', () => {
+  it('hides the create menu when no creation action is available', () => {
     render(
       <DatasetListHeader
         {...defaultProps}

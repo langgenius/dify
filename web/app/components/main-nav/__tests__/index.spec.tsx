@@ -33,6 +33,7 @@ import {
 import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/shell-storage'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
@@ -387,15 +388,17 @@ const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp
   },
 })
 
+const mainNavUserProfile = {
+  id: 'user-1',
+  name: 'Evan Z',
+  email: 'evan@example.com',
+  avatar: '',
+  avatar_url: '',
+  is_password_set: true,
+}
+
 const appContextValue: AppContextStateMockState = {
-  userProfile: {
-    id: 'user-1',
-    name: 'Evan Z',
-    email: 'evan@example.com',
-    avatar: '',
-    avatar_url: '',
-    is_password_set: true,
-  },
+  userProfile: mainNavUserProfile,
   mutateUserProfile: vi.fn(),
   currentWorkspace: {
     id: 'workspace-1',
@@ -450,6 +453,16 @@ const renderMainNav = (
     consoleQuery.workspaces.current.post.queryKey(),
     currentAppContext.currentWorkspace as ICurrentWorkspace,
   )
+  queryClient.setQueryData(userProfileQueryOptions().queryKey, {
+    profile: {
+      ...mainNavUserProfile,
+      ...(currentAppContext.userProfile ?? {}),
+    },
+    meta: {
+      currentVersion: null,
+      currentEnv: null,
+    },
+  })
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
   const resolvedSystemFeatures = {

@@ -381,13 +381,13 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.getByTestId('metadata')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('document-detail-metadata-toggle'))
+      fireEvent.click(screen.getByRole('button', { name: /metadata\.title/ }))
       expect(screen.queryByTestId('metadata')).not.toBeInTheDocument()
     })
 
     it('should expose aria semantics for metadata toggle button', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const toggle = screen.getByTestId('document-detail-metadata-toggle')
+      const toggle = screen.getByRole('button', { name: /metadata\.title/ })
       expect(toggle).toHaveAttribute('aria-label')
       expect(toggle).toHaveAttribute('aria-pressed', 'true')
 

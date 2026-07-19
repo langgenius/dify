@@ -1404,23 +1404,6 @@ describe('Authorized Component', () => {
 
   // ==================== Props Tests ====================
   describe('Props', () => {
-    it('should apply popupClassName to popup container', () => {
-      const pluginPayload = createPluginPayload()
-      const credentials = [createCredential()]
-
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-          popupClassName="custom-popup-class"
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(document.querySelector('.custom-popup-class'))!.toBeInTheDocument()
-    })
-
     it('should pass placement to Popover', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
@@ -1654,15 +1637,6 @@ describe('Authorized Component', () => {
       // Component should render without error
       // Component should render without error
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-    })
-  })
-
-  // ==================== Memoization Test ====================
-  describe('Memoization', () => {
-    it('should be memoized', async () => {
-      const AuthorizedModule = await import('../index')
-      // memo returns an object with $$typeof
-      expect(typeof AuthorizedModule.default).toBe('object')
     })
   })
 

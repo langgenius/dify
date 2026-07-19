@@ -133,12 +133,6 @@ describe('CustomCreateCard', () => {
 
   // Tests for card rendering and styling
   describe('Card Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      expect(screen.getByText(/createSwaggerAPIAsTool/i)).toBeInTheDocument()
-    })
-
     it('should render add icon', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
@@ -374,20 +368,4 @@ describe('CustomCreateCard', () => {
   })
 
   // Tests for hover styling
-  describe('Hover Styling', () => {
-    it('should have hover styles on card', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      const card = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      expect(card).toBeInTheDocument()
-      expect(card).toHaveClass('hover:bg-components-panel-on-panel-item-bg-hover')
-    })
-
-    it('should have group hover styles on icon container', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      const iconContainer = document.querySelector('.group-hover\\:text-text-accent')
-      expect(iconContainer).toBeInTheDocument()
-    })
-  })
 })

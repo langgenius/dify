@@ -293,13 +293,6 @@ describe('AddApiKeyButton', () => {
       })
     })
   })
-
-  describe('Memoization', () => {
-    it('should be a memoized component', async () => {
-      const AddApiKeyButtonDefault = (await import('../add-api-key-button')).default
-      expect(typeof AddApiKeyButtonDefault).toBe('object')
-    })
-  })
 })
 
 // ==================== AddOAuthButton Tests ====================
@@ -2003,13 +1996,6 @@ describe('OAuthClientSettings', () => {
       )
 
       expect(screen.queryByText('common.operation.remove')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be a memoized component', async () => {
-      const OAuthClientSettingsDefault = (await import('../oauth-client-settings')).default
-      expect(typeof OAuthClientSettingsDefault).toBe('object')
     })
   })
 })

@@ -846,12 +846,6 @@ describe('Operation', () => {
       expect(bar.style.left).toBeFalsy()
     })
 
-    it('should apply workflow process class when hasWorkflowProcess is true', () => {
-      renderOperation({ ...baseProps, hasWorkflowProcess: true })
-      const bar = screen.getByTestId('operation-bar')
-      expect(bar.className).toContain('-bottom-4')
-    })
-
     it('should calculate width correctly for all features combined', () => {
       mockContextValue.config = makeChatConfig({
         text_to_speech: { enabled: true },

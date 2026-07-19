@@ -252,11 +252,6 @@ describe('List', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<List />)
-      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
-    })
-
     it('should render the search input', () => {
       render(<List />)
       expect(screen.getByRole('searchbox')).toBeInTheDocument()
@@ -357,14 +352,6 @@ describe('List', () => {
     it('should show include all checkbox for workspace owner', () => {
       render(<List />)
       expect(screen.getByTestId('include-all-checkbox')).toBeInTheDocument()
-    })
-  })
-
-  describe('Styles', () => {
-    it('should have correct container styling', () => {
-      const { container } = render(<List />)
-      const mainContainer = container.firstChild as HTMLElement
-      expect(mainContainer).toHaveClass('relative', 'flex', 'grow', 'flex-col')
     })
   })
 

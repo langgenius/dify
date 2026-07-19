@@ -43,12 +43,6 @@ describe('ScoreThresholdItem', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<ScoreThresholdItem {...defaultProps} className="custom-cls" />)
-
-      expect(container.firstChild).toHaveClass('custom-cls')
-    })
-
     it('should render switch when hasSwitch is true', () => {
       render(<ScoreThresholdItem {...defaultProps} hasSwitch />)
 

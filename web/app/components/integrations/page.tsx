@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { IntegrationSection } from '@/app/components/integrations/routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -206,10 +207,9 @@ export default function IntegrationsPage({
 
     router.push(buildIntegrationPath(nextSection))
   }
-  const handleToggleTools = () => {
-    const willExpand = !isToolsExpanded
-    setIsToolsExpanded(willExpand)
-    if (willExpand && section !== 'builtin') handleSelectSection('builtin')
+  const handleToolsOpenChange = (open: boolean) => {
+    setIsToolsExpanded(open)
+    if (open && section !== 'builtin') handleSelectSection('builtin')
   }
   const toolsNavItemClassName = cn(
     integrationSidebarNavItemClassName,
@@ -219,12 +219,8 @@ export default function IntegrationsPage({
   const toolsNavItemContent = (
     <>
       <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-        <ToolsDisclosureIcon className="h-3.5 w-3 group-hover:hidden" />
-        {isToolsExpanded ? (
-          <span className="i-ri-arrow-up-s-line hidden size-4 group-hover:inline-block" />
-        ) : (
-          <span className="i-ri-arrow-down-s-line hidden size-4 group-hover:inline-block" />
-        )}
+        <ToolsDisclosureIcon className="h-3.5 w-3 group-hover:hidden group-focus-visible:hidden" />
+        <span className="i-ri-arrow-down-s-line hidden size-4 transition-transform duration-100 ease-out group-hover:inline-block group-focus-visible:inline-block group-data-panel-open:rotate-180 motion-reduce:transition-none" />
       </span>
       <span className="min-w-0 flex-1 truncate">
         {t(($) => $['menus.tools'], { ns: 'common' })}
@@ -273,29 +269,27 @@ export default function IntegrationsPage({
               onSelect={onSectionChange}
               section={section}
             />
-            <div>
-              <button
-                type="button"
+            <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
+              <CollapsibleTrigger
                 aria-label={t(($) => $['menus.tools'], { ns: 'common' })}
-                aria-expanded={isToolsExpanded}
-                className={cn(toolsNavItemClassName, 'border-none bg-transparent')}
-                onClick={handleToggleTools}
+                className={cn(
+                  toolsNavItemClassName,
+                  'border-none bg-transparent data-panel-open:text-components-menu-item-text',
+                )}
               >
                 {toolsNavItemContent}
-              </button>
-              {isToolsExpanded && (
-                <div className="relative space-y-px before:absolute before:top-[-1px] before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
-                  {toolItems.map((item) => (
-                    <IntegrationSidebarNavItem
-                      key={item.label}
-                      item={item}
-                      onSelect={onSectionChange}
-                      section={section}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+              </CollapsibleTrigger>
+              <CollapsiblePanel className="relative space-y-px before:absolute before:top-[-1px] before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
+                {toolItems.map((item) => (
+                  <IntegrationSidebarNavItem
+                    key={item.label}
+                    item={item}
+                    onSelect={onSectionChange}
+                    section={section}
+                  />
+                ))}
+              </CollapsiblePanel>
+            </Collapsible>
             <IntegrationSidebarNavItem
               item={dataSourceItem}
               onSelect={onSectionChange}

@@ -45,13 +45,6 @@ describe('useDocLink', () => {
     vi.mocked(getDocLanguage).mockReturnValue('en')
   })
 
-  describe('Rendering', () => {
-    it('should return a function', () => {
-      const { result } = renderHook(() => useDocLink())
-      expect(typeof result.current).toBe('function')
-    })
-  })
-
   describe('Base URL handling', () => {
     it('should use default base URL when no baseUrl provided', () => {
       const { result } = renderHook(() => useDocLink())

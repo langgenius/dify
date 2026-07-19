@@ -43,11 +43,6 @@ describe('AddExternalAPIModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<AddExternalAPIModal {...defaultProps} />)
-      expect(screen.getByText('dataset.createExternalAPI'))!.toBeInTheDocument()
-    })
-
     it('should render create title when not in edit mode', () => {
       render(<AddExternalAPIModal {...defaultProps} isEditMode={false} />)
       expect(screen.getByText('dataset.createExternalAPI'))!.toBeInTheDocument()

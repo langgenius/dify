@@ -525,8 +525,8 @@ vi.mock('@/app/components/base/chat/chat', () => ({
         )}
         {suggested.length > 0 && (
           <div data-testid="suggested-questions">
-            {suggested.map((q: string, i: number) => (
-              <button key={i} onClick={() => onSend?.(q, [])}>
+            {suggested.map((q: string) => (
+              <button key={q} type="button" onClick={() => onSend?.(q, [])}>
                 {q}
               </button>
             ))}
@@ -619,16 +619,6 @@ describe('DebugWithSingleModel', () => {
 
   // Rendering Tests
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
-
-      // Verify Chat component is rendered
-      // Verify Chat component is rendered
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-      expect(screen.getByTestId('chat-input'))!.toBeInTheDocument()
-      expect(screen.getByTestId('send-button'))!.toBeInTheDocument()
-    })
-
     it('should render with custom checkCanSend prop', () => {
       const checkCanSend = vi.fn(() => true)
 

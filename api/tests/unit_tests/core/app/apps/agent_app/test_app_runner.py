@@ -4,7 +4,7 @@ saved, using the deterministic fake backend client (no live stack)."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, override
@@ -106,8 +106,14 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 
 class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
-        del after
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -138,8 +144,14 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 
 class _StreamingRecordingFakeAgentBackendRunClient(_RecordingFakeAgentBackendRunClient):
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
-        del after
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -173,8 +185,14 @@ class _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(_RecordingFakeAgent
         self._queue_manager = queue_manager
 
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
-        del after
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -196,8 +214,14 @@ class _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(_RecordingFakeAgent
 
 class _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
-        del after
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -220,8 +244,14 @@ class _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient(FakeAgentBacken
 
 class _NullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
-        del after
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield RunSucceededEvent(
@@ -237,8 +267,14 @@ class _NullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 
 class _StreamingTextNullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
-        del after
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -261,8 +297,14 @@ class _StreamingTextNullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClien
 
 class _AgentAnswerStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
-        del after
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -292,8 +334,14 @@ class _AgentAnswerStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 
 class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
-        del after
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(

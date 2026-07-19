@@ -332,6 +332,7 @@
   "modelProvider.auth.manageCredentials": "자격 증명 관리",
   "modelProvider.auth.modelCredential": "모델 자격 증명",
   "modelProvider.auth.modelCredentials": "모델 자격 증명",
+  "modelProvider.auth.openAIResponsesAPITip": "GPT-5.6 이상 모델에서는 Responses API 사용을 권장합니다.",
   "modelProvider.auth.providerManaged": "제공자가 관리하는",
   "modelProvider.auth.providerManagedTip": "현재 구성은 제공업체에 의해 호스팅되고 있습니다.",
   "modelProvider.auth.removeModel": "모델 제거",

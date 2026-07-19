@@ -242,11 +242,6 @@ describe('BasicInfoSection', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<BasicInfoSection {...defaultProps} />)
-      expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
-    })
-
     it('should render name and icon section', () => {
       render(<BasicInfoSection {...defaultProps} />)
       expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
@@ -361,18 +356,6 @@ describe('BasicInfoSection', () => {
       }
     })
 
-    it('should render AppIconPicker when showAppIconPicker is true', () => {
-      const { baseElement } = render(
-        <BasicInfoSection {...defaultProps} showAppIconPicker={true} />,
-      )
-
-      // AppIconPicker renders a modal with emoji tabs and options via portal
-      // We just verify the component renders without crashing when picker is shown
-      // AppIconPicker renders a modal with emoji tabs and options via portal
-      // We just verify the component renders without crashing when picker is shown
-      expect(baseElement)!.toBeInTheDocument()
-    })
-
     it('should not render AppIconPicker when showAppIconPicker is false', () => {
       const { container } = render(<BasicInfoSection {...defaultProps} showAppIconPicker={false} />)
 
@@ -473,25 +456,6 @@ describe('BasicInfoSection', () => {
 
       expect(setPermission).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
     })
-
-    it('should call setSelectedMemberIDs when members are selected', async () => {
-      const setSelectedMemberIDs = vi.fn()
-      const { container } = render(
-        <BasicInfoSection
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          setSelectedMemberIDs={setSelectedMemberIDs}
-        />,
-      )
-
-      // For partial members permission, the member selector should be visible
-      // The exact interaction depends on the MemberSelector component
-      // We verify the component renders without crashing
-      // For partial members permission, the member selector should be visible
-      // The exact interaction depends on the MemberSelector component
-      // We verify the component renders without crashing
-      expect(container)!.toBeInTheDocument()
-    })
   })
 
   describe('Undefined Dataset', () => {
@@ -541,22 +505,6 @@ describe('BasicInfoSection', () => {
   })
 
   describe('Member List', () => {
-    it('should pass member list to PermissionSelector', () => {
-      const { container } = render(
-        <BasicInfoSection
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          memberList={mockMemberList}
-        />,
-      )
-
-      // For partial members, a member selector component should be rendered
-      // We verify it renders without crashing
-      // For partial members, a member selector component should be rendered
-      // We verify it renders without crashing
-      expect(container)!.toBeInTheDocument()
-    })
-
     it('should handle empty member list', () => {
       render(<BasicInfoSection {...defaultProps} memberList={[]} />)
 

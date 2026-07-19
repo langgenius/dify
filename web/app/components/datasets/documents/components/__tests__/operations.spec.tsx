@@ -107,11 +107,6 @@ describe('Operations', () => {
   })
 
   describe('rendering', () => {
-    it('should render without crashing', () => {
-      render(<Operations {...defaultProps} />)
-      expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
-    })
-
     it('should render buttons when embeddingAvailable', () => {
       render(<Operations {...defaultProps} />)
       const buttons = screen.getAllByRole('button')
@@ -683,22 +678,6 @@ describe('Operations', () => {
         })
       }
       expect(screen.queryByText('datasetDocuments.list.action.download')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((Operations as unknown as { $$typeof: symbol }).$$typeof).toBe(
-        Symbol.for('react.memo'),
-      )
-    })
-  })
-
-  describe('className prop', () => {
-    it('should accept custom className prop', () => {
-      // The className is passed to CustomPopover, verify component renders without errors
-      render(<Operations {...defaultProps} className="custom-class" />)
-      expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
     })
   })
 })

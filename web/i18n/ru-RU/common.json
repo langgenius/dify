@@ -332,6 +332,7 @@
   "modelProvider.auth.manageCredentials": "Управление учетными данными",
   "modelProvider.auth.modelCredential": "Удостоверение модели",
   "modelProvider.auth.modelCredentials": "Учетные данные модели",
+  "modelProvider.auth.openAIResponsesAPITip": "Для GPT-5.6 и более новых моделей рекомендуется использовать Responses API.",
   "modelProvider.auth.providerManaged": "Управляемый провайдером",
   "modelProvider.auth.providerManagedTip": "Текущая конфигурация размещена у провайдера.",
   "modelProvider.auth.removeModel": "Удалить модель",

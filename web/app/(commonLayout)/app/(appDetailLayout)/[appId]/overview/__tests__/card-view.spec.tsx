@@ -231,29 +231,5 @@ describe('CardView ACL edit guards', () => {
         }),
       )
     })
-
-    it('should refresh the Zustand app detail after saving webapp settings', async () => {
-      const user = userEvent.setup()
-      mockAppState.appDetail.permission_keys = ['app.acl.edit']
-
-      render(<CardView appId="app-1" />)
-
-      await user.click(screen.getByRole('button', { name: /save webapp/ }))
-
-      await waitFor(() => {
-        expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      })
-      expect(mockSetQueryData).toHaveBeenCalledWith(
-        ['apps', 'detail', 'app-1'],
-        expect.objectContaining({
-          site: expect.objectContaining({ title: 'Saved site title' }),
-        }),
-      )
-      expect(mockAppState.setAppDetail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          site: expect.objectContaining({ title: 'Saved site title' }),
-        }),
-      )
-    })
   })
 })

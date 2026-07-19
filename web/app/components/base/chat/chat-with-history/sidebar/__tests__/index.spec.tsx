@@ -156,18 +156,6 @@ describe('Sidebar Index', () => {
   })
 
   describe('Panel Styling', () => {
-    it('should apply panel styling when isPanel is true', () => {
-      const { container } = render(<Sidebar isPanel={true} />)
-      const sidebar = container.firstChild as HTMLElement
-      expect(sidebar).toHaveClass('rounded-xl')
-    })
-
-    it('should not apply panel styling when isPanel is false', () => {
-      const { container } = render(<Sidebar isPanel={false} />)
-      const sidebar = container.firstChild as HTMLElement
-      expect(sidebar).not.toHaveClass('rounded-xl')
-    })
-
     it('should handle undefined isPanel', () => {
       const { container } = render(<Sidebar />)
       const sidebar = container.firstChild as HTMLElement

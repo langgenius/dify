@@ -150,11 +150,6 @@ describe('PermissionSelector', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderWithSystemFeatures(<PermissionSelector {...defaultProps} />)
-      expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
-    })
-
     it('should render Only Me option when permission is onlyMe', () => {
       renderWithSystemFeatures(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.onlyMe} />,

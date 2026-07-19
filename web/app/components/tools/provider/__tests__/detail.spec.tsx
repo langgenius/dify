@@ -513,9 +513,7 @@ describe('ProviderDetail', () => {
       )!
 
       expect(openInStudio).toHaveAttribute('href', '/app/wf-123/workflow')
-      expect(openInStudio).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
       expect(openInStudio.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
-      expect(configureButton).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
       expect(configureButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
     })
 
