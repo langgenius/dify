@@ -42,6 +42,7 @@ def test_dispatch_human_input_email_task_dispatches_form_deliveries(
     sqlite_session.commit()
     registry = object()
     dispatcher = MagicMock()
+    dispatcher.load_form_contexts.return_value = ("context",)
     default_registry = MagicMock(return_value=registry)
     dispatcher_factory = MagicMock(return_value=dispatcher)
 
@@ -63,12 +64,13 @@ def test_dispatch_human_input_email_task_dispatches_form_deliveries(
 
     default_registry.assert_called_once_with(mail_client=mail)
     dispatcher_factory.assert_called_once_with(registry=registry)
-    dispatcher.dispatch_form.assert_called_once()
-    dispatch_kwargs = dispatcher.dispatch_form.call_args.kwargs
+    dispatcher.load_form_contexts.assert_called_once()
+    dispatch_kwargs = dispatcher.load_form_contexts.call_args.kwargs
     assert dispatch_kwargs["session"].bind is sqlite_engine
     assert dispatch_kwargs["form"].id == form.id
     assert dispatch_kwargs["variable_pool"] == "pool"
     assert dispatch_kwargs["delivery_method_types"] == (task_module.DeliveryMethodType.EMAIL,)
+    dispatcher.dispatch_contexts.assert_called_once_with(("context",))
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
@@ -87,6 +89,7 @@ def test_dispatch_human_input_email_task_skips_when_feature_disabled(
         lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=False),
     )
     dispatcher = MagicMock()
+    dispatcher.load_form_contexts.return_value = ()
     monkeypatch.setattr(task_module, "HumanInputFormDeliveryDispatcher", lambda registry: dispatcher)
 
     task_module.dispatch_human_input_email_task(
@@ -95,7 +98,8 @@ def test_dispatch_human_input_email_task_skips_when_feature_disabled(
         session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False),
     )
 
-    dispatcher.dispatch_form.assert_not_called()
+    dispatcher.load_form_contexts.assert_not_called()
+    dispatcher.dispatch_contexts.assert_not_called()
 
 
 def test_dispatch_human_input_email_task_skips_when_mail_not_inited(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -108,4 +112,5 @@ def test_dispatch_human_input_email_task_skips_when_mail_not_inited(monkeypatch:
 
     task_module.dispatch_human_input_email_task(form_id="form-1", node_title="Approve", session_factory=lambda: None)
 
-    dispatcher.dispatch_form.assert_not_called()
+    dispatcher.load_form_contexts.assert_not_called()
+    dispatcher.dispatch_contexts.assert_not_called()

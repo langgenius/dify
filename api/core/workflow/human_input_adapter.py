@@ -28,12 +28,24 @@ from graphon.variables.consts import SELECTORS_LENGTH
 class DeliveryMethodType(enum.StrEnum):
     WEBAPP = enum.auto()
     EMAIL = enum.auto()
+    IM = enum.auto()
 
 
 class EmailRecipientType(enum.StrEnum):
     BOUND = "member"
     MEMBER = BOUND
     EXTERNAL = "external"
+
+
+class InstantMessageProvider(enum.StrEnum):
+    SLACK = "slack"
+    TEAMS = "teams"
+    DISCORD = "discord"
+
+
+class InstantMessageRecipientType(enum.StrEnum):
+    CHANNEL = "channel"
+    USER = "user"
 
 
 class _InteractiveSurfaceDeliveryConfig(BaseModel):
@@ -58,6 +70,25 @@ MemberRecipient = BoundRecipient
 EmailRecipient = Annotated[BoundRecipient | ExternalRecipient, Field(discriminator="type")]
 
 
+class InstantMessageChannelRecipient(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal[InstantMessageRecipientType.CHANNEL] = InstantMessageRecipientType.CHANNEL
+    channel_id: str
+
+
+class InstantMessageUserRecipient(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal[InstantMessageRecipientType.USER] = InstantMessageRecipientType.USER
+    user_id: str
+
+
+InstantMessageRecipient = Annotated[
+    InstantMessageChannelRecipient | InstantMessageUserRecipient, Field(discriminator="type")
+]
+
+
 class EmailRecipients(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -66,6 +97,12 @@ class EmailRecipients(BaseModel):
         validation_alias=AliasChoices("include_bound_group", "whole_workspace"),
     )
     items: list[EmailRecipient] = Field(default_factory=list)
+
+
+class InstantMessageRecipients(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[InstantMessageRecipient] = Field(default_factory=list)
 
 
 class EmailDeliveryConfig(BaseModel):
@@ -143,6 +180,14 @@ class EmailDeliveryConfig(BaseModel):
         return " ".join(sanitized.split())
 
 
+class InstantMessageDeliveryConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: InstantMessageProvider
+    recipients: InstantMessageRecipients = Field(default_factory=InstantMessageRecipients)
+    message: str | None = None
+
+
 class _DeliveryMethodBase(BaseModel):
     enabled: bool = True
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
@@ -172,10 +217,31 @@ class EmailDeliveryMethod(_DeliveryMethodBase):
         return selectors
 
 
+class InstantMessageDeliveryMethod(_DeliveryMethodBase):
+    type: Literal[DeliveryMethodType.IM] = DeliveryMethodType.IM
+    config: InstantMessageDeliveryConfig
+
+    @override
+    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
+        if not self.config.message:
+            return ()
+        variable_template_parser = VariableTemplateParser(template=self.config.message)
+        selectors: list[Sequence[str]] = []
+        for variable_selector in variable_template_parser.extract_variable_selectors():
+            value_selector = list(variable_selector.value_selector)
+            if len(value_selector) < SELECTORS_LENGTH:
+                continue
+            selectors.append(value_selector[:SELECTORS_LENGTH])
+        return selectors
+
+
 WebAppDeliveryMethod = InteractiveSurfaceDeliveryMethod
 _WebAppDeliveryConfig = _InteractiveSurfaceDeliveryConfig
 
-DeliveryChannelConfig = Annotated[InteractiveSurfaceDeliveryMethod | EmailDeliveryMethod, Field(discriminator="type")]
+DeliveryChannelConfig = Annotated[
+    InteractiveSurfaceDeliveryMethod | EmailDeliveryMethod | InstantMessageDeliveryMethod,
+    Field(discriminator="type"),
+]
 
 _DELIVERY_METHODS_ADAPTER = TypeAdapter(list[DeliveryChannelConfig])
 
@@ -206,9 +272,10 @@ def adapt_human_input_node_data_for_graph(node_data: Mapping[str, Any] | BaseMod
 
         config_mapping = _copy_mapping(method_mapping.get("config"))
         if config_mapping is not None:
-            recipients_mapping = _copy_mapping(config_mapping.get("recipients"))
-            if recipients_mapping is not None:
-                config_mapping["recipients"] = _normalize_email_recipients(recipients_mapping)
+            if method_mapping.get("type") == DeliveryMethodType.EMAIL:
+                recipients_mapping = _copy_mapping(config_mapping.get("recipients"))
+                if recipients_mapping is not None:
+                    config_mapping["recipients"] = _normalize_email_recipients(recipients_mapping)
             method_mapping["config"] = config_mapping
 
         normalized_methods.append(method_mapping)
@@ -379,6 +446,13 @@ __all__ = [
     "EmailRecipientType",
     "EmailRecipients",
     "ExternalRecipient",
+    "InstantMessageChannelRecipient",
+    "InstantMessageDeliveryConfig",
+    "InstantMessageDeliveryMethod",
+    "InstantMessageProvider",
+    "InstantMessageRecipientType",
+    "InstantMessageRecipients",
+    "InstantMessageUserRecipient",
     "MemberRecipient",
     "WebAppDeliveryMethod",
     "_WebAppDeliveryConfig",

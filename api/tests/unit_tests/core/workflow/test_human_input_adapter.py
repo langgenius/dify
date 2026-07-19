@@ -8,6 +8,9 @@ from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
+    InstantMessageDeliveryMethod,
+    InstantMessageProvider,
+    InstantMessageRecipientType,
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
     adapt_human_input_node_data_for_graph,
@@ -89,6 +92,35 @@ def test_parse_human_input_delivery_methods_normalizes_legacy_recipient_keys() -
 
 def test_parse_human_input_delivery_methods_returns_empty_for_non_lists() -> None:
     assert parse_human_input_delivery_methods({"delivery_methods": None}) == []
+
+
+def test_parse_human_input_delivery_methods_accepts_instant_message_config() -> None:
+    methods = parse_human_input_delivery_methods(
+        {
+            "delivery_methods": [
+                {
+                    "type": DeliveryMethodType.IM,
+                    "config": {
+                        "provider": "slack",
+                        "message": "Review {{#node.value#}}",
+                        "recipients": {
+                            "items": [
+                                {"type": "channel", "channel_id": "C123"},
+                                {"type": "user", "user_id": "U123"},
+                            ]
+                        },
+                    },
+                }
+            ]
+        }
+    )
+
+    assert len(methods) == 1
+    method = methods[0]
+    assert isinstance(method, InstantMessageDeliveryMethod)
+    assert method.config.provider == InstantMessageProvider.SLACK
+    assert method.config.recipients.items[0].type == InstantMessageRecipientType.CHANNEL
+    assert method.config.recipients.items[1].type == InstantMessageRecipientType.USER
 
 
 def test_is_human_input_webapp_enabled_checks_enabled_delivery_methods() -> None:

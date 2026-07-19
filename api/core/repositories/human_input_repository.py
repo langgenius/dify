@@ -14,6 +14,10 @@ from core.workflow.human_input_adapter import (
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
+    InstantMessageChannelRecipient,
+    InstantMessageDeliveryConfig,
+    InstantMessageDeliveryMethod,
+    InstantMessageUserRecipient,
     InteractiveSurfaceDeliveryMethod,
     is_human_input_webapp_enabled,
 )
@@ -32,6 +36,7 @@ from models.human_input import (
     HumanInputDelivery,
     HumanInputForm,
     HumanInputFormRecipient,
+    InstantMessageRecipientPayload,
     RecipientType,
     StandaloneWebAppRecipientPayload,
 )
@@ -323,8 +328,47 @@ class HumanInputFormRepositoryImpl:
                         recipients_config=email_recipients_config,
                     )
                 )
+            case InstantMessageDeliveryMethod():
+                recipients.extend(
+                    self._build_instant_message_recipients(
+                        form_id=form_id,
+                        delivery_id=delivery_id,
+                        config=delivery_method.config,
+                    )
+                )
 
         return _DeliveryAndRecipients(delivery=delivery_model, recipients=recipients)
+
+    @staticmethod
+    def _build_instant_message_recipients(
+        *,
+        form_id: str,
+        delivery_id: str,
+        config: InstantMessageDeliveryConfig,
+    ) -> list[HumanInputFormRecipient]:
+        recipient_models: list[HumanInputFormRecipient] = []
+        for recipient in config.recipients.items:
+            match recipient:
+                case InstantMessageChannelRecipient():
+                    payload = InstantMessageRecipientPayload(
+                        provider=config.provider,
+                        recipient_kind=recipient.type,
+                        channel_id=recipient.channel_id,
+                    )
+                case InstantMessageUserRecipient():
+                    payload = InstantMessageRecipientPayload(
+                        provider=config.provider,
+                        recipient_kind=recipient.type,
+                        user_id=recipient.user_id,
+                    )
+            recipient_models.append(
+                HumanInputFormRecipient.new(
+                    form_id=form_id,
+                    delivery_id=delivery_id,
+                    payload=payload,
+                )
+            )
+        return recipient_models
 
     def _build_email_recipients(
         self,

@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.workflow.human_input_adapter import DeliveryMethodType
+from core.workflow.human_input_adapter import DeliveryMethodType, InstantMessageProvider, InstantMessageRecipientType
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.helper import generate_string
 
@@ -138,6 +138,7 @@ class ApprovalChannel(StrEnum):
     """Where a paused human input form can be approved, surfaced to API callers."""
 
     EMAIL = "email"
+    IM = "im"
     WEB_APP = "web_app"
     CONSOLE = "console"
 
@@ -146,6 +147,7 @@ class RecipientType(StrEnum):
     # Second value = the approval channel this recipient maps to (surfaced in `approval_channels`).
     EMAIL_MEMBER = "email_member", ApprovalChannel.EMAIL
     EMAIL_EXTERNAL = "email_external", ApprovalChannel.EMAIL
+    INSTANT_MESSAGE = "instant_message", ApprovalChannel.IM
     # STANDALONE_WEB_APP is used by the standalone web app.
     #
     # It's not used while running workflows / chatflows containing HumanInput
@@ -186,6 +188,15 @@ class EmailExternalRecipientPayload(BaseModel):
 
 
 @final
+class InstantMessageRecipientPayload(BaseModel):
+    TYPE: Literal[RecipientType.INSTANT_MESSAGE] = RecipientType.INSTANT_MESSAGE
+    provider: InstantMessageProvider
+    recipient_kind: InstantMessageRecipientType
+    channel_id: str | None = None
+    user_id: str | None = None
+
+
+@final
 class StandaloneWebAppRecipientPayload(BaseModel):
     TYPE: Literal[RecipientType.STANDALONE_WEB_APP] = RecipientType.STANDALONE_WEB_APP
 
@@ -211,6 +222,7 @@ class ConsoleDeliveryPayload(BaseModel):
 RecipientPayload = Annotated[
     EmailMemberRecipientPayload
     | EmailExternalRecipientPayload
+    | InstantMessageRecipientPayload
     | StandaloneWebAppRecipientPayload
     | ConsoleRecipientPayload
     | BackstageRecipientPayload,

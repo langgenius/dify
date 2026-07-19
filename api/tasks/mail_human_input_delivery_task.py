@@ -75,12 +75,13 @@ def dispatch_human_input_email_task(form_id: str, node_title: str | None = None,
             variable_pool = _load_variable_pool(form.workflow_run_id)
             registry = HumanInputFormDeliveryProviderRegistry.default(mail_client=mail)
             dispatcher = HumanInputFormDeliveryDispatcher(registry=registry)
-            dispatcher.dispatch_form(
+            contexts = dispatcher.load_form_contexts(
                 session=session,
                 form=form,
                 variable_pool=variable_pool,
                 delivery_method_types=(DeliveryMethodType.EMAIL,),
             )
+        dispatcher.dispatch_contexts(contexts)
 
         end_at = time.perf_counter()
         logger.info(

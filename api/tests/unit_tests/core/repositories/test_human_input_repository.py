@@ -26,13 +26,19 @@ from core.workflow.human_input_adapter import (
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
+    InstantMessageChannelRecipient,
+    InstantMessageDeliveryConfig,
+    InstantMessageDeliveryMethod,
+    InstantMessageProvider,
+    InstantMessageRecipients,
+    InstantMessageUserRecipient,
     MemberRecipient,
     WebAppDeliveryMethod,
 )
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
-from models.human_input import HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputFormRecipient, InstantMessageRecipientPayload, RecipientType
 
 
 @pytest.fixture(autouse=True)
@@ -375,6 +381,40 @@ def test_delivery_method_to_model_email_uses_build_email_recipients(monkeypatch:
     result = repo._delivery_method_to_model(session="sess", form_id="form-1", delivery_method=method)
     assert result.recipients == ["r"]
     assert called["delivery_id"] == "del-1"
+
+
+def test_delivery_method_to_model_instant_message_creates_recipients(monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
+    monkeypatch.setattr("core.repositories.human_input_repository.uuidv7", lambda: "del-1")
+    method = InstantMessageDeliveryMethod(
+        config=InstantMessageDeliveryConfig(
+            provider=InstantMessageProvider.SLACK,
+            recipients=InstantMessageRecipients(
+                items=[
+                    InstantMessageChannelRecipient(channel_id="C123"),
+                    InstantMessageUserRecipient(user_id="U123"),
+                ]
+            ),
+            message="Review {{#url#}}",
+        )
+    )
+
+    result = repo._delivery_method_to_model(session=MagicMock(), form_id="form-1", delivery_method=method)
+
+    assert result.delivery.id == "del-1"
+    assert result.delivery.delivery_method_type == method.type
+    assert result.delivery.channel_payload == method.model_dump_json()
+    assert [recipient.recipient_type for recipient in result.recipients] == [
+        RecipientType.INSTANT_MESSAGE,
+        RecipientType.INSTANT_MESSAGE,
+    ]
+    channel_payload = InstantMessageRecipientPayload.model_validate_json(result.recipients[0].recipient_payload)
+    user_payload = InstantMessageRecipientPayload.model_validate_json(result.recipients[1].recipient_payload)
+    assert channel_payload.provider == InstantMessageProvider.SLACK
+    assert channel_payload.recipient_kind == "channel"
+    assert channel_payload.channel_id == "C123"
+    assert user_payload.recipient_kind == "user"
+    assert user_payload.user_id == "U123"
 
 
 def test_build_email_recipients_uses_all_members_when_whole_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
