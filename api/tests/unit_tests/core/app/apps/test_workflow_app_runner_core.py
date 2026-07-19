@@ -337,14 +337,14 @@ class TestWorkflowBasedAppRunner:
         graph_runtime_state.register_paused_node("node-1")
         workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
 
-        emails: list[dict] = []
+        form_deliveries: list[dict] = []
 
         class _Dispatch:
             def apply_async(self, *, kwargs, queue):
-                emails.append({"kwargs": kwargs, "queue": queue})
+                form_deliveries.append({"kwargs": kwargs, "queue": queue})
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.dispatch_human_input_email_task",
+            "core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task",
             _Dispatch(),
         )
         monkeypatch.setattr(
@@ -373,7 +373,7 @@ class TestWorkflowBasedAppRunner:
         assert any(isinstance(event, QueueWorkflowSucceededEvent) for event, _ in published)
         paused_event = next(event for event, _ in published if isinstance(event, QueueWorkflowPausedEvent))
         assert paused_event.paused_nodes == ["node-1"]
-        assert emails
+        assert form_deliveries
 
     def test_handle_graph_aborted_publishes_stopped_terminal(self):
         published: list[object] = []

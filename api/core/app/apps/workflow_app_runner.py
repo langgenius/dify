@@ -88,7 +88,7 @@ from graphon.graph_events import (
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
-from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
+from tasks.mail_human_input_delivery_task import dispatch_human_input_form_delivery_task
 
 logger = logging.getLogger(__name__)
 
@@ -715,12 +715,12 @@ class WorkflowBasedAppRunner:
             if not reason.form_id:
                 continue
             try:
-                dispatch_human_input_email_task.apply_async(
+                dispatch_human_input_form_delivery_task.apply_async(
                     kwargs={"form_id": reason.form_id, "node_title": reason.node_title},
                     queue="mail",
                 )
             except Exception:  # pragma: no cover - defensive logging
-                logger.exception("Failed to enqueue human input email task for form %s", reason.form_id)
+                logger.exception("Failed to enqueue human input form delivery task for form %s", reason.form_id)
 
     def _publish_event(self, event: AppQueueEvent):
         self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
