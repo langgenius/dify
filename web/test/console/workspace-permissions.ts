@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { PermissionKeysResponse } from '@/models/access-control'
 import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
 
-export const createWorkspacePermissionsFixture = (
+const createWorkspacePermissionsFixture = (
   permissionKeys: readonly string[] = [],
 ): PermissionKeysResponse => ({
   workspace: {

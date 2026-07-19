@@ -6,7 +6,7 @@ export const currentWorkspaceQueryKey = [
   { type: 'query' },
 ] as const
 
-export const createCurrentWorkspaceFixture = (
+const createCurrentWorkspaceFixture = (
   overrides: Partial<PostWorkspacesCurrentResponse> = {},
 ): PostWorkspacesCurrentResponse => ({
   id: 'workspace-1',

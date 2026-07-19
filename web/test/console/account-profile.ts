@@ -1,9 +1,9 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { RenderHookOptions, RenderOptions } from '@testing-library/react'
+import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
-import { render, renderHook } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 
@@ -79,19 +79,6 @@ export const renderWithAccountProfile = (
 ) => {
   const { accountProfile, ...renderOptions } = options
   return render(ui, {
-    ...renderOptions,
-    wrapper: createAccountProfileQueryWrapper(accountProfile),
-  })
-}
-
-export const renderHookWithAccountProfile = <Result, Props = void>(
-  callback: (props: Props) => Result,
-  options: Omit<RenderHookOptions<Props>, 'wrapper'> & {
-    accountProfile?: Partial<GetAccountProfileResponse>
-  } = {},
-) => {
-  const { accountProfile, ...renderOptions } = options
-  return renderHook(callback, {
     ...renderOptions,
     wrapper: createAccountProfileQueryWrapper(accountProfile),
   })
