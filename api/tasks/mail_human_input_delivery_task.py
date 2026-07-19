@@ -1,117 +1,24 @@
-import json
 import logging
 import time
-from dataclasses import dataclass
-from typing import Any
 
 import click
 from celery import shared_task
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailDeliveryMethod
+from core.workflow.human_input_adapter import DeliveryMethodType
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from graphon.runtime import GraphRuntimeState, VariablePool
-from models.human_input import (
-    DeliveryMethodType,
-    HumanInputDelivery,
-    HumanInputForm,
-    HumanInputFormRecipient,
-    RecipientType,
-)
+from models.human_input import HumanInputForm
 from repositories.factory import DifyAPIRepositoryFactory
 from services.feature_service import FeatureService
+from services.human_input_form_delivery_provider import (
+    HumanInputFormDeliveryDispatcher,
+    HumanInputFormDeliveryProviderRegistry,
+)
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class _EmailRecipient:
-    email: str
-    token: str
-
-
-@dataclass(frozen=True)
-class _EmailDeliveryJob:
-    form_id: str
-    subject: str
-    body: str
-    form_content: str
-    recipients: list[_EmailRecipient]
-
-
-def _build_form_link(token: str) -> str:
-    base_url = dify_config.APP_WEB_URL
-    return f"{base_url.rstrip('/')}/form/{token}"
-
-
-def _parse_recipient_payload(payload: str) -> tuple[str | None, RecipientType | None]:
-    try:
-        payload_dict: dict[str, Any] = json.loads(payload)
-    except Exception:
-        logger.exception("Failed to parse recipient payload")
-        return None, None
-
-    return payload_dict.get("email"), payload_dict.get("TYPE")
-
-
-def _load_email_jobs(session: Session, form: HumanInputForm) -> list[_EmailDeliveryJob]:
-    deliveries = session.scalars(
-        select(HumanInputDelivery).where(
-            HumanInputDelivery.form_id == form.id,
-            HumanInputDelivery.delivery_method_type == DeliveryMethodType.EMAIL,
-        )
-    ).all()
-    jobs: list[_EmailDeliveryJob] = []
-    for delivery in deliveries:
-        delivery_config = EmailDeliveryMethod.model_validate_json(delivery.channel_payload)
-
-        recipients = session.scalars(
-            select(HumanInputFormRecipient).where(HumanInputFormRecipient.delivery_id == delivery.id)
-        ).all()
-
-        recipient_entities: list[_EmailRecipient] = []
-        for recipient in recipients:
-            email, recipient_type = _parse_recipient_payload(recipient.recipient_payload)
-            if recipient_type not in {RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL}:
-                continue
-            if not email:
-                continue
-            token = recipient.access_token
-            if not token:
-                continue
-            recipient_entities.append(_EmailRecipient(email=email, token=token))
-
-        if not recipient_entities:
-            continue
-
-        jobs.append(
-            _EmailDeliveryJob(
-                form_id=form.id,
-                subject=delivery_config.config.subject,
-                body=delivery_config.config.body,
-                form_content=form.rendered_content,
-                recipients=recipient_entities,
-            )
-        )
-    return jobs
-
-
-def _render_body(
-    body_template: str,
-    form_link: str,
-    *,
-    variable_pool: VariablePool | None,
-) -> str:
-    body = EmailDeliveryConfig.render_body_template(
-        body=body_template,
-        url=form_link,
-        variable_pool=variable_pool,
-    )
-    return EmailDeliveryConfig.render_markdown_body(body)
 
 
 def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
@@ -165,21 +72,15 @@ def dispatch_human_input_email_task(form_id: str, node_title: str | None = None,
                     form_id,
                 )
                 return
-            jobs = _load_email_jobs(session, form)
-
-        variable_pool = _load_variable_pool(form.workflow_run_id)
-
-        for job in jobs:
-            for recipient in job.recipients:
-                form_link = _build_form_link(recipient.token)
-                body = _render_body(job.body, form_link, variable_pool=variable_pool)
-                subject = EmailDeliveryConfig.sanitize_subject(job.subject)
-
-                mail.send(
-                    to=recipient.email,
-                    subject=subject,
-                    html=body,
-                )
+            variable_pool = _load_variable_pool(form.workflow_run_id)
+            registry = HumanInputFormDeliveryProviderRegistry.default(mail_client=mail)
+            dispatcher = HumanInputFormDeliveryDispatcher(registry=registry)
+            dispatcher.dispatch_form(
+                session=session,
+                form=form,
+                variable_pool=variable_pool,
+                delivery_method_types=(DeliveryMethodType.EMAIL,),
+            )
 
         end_at = time.perf_counter()
         logger.info(
