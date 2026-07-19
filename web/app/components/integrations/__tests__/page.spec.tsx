@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import userEvent from '@testing-library/user-event'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import IntegrationsPage from '../page'
 
