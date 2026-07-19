@@ -548,7 +548,6 @@ class DatasetListApi(DatasetApiResource):
                     ReplaceMemberBindings(scope=RBACResourceWhitelistScope.SPECIFIC),
                 )
 
-
         return _dump_service_dataset_detail(dataset, session=session), 200
 
 

@@ -606,8 +606,7 @@ class DatasetListApi(Resource):
                     dataset.id,
                     ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
                 )
-                initialize_created_app_rbac_access_task.delay(
-                    current_tenant_id, current_user.id, dataset_id=dataset.id)
+                initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
             else:
                 enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
                     current_tenant_id,
