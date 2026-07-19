@@ -70,8 +70,13 @@ def parse_time_range(
         except pytz.AmbiguousTimeError:
             return tz.localize(dt, is_dst=False).astimezone(utc)
         except pytz.NonExistentTimeError:
-            dt += datetime.timedelta(hours=1)
-            return tz.localize(dt, is_dst=None).astimezone(utc)
+            # Shift a non-existent (spring-forward) wall-clock time to the
+            # instant just after the gap. normalize() moves it forward by
+            # exactly the gap size for any DST offset change (30 min, 1 h,
+            # 2 h, ...), matching zoneinfo fold=0; a hardcoded +1 hour is
+            # wrong for non-one-hour gaps and can land inside a longer gap
+            # and re-raise.
+            return tz.normalize(tz.localize(dt, is_dst=False)).astimezone(utc)
 
     start_dt = _parse(start, "start")
     end_dt = _parse(end, "end")
