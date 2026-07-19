@@ -183,7 +183,12 @@ class HitTestingService:
                 created_by=account.id,
             )
             session.add(dataset_query)
-        session.commit()
+        # Flush the DatasetQuery row so it gets a primary key and is visible
+        # to the subsequent read in compact_retrieve_response(), but do NOT
+        # commit here — the caller owns the transaction context and an early
+        # commit closes it, causing "Can't operate on closed transaction"
+        # (InvalidRequestError) on the next query (#38998).
+        session.flush()
 
         return cls.compact_retrieve_response(query, all_documents, session=session)
 
