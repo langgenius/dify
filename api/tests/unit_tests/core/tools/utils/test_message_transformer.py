@@ -1,9 +1,23 @@
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
 import core.tools.utils.message_transformer as mt
 from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.signature import verify_tool_file_signature
+
+
+def _is_signed(url: str) -> bool:
+    query = parse_qs(urlparse(url).query)
+    if not ({"timestamp", "nonce", "sign"} <= query.keys()):
+        return False
+    return verify_tool_file_signature(
+        mt.ToolFileMessageTransformer._extract_tool_file_id(url) or "",
+        query["timestamp"][0],
+        query["nonce"][0],
+        query["sign"][0],
+    )
 
 
 class _FakeToolFile:
@@ -83,7 +97,8 @@ def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
     o = out[0]
     assert o.type == ToolInvokeMessage.MessageType.BINARY_LINK
     assert isinstance(o.message, ToolInvokeMessage.TextMessage)
-    assert o.message.text.endswith(".bin")
+    assert urlparse(o.message.text).path.endswith(".bin")
+    assert _is_signed(o.message.text)
     # meta is preserved (still contains mime_type: None)
     assert "mime_type" in (o.meta or {})
     assert o.meta["mime_type"] is None
@@ -110,7 +125,8 @@ def test_transform_tool_invoke_messages_prefers_filename_extension_over_mimetype
     assert _FakeToolFileManager.last_call["filename"] == "report.docx"
     assert len(out) == 1
     assert isinstance(out[0].message, ToolInvokeMessage.TextMessage)
-    assert out[0].message.text.endswith(".docx")
+    assert urlparse(out[0].message.text).path.endswith(".docx")
+    assert _is_signed(out[0].message.text)
 
 
 def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
@@ -131,3 +147,19 @@ def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
 
     assert len(out) == 1
     assert out[0].meta["tool_file_id"] == "existing-tool-file"
+
+
+def test_get_tool_file_url_returns_signed_url():
+    url = mt.ToolFileMessageTransformer.get_tool_file_url(tool_file_id="signed-tool-file", extension=".png")
+
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    assert parsed.path.endswith("/files/tools/signed-tool-file.png")
+    assert {"timestamp", "nonce", "sign"} <= query.keys()
+    assert verify_tool_file_signature("signed-tool-file", query["timestamp"][0], query["nonce"][0], query["sign"][0])
+
+
+def test_get_tool_file_url_defaults_missing_extension_to_bin():
+    url = mt.ToolFileMessageTransformer.get_tool_file_url(tool_file_id="signed-tool-file", extension=None)
+
+    assert urlparse(url).path.endswith("/files/tools/signed-tool-file.bin")
