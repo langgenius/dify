@@ -16,13 +16,13 @@ import ImageInput from './ImageInput'
 import s from './style.module.css'
 import getCroppedImg from './utils'
 
-export type AppIconEmojiSelection = {
+type AppIconEmojiSelection = {
   type: 'emoji'
   icon: string
   background: string
 }
 
-export type AppIconImageSelection = {
+type AppIconImageSelection = {
   type: 'image'
   fileId: string
   url: string

@@ -12,7 +12,7 @@ import ReadyToInstall from './ready-to-install'
 
 const i18nPrefix = 'installModal'
 
-export enum InstallType {
+enum InstallType {
   fromLocal = 'fromLocal',
   fromMarketplace = 'fromMarketplace',
   fromDSL = 'fromDSL',
