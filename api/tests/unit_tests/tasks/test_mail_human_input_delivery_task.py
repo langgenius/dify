@@ -240,3 +240,37 @@ def test_dispatch_human_input_form_delivery_task_keeps_im_when_email_feature_dis
     dispatch_kwargs = dispatcher.load_form_contexts.call_args.kwargs
     assert dispatch_kwargs["delivery_method_types"] == task_module.FORM_DELIVERY_METHOD_TYPES
     dispatcher.dispatch_contexts.assert_called_once_with((im_context,))
+
+
+def test_dispatch_human_input_form_delivery_task_keeps_im_when_email_feature_lookup_fails(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    mail = _DummyMail()
+    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
+    dispatcher = MagicMock()
+    email_context = _make_context(task_module.DeliveryMethodType.EMAIL)
+    im_context = _make_context(task_module.DeliveryMethodType.IM)
+    dispatcher.load_form_contexts.return_value = (email_context, im_context)
+
+    def raise_feature_error(_tenant_id, **_kwargs):
+        raise RuntimeError("feature service unavailable")
+
+    monkeypatch.setattr(task_module, "mail", mail)
+    monkeypatch.setattr(task_module.FeatureService, "get_features", raise_feature_error)
+    monkeypatch.setattr(task_module, "_load_variable_pool", lambda _workflow_run_id: None)
+    monkeypatch.setattr(
+        task_module.HumanInputFormDeliveryProviderRegistry,
+        "default",
+        MagicMock(return_value=object()),
+    )
+    monkeypatch.setattr(task_module, "HumanInputFormDeliveryDispatcher", MagicMock(return_value=dispatcher))
+
+    task_module.dispatch_human_input_form_delivery_task(
+        form_id="form-1",
+        node_title="Approve",
+        session_factory=lambda: _DummySession(form),
+    )
+
+    dispatch_kwargs = dispatcher.load_form_contexts.call_args.kwargs
+    assert dispatch_kwargs["delivery_method_types"] == task_module.FORM_DELIVERY_METHOD_TYPES
+    dispatcher.dispatch_contexts.assert_called_once_with((im_context,))

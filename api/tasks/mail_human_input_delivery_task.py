@@ -3,7 +3,8 @@
 The generic form-delivery task must stay independent from email availability so
 non-email providers can run even when mail is not configured. The legacy email
 task keeps its historical mail and feature gates for callers that still need
-email-only semantics.
+email-only semantics. The generic task only checks email availability after
+loading persisted delivery contexts and only when an email context is present.
 """
 
 import logging
@@ -31,6 +32,10 @@ from services.human_input_form_delivery_provider import (
 logger = logging.getLogger(__name__)
 
 FORM_DELIVERY_METHOD_TYPES = (DeliveryMethodType.EMAIL, DeliveryMethodType.IM)
+
+
+def _has_email_context(contexts: Sequence[HumanInputFormDeliveryContext]) -> bool:
+    return any(context.delivery_method_type == DeliveryMethodType.EMAIL for context in contexts)
 
 
 def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
@@ -65,12 +70,42 @@ def _open_session(session_factory: sessionmaker | Session | None):
 def _filter_unavailable_email_contexts(
     *,
     contexts: Sequence[HumanInputFormDeliveryContext],
-    email_delivery_enabled: bool,
+    tenant_id: str,
+    form_id: str,
 ) -> tuple[HumanInputFormDeliveryContext, ...]:
-    if mail.is_inited() and email_delivery_enabled:
-        return tuple(contexts)
+    contexts_tuple = tuple(contexts)
+    if not _has_email_context(contexts_tuple):
+        return contexts_tuple
 
-    return tuple(context for context in contexts if context.delivery_method_type != DeliveryMethodType.EMAIL)
+    email_delivery_enabled = False
+    if mail.is_inited():
+        try:
+            features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
+            email_delivery_enabled = features.human_input_email_delivery_enabled
+        except Exception:
+            logger.exception(
+                "Failed to check human input email delivery availability; skipping email contexts, "
+                "tenant=%s, form_id=%s",
+                tenant_id,
+                form_id,
+            )
+
+    if email_delivery_enabled:
+        return contexts_tuple
+
+    return tuple(context for context in contexts_tuple if context.delivery_method_type != DeliveryMethodType.EMAIL)
+
+
+def _is_email_delivery_enabled(*, tenant_id: str, form_id: str) -> bool:
+    features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
+    email_delivery_enabled = features.human_input_email_delivery_enabled
+    if not email_delivery_enabled:
+        logger.info(
+            "Human input email delivery is not available for tenant=%s, form_id=%s",
+            tenant_id,
+            form_id,
+        )
+    return email_delivery_enabled
 
 
 def _load_and_dispatch_form_delivery(
@@ -97,14 +132,7 @@ def _load_and_dispatch_form_delivery(
                 logger.warning("Human input form not found, form_id=%s", form_id)
                 return
 
-            features = FeatureService.get_features(form.tenant_id, exclude_vector_space=True)
-            email_delivery_enabled = features.human_input_email_delivery_enabled
-            if require_email_feature and not email_delivery_enabled:
-                logger.info(
-                    "Human input email delivery is not available for tenant=%s, form_id=%s",
-                    form.tenant_id,
-                    form_id,
-                )
+            if require_email_feature and not _is_email_delivery_enabled(tenant_id=form.tenant_id, form_id=form_id):
                 return
 
             variable_pool = _load_variable_pool(form.workflow_run_id)
@@ -120,7 +148,8 @@ def _load_and_dispatch_form_delivery(
         if filter_unavailable_email:
             contexts = _filter_unavailable_email_contexts(
                 contexts=contexts,
-                email_delivery_enabled=email_delivery_enabled,
+                tenant_id=form.tenant_id,
+                form_id=form_id,
             )
         dispatcher.dispatch_contexts(contexts)
 
