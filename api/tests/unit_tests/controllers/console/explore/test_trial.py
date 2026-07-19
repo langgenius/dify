@@ -32,8 +32,10 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper import encrypter
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.model_runtime.errors.invoke import InvokeError
-from graphon.variables import StringVariable
+from graphon.variables import SecretVariable, StringVariable
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode
@@ -1146,7 +1148,18 @@ class TestAppWorkflowApi:
             marked_comment="",
             created_at=datetime(2024, 1, 1, tzinfo=UTC),
             updated_at=datetime(2024, 1, 2, tzinfo=UTC),
-            environment_variables=[],
+            environment_variables=[
+                SecretVariable(
+                    id="env-secret",
+                    name="api_key",
+                    value="plaintext-secret",
+                ),
+                LLMEnvironmentVariable(
+                    id="env-llm",
+                    name="shared_model",
+                    value={"provider": "provider", "name": "model", "mode": "chat"},
+                ),
+            ],
             conversation_variables=[
                 StringVariable(
                     id="conversation-variable-1",
@@ -1181,7 +1194,24 @@ class TestAppWorkflowApi:
             "updated_by": None,
             "updated_at": 1704153600,
             "tool_published": True,
-            "environment_variables": [],
+            "environment_variables": [
+                {
+                    "value_type": "secret",
+                    "value": encrypter.full_mask_token(),
+                    "id": "env-secret",
+                    "name": "api_key",
+                    "description": "",
+                    "selector": [],
+                },
+                {
+                    "value_type": "llm",
+                    "value": {"provider": "provider", "name": "model", "mode": "chat"},
+                    "id": "env-llm",
+                    "name": "shared_model",
+                    "description": "",
+                    "selector": [],
+                },
+            ],
             "conversation_variables": [
                 {
                     "id": "conversation-variable-1",

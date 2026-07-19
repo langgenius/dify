@@ -40,6 +40,13 @@ type WorkflowDataUpdatePayload = Pick<
   FetchWorkflowDraftResponse,
   'features' | 'conversation_variables' | 'environment_variables'
 >
+type VarsUpdateSnapshot = {
+  generation: number
+  response: FetchWorkflowDraftResponse
+  syncRequest: number
+}
+const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
+
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
@@ -149,8 +156,19 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         setConversationVariables(conversation_variables)
       }
       if (environment_variables) {
-        const { setEnvironmentVariables } = workflowStore.getState()
-        setEnvironmentVariables(environment_variables)
+        const { envSecrets, setEnvironmentVariables, setEnvSecrets } = workflowStore.getState()
+        const nextEnvSecrets: Record<string, string> = {}
+        const normalizedEnvironmentVariables = environment_variables.map((environmentVariable) => {
+          if (environmentVariable.value_type !== 'secret') return environmentVariable
+
+          nextEnvSecrets[environmentVariable.id] =
+            environmentVariable.value === HIDDEN_SECRET_VALUE
+              ? envSecrets[environmentVariable.id] || HIDDEN_SECRET_VALUE
+              : String(environmentVariable.value)
+          return { ...environmentVariable, value: HIDDEN_SECRET_VALUE }
+        })
+        setEnvSecrets(nextEnvSecrets)
+        setEnvironmentVariables(normalizedEnvironmentVariables)
       }
     },
     [featuresStore, workflowStore],
@@ -159,6 +177,12 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraftByCanEdit(
     appACLCapabilities.canEdit,
   )
+  const varsUpdateGenerationRef = useRef(0)
+  const varsUpdateAppliedGenerationRef = useRef(0)
+  const varsUpdateFailedGenerationRef = useRef(0)
+  const varsUpdateLatestSuccessfulRef = useRef<VarsUpdateSnapshot | null>(null)
+  const varsUpdateSyncRequestRef = useRef(0)
+  const varsUpdateCompletedSyncRef = useRef(0)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const {
@@ -172,19 +196,102 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
+    const applySnapshot = async (snapshot: VarsUpdateSnapshot) => {
+      if (snapshot.generation <= varsUpdateAppliedGenerationRef.current) return
+
+      handleWorkflowDataUpdate(snapshot.response)
+      varsUpdateAppliedGenerationRef.current = snapshot.generation
+      if (
+        snapshot.syncRequest > varsUpdateCompletedSyncRef.current &&
+        collaborationManager.getIsLeader()
+      ) {
+        let syncSucceeded = false
+        await doSyncWorkflowDraft(false, {
+          onSuccess: () => {
+            syncSucceeded = true
+          },
+        })
+        if (syncSucceeded)
+          varsUpdateCompletedSyncRef.current = Math.max(
+            varsUpdateCompletedSyncRef.current,
+            snapshot.syncRequest,
+          )
+      }
+    }
+
+    const applyLatestSuccessfulSnapshot = async () => {
+      const latestSuccessful = varsUpdateLatestSuccessfulRef.current
+      if (latestSuccessful && latestSuccessful.generation > varsUpdateAppliedGenerationRef.current)
+        await applySnapshot(latestSuccessful)
+    }
+
     const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(
       async (_update: CollaborationUpdate) => {
+        if (_update.data?.syncWorkflowDraft) varsUpdateSyncRequestRef.current++
+        const updateGeneration = ++varsUpdateGenerationRef.current
+        const syncRequest = varsUpdateSyncRequestRef.current
         try {
           const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-          handleWorkflowDataUpdate(response)
+          const snapshot = { generation: updateGeneration, response, syncRequest }
+          if (
+            !varsUpdateLatestSuccessfulRef.current ||
+            updateGeneration > varsUpdateLatestSuccessfulRef.current.generation
+          )
+            varsUpdateLatestSuccessfulRef.current = snapshot
+          if (varsUpdateGenerationRef.current !== updateGeneration) {
+            if (varsUpdateFailedGenerationRef.current === varsUpdateGenerationRef.current)
+              await applyLatestSuccessfulSnapshot()
+            return
+          }
+          await applySnapshot(snapshot)
         } catch (error) {
-          console.error('workflow vars and features update failed:', error)
+          if (varsUpdateGenerationRef.current !== updateGeneration) return
+
+          const latestSuccessful = varsUpdateLatestSuccessfulRef.current
+          if (
+            latestSuccessful &&
+            latestSuccessful.generation > varsUpdateAppliedGenerationRef.current
+          )
+            await applySnapshot(latestSuccessful)
+
+          const needsFreshSnapshot =
+            syncRequest > varsUpdateCompletedSyncRef.current &&
+            (!latestSuccessful || latestSuccessful.syncRequest < syncRequest)
+          if (varsUpdateGenerationRef.current !== updateGeneration) return
+          if (!needsFreshSnapshot) {
+            varsUpdateFailedGenerationRef.current = updateGeneration
+            await applyLatestSuccessfulSnapshot()
+            if (!latestSuccessful) console.error('workflow vars and features update failed:', error)
+            return
+          }
+
+          try {
+            const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+            const snapshot = { generation: updateGeneration, response, syncRequest }
+            if (
+              !varsUpdateLatestSuccessfulRef.current ||
+              updateGeneration > varsUpdateLatestSuccessfulRef.current.generation
+            )
+              varsUpdateLatestSuccessfulRef.current = snapshot
+            if (varsUpdateGenerationRef.current !== updateGeneration) {
+              if (varsUpdateFailedGenerationRef.current === varsUpdateGenerationRef.current)
+                await applyLatestSuccessfulSnapshot()
+              return
+            }
+            await applySnapshot(snapshot)
+          } catch (retryError) {
+            if (varsUpdateGenerationRef.current === updateGeneration) {
+              varsUpdateFailedGenerationRef.current = updateGeneration
+              await applyLatestSuccessfulSnapshot()
+            }
+            console.error('workflow vars and features update failed:', retryError)
+          }
         }
       },
     )
 
     return unsubscribe
-  }, [appId, handleWorkflowDataUpdate, isCollaborationEnabled])
+  }, [appId, doSyncWorkflowDraft, handleWorkflowDataUpdate, isCollaborationEnabled])
 
   // Listen for workflow updates from other users
   useEffect(() => {

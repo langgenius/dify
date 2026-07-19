@@ -98,7 +98,7 @@ export const DSLExportConfirmContent = ({
                     )}
                   >
                     <div className="truncate system-xs-regular text-text-secondary">
-                      {env.value}
+                      {typeof env.value === 'object' ? JSON.stringify(env.value) : env.value}
                     </div>
                   </td>
                 </tr>

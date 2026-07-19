@@ -1,8 +1,18 @@
-import type { Edge, Node, ValueSelector } from '@/app/components/workflow/types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type {
+  Edge,
+  EnvironmentVariable,
+  Node,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getNodesBounds } from 'reactflow'
 import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
+import { resolveLLMNodeModel } from '@/app/components/workflow/nodes/llm/utils'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippet } from './use-create-snippet'
 
@@ -23,7 +33,7 @@ const isValueSelector = (value: unknown): value is ValueSelector => {
 }
 
 const isSelectorKey = (key?: string) => {
-  return key === 'selector' || !!key?.endsWith('_selector')
+  return key !== 'model_selector' && (key === 'selector' || !!key?.endsWith('_selector'))
 }
 
 const isValueSelectorListKey = (key?: string) => {
@@ -210,13 +220,35 @@ const rewriteVariableReferences = (
   )
 }
 
-const getSelectedSnippetGraph = (selectedNodes: Node[], edges: Edge[]) => {
-  const selectedNodeIds = new Set(selectedNodes.map((node) => node.id))
+const inlineLLMEnvironmentModels = (nodes: Node[], environmentVariables: EnvironmentVariable[]) => {
+  return nodes.map((node) => {
+    if (node.data.type !== BlockEnum.LLM) return node
+
+    const data = node.data as LLMNodeType
+    if (data.model_selector === undefined) return node
+    if (data.model_selector.length > 0 && data.model_selector[0] !== 'env') return node
+
+    const resolvedModel = resolveLLMNodeModel(data.model, data.model_selector, environmentVariables)
+    if (!resolvedModel) throw new Error('LLM environment model reference could not be resolved')
+
+    const nextData = { ...data, model: resolvedModel }
+    delete nextData.model_selector
+    return { ...node, data: nextData }
+  })
+}
+
+const getSelectedSnippetGraph = (
+  selectedNodes: Node[],
+  edges: Edge[],
+  environmentVariables: EnvironmentVariable[],
+) => {
+  const nodesWithInlineModels = inlineLLMEnvironmentModels(selectedNodes, environmentVariables)
+  const selectedNodeIds = new Set(nodesWithInlineModels.map((node) => node.id))
   const { inputFields, selectorMap } = getExternalVariableInputFields(
-    selectedNodes,
+    nodesWithInlineModels,
     selectedNodeIds,
   )
-  const nodes = selectedNodes.map((node) => ({
+  const nodes = nodesWithInlineModels.map((node) => ({
     ...node,
     data: rewriteVariableReferences(node.data, selectorMap) as Node['data'],
     selected: false,
@@ -239,15 +271,18 @@ const getSelectedSnippetGraph = (selectedNodes: Node[], edges: Edge[]) => {
 
 type UseCreateSnippetFromSelectionParams = {
   edges: Edge[]
+  environmentVariables: EnvironmentVariable[]
   selectedNodes: Node[]
   onClose: () => void
 }
 
 export const useCreateSnippetFromSelection = ({
   edges,
+  environmentVariables,
   selectedNodes,
   onClose,
 }: UseCreateSnippetFromSelectionParams) => {
+  const { t } = useTranslation()
   const [selectedSnippetGraph, setSelectedSnippetGraph] = useState<SnippetCanvasData>()
   const [selectedSnippetInputFields, setSelectedSnippetInputFields] = useState<SnippetInputField[]>(
     [],
@@ -262,12 +297,26 @@ export const useCreateSnippetFromSelection = ({
   } = useCreateSnippet()
 
   const handleOpenCreateSnippet = useCallback(() => {
-    const { graph, inputFields } = getSelectedSnippetGraph(selectedNodes, edges)
+    let graph: SnippetCanvasData
+    let inputFields: SnippetInputField[]
+    try {
+      const result = getSelectedSnippetGraph(selectedNodes, edges, environmentVariables)
+      graph = result.graph
+      inputFields = result.inputFields
+    } catch {
+      toast.error(
+        t(($) => $['errorMsg.fieldRequired'], {
+          ns: 'workflow',
+          field: t(($) => $['errorMsg.fields.model'], { ns: 'workflow' }),
+        }),
+      )
+      return
+    }
     setSelectedSnippetGraph(graph)
     setSelectedSnippetInputFields(inputFields)
     handleOpenCreateSnippetDialog()
     onClose()
-  }, [edges, handleOpenCreateSnippetDialog, onClose, selectedNodes])
+  }, [edges, environmentVariables, handleOpenCreateSnippetDialog, onClose, selectedNodes, t])
 
   const handleCloseCreateSnippet = useCallback(() => {
     setSelectedSnippetGraph(undefined)

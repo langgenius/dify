@@ -2,13 +2,14 @@ import type { AgentNodeType } from '../nodes/agent/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { LLMNodeType } from '../nodes/llm/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type {
   CommonEdgeType,
   CommonNodeType,
   Edge,
-  ModelConfig,
+  EnvironmentVariable,
   Node,
   ValueSelector,
 } from '../types'
@@ -53,6 +54,7 @@ import {
   getLLMModelIssue,
   isLLMModelProviderInstalled,
   LLMModelIssueCode,
+  resolveLLMNodeModel,
 } from '../nodes/llm/utils'
 import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
@@ -83,6 +85,8 @@ export type ChecklistItem = {
 }
 
 type CheckValidExtraData = Record<string, unknown> | undefined
+
+const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
 
 const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: FlowType) => {
   if (!flowType) return moreDataForCheckValid
@@ -143,6 +147,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore((s) => s.dataSourceList)
+  const environmentVariables =
+    useStore((s) => s.environmentVariables) ?? EMPTY_ENVIRONMENT_VARIABLES
   const { data: strategyProviders } = useStrategyProviders()
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
@@ -338,6 +344,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         usedVars = getNodeUsedVars(node!).filter((v) => v.length > 0)
       }
 
+      if (node!.data.type === BlockEnum.LLM) {
+        moreDataForCheckValid = {
+          ...(moreDataForCheckValid ?? {}),
+          environmentVariables,
+        }
+      }
+
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
         const validator = nodesExtraData?.[getNodeCatalogType(node!.data)]?.checkValid
@@ -356,8 +369,12 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
           errorMessages.push(t(($) => $['nodes.common.pluginNotInstalled'], { ns: 'workflow' }))
         } else {
           if (node!.data.type === BlockEnum.LLM) {
-            const modelProvider = (node!.data as CommonNodeType<{ model?: ModelConfig }>).model
-              ?.provider
+            const llmNodeData = node!.data as LLMNodeType
+            const modelProvider = resolveLLMNodeModel(
+              llmNodeData.model,
+              llmNodeData.model_selector,
+              environmentVariables,
+            )?.provider
             const modelIssue = getLLMModelIssue({
               modelProvider,
               isModelProviderInstalled: isLLMModelProviderInstalled(
@@ -489,6 +506,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     mcpTools,
     language,
     dataSourceList,
+    environmentVariables,
     triggerPlugins,
     getToolIcon,
     strategyProviders,
@@ -572,7 +590,7 @@ export const useChecklistBeforePublish = () => {
 
   const handleCheckBeforePublish = useCallback(async () => {
     const { getNodes, edges } = store.getState()
-    const { dataSourceList } = workflowStore.getState()
+    const { dataSourceList, environmentVariables = [] } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
@@ -683,8 +701,19 @@ export const useChecklistBeforePublish = () => {
       }
 
       if (node!.data.type === BlockEnum.LLM) {
-        const modelProvider = (node!.data as CommonNodeType<{ model?: ModelConfig }>).model
-          ?.provider
+        moreDataForCheckValid = {
+          ...(moreDataForCheckValid ?? {}),
+          environmentVariables,
+        }
+      }
+
+      if (node!.data.type === BlockEnum.LLM) {
+        const llmNodeData = node!.data as LLMNodeType
+        const modelProvider = resolveLLMNodeModel(
+          llmNodeData.model,
+          llmNodeData.model_selector,
+          environmentVariables,
+        )?.provider
         const modelIssue = getLLMModelIssue({
           modelProvider,
           isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),

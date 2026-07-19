@@ -61,7 +61,6 @@ describe('applyToNewApp', () => {
       params: {
         graph,
         features: {},
-        environment_variables: [],
         conversation_variables: [],
       },
     })
@@ -218,9 +217,10 @@ describe('applyToCurrentApp', () => {
         hash: 'h-existing',
       }),
     })
-    // Existing env vars and conversation vars must be preserved verbatim.
+    // Environment variables are preserved server-side; conversation variables
+    // must still be forwarded verbatim.
     const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
-    expect(params.environment_variables).toHaveLength(1)
+    expect(params).not.toHaveProperty('environment_variables')
     expect(params.conversation_variables).toHaveLength(1)
   })
 
@@ -236,7 +236,7 @@ describe('applyToCurrentApp', () => {
     const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
     expect(params).not.toHaveProperty('hash')
     expect(params.features).toEqual({})
-    expect(params.environment_variables).toEqual([])
+    expect(params).not.toHaveProperty('environment_variables')
     expect(params.conversation_variables).toEqual([])
   })
 

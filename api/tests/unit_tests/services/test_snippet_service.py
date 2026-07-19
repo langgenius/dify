@@ -491,7 +491,19 @@ def test_publish_workflow_creates_snapshot_and_updates_snippet(monkeypatch: pyte
     draft_workflow = _create_workflow(
         workflow_id="draft-workflow",
         version=Workflow.VERSION_DRAFT,
-        graph={"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []},
+        graph={
+            "nodes": [
+                {
+                    "id": "llm-1",
+                    "data": {
+                        "type": "llm",
+                        "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                        "model_selector": ["start", "MODEL_NAME"],
+                    },
+                }
+            ],
+            "edges": [],
+        },
         features={"opening_statement": "hello"},
     )
     snippet = SimpleNamespace(
