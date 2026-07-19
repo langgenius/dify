@@ -265,7 +265,7 @@ def _parse_email_recipient_payload(
         # Recipient payloads are persisted per delivery; a bad row should not block other recipients.
         logger.warning(
             "Invalid human input recipient payload, recipient_id=%s",
-            recipient.id,
+            recipient.recipient_id,
             exc_info=True,
         )
         return None

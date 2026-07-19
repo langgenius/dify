@@ -9,6 +9,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from core.repositories.human_input_repository import (
     FormCreateParams,
@@ -415,6 +416,57 @@ def test_delivery_method_to_model_instant_message_creates_recipients(monkeypatch
     assert channel_payload.channel_id == "C123"
     assert user_payload.recipient_kind == "user"
     assert user_payload.user_id == "U123"
+
+
+@pytest.mark.parametrize(
+    ("payload", "error_message"),
+    [
+        (
+            {
+                "TYPE": "instant_message",
+                "provider": "slack",
+                "recipient_kind": "channel",
+                "user_id": "U123",
+            },
+            "channel recipients must include channel_id and must not include user_id",
+        ),
+        (
+            {
+                "TYPE": "instant_message",
+                "provider": "slack",
+                "recipient_kind": "channel",
+                "channel_id": "C123",
+                "user_id": "U123",
+            },
+            "channel recipients must include channel_id and must not include user_id",
+        ),
+        (
+            {
+                "TYPE": "instant_message",
+                "provider": "slack",
+                "recipient_kind": "user",
+                "channel_id": "C123",
+            },
+            "user recipients must include user_id and must not include channel_id",
+        ),
+        (
+            {
+                "TYPE": "instant_message",
+                "provider": "slack",
+                "recipient_kind": "user",
+                "channel_id": "C123",
+                "user_id": "U123",
+            },
+            "user recipients must include user_id and must not include channel_id",
+        ),
+    ],
+)
+def test_instant_message_recipient_payload_rejects_mismatched_targets(
+    payload: dict[str, str],
+    error_message: str,
+) -> None:
+    with pytest.raises(ValidationError, match=error_message):
+        InstantMessageRecipientPayload.model_validate(payload)
 
 
 def test_build_email_recipients_uses_all_members_when_whole_workspace(monkeypatch: pytest.MonkeyPatch) -> None:

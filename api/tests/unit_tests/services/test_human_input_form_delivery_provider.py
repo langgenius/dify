@@ -260,6 +260,28 @@ def test_email_provider_ignores_non_email_recipients() -> None:
     assert mail.sent == []
 
 
+def test_email_provider_skips_invalid_recipient_payload_and_sends_valid_recipient(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    mail = _DummyMail()
+    context = _make_context(
+        delivery=_make_delivery(method_type=DeliveryMethodType.EMAIL, payload=_make_email_payload()),
+        recipients=[
+            _make_recipient(payload='{"TYPE":"email_external","email":123}', token="invalid-token"),
+            _make_recipient(
+                payload=EmailExternalRecipientPayload(email="external@example.com").model_dump_json(),
+                token="external-token",
+            ),
+        ],
+    )
+
+    with caplog.at_level("WARNING"):
+        EmailHumanInputFormDeliveryProvider(mail_client=mail).send(context=context)
+
+    assert [message["to"] for message in mail.sent] == ["external@example.com"]
+    assert "Invalid human input recipient payload, recipient_id=recipient-invalid-token" in caplog.text
+
+
 def test_email_provider_skips_invalid_delivery_payload(caplog: pytest.LogCaptureFixture) -> None:
     mail = _DummyMail()
     context = _make_context(delivery=_make_delivery(method_type=DeliveryMethodType.EMAIL, payload='{"invalid": true}'))

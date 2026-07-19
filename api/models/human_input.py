@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Annotated, Literal, Self, final
 
 import sqlalchemy as sa
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.workflow.human_input_adapter import DeliveryMethodType, InstantMessageProvider, InstantMessageRecipientType
@@ -194,6 +194,17 @@ class InstantMessageRecipientPayload(BaseModel):
     recipient_kind: InstantMessageRecipientType
     channel_id: str | None = None
     user_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_target(self) -> Self:
+        match self.recipient_kind:
+            case InstantMessageRecipientType.CHANNEL:
+                if self.channel_id is None or self.user_id is not None:
+                    raise ValueError("channel recipients must include channel_id and must not include user_id")
+            case InstantMessageRecipientType.USER:
+                if self.user_id is None or self.channel_id is not None:
+                    raise ValueError("user recipients must include user_id and must not include channel_id")
+        return self
 
 
 @final
