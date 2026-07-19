@@ -531,14 +531,23 @@ class DatasetListApi(DatasetApiResource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        if payload.permission == DatasetPermissionEnum.ALL_TEAM and dify_config.RBAC_ENABLED:
-            RBACService.DatasetAccess.replace_whitelist(
-                tenant_id,
-                current_user.id,
-                dataset.id,
-                ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-            )
-            initialize_created_app_rbac_access_task.delay(tenant_id, current_user.id, dataset_id=dataset.id)
+        if dify_config.RBAC_ENABLED:
+            if payload.permission == DatasetPermissionEnum.ALL_TEAM:
+                RBACService.DatasetAccess.replace_whitelist(
+                    tenant_id,
+                    current_user.id,
+                    dataset.id,
+                    ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
+                )
+                initialize_created_app_rbac_access_task.delay(tenant_id, current_user.id, dataset_id=dataset.id)
+            else:
+                RBACService.DatasetAccess.replace_whitelist(
+                    tenant_id,
+                    current_user.id,
+                    dataset.id,
+                    ReplaceMemberBindings(scope=RBACResourceWhitelistScope.SPECIFIC),
+                )
+
 
         return _dump_service_dataset_detail(dataset, session=session), 200
 
