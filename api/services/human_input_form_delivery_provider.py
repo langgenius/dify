@@ -18,7 +18,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.workflow.human_input_adapter import DeliveryMethodType, EmailDeliveryConfig, EmailDeliveryMethod
+from core.workflow.human_input_adapter import (
+    DeliveryMethodType,
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    InstantMessageDeliveryMethod,
+)
 from extensions.ext_mail import mail
 from graphon.runtime import VariablePool
 from models.human_input import (
@@ -83,7 +88,12 @@ class HumanInputFormDeliveryProviderRegistry:
     def register(self, provider: HumanInputFormDeliveryProvider) -> None:
         self._providers[provider.delivery_method_type] = provider
 
-    def dispatch(self, *, context: HumanInputFormDeliveryContext) -> bool:
+    def dispatch(self, *, context: HumanInputFormDeliveryContext, continue_on_error: bool = True) -> bool:
+        """Dispatch one loaded context through its provider.
+
+        Provider calls are external I/O, so callers default to isolating send failures per context.
+        Loading and DTO construction stay outside this boundary and should fail through their caller.
+        """
         provider = self._providers.get(context.delivery_method_type)
         if provider is None:
             logger.warning(
@@ -94,7 +104,18 @@ class HumanInputFormDeliveryProviderRegistry:
             )
             return False
 
-        provider.send(context=context)
+        try:
+            provider.send(context=context)
+        except Exception:
+            logger.exception(
+                "Failed to dispatch human input form delivery, form_id=%s, delivery_id=%s, method=%s",
+                context.form_id,
+                context.delivery_id,
+                context.delivery_method_type,
+            )
+            if not continue_on_error:
+                raise
+            return False
         return True
 
     @classmethod
@@ -141,9 +162,14 @@ class HumanInputFormDeliveryDispatcher:
             )
         return tuple(contexts)
 
-    def dispatch_contexts(self, contexts: Sequence[HumanInputFormDeliveryContext]) -> None:
+    def dispatch_contexts(
+        self,
+        contexts: Sequence[HumanInputFormDeliveryContext],
+        *,
+        continue_on_error: bool = True,
+    ) -> None:
         for context in contexts:
-            self._registry.dispatch(context=context)
+            self._registry.dispatch(context=context, continue_on_error=continue_on_error)
 
 
 def _build_delivery_context(
@@ -239,6 +265,17 @@ class UnsupportedInstantMessageHumanInputFormDeliveryProvider:
     delivery_method_type = DeliveryMethodType.IM
 
     def send(self, *, context: HumanInputFormDeliveryContext) -> None:
+        try:
+            InstantMessageDeliveryMethod.model_validate_json(context.channel_payload)
+        except ValidationError:
+            logger.warning(
+                "Invalid human input instant message delivery payload, form_id=%s, delivery_id=%s",
+                context.form_id,
+                context.delivery_id,
+                exc_info=True,
+            )
+            return
+
         valid_recipients = 0
         for recipient in context.recipients:
             if _parse_instant_message_recipient_payload(recipient) is not None:

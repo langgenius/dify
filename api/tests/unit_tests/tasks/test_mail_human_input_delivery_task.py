@@ -135,7 +135,7 @@ def test_dispatch_human_input_email_task_skips_when_mail_not_inited(monkeypatch:
     dispatcher.dispatch_contexts.assert_not_called()
 
 
-def test_dispatch_human_input_form_delivery_task_loads_all_delivery_contexts(monkeypatch: pytest.MonkeyPatch):
+def test_dispatch_human_input_form_delivery_task_loads_external_delivery_contexts(monkeypatch: pytest.MonkeyPatch):
     mail = _DummyMail()
     form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
     session = _DummySession(form)
@@ -169,7 +169,7 @@ def test_dispatch_human_input_form_delivery_task_loads_all_delivery_contexts(mon
     assert dispatch_kwargs["session"] is session
     assert dispatch_kwargs["form"] is form
     assert dispatch_kwargs["variable_pool"] == "pool"
-    assert dispatch_kwargs["delivery_method_types"] is None
+    assert dispatch_kwargs["delivery_method_types"] == task_module.FORM_DELIVERY_METHOD_TYPES
     dispatcher.dispatch_contexts.assert_called_once_with((email_context, im_context))
 
 
@@ -203,7 +203,7 @@ def test_dispatch_human_input_form_delivery_task_keeps_im_when_mail_not_inited(m
     )
 
     dispatch_kwargs = dispatcher.load_form_contexts.call_args.kwargs
-    assert dispatch_kwargs["delivery_method_types"] is None
+    assert dispatch_kwargs["delivery_method_types"] == task_module.FORM_DELIVERY_METHOD_TYPES
     dispatcher.dispatch_contexts.assert_called_once_with((im_context,))
 
 
@@ -238,5 +238,5 @@ def test_dispatch_human_input_form_delivery_task_keeps_im_when_email_feature_dis
     )
 
     dispatch_kwargs = dispatcher.load_form_contexts.call_args.kwargs
-    assert dispatch_kwargs["delivery_method_types"] is None
+    assert dispatch_kwargs["delivery_method_types"] == task_module.FORM_DELIVERY_METHOD_TYPES
     dispatcher.dispatch_contexts.assert_called_once_with((im_context,))

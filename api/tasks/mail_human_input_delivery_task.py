@@ -30,6 +30,8 @@ from services.human_input_form_delivery_provider import (
 
 logger = logging.getLogger(__name__)
 
+FORM_DELIVERY_METHOD_TYPES = (DeliveryMethodType.EMAIL, DeliveryMethodType.IM)
+
 
 def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
     if not workflow_run_id:
@@ -144,7 +146,7 @@ def dispatch_human_input_form_delivery_task(form_id: str, node_title: str | None
         form_id=form_id,
         node_title=node_title,
         session_factory=session_factory,
-        delivery_method_types=None,
+        delivery_method_types=FORM_DELIVERY_METHOD_TYPES,
         require_mail_inited=False,
         require_email_feature=False,
         filter_unavailable_email=True,

@@ -39,13 +39,24 @@ class _DummyMail:
 
 
 class _DummyProvider:
-    delivery_method_type = DeliveryMethodType.EMAIL
+    delivery_method_type: DeliveryMethodType
 
-    def __init__(self) -> None:
+    def __init__(self, delivery_method_type: DeliveryMethodType = DeliveryMethodType.EMAIL) -> None:
+        self.delivery_method_type = delivery_method_type
         self.contexts: list[HumanInputFormDeliveryContext] = []
 
     def send(self, *, context: HumanInputFormDeliveryContext) -> None:
         self.contexts.append(context)
+
+
+class _FailingProvider:
+    delivery_method_type: DeliveryMethodType
+
+    def __init__(self, delivery_method_type: DeliveryMethodType = DeliveryMethodType.EMAIL) -> None:
+        self.delivery_method_type = delivery_method_type
+
+    def send(self, *, context: HumanInputFormDeliveryContext) -> None:
+        raise TimeoutError("provider timed out")
 
 
 class _ScalarResult:
@@ -177,6 +188,25 @@ def test_registry_skips_unsupported_delivery_method(caplog: pytest.LogCaptureFix
         assert registry.dispatch(context=context) is False
 
     assert "No human input form delivery provider registered" in caplog.text
+
+
+def test_dispatcher_continues_when_provider_fails(caplog: pytest.LogCaptureFixture) -> None:
+    failing_provider = _FailingProvider(DeliveryMethodType.EMAIL)
+    next_provider = _DummyProvider(DeliveryMethodType.IM)
+    dispatcher = HumanInputFormDeliveryDispatcher(
+        registry=HumanInputFormDeliveryProviderRegistry([failing_provider, next_provider])
+    )
+    email_context = _make_context(delivery=_make_delivery(method_type=DeliveryMethodType.EMAIL))
+    im_context = _make_context(delivery=_make_delivery(method_type=DeliveryMethodType.IM))
+
+    with caplog.at_level("ERROR"):
+        dispatcher.dispatch_contexts((email_context, im_context))
+
+    assert next_provider.contexts == [im_context]
+    assert "Failed to dispatch human input form delivery" in caplog.text
+    assert "form_id=form-1" in caplog.text
+    assert f"delivery_id={email_context.delivery_id}" in caplog.text
+    assert "method=email" in caplog.text
 
 
 def test_dispatcher_loads_contexts_in_session_and_dispatches_after_session_exit() -> None:
@@ -315,3 +345,18 @@ def test_instant_message_provider_safely_skips_without_network(caplog: pytest.Lo
         UnsupportedInstantMessageHumanInputFormDeliveryProvider().send(context=context)
 
     assert "Human input instant message delivery is not implemented" in caplog.text
+
+
+def test_instant_message_provider_skips_invalid_delivery_payload(caplog: pytest.LogCaptureFixture) -> None:
+    context = _make_context(
+        delivery=_make_delivery(
+            method_type=DeliveryMethodType.IM,
+            payload='{"type":"im","config":{"provider":123}}',
+        ),
+    )
+
+    with caplog.at_level("WARNING"):
+        UnsupportedInstantMessageHumanInputFormDeliveryProvider().send(context=context)
+
+    assert "Invalid human input instant message delivery payload" in caplog.text
+    assert "Human input instant message delivery is not implemented" not in caplog.text
