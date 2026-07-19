@@ -33,6 +33,14 @@ vi.mock('@/utils/var', async (importOriginal) => ({
   getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
 }))
 
+vi.mock('../rag-tool-recommendations', () => ({
+  RAGToolRecommendations: ({ onLoadMore }: { onLoadMore: () => void }) => (
+    <button type="button" onClick={onLoadMore}>
+      Load more RAG tools
+    </button>
+  ),
+}))
+
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
@@ -192,5 +200,28 @@ describe('AllTools', () => {
     await waitFor(() => {
       expect(screen.getByText('workflow.tabs.noPluginsFound')).toBeInTheDocument()
     })
+  })
+
+  it('returns the next tag value when loading more RAG tools', async () => {
+    const user = userEvent.setup()
+    const onTagsChange = vi.fn()
+
+    render(
+      <AllTools
+        searchText=""
+        tags={[]}
+        onTagsChange={onTagsChange}
+        onSelect={vi.fn()}
+        buildInTools={[createToolProvider({ id: 'provider-built-in' })]}
+        customTools={[]}
+        workflowTools={[]}
+        mcpTools={[]}
+        isInRAGPipeline
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Load more RAG tools' }))
+
+    expect(onTagsChange).toHaveBeenCalledWith(['rag'])
   })
 })
