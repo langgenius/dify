@@ -55,8 +55,8 @@ export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
           content: 'px-6 pt-2 pb-8',
         }}
       >
-        <div className="w-full min-w-0 space-y-6">
-          <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
+        <div className="@container w-full min-w-0 space-y-6">
+          <div className="grid w-full grid-cols-1 gap-3 @min-[896px]:grid-cols-2">
             <WebAppAccessCard
               agent={agentQuery.data}
               agentId={agentId}
