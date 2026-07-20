@@ -230,7 +230,10 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     })
   }, [filter, search, sources])
   const filterActive = filter !== 'all' || Boolean(search.trim())
-  const needsVisibleSource = sources !== undefined && sources.length === 0
+  const latestSourcePage = sourcesQuery.data?.pages[sourcesQuery.data.pages.length - 1]
+  const needsVisibleSource =
+    latestSourcePage !== undefined &&
+    !latestSourcePage.items.some((source) => !isPreviewDraft(source))
   const completingFilteredResults =
     filterActive &&
     !sourcesQuery.isFetchNextPageError &&
@@ -284,7 +287,10 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           <Loading />
         </div>
       ) : sourcesQuery.error && !sourcesQuery.data ? (
-        <div className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center">
+        <div
+          className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
+          role="alert"
+        >
           <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
           <h2 className="mt-3 title-xl-semi-bold text-text-primary">
             {t(($) => $['newKnowledge.sourcesErrorTitle'])}
@@ -370,7 +376,11 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {!filteredSources.length &&
               !completingFilteredResults &&
               !sourcesQuery.isFetchNextPageError && (
-                <p className="py-16 text-center body-sm-regular text-text-tertiary">
+                <p
+                  aria-live="polite"
+                  className="py-16 text-center body-sm-regular text-text-tertiary"
+                  role="status"
+                >
                   {t(($) => $['newKnowledge.noMatchingSources'])}
                 </p>
               )}

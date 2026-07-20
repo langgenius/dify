@@ -232,6 +232,30 @@ describe('SourcesPage', () => {
     expect(screen.queryByText('dataset.newKnowledge.sourcesEmptyTitle')).not.toBeInTheDocument()
   })
 
+  it('continues after a loaded cursor page contributes only hidden preview drafts', () => {
+    sourcesQuery.data = {
+      pages: [
+        { items: [source({ id: 'connected', name: 'Connected source' })] },
+        {
+          items: [
+            source({
+              id: 'preview',
+              metadata: { preview: true },
+              status: 'disabled',
+            }),
+          ],
+          nextCursor: 'next',
+        },
+      ],
+    }
+    sourcesQuery.hasNextPage = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('Connected source')).toBeInTheDocument()
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
   it('exposes the row action structure without pretending unsupported mutations work', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
@@ -257,6 +281,7 @@ describe('SourcesPage', () => {
     sourcesQuery.error = new Error('temporary failure')
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
@@ -286,6 +311,19 @@ describe('SourcesPage', () => {
 
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
+  })
+
+  it('announces a filtered search with no matches', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
+      'missing',
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.noMatchingSources')
   })
 
   it('stops automatic filtered pagination after a cursor error', async () => {
