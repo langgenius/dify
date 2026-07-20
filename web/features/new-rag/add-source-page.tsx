@@ -13,6 +13,7 @@ import Loading from '@/app/components/base/loading'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { newKnowledgeDetailPath } from './routes'
+import { WebsiteCrawlPreview } from './website-crawl-preview'
 
 type Provider = GetSourceProvidersResponse['items'][number]
 type ProviderField = Provider['configuration'][number]
@@ -212,67 +213,6 @@ function ProviderFieldControl({
           {field.description}
         </p>
       )}
-    </div>
-  )
-}
-
-function ProviderConfigured() {
-  const { t } = useTranslation('dataset')
-  const { t: tCreation } = useTranslation('datasetCreation')
-  const { t: tDocuments } = useTranslation('datasetDocuments')
-
-  return (
-    <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
-      <div className="flex items-center gap-2 system-xs-medium text-text-success">
-        <span aria-hidden className="i-ri-checkbox-circle-fill size-4" />
-        {t(($) => $['newKnowledge.providerConnected'])}
-      </div>
-      <div className="mt-4 space-y-4">
-        <label className="block">
-          <span className="system-xs-medium text-text-secondary">
-            {tDocuments(($) => $['metadata.field.webPage.url'])}
-          </span>
-          <input
-            type="url"
-            disabled
-            placeholder={tDocuments(($) => $['metadata.field.webPage.url'])}
-            className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
-          />
-        </label>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="system-xs-medium text-text-secondary">
-              {tCreation(($) => $['stepOne.website.crawlSubPage'])}
-            </span>
-            <select
-              disabled
-              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
-            >
-              <option>{t(($) => $['newKnowledge.booleanTrue'])}</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="system-xs-medium text-text-secondary">
-              {tCreation(($) => $['stepOne.website.limit'])}
-            </span>
-            <input
-              type="number"
-              disabled
-              value="10"
-              readOnly
-              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
-            />
-          </label>
-        </div>
-        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.crawlSetupUnavailableDescription'])}
-          </p>
-          <Button variant="primary" disabled>
-            {t(($) => $['newKnowledge.crawlAndPreview'])}
-          </Button>
-        </div>
-      </div>
     </div>
   )
 }
@@ -716,7 +656,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             </p>
           </div>
         ) : connection?.status === 'active' ? (
-          <ProviderConfigured />
+          <WebsiteCrawlPreview connection={connection} knowledgeSpaceId={knowledgeSpaceId} />
         ) : connection?.status === 'provisioning' ? (
           <ProvisioningConnection onReconcile={reconcileConnection} />
         ) : connection ? (
@@ -742,7 +682,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             {t(($) => $['newKnowledge.cancelAddSource'])}
           </Link>
           <span id={unavailableActionDescriptionId} className="sr-only">
-            {t(($) => $['newKnowledge.crawlSetupUnavailableDescription'])}
+            {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
           </span>
           <Button variant="primary" disabled aria-describedby={unavailableActionDescriptionId}>
             {t(($) => $['newKnowledge.addSource'])}

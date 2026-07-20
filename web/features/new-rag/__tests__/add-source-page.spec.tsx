@@ -213,9 +213,7 @@ describe('AddSourcePage', () => {
 
     expect(screen.getByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    expect(
-      screen.getByRole('textbox', { name: 'datasetDocuments.metadata.field.webPage.url' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toBeEnabled()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
     ).toBeDisabled()
