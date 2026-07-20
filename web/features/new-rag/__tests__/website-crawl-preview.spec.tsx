@@ -204,6 +204,21 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
   })
 
+  it('caps crawl previews at the selection contract limit', async () => {
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
+    const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    expect(pageLimit).toHaveAttribute('max', '200')
+    await user.clear(pageLimit)
+    await user.type(pageLimit, '1000')
+    expect(pageLimit).toHaveValue(200)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+
+    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
+    expect(clientMock.createSource.mock.calls[0]?.[0].body.metadata.crawlOptions.limit).toBe(200)
+  })
+
   it('confirms dirty cancellation and protects an unfinished draft from page unload', async () => {
     const user = userEvent.setup()
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
@@ -814,6 +829,49 @@ describe('WebsiteCrawlPreview', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps retry causality across stale replicas and retires its fingerprint', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const failedRun = run('failed', { lastErrorCode: 'PROVIDER_403', progressFailed: 1 })
+    clientMock.getRun
+      .mockResolvedValueOnce(failedRun)
+      .mockResolvedValueOnce(failedRun)
+      .mockResolvedValueOnce(run('running'))
+      .mockResolvedValueOnce(failedRun)
+      .mockResolvedValueOnce(
+        run('succeeded', { progressCompleted: 1, updatedAt: '2026-07-20T10:01:00Z' }),
+      )
+    clientMock.getPages.mockResolvedValueOnce({ items: [] }).mockResolvedValue({
+      items: [
+        {
+          pageId: 'page-1',
+          sourceUrl: 'https://docs.dify.ai/getting-started',
+          title: 'Getting started',
+        },
+      ],
+    })
+    clientMock.retry.mockResolvedValue(run('running'))
+
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByRole('alert')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
+    await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(2))
+
+    await act(async () => vi.advanceTimersByTime(1500))
+    await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(3))
+    await act(async () => vi.advanceTimersByTime(1500))
+    await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(4))
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }),
+    ).toBeInTheDocument()
+    await act(async () => vi.advanceTimersByTime(1500))
+    await screen.findByText('Getting started')
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' }))
+    await waitFor(() => expect(clientMock.retry).toHaveBeenCalledTimes(2))
   })
 
   it('reconciles a lost Retry response without sending retry twice', async () => {

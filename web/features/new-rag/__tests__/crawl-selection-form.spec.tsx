@@ -5,7 +5,7 @@ import type {
   SourceWorkflowRun,
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { CrawlSelectionForm } from '../crawl-selection-form'
@@ -132,7 +132,12 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-function renderSelectionForm(onCancel = vi.fn(), workflowUncertain = false) {
+function renderSelectionForm(
+  onCancel = vi.fn(),
+  workflowUncertain = false,
+  discardRequested = () => false,
+  previewPages = pages,
+) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
   })
@@ -143,6 +148,7 @@ function renderSelectionForm(onCancel = vi.fn(), workflowUncertain = false) {
   const view = render(
     <QueryClientProvider client={queryClient}>
       <CrawlSelectionForm
+        discardRequested={discardRequested}
         knowledgeSpaceId="space-1"
         onCancel={onCancel}
         onRecrawl={onRecrawl}
@@ -150,7 +156,7 @@ function renderSelectionForm(onCancel = vi.fn(), workflowUncertain = false) {
         onSubmitted={vi.fn()}
         onWorkflowPending={onWorkflowPending}
         onWorkflowRun={onWorkflowRun}
-        pages={pages}
+        pages={previewPages}
         rootUrl="https://docs.dify.ai/"
         run={run}
         source={source}
@@ -239,6 +245,29 @@ describe('CrawlSelectionForm', () => {
     expect(onCancel).toHaveBeenCalledOnce()
   })
 
+  it('never submits more page IDs than the selection contract accepts', async () => {
+    const longPageList: PreviewPage[] = Array.from({ length: 201 }, (_, index) => ({
+      pageId: `page-${index + 1}`,
+      sourceUrl: `https://docs.dify.ai/page-${index + 1}`,
+      title: `Page ${index + 1}`,
+    }))
+    const user = userEvent.setup()
+    renderSelectionForm(vi.fn(), false, () => false, longPageList)
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' }),
+    )
+
+    const overflowPage = screen.getByRole('checkbox', { name: 'Page 201' })
+    expect(overflowPage).toHaveAttribute('aria-disabled', 'true')
+    expect(overflowPage).toHaveAccessibleDescription(
+      'https://docs.dify.ai/page-201 dataset.newKnowledge.maxPages: 200',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() => expect(clientMock.selectPages).toHaveBeenCalledOnce())
+    expect(clientMock.selectPages.mock.calls[0]?.[0].body.pageIds).toHaveLength(200)
+  })
+
   it('validates a custom interval and submits policy plus selection exactly once', async () => {
     const selectionRequest = deferred<SourceWorkflowRun>()
     clientMock.selectPages.mockReturnValue(selectionRequest.promise)
@@ -288,6 +317,29 @@ describe('CrawlSelectionForm', () => {
       }),
     )
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
+  })
+
+  it('tracks policy updates and stops before selection when discard is requested', async () => {
+    const policyRequest = deferred<GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse>()
+    clientMock.updatePolicy.mockReturnValue(policyRequest.promise)
+    let discardRequested = false
+    const user = userEvent.setup()
+    const { onWorkflowPending } = renderSelectionForm(vi.fn(), false, () => discardRequested)
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+      'manual',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    expect(onWorkflowPending).toHaveBeenCalledOnce()
+    expect(clientMock.selectPages).not.toHaveBeenCalled()
+    discardRequested = true
+    await act(async () =>
+      policyRequest.resolve(policy({ enabled: false, mode: 'manual', revision: 3 })),
+    )
+    await expect(onWorkflowPending.mock.calls[0]?.[0]).resolves.toBeUndefined()
+    expect(clientMock.selectPages).not.toHaveBeenCalled()
   })
 
   it.each([

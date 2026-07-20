@@ -24,6 +24,7 @@ type SyncPolicyBody = PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData['bod
 
 const MIN_CUSTOM_INTERVAL_HOURS = 1
 const MAX_CUSTOM_INTERVAL_HOURS = 720
+const MAX_SELECTED_PAGES = 200
 
 type PageSkipReason = 'failed' | 'off-domain'
 
@@ -95,6 +96,7 @@ function PolicyLoading() {
 
 function ReadyCrawlSelectionForm({
   busy,
+  discardRequested,
   knowledgeSpaceId,
   onCancel,
   onRecrawl,
@@ -110,6 +112,7 @@ function ReadyCrawlSelectionForm({
   workflowUncertain,
 }: {
   busy: boolean
+  discardRequested: () => boolean
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
@@ -141,6 +144,7 @@ function ReadyCrawlSelectionForm({
     () => new Set(selectablePages.map((page) => page.pageId)),
     [selectablePages],
   )
+  const bulkSelectablePages = selectablePages.slice(0, MAX_SELECTED_PAGES)
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const [syncMode, setSyncMode] = useState<SyncMode>(policy.enabled ? policy.mode : 'manual')
   const [customIntervalHours, setCustomIntervalHours] = useState<number | ''>(
@@ -161,8 +165,10 @@ function ReadyCrawlSelectionForm({
     consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection.mutationOptions(),
   )
   const allSelected =
-    selectablePages.length > 0 && selectablePages.every((page) => selectedPageIds.has(page.pageId))
+    bulkSelectablePages.length > 0 &&
+    bulkSelectablePages.every((page) => selectedPageIds.has(page.pageId))
   const someSelected = selectedPageIds.size > 0
+  const selectionAtLimit = selectedPageIds.size >= MAX_SELECTED_PAGES
   const customIntervalValid =
     typeof customIntervalHours === 'number' &&
     Number.isInteger(customIntervalHours) &&
@@ -183,7 +189,7 @@ function ReadyCrawlSelectionForm({
     setSelectedPageIds((current) => {
       const next = new Set(current)
       if (next.has(pageId)) next.delete(pageId)
-      else next.add(pageId)
+      else if (next.size < MAX_SELECTED_PAGES) next.add(pageId)
       return next
     })
     setSubmitError(false)
@@ -191,7 +197,9 @@ function ReadyCrawlSelectionForm({
 
   const toggleAll = () => {
     if (submissionPendingRef.current || submissionUncertain) return
-    setSelectedPageIds(allSelected ? new Set() : new Set(selectablePageIds))
+    setSelectedPageIds(
+      allSelected ? new Set() : new Set(bulkSelectablePages.map((page) => page.pageId)),
+    )
     setSubmitError(false)
   }
 
@@ -219,6 +227,13 @@ function ReadyCrawlSelectionForm({
         requestId: globalThis.crypto.randomUUID(),
       }
     }
+
+    let resolveTransaction!: (run: SourceWorkflowRun | undefined) => void
+    let transactionRun: SourceWorkflowRun | undefined
+    const transaction = new Promise<SourceWorkflowRun | undefined>((resolve) => {
+      resolveTransaction = resolve
+    })
+    onWorkflowPending(transaction)
 
     try {
       let currentPolicy = policySnapshotRef.current
@@ -254,30 +269,33 @@ function ReadyCrawlSelectionForm({
         policySnapshotRef.current = currentPolicy
       }
 
+      if (discardRequested()) return
+
       try {
         const selectionRequest = selectPages.mutateAsync({
           body: { pageIds: sortedPageIds },
           headers: { 'Idempotency-Key': selectionRequestRef.current.requestId },
           params: { id: knowledgeSpaceId, runId: run.id },
         })
-        onWorkflowPending(
-          selectionRequest.then((selectionRun) => selectionRun).catch(() => undefined),
-        )
         const selectionRun = await selectionRequest
+        transactionRun = selectionRun
         onWorkflowRun(selectionRun)
       } catch (error) {
         updateSubmissionUncertain(!isDefinitiveRequestFailure(error))
         throw error
       }
       updateSubmissionUncertain(true)
+      if (discardRequested()) return
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
       })
+      if (discardRequested()) return
       await onSubmitted()
       router.push(newKnowledgeDetailPath(knowledgeSpaceId))
     } catch {
       setSubmitError(true)
     } finally {
+      resolveTransaction(transactionRun)
       submissionPendingRef.current = false
       setSubmitting(false)
     }
@@ -331,6 +349,8 @@ function ReadyCrawlSelectionForm({
             {pages.map((page, index) => {
               const skipReason = pageSkipReasons.get(page.pageId)
               const selectable = !skipReason
+              const selectionLimitReached =
+                selectable && selectionAtLimit && !selectedPageIds.has(page.pageId)
               const titleId = `${pageDescriptionPrefixId}-title-${index}`
               const urlId = `${pageDescriptionPrefixId}-url-${index}`
               const reasonId = `${pageDescriptionPrefixId}-reason-${index}`
@@ -339,9 +359,9 @@ function ReadyCrawlSelectionForm({
                   <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5">
                     <Checkbox
                       checked={selectedPageIds.has(page.pageId)}
-                      disabled={!selectable || selectionLocked}
+                      disabled={!selectable || selectionLimitReached || selectionLocked}
                       aria-labelledby={titleId}
-                      aria-describedby={`${urlId}${skipReason ? ` ${reasonId}` : ''}`}
+                      aria-describedby={`${urlId}${skipReason || selectionLimitReached ? ` ${reasonId}` : ''}`}
                       onCheckedChange={() => togglePage(page.pageId)}
                     />
                     <span className="min-w-0 flex-1">
@@ -358,11 +378,13 @@ function ReadyCrawlSelectionForm({
                         {page.sourceUrl}
                       </span>
                     </span>
-                    {!selectable && (
+                    {(!selectable || selectionLimitReached) && (
                       <span id={reasonId} className="shrink-0 system-xs-medium text-text-tertiary">
-                        {skipReason === 'off-domain'
-                          ? t(($) => $['newKnowledge.skippedOffDomain'])
-                          : t(($) => $['newKnowledge.skippedFailed'])}
+                        {selectionLimitReached
+                          ? `${t(($) => $['newKnowledge.maxPages'])}: ${MAX_SELECTED_PAGES}`
+                          : skipReason === 'off-domain'
+                            ? t(($) => $['newKnowledge.skippedOffDomain'])
+                            : t(($) => $['newKnowledge.skippedFailed'])}
                       </span>
                     )}
                   </label>
@@ -455,6 +477,7 @@ function ReadyCrawlSelectionForm({
 
 export function CrawlSelectionForm({
   busy = false,
+  discardRequested,
   knowledgeSpaceId,
   onCancel,
   onRecrawl,
@@ -469,6 +492,7 @@ export function CrawlSelectionForm({
   workflowUncertain = false,
 }: {
   busy?: boolean
+  discardRequested: () => boolean
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
@@ -518,6 +542,7 @@ export function CrawlSelectionForm({
     <ReadyCrawlSelectionForm
       key={`${run.id}:${policyQuery.data.revision}`}
       busy={busy}
+      discardRequested={discardRequested}
       knowledgeSpaceId={knowledgeSpaceId}
       onCancel={onCancel}
       onRecrawl={onRecrawl}
