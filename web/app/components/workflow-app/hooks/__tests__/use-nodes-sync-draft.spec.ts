@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -101,7 +101,7 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
 }))
 
 const renderUseNodesSyncDraft = () =>
-  renderHookWithSystemFeatures(() => useNodesSyncDraft(), {
+  renderHookWithConsoleQuery(() => useNodesSyncDraft(), {
     systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
   })
 

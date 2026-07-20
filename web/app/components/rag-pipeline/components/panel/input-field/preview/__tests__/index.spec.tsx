@@ -194,7 +194,7 @@ const createDatasourceOption = (overrides?: Partial<DataSourceOption>): DataSour
   ...overrides,
 })
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
@@ -205,7 +205,7 @@ const createTestQueryClient = () =>
   })
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 

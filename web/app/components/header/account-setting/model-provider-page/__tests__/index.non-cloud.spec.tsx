@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
@@ -179,7 +179,7 @@ vi.mock('@/service/client', async (importOriginal) => {
 
 describe('ModelProviderPage non-cloud branch', () => {
   it('should skip the quota panel when cloud edition is disabled', () => {
-    renderWithSystemFeatures(<ModelProviderPage searchText="" />, {
+    renderWithConsoleQuery(<ModelProviderPage searchText="" />, {
       systemFeatures: { enable_marketplace: false },
     })
 

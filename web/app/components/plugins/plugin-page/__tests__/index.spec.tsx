@@ -3,11 +3,11 @@ import type { PluginPageProps } from '../index'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useQueryState } from 'nuqs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 // Import mocked modules for assertions
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import PluginPageWithContext from '../index'
 
 let mockEnableMarketplace = true
@@ -15,8 +15,8 @@ const { mockRouterReplace } = vi.hoisted(() => ({
   mockRouterReplace: vi.fn(),
 }))
 
-const render = (ui: ReactElement, options: Parameters<typeof renderWithSystemFeatures>[1] = {}) =>
-  renderWithSystemFeatures(ui, {
+const render = (ui: ReactElement, options: Parameters<typeof renderWithConsoleQuery>[1] = {}) =>
+  renderWithConsoleQuery(ui, {
     systemFeatures: { enable_marketplace: mockEnableMarketplace },
     ...options,
   })
@@ -46,9 +46,9 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
     langGeniusVersionInfo: {
@@ -68,9 +68,9 @@ vi.mock('@/context/account-state', async (importOriginal) => {
     ],
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
     langGeniusVersionInfo: {
@@ -90,9 +90,9 @@ vi.mock('@/context/workspace-state', async (importOriginal) => {
     ],
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
     langGeniusVersionInfo: {
@@ -111,56 +111,6 @@ vi.mock('@/context/permission-state', async (importOriginal) => {
       'plugin.plugin_preferences',
     ],
   }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceOwner: false,
-    langGeniusVersionInfo: {
-      current_env: 'CLOUD',
-      current_version: '1.0.0',
-      latest_version: '1.0.0',
-      version: '1.0.0',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.debug',
-      'plugin.plugin_preferences',
-    ],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceOwner: false,
-    langGeniusVersionInfo: {
-      current_env: 'CLOUD',
-      current_version: '1.0.0',
-      latest_version: '1.0.0',
-      version: '1.0.0',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.debug',
-      'plugin.plugin_preferences',
-    ],
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/service/use-plugins', () => ({

@@ -1,9 +1,10 @@
 import type { PluginStatus } from '@/app/components/plugins/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 // Import mocked modules
 import { useMutationClearTaskPlugin, usePluginTaskList } from '@/service/use-plugins'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import PluginTaskList from '../components/plugin-task-list'
 import TaskStatusIndicator from '../components/task-status-indicator'
 import { usePluginTaskStatus } from '../hooks'
