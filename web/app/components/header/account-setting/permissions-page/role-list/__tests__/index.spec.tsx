@@ -1,10 +1,18 @@
 import type { Role } from '@/models/access-control'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import RoleList from '../index'
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['workspace.role.manage'] as string[],
 }))
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/service/access-control/use-workspace-roles', () => ({
   useCopyWorkspaceRole: () => ({
@@ -39,6 +47,14 @@ const createRole = (overrides: Partial<Role> = {}): Role => ({
   permission_keys: [],
   role_tag: '',
   ...overrides,
+})
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
 })
 
 describe('RoleList', () => {

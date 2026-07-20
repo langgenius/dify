@@ -3,13 +3,13 @@ import type { EmbeddedChatbotContextValue } from '../../context'
 import type { AppData } from '@/models/share'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEmbeddedChatbotContext } from '../../context'
 import Header from '../index'
 
 let mockBranding = { enabled: true, workspace_logo: '' }
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { branding: { ...mockBranding } },
   })
 

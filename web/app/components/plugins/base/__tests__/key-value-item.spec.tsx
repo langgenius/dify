@@ -6,14 +6,6 @@ vi.mock('../../../base/icons/src/vender/line/files', () => ({
   CopyCheck: () => <span />,
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, onClick, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button onClick={onClick} {...props}>
-      {children}
-    </button>
-  ),
-}))
-
 const mockCopy = vi.fn()
 vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),

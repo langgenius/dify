@@ -1,7 +1,8 @@
 import type { UpdateFromMarketPlacePayload } from '@/app/components/plugins/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { render } from '@/test/console/render'
 import UpdateFromMarketplace from '../from-market-place'
 
 const {
@@ -19,6 +20,13 @@ const {
   mockUpdateFromMarketPlace: vi.fn(),
   mockToastError: vi.fn(),
 }))
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
