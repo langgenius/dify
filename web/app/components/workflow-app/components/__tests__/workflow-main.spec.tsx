@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
