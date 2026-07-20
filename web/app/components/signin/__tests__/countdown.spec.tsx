@@ -12,6 +12,7 @@ describe('Countdown', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('shows the stored remaining time', () => {
@@ -32,10 +33,11 @@ describe('Countdown', () => {
   })
 
   it('removes the stored time when the countdown ends', () => {
+    const removeItemSpy = vi.spyOn(Storage.prototype, 'removeItem')
     localStorage.setItem(COUNT_DOWN_KEY, '1000')
     render(<Countdown />)
     act(() => vi.advanceTimersByTime(2000))
-    expect(localStorage.removeItem).toHaveBeenCalledWith(COUNT_DOWN_KEY)
+    expect(removeItemSpy).toHaveBeenCalledWith(COUNT_DOWN_KEY)
   })
 
   it('resets the countdown and invokes the callback when resent', () => {
@@ -45,7 +47,7 @@ describe('Countdown', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
 
-    expect(localStorage.setItem).toHaveBeenCalledWith(COUNT_DOWN_KEY, String(COUNT_DOWN_TIME_MS))
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))
     expect(onResend).toHaveBeenCalledOnce()
   })
 })

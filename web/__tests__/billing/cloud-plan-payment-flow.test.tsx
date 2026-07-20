@@ -9,47 +9,30 @@
  */
 import type { BasicPlan } from '@/app/components/billing/type'
 import { toast, ToastHost } from '@langgenius/dify-ui/toast'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import { PlanRange } from '@/app/components/billing/pricing/plan-switcher/plan-range-switcher'
 import CloudPlanItem from '@/app/components/billing/pricing/plans/cloud-plan-item'
 import { Plan } from '@/app/components/billing/type'
+import { render } from '@/test/console/render'
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
-let mockAppCtx: Record<string, unknown> = {}
+let mockConsoleState: Record<string, unknown> = {}
 const mockFetchSubscriptionUrls = vi.fn()
 const mockInvoices = vi.fn()
 const mockOpenAsyncWindow = vi.fn()
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
 // ─── Service mocks ───────────────────────────────────────────────────────────
@@ -79,8 +62,8 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const setupAppContext = (overrides: Record<string, unknown> = {}) => {
-  mockAppCtx = {
+const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
+  mockConsoleState = {
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
     ...overrides,
@@ -116,7 +99,7 @@ describe('Cloud Plan Payment Flow', () => {
     vi.clearAllMocks()
     cleanup()
     toast.dismiss()
-    setupAppContext()
+    setupConsoleState()
     mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://pay.example.com/checkout' })
     mockInvoices.mockResolvedValue({ url: 'https://billing.example.com/invoices' })
   })
@@ -295,7 +278,7 @@ describe('Cloud Plan Payment Flow', () => {
   // ─── 5. Permission Check ────────────────────────────────────────────────
   describe('Permission check', () => {
     it('should change plans when billing manage permission is granted without manager role', async () => {
-      setupAppContext({
+      setupConsoleState({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.manage'],
       })
@@ -311,7 +294,7 @@ describe('Cloud Plan Payment Flow', () => {
     })
 
     it('should show error toast when billing manage permission is missing for plan changes', async () => {
-      setupAppContext({
+      setupConsoleState({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.view', 'billing.subscription.manage'],
       })
@@ -328,7 +311,7 @@ describe('Cloud Plan Payment Flow', () => {
     })
 
     it('should open billing portal when subscription management permission is granted without manager role', async () => {
-      setupAppContext({
+      setupConsoleState({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.subscription.manage'],
       })
@@ -345,7 +328,7 @@ describe('Cloud Plan Payment Flow', () => {
     })
 
     it('should show error toast when subscription management permission is missing for current paid plan', async () => {
-      setupAppContext({
+      setupConsoleState({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.view', 'billing.manage'],
       })
