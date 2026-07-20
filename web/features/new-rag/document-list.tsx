@@ -16,7 +16,7 @@ export type DocumentFilter = DocumentDisplayStatus | 'all'
 const statusIconClass: Record<DocumentDisplayStatus, string> = {
   ready: 'i-ri-check-line text-text-success',
   queued: 'i-ri-time-line text-text-tertiary',
-  processing: 'i-ri-loader-2-line animate-spin text-text-accent',
+  processing: 'i-ri-loader-2-line animate-spin text-text-accent motion-reduce:animate-none',
   failed: 'i-ri-error-warning-fill text-text-destructive',
   disabled: 'i-ri-indeterminate-circle-line text-text-tertiary',
 }
@@ -27,6 +27,7 @@ const DocumentRow = memo(
     formatTimeFromNow,
     onSelectedChange,
     selected,
+    selectionDisabled,
     source,
     status,
   }: {
@@ -34,6 +35,7 @@ const DocumentRow = memo(
     formatTimeFromNow: (time: number) => string
     onSelectedChange: (documentId: string) => void
     selected: boolean
+    selectionDisabled: boolean
     source?: string
     status: DocumentDisplayStatus
   }) => {
@@ -47,6 +49,7 @@ const DocumentRow = memo(
         <td className="w-10 py-3 pr-3">
           <Checkbox
             checked={selected}
+            disabled={selectionDisabled || status === 'disabled'}
             aria-labelledby={titleId}
             onCheckedChange={() => onSelectedChange(document.id)}
           />
@@ -103,12 +106,16 @@ const DocumentRow = memo(
 )
 
 export function DocumentsEmpty({
+  canEdit,
   onAddDocument,
   onDropFiles,
+  readOnlyReasonId,
   uploading,
 }: {
+  canEdit: boolean
   onAddDocument: () => void
   onDropFiles: (files: File[]) => void
+  readOnlyReasonId: string
   uploading: boolean
 }) {
   const { t } = useTranslation('dataset')
@@ -118,7 +125,7 @@ export function DocumentsEmpty({
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault()
-        onDropFiles([...event.dataTransfer.files])
+        if (canEdit) onDropFiles([...event.dataTransfer.files])
       }}
     >
       <span className="flex size-12 items-center justify-center rounded-xl bg-background-section text-text-accent">
@@ -130,7 +137,14 @@ export function DocumentsEmpty({
       <p className="mt-2 max-w-lg system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.documentsEmptyDescription'])}
       </p>
-      <Button className="mt-4" variant="primary" loading={uploading} onClick={onAddDocument}>
+      <Button
+        className="mt-4"
+        variant="primary"
+        disabled={!canEdit}
+        loading={uploading}
+        aria-describedby={!canEdit ? readOnlyReasonId : undefined}
+        onClick={onAddDocument}
+      >
         <span aria-hidden className="i-ri-add-line size-4" />
         {t(($) => $['newKnowledge.addDocument'])}
       </Button>
@@ -145,10 +159,12 @@ export function DocumentsList({
   activeTaskCount,
   allSelected,
   attentionTaskCount,
+  canEdit,
   completingResults,
   documents,
   filter,
   hasNextPage,
+  hasSelectableDocuments,
   hasTaskError,
   isFetchNextPageError,
   isFetchingNextPage,
@@ -160,6 +176,7 @@ export function DocumentsList({
   onSelectAll,
   onSelectDocument,
   search,
+  selectionDisabled,
   selectedDocumentIds,
   someSelected,
   sourceNames,
@@ -171,10 +188,12 @@ export function DocumentsList({
   activeTaskCount: number
   allSelected: boolean
   attentionTaskCount: number
+  canEdit: boolean
   completingResults: boolean
   documents: LogicalDocument[]
   filter: DocumentFilter
   hasNextPage: boolean
+  hasSelectableDocuments: boolean
   hasTaskError: boolean
   isFetchNextPageError: boolean
   isFetchingNextPage: boolean
@@ -186,6 +205,7 @@ export function DocumentsList({
   onSelectAll: () => void
   onSelectDocument: (documentId: string) => void
   search: string
+  selectionDisabled: boolean
   selectedDocumentIds: Set<string>
   someSelected: boolean
   sourceNames: Map<string, string>
@@ -239,6 +259,7 @@ export function DocumentsList({
             className={cn(
               'size-4',
               activeTaskCount ? 'i-ri-loader-2-line animate-spin' : 'i-ri-task-line',
+              activeTaskCount && 'motion-reduce:animate-none',
             )}
           />
           {t(($) => $['newKnowledge.tasks'])}
@@ -263,7 +284,13 @@ export function DocumentsList({
           <span aria-hidden className="i-ri-price-tag-3-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
         </Button>
-        <Button variant="primary" loading={uploading} onClick={onAddDocument}>
+        <Button
+          variant="primary"
+          disabled={!canEdit}
+          loading={uploading}
+          aria-describedby={!canEdit ? 'documents-readonly-reason' : undefined}
+          onClick={onAddDocument}
+        >
           <span aria-hidden className="i-ri-add-line size-4" />
           {t(($) => $['newKnowledge.addDocument'])}
         </Button>
@@ -276,7 +303,7 @@ export function DocumentsList({
                 <Checkbox
                   checked={allSelected}
                   indeterminate={someSelected && !allSelected}
-                  disabled={!documents.length}
+                  disabled={!canEdit || selectionDisabled || !hasSelectableDocuments}
                   aria-label={t(($) => $['newKnowledge.selectAllDocuments'])}
                   onCheckedChange={onSelectAll}
                 />
@@ -296,6 +323,7 @@ export function DocumentsList({
                 formatTimeFromNow={formatTimeFromNow}
                 onSelectedChange={onSelectDocument}
                 selected={selectedDocumentIds.has(document.id)}
+                selectionDisabled={!canEdit || selectionDisabled}
                 source={
                   (document.sourceId && sourceNames.get(document.sourceId)) ?? sourceName(document)
                 }
@@ -342,11 +370,13 @@ export function DocumentsList({
 }
 
 export function DocumentBulkActions({
+  disabled,
   onClear,
   onReindex,
   reindexing,
   selectedCount,
 }: {
+  disabled: boolean
   onClear: () => void
   onReindex: () => void
   reindexing: boolean
@@ -356,28 +386,44 @@ export function DocumentBulkActions({
   return (
     <div
       aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
-      className="fixed bottom-7 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-[14px] border border-divider-subtle bg-components-panel-bg px-3 py-2.5 shadow-xl"
+      className="fixed bottom-7 left-1/2 z-20 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg px-3 py-2.5 shadow-xl"
       role="toolbar"
     >
-      <span className="px-1 system-xs-medium text-text-primary">
+      <span className="shrink-0 px-1 system-xs-medium text-text-primary">
         {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
       </span>
       <span id="document-actions-unavailable" className="sr-only">
         {t(($) => $['newKnowledge.documentActionsUnavailable'])}
       </span>
-      <Button size="small" loading={reindexing} onClick={onReindex}>
+      <Button
+        className="shrink-0"
+        size="small"
+        disabled={disabled}
+        loading={reindexing}
+        onClick={onReindex}
+      >
         {t(($) => $['newKnowledge.reindexDocuments'])}
       </Button>
-      <Button size="small" disabled aria-describedby="document-actions-unavailable">
+      <Button
+        className="shrink-0"
+        size="small"
+        disabled
+        aria-describedby="document-actions-unavailable"
+      >
         {t(($) => $['newKnowledge.downloadDocuments'])}
       </Button>
-      <Button size="small" disabled aria-describedby="document-actions-unavailable">
+      <Button
+        className="shrink-0"
+        size="small"
+        disabled
+        aria-describedby="document-actions-unavailable"
+      >
         {t(($) => $['newKnowledge.deleteDocuments'])}
       </Button>
       <button
         type="button"
         aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
-        className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         onClick={onClear}
       >
         <span aria-hidden className="i-ri-close-line size-4" />

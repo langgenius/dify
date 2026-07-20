@@ -6,10 +6,13 @@ import type { ProcessingTaskEvent } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
+import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
 import {
   documentDisplayStatus,
@@ -38,6 +41,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canEdit = hasPermission(workspacePermissionKeys, DatasetACLPermission.Edit)
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const uploadPendingRef = useRef(false)
   const reindexPendingRef = useRef(false)
@@ -48,6 +53,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [taskOverrides, setTaskOverrides] = useState<
     Record<string, Partial<DocumentProcessingTask>>
   >({})
+  const [terminalTaskVersions, setTerminalTaskVersions] = useState<Record<string, string>>({})
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
   const { mutateAsync: uploadDocument } = useMutation(
@@ -161,6 +167,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () =>
       baseTasks.map((task) => {
         const override = taskOverrides[task.id]
+        if (terminalTaskVersions[task.id] && override && taskIsActive(task))
+          return { ...task, ...override }
         if (!override?.updatedAt) return override ? { ...task, ...override } : task
         const overrideTime = Date.parse(override.updatedAt)
         const taskTime = Date.parse(task.updatedAt)
@@ -168,7 +176,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           return task
         return { ...task, ...override }
       }),
-    [baseTasks, taskOverrides],
+    [baseTasks, taskOverrides, terminalTaskVersions],
   )
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
   const documentStatuses = useMemo(
@@ -179,16 +187,24 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           documentDisplayStatus(
             document,
             taskByDocument.get(document.id),
-            Boolean(document.sourceId && disabledSourceIds.has(document.sourceId)),
+            Boolean(
+              document.sourceId &&
+              (disabledSourceIds.has(document.sourceId) || !sourceNames.has(document.sourceId)),
+            ),
           ),
         ]),
       ),
-    [disabledSourceIds, documents, taskByDocument],
+    [disabledSourceIds, documents, sourceNames, taskByDocument],
   )
   const filterActive = filter !== 'all' || Boolean(search.trim())
   const availableDocumentIds = useMemo(
-    () => new Set(documents.map((document) => document.id)),
-    [documents],
+    () =>
+      new Set(
+        documents
+          .filter((document) => documentStatuses.get(document.id) !== 'disabled')
+          .map((document) => document.id),
+      ),
+    [documents, documentStatuses],
   )
   const validSelectedDocumentIds = useMemo(
     () =>
@@ -214,6 +230,23 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     filterActive &&
     !documentsQuery.isFetchNextPageError &&
     (documentsQuery.hasNextPage || documentsQuery.isFetchingNextPage)
+  const dependencyQueryError = Boolean(
+    tasksQuery.error ||
+    tasksQuery.isFetchNextPageError ||
+    sourcesQuery.error ||
+    sourcesQuery.isFetchNextPageError,
+  )
+  const dependencyQueriesPending = Boolean(
+    tasksQuery.isPending ||
+    tasksQuery.hasNextPage ||
+    tasksQuery.isFetchingNextPage ||
+    sourcesQuery.isPending ||
+    sourcesQuery.hasNextPage ||
+    sourcesQuery.isFetchingNextPage,
+  )
+  const selectableFilteredDocuments = filteredDocuments.filter(
+    (document) => documentStatuses.get(document.id) !== 'disabled',
+  )
   const attentionTasks = tasks.filter(taskNeedsAttention)
   const hasTaskError = attentionTasks.some(
     (task) => task.state === 'failed' || task.state === 'canceled',
@@ -228,9 +261,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ? t(($) => $['newKnowledge.taskAttentionCount'], { count: attentionTasks.length })
       : t(($) => $['newKnowledge.taskAttentionClear'])
   const allFilteredSelected =
-    filteredDocuments.length > 0 &&
-    filteredDocuments.every((document) => validSelectedDocumentIds.has(document.id))
-  const someFilteredSelected = filteredDocuments.some((document) =>
+    selectableFilteredDocuments.length > 0 &&
+    selectableFilteredDocuments.every((document) => validSelectedDocumentIds.has(document.id))
+  const someFilteredSelected = selectableFilteredDocuments.some((document) =>
     validSelectedDocumentIds.has(document.id),
   )
 
@@ -273,7 +306,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
-      if (!files.length || uploadPendingRef.current) return
+      if (!canEdit || !files.length || uploadPendingRef.current) return
       uploadPendingRef.current = true
       setUploading(true)
       try {
@@ -283,10 +316,24 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             params: { id: knowledgeSpaceId },
           })
         } else {
-          await bulkUploadDocuments({
+          const result = await bulkUploadDocuments({
             body: { files },
             params: { id: knowledgeSpaceId },
           })
+          if (!result.accepted) {
+            toast.error(t(($) => $['newKnowledge.documentUploadRejected']))
+            return
+          }
+          if (result.excluded)
+            toast.warning(
+              t(($) => $['newKnowledge.documentUploadPartial'], {
+                accepted: result.accepted,
+                excluded: result.excluded,
+              }),
+            )
+          else toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
+          refreshDocumentsAndTasks()
+          return
         }
         toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
         refreshDocumentsAndTasks()
@@ -297,20 +344,41 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         setUploading(false)
       }
     },
-    [bulkUploadDocuments, knowledgeSpaceId, refreshDocumentsAndTasks, t, uploadDocument],
+    [bulkUploadDocuments, canEdit, knowledgeSpaceId, refreshDocumentsAndTasks, t, uploadDocument],
   )
 
   const handleReindexDocuments = useCallback(async () => {
-    if (!validSelectedDocumentIds.size || reindexPendingRef.current) return
+    if (!canEdit || !validSelectedDocumentIds.size || reindexPendingRef.current) return
     reindexPendingRef.current = true
     setReindexing(true)
     try {
-      await reindexDocuments({
-        body: { documentIds: [...validSelectedDocumentIds].sort() },
+      const selectedIds = [...validSelectedDocumentIds].sort()
+      const result = await reindexDocuments({
+        body: { documentIds: selectedIds },
         params: { id: knowledgeSpaceId },
       })
-      setSelectedDocumentIds(new Set())
-      toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
+      const missingIds = result.items
+        .filter((item) => item.status === 'not_found')
+        .map((item) => item.documentId)
+      const queuedCount = result.items.length - missingIds.length
+      if (!queuedCount) {
+        toast.error(
+          t(($) => $['newKnowledge.documentsReindexPartial'], {
+            missing: missingIds.length,
+            queued: 0,
+          }),
+        )
+        return
+      }
+      setSelectedDocumentIds(new Set(missingIds))
+      if (missingIds.length)
+        toast.warning(
+          t(($) => $['newKnowledge.documentsReindexPartial'], {
+            missing: missingIds.length,
+            queued: queuedCount,
+          }),
+        )
+      else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
       refreshDocumentsAndTasks()
     } catch {
       toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
@@ -318,7 +386,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       reindexPendingRef.current = false
       setReindexing(false)
     }
-  }, [knowledgeSpaceId, refreshDocumentsAndTasks, reindexDocuments, t, validSelectedDocumentIds])
+  }, [
+    canEdit,
+    knowledgeSpaceId,
+    refreshDocumentsAndTasks,
+    reindexDocuments,
+    t,
+    validSelectedDocumentIds,
+  ])
 
   const handleTaskEvent = useCallback(
     (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => {
@@ -349,6 +424,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         }
       })
       if (event.event === 'terminal') {
+        setTerminalTaskVersions((current) => ({ ...current, [taskId]: taskVersion }))
         if (event.data.state === 'failed')
           toast.error(t(($) => $['newKnowledge.taskFailedNotification']))
         refreshDocumentsAndTasks()
@@ -359,24 +435,43 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const handleTaskUpdated = useCallback((task: DocumentProcessingTask) => {
     setTaskOverrides((current) => ({ ...current, [task.id]: task }))
+    if (taskIsActive(task))
+      setTerminalTaskVersions((current) => {
+        const next = { ...current }
+        delete next[task.id]
+        return next
+      })
   }, [])
 
-  const toggleDocument = useCallback((documentId: string) => {
-    setSelectedDocumentIds((current) => {
-      const next = new Set(current)
-      if (next.has(documentId)) next.delete(documentId)
-      else next.add(documentId)
-      return next
-    })
-  }, [])
+  const toggleDocument = useCallback(
+    (documentId: string) => {
+      if (!canEdit || completingFilteredResults) return
+      setSelectedDocumentIds((current) => {
+        const next = new Set(current)
+        if (next.has(documentId)) next.delete(documentId)
+        else next.add(documentId)
+        return next
+      })
+    },
+    [canEdit, completingFilteredResults],
+  )
 
   const toggleAllFiltered = () => {
+    if (!canEdit || completingFilteredResults) return
     setSelectedDocumentIds((current) => {
       const next = new Set(current)
-      if (allFilteredSelected) filteredDocuments.forEach((document) => next.delete(document.id))
-      else filteredDocuments.forEach((document) => next.add(document.id))
+      if (allFilteredSelected)
+        selectableFilteredDocuments.forEach((document) => next.delete(document.id))
+      else selectableFilteredDocuments.forEach((document) => next.add(document.id))
       return next
     })
+  }
+
+  const retryDependencyQueries = () => {
+    if (tasksQuery.isFetchNextPageError) void tasksQuery.fetchNextPage()
+    else if (tasksQuery.error) void tasksQuery.refetch()
+    if (sourcesQuery.isFetchNextPageError) void sourcesQuery.fetchNextPage()
+    else if (sourcesQuery.error) void sourcesQuery.refetch()
   }
 
   return (
@@ -392,19 +487,27 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           taskVersion={baseTaskUpdatedAt.get(task.id) ?? task.updatedAt}
         />
       ))}
-      <input
-        ref={uploadInputRef}
-        multiple
-        accept={DOCUMENT_ACCEPT}
-        aria-label={t(($) => $['newKnowledge.uploadDocuments'])}
-        className="sr-only"
-        type="file"
-        onChange={(event) => {
-          const files = [...(event.currentTarget.files ?? [])]
-          event.currentTarget.value = ''
-          void handleUploadFiles(files)
-        }}
-      />
+      {canEdit && (
+        <input
+          ref={uploadInputRef}
+          multiple
+          hidden
+          accept={DOCUMENT_ACCEPT}
+          aria-label={t(($) => $['newKnowledge.uploadDocuments'])}
+          tabIndex={-1}
+          type="file"
+          onChange={(event) => {
+            const files = [...(event.currentTarget.files ?? [])]
+            event.currentTarget.value = ''
+            void handleUploadFiles(files)
+          }}
+        />
+      )}
+      {!canEdit && (
+        <span id="documents-readonly-reason" className="sr-only">
+          {t(($) => $['newKnowledge.permissionRestricted'])}
+        </span>
+      )}
       <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7">
         <header>
           <h2 className="title-xl-semi-bold text-text-primary">
@@ -444,10 +547,31 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               </Button>
             )}
           </div>
+        ) : dependencyQueryError ? (
+          <div
+            className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
+            role="alert"
+          >
+            <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
+            <p className="mt-3 max-w-md body-sm-regular text-text-tertiary">
+              {sourcesQuery.error || sourcesQuery.isFetchNextPageError
+                ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+                : t(($) => $['newKnowledge.tasksErrorDescription'])}
+            </p>
+            <Button className="mt-4" onClick={retryDependencyQueries}>
+              {tCommon(($) => $['operation.retry'])}
+            </Button>
+          </div>
+        ) : dependencyQueriesPending ? (
+          <div className="flex min-h-64 flex-1 items-center justify-center">
+            <Loading />
+          </div>
         ) : !documents.length ? (
           <DocumentsEmpty
+            canEdit={canEdit}
             onAddDocument={() => uploadInputRef.current?.click()}
             onDropFiles={(files) => void handleUploadFiles(files)}
+            readOnlyReasonId="documents-readonly-reason"
             uploading={uploading}
           />
         ) : (
@@ -455,10 +579,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             activeTaskCount={activeTasks.length}
             allSelected={allFilteredSelected}
             attentionTaskCount={attentionTasks.length}
+            canEdit={canEdit}
             completingResults={completingFilteredResults}
             documents={filteredDocuments}
             filter={filter}
             hasNextPage={Boolean(documentsQuery.hasNextPage)}
+            hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
             hasTaskError={hasTaskError}
             isFetchNextPageError={documentsQuery.isFetchNextPageError}
             isFetchingNextPage={documentsQuery.isFetchingNextPage}
@@ -470,6 +596,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onSelectAll={toggleAllFiltered}
             onSelectDocument={toggleDocument}
             search={search}
+            selectionDisabled={completingFilteredResults}
             selectedDocumentIds={validSelectedDocumentIds}
             someSelected={someFilteredSelected}
             sourceNames={sourceNames}
@@ -480,8 +607,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           />
         )}
       </main>
-      {!!validSelectedDocumentIds.size && (
+      {canEdit && !!validSelectedDocumentIds.size && (
         <DocumentBulkActions
+          disabled={completingFilteredResults}
           onClear={() => setSelectedDocumentIds(new Set())}
           onReindex={() => void handleReindexDocuments()}
           reindexing={reindexing}
@@ -489,12 +617,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         />
       )}
       <ProcessingTasksDrawer
+        canEdit={canEdit}
         documents={documents}
         knowledgeSpaceId={knowledgeSpaceId}
         onOpenChange={setTasksOpen}
         onRetryTaskQuery={() => void tasksQuery.refetch()}
         onTaskUpdated={handleTaskUpdated}
         open={tasksOpen}
+        taskQueryPending={tasksQuery.isPending}
         taskQueryError={Boolean(tasksQuery.error)}
         tasks={tasks}
       />

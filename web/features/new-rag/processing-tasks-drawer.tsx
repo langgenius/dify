@@ -19,6 +19,8 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/client'
 import { taskCanRetry, taskIsActive } from './document-model'
 
@@ -29,26 +31,31 @@ function taskTime(task: DocumentProcessingTask) {
 }
 
 export function ProcessingTasksDrawer({
+  canEdit,
   documents,
   knowledgeSpaceId,
   onOpenChange,
   onTaskUpdated,
   open,
   taskQueryError,
+  taskQueryPending,
   tasks,
   onRetryTaskQuery,
 }: {
+  canEdit: boolean
   documents: LogicalDocument[]
   knowledgeSpaceId: string
   onOpenChange: (open: boolean) => void
   onTaskUpdated: (task: DocumentProcessingTask) => void
   open: boolean
   taskQueryError: boolean
+  taskQueryPending: boolean
   tasks: DocumentProcessingTask[]
   onRetryTaskQuery: () => void
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const cancelTask = useMutation(
     consoleQuery.knowledgeFs.deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId.mutationOptions(),
@@ -76,10 +83,9 @@ export function ProcessingTasksDrawer({
     ])
 
   const performAction = async (task: DocumentProcessingTask, action: TaskAction) => {
-    const key = `${action}:${task.id}`
-    if (pendingActionsRef.current.has(key)) return
-    pendingActionsRef.current.add(key)
-    setPendingActions((current) => new Set(current).add(key))
+    if (!canEdit || pendingActionsRef.current.has(task.id)) return
+    pendingActionsRef.current.add(task.id)
+    setPendingActions((current) => new Set(current).add(task.id))
     setActionErrors((current) => ({ ...current, [task.id]: false }))
     try {
       const input = {
@@ -98,10 +104,10 @@ export function ProcessingTasksDrawer({
       setActionErrors((current) => ({ ...current, [task.id]: true }))
     } finally {
       await refreshDocumentsAndTasks()
-      pendingActionsRef.current.delete(key)
+      pendingActionsRef.current.delete(task.id)
       setPendingActions((current) => {
         const next = new Set(current)
-        next.delete(key)
+        next.delete(task.id)
         return next
       })
     }
@@ -129,7 +135,11 @@ export function ProcessingTasksDrawer({
                 </DrawerDescription>
               </header>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-                {taskQueryError ? (
+                {taskQueryPending ? (
+                  <div className="flex min-h-40 items-center justify-center">
+                    <Loading />
+                  </div>
+                ) : taskQueryError ? (
                   <div className="rounded-xl border border-divider-regular p-4" role="alert">
                     <p className="system-xs-regular text-text-destructive">
                       {t(($) => $['newKnowledge.tasksErrorDescription'])}
@@ -141,9 +151,10 @@ export function ProcessingTasksDrawer({
                 ) : orderedTasks.length ? (
                   <ul className="divide-y divide-divider-subtle">
                     {orderedTasks.map((task) => {
-                      const cancelKey = `cancel:${task.id}`
-                      const retryKey = `retry:${task.id}`
                       const title = documentTitles.get(task.documentId) ?? task.documentId
+                      const timestamp = Date.parse(
+                        taskIsActive(task) ? task.createdAt : taskTime(task),
+                      )
                       return (
                         <li key={task.id} className="flex min-h-[62px] items-center gap-2.5 py-3.5">
                           <span
@@ -152,7 +163,7 @@ export function ProcessingTasksDrawer({
                               task.state === 'failed'
                                 ? 'i-ri-error-warning-fill size-4 shrink-0 text-text-destructive'
                                 : taskIsActive(task)
-                                  ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin text-text-accent'
+                                  ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin text-text-accent motion-reduce:animate-none'
                                   : task.state === 'succeeded'
                                     ? 'i-ri-check-line size-4 shrink-0 text-text-success'
                                     : 'i-ri-indeterminate-circle-line size-4 shrink-0 text-text-tertiary'
@@ -163,12 +174,21 @@ export function ProcessingTasksDrawer({
                               {t(($) => $['newKnowledge.processDocument'], { name: title })}
                             </p>
                             <p className="mt-0.5 truncate system-2xs-regular text-text-tertiary">
-                              {task.errorMessage ||
-                                t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
-                                  progress: task.progressPercent,
-                                  time: taskTime(task),
-                                })}
+                              {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
+                                progress: task.progressPercent,
+                              })}
+                              {!Number.isNaN(timestamp) && (
+                                <>
+                                  <span aria-hidden> · </span>
+                                  {formatTimeFromNow(timestamp)}
+                                </>
+                              )}
                             </p>
+                            {task.errorMessage && (
+                              <p className="mt-1 truncate system-2xs-regular text-text-destructive">
+                                {task.errorMessage}
+                              </p>
+                            )}
                             {actionErrors[task.id] && (
                               <p
                                 className="mt-1 system-2xs-regular text-text-destructive"
@@ -178,20 +198,20 @@ export function ProcessingTasksDrawer({
                               </p>
                             )}
                           </div>
-                          {taskIsActive(task) ? (
+                          {canEdit && taskIsActive(task) ? (
                             <Button
                               size="small"
-                              disabled={pendingActions.has(cancelKey)}
-                              loading={pendingActions.has(cancelKey)}
+                              disabled={pendingActions.has(task.id)}
+                              loading={pendingActions.has(task.id)}
                               onClick={() => void performAction(task, 'cancel')}
                             >
                               {t(($) => $['newKnowledge.interruptTask'])}
                             </Button>
-                          ) : taskCanRetry(task) ? (
+                          ) : canEdit && taskCanRetry(task) ? (
                             <Button
                               size="small"
-                              disabled={pendingActions.has(retryKey)}
-                              loading={pendingActions.has(retryKey)}
+                              disabled={pendingActions.has(task.id)}
+                              loading={pendingActions.has(task.id)}
                               onClick={() => void performAction(task, 'retry')}
                             >
                               {t(($) => $['newKnowledge.retryTask'])}
