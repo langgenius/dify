@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { usePluginPageContext } from '../context'
 import { PluginPageContextProvider } from '../context-provider'
 
@@ -21,13 +21,13 @@ const renderWithProviders = (
   ui: ReactElement,
   options: { enableMarketplace: boolean; searchParams?: string } = { enableMarketplace: true },
 ) => {
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: options.enableMarketplace },
   })
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <SystemFeaturesWrapper>
+    <ConsoleQueryWrapper>
       <NuqsTestingAdapter searchParams={options.searchParams ?? ''}>{children}</NuqsTestingAdapter>
-    </SystemFeaturesWrapper>
+    </ConsoleQueryWrapper>
   )
   return render(ui, { wrapper: Wrapper })
 }

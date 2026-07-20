@@ -3,9 +3,9 @@ import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode, SubjectType } from '@/models/access-control'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AccessControlDialog from '../access-control-dialog'
 import AccessControlItem from '../access-control-item'
 import AddMemberOrGroupDialog from '../add-member-or-group-pop'
@@ -29,6 +29,21 @@ vi.mock('@/service/access-control', () => ({
     mockUseSearchForWhiteListCandidates(...args),
   useUpdateAccessMode: () => mockUseUpdateAccessMode(),
 }))
+
+vi.mock('@/context/account-state', async () => {
+  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
+  return {
+    userProfileAtom: atom({
+      id: 'user-1',
+      name: 'Test User',
+      email: 'test@dify.ai',
+      avatar: '',
+      avatar_url: null,
+      is_password_set: false,
+      timezone: 'UTC',
+    }),
+  }
+})
 
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ahooks')>()

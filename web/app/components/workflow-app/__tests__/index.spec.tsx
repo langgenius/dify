@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
@@ -36,7 +37,7 @@ let workflowInitState: {
   fileUploadConfigResponse: Record<string, unknown> | null
 }
 
-let appContextState: {
+let consoleState: {
   isLoadingCurrentWorkspace: boolean
   currentWorkspace: {
     id?: string
@@ -84,62 +85,32 @@ vi.mock('@/app/components/workflow/store/trigger-status', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isLoadingCurrentWorkspace: appContextState.isLoadingCurrentWorkspace,
-    currentWorkspace: appContextState.currentWorkspace,
-    userProfile: appContextState.userProfile,
-    workspacePermissionKeys: appContextState.workspacePermissionKeys,
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
+    isLoadingCurrentWorkspace: consoleState.isLoadingCurrentWorkspace,
+    currentWorkspace: consoleState.currentWorkspace,
+    userProfile: consoleState.userProfile,
+    workspacePermissionKeys: consoleState.workspacePermissionKeys,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isLoadingCurrentWorkspace: appContextState.isLoadingCurrentWorkspace,
-    currentWorkspace: appContextState.currentWorkspace,
-    userProfile: appContextState.userProfile,
-    workspacePermissionKeys: appContextState.workspacePermissionKeys,
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    isLoadingCurrentWorkspace: consoleState.isLoadingCurrentWorkspace,
+    currentWorkspace: consoleState.currentWorkspace,
+    userProfile: consoleState.userProfile,
+    workspacePermissionKeys: consoleState.workspacePermissionKeys,
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isLoadingCurrentWorkspace: appContextState.isLoadingCurrentWorkspace,
-    currentWorkspace: appContextState.currentWorkspace,
-    userProfile: appContextState.userProfile,
-    workspacePermissionKeys: appContextState.workspacePermissionKeys,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    isLoadingCurrentWorkspace: consoleState.isLoadingCurrentWorkspace,
+    currentWorkspace: consoleState.currentWorkspace,
+    userProfile: consoleState.userProfile,
+    workspacePermissionKeys: consoleState.workspacePermissionKeys,
   }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isLoadingCurrentWorkspace: appContextState.isLoadingCurrentWorkspace,
-    currentWorkspace: appContextState.currentWorkspace,
-    userProfile: appContextState.userProfile,
-    workspacePermissionKeys: appContextState.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isLoadingCurrentWorkspace: appContextState.isLoadingCurrentWorkspace,
-    currentWorkspace: appContextState.currentWorkspace,
-    userProfile: appContextState.userProfile,
-    workspacePermissionKeys: appContextState.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/next/navigation', () => ({
@@ -267,7 +238,7 @@ describe('WorkflowApp', () => {
       isLoading: false,
       fileUploadConfigResponse: { enabled: true },
     }
-    appContextState = {
+    consoleState = {
       isLoadingCurrentWorkspace: false,
       currentWorkspace: { id: 'workspace-1' },
       userProfile: { id: 'user-1' },

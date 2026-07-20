@@ -1,12 +1,12 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { SelectorContent } from '../tabs'
 import { TabType } from '../types'
 
 const render = (ui: React.ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
+  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: true } })
 
 const { mockSetState, mockInvalidateBuiltInTools, mockToolsState } = vi.hoisted(() => ({
   mockSetState: vi.fn(),
