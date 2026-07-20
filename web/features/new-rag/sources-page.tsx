@@ -1,6 +1,7 @@
 'use client'
 
 import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
+import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -10,8 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Link from '@/next/link'
@@ -23,11 +25,11 @@ type SourceFilter = SourceStatus | 'all'
 
 const PAGE_SIZE = 50
 
-const statusDotClassName: Record<SourceStatus, string> = {
-  active: 'bg-components-badge-status-light-success-bg',
-  syncing: 'animate-pulse bg-components-badge-status-light-warning-bg motion-reduce:animate-none',
-  disabled: 'bg-components-badge-status-light-disabled-bg',
-  error: 'bg-components-badge-status-light-error-bg',
+const statusDotStatus: Record<SourceStatus, StatusDotStatus> = {
+  active: 'success',
+  syncing: 'warning',
+  disabled: 'disabled',
+  error: 'error',
 }
 
 function metadataString(metadata: Source['metadata'], key: string) {
@@ -75,7 +77,7 @@ function SourceRow({ source }: { source: Source }) {
   const providerName = metadataString(source.metadata, 'providerName')
   const syncPolicy = metadataString(source.metadata, 'syncPolicy')
   const lastSync = metadataString(source.metadata, 'lastSyncedAt')
-  const typeLabel = providerName ?? t(($) => $[`newKnowledge.sourceType.${source.type}`])
+  const typeLabel = t(($) => $[`newKnowledge.sourceType.${source.type}`])
 
   return (
     <tr
@@ -96,12 +98,18 @@ function SourceRow({ source }: { source: Source }) {
           </div>
         </div>
       </td>
-      <td className="w-44 py-2 pr-3 system-xs-regular text-text-secondary">{typeLabel}</td>
+      <td className="w-44 py-2 pr-3">
+        <p className="system-xs-regular text-text-secondary">{providerName ?? typeLabel}</p>
+        {providerName && <p className="system-2xs-regular text-text-tertiary">{typeLabel}</p>}
+      </td>
       <td className="w-32 py-2 pr-3">
         <span className="inline-flex items-center gap-1.5 system-xs-medium text-text-secondary">
-          <span
-            aria-hidden
-            className={cn('size-1.5 rounded-[2px]', statusDotClassName[source.status])}
+          <StatusDot
+            status={statusDotStatus[source.status]}
+            className={cn(
+              'shrink-0',
+              source.status === 'syncing' && 'animate-pulse motion-reduce:animate-none',
+            )}
           />
           {t(($) => $[`newKnowledge.sourceStatus.${source.status}`])}
         </span>
@@ -119,18 +127,18 @@ function SourcesEmpty({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-      <div aria-hidden className="flex -space-x-2">
-        {['i-ri-fire-line', 'i-ri-global-line', 'i-ri-file-text-line', 'i-ri-folder-line'].map(
-          (icon) => (
-            <span
-              key={icon}
-              className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default shadow-xs"
-            >
-              <span className={`${icon} size-4 text-text-tertiary`} />
-            </span>
-          ),
-        )}
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+      <div aria-hidden className="flex items-center gap-3 text-text-quaternary">
+        {[
+          'i-ri-fire-line',
+          'i-ri-global-line',
+          'i-ri-file-text-line',
+          'i-ri-folder-line',
+          'i-ri-links-line',
+          'i-ri-database-2-line',
+        ].map((icon) => (
+          <span key={icon} className={`${icon} size-5`} />
+        ))}
       </div>
       <h2 className="mt-5 title-xl-semi-bold text-text-primary">
         {t(($) => $['newKnowledge.sourcesEmptyTitle'])}
@@ -176,31 +184,18 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       return `${source.name} ${source.uri}`.toLocaleLowerCase().includes(normalizedSearch)
     })
   }, [filter, search, sources])
+  const filterActive = filter !== 'all' || Boolean(search.trim())
+  const completingFilteredResults =
+    filterActive && (sourcesQuery.hasNextPage || sourcesQuery.isFetchingNextPage)
+  const {
+    fetchNextPage: fetchNextSourcePage,
+    hasNextPage: hasNextSourcePage,
+    isFetchingNextPage: isFetchingNextSourcePage,
+  } = sourcesQuery
 
-  if (sourcesQuery.isPending)
-    return (
-      <div className="flex min-h-64 items-center justify-center">
-        <Loading />
-      </div>
-    )
-
-  if (sourcesQuery.error && !sourcesQuery.data)
-    return (
-      <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
-        <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
-        <h2 className="mt-3 title-xl-semi-bold text-text-primary">
-          {t(($) => $['newKnowledge.sourcesErrorTitle'])}
-        </h2>
-        <p className="mt-2 body-sm-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.sourcesErrorDescription'])}
-        </p>
-        <Button className="mt-4" onClick={() => void sourcesQuery.refetch()}>
-          {tCommon(($) => $['operation.retry'])}
-        </Button>
-      </div>
-    )
-
-  if (!sources?.length) return <SourcesEmpty knowledgeSpaceId={knowledgeSpaceId} />
+  useEffect(() => {
+    if (filterActive && hasNextSourcePage && !isFetchingNextSourcePage) void fetchNextSourcePage()
+  }, [filterActive, fetchNextSourcePage, hasNextSourcePage, isFetchingNextSourcePage])
 
   return (
     <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7">
@@ -213,89 +208,123 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {t(($) => $['newKnowledge.sourcesDescription'])}
           </p>
         </div>
-        <Link
-          href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
-          className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        >
-          <span aria-hidden className="i-ri-add-line size-4" />
-          {t(($) => $['newKnowledge.addSource'])}
-        </Link>
-      </header>
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-        <label className="sr-only" htmlFor="source-filter">
-          {t(($) => $['newKnowledge.sourceFilterLabel'])}
-        </label>
-        <select
-          id="source-filter"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value as SourceFilter)}
-          className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
-        >
-          <option value="all">{t(($) => $['newKnowledge.allSources'])}</option>
-          {(['active', 'syncing', 'disabled', 'error'] as const).map((status) => (
-            <option key={status} value={status}>
-              {t(($) => $[`newKnowledge.sourceStatus.${status}`])}
-            </option>
-          ))}
-        </select>
-        <label className="relative sm:w-64">
-          <span className="sr-only">{t(($) => $['newKnowledge.searchSources'])}</span>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute top-2 left-2.5 i-ri-search-line size-4 text-text-quaternary"
-          />
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t(($) => $['newKnowledge.searchSources'])}
-            className="h-8 w-full rounded-lg border-0 bg-components-input-bg-normal pr-3 pl-8 system-xs-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
-          />
-        </label>
-      </div>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[900px] border-collapse text-left">
-          <thead className="system-2xs-medium text-text-tertiary uppercase">
-            <tr>
-              <th className="pb-2 font-medium">{t(($) => $['newKnowledge.sourceColumn'])}</th>
-              <th className="pb-2 font-medium">{t(($) => $['metadata.createMetadata.type'])}</th>
-              <th className="pb-2 font-medium">{t(($) => $['newKnowledge.statusColumn'])}</th>
-              <th className="pb-2 font-medium">{t(($) => $['newKnowledge.syncPolicyColumn'])}</th>
-              <th className="pb-2 font-medium">{t(($) => $['newKnowledge.lastSyncColumn'])}</th>
-              <th aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
-            </tr>
-          </thead>
-          <tbody>
-            {filteredSources.map((source) => (
-              <SourceRow key={source.id} source={source} />
-            ))}
-          </tbody>
-        </table>
-        {!filteredSources.length && (
-          <p className="py-16 text-center body-sm-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.noMatchingSources'])}
-          </p>
+        {!!sources?.length && (
+          <Link
+            href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
+            className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            <span aria-hidden className="i-ri-add-line size-4" />
+            {t(($) => $['newKnowledge.addSource'])}
+          </Link>
         )}
-      </div>
-      {sourcesQuery.isFetchNextPageError ? (
-        <div className="mt-5 flex items-center justify-center gap-3" role="alert">
-          <span className="system-xs-regular text-text-destructive">
+      </header>
+      {sourcesQuery.isPending ? (
+        <div className="flex min-h-64 flex-1 items-center justify-center">
+          <Loading />
+        </div>
+      ) : sourcesQuery.error && !sourcesQuery.data ? (
+        <div className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center">
+          <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
+          <h2 className="mt-3 title-xl-semi-bold text-text-primary">
+            {t(($) => $['newKnowledge.sourcesErrorTitle'])}
+          </h2>
+          <p className="mt-2 body-sm-regular text-text-tertiary">
             {t(($) => $['newKnowledge.sourcesErrorDescription'])}
-          </span>
-          <Button onClick={() => void sourcesQuery.fetchNextPage()}>
+          </p>
+          <Button className="mt-4" onClick={() => void sourcesQuery.refetch()}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
         </div>
-      ) : sourcesQuery.hasNextPage ? (
-        <div className="mt-5 flex justify-center">
-          <Button
-            loading={sourcesQuery.isFetchingNextPage}
-            onClick={() => void sourcesQuery.fetchNextPage()}
-          >
-            {t(($) => $['newKnowledge.loadMore'])}
-          </Button>
-        </div>
-      ) : null}
+      ) : !sources?.length ? (
+        <SourcesEmpty knowledgeSpaceId={knowledgeSpaceId} />
+      ) : (
+        <>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <label className="sr-only" htmlFor="source-filter">
+              {t(($) => $['newKnowledge.sourceFilterLabel'])}
+            </label>
+            <select
+              id="source-filter"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as SourceFilter)}
+              className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+            >
+              <option value="all">{t(($) => $['newKnowledge.allSources'])}</option>
+              {(['active', 'syncing', 'disabled', 'error'] as const).map((status) => (
+                <option key={status} value={status}>
+                  {t(($) => $[`newKnowledge.sourceStatus.${status}`])}
+                </option>
+              ))}
+            </select>
+            <label className="relative sm:w-64">
+              <span className="sr-only">{t(($) => $['newKnowledge.searchSources'])}</span>
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-2 left-2.5 i-ri-search-line size-4 text-text-quaternary"
+              />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t(($) => $['newKnowledge.searchSources'])}
+                className="h-8 w-full rounded-lg border-0 bg-components-input-bg-normal pr-3 pl-8 system-xs-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
+              />
+            </label>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[900px] border-collapse text-left">
+              <thead className="system-2xs-medium text-text-tertiary uppercase">
+                <tr>
+                  <th className="pb-2 font-medium">{t(($) => $['newKnowledge.sourceColumn'])}</th>
+                  <th className="pb-2 font-medium">
+                    {t(($) => $['metadata.createMetadata.type'])}
+                  </th>
+                  <th className="pb-2 font-medium">{t(($) => $['newKnowledge.statusColumn'])}</th>
+                  <th className="pb-2 font-medium">
+                    {t(($) => $['newKnowledge.syncPolicyColumn'])}
+                  </th>
+                  <th className="pb-2 font-medium">{t(($) => $['newKnowledge.lastSyncColumn'])}</th>
+                  <th aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSources.map((source) => (
+                  <SourceRow key={source.id} source={source} />
+                ))}
+              </tbody>
+            </table>
+            {!filteredSources.length && !completingFilteredResults && (
+              <p className="py-16 text-center body-sm-regular text-text-tertiary">
+                {t(($) => $['newKnowledge.noMatchingSources'])}
+              </p>
+            )}
+            {!filteredSources.length && completingFilteredResults && (
+              <div className="flex min-h-40 items-center justify-center">
+                <Loading />
+              </div>
+            )}
+          </div>
+          {sourcesQuery.isFetchNextPageError ? (
+            <div className="mt-5 flex items-center justify-center gap-3" role="alert">
+              <span className="system-xs-regular text-text-destructive">
+                {t(($) => $['newKnowledge.sourcesErrorDescription'])}
+              </span>
+              <Button onClick={() => void sourcesQuery.fetchNextPage()}>
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
+            </div>
+          ) : sourcesQuery.hasNextPage && !filterActive ? (
+            <div className="mt-5 flex justify-center">
+              <Button
+                loading={sourcesQuery.isFetchingNextPage}
+                onClick={() => void sourcesQuery.fetchNextPage()}
+              >
+                {t(($) => $['newKnowledge.loadMore'])}
+              </Button>
+            </div>
+          ) : null}
+        </>
+      )}
     </main>
   )
 }

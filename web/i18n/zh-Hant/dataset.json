@@ -202,7 +202,7 @@
   "newKnowledge.providerUnavailable": "該提供者不可用。",
   "newKnowledge.readOnlyEmpty": "請聯絡工作區編輯者建立第一個知識庫。",
   "newKnowledge.refreshConnectionStatus": "刷新狀態",
-  "newKnowledge.refreshingConnection": "清爽…",
+  "newKnowledge.refreshingConnection": "正在重新整理…",
   "newKnowledge.removeSource": "刪除來源",
   "newKnowledge.retryProviderLoad": "重試",
   "newKnowledge.routeUnavailable": "此區段將在下一個設定步驟中開放。",

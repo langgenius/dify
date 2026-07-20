@@ -92,6 +92,9 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('dataset.newKnowledge.sourcesEmptyTitle')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.sources' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'dataset.newKnowledge.addSource' })).toHaveAttribute(
       'href',
       '/datasets/new/space-1/sources/new',
@@ -178,5 +181,31 @@ describe('SourcesPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
 
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
+  it('continues through cursor pages before declaring a filtered search empty', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})], nextCursor: 'next' }] }
+    sourcesQuery.hasNextPage = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
+      'later page',
+    )
+
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
+  })
+
+  it('shows provider and source type as separate row details', () => {
+    sourcesQuery.data = {
+      pages: [{ items: [source({ metadata: { providerName: 'Firecrawl' } })] }],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('Firecrawl')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.sourceType.web')).toBeInTheDocument()
   })
 })

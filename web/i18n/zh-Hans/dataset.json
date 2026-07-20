@@ -202,7 +202,7 @@
   "newKnowledge.providerUnavailable": "该提供商不可用。",
   "newKnowledge.readOnlyEmpty": "请联系工作区编辑者创建第一个知识库。",
   "newKnowledge.refreshConnectionStatus": "刷新状态",
-  "newKnowledge.refreshingConnection": "清爽……",
+  "newKnowledge.refreshingConnection": "正在刷新……",
   "newKnowledge.removeSource": "删除来源",
   "newKnowledge.retryProviderLoad": "重试",
   "newKnowledge.routeUnavailable": "此部分将在下一设置步骤中开放。",
