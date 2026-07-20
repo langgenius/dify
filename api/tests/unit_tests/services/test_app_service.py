@@ -6,9 +6,58 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from models.model import App
+from graphon.model_runtime.entities.model_entities import ModelType
+from models import Account
+from models.model import App, AppMode, AppModelConfig
 from services.agent.errors import AgentNameConflictError
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
+
+
+class TestCreateApp:
+    def test_falls_back_when_default_model_schema_is_unavailable(self) -> None:
+        account = MagicMock(spec=Account, id="account-1", current_tenant_id="tenant-1")
+        model_type_instance = MagicMock()
+        model_type_instance.get_model_schema.side_effect = ValueError("Base model unknown-model not found")
+        model_instance = SimpleNamespace(
+            model_name="unknown-model",
+            provider="langgenius/openai/openai",
+            credentials={},
+            model_type_instance=model_type_instance,
+        )
+        model_manager = MagicMock()
+        model_manager.get_default_model_instance.return_value = model_instance
+        model_manager.get_default_provider_model_name.return_value = ("openai", "gpt-4o")
+        added_objects: list[object] = []
+
+        with (
+            patch("services.app_service.db") as mock_db,
+            patch("services.app_service.ModelManager.for_tenant", return_value=model_manager),
+            patch("services.app_service.app_was_created.send"),
+            patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch(
+                "services.app_service.FeatureService.get_system_features",
+                return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            ),
+            patch("services.app_service.dify_config.BILLING_ENABLED", False),
+        ):
+            mock_db.session.add.side_effect = added_objects.append
+            app = AppService().create_app(
+                "tenant-1",
+                CreateAppParams(name="Chat", mode=AppMode.CHAT.value),
+                account,
+            )
+
+        app_model_config = next(obj for obj in added_objects if isinstance(obj, AppModelConfig))
+        assert app.mode == AppMode.CHAT
+        assert app_model_config.model_dict == {
+            "provider": "openai",
+            "name": "gpt-4o",
+            "mode": "chat",
+            "completion_params": {},
+        }
+        model_manager.get_default_provider_model_name.assert_called_once_with(
+            tenant_id="tenant-1", model_type=ModelType.LLM
+        )
 
 
 class TestOpenapiVisibilityHelpers:
