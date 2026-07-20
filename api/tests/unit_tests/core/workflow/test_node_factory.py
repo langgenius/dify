@@ -324,6 +324,19 @@ class TestDifyNodeFactoryInit:
             graph_runtime_state=sentinel.graph_runtime_state,
         )
 
+    def test_with_runtime_state_rebinds_factory(self):
+        factory = object.__new__(node_factory.DifyNodeFactory)
+        factory.graph_init_params = sentinel.graph_init_params
+
+        with patch.object(node_factory, "DifyNodeFactory", return_value=sentinel.factory) as factory_cls:
+            rebound = factory.with_runtime_state(sentinel.graph_runtime_state)
+
+        assert rebound is sentinel.factory
+        factory_cls.assert_called_once_with(
+            graph_init_params=sentinel.graph_init_params,
+            graph_runtime_state=sentinel.graph_runtime_state,
+        )
+
     def test_init_builds_default_dependencies(self):
         graph_init_params = SimpleNamespace(run_context={"context": "value"})
         graph_runtime_state = sentinel.graph_runtime_state

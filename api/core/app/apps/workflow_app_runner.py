@@ -55,6 +55,7 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.entities.pause_reason import HitlRequired
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -433,7 +434,9 @@ class WorkflowBasedAppRunner:
                 )
             case GraphRunPausedEvent():
                 runtime_state = workflow_entry.graph_engine.graph_runtime_state
-                paused_nodes = runtime_state.get_paused_nodes()
+                paused_nodes = list(
+                    dict.fromkeys(reason.node_id for reason in event.reasons if isinstance(reason, HitlRequired))
+                )
                 enriched_reasons = enrich_graph_pause_reasons(
                     reasons=event.reasons,
                     form_repository=HumanInputFormSubmissionRepository(),

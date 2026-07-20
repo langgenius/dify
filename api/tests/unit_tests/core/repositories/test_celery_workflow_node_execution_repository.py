@@ -245,6 +245,60 @@ class TestCeleryWorkflowNodeExecutionRepository:
         # Should return empty list since nothing in cache
         assert len(result) == 0
 
+    def test_get_by_workflow_execution_loads_persisted_executions_on_cache_miss(
+        self, mock_session_factory, mock_account, sample_workflow_node_execution
+    ):
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        repo._sql_repository = Mock()
+        repo._sql_repository.get_by_workflow_execution.return_value = [sample_workflow_node_execution]
+
+        result = repo.get_by_workflow_execution(sample_workflow_node_execution.workflow_execution_id)
+
+        assert result == [sample_workflow_node_execution]
+        assert repo._execution_cache[sample_workflow_node_execution.id] is sample_workflow_node_execution
+        assert repo._workflow_execution_mapping[sample_workflow_node_execution.workflow_execution_id] == [
+            sample_workflow_node_execution.id
+        ]
+
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_get_by_workflow_execution_merges_database_and_newer_cache(
+        self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution
+    ):
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        persisted_current = sample_workflow_node_execution.model_copy(deep=True)
+        historical = sample_workflow_node_execution.model_copy(
+            update={
+                "id": str(uuid4()),
+                "node_execution_id": str(uuid4()),
+                "index": 0,
+                "node_id": "start",
+            }
+        )
+        sample_workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
+        repo.save(sample_workflow_node_execution)
+        repo._sql_repository = Mock()
+        repo._sql_repository.get_by_workflow_execution.return_value = [persisted_current, historical]
+
+        result = repo.get_by_workflow_execution(
+            sample_workflow_node_execution.workflow_execution_id,
+            OrderConfig(order_by=["index"], order_direction="asc"),
+        )
+
+        assert [execution.id for execution in result] == [historical.id, sample_workflow_node_execution.id]
+        assert result[1] is sample_workflow_node_execution
+
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_cache_operations(self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution):
         """Test cache operations work correctly."""

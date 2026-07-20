@@ -1638,7 +1638,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.198.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.160.0,<2.0.0" },
-    { name = "graphon", specifier = "==0.6.0" },
+    { name = "graphon", git = "https://github.com/langgenius/graphon?rev=6d85e98df87a74589303dcb297c7866196359d27" },
     { name = "gunicorn", specifier = ">=26.0.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -2992,7 +2992,7 @@ httpx = [
 [[package]]
 name = "graphon"
 version = "0.6.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/langgenius/graphon?rev=6d85e98df87a74589303dcb297c7866196359d27#6d85e98df87a74589303dcb297c7866196359d27" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "httpx" },
@@ -3012,10 +3012,6 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/6c/9ea051ed30dc3306e9e77c4486b5a2e5462af45e35daf230d9ec886eb07e/graphon-0.6.0.tar.gz", hash = "sha256:2d3a386899dc7ab8e9767ab96c694ff7e6eb454c045a1e801505cba9c615160d", size = 264404, upload-time = "2026-06-29T15:26:27.437Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/36/5b0ece2d61fa091f7d74aea5a48f9cf927202099e8d22b856e0319218e9d/graphon-0.6.0-py3-none-any.whl", hash = "sha256:f1445ccef40c0d0eb50a60af85c1028b26d2d782f357315047acee816acbcb33", size = 376038, upload-time = "2026-06-29T15:26:26.186Z" },
 ]
 
 [[package]]

@@ -9,6 +9,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
     QueueWorkflowSucceededEvent,
     WorkflowQueueMessage,
 )
@@ -39,6 +40,7 @@ class WorkflowAppQueueManager(AppQueueManager):
             | QueueMessageEndEvent
             | QueueWorkflowSucceededEvent
             | QueueWorkflowFailedEvent
+            | QueueWorkflowPausedEvent
             | QueueWorkflowPartialSuccessEvent,
         ):
             self.stop_listen(execution_terminal=True)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -11,10 +11,10 @@ from core.repositories.human_input_repository import FormCreateParams, HumanInpu
 from core.workflow.human_input_adapter import DeliveryChannelConfig
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, HITLDecision, PauseRequested
-from graphon.runtime import VariablePool
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.factory import build_segment
 from graphon.variables.segments import Segment
+from graphon.variables.template_resolution import convert_template
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 
 from .entities import (
@@ -31,24 +31,13 @@ from .session_binding import default_session_binding
 logger = logging.getLogger(__name__)
 
 
-def _require_template_variable_pool(pool: ReadOnlyVariablePool) -> VariablePool:
-    """Return the concrete graphon pool required for template expansion."""
-    if isinstance(pool, VariablePool):
-        return pool
-
-    msg = "human input rendering requires graphon.runtime.VariablePool for template expansion"
-    raise TypeError(msg)
-
-
 def render_form_content_before_submission(
     node_data: HumanInputNodeData,
     *,
     variable_pool: ReadOnlyVariablePool,
 ) -> str:
     """Process form content by substituting runtime variables before pause."""
-    # NOTE(QuantumGhost): This is not ideal, we should expose
-    # VariablePool method in Graphon.
-    rendered_form_content = _require_template_variable_pool(variable_pool).convert_template(node_data.form_content)
+    rendered_form_content = convert_template(variable_pool, node_data.form_content)
     return rendered_form_content.markdown
 
 
@@ -91,6 +80,7 @@ class DifyHITLCallback:
         delivery_methods: Sequence[DeliveryChannelConfig] = (),
         display_in_ui: bool = False,
         file_reference_factory: DifyFileReferenceFactory | None = None,
+        execution_id_getter: Callable[[], str | None] | None = None,
     ) -> None:
         self._form_repository = form_repository
         self._session_binding = default_session_binding
@@ -100,11 +90,17 @@ class DifyHITLCallback:
         self._delivery_methods = tuple(delivery_methods)
         self._display_in_ui = display_in_ui
         self._file_reference_factory = file_reference_factory
+        self._execution_id_getter = execution_id_getter
 
     def __call__(self, ctx: HITLContext) -> HITLDecision:
-        form = self._form_repository.get_form(ctx.node_id)
+        form_id = self._execution_id_getter() if self._execution_id_getter is not None else None
+        form = (
+            self._form_repository.get_form(ctx.node_id, form_id=form_id)
+            if form_id is not None
+            else self._form_repository.get_form(ctx.node_id)
+        )
         if form is None:
-            created = self._create_form(ctx)
+            created = self._create_form(ctx, form_id=form_id)
             return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=created.id))
 
         status = self._normalize_status(form.status)
@@ -163,7 +159,7 @@ class DifyHITLCallback:
             outputs=outputs,
         )
 
-    def _create_form(self, ctx: HITLContext) -> HumanInputFormEntity:
+    def _create_form(self, ctx: HITLContext, *, form_id: str | None = None) -> HumanInputFormEntity:
         params = FormCreateParams(
             workflow_execution_id=self._workflow_execution_id or ctx.workflow_execution_id,
             conversation_id=self._conversation_id,
@@ -181,6 +177,7 @@ class DifyHITLCallback:
                     variable_pool=ctx.variable_pool,
                 )
             ),
+            form_id=form_id,
         )
         return self._form_repository.create_form(params)
 

@@ -142,6 +142,23 @@ describe('HumanInputFormList', () => {
     expect(screen.queryByTestId('tips')).not.toBeInTheDocument()
   })
 
+  it('should reset inputs when the same node produces a new form', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
+
+    const input = screen.getByTestId('content-item-textarea')
+    await user.clear(input)
+    await user.type(input, 'previous response')
+
+    rerender(
+      <HumanInputFormList
+        humanInputFormDataList={[createFormData({ form_id: 'form-2', form_token: 'token-2' })]}
+      />,
+    )
+
+    expect(screen.getByTestId('content-item-textarea')).toHaveValue('prefill')
+  })
+
   it('should render an empty container when there are no visible forms', () => {
     render(<HumanInputFormList humanInputFormDataList={[]} />)
 
