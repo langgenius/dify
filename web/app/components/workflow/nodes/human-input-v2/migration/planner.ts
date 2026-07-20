@@ -174,7 +174,13 @@ const convertNode = (
     }
 
     const config = method.config
-    if (!config || typeof config.subject !== 'string' || typeof config.body !== 'string') {
+    if (
+      !config ||
+      typeof config.subject !== 'string' ||
+      !config.subject.trim() ||
+      typeof config.body !== 'string' ||
+      !config.body.trim()
+    ) {
       blockers.push({
         nodeId: node.id,
         nodeTitle: node.data.title,

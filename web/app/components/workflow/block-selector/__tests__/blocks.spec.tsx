@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event'
 import { FlowType } from '@/types/common'
 import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
+import { HumanInputMigrationContext } from '../../nodes/human-input-v2/migration/context'
 import { BlockEnum } from '../../types'
 import Blocks from '../blocks'
 import { BlockClassification } from '../types'
@@ -176,6 +177,13 @@ describe('Blocks', () => {
   it('keeps Human Input searchable but disables it while a legacy node exists', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
+    const openMigrationDialog = vi.fn()
+    const contextValue = {
+      policy: { hasLegacyHumanInput: true, canAddHumanInputV2: false, candidateCount: 1 as const },
+      canEdit: true,
+      pending: false,
+      openMigrationDialog,
+    }
     runtimeState.nodes = [
       {
         data: {
@@ -185,16 +193,18 @@ describe('Blocks', () => {
     ]
 
     const { rerender } = render(
-      <Blocks
-        searchText="Human"
-        onSelect={onSelect}
-        availableBlocksTypes={[BlockEnum.HumanInputV2]}
-        blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
-      />,
+      <HumanInputMigrationContext value={contextValue}>
+        <Blocks
+          searchText="Human"
+          onSelect={onSelect}
+          availableBlocksTypes={[BlockEnum.HumanInputV2]}
+          blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+        />
+      </HumanInputMigrationContext>,
     )
 
     const humanInputButton = screen.getByRole('button', { name: 'Human Input' })
-    expect(humanInputButton).toBeDisabled()
+    expect(humanInputButton).toHaveAttribute('aria-disabled', 'true')
     expect(humanInputButton).toHaveAccessibleDescription(
       expect.stringContaining('workflow.nodes.humanInputMigration.disabledReason'),
     )
@@ -202,20 +212,61 @@ describe('Blocks', () => {
 
     await user.click(humanInputButton)
     expect(onSelect).not.toHaveBeenCalled()
+    await user.hover(humanInputButton)
+    const migrateNow = await screen.findByRole('button', {
+      name: /workflow.nodes.humanInputMigration.action.migrateNow/,
+    })
+    await user.click(migrateNow)
+    expect(openMigrationDialog).toHaveBeenCalledTimes(1)
 
     runtimeState.nodes = []
     rerender(
-      <Blocks
-        searchText="Human"
-        onSelect={onSelect}
-        availableBlocksTypes={[BlockEnum.HumanInputV2]}
-        blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
-      />,
+      <HumanInputMigrationContext value={contextValue}>
+        <Blocks
+          searchText="Human"
+          onSelect={onSelect}
+          availableBlocksTypes={[BlockEnum.HumanInputV2]}
+          blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+        />
+      </HumanInputMigrationContext>,
     )
     const enabledButton = screen.getByRole('button', { name: 'Human Input' })
-    expect(enabledButton).toBeEnabled()
+    expect(enabledButton).toHaveAttribute('aria-disabled', 'false')
     await user.click(enabledButton)
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.HumanInputV2)
+  })
+
+  it('keeps migration preview guidance read-only when editing is unavailable', async () => {
+    const user = userEvent.setup()
+    runtimeState.nodes = [{ data: { type: BlockEnum.HumanInput } }]
+
+    render(
+      <HumanInputMigrationContext
+        value={{
+          policy: { hasLegacyHumanInput: true, canAddHumanInputV2: false, candidateCount: 1 },
+          canEdit: false,
+          pending: false,
+          openMigrationDialog: vi.fn(),
+        }}
+      >
+        <Blocks
+          searchText="Human"
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.HumanInputV2]}
+          blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+        />
+      </HumanInputMigrationContext>,
+    )
+
+    await user.hover(screen.getByRole('button', { name: 'Human Input' }))
+    expect(
+      await screen.findByText('workflow.nodes.humanInputMigration.preview.description'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /workflow.nodes.humanInputMigration.action.migrateNow/,
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the agent selector on Agent block hover', async () => {

@@ -25,33 +25,33 @@
 
 ## 4. Legacy Guidance Surfaces
 
-- [ ] 4.1 Add component tests for the `1333:5041` workflow banner: legacy-only visibility, v2-only absence, Learn more behavior, editable Migrate action, and read-only presentation.
-- [ ] 4.2 Implement the workflow-level migration controller/banner at the editor shell using derived graph state and the supplied Figma layout.
-- [ ] 4.3 Add the presentation-only `OLD VERSION` badge to the existing legacy canvas node and legacy panel without changing their data or controls, with v2 exclusion tests.
-- [ ] 4.4 Implement the `1333:5404` selector preview explanation and `Migrate now` action for the disabled candidate, sharing the workflow controller entry point and never inserting a node.
-- [ ] 4.5 Add visual-state/component coverage for the banner, legacy node, legacy panel, disabled selector row, hover/preview state, and both dialog entry points.
+- [x] 4.1 Add component tests for the `1333:5041` workflow banner: legacy-only visibility, v2-only absence, Learn more behavior, editable Migrate action, and read-only presentation.
+- [x] 4.2 Implement the workflow-level migration controller/banner at the editor shell using derived graph state and the supplied Figma layout.
+- [x] 4.3 Add the presentation-only `OLD VERSION` badge to the existing legacy canvas node and legacy panel without changing their data or controls, with v2 exclusion tests.
+- [x] 4.4 Implement the `1333:5404` selector preview explanation and `Migrate now` action for the disabled candidate, sharing the workflow controller entry point and never inserting a node.
+- [x] 4.5 Add visual-state/component coverage for the banner, legacy node, legacy panel, disabled selector row, hover/preview state, and both dialog entry points.
 
 ## 5. Confirmation and Migration Orchestration
 
-- [ ] 5.1 Add failing dialog tests for the `1333:5522` title/body/review copy, Cancel, Escape, focus trap/restore, accessible names, pending state, and duplicate-submit prevention.
-- [ ] 5.2 Implement the shared migration confirmation dialog and connect both banner and selector-preview triggers.
-- [ ] 5.3 Add controller tests proving confirmation snapshots resolver/graph data, completes full preflight before mutation, reports node-specific blockers, and leaves history/synchronization untouched on Cancel or preflight failure.
-- [ ] 5.4 Implement the controller's pending lock and preflight orchestration so all eligible nodes are planned together and malformed legacy versions keep guidance/gating active.
+- [x] 5.1 Add failing dialog tests for the `1333:5522` title/body/review copy, Cancel, Escape, focus trap/restore, accessible names, pending state, and duplicate-submit prevention.
+- [x] 5.2 Implement the shared migration confirmation dialog and connect both banner and selector-preview triggers.
+- [x] 5.3 Add controller tests proving confirmation snapshots resolver/graph data, completes full preflight before mutation, reports node-specific blockers, and leaves history/synchronization untouched on Cancel or preflight failure.
+- [x] 5.4 Implement the controller's pending lock and preflight orchestration so all eligible nodes are planned together and malformed legacy versions keep guidance/gating active.
 
 ## 6. Atomic Graph Mutation, Persistence, and Recovery
 
-- [ ] 6.1 Add failing workflow-state tests for one atomic replacement/history transaction, unchanged node IDs and topology, one existing draft synchronization, and no partially migrated observer state.
-- [ ] 6.2 Apply the complete plan through the existing graph/history boundary and invoke the existing workflow draft synchronization path exactly once without introducing a migration endpoint.
-- [ ] 6.3 Add failing recovery tests for draft-sync rejection, full snapshot restoration, retained retry action, suppressed success feedback, and duplicate confirmation during the in-flight operation.
-- [ ] 6.4 Implement rollback through the same workflow state boundary and verify collaboration/history consumers converge on either the complete original graph or complete migrated graph.
-- [ ] 6.5 Add successful end-to-end component coverage proving derived state closes the dialog, removes banner/legacy badges, and enables v2 insertion without an editor reload.
+- [x] 6.1 Add failing workflow-state tests for one atomic replacement/history transaction, unchanged node IDs and topology, one existing draft synchronization, and no partially migrated observer state.
+- [x] 6.2 Apply the complete plan through the existing graph/history boundary and invoke the existing workflow draft synchronization path exactly once without introducing a migration endpoint.
+- [x] 6.3 Add failing recovery tests for draft-sync rejection, full snapshot restoration, retained retry action, suppressed success feedback, and duplicate confirmation during the in-flight operation.
+- [x] 6.4 Implement rollback through the same workflow state boundary and verify collaboration/history consumers converge on either the complete original graph or complete migrated graph.
+- [x] 6.5 Add successful end-to-end component coverage proving derived state closes the dialog, removes banner/legacy badges, and enables v2 insertion without an editor reload.
 
 ## 7. Feedback and Localization
 
-- [ ] 7.1 Add all banner, badge, disabled reason, preview, dialog, success, blocker, and synchronization-error keys to `web/i18n/en-US/workflow.json` and `web/i18n/zh-Hans/workflow.json` only.
-- [ ] 7.2 Implement the `1333:5532` success toast only after durable draft synchronization and localized recoverable feedback for preflight/synchronization failures.
-- [ ] 7.3 Add locale/component tests proving English and Simplified Chinese resolve every new string without hardcoded UI copy or English fallback in `zh-Hans`.
-- [ ] 7.4 Audit locale changes and prove no Human Input migration keys were generated or modified for any other language.
+- [x] 7.1 Add all banner, badge, disabled reason, preview, dialog, success, blocker, and synchronization-error keys to `web/i18n/en-US/workflow.json` and `web/i18n/zh-Hans/workflow.json` only.
+- [x] 7.2 Implement the `1333:5532` success toast only after durable draft synchronization and localized recoverable feedback for preflight/synchronization failures.
+- [x] 7.3 Add locale/component tests proving English and Simplified Chinese resolve every new string without hardcoded UI copy or English fallback in `zh-Hans`.
+- [x] 7.4 Audit locale changes and prove no Human Input migration keys were generated or modified for any other language.
 
 ## 8. Verification and Scope Audit
 

@@ -15,6 +15,7 @@ import { useWorkflowDraftGraphForCanvas } from '@/app/components/workflow-app/ho
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
+import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { userProfileIdAtom } from '@/context/account-state'
@@ -354,7 +355,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         myUserId={myUserId}
         onlineUsers={onlineUsers}
       >
-        <WorkflowChildren />
+        <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
+          <WorkflowChildren />
+        </HumanInputMigrationProvider>
       </WorkflowWithInnerContext>
     </div>
   )

@@ -328,6 +328,31 @@ describe('human-input/panel', () => {
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
+  it('shows the old-version badge only for legacy panel data', () => {
+    const { rerender } = renderPanel()
+    expect(screen.getByText('workflow.nodes.humanInputMigration.oldVersion')).toBeInTheDocument()
+
+    const v2Data = createData() as HumanInputNodeType & { version: '2' }
+    v2Data.version = '2'
+    rerender(
+      <Panel
+        id="human-input-node"
+        data={v2Data}
+        panelProps={{
+          getInputVars: vi.fn(() => []),
+          toVarInputs: vi.fn(() => []),
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          setRunInputData: vi.fn(),
+          runResult: null,
+        }}
+      />,
+    )
+    expect(
+      screen.queryByText('workflow.nodes.humanInputMigration.oldVersion'),
+    ).not.toBeInTheDocument()
+  })
+
   it('renders editable controls, forwards updates, and toggles preview and output sections', async () => {
     const user = userEvent.setup()
     const config = createConfigResult()

@@ -101,6 +101,9 @@ describe('useWorkflowHistory', () => {
     expect(result.current.getHistoryLabel(WorkflowHistoryEvent.NodeDelete)).toEqual(
       expect.stringMatching(/(?:^|\.)changeHistory\.nodeDelete(?=$|:)/),
     )
+    expect(result.current.getHistoryLabel(WorkflowHistoryEvent.HumanInputMigration)).toEqual(
+      expect.stringMatching(/(?:^|\.)changeHistory\.humanInputMigration(?=$|:)/),
+    )
     expect(result.current.getHistoryLabel('Unknown' as keyof typeof WorkflowHistoryEvent)).toBe(
       'Unknown Event',
     )

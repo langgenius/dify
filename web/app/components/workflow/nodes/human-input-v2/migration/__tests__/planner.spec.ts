@@ -226,6 +226,28 @@ describe('Human Input v2 migration planner', () => {
       HumanInputMigrationBlockerCode.InvalidEmail,
     ],
     [
+      'invalid email configuration',
+      createLegacyNode({
+        delivery_methods: [
+          {
+            id: 'email',
+            type: DeliveryMethodType.Email,
+            enabled: true,
+            config: {
+              recipients: {
+                whole_workspace: false,
+                items: [{ type: 'external', email: 'a@example.com' }],
+              },
+              subject: '   ',
+              body: 'Body',
+              debug_mode: false,
+            },
+          },
+        ],
+      }),
+      HumanInputMigrationBlockerCode.InvalidEmailConfiguration,
+    ],
+    [
       'unresolved member',
       createLegacyNode({
         delivery_methods: [

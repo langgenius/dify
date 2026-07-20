@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
 import BlockIcon from '../block-icon'
+import { useHumanInputMigration } from '../nodes/human-input-v2/migration/context'
 import { getHumanInputCreationPolicy } from '../nodes/human-input-v2/migration/policy'
 import { BlockEnum } from '../types'
 import { AgentBlockItem } from './agent-selector'
@@ -26,6 +27,7 @@ type BlocksProps = {
 }
 type BlockPreviewPayload = {
   block: NodeDefault
+  disabled: boolean
 }
 
 const Blocks = ({
@@ -158,15 +160,18 @@ const Blocks = ({
                   delay={150}
                   closeDelay={150}
                   handle={previewCardHandle}
-                  payload={{ block }}
+                  payload={{ block, disabled: isHumanInputDisabled }}
                   render={
                     <button
                       type="button"
                       aria-label={block.metaData.title}
                       aria-describedby={describedBy || undefined}
-                      disabled={isHumanInputDisabled}
-                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent"
-                      onClick={() => onSelect(block.metaData.type)}
+                      aria-disabled={isHumanInputDisabled}
+                      data-disabled={isHumanInputDisabled || undefined}
+                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-[disabled]:cursor-not-allowed data-[disabled]:text-text-disabled data-[disabled]:hover:bg-transparent"
+                      onClick={() => {
+                        if (!isHumanInputDisabled) onSelect(block.metaData.type)
+                      }}
                     >
                       <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
                       <span className="min-w-0 grow truncate text-sm text-text-secondary">
@@ -228,9 +233,11 @@ type BlockPreviewCardProps = {
 }
 
 function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
+  const { t } = useTranslation()
+  const migration = useHumanInputMigration()
   if (!payload) return null
 
-  const { block } = payload
+  const { block, disabled } = payload
 
   return (
     <BlockSelectorPreviewCardContent>
@@ -239,6 +246,22 @@ function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
       <div className="system-xs-regular wrap-break-word text-text-tertiary">
         {block.metaData.description}
       </div>
+      {disabled && (
+        <div className="mt-3 rounded-lg bg-state-accent-hover px-3 py-2">
+          <div className="system-xs-regular text-text-secondary">
+            {t(($) => $['nodes.humanInputMigration.preview.description'], { ns: 'workflow' })}
+          </div>
+          {migration?.canEdit && (
+            <button
+              type="button"
+              className="mt-1 rounded-sm system-xs-medium text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              onClick={migration.openMigrationDialog}
+            >
+              {t(($) => $['nodes.humanInputMigration.action.migrateNow'], { ns: 'workflow' })} →
+            </button>
+          )}
+        </div>
+      )}
     </BlockSelectorPreviewCardContent>
   )
 }
