@@ -1187,6 +1187,7 @@ def delete_archived_workflow_runs(
                 target_year=target_year,
                 target_month=target_month_number,
                 shard_total=run_shard_total,
+                tenant_ids=parsed_tenant_ids,
             )
         except ValueError as exc:
             logger.exception(
@@ -1198,6 +1199,7 @@ def delete_archived_workflow_runs(
                 f"Archive catalog shard preflight failed for target_month={target_month} shard={shard}: {exc}"
             ) from exc
 
+    initial_catalog_cursor = catalog_cursor
     pages_processed = 0
     bundles_succeeded = 0
     runs_processed = 0
@@ -1218,11 +1220,18 @@ def delete_archived_workflow_runs(
             failed_catalog_id = failed_result.catalog_id if failed_result is not None else "unknown"
             page_resume_cursor = summary.preview_next_catalog_id if dry_run else summary.next_catalog_id
             resume_cursor = page_resume_cursor or catalog_cursor
+            if dry_run:
+                cursor_details = (
+                    f"preview_after_catalog_id={resume_cursor or 'none'} "
+                    f"destructive_retry_after_catalog_id={initial_catalog_cursor or 'none'}"
+                )
+            else:
+                cursor_details = f"resume_after_catalog_id={resume_cursor or 'none'}"
             click.echo(
                 click.style(
                     f"Delete stopped: target_month={target_month} shard={shard or 'all'} "
                     f"failed_catalog_id={failed_catalog_id} "
-                    f"resume_after_catalog_id={resume_cursor or 'none'}",
+                    f"{cursor_details}",
                     fg="red",
                 )
             )

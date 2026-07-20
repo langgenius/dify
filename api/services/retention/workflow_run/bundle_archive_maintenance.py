@@ -297,9 +297,10 @@ class WorkflowRunBundleArchiveMaintenance:
         target_year: int,
         target_month: int,
         shard_total: int,
+        tenant_ids: Sequence[str] | None = None,
     ) -> None:
         """
-        Fail before a parallel delete when the closed target month contains a different shard layout.
+        Fail before a parallel delete when the requested closed-month scope contains a different shard layout.
 
         A subset of the expected shards is valid because an archive shard may legitimately contain no bundles. Any
         other shard name indicates a historical or mixed-layout month that must be handled by the serial delete path.
@@ -307,11 +308,16 @@ class WorkflowRunBundleArchiveMaintenance:
         if not 1 <= shard_total <= 16:
             raise ValueError("shard_total must be between 1 and 16")
         expected_shards = tuple(f"{index:02d}-of-{shard_total:02d}" for index in range(shard_total))
+        conditions = [
+            WorkflowRunArchiveBundle.year == target_year,
+            WorkflowRunArchiveBundle.month == target_month,
+        ]
+        if tenant_ids is not None:
+            conditions.append(WorkflowRunArchiveBundle.tenant_id.in_(tenant_ids))
         statement = (
             select(WorkflowRunArchiveBundle.shard)
             .where(
-                WorkflowRunArchiveBundle.year == target_year,
-                WorkflowRunArchiveBundle.month == target_month,
+                *conditions,
                 WorkflowRunArchiveBundle.shard.not_in(expected_shards),
             )
             .distinct()

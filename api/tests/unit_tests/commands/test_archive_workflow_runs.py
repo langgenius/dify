@@ -328,7 +328,7 @@ def test_delete_archived_workflow_runs_all_pages_uses_preview_cursor_for_dry_run
     ]
 
 
-def test_delete_archived_workflow_runs_dry_run_failure_reports_preview_resume_cursor(monkeypatch):
+def test_delete_archived_workflow_runs_dry_run_failure_separates_preview_and_destructive_cursors(monkeypatch):
     failed_result = BundleOperationResult(
         catalog_id=_CURSOR_2,
         bundle_id="bundle-failed",
@@ -340,10 +340,13 @@ def test_delete_archived_workflow_runs_dry_run_failure_reports_preview_resume_cu
         monkeypatch,
         [
             _delete_summary(
-                processed=2,
+                processed=1,
                 succeeded=1,
-                failed=1,
                 preview_next_catalog_id=_CURSOR_1,
+            ),
+            _delete_summary(
+                processed=1,
+                failed=1,
                 results=[failed_result],
             ),
         ],
@@ -351,12 +354,21 @@ def test_delete_archived_workflow_runs_dry_run_failure_reports_preview_resume_cu
 
     result = CliRunner().invoke(
         retention.delete_archived_workflow_runs,
-        ["--target-month", "2025-03", "--all-pages", "--dry-run"],
+        [
+            "--target-month",
+            "2025-03",
+            "--after-catalog-id",
+            _CURSOR_0,
+            "--all-pages",
+            "--dry-run",
+        ],
     )
 
     assert result.exit_code == 1
+    assert deleter.delete_batch.call_count == 2
     assert f"failed_catalog_id={_CURSOR_2}" in result.output
-    assert f"resume_after_catalog_id={_CURSOR_1}" in result.output
+    assert f"preview_after_catalog_id={_CURSOR_1}" in result.output
+    assert f"destructive_retry_after_catalog_id={_CURSOR_0}" in result.output
 
 
 def test_delete_archived_workflow_runs_all_pages_starts_after_explicit_cursor(monkeypatch):
@@ -409,6 +421,8 @@ def test_delete_archived_workflow_runs_passes_formatted_run_shard_to_service(mon
         [
             "--target-month",
             "2025-03",
+            "--tenant-ids",
+            "tenant-1",
             "--run-shard-index",
             "3",
             "--run-shard-total",
@@ -421,6 +435,7 @@ def test_delete_archived_workflow_runs_passes_formatted_run_shard_to_service(mon
         target_year=2025,
         target_month=3,
         shard_total=16,
+        tenant_ids=["tenant-1"],
     )
     deleter.delete_batch.assert_called_once()
     assert deleter.delete_batch.call_args.kwargs["shard"] == "03-of-16"

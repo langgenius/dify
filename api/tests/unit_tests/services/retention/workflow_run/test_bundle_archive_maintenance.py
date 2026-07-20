@@ -271,6 +271,25 @@ def test_catalog_shard_preflight_accepts_an_expected_subset() -> None:
     )
 
 
+def test_catalog_shard_preflight_uses_requested_tenant_scope() -> None:
+    session = MagicMock()
+    session.scalars.return_value = []
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        storage=cast(MagicMock, MagicMock()),
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    maintenance.validate_catalog_shards(
+        target_year=2025,
+        target_month=3,
+        shard_total=16,
+        tenant_ids=[TENANT_ID],
+    )
+
+    statement = session.scalars.call_args.args[0]
+    assert "workflow_run_archive_bundles.tenant_id IN" in str(statement)
+
+
 @pytest.mark.parametrize(
     ("cursor_bundle", "tenant_ids", "error_message"),
     [
