@@ -20,7 +20,6 @@ import {
   skipStepByStepTourAtom,
   startStepByStepTourTaskAtom,
   stepByStepTourEnabledForCurrentWorkspaceAtom,
-  stepByStepTourStateErrorAtom,
   stepByStepTourStateUpdatingAtom,
   uncompleteStepByStepTourTaskAtom,
 } from '../state'
@@ -296,22 +295,16 @@ describe('step-by-step tour state', () => {
   })
 
   it('keeps the canonical cache unchanged when a patch fails', async () => {
-    const error = new Error('patch failed')
     const onError = vi.fn()
-    patchStepByStepTourState.mockRejectedValueOnce(error)
-    const unsubscribe = store.sub(stepByStepTourStateErrorAtom, () => {})
+    patchStepByStepTourState.mockRejectedValueOnce(new Error('patch failed'))
 
     await store.set(completeStepByStepTourTaskAtom, { taskId: 'home', onError })
 
     expect(onError).toHaveBeenCalledOnce()
-    await vi.waitFor(() => {
-      expect(store.get(stepByStepTourStateErrorAtom)).toBe(error)
-    })
     expect(
       queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey)
         ?.completed_task_ids,
     ).toEqual([])
-    unsubscribe()
   })
 
   it('rolls back a failed projection before canonical reconciliation settles', async () => {

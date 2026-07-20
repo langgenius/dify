@@ -135,14 +135,6 @@ export const stepByStepTourFirstWorkspaceIdAtom = atom(
   (get) => get(stepByStepTourStateDataAtom)?.first_workspace_id ?? undefined,
 )
 
-export const manuallyEnabledStepByStepTourWorkspaceIdsAtom = atom(
-  (get) => get(stepByStepTourStateDataAtom)?.manually_enabled_workspace_ids ?? [],
-)
-
-export const manuallyDisabledStepByStepTourWorkspaceIdsAtom = atom(
-  (get) => get(stepByStepTourStateDataAtom)?.manually_disabled_workspace_ids ?? [],
-)
-
 export const stepByStepTourEnabledForCurrentWorkspaceAtom = atom((get) => {
   const state = get(stepByStepTourStateDataAtom)
   const currentWorkspaceId = get(currentWorkspaceIdAtom)
@@ -267,8 +259,6 @@ type StepByStepTourStateCommandOptions = {
   onError?: () => void
 }
 
-const stepByStepTourStateCommandErrorAtom = atom<unknown>(null)
-
 const settleStepByStepTourStateCommand = async (
   get: Getter,
   set: Setter,
@@ -315,8 +305,6 @@ export const stepByStepTourStateUpdatingAtom = atom(
   (get) => get(pendingStepByStepTourStateCommandsAtom).length > 0,
 )
 
-export const stepByStepTourStateErrorAtom = atom((get) => get(stepByStepTourStateCommandErrorAtom))
-
 const patchStepByStepTourState = async (
   get: Getter,
   set: Setter,
@@ -333,13 +321,11 @@ const patchStepByStepTourState = async (
   const mutation = get(patchStepByStepTourStateMutationAtom)
   const queryClient = get(queryClientAtom)
   set(pendingStepByStepTourStateCommandsAtom, (commands) => [...commands, command])
-  set(stepByStepTourStateCommandErrorAtom, null)
 
   let state: Awaited<ReturnType<typeof mutation.mutateAsync>>
   try {
     state = await mutation.mutateAsync({ body })
-  } catch (error) {
-    set(stepByStepTourStateCommandErrorAtom, error)
+  } catch {
     set(stepByStepTourStateReconciliationRevisionAtom, (revision) => revision + 1)
     const reconciliation = settleStepByStepTourStateCommand(get, set, queryClient, command)
     options?.onError?.()
@@ -348,7 +334,6 @@ const patchStepByStepTourState = async (
   }
 
   queryClient.setQueryData(stepByStepTourStateQueryKey(), state)
-  set(stepByStepTourStateCommandErrorAtom, null)
   const reconciliation = settleStepByStepTourStateCommand(get, set, queryClient, command)
   options?.onSuccess?.(
     state.completed_task_ids?.filter((taskId): taskId is StepByStepTourTaskId => Boolean(taskId)) ??
