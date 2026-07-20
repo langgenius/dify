@@ -54,9 +54,11 @@ class KnowledgeFSConfig(BaseSettings):
         return value.rstrip("/")
 
     @model_validator(mode="after")
-    def validate_complete_connection(self) -> "KnowledgeFSConfig":
+    def validate_enabled_connection(self) -> "KnowledgeFSConfig":
+        if not self.KNOWLEDGE_FS_ENABLED:
+            return self
         if bool(self.KNOWLEDGE_FS_BASE_URL) != bool(self.KNOWLEDGE_FS_JWT_SECRET):
             raise ValueError("KNOWLEDGE_FS_BASE_URL and KNOWLEDGE_FS_JWT_SECRET must be configured together")
-        if self.KNOWLEDGE_FS_ENABLED and not self.KNOWLEDGE_FS_BASE_URL:
+        if not self.KNOWLEDGE_FS_BASE_URL:
             raise ValueError("KnowledgeFS connection settings are required when the integration is enabled")
         return self

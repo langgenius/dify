@@ -48,6 +48,23 @@ def test_knowledge_fs_config_requires_connection_when_enabled() -> None:
         KnowledgeFSConfig(KNOWLEDGE_FS_ENABLED=True)
 
 
+@pytest.mark.parametrize(
+    ("base_url", "jwt_secret"),
+    [
+        ("https://knowledge-fs.test", None),
+        (None, "production-secret-with-at-least-32-bytes"),
+    ],
+)
+def test_disabled_knowledge_fs_config_allows_partial_connection(base_url: str | None, jwt_secret: str | None) -> None:
+    config = KnowledgeFSConfig(
+        KNOWLEDGE_FS_ENABLED=False,
+        KNOWLEDGE_FS_BASE_URL=base_url,
+        KNOWLEDGE_FS_JWT_SECRET=jwt_secret,
+    )
+
+    assert config.KNOWLEDGE_FS_ENABLED is False
+
+
 def test_knowledge_fs_docker_config_is_not_shadowed_by_root_env() -> None:
     root_env_example = (_REPOSITORY_ROOT / "docker/.env.example").read_text(encoding="utf-8")
     api_env_example = (_REPOSITORY_ROOT / "docker/envs/core-services/api.env.example").read_text(encoding="utf-8")
@@ -67,6 +84,7 @@ def test_knowledge_fs_docker_config_is_not_shadowed_by_root_env() -> None:
 def test_knowledge_fs_config_rejects_partial_connection(base_url: str | None, jwt_secret: str | None) -> None:
     with pytest.raises(ValidationError, match="must be configured together"):
         KnowledgeFSConfig(
+            KNOWLEDGE_FS_ENABLED=True,
             KNOWLEDGE_FS_BASE_URL=base_url,
             KNOWLEDGE_FS_JWT_SECRET=jwt_secret,
         )
