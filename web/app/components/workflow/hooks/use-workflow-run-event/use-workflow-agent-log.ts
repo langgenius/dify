@@ -13,7 +13,13 @@ export const useWorkflowAgentLog = () => {
 
       setWorkflowRunningData(
         produce(workflowRunningData!, (draft) => {
-          const currentIndex = draft.tracing!.findIndex((item) => item.node_id === data.node_id)
+          // Prefer the unique node_execution_id so agent logs are routed to the
+          // exact trace entry that produced them, even when the same node runs
+          // multiple times in parallel branches or repeated debug runs. Fall
+          // back to node_id only for older events without a node_execution_id.
+          const currentIndex = data.node_execution_id
+            ? draft.tracing!.findIndex((item) => item.id === data.node_execution_id)
+            : draft.tracing!.findIndex((item) => item.node_id === data.node_id)
           if (currentIndex > -1) {
             const current = draft.tracing![currentIndex]
 

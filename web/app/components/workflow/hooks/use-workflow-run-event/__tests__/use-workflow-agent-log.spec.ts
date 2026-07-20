@@ -88,4 +88,28 @@ describe('useWorkflowAgentLog', () => {
       store.getState().workflowRunningData!.tracing![0]!.execution_metadata!.agent_log,
     ).toHaveLength(1)
   })
+
+  it('routes agent log to the exact trace entry by node_execution_id, not the first node_id match', () => {
+    const { result, store } = renderWorkflowHook(() => useWorkflowAgentLog(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [
+            { id: 'exec-1', node_id: 'n1', execution_metadata: {} },
+            { id: 'exec-2', node_id: 'n1', execution_metadata: {} },
+          ],
+        }),
+      },
+    })
+
+    result.current.handleWorkflowAgentLog({
+      data: { node_execution_id: 'exec-2', node_id: 'n1', message_id: 'm1' },
+    } as AgentLogResponse)
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    // exec-1 must not receive the log
+    expect(tracing[0]!.execution_metadata!.agent_log).toBeUndefined()
+    // exec-2 must receive it
+    expect(tracing[1]!.execution_metadata!.agent_log).toHaveLength(1)
+    expect(tracing[1]!.execution_metadata!.agent_log![0]!.message_id).toBe('m1')
+  })
 })

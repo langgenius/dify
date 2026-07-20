@@ -22,9 +22,12 @@ export const useWorkflowNodeStarted = () => {
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
       const { getNodes, setNodes, edges, setEdges, transform } = store.getState()
       const nodes = getNodes()
-      const currentIndex = workflowRunningData?.tracing?.findIndex(
-        (item) => item.node_id === data.node_id,
-      )
+      // Match by unique execution id first so that nodes executing multiple times
+      // (parallel branches, repeated debug runs) don't overwrite each other's trace
+      // entries. Fall back to node_id only for older events that carry no id.
+      const currentIndex = data.id
+        ? workflowRunningData?.tracing?.findIndex((item) => item.id === data.id)
+        : workflowRunningData?.tracing?.findIndex((item) => item.node_id === data.node_id)
       if (currentIndex && currentIndex > -1) {
         setWorkflowRunningData(
           produce(workflowRunningData!, (draft) => {

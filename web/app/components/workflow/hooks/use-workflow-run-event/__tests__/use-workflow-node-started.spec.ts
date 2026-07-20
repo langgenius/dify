@@ -84,4 +84,62 @@ describe('useWorkflowNodeStarted', () => {
     expect(tracing).toHaveLength(2)
     expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
   })
+
+  it('creates a new trace entry when the same node_id runs again with a different execution id (parallel branch / repeated run)', () => {
+    const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [{ id: 'exec-1', node_id: 'n1', status: NodeRunningStatus.Succeeded } as never],
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowNodeStarted(
+        createNodeStartedResponse({
+          data: { id: 'exec-2', node_id: 'n1' } as never,
+        }),
+        containerParams,
+      )
+    })
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    // The previous entry must be preserved and a new one appended
+    expect(tracing).toHaveLength(2)
+    expect(tracing[0]!.id).toBe('exec-1')
+    expect(tracing[0]!.status).toBe(NodeRunningStatus.Succeeded)
+    expect(tracing[1]!.id).toBe('exec-2')
+    expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
+  })
+
+  it('updates the exact trace entry matched by execution id, not the first node_id match', () => {
+    const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [
+            { id: 'exec-1', node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
+            { id: 'exec-2', node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
+          ],
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowNodeStarted(
+        createNodeStartedResponse({
+          data: { id: 'exec-2', node_id: 'n1' } as never,
+        }),
+        containerParams,
+      )
+    })
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    expect(tracing).toHaveLength(2)
+    // The first entry (exec-1) must be untouched
+    expect(tracing[0]!.id).toBe('exec-1')
+    expect(tracing[0]!.status).toBe(NodeRunningStatus.Succeeded)
+    // Only exec-2 should be updated to Running
+    expect(tracing[1]!.id).toBe('exec-2')
+    expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
+  })
 })
