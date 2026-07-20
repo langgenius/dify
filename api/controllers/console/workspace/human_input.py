@@ -10,23 +10,34 @@ from flask_restx import Resource
 from controllers.common.human_input_v2_contracts import (
     AddPlatformContactsRequest,
     AddPlatformContactsResponse,
+    BatchGetContactsQuery,
+    BatchGetContactsResponse,
     ContactListQuery,
-    ContactResponse,
+    CreateHITLMigrationResponse,
+    CreateIMBindingRequest,
+    CreateIMBindingResponse,
     CreateIMSyncRunResponse,
-    ExternalContactRequest,
+    CreateNodeDataMigrationRequest,
+    DeleteIMBindingQuery,
+    DeleteIMBindingResponse,
+    ExternalContactCreateRequest,
+    ExternalContactCreateResponse,
+    ExternalContactUpdateRequest,
+    ExternalContactUpdateResponse,
     GetIMIntegrationResponse,
-    GetIMSyncRunResponse,
+    GetLatestIMSyncRunResponse,
     HumanInputContact,
     HumanInputContactType,
     IMIntegrationStatus,
-    IMSyncReason,
-    IMSyncRunStatus,
     IMProvider,
+    IMSyncReason,
+    IMSyncResultType,
+    IMSyncRunStatus,
     ListContactsResponse,
     ListIMIdentitiesQuery,
     ListIMIdentitiesResponse,
-    ListIMSyncRunsQuery,
-    ListIMSyncRunsResponse,
+    ListLatestIMSyncRunResultsQuery,
+    ListLatestIMSyncRunResultsResponse,
     ListOrganizationCandidatesResponse,
     OrganizationCandidatesQuery,
     RemoveContactsRequest,
@@ -54,13 +65,13 @@ from controllers.console.wraps import (
 )
 from libs.login import login_required
 
-
 register_enum_models(
     console_ns,
     HumanInputContactType,
     IMIntegrationStatus,
     IMSyncRunStatus,
     IMSyncReason,
+    IMSyncResultType,
     IMProvider,
 )
 register_schema_models(
@@ -68,18 +79,19 @@ register_schema_models(
     ContactListQuery,
     OrganizationCandidatesQuery,
     AddPlatformContactsRequest,
-    ExternalContactRequest,
+    ExternalContactCreateRequest,
     RemoveContactsRequest,
     UpdateIMIntegrationRequest,
     TestIMIntegrationRequest,
-    ListIMSyncRunsQuery,
     ListIMIdentitiesQuery,
+    ListLatestIMSyncRunResultsQuery,
     SetContactIMOverrideRequest,
 )
 register_response_schema_models(
     console_ns,
     HumanInputContact,
-    ContactResponse,
+    ExternalContactCreateResponse,
+    ExternalContactUpdateResponse,
     AddPlatformContactsResponse,
     ListContactsResponse,
     RemoveContactsResponse,
@@ -88,8 +100,8 @@ register_response_schema_models(
     UpdateIMIntegrationResponse,
     TestIMIntegrationResponse,
     CreateIMSyncRunResponse,
-    GetIMSyncRunResponse,
-    ListIMSyncRunsResponse,
+    GetLatestIMSyncRunResponse,
+    ListLatestIMSyncRunResultsResponse,
     ListOrganizationCandidatesResponse,
     ResetContactIMOverrideResponse,
     SetContactIMOverrideResponse,
@@ -143,29 +155,29 @@ class WorkspacePlatformContactsApi(Resource):
 
 @console_ns.route("/workspaces/current/human-input/contacts/external")
 class WorkspaceExternalContactsApi(Resource):
-    @console_ns.expect(console_ns.models[ExternalContactRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[ContactResponse.__name__])
+    @console_ns.expect(console_ns.models[ExternalContactCreateRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ExternalContactCreateResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
     def post(self, tenant_id: str):
-        ExternalContactRequest.model_validate(console_ns.payload or {})
+        ExternalContactCreateRequest.model_validate(console_ns.payload or {})
         _raise_stub_not_implemented()
 
 
 @console_ns.route("/workspaces/current/human-input/contacts/external/<uuid:contact_id>")
 class WorkspaceExternalContactApi(Resource):
-    @console_ns.expect(console_ns.models[ExternalContactRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[ContactResponse.__name__])
+    @console_ns.expect(console_ns.models[ExternalContactUpdateRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ExternalContactUpdateResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
     def patch(self, tenant_id: str, contact_id: str):
-        ExternalContactRequest.model_validate(console_ns.payload or {})
+        ExternalContactCreateRequest.model_validate(console_ns.payload or {})
         _raise_stub_not_implemented()
 
 
@@ -231,27 +243,30 @@ class WorkspaceIMSyncRunsApi(Resource):
     def post(self, tenant_id: str):
         _raise_stub_not_implemented()
 
-    @console_ns.doc(params=query_params_from_model(ListIMSyncRunsQuery))
-    @console_ns.response(200, "Success", console_ns.models[ListIMSyncRunsResponse.__name__])
+
+@console_ns.route("/workspaces/current/human-input/im-sync-runs/latest")
+class WorkspaceLatestIMSyncRunApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[GetLatestIMSyncRunResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-        ListIMSyncRunsQuery.model_validate(request.args.to_dict(flat=True))
         _raise_stub_not_implemented()
 
 
-@console_ns.route("/workspaces/current/human-input/im-sync-runs/<uuid:sync_run_id>")
-class WorkspaceIMSyncRunApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[GetIMSyncRunResponse.__name__])
+@console_ns.route("/workspaces/current/human-input/im-sync-runs/latest/results")
+class WorkspaceLatestIMSyncRunResultsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ListLatestIMSyncRunResultsQuery))
+    @console_ns.response(200, "Success", console_ns.models[ListLatestIMSyncRunResultsResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, sync_run_id: str):
+    def get(self, tenant_id: str):
+        ListLatestIMSyncRunResultsQuery.model_validate(request.args.to_dict(flat=True))
         _raise_stub_not_implemented()
 
 
@@ -271,8 +286,52 @@ class WorkspaceIMIdentitiesApi(Resource):
 
 @console_ns.route("/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override")
 class WorkspaceContactIMOverrideApi(Resource):
+    @console_ns.doc(
+        description=(
+            "Set or reset the IM override for a contact. "
+            "This endpoint is used to override the IM identity for a contact in the workspace."
+        ),
+    )
     @console_ns.expect(console_ns.models[SetContactIMOverrideRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[SetContactIMOverrideResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_admin_or_owner_required
+    @with_current_tenant_id
+    def put(self, tenant_id: str, contact_id: str):
+        # This API only works in EE.
+        SetContactIMOverrideRequest.model_validate(console_ns.payload or {})
+        _raise_stub_not_implemented()
+
+    @console_ns.doc(
+        description=(
+            "Reset the IM override for a contact. "
+            "This endpoint is used to clear the IM identity override for a contact in the workspace."
+        ),
+    )
+    @console_ns.response(200, "Success", console_ns.models[ResetContactIMOverrideResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_admin_or_owner_required
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, contact_id: str):
+        # This API only works in EE.
+        _raise_stub_not_implemented()
+
+
+@console_ns.route("/workspaces/current/human-input/contacts/<uuid:contact_id>/im-bindings")
+class WorkspaceContactIMBindingsApi(Resource):
+    @console_ns.doc(
+        description=(
+            "Set an IM binding for a contact. Used for binding an IM identity to a contact. "
+            "This endpoint is not used for creating workspace IM override. "
+            "For that purpose, use WorkspaceContactIMOverrideApi.put instead."
+        ),
+    )
+    @console_ns.expect(console_ns.models[CreateIMBindingRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[CreateIMBindingResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -282,11 +341,55 @@ class WorkspaceContactIMOverrideApi(Resource):
         SetContactIMOverrideRequest.model_validate(console_ns.payload or {})
         _raise_stub_not_implemented()
 
-    @console_ns.response(200, "Success", console_ns.models[ResetContactIMOverrideResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[DeleteIMBindingResponse.__name__])
+    @console_ns.doc(
+        params=query_params_from_model(DeleteIMBindingQuery),
+        description=(
+            "Delete an IM binding for a contact. Used for removing contact IM binding information. "
+            "This endpoint is not used for resetting workspace IM override. For that purpose, use "
+            "WorkspaceContactIMOverrideApi.delete instead."
+        ),
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: str):
+        _raise_stub_not_implemented()
+
+
+@console_ns.route("/workspaces/current/human-input/contacts/batch")
+class BatchGetContactsAPI(Resource):
+    @console_ns.doc(
+        params=query_params_from_model(BatchGetContactsQuery),
+        description=(
+            "Batch get contacts by their IDs. Used for retrieving contact information for workflow orchestration."
+        ),
+    )
+    @console_ns.response(200, "Success", console_ns.models[BatchGetContactsResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        _raise_stub_not_implemented()
+
+
+@console_ns.route("/workspaces/current/human-input/node-data-migration")
+class NodeDataMigrationAPI(Resource):
+    @console_ns.doc(
+        description=(
+            "Migrate node data from HITLv1 to HITLv2. "
+            "This endpoint only returns the migrated Human Input v2 node data to the client."
+            "It does not update the workflow DSL."
+        ),
+    )
+    @console_ns.expect(console_ns.models[CreateNodeDataMigrationRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[CreateHITLMigrationResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         _raise_stub_not_implemented()

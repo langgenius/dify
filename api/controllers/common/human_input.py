@@ -25,6 +25,8 @@ HUMAN_INPUT_FORM_INPUT_EXAMPLE = {
 
 
 class HumanInputFormSubmitPayload(BaseModel):
+    """Shared runtime submit payload across console, web, service API, and OpenAPI."""
+
     inputs: dict[str, JsonValue] = Field(
         description=(
             "Submitted human input values keyed by output variable name. "
@@ -40,6 +42,22 @@ class HumanInputFormSubmitPayload(BaseModel):
             "ID of the action button the recipient selected. Must match one of the `id` values from the form's "
             "`user_actions` list."
         )
+    )
+    challenge_token: str | None = Field(
+        default=None,
+        description=(
+            "Optional OTP challenge token used only by the public web submit flow. "
+            "Obtain it from the web access-request endpoint, and omit it on console, service API, and OpenAPI "
+            "submissions."
+        ),
+    )
+    otp_code: str | None = Field(
+        default=None,
+        description=(
+            "Optional OTP code used only by the public web submit flow. "
+            "Provide it together with `challenge_token` when the public web form requires OTP verification, "
+            "and omit it on other surfaces."
+        ),
     )
 
 

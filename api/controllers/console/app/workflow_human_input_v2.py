@@ -28,7 +28,6 @@ from models.model import AppMode
 
 from .wraps import get_app_model
 
-
 register_schema_models(console_ns, MessageTemplateTestRequest)
 register_response_schema_models(console_ns, MessageTemplateTestResponse)
 

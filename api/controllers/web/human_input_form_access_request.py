@@ -11,7 +11,6 @@ from controllers.common.human_input_v2_contracts import FormAccessRequestRespons
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
 
-
 register_response_schema_models(web_ns, FormAccessRequestResponse)
 
 

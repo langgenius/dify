@@ -6,10 +6,16 @@ from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic.networks import EmailStr
 
+from core.human_input_v2.entities import ContactId, IMBindingId, IMIdentityId, IMSyncRunId, OrganizationCandidateId
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
-from core.workflow.nodes.human_input_v2.entities import DebugChannel, IMProvider
+from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull as HITLv1NoeData
+from core.workflow.nodes.human_input_v2.entities import Channel, IMProvider
+from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as HITLv2NodeData
 from fields.base import ResponseModel
+from fields.pagination import PaginationParamsMixin, PaginationResultMixin
+from fields.timestamp import Timestamp
 
 
 class _StrictModel(BaseModel):
@@ -26,7 +32,7 @@ class HumanInputContactType(StrEnum):
     EXTERNAL = "external"
 
 
-class ContactListQuery(_StrictModel):
+class ContactListQuery(PaginationParamsMixin, _StrictModel):
     """Query params for listing contacts in the workspace directory."""
 
     group: HumanInputContactType | None = Field(
@@ -34,83 +40,137 @@ class ContactListQuery(_StrictModel):
         description="Optional contact type filter. None means all contacts.",
     )
     keyword: str | None = Field(default=None, description="Free-text search against contact name or email.")
-    page: int = Field(default=1, ge=1, description="1-based page number.")
-    limit: int = Field(default=20, ge=1, le=100, description="Maximum number of records returned per page.")
 
 
-class OrganizationCandidatesQuery(_StrictModel):
+class OrganizationCandidatesQuery(PaginationParamsMixin, _StrictModel):
     """Query params for searching organization member candidates."""
 
     keyword: str | None = Field(default=None, description="Free-text search against candidate name or email.")
-    page: int = Field(default=1, ge=1, description="1-based page number.")
-    limit: int = Field(default=20, ge=1, le=100, description="Maximum number of records returned per page.")
 
 
-class ExternalContactRequest(_StrictModel):
-    """Request body for creating or updating one external contact."""
+ExternalContactName = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=255,
+        description="Display name shown in the contact directory.",
+    ),
+]
 
-    name: str = Field(..., min_length=1, max_length=255, description="Display name shown in the contact directory.")
-    email: str = Field(..., description="Primary email used for delivery and identity verification.")
-    avatar: str | None = Field(
-        default=None,
+ExternalContactEmail = Annotated[
+    EmailStr,
+    Field(
+        description="Primary email used for delivery and identity verification.",
+    ),
+]
+
+ExternalContactAvatar = Annotated[
+    str,
+    Field(
         description=(
             "Optional avatar file ID. Upload the avatar image first via "
             "`POST /console/api/files/upload`, then use the returned file id here."
+            "Set to empty string for resetting to default avatar."
         ),
-    )
+    ),
+]
 
 
-class HumanInputContact(ResponseModel):
+class ExternalContactCreateRequest(_StrictModel):
+    """Request body for creating or updating one external contact."""
+
+    name: ExternalContactName
+    email: ExternalContactEmail
+    avatar: ExternalContactAvatar
+
+
+class ExternalContactUpdateRequest(_StrictModel):
+    """Request body for creating or updating one external contact."""
+
+    name: ExternalContactName | None = None
+    email: ExternalContactEmail | None = None
+    avatar: ExternalContactAvatar | None = None
+
+
+class IMBindingScope(StrEnum):
+    workspace = "workspace"
+    organization = "organization"
+
+
+class IMBinding(BaseModel):
+    id: IMBindingId = Field(description="Unique IM binding identifier.")
+    provider: IMProvider = Field(description="Provider of the IM binding.")
+    scope: IMBindingScope = Field(description="Scope of the IM binding.")
+
+
+class HumanInputContactSummary(BaseModel):
+    """A trimmed version of `HumanInputContact` that only includes the fields needed for workflow orchestration."""
+
+    id: ContactId = Field(description="Unique contact identifier.")
+    name: str = Field(description="Display name shown in the contact directory.")
+    avatar_url: str = Field(default="", description="URL of the contact's avatar.")
+    created_at: Timestamp = Field(description="Timestamp when the contact was created.")
+
+
+class HumanInputContact(BaseModel):
     """One contact entity returned by contact-related APIs."""
 
-    id: str = Field(description="Unique contact identifier.")
+    id: ContactId = Field(description="Unique contact identifier.")
     type: HumanInputContactType = Field(description="Resolved contact type in the current workspace scope.")
     name: str = Field(description="Display name shown in the contact directory.")
     email: str | None = Field(default=None, description="Primary contact email if one exists.")
+    avatar_url: str = Field(default="", description="URL of the contact's avatar.")
+    # the `im_bindings` field is always empty for EXTERNAL contacts
+    im_bindings: list[IMBinding] = Field(
+        default_factory=list[IMBinding],
+        description=(
+            "IM bindings that are bound to this contact. "
+            "Currently, only one IM binding is supported. "
+            "There is at most one IM binding per IMProvidr."
+        ),
+    )
+
+    created_at: Timestamp = Field(description="Timestamp when the contact was created.")
 
 
-class ContactResponse(ResponseModel):
-    """Response body carrying one contact entity."""
+class ExternalContactCreateResponse(ResponseModel):
+    contact: HumanInputContact = Field(description="The created external contact.")
 
-    contact: HumanInputContact = Field(description="Contact returned by the current mutation or lookup.")
+
+class ExternalContactUpdateResponse(ResponseModel):
+    contact: HumanInputContact = Field(description="The updated external contact. Fields are values after updating.")
 
 
 class OrganizationCandidate(ResponseModel):
     """One organization member candidate that may become a platform contact."""
 
-    id: str = Field(description="Organization member identifier.")
+    id: OrganizationCandidateId = Field(description="Organization candidate identifier.")
     name: str = Field(description="Display name shown in the candidate list.")
     email: str = Field(description="Primary organization email used for matching.")
     avatar_url: str | None = Field(default=None, description="Signed avatar URL if one is available.")
 
 
-class ListContactsResponse(ResponseModel):
+class ListContactsResponse(PaginationResultMixin, ResponseModel):
     """Paginated response body for contact list APIs."""
 
     data: list[HumanInputContact] = Field(description="Contacts returned for the current page.")
-    has_more: bool = Field(description="Whether more pages are available after this one.")
-    limit: int = Field(description="Page size used for the current query.")
-    total: int = Field(description="Total number of contacts matching the current query.")
-    page: int = Field(description="Current 1-based page number.")
 
 
-class ListOrganizationCandidatesResponse(ResponseModel):
+class ListOrganizationCandidatesResponse(PaginationResultMixin, ResponseModel):
     """Paginated response body for organization candidate search."""
 
-    data: list[OrganizationCandidate] = Field(description="Organization member candidates returned for the current page.")
-    has_more: bool = Field(description="Whether more pages are available after this one.")
-    limit: int = Field(description="Page size used for the current query.")
-    total: int = Field(description="Total number of candidates matching the current query.")
-    page: int = Field(description="Current 1-based page number.")
+    data: list[OrganizationCandidate] = Field(
+        description="Organization member candidates returned for the current page."
+    )
 
 
 class AddPlatformContactsRequest(_StrictModel):
     """Request body for adding one or more organization members as platform contacts."""
 
-    member_ids: list[str] = Field(
+    candidate_ids: list[OrganizationCandidateId] = Field(
         ...,
         min_length=1,
-        description="Organization member identifiers to project into the current workspace as platform contacts.",
+        description="Organization candidate identifiers to project into the current workspace as platform contacts.",
     )
 
 
@@ -118,13 +178,12 @@ class AddPlatformContactsResponse(ResponseModel):
     """Response body for adding platform contacts."""
 
     data: list[HumanInputContact] = Field(description="Contacts created by the current add operation.")
-    total: int = Field(description="Number of platform contacts added by the current operation.")
 
 
 class RemoveContactsRequest(_StrictModel):
     """Request body for batch-removing platform or external contacts."""
 
-    contact_ids: list[str] = Field(
+    contact_ids: list[ContactId] = Field(
         ...,
         min_length=1,
         description="Contact identifiers selected for removal from the contact directory surface.",
@@ -134,7 +193,7 @@ class RemoveContactsRequest(_StrictModel):
 class RemoveContactsResponse(ResponseModel):
     """Response body returned after batch-removing contacts."""
 
-    removed_contact_ids: list[str] = Field(description="Contact identifiers removed by the current operation.")
+    removed_contact_ids: list[ContactId] = Field(description="Contact identifiers removed by the current operation.")
 
 
 class IMIntegrationStatus(StrEnum):
@@ -179,7 +238,9 @@ class DingTalkIMIntegrationCredentials(_StrictModel):
 class MSTeamsIMIntegrationCredentials(_StrictModel):
     """Microsoft Teams integration credentials used by organization-level IM setup."""
 
-    provider: Literal[IMProvider.MS_TEAMS] = Field(description="Discriminator for Microsoft Teams integration credentials.")
+    provider: Literal[IMProvider.MS_TEAMS] = Field(
+        description="Discriminator for Microsoft Teams integration credentials."
+    )
     tenant_id: str = Field(description="Microsoft Entra tenant identifier.")
     client_id: str = Field(description="Microsoft Teams application client identifier.")
     client_secret: str = Field(description="Microsoft Teams application client secret.")
@@ -237,10 +298,20 @@ class IMIntegration(ResponseModel):
         description="Configured IM provider. None is allowed when the integration is not configured.",
     )
     status: IMIntegrationStatus = Field(description="Current integration connectivity state.")
-    callback_url: str | None = Field(default=None, description="Callback URL expected by the provider.")
+    callback_url: str | None = Field(
+        default=None,
+        description=(
+            "Callback URL expected by the provider. "
+            "None if the current deployment uses persistence connections for receive events."
+        ),
+    )
     permission_hint: str | None = Field(default=None, description="Operator-facing hint about permission issues.")
-    configured_at: int | None = Field(default=None, description="Unix timestamp when the integration was created.")
-    updated_at: int | None = Field(default=None, description="Unix timestamp when the integration was last updated.")
+    configured_at: Timestamp | None = Field(
+        default=None, description="Unix timestamp in milliseconds when the integration was created."
+    )
+    updated_at: Timestamp | None = Field(
+        default=None, description="Unix timestamp in milliseconds when the integration was last updated."
+    )
 
 
 class GetIMIntegrationResponse(ResponseModel):
@@ -289,17 +360,34 @@ class IMSyncRunStatus(StrEnum):
     FAILED = "failed"
 
 
+class IMSyncRunResultCounts(ResponseModel):
+    """Aggregate result counts for one IM sync run."""
+
+    total: int = Field(description="Total number of provider entries observed in the current run snapshot.")
+    added: int = Field(description="Number of entries newly matched and bound.")
+    not_matched: int = Field(description="Number of entries that could not be matched.")
+    failed: int = Field(description="Number of entries that failed to reconcile.")
+    removed: int = Field(description="Number of entries whose prior binding was removed.")
+    skipped: int = Field(description="Number of entries intentionally skipped.")
+
+
 class IMSyncRun(ResponseModel):
     """One IM sync run snapshot."""
 
-    id: str = Field(description="Unique sync run identifier.")
+    id: IMSyncRunId = Field(description="Unique sync run identifier.")
     status: IMSyncRunStatus = Field(description="Current lifecycle state of the sync run.")
-    started_at: int | None = Field(default=None, description="Unix timestamp when the sync run started.")
-    finished_at: int | None = Field(default=None, description="Unix timestamp when the sync run finished, if any.")
-    triggered_by: str | None = Field(default=None, description="Operator or system actor that triggered the sync.")
+    started_at: Timestamp | None = Field(
+        default=None, description="Unix timestamp in milliseconds when the sync run started."
+    )
+    finished_at: Timestamp | None = Field(
+        default=None, description="Unix timestamp in milliseconds when the sync run finished, if any."
+    )
     error_message: str | None = Field(
         default=None,
         description="Terminal error message. Present only when the sync run status is `failed`.",
+    )
+    result_counts: IMSyncRunResultCounts = Field(
+        description="Aggregate reconciliation counts for the current run snapshot.",
     )
 
 
@@ -309,78 +397,77 @@ class CreateIMSyncRunResponse(ResponseModel):
     run: IMSyncRun = Field(description="Newly created sync run snapshot.")
 
 
-class ListIMSyncRunsQuery(_StrictModel):
-    """Query params for listing IM sync runs."""
+class IMSyncResultType(StrEnum):
+    """Stable bucket names exposed by IM sync result APIs."""
 
-    page: int = Field(default=1, ge=1, description="1-based page number.")
-    limit: int = Field(default=20, ge=1, le=100, description="Maximum number of runs returned per page.")
-
-
-class ListIMSyncRunsResponse(ResponseModel):
-    """Paginated response body for IM sync run list APIs."""
-
-    data: list[IMSyncRun] = Field(description="Sync runs returned for the current page.")
-    has_more: bool = Field(description="Whether more pages are available after this one.")
-    limit: int = Field(description="Page size used for the current query.")
-    total: int = Field(description="Total number of sync runs matching the current query.")
-    page: int = Field(description="Current 1-based page number.")
+    ADDED = "added"
+    NOT_MATCHED = "not_matched"
+    FAILED = "failed"
+    REMOVED = "removed"
+    SKIPPED = "skipped"
 
 
-class IMSyncItem(ResponseModel):
-    """One reconciliation item inside a sync run detail."""
+class IMSyncResultItem(ResponseModel):
+    """One paginated reconciliation result entry for the latest sync run."""
 
+    result: IMSyncResultType = Field(description="Result bucket this entry belongs to.")
     provider_user_id: str = Field(description="Provider-side user identifier returned by the IM platform.")
     display_name: str | None = Field(default=None, description="Display name returned by the IM platform.")
     email: str | None = Field(default=None, description="Provider email used for matching.")
-    contact_id: str | None = Field(default=None, description="Matched Dify contact identifier, if any.")
-    reason: IMSyncReason | None = Field(default=None, description="Stable reconciliation reason exposed to API clients.")
+    contact_id: ContactId | None = Field(default=None, description="Matched Dify contact identifier, if any.")
+    reason: IMSyncReason | None = Field(
+        default=None, description="Stable reconciliation reason exposed to API clients."
+    )
 
 
-class GetIMSyncRunResponse(ResponseModel):
-    """Detailed response body for one IM sync run."""
+class GetLatestIMSyncRunResponse(ResponseModel):
+    """Response body for reading the latest IM sync run summary."""
 
-    run: IMSyncRun = Field(description="Sync run snapshot.")
-    added: list[IMSyncItem] = Field(default_factory=list, description="Items newly matched and bound.")
-    not_matched: list[IMSyncItem] = Field(default_factory=list, description="Items that could not be matched.")
-    failed: list[IMSyncItem] = Field(default_factory=list, description="Items that failed to reconcile.")
-    removed: list[IMSyncItem] = Field(default_factory=list, description="Items whose prior binding was removed.")
-    skipped: list[IMSyncItem] = Field(default_factory=list, description="Items intentionally skipped.")
+    run: IMSyncRun = Field(description="Latest sync run summary.")
 
 
-class ListIMIdentitiesQuery(_StrictModel):
+class ListLatestIMSyncRunResultsQuery(PaginationParamsMixin, _StrictModel):
+    """Query params for reading paginated latest-run results."""
+
+    result: IMSyncResultType = Field(description="Result bucket to paginate from the latest sync run.")
+
+
+class ListLatestIMSyncRunResultsResponse(PaginationResultMixin, ResponseModel):
+    """Paginated response body for latest-run result APIs."""
+
+    run: IMSyncRun = Field(description="Latest sync run summary associated with the current result page.")
+    data: list[IMSyncResultItem] = Field(description="Result entries returned for the selected bucket and page.")
+
+
+class ListIMIdentitiesQuery(PaginationParamsMixin, _StrictModel):
     """Query params for searching synced IM identities."""
 
     keyword: str | None = Field(default=None, description="Free-text search against identity display name or email.")
-    provider: IMProvider | None = Field(default=None, description="Optional IM provider filter.")
-    page: int = Field(default=1, ge=1, description="1-based page number.")
-    limit: int = Field(default=20, ge=1, le=100, description="Maximum number of records returned per page.")
 
 
 class IMIdentity(ResponseModel):
     """One synced IM identity that may be bound or overridden."""
 
-    id: str = Field(description="Internal IM identity record identifier.")
+    id: IMIdentityId = Field(description="Internal IM identity record identifier.")
     provider: IMProvider = Field(description="IM provider that owns this identity.")
     provider_user_id: str = Field(description="Provider-side user identifier.")
     display_name: str | None = Field(default=None, description="Display name returned by the provider.")
     email: str | None = Field(default=None, description="Email returned by the provider, if any.")
-    binding_status: IMIdentityBindingStatus = Field(description="Whether this IM identity is currently bound to a contact.")
+    binding_status: IMIdentityBindingStatus = Field(
+        description="Whether this IM identity is currently bound to a contact."
+    )
 
 
-class ListIMIdentitiesResponse(ResponseModel):
+class ListIMIdentitiesResponse(PaginationResultMixin, ResponseModel):
     """Paginated response body for synced IM identity search."""
 
     data: list[IMIdentity] = Field(description="IM identities returned for the current page.")
-    has_more: bool = Field(description="Whether more pages are available after this one.")
-    limit: int = Field(description="Page size used for the current query.")
-    total: int = Field(description="Total number of IM identities matching the current query.")
-    page: int = Field(description="Current 1-based page number.")
 
 
 class SetContactIMOverrideRequest(_StrictModel):
     """Request body for setting one workspace-scoped IM override."""
 
-    identity_id: str = Field(description="Synced IM identity identifier selected as the workspace override.")
+    identity_id: IMIdentityId = Field(description="Synced IM identity identifier selected as the workspace override.")
 
 
 class SetContactIMOverrideResponse(ResponseModel):
@@ -395,10 +482,30 @@ class ResetContactIMOverrideResponse(ResponseModel):
     contact: HumanInputContact = Field(description="Contact snapshot after the override is cleared.")
 
 
+class CreateIMBindingRequest(_StrictModel):
+    """Request body for setting one workspace-scoped IM override."""
+
+    identity_id: IMIdentityId = Field(description="Synced IM identity identifier selected as the workspace override.")
+
+
+class CreateIMBindingResponse(ResponseModel):
+    """Response body returned after binding one IM identity to the workspace."""
+
+    contact: HumanInputContact = Field(description="Contact snapshot after the IM identity is bound.")
+
+
+class DeleteIMBindingQuery(_StrictModel):
+    binding_id: IMBindingId = Field(description="IM binding to unbind.")
+
+
+class DeleteIMBindingResponse(ResponseModel):
+    pass
+
+
 class MessageTemplateTestRequest(_StrictModel):
     """Request body for sending one message-template test notification."""
 
-    channel: DebugChannel = Field(description="Target debug delivery channel used for the test send.")
+    channel: Channel = Field(description="Target debug delivery channel used for the test send.")
     inputs: dict[str, JsonValue] = Field(
         default_factory=dict,
         description="Variable values used when rendering the message template preview.",
@@ -409,52 +516,11 @@ class MessageTemplateTestResponse(ResponseModel):
     """Response body returned after one message-template test send."""
 
 
-class FormPreviewRequest(_StrictModel):
-    """Request body for previewing one draft human-input form."""
-
-    inputs: dict[str, JsonValue] = Field(
-        default_factory=dict,
-        description="Values used to fill missing upstream variables referenced in the form template.",
-    )
-
-
-class FormPreviewResponse(ResponseModel):
-    """Response body returned by draft human-input preview APIs."""
-
-    form_id: str = Field(description="Preview form identifier.")
-    node_id: str = Field(description="Workflow node identifier.")
-    node_title: str = Field(description="Workflow node title shown in the editor.")
-    form_content: str = Field(description="Rendered preview form body.")
-    inputs: list[FormInputConfig] = Field(default_factory=list, description="Resolved preview input definitions.")
-    actions: list[UserActionConfig] = Field(default_factory=list, description="Available preview action buttons.")
-    display_in_ui: bool | None = Field(default=None, description="Whether the form is configured to display in UI.")
-    form_token: str | None = Field(default=None, description="Preview form token if one is generated.")
-    resolved_default_values: dict[str, JsonValue] = Field(
-        default_factory=dict,
-        description="Default values after variable resolution for the preview run.",
-    )
-    expiration_time: int | None = Field(default=None, description="Unix timestamp when the preview form expires.")
-
-
-class FormSubmitRequest(_StrictModel):
-    """Request body for submitting one human-input form."""
-
-    form_inputs: dict[str, JsonValue] = Field(description="Values provided for the form's own fields.")
-    inputs: dict[str, JsonValue] = Field(
-        description="Values used to fill missing upstream variables referenced in the form template.",
-    )
-    action: str = Field(description="Identifier of the selected action button.")
-
-
-class FormSubmitResponse(ResponseModel):
-    """Response body returned after one form submit succeeds."""
-
-
 class FormAccessRequestResponse(ResponseModel):
     """Response body returned after creating one OTP challenge."""
 
-    resend_after_seconds: int = Field(description="Seconds until the caller may request another OTP.")
     expires_in_seconds: int = Field(description="Seconds until the current OTP challenge expires.")
+    challenge_token: str = Field(description="The token used to complete the OTP challenge.")
 
 
 class FormDefinitionResponse(ResponseModel):
@@ -473,56 +539,41 @@ class FormDefinitionResponse(ResponseModel):
     expiration_time: int = Field(description="Unix timestamp when the current form expires.")
 
 
-class WebFormSubmitRequest(_StrictModel):
-    """Request body for submitting one public web human-input form."""
-
-    inputs: dict[str, JsonValue] = Field(description="Submitted form values keyed by output variable name.")
-    action: str = Field(description="Identifier of the selected action button.")
-    otp_code: str = Field(description="OTP code required by the public web submit flow.")
-
-
-class UploadTokenRequest(_StrictModel):
-    """Request body for issuing one upload token."""
-
-
-class UploadTokenResponse(ResponseModel):
-    """Response body returned after issuing one upload token."""
-
-    upload_token: str = Field(description="Temporary token used by subsequent human-input file upload requests.")
-    expires_at: int = Field(description="Unix timestamp when the upload token expires.")
-
-
 class ServiceFormQuery(_StrictModel):
     """Query params for reading one service-api human-input form."""
 
     user: str = Field(description="End-user identifier used to scope the service API request.")
 
 
-class ServiceFormSubmitRequest(_StrictModel):
-    """Request body for submitting one service-api human-input form."""
+class BatchGetContactsQuery(BaseModel):
+    contact_ids: list[ContactId] = Field(..., description="List of contact IDs to retrieve.")
 
-    user: str = Field(description="End-user identifier used to scope the service API request.")
-    inputs: dict[str, JsonValue] = Field(description="Submitted form values keyed by output variable name.")
-    action: str = Field(description="Identifier of the selected action button.")
+
+class BatchGetContactsResponse(PaginationResultMixin, ResponseModel):
+    data: list[HumanInputContactSummary] = Field(..., description="List of retrieved human input contacts.")
+
+
+class CreateNodeDataMigrationRequest(BaseModel):
+    node_data: HITLv1NoeData
+
+
+class CreateHITLMigrationResponse(ResponseModel):
+    node_data: HITLv2NodeData
 
 
 __all__ = [
     "AddPlatformContactsRequest",
     "AddPlatformContactsResponse",
     "ContactListQuery",
-    "ContactResponse",
-    "DebugChannel",
+    "CreateIMSyncRunResponse",
     "DingTalkIMIntegrationCredentials",
-    "ExternalContactRequest",
+    "ExternalContactCreateRequest",
+    "ExternalContactUpdateRequest",
     "FeishuIMIntegrationCredentials",
     "FormAccessRequestResponse",
     "FormDefinitionResponse",
-    "FormPreviewRequest",
-    "FormPreviewResponse",
-    "FormSubmitRequest",
-    "FormSubmitResponse",
     "GetIMIntegrationResponse",
-    "GetIMSyncRunResponse",
+    "GetLatestIMSyncRunResponse",
     "HumanInputContact",
     "HumanInputContactType",
     "IMIdentity",
@@ -531,27 +582,28 @@ __all__ = [
     "IMIntegrationCredentials",
     "IMIntegrationStatus",
     "IMProvider",
-    "IMSyncItem",
     "IMSyncReason",
+    "IMSyncResultItem",
+    "IMSyncResultType",
     "IMSyncRun",
+    "IMSyncRunResultCounts",
     "IMSyncRunStatus",
     "LarkIMIntegrationCredentials",
     "ListContactsResponse",
     "ListIMIdentitiesQuery",
     "ListIMIdentitiesResponse",
-    "ListIMSyncRunsQuery",
-    "ListIMSyncRunsResponse",
+    "ListLatestIMSyncRunResultsQuery",
+    "ListLatestIMSyncRunResultsResponse",
     "ListOrganizationCandidatesResponse",
+    "MSTeamsIMIntegrationCredentials",
     "MessageTemplateTestRequest",
     "MessageTemplateTestResponse",
-    "MSTeamsIMIntegrationCredentials",
     "OrganizationCandidate",
     "OrganizationCandidatesQuery",
     "RemoveContactsRequest",
     "RemoveContactsResponse",
     "ResetContactIMOverrideResponse",
     "ServiceFormQuery",
-    "ServiceFormSubmitRequest",
     "SetContactIMOverrideRequest",
     "SetContactIMOverrideResponse",
     "SlackIMIntegrationCredentials",
@@ -559,9 +611,5 @@ __all__ = [
     "TestIMIntegrationResponse",
     "UpdateIMIntegrationRequest",
     "UpdateIMIntegrationResponse",
-    "UploadTokenRequest",
-    "UploadTokenResponse",
-    "WebFormSubmitRequest",
     "WeComIMIntegrationCredentials",
-    "CreateIMSyncRunResponse",
 ]

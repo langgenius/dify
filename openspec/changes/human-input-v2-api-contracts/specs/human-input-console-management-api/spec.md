@@ -35,8 +35,8 @@
 - **WHEN** a workspace admin tries to include one `workspace contact` in `POST /console/api/workspaces/current/human-input/contacts/remove`
 - **THEN** 系统 MUST 拒绝该条目或整个请求，并 MUST 要求改走 membership management 流程，而 MUST NOT 在 Human Input Contact API 中额外引入 workspace member removal
 
-### Requirement: Workspace console MUST expose IM integration, sync, identity search, and override APIs
-系统 MUST 在 `/console/api/workspaces/current/human-input` 下提供 Organization 级 IM integration、manual sync、IM identity candidate 查询和 workspace IM override API。manual sync 结果 MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。
+### Requirement: Workspace console MUST expose IM integration, latest-run sync summary, paginated sync results, identity search, and override APIs
+系统 MUST 在 `/console/api/workspaces/current/human-input` 下提供 Organization 级 IM integration、manual sync、最近一次 sync run 的 summary、按 result 分页的最近一次 sync 结果查询，以及 IM identity candidate 查询和 workspace IM override API。manual sync 结果 MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。
 
 #### Scenario: 读取当前 IM integration 摘要
 - **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-integration`
@@ -46,9 +46,13 @@
 - **WHEN** a workspace owner or admin calls `POST /console/api/workspaces/current/human-input/im-sync-runs`
 - **THEN** 系统 MUST 创建一条新的 sync run，并返回 run identifier 与初始状态
 
-#### Scenario: 查看单次 sync detail
-- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/<sync_run_id>`
-- **THEN** 系统 MUST 返回该 run 的 `added / not_matched / failed / removed / skipped` 详情 bucket
+#### Scenario: 查看最近一次 sync run summary
+- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/latest`
+- **THEN** 系统 MUST 返回最近一次 sync run 的 summary，包括 run metadata 和五类 bucket 的 aggregate counts
+
+#### Scenario: 按 bucket 分页查看最近一次 sync result
+- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/latest/results?result=not_matched&page=1&limit=20`
+- **THEN** 系统 MUST 只返回最近一次 sync run 中 `not_matched` bucket 的结果条目分页，以及与该分页关联的 run summary
 
 #### Scenario: 为 contact 设置 workspace IM override
 - **WHEN** a workspace admin calls `PUT /console/api/workspaces/current/human-input/contacts/<contact_id>/im-override` with one synced identity

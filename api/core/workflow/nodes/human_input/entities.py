@@ -13,6 +13,7 @@ from typing import Annotated, Any, Literal, Self, assert_never, override
 
 from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_validator
 
+from core.workflow.human_input_adapter import DeliveryChannelConfig
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.file.enums import FileTransferMethod, FileType
@@ -372,3 +373,11 @@ def validate_human_input_submission(
         missing_list = ", ".join(missing_inputs)
         msg = f"Missing required inputs: {missing_list}"
         raise HumanInputSubmissionValidationError(msg)
+
+
+class HumanInputNodeDataFull(HumanInputNodeData):
+    # This model is the full definition of HumanInputNodeData.
+    #
+    # The model above lacks some fields due to migration between Graphon and Dify. This model
+    # seeves
+    delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list[DeliveryChannelConfig])

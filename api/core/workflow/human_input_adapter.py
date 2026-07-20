@@ -5,6 +5,8 @@ Dify-owned field spellings and value shapes. Adapt them here before handing the
 payload to Graphon so Graphon-owned models only see current contracts.
 """
 
+# TODO(QuantumGhost): This should be migrated back to human_input.HumanInputNodeData.
+
 from __future__ import annotations
 
 import enum

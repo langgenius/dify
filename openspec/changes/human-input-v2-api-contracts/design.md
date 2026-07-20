@@ -102,8 +102,8 @@ workspace console endpoint 收敛为三组，其中 `Platform contact` candidate
 | IM | `PUT` | `/console/api/workspaces/current/human-input/im-integration` | `WorkspaceHumanInputIMIntegrationApi` | 保存或更新 IM integration |
 | IM | `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | `WorkspaceHumanInputIMIntegrationTestApi` | 校验当前 provider credentials / callback / permission |
 | IM | `POST` | `/console/api/workspaces/current/human-input/im-sync-runs` | `WorkspaceHumanInputIMSyncRunsApi` | 手动触发一次 IM sync |
-| IM | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs` | `WorkspaceHumanInputIMSyncRunsApi` | 分页查询 sync run 列表 |
-| IM | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/<uuid:sync_run_id>` | `WorkspaceHumanInputIMSyncRunApi` | 查看单次 sync 的 `added / not_matched / failed / removed / skipped` 详情 |
+| IM | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest` | `WorkspaceHumanInputLatestIMSyncRunApi` | 读取最近一次 sync run 的 summary；若当前还没有任何 run，则返回 not-found |
+| IM | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest/results` | `WorkspaceHumanInputLatestIMSyncRunResultsApi` | 按 `result` 分页读取最近一次 sync run 的结果条目 |
 | IM | `GET` | `/console/api/workspaces/current/human-input/im-identities` | `WorkspaceHumanInputIMIdentitiesApi` | 搜索可供 contact 绑定或 override 的已同步 IM identity |
 | IM | `PUT` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override` | `WorkspaceHumanInputContactIMOverrideApi` | 绑定或替换当前 workspace 的 IM override |
 | IM | `DELETE` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override` | `WorkspaceHumanInputContactIMOverrideApi` | Reset to global |
@@ -173,9 +173,9 @@ EE 这次只新增 org-level IM integration 与 manual sync protobuf / `google.a
 | `PUT` | `/v1/dashboard/api/human-input/im-integration` | `UpsertHumanInputIMIntegration` | 保存或更新 IM channel credentials |
 | `DELETE` | `/v1/dashboard/api/human-input/im-integration` | `DeleteHumanInputIMIntegration` | 清空当前 IM integration |
 | `POST` | `/v1/dashboard/api/human-input/im-integration/test` | `TestHumanInputIMIntegration` | 执行连接 / callback / permission test |
-| `POST` | `/v1/dashboard/api/human-input/im-sync-runs` | `CreateHumanInputIMSyncRun` | 手动触发 sync |
-| `GET` | `/v1/dashboard/api/human-input/im-sync-runs` | `ListHumanInputIMSyncRuns` | 查看 sync run 列表 |
-| `GET` | `/v1/dashboard/api/human-input/im-sync-runs/{id}` | `GetHumanInputIMSyncRun` | 查看单次 sync 详情 |
+| `POST` | `/v1/dashboard/api/human-input/im-sync-runs` | `CreateIMSyncRun` | 手动触发 sync |
+| `GET` | `/v1/dashboard/api/human-input/im-sync-runs/latest` | `GetLatestIMSyncRun` | 读取最近一次 sync run 的 summary |
+| `GET` | `/v1/dashboard/api/human-input/im-sync-runs/latest/results` | `ListLatestIMSyncRunResults` | 按 `result` 分页读取最近一次 sync run 的结果条目 |
 
 EE workspace console 搜索当前 workspace 之外的 `organization contact` 并把它们投影成 `Platform contact` 时，应继续复用 enterprise 侧已有 member / workspace API，而不是在 Human Input 侧复制一套新的成员 CRUD。
 

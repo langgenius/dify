@@ -1,8 +1,8 @@
 import enum
 from collections.abc import Sequence
-from typing import Annotated, Literal
+from typing import Annotated, Final, Literal
 
-from pydantic import BaseModel, Discriminator, Field
+from pydantic import AfterValidator, BaseModel, Discriminator, Field
 
 from core.workflow.nodes.human_input.entities import FormInputConfig, TimeoutUnit, UserActionConfig
 from graphon.entities.base_node_data import BaseNodeData
@@ -55,7 +55,7 @@ class IMProvider(enum.StrEnum):
     LARK = enum.auto()
 
 
-class DebugChannel(enum.StrEnum):
+class Channel(enum.StrEnum):
     EMAIL = enum.auto()
     FEISHU = IMProvider.FEISHU.value
     SLACK = IMProvider.SLACK.value
@@ -67,13 +67,23 @@ class DebugChannel(enum.StrEnum):
 
 class DebugModeConfig(BaseModel):
     enabled: bool = False
-    channels: Sequence[DebugChannel]
+    channels: Sequence[Channel]
+
+
+HUMAN_INPUT_V2_VERSION: Final = "2"
+
+
+def _version_validator(version: str) -> str:
+    if version != HUMAN_INPUT_V2_VERSION:
+        raise ValueError(f"Human Input v2 requires version='{HUMAN_INPUT_V2_VERSION}'")
+    return version
 
 
 class HumanInputNodeData(BaseNodeData):
     """Human Input node data."""
 
     type: NodeType = BuiltinNodeTypes.HUMAN_INPUT
+    version: Annotated[str, AfterValidator(_version_validator)] = HUMAN_INPUT_V2_VERSION
 
     recipients_spec: list[RecipientConfig]
 
