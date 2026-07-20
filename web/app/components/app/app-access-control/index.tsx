@@ -17,7 +17,7 @@ import AccessControlItem from './access-control-item'
 import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
 
 type AccessControlProps = {
-  app: App
+  app: Pick<App, 'id' | 'access_mode'>
   onClose: () => void
   onConfirm?: () => void
 }

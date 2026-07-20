@@ -74,14 +74,14 @@ const OPERATION_ICON_MAP: Record<OverviewOperationKey, OperationIcon> = {
   develop: RiBookOpenLine,
 }
 
-const ACCESS_MODE_ICON_MAP: Record<AccessMode, OperationIcon> = {
+export const ACCESS_MODE_ICON_MAP: Record<AccessMode, OperationIcon> = {
   [AccessMode.ORGANIZATION]: RiBuildingLine,
   [AccessMode.SPECIFIC_GROUPS_MEMBERS]: RiLockLine,
   [AccessMode.PUBLIC]: RiGlobalLine,
   [AccessMode.EXTERNAL_MEMBERS]: RiVerifiedBadgeLine,
 }
 
-const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
+export const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
   [AccessMode.ORGANIZATION]: ($) => $['accessControlDialog.accessItems.organization'],
   [AccessMode.SPECIFIC_GROUPS_MEMBERS]: ($) => $['accessControlDialog.accessItems.specific'],
   [AccessMode.PUBLIC]: ($) => $['accessControlDialog.accessItems.anyone'],
