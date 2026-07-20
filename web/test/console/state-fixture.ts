@@ -27,6 +27,7 @@ export type ConsoleStateFixture = {
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
   datasetRbacEnabled?: boolean
+  knowledgeFsEnabled?: boolean
   langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
   refreshUserProfile?: () => void
   refreshCurrentWorkspace?: () => void
@@ -135,6 +136,7 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
   store.set(systemFeaturesAtom, {
     ...defaultSystemFeatures,
     rbac_enabled: state.datasetRbacEnabled ?? false,
+    knowledge_fs_enabled: state.knowledgeFsEnabled ?? false,
   })
   store.set(langGeniusVersionInfoAtom, {
     ...defaultLangGeniusVersionInfo,
@@ -207,6 +209,7 @@ export const createPermissionStateModuleMock = (getState: ConsoleStateFixtureRes
 export const createSystemFeaturesStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
   registerConsoleStateFixture('systemFeatures', () => ({
     datasetRbacEnabled: getState().datasetRbacEnabled,
+    knowledgeFsEnabled: getState().knowledgeFsEnabled,
   }))
   return {
     systemFeaturesAtom,

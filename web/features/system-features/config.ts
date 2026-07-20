@@ -59,6 +59,7 @@ export const defaultSystemFeatures = {
   enable_explore_banner: false,
   enable_learn_app: true,
   enable_step_by_step_tour: false,
+  knowledge_fs_enabled: false,
 } satisfies GetSystemFeaturesResponse
 
 export const cloudSystemFeatures = {
@@ -75,6 +76,7 @@ export const cloudSystemFeatures = {
   is_allow_create_workspace: env.NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE,
   is_email_setup: env.NEXT_PUBLIC_IS_EMAIL_SETUP,
   enable_change_email: env.NEXT_PUBLIC_ENABLE_CHANGE_EMAIL,
+  knowledge_fs_enabled: env.NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED,
 
   license: {
     ...defaultSystemFeatures.license,

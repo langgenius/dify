@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -37,6 +38,7 @@ type Props = {
   stepByStepTourCreateMenuHighlightPart?: string
   stepByStepTourCreateMenuOpen?: boolean
   stepByStepTourCreateMenuTarget?: string
+  viewSwitcher?: ReactNode
 }
 
 const DatasetListHeader = ({
@@ -58,6 +60,7 @@ const DatasetListHeader = ({
   stepByStepTourCreateMenuHighlightPart,
   stepByStepTourCreateMenuOpen,
   stepByStepTourCreateMenuTarget,
+  viewSwitcher,
 }: Props) => {
   const { t } = useTranslation()
   const showCreateMenu = canCreateDataset || canConnectExternalDataset
@@ -68,9 +71,11 @@ const DatasetListHeader = ({
   return (
     <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
       <div className="flex h-6 w-full items-center gap-2">
-        <h1 className="min-w-0 flex-1 text-[18px]/[21.6px] font-semibold text-text-primary">
+        <h1 className="min-w-0 text-[18px]/[21.6px] font-semibold text-text-primary">
           {t(($) => $.knowledge, { ns: 'dataset' })}
         </h1>
+        {viewSwitcher}
+        <div className="min-w-0 flex-1" />
         <div className="flex shrink-0 items-center gap-2">
           {canConnectExternalDataset && (
             <button

@@ -1,8 +1,19 @@
 'use client'
 
+// Libraries
+import type { ReactNode } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { useAtomValue, useSetAtom } from 'jotai'
-// Libraries
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -17,7 +28,13 @@ import {
 } from '@/app/components/step-by-step-tour/target-registry'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { systemFeaturesAtom } from '@/context/system-features-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import { NewKnowledgeList } from '@/features/new-rag/new-knowledge-list'
+import {
+  useNewKnowledgeGuideDismissedValue,
+  useSetNewKnowledgeGuideDismissed,
+} from '@/features/new-rag/storage'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
@@ -34,7 +51,11 @@ import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
 
-const List = () => {
+type LegacyListProps = {
+  viewSwitcher?: ReactNode
+}
+
+const LegacyList = ({ viewSwitcher }: LegacyListProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
@@ -160,6 +181,7 @@ const List = () => {
             stepByStepTourCreateMenuHighlightPart={
               STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
             }
+            viewSwitcher={viewSwitcher}
           />
           <DatasetFirstEmptyState
             canConnectExternalDataset={canConnectExternalDataset}
@@ -191,6 +213,7 @@ const List = () => {
             stepByStepTourCreateMenuHighlightPart={
               STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
             }
+            viewSwitcher={viewSwitcher}
           />
           <Datasets
             datasetList={datasetListQuery.data}
@@ -230,6 +253,120 @@ const List = () => {
       )}
     </div>
   )
+}
+
+const knowledgeViewParser = parseAsStringLiteral(['legacy', 'new']).withDefault('legacy')
+const KnowledgeViewSwitcher = ({
+  value,
+  onChange,
+}: {
+  value: 'legacy' | 'new'
+  onChange: (value: 'legacy' | 'new') => void
+}) => {
+  const { t } = useTranslation('dataset')
+  const guideDismissed = useNewKnowledgeGuideDismissedValue()
+  const setGuideDismissed = useSetNewKnowledgeGuideDismissed()
+  const [guideOpen, setGuideOpen] = useState(!guideDismissed)
+
+  const dismissGuide = () => {
+    setGuideDismissed(true)
+    setGuideOpen(false)
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <SegmentedControl
+        className="rounded-md p-px"
+        aria-label={t(($) => $['newKnowledge.viewLabel'])}
+        value={[value]}
+        onValueChange={(values) => {
+          const nextValue = values[0]
+          if (nextValue === 'legacy' || nextValue === 'new') onChange(nextValue)
+        }}
+      >
+        <SegmentedControlItem
+          className="h-[22px] rounded-md px-1 py-px system-xs-medium"
+          value="legacy"
+        >
+          {t(($) => $['newKnowledge.legacy'])}
+        </SegmentedControlItem>
+        <SegmentedControlItem
+          className="h-[22px] rounded-md py-px pr-5 pl-1 system-xs-medium"
+          value="new"
+        >
+          {t(($) => $['newKnowledge.new'])}
+        </SegmentedControlItem>
+      </SegmentedControl>
+      <Popover open={guideOpen} onOpenChange={setGuideOpen}>
+        <PopoverTrigger
+          aria-label={t(($) => $['newKnowledge.guideTitle'])}
+          render={
+            <button
+              type="button"
+              className="absolute top-[5px] right-1 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            >
+              <span aria-hidden className="i-ri-question-line size-3.5" />
+            </button>
+          }
+        />
+        <PopoverContent
+          placement="bottom"
+          sideOffset={13}
+          popupClassName="relative h-[162px] w-80 px-4 pt-3.5 pb-4"
+        >
+          <span
+            aria-hidden
+            className="absolute -top-[9.59px] left-1/2 flex size-[19.456px] -translate-x-1/2 items-center justify-center"
+          >
+            <span className="size-[13.757px] -rotate-45 rounded-tr-[2px] border-t border-r border-divider-subtle bg-components-panel-bg" />
+          </span>
+          <PopoverTitle className="system-md-medium text-text-primary">
+            {t(($) => $['newKnowledge.guideTitle'])}
+          </PopoverTitle>
+          <PopoverDescription className="mt-2 system-sm-regular text-text-secondary">
+            {t(($) => $['newKnowledge.guideDescription'])}
+          </PopoverDescription>
+          <div className="flex items-center justify-end gap-3 pt-3">
+            <a
+              href="https://docs.dify.ai/en/guides/knowledge-base"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-sm system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            >
+              {t(($) => $['newKnowledge.learnMore'])}
+            </a>
+            <Button variant="primary" size="small" onClick={dismissGuide}>
+              {t(($) => $['newKnowledge.gotIt'])}
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
+const KnowledgeFsList = () => {
+  const [view, setView] = useQueryState('view', knowledgeViewParser)
+  const viewSwitcher = (
+    <KnowledgeViewSwitcher
+      value={view}
+      onChange={(nextView) => {
+        void setView(nextView)
+      }}
+    />
+  )
+
+  if (view === 'new') return <NewKnowledgeList viewSwitcher={viewSwitcher} />
+
+  return <LegacyList viewSwitcher={viewSwitcher} />
+}
+
+const List = () => {
+  const { knowledge_fs_enabled: knowledgeFsEnabled } = useAtomValue(systemFeaturesAtom)
+
+  if (!knowledgeFsEnabled) return <LegacyList />
+
+  return <KnowledgeFsList />
 }
 
 export default List

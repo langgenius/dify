@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@/test/console/render'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import List from '../index'
 
 const mockPush = vi.fn()
@@ -10,6 +11,7 @@ let mockConsoleState = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
+  knowledgeFsEnabled: false,
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
 }
 vi.mock('@/next/navigation', () => ({
@@ -175,10 +177,12 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
+    localStorage.clear()
     mockConsoleState = {
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: true,
+      knowledgeFsEnabled: false,
       workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     }
     const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -207,11 +211,45 @@ describe('List', () => {
       expect(screen.getByText(/externalAPIPanelTitle/)).toBeInTheDocument()
     })
 
+    it('should show the Legacy and New views when KnowledgeFS is enabled', () => {
+      mockConsoleState.knowledgeFsEnabled = true
+
+      renderWithNuqs(<List />)
+
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.legacy' }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
+    })
+
+    it('should show the first-visit guide once and remember dismissal', async () => {
+      mockConsoleState.knowledgeFsEnabled = true
+      const firstRender = renderWithNuqs(<List />)
+
+      const guide = await screen.findByRole('dialog', {
+        name: 'dataset.newKnowledge.guideTitle',
+      })
+      fireEvent.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
+      firstRender.unmount()
+
+      renderWithNuqs(<List />)
+
+      expect(
+        screen.queryByRole('dialog', { name: 'dataset.newKnowledge.guideTitle' }),
+      ).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.guideTitle' }))
+      expect(
+        await screen.findByRole('dialog', { name: 'dataset.newKnowledge.guideTitle' }),
+      ).toBeInTheDocument()
+    })
+
     it('should hide external API panel button without dataset.external.connect', () => {
       mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
 
@@ -323,6 +361,7 @@ describe('List', () => {
         isCurrentWorkspaceEditor: false,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -347,6 +386,7 @@ describe('List', () => {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: [],
       }
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -460,6 +500,7 @@ describe('List', () => {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
       vi.doMock('@/context/external-api-panel-context', () => ({
@@ -508,6 +549,7 @@ describe('List', () => {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
       }
 

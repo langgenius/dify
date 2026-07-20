@@ -22,6 +22,7 @@ from controllers.console.knowledge_fs_proxy import (
     _proxy_request,
     _proxy_response,
     proxy_knowledge_fs_get,
+    proxy_knowledge_fs_options,
     proxy_knowledge_fs_write,
 )
 from controllers.console.wraps import RBACPermission
@@ -118,8 +119,18 @@ def test_console_blueprint_registers_generic_knowledge_fs_routes() -> None:
         "/console/api/knowledge-fs/knowledge-spaces",
         method="OPTIONS",
     )
-    assert options_endpoint.endswith("proxy_knowledge_fs_get")
+    assert options_endpoint.endswith("proxy_knowledge_fs_options")
     assert options_values == {"upstream_path": "knowledge-spaces"}
+
+
+def test_proxy_options_does_not_require_an_authenticated_account(app: Flask) -> None:
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces",
+        method="OPTIONS",
+    ):
+        response = app.make_response(proxy_knowledge_fs_options("knowledge-spaces"))
+
+    assert response.status_code == 204
 
 
 def test_proxy_is_hidden_when_knowledge_fs_is_disabled(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

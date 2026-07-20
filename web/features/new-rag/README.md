@@ -1,0 +1,18 @@
+# New RAG
+
+Renders the KnowledgeFS-backed knowledge list, creation entry points, and first-visit guidance.
+
+## Internal Modules
+
+- `storage`
+
+## External Modules
+
+- `app/components/base/search-input`
+- `app/components/base/skeleton`
+- `app/components/datasets/external-api/external-api-panel`
+- `app/components/datasets/extra-info/service-api`
+- `context/external-api-panel-context`
+- `context/permission-state`
+- `service/knowledge/use-dataset`
+- `utils/permission`

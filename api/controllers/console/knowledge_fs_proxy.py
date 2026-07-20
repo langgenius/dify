@@ -287,7 +287,17 @@ def _proxy_knowledge_fs_non_get(
 
 @bp.route(
     "/knowledge-fs/<path:upstream_path>",
-    methods=["GET", "OPTIONS"],
+    methods=["OPTIONS"],
+    provide_automatic_options=False,
+)
+def proxy_knowledge_fs_options(upstream_path: str) -> ResponseReturnValue:
+    """Complete a CORS preflight without entering account authorization."""
+    return Response(status=HTTPStatus.NO_CONTENT)
+
+
+@bp.route(
+    "/knowledge-fs/<path:upstream_path>",
+    methods=["GET"],
     provide_automatic_options=False,
 )
 @_console_api_errors
