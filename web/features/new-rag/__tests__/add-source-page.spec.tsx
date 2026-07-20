@@ -418,6 +418,29 @@ describe('AddSourcePage', () => {
     )
   })
 
+  it('does not regress the current version when reconciliation reads a stale replica', async () => {
+    const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('error', 3)] }] }
+    clientMock.refreshConnection
+      .mockRejectedValueOnce(new Error('response lost'))
+      .mockResolvedValueOnce(connection('active', 4))
+    queryState.connections.refetch.mockResolvedValue({
+      data: { pages: [{ items: [connection('error', 2)] }] },
+    })
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(queryState.connections.refetch).toHaveBeenCalledOnce())
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() =>
+      expect(clientMock.refreshConnection).toHaveBeenLastCalledWith({
+        body: { expectedVersion: 3 },
+        params: { connectionId: 'connection-1', id: 'space-1' },
+      }),
+    )
+  })
+
   it('lets a newer remote connection version replace a local mutation response', async () => {
     const user = userEvent.setup()
     queryState.connections.data = { pages: [{ items: [connection('error')] }] }

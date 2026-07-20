@@ -64,7 +64,10 @@ function findProviderConnection(connections: Connection[], providerId?: string) 
 
 function findConnectionById(connections: Connection[], connectionId: string) {
   return [...connections.filter((connection) => connection.id === connectionId)].sort(
-    (left, right) => right.version - left.version || right.updatedAt.localeCompare(left.updatedAt),
+    (left, right) =>
+      right.version - left.version ||
+      right.updatedAt.localeCompare(left.updatedAt) ||
+      CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status],
   )[0]
 }
 
@@ -647,8 +650,13 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     if (connection) setConnectionOverride(connection)
     const refreshed = await refetchConnections()
     const refreshedConnections = refreshed.data?.pages.flatMap((page) => page.items) ?? []
-    const updatedConnection = connection
+    const refreshedCurrentConnection = connection
       ? findConnectionById(refreshedConnections, connection.id)
+      : undefined
+    const updatedConnection = connection
+      ? refreshedCurrentConnection
+        ? findConnectionById([connection, refreshedCurrentConnection], connection.id)
+        : undefined
       : findProviderConnection(refreshedConnections, provider?.id)
     if (updatedConnection) setConnectionOverride(updatedConnection)
     return updatedConnection
