@@ -14,6 +14,7 @@
   "agentDetail.access.title": "एक्सेस पॉइंट",
   "agentDetail.access.toggleSurface": "{{name}} एक्सेस टॉगल करें",
   "agentDetail.access.webApp.accessUrl": "एक्सेस URL",
+  "agentDetail.access.webApp.actions.accessControl": "पहुँच नियंत्रण",
   "agentDetail.access.webApp.actions.customize": "कस्टम फ्रंटएंड",
   "agentDetail.access.webApp.actions.embedded": "एम्बेडेड",
   "agentDetail.access.webApp.actions.launch": "लॉन्च करें",
