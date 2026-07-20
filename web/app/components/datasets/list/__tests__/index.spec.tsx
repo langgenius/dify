@@ -1,9 +1,21 @@
 import type { ReactNode } from 'react'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createStore, Provider } from 'jotai'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/storage'
 import { render } from '@/test/console/render'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { createNuqsTestWrapper, renderWithNuqs } from '@/test/nuqs-testing'
 import List from '../index'
+
+function NewKnowledgeGuideDismissedProbe() {
+  const dismissed = useNewKnowledgeGuideDismissedValue()
+
+  return <output aria-label="new knowledge guide dismissed">{String(dismissed)}</output>
+}
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -223,13 +235,14 @@ describe('List', () => {
     })
 
     it('should show the first-visit guide once and remember dismissal', async () => {
+      const user = userEvent.setup()
       mockConsoleState.knowledgeFsEnabled = true
       const firstRender = renderWithNuqs(<List />)
 
       const guide = await screen.findByRole('dialog', {
         name: 'dataset.newKnowledge.guideTitle',
       })
-      fireEvent.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
+      await user.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
       firstRender.unmount()
 
       renderWithNuqs(<List />)
@@ -238,10 +251,55 @@ describe('List', () => {
         screen.queryByRole('dialog', { name: 'dataset.newKnowledge.guideTitle' }),
       ).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.guideTitle' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.guideTitle' }))
       expect(
         await screen.findByRole('dialog', { name: 'dataset.newKnowledge.guideTitle' }),
       ).toBeInTheDocument()
+    })
+
+    it('should keep a dismissed guide closed after hydrating a full page reload', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const firstRender = renderWithNuqs(<List />)
+      const guide = await screen.findByRole('dialog', {
+        name: 'dataset.newKnowledge.guideTitle',
+      })
+      await user.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
+      firstRender.unmount()
+
+      const store = createStore()
+      seedRegisteredConsoleStateFixture(store)
+      const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+      const app = (
+        <Provider store={store}>
+          <NuqsWrapper>
+            <>
+              <List />
+              <NewKnowledgeGuideDismissedProbe />
+            </>
+          </NuqsWrapper>
+        </Provider>
+      )
+      const container = document.createElement('div')
+      document.body.append(container)
+      container.innerHTML = renderToString(app)
+      const root = hydrateRoot(container, app)
+
+      try {
+        await waitFor(() => {
+          expect(
+            screen.getByRole('status', { name: 'new knowledge guide dismissed' }),
+          ).toHaveTextContent('true')
+        })
+        await waitFor(() => {
+          expect(
+            screen.getByRole('button', { name: 'dataset.newKnowledge.guideTitle' }),
+          ).toHaveAttribute('aria-expanded', 'false')
+        })
+      } finally {
+        act(() => root.unmount())
+        container.remove()
+      }
     })
 
     it('should hide external API panel button without dataset.external.connect', () => {

@@ -1,11 +1,10 @@
 import type { KnowledgeSpaceList } from '@dify/contracts/knowledge-fs/types.gen'
 import type { InfiniteData } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { NewKnowledgeList } from '../new-knowledge-list'
 
-const routerPushMock = vi.hoisted(() => vi.fn())
 const externalApiPanelMock = vi.hoisted(() => ({
   open: false,
   setOpen: vi.fn(),
@@ -25,10 +24,6 @@ const queryMock = vi.hoisted(() => ({
 const permissionStateMock = vi.hoisted(() => ({
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
   workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: routerPushMock }),
 }))
 
 vi.mock('@/context/external-api-panel-context', () => ({
@@ -115,7 +110,7 @@ describe('NewKnowledgeList', () => {
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
   })
 
-  it('renders only real knowledge-space metadata and filters with URL-backed search', async () => {
+  it('renders real knowledge spaces as unavailable until the detail contract is supported', () => {
     setResolvedPage([
       {
         createdAt: '2026-07-15T00:00:00Z',
@@ -138,29 +133,27 @@ describe('NewKnowledgeList', () => {
       },
     ])
 
-    const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
     const list = screen.getByRole('list', { name: 'dataset.knowledge' })
-    expect(within(list).getByText('Support knowledge')).toBeInTheDocument()
-    expect(within(list).getByText('Engineering handbook')).toBeInTheDocument()
+    expect(
+      within(list).getByRole('article', {
+        name: 'Support knowledge. dataset.cornerLabel.unavailable',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(list).getByRole('article', {
+        name: 'Engineering handbook. dataset.cornerLabel.unavailable',
+      }),
+    ).toBeInTheDocument()
     expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
     expect(within(list).getByText('dataset.newKnowledge.noDescription')).toBeInTheDocument()
-    expect(within(list).queryByText('dataset.chunkingMode.general')).not.toBeInTheDocument()
-    expect(within(list).queryByText('support')).not.toBeInTheDocument()
-    expect(within(list).queryByText('knowledge')).not.toBeInTheDocument()
-    expect(within(list).queryByText('—')).not.toBeInTheDocument()
-
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'support' } })
-
-    expect(within(list).getByText('Support knowledge')).toBeInTheDocument()
-    expect(within(list).queryByText('Engineering handbook')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(onUrlUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ searchParams: expect.any(URLSearchParams) }),
-      )
-    })
+    expect(within(list).getAllByText('dataset.newKnowledge.documentsUnavailable')).toHaveLength(2)
+    expect(within(list).getAllByText('dataset.newKnowledge.appsUnavailable')).toHaveLength(2)
+    expect(within(list).queryByRole('link')).not.toBeInTheDocument()
+    expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('renders unsupported metadata filters as disabled controls', async () => {
+  it('disables unsupported collection search and metadata filters with an accessible reason', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
@@ -180,29 +173,63 @@ describe('NewKnowledgeList', () => {
     expect(externalApiPanelMock.setOpen).toHaveBeenCalledWith(true)
     expect(screen.getByRole('button', { name: 'dataset.serviceApi.title' })).toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.tags' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' })).toBeDisabled()
+    const tags = screen.getByRole('button', { name: 'dataset.newKnowledge.tags' })
+    const creators = screen.getByRole('button', { name: 'dataset.newKnowledge.creators' })
+    const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
+    const create = screen.getByRole('button', { name: 'common.operation.create' })
+
+    expect(tags).toBeDisabled()
+    expect(tags).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
+    expect(creators).toBeDisabled()
+    expect(creators).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
+    expect(search).toBeDisabled()
+    expect(search).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
+    expect(create).toBeDisabled()
+    expect(create).toHaveAccessibleDescription('dataset.cornerLabel.unavailable')
+
+    const filterReason = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.filtersUnavailable',
+    })
+    await user.click(filterReason)
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'dataset.newKnowledge.filtersUnavailable',
+      }),
+    ).toBeInTheDocument()
   })
 
-  it('shows the three empty-state creation entries to authorized users', () => {
+  it('shows unavailable empty-state creation entries to authorized users', () => {
     setResolvedPage()
 
     renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
 
-    expect(
-      screen.getByRole('button', { name: /^dataset\.newKnowledge\.connectSource / }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /^dataset\.newKnowledge\.uploadFiles / }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /^dataset\.newKnowledge\.startEmpty / }),
-    ).toBeInTheDocument()
+    const connectSource = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.connectSource',
+    })
+    const uploadFiles = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.uploadFiles',
+    })
+    const startEmpty = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.startEmpty',
+    })
+
+    expect(connectSource).toBeDisabled()
+    expect(connectSource).toHaveAccessibleDescription(
+      'dataset.newKnowledge.connectSourceDescription dataset.cornerLabel.unavailable dataset.firstEmpty.recommended',
+    )
+    expect(uploadFiles).toBeDisabled()
+    expect(uploadFiles).toHaveAccessibleDescription(
+      'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
+    )
+    expect(startEmpty).toBeDisabled()
+    expect(startEmpty).toHaveAccessibleDescription(
+      'dataset.newKnowledge.startEmptyDescription dataset.cornerLabel.unavailable',
+    )
     expect(screen.getByText('dataset.newKnowledge.connectSourceDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.uploadFilesDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.startEmptyDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.firstEmpty.recommended')).toBeInTheDocument()
-    expect(screen.getAllByTestId('empty-knowledge-card')).toHaveLength(16)
+    expect(screen.queryByTestId('empty-knowledge-card')).not.toBeInTheDocument()
   })
 
   it('hides creation entries from read-only users', () => {
@@ -212,12 +239,16 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
 
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.startEmpty' }),
+      screen.queryByRole('button', { name: /^dataset\.newKnowledge\.startEmpty/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /common\.operation\.create/ }),
     ).not.toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.readOnlyEmpty')).toBeInTheDocument()
   })
 
-  it('distinguishes an unavailable integration from a retryable list error', () => {
+  it('distinguishes an unavailable integration from a retryable list error', async () => {
+    const user = userEvent.setup()
     queryMock.error = { data: { status: 503 } }
     const { rerender } = renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
 
@@ -227,11 +258,12 @@ describe('NewKnowledgeList', () => {
     rerender(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
 
     expect(screen.getByText('dataset.newKnowledge.errorTitle')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(queryMock.refetch).toHaveBeenCalledOnce()
   })
 
-  it('shows one retry action when loading the next page fails', () => {
+  it('shows one retry action when loading the next page fails', async () => {
+    const user = userEvent.setup()
     setResolvedPage([
       {
         createdAt: '2026-07-15T00:00:00Z',
@@ -247,7 +279,31 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
+  it('keeps full collection pagination available while collection search is disabled', async () => {
+    const user = userEvent.setup()
+    setResolvedPage([
+      {
+        createdAt: '2026-07-15T00:00:00Z',
+        id: 'space-1',
+        name: 'Support knowledge',
+        revision: 1,
+        slug: 'support-knowledge',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-07-18T00:00:00Z',
+      },
+    ])
+    queryMock.hasNextPage = true
+
+    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />, {
+      searchParams: '?q=missing',
+    })
+
+    expect(screen.getByText('Support knowledge')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
     expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
   })
 })

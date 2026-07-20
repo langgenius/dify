@@ -266,11 +266,12 @@ const KnowledgeViewSwitcher = ({
   const { t } = useTranslation('dataset')
   const guideDismissed = useNewKnowledgeGuideDismissedValue()
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()
-  const [guideOpen, setGuideOpen] = useState(!guideDismissed)
+  const [guideOpenOverride, setGuideOpenOverride] = useState<boolean | null>(null)
+  const guideOpen = guideOpenOverride ?? !guideDismissed
 
   const dismissGuide = () => {
     setGuideDismissed(true)
-    setGuideOpen(false)
+    setGuideOpenOverride(false)
   }
 
   return (
@@ -297,7 +298,7 @@ const KnowledgeViewSwitcher = ({
           {t(($) => $['newKnowledge.new'])}
         </SegmentedControlItem>
       </SegmentedControl>
-      <Popover open={guideOpen} onOpenChange={setGuideOpen}>
+      <Popover open={guideOpen} onOpenChange={setGuideOpenOverride}>
         <PopoverTrigger
           aria-label={t(($) => $['newKnowledge.guideTitle'])}
           render={
@@ -312,7 +313,7 @@ const KnowledgeViewSwitcher = ({
         <PopoverContent
           placement="bottom"
           sideOffset={13}
-          popupClassName="relative h-[162px] w-80 px-4 pt-3.5 pb-4"
+          popupClassName="relative flex max-h-[calc(100dvh-2rem)] min-h-[162px] w-80 max-w-[calc(100vw-2rem)] flex-col"
         >
           <span
             aria-hidden
@@ -320,24 +321,26 @@ const KnowledgeViewSwitcher = ({
           >
             <span className="size-[13.757px] -rotate-45 rounded-tr-[2px] border-t border-r border-divider-subtle bg-components-panel-bg" />
           </span>
-          <PopoverTitle className="system-md-medium text-text-primary">
-            {t(($) => $['newKnowledge.guideTitle'])}
-          </PopoverTitle>
-          <PopoverDescription className="mt-2 system-sm-regular text-text-secondary">
-            {t(($) => $['newKnowledge.guideDescription'])}
-          </PopoverDescription>
-          <div className="flex items-center justify-end gap-3 pt-3">
-            <a
-              href="https://docs.dify.ai/en/guides/knowledge-base"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-sm system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              {t(($) => $['newKnowledge.learnMore'])}
-            </a>
-            <Button variant="primary" size="small" onClick={dismissGuide}>
-              {t(($) => $['newKnowledge.gotIt'])}
-            </Button>
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3.5 pb-4">
+            <PopoverTitle className="system-md-medium text-text-primary">
+              {t(($) => $['newKnowledge.guideTitle'])}
+            </PopoverTitle>
+            <PopoverDescription className="mt-2 system-sm-regular text-text-secondary">
+              {t(($) => $['newKnowledge.guideDescription'])}
+            </PopoverDescription>
+            <div className="mt-auto flex flex-wrap items-center justify-end gap-3 pt-3">
+              <a
+                href="https://docs.dify.ai/en/guides/knowledge-base"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-sm system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              >
+                {t(($) => $['newKnowledge.learnMore'])}
+              </a>
+              <Button variant="primary" size="small" onClick={dismissGuide}>
+                {t(($) => $['newKnowledge.gotIt'])}
+              </Button>
+            </div>
           </div>
         </PopoverContent>
       </Popover>
