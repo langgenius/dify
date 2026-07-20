@@ -76,6 +76,11 @@ class StorageConfig(BaseSettings):
         default=cast(_VALID_STORAGE_TYPE, "opendal"),
     )
 
+    STORAGE_PATH_PREFIX: str = Field(
+        description="Global path prefix prepended to all storage object keys.",
+        default="",
+    )
+
     STORAGE_LOCAL_PATH: str = Field(
         description="Path for local storage when STORAGE_TYPE is set to 'local'.",
         default="storage",

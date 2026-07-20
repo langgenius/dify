@@ -1,4 +1,5 @@
 import logging
+import posixpath
 from collections.abc import Callable, Generator
 from typing import Literal, Union, overload
 
@@ -17,6 +18,15 @@ class Storage:
         storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
         with app.app_context():
             self.storage_runner = storage_factory()
+            prefix = dify_config.STORAGE_PATH_PREFIX.strip("/") if dify_config.STORAGE_PATH_PREFIX else ""
+            if prefix and ".." in prefix.split("/"):
+                raise ValueError(f"STORAGE_PATH_PREFIX must not contain '..': {dify_config.STORAGE_PATH_PREFIX}")
+            self._path_prefix = prefix
+
+    def _prefix(self, filename: str) -> str:
+        if not self._path_prefix:
+            return filename
+        return posixpath.join(self._path_prefix, filename)
 
     @staticmethod
     def get_storage_factory(storage_type: str) -> Callable[[], BaseStorage]:
@@ -86,7 +96,7 @@ class Storage:
                 raise ValueError(f"unsupported storage type {storage_type}")
 
     def save(self, filename: str, data: bytes):
-        self.storage_runner.save(filename, data)
+        self.storage_runner.save(self._prefix(filename), data)
 
     @overload
     def load(self, filename: str, /, *, stream: Literal[False] = False) -> bytes: ...
@@ -105,22 +115,26 @@ class Storage:
             return self.load_once(filename)
 
     def load_once(self, filename: str) -> bytes:
-        return self.storage_runner.load_once(filename)
+        return self.storage_runner.load_once(self._prefix(filename))
 
     def load_stream(self, filename: str) -> Generator:
-        return self.storage_runner.load_stream(filename)
+        return self.storage_runner.load_stream(self._prefix(filename))
 
     def download(self, filename, target_filepath):
-        self.storage_runner.download(filename, target_filepath)
+        self.storage_runner.download(self._prefix(filename), target_filepath)
 
     def exists(self, filename):
-        return self.storage_runner.exists(filename)
+        return self.storage_runner.exists(self._prefix(filename))
 
     def delete(self, filename: str):
-        return self.storage_runner.delete(filename)
+        return self.storage_runner.delete(self._prefix(filename))
 
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
-        return self.storage_runner.scan(path, files=files, directories=directories)
+        results = self.storage_runner.scan(self._prefix(path), files=files, directories=directories)
+        if not self._path_prefix:
+            return results
+        prefix_with_slash = self._path_prefix + "/"
+        return [r.removeprefix(prefix_with_slash) for r in results]
 
 
 storage = Storage()
