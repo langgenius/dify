@@ -900,3 +900,14 @@ class TestListOption:
             "page_number": 1,
             "resource_type": "app",
         }
+
+
+def test_legacy_agent_manage_key_membership():
+    for keys in (
+        svc._LEGACY_WORKSPACE_OWNER_KEYS,
+        svc._LEGACY_WORKSPACE_ADMIN_KEYS,
+        svc._LEGACY_WORKSPACE_EDITOR_KEYS,
+        svc._LEGACY_WORKSPACE_NORMAL_KEYS,
+    ):
+        assert "agent.manage" in keys
+    assert "agent.manage" not in svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS

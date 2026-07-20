@@ -333,6 +333,7 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
@@ -363,6 +364,7 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
@@ -380,6 +382,7 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "billing.view",
     "billing.subscription.manage",
     "billing.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
@@ -390,6 +393,7 @@ _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
     "billing.view",
     "billing.subscription.manage",
     "billing.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
