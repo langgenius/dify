@@ -32,7 +32,9 @@ vi.mock('@/app/components/billing/pricing', () => ({
 vi.mock('@/app/components/header/account-setting', () => ({
   default: ({ activeTab, onCancelAction }: { activeTab: string; onCancelAction: () => void }) => (
     <>
-      <div data-testid="account-setting-active-tab">{activeTab}</div>
+      <div role="status" aria-label="active account setting tab">
+        {activeTab}
+      </div>
       <button type="button" onClick={onCancelAction}>
         cancel account setting
       </button>
@@ -227,9 +229,9 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     await user.click(screen.getByRole('button', { name: 'open preferences' }))
 
-    expect(await screen.findByTestId('account-setting-active-tab')).toHaveTextContent(
-      ACCOUNT_SETTING_TAB.PREFERENCES,
-    )
+    expect(
+      await screen.findByRole('status', { name: 'active account setting tab' }),
+    ).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {

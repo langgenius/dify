@@ -123,14 +123,14 @@ describe('TransferOwnershipModal', () => {
     await user.click(
       screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
     )
-    const input = await screen.findByTestId('transfer-modal-code-input')
+    const input = await screen.findByPlaceholderText(/members\.transferModal\.codePlaceholder/i)
     await user.type(input, '123456')
-    await user.click(screen.getByTestId('transfer-modal-continue'))
+    await user.click(screen.getByRole('button', { name: /members\.transferModal\.continue/i }))
   }
 
   const selectNewOwnerAndSubmit = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(screen.getByRole('button', { name: /select member/i }))
-    await user.click(screen.getByTestId('transfer-modal-submit'))
+    await user.click(screen.getByRole('button', { name: /members\.transferModal\.transfer$/i }))
   }
 
   it('should complete ownership transfer flow through all steps', async () => {
@@ -348,7 +348,7 @@ describe('TransferOwnershipModal', () => {
   it('should close when cancel button is clicked', async () => {
     const user = userEvent.setup()
     renderModal()
-    await user.click(screen.getByTestId('transfer-modal-cancel'))
+    await user.click(screen.getByRole('button', { name: /operation\.cancel/i }))
     expect(mockOnClose).toHaveBeenCalled()
   })
 })

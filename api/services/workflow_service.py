@@ -1039,6 +1039,7 @@ class WorkflowService:
         # Create repository and save the node execution
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
+            tenant_id=app_model.tenant_id,
             user=account,
             app_id=app_model.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,

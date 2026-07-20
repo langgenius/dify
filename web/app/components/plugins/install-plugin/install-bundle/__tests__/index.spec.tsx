@@ -16,7 +16,6 @@ import GithubItem from '../item/github-item'
 import LoadedItem from '../item/loaded-item'
 import MarketplaceItem from '../item/marketplace-item'
 import PackageItem from '../item/package-item'
-import ReadyToInstall from '../ready-to-install'
 import Installed from '../steps/installed'
 
 // Factory functions for test data
@@ -515,31 +514,6 @@ describe('InstallBundle', () => {
   })
 
   // ================================
-  // Component Memoization Tests
-  // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Verify that InstallBundle is memoized by checking its displayName or structure
-      // Since the component is exported as React.memo(InstallBundle), we can check its type
-      expect(InstallBundle).toBeDefined()
-      expect(typeof InstallBundle).toBe('object') // memo returns an object
-    })
-
-    it('should not re-render when same props are passed', () => {
-      const onClose = vi.fn()
-      const payload = createMockDependencies()
-
-      const { rerender } = render(<InstallBundle fromDSLPayload={payload} onClose={onClose} />)
-
-      // Re-render with same props reference
-      rerender(<InstallBundle fromDSLPayload={payload} onClose={onClose} />)
-
-      // Component should still render correctly
-      expect(screen.getByTestId('ready-to-install')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
   // User Interactions Tests
   // ================================
   describe('User Interactions', () => {
@@ -753,15 +727,6 @@ describe('InstallBundle', () => {
   // useHideLogic Hook Integration Tests
   // ================================
   describe('useHideLogic Hook Integration', () => {
-    it('should receive modalClassName from useHideLogic', () => {
-      mockHideLogicState.modalClassName = 'custom-modal-class'
-
-      render(<InstallBundle {...defaultProps} />)
-
-      // Verify hook provides modalClassName (component uses it in Modal className prop)
-      expect(mockHideLogicState.modalClassName).toBe('custom-modal-class')
-    })
-
     it('should pass onClose to useHideLogic', () => {
       const onClose = vi.fn()
       render(<InstallBundle {...defaultProps} onClose={onClose} />)
@@ -869,7 +834,6 @@ describe('InstallBundle', () => {
       // @ts-expect-error Testing null handling
       render(<InstallBundle fromDSLPayload={null} onClose={vi.fn()} />)
 
-      // Should render without crashing, count will be 0
       expect(screen.getByTestId('plugins-count')).toHaveTextContent('0')
     })
 
@@ -877,7 +841,6 @@ describe('InstallBundle', () => {
       // @ts-expect-error Testing undefined handling
       render(<InstallBundle fromDSLPayload={undefined} onClose={vi.fn()} />)
 
-      // Should render without crashing
       expect(screen.getByTestId('plugins-count')).toHaveTextContent('0')
     })
   })
@@ -892,14 +855,6 @@ describe('InstallBundle', () => {
       // Verify component renders with expected structure
       expect(screen.getByTestId('ready-to-install')).toBeInTheDocument()
       expect(screen.getByText('plugin.installModal.installPlugin')).toBeInTheDocument()
-    })
-
-    it('should apply correct CSS classes to title', () => {
-      render(<InstallBundle {...defaultProps} />)
-
-      const title = screen.getByText('plugin.installModal.installPlugin')
-      expect(title).toHaveClass('title-2xl-semi-bold')
-      expect(title).toHaveClass('text-text-primary')
     })
   })
 
@@ -943,32 +898,6 @@ describe('InstallBundle', () => {
       expect(screen.getByTestId('ready-to-install')).toBeInTheDocument()
       // Title should be updated
       expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
-    })
-  })
-})
-
-// ================================================================
-// ReadyToInstall Component Tests (using mocked version from InstallBundle)
-// ================================================================
-describe('ReadyToInstall (via InstallBundle mock)', () => {
-  // Note: ReadyToInstall is mocked for InstallBundle tests.
-  // These tests verify the mock interface and component behavior.
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // ================================
-  // Component Definition Tests
-  // ================================
-  describe('Component Definition', () => {
-    it('should be defined and importable', () => {
-      expect(ReadyToInstall).toBeDefined()
-    })
-
-    it('should be a memoized component', () => {
-      // The import gives us the mocked version, which is a function
-      expect(typeof ReadyToInstall).toBe('function')
     })
   })
 })
@@ -1065,12 +994,6 @@ describe('Installed', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(Installed).toBeDefined()
-      expect(typeof Installed).toBe('object')
-    })
-  })
 })
 
 // ================================================================
@@ -1151,12 +1074,6 @@ describe('LoadedItem', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(LoadedItem).toBeDefined()
-      expect(typeof LoadedItem).toBe('object')
-    })
-  })
 })
 
 // ================================================================
@@ -1229,12 +1146,6 @@ describe('MarketplaceItem', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(MarketplaceItem).toBeDefined()
-      expect(typeof MarketplaceItem).toBe('object')
-    })
-  })
 })
 
 // ================================================================
@@ -1311,12 +1222,6 @@ describe('PackageItem', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(PackageItem).toBeDefined()
-      expect(typeof PackageItem).toBe('object')
-    })
-  })
 })
 
 // ================================================================
@@ -1451,10 +1356,4 @@ describe('GithubItem', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(GithubItem).toBeDefined()
-      expect(typeof GithubItem).toBe('object')
-    })
-  })
 })

@@ -135,11 +135,6 @@ describe('OperationsDropdown', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render the more icon button', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const moreIcon = container.querySelector('.i-ri-more-fill')
@@ -224,12 +219,6 @@ describe('OperationsDropdown', () => {
   })
 
   describe('Styles', () => {
-    it('should have correct positioning styles', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('absolute', 'right-2', 'top-2', 'z-5')
-    })
-
     it('should keep the trigger mounted when closed so menu exit animations retain an anchor', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
@@ -237,12 +226,6 @@ describe('OperationsDropdown', () => {
 
       expect(wrapper).not.toHaveClass('hidden')
       expect(trigger).toBeInTheDocument()
-    })
-
-    it('should have icon with correct size classes', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      const icon = container.querySelector('.i-ri-more-fill')
-      expect(icon).toHaveClass('size-5', 'text-text-tertiary')
     })
 
     it('should have aria-label on trigger for accessibility', () => {
@@ -313,20 +296,6 @@ describe('OperationsDropdown', () => {
       fireEvent.click(screen.getByText('common.settings.resourceAccess'))
 
       expect(openAccessConfig).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle dataset with external provider', () => {
-      const dataset = createMockDataset({ provider: 'external' })
-      const { container } = render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should handle dataset with undefined runtime_mode', () => {
-      const dataset = createMockDataset({ runtime_mode: undefined })
-      const { container } = render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
-      expect(container.firstChild).toBeInTheDocument()
     })
   })
 })

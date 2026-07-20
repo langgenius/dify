@@ -17,7 +17,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { useInvalid } from './use-base'
 
@@ -346,16 +346,16 @@ export const normalizeTriggerProvider = (
 
 const normalizeCredentialType = (
   credentialType: GeneratedTriggerSubscription['credential_type'],
-): TriggerCredentialTypeEnum => {
+): TriggerCredentialType => {
   switch (credentialType) {
-    case TriggerCredentialTypeEnum.ApiKey:
-      return TriggerCredentialTypeEnum.ApiKey
-    case TriggerCredentialTypeEnum.Oauth2:
-      return TriggerCredentialTypeEnum.Oauth2
-    case TriggerCredentialTypeEnum.Unauthorized:
-      return TriggerCredentialTypeEnum.Unauthorized
+    case TriggerCredentialType.ApiKey:
+      return TriggerCredentialType.ApiKey
+    case TriggerCredentialType.Oauth2:
+      return TriggerCredentialType.Oauth2
+    case TriggerCredentialType.Unauthorized:
+      return TriggerCredentialType.Unauthorized
   }
-  return TriggerCredentialTypeEnum.Unauthorized
+  return TriggerCredentialType.Unauthorized
 }
 
 const normalizeTriggerSubscription = (

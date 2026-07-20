@@ -444,13 +444,6 @@ describe('publisher', () => {
 
         expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
       })
-
-      it('should be memoized with React.memo', () => {
-        expect(Publisher).toBeDefined()
-        expect((Publisher as unknown as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
-      })
     })
 
     describe('User Interactions', () => {

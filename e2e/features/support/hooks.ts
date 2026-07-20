@@ -5,7 +5,7 @@ import type { DifyWorld } from './world'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
+import { After, AfterAll, Before, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium, webkit } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
 import { deleteTestApp } from '../../support/api'
@@ -88,19 +88,6 @@ const captureDiagnosticPage = async (
   return [screenshotPath, htmlPath]
 }
 
-BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
-  await mkdir(artifactsDir, { recursive: true })
-
-  const browserType = e2eBrowser === 'webkit' ? webkit : chromium
-  browser = await browserType.launch({
-    headless: cucumberHeadless,
-    slowMo: cucumberSlowMo,
-  })
-
-  console.warn(`[e2e] ${e2eBrowser} session cache bootstrap against ${baseURL}`)
-  await ensureAuthenticatedState(browser, baseURL)
-})
-
 const getMicrophoneBrowser = () => {
   microphoneBrowserPromise ??= chromium.launch({
     args: [
@@ -115,7 +102,20 @@ const getMicrophoneBrowser = () => {
   return microphoneBrowserPromise
 }
 
-Before(async function (this: DifyWorld, { pickle }) {
+Before({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async function (this: DifyWorld, { pickle }) {
+  await mkdir(artifactsDir, { recursive: true })
+
+  if (!browser) {
+    const browserType = e2eBrowser === 'webkit' ? webkit : chromium
+    browser = await browserType.launch({
+      headless: cucumberHeadless,
+      slowMo: cucumberSlowMo,
+    })
+
+    console.warn(`[e2e] ${e2eBrowser} session cache bootstrap against ${baseURL}`)
+    await ensureAuthenticatedState(browser, baseURL)
+  }
+
   if (!browser) throw new Error('Shared Playwright browser is not available.')
 
   const scenarioTags = pickle.tags.map((tag) => tag.name)

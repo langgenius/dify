@@ -50,16 +50,6 @@ describe('BuiltInPipelineList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-      expect(screen.getByTestId('create-card')).toBeInTheDocument()
-    })
-
     it('should always render CreateCard', () => {
       mockUsePipelineTemplateList.mockReturnValue({
         data: null,

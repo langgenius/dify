@@ -13,7 +13,11 @@ import {
   useInvalidDataSourceListAuth,
 } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
-import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import {
+  useCheckInstalled,
+  useInstalledPluginList,
+  useInvalidateInstalledPluginList,
+} from '@/service/use-plugins'
 import { useDataSourceAuthUpdate, useMarketplaceAllPlugins } from '../hooks'
 import DataSourcePage from '../index'
 
@@ -42,6 +46,7 @@ vi.mock('@/service/use-pipeline', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
+  useCheckInstalled: vi.fn(),
   useInstalledPluginList: vi.fn(),
   useInvalidateInstalledPluginList: vi.fn(),
 }))
@@ -186,6 +191,11 @@ describe('DataSourcePage Component', () => {
     vi.mocked(useInstalledPluginList).mockReturnValue({
       data: { plugins: [], total: 0 },
     } as unknown as ReturnType<typeof useInstalledPluginList>)
+    vi.mocked(useCheckInstalled).mockReturnValue({
+      data: { plugins: [] },
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useCheckInstalled>)
     vi.mocked(usePluginsWithLatestVersion).mockImplementation(
       (plugins = []) => plugins as PluginDetail[],
     )

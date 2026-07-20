@@ -91,7 +91,7 @@ describe('DatasetCardModals', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing when no modals are shown', () => {
+    it('renders no dialogs when both visibility flags are false', () => {
       const { container } = render(<DatasetCardModals {...defaultProps} />)
       // Should render empty fragment
       expect(container.innerHTML).toBe('')

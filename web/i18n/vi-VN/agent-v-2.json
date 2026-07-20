@@ -89,7 +89,7 @@
   "agentDetail.configure.chatFeatures.title": "Tính năng trò chuyện",
   "agentDetail.configure.clearSessionConfirm.description": "Thao tác này sẽ xóa phiên hiện tại và hủy các thay đổi cấu hình Agent chưa được áp dụng.",
   "agentDetail.configure.clearSessionConfirm.title": "Xóa phiên và hủy thay đổi?",
-  "agentDetail.configure.communityEditionIsolationTip": "Community Edition không cung cấp cách ly hệ thống tệp cứng giữa người dùng cuối hoặc giữa các lần chạy. Không cung cấp cùng một tác nhân CE cho nhiều người dùng cuối độc lập khi cần cách ly dữ liệu hoặc tuân thủ nghiêm ngặt.",
+  "agentDetail.configure.communityEditionIsolationTip": "Tuyên bố miễn trừ trách nhiệm: Trong Community Edition, sandbox chạy dưới dạng người dùng không phải root với cấu hình capability mặc định của Docker và chỉ cung cấp khả năng bảo vệ hạn chế dựa trên Landlock cho các tệp riêng của agent và tệp phiên. Máy chủ và tất cả tiến trình con của shell dùng chung PID namespace và ranh giới capability cấp container, vì vậy không nên xem đây là sandbox bảo mật nhiều lớp được cách ly mạnh.",
   "agentDetail.configure.files.add": "Thêm tệp",
   "agentDetail.configure.files.buildNote.generated": "Đã tạo",
   "agentDetail.configure.files.buildNote.richTooltip": "Bản ghi của tác nhân về những gì nó đã thiết lập trong chế độ Build. Nó đọc bản ghi này ở đầu mỗi cuộc trò chuyện, cùng với Prompt của bạn. <docLink>Tìm hiểu thêm</docLink>",

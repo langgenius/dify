@@ -2,12 +2,7 @@ import { render, screen } from '@testing-library/react'
 import AccessConfig from '../page'
 
 vi.mock('@/app/components/datasets/access-config', () => ({
-  default: ({ datasetId }: { datasetId: string }) => (
-    <div data-testid="dataset-access-config" data-dataset-id={datasetId}>
-      dataset access config
-      {datasetId}
-    </div>
-  ),
+  default: ({ datasetId }: { datasetId: string }) => <div>dataset access config {datasetId}</div>,
 }))
 
 describe('Dataset access config route', () => {
@@ -20,10 +15,7 @@ describe('Dataset access config route', () => {
         }),
       )
 
-      expect(screen.getByTestId('dataset-access-config')).toHaveAttribute(
-        'data-dataset-id',
-        'dataset-route-id',
-      )
+      expect(screen.getByText('dataset access config dataset-route-id')).toBeInTheDocument()
     })
   })
 })
