@@ -408,6 +408,7 @@ class AppService:
         default_model_config = app_template.get("model_config")
         default_model_config = default_model_config.copy() if default_model_config else None
         if default_model_config and "model" in default_model_config:
+            default_model_dict = default_model_config["model"]
             # get model provider
             model_manager = ModelManager.for_tenant(tenant_id=account.current_tenant_id or "")
 
@@ -422,7 +423,7 @@ class AppService:
                 logger.exception("Get default model instance failed, tenant_id: %s", tenant_id)
                 model_instance = None
 
-            if model_instance:
+            if model_instance is not None:
                 if (
                     model_instance.model_name == default_model_config["model"]["name"]
                     and model_instance.provider == default_model_config["model"]["provider"]
