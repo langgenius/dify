@@ -2,7 +2,7 @@ import type { ApiKeyModalProps } from '../api-key-modal'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -95,10 +95,6 @@ vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
 
 vi.mock('@/app/components/base/form/types', () => ({
   FormTypeEnum: { textInput: 'text-input' },
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({ data: { accounts: [] } }),
 }))
 
 const basePayload = {
@@ -298,9 +294,48 @@ describe('ApiKeyModal', () => {
         expect.objectContaining({
           type: 'api-key',
           name: 'My Key',
+          visibility: 'all_team_members',
         }),
       )
     })
+  })
+
+  it('selects credential visibility through the native trigger', async () => {
+    const user = userEvent.setup()
+    render(<ApiKeyModal pluginPayload={basePayload} />)
+
+    const trigger = screen.getByRole('button', { name: /permissionsAllMember/ })
+    expect(trigger).toHaveAttribute('type', 'button')
+    await user.click(trigger)
+    const permissionDialog = screen.getByRole('dialog', { name: /auth.whoCanUse/ })
+    const permissionGroup = within(permissionDialog).getByRole('radiogroup', {
+      name: /auth.whoCanUse/,
+    })
+    const allMembers = within(permissionGroup).getByRole('radio', {
+      name: /permissionsAllMember/,
+    })
+    const onlyMe = within(permissionGroup).getByRole('radio', { name: /permissionsOnlyMe/ })
+    expect(allMembers).toBeChecked()
+
+    allMembers.focus()
+    await user.keyboard('{ArrowUp}')
+    expect(onlyMe).toBeChecked()
+    expect(permissionDialog).toBeInTheDocument()
+
+    await user.click(onlyMe)
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() => {
+      expect(mockAddPluginCredential).toHaveBeenCalledWith(
+        expect.objectContaining({ visibility: 'only_me' }),
+      )
+    })
+  })
+
+  it('disables the credential visibility trigger with the modal', () => {
+    render(<ApiKeyModal pluginPayload={basePayload} disabled />)
+
+    expect(screen.getByRole('button', { name: /permissionsAllMember/ })).toBeDisabled()
   })
 
   it('should use empty credential name when authorization name is blank in add mode', async () => {

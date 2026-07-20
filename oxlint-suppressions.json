@@ -1884,22 +1884,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/permission-selector/member-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/permission-selector/permission-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/index.stories.tsx": {
     "jsx_a11y/label-has-associated-control": {
       "count": 4
@@ -2469,9 +2453,6 @@
     }
   },
   "web/app/components/datasets/create/website/firecrawl/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -2485,9 +2466,6 @@
     }
   },
   "web/app/components/datasets/create/website/jina-reader/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -2501,9 +2479,6 @@
     }
   },
   "web/app/components/datasets/create/website/watercrawl/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -2953,22 +2928,6 @@
     }
   },
   "web/app/components/datasets/settings/option-card.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/settings/permission-selector/member-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/settings/permission-selector/permission-item.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
     },
