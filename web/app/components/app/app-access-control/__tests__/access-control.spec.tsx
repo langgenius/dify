@@ -14,10 +14,8 @@ import SpecificGroupsOrMembers from '../specific-groups-or-members'
 
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
-const mockMutateAsync = vi.fn()
-const mockUseUpdateAccessMode = vi.fn(() => ({
-  isPending: false,
-  mutateAsync: mockMutateAsync,
+const { mockMutateAsync } = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
 }))
 const intersectionObserverMocks = vi.hoisted(() => ({
   callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
@@ -27,8 +25,34 @@ vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
   useSearchForWhiteListCandidates: (...args: unknown[]) =>
     mockUseSearchForWhiteListCandidates(...args),
-  useUpdateAccessMode: () => mockUseUpdateAccessMode(),
 }))
+
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const webAppAuth = new Proxy(actual.consoleQuery.enterprise.webAppAuth, {
+    get(target, property, receiver) {
+      if (property === 'updateWebAppWhitelistSubjects')
+        return { mutationOptions: () => ({ mutationFn: mockMutateAsync }) }
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  const enterprise = new Proxy(actual.consoleQuery.enterprise, {
+    get(target, property, receiver) {
+      if (property === 'webAppAuth') return webAppAuth
+      return Reflect.get(target, property, receiver)
+    },
+  })
+
+  return {
+    ...actual,
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, property, receiver) {
+        if (property === 'enterprise') return enterprise
+        return Reflect.get(target, property, receiver)
+      },
+    }),
+  }
+})
 
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ahooks')>()
@@ -84,11 +108,8 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  vi.clearAllMocks()
   mockMutateAsync.mockResolvedValue(undefined)
-  mockUseUpdateAccessMode.mockReturnValue({
-    isPending: false,
-    mutateAsync: mockMutateAsync,
-  })
   mockUseAppWhiteListSubjects.mockReturnValue({
     isPending: false,
     data: {
@@ -340,13 +361,15 @@ describe('AccessControl', () => {
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        appId: app.id,
-        accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-        subjects: [
-          { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
-          { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
-        ],
+      expect(mockMutateAsync.mock.calls[0]?.[0]).toEqual({
+        body: {
+          appId: app.id,
+          accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+          subjects: [
+            { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
+            { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
+          ],
+        },
       })
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalled()

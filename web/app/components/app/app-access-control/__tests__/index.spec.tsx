@@ -19,10 +19,8 @@ const render = (ui: ReactElement) =>
     systemFeatures: { webapp_auth: mockWebappAuth },
   })
 
-const mockMutateAsync = vi.fn()
-const mockUseUpdateAccessMode = vi.fn(() => ({
-  isPending: false,
-  mutateAsync: mockMutateAsync,
+const { mockMutateAsync } = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
 }))
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
@@ -31,7 +29,19 @@ vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
   useSearchForWhiteListCandidates: (...args: unknown[]) =>
     mockUseSearchForWhiteListCandidates(...args),
-  useUpdateAccessMode: () => mockUseUpdateAccessMode(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    systemFeatures: { get: { queryKey: () => ['system-features'] } },
+    enterprise: {
+      webAppAuth: {
+        updateWebAppWhitelistSubjects: {
+          mutationOptions: () => ({ mutationFn: mockMutateAsync }),
+        },
+      },
+    },
+  },
 }))
 
 describe('AccessControl', () => {
@@ -85,9 +95,11 @@ describe('AccessControl', () => {
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        appId: app.id,
-        accessMode: AccessMode.PUBLIC,
+      expect(mockMutateAsync.mock.calls[0]?.[0]).toEqual({
+        body: {
+          appId: app.id,
+          accessMode: AccessMode.PUBLIC,
+        },
       })
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalledTimes(1)

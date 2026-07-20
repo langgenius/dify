@@ -5,12 +5,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import { useUpdateAccessMode } from '@/service/access-control'
+import { consoleQuery } from '@/service/client'
 import useAccessControlStore from '../../../../context/access-control-store'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
@@ -42,7 +42,9 @@ export default function AccessControl(props: AccessControlProps) {
     setCurrentMenu(app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS)
   }, [app, setAppId, setCurrentMenu])
 
-  const { isPending, mutateAsync: updateAccessMode } = useUpdateAccessMode()
+  const { isPending, mutateAsync: updateAccessMode } = useMutation(
+    consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
+  )
   const handleConfirm = useCallback(async () => {
     const submitData: {
       appId: string
@@ -62,7 +64,7 @@ export default function AccessControl(props: AccessControlProps) {
       })
       submitData.subjects = subjects
     }
-    await updateAccessMode(submitData)
+    await updateAccessMode({ body: submitData })
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm?.()
   }, [updateAccessMode, app, specificGroups, specificMembers, t, onConfirm, currentMenu])

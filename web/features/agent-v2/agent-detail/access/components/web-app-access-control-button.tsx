@@ -12,10 +12,8 @@ import { isAccessMode } from '@/models/access-control'
 
 export function WebAppAccessControlButton({
   agent,
-  onAccessModeUpdated,
 }: {
   agent?: AgentAppDetailWithSite
-  onAccessModeUpdated: () => void | Promise<void>
 }) {
   const { t } = useTranslation('agentV2')
   const [showAccessControl, setShowAccessControl] = useState(false)
@@ -30,15 +28,6 @@ export function WebAppAccessControlButton({
 
   if (!systemFeatures?.webapp_auth.enabled || !canManageWebAppAccessControl || !appId || !accessMode)
     return null
-
-  const handleConfirm = async () => {
-    setShowAccessControl(false)
-    try {
-      await onAccessModeUpdated()
-    } catch (error) {
-      console.error('Failed to refresh agent detail:', error)
-    }
-  }
 
   return (
     <>
@@ -55,7 +44,7 @@ export function WebAppAccessControlButton({
         <AccessControl
           app={{ id: appId, access_mode: accessMode }}
           onClose={() => setShowAccessControl(false)}
-          onConfirm={handleConfirm}
+          onConfirm={() => setShowAccessControl(false)}
         />
       )}
     </>
