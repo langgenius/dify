@@ -85,6 +85,9 @@ function parseProgressEventData(data: string): ProcessingTaskProgressEvent['data
   if (
     typeof value.progressPercent !== 'number' ||
     !Number.isFinite(value.progressPercent) ||
+    !Number.isInteger(value.progressPercent) ||
+    value.progressPercent < 0 ||
+    value.progressPercent > 100 ||
     !isEnumValue(PROCESSING_TASK_STAGES, value.stage) ||
     !isEnumValue(PROCESSING_TASK_STATES, value.state) ||
     typeof value.updatedAt !== 'string'
@@ -150,6 +153,7 @@ export async function* parseProcessingTaskEventStream(
   const reader = stream.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let completed = false
 
   try {
     while (true) {
@@ -168,10 +172,12 @@ export async function* parseProcessingTaskEventStream(
       if (done) {
         const event = parseEventBlock(buffer)
         if (event) yield event
+        completed = true
         break
       }
     }
   } finally {
+    if (!completed) await reader.cancel()
     reader.releaseLock()
   }
 }

@@ -70,7 +70,7 @@ export function requestConsoleResponse(
   const baseURL = getBaseURL(API_PREFIX)
   baseURL.pathname = `${baseURL.pathname.replace(/\/$/, '')}/`
   const url = new URL(path.replace(/^\//, ''), baseURL)
-  const input = new Request(url, init)
+  const input = new Request(url)
   return request<Response>(normalizeConsoleOpenAPIURL(input.url), init, {
     fetchCompat: true,
     request: input,

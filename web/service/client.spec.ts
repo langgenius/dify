@@ -370,6 +370,7 @@ describe('consoleQuery transport context', () => {
 
 describe('requestConsoleResponse', () => {
   afterEach(() => {
+    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
@@ -406,6 +407,31 @@ describe('requestConsoleResponse', () => {
         silent: true,
       }),
     )
+  })
+
+  it('forwards streaming headers exactly once to the final fetch request', async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response('event: progress\n\n', {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetch)
+    vi.resetModules()
+    vi.doUnmock('./base')
+    vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+    const { requestConsoleResponse } = await import('./client')
+
+    await requestConsoleResponse(
+      '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
+      { headers: { Accept: 'text/event-stream', 'Last-Event-ID': 'task-1:previous' } },
+      { silent: true },
+    )
+
+    expect(fetch).toHaveBeenCalledOnce()
+    const requestInit = fetch.mock.calls[0]![1] as RequestInit
+    const headers = new Headers(requestInit.headers)
+    expect(headers.get('Accept')).toBe('text/event-stream')
+    expect(headers.get('Last-Event-ID')).toBe('task-1:previous')
   })
 })
 

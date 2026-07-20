@@ -99,4 +99,35 @@ describe('KnowledgeFS processing task events', () => {
       for await (const event of parseProcessingTaskEventStream(stream)) void event
     }).rejects.toThrow('unsupported event: message')
   })
+
+  it.each([-1, 10.5, 101])('rejects out-of-contract progress percentage %s', async (value) => {
+    const stream = eventStream(
+      `id: task-1\nevent: progress\ndata: {"progressPercent":${value},"stage":"parsed","state":"running","updatedAt":"2026-07-20T01:02:03Z"}\n\n`,
+    )
+
+    await expect(async () => {
+      for await (const event of parseProcessingTaskEventStream(stream)) void event
+    }).rejects.toThrow('progress event has an invalid payload')
+  })
+
+  it('cancels the response stream when the consumer stops early', async () => {
+    const cancel = vi.fn()
+    const stream = new ReadableStream<Uint8Array>({
+      cancel,
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            'id: task-1\nevent: progress\ndata: {"progressPercent":10,"stage":"queued","state":"running","updatedAt":"2026-07-20T01:02:03Z"}\n\n',
+          ),
+        )
+      },
+    })
+
+    for await (const event of parseProcessingTaskEventStream(stream)) {
+      expect(event.event).toBe('progress')
+      break
+    }
+
+    expect(cancel).toHaveBeenCalledOnce()
+  })
 })
