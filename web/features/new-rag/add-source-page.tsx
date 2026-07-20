@@ -28,6 +28,13 @@ const FIRECRAWL_CONFIGURATION = {
   provider: 'firecrawl',
 } as const
 const FIRECRAWL_FIXED_FIELD_NAMES = new Set(Object.keys(FIRECRAWL_CONFIGURATION))
+const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
+  active: 0,
+  provisioning: 1,
+  error: 2,
+  expired: 3,
+  revoked: 4,
+}
 
 function humanizeFieldName(name: string) {
   return name
@@ -48,16 +55,9 @@ function findFirecrawl(providers: Provider[]) {
 
 function findProviderConnection(connections: Connection[], providerId?: string) {
   if (!providerId) return undefined
-  const statusPriority: Record<Connection['status'], number> = {
-    active: 0,
-    provisioning: 1,
-    error: 2,
-    expired: 3,
-    revoked: 4,
-  }
   return [...connections.filter((connection) => connection.providerId === providerId)].sort(
     (left, right) =>
-      statusPriority[left.status] - statusPriority[right.status] ||
+      CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status] ||
       right.updatedAt.localeCompare(left.updatedAt),
   )[0]
 }
@@ -115,6 +115,30 @@ function SourceTypeSelector() {
           </label>
         ))}
       </div>
+    </fieldset>
+  )
+}
+
+function ProviderSelector() {
+  const { t } = useTranslation('datasetCreation')
+
+  return (
+    <fieldset>
+      <legend className="mb-1.5 system-xs-medium text-text-secondary">
+        {t(($) => $['stepOne.website.chooseProvider'])}
+      </legend>
+      <label className="relative flex h-9 w-full items-center justify-center gap-2 rounded-lg border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg px-3 system-xs-medium text-text-primary has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid sm:w-40">
+        <input
+          type="radio"
+          name="source-provider"
+          value={FIRECRAWL_PROVIDER_ID}
+          checked
+          readOnly
+          className="sr-only"
+        />
+        <span aria-hidden className="i-ri-fire-fill size-4 text-orange-500" />
+        {FIRECRAWL_CONNECTION_NAME}
+      </label>
     </fieldset>
   )
 }
@@ -185,30 +209,60 @@ function ProviderFieldControl({
 
 function ProviderConfigured() {
   const { t } = useTranslation('dataset')
+  const { t: tCreation } = useTranslation('datasetCreation')
+  const { t: tDocuments } = useTranslation('datasetDocuments')
 
   return (
-    <div className="rounded-xl border border-components-option-card-option-border bg-background-default p-4">
-      <div className="flex items-center gap-3">
-        <span className="flex size-9 items-center justify-center rounded-lg bg-components-badge-status-light-success-bg text-text-success">
-          <span aria-hidden className="i-ri-check-line size-4" />
-        </span>
-        <div>
-          <p className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.providerConnected'])}
-          </p>
-          <p className="system-xs-regular text-text-tertiary">{FIRECRAWL_CONNECTION_NAME}</p>
-        </div>
+    <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
+      <div className="flex items-center gap-2 system-xs-medium text-text-success">
+        <span aria-hidden className="i-ri-checkbox-circle-fill size-4" />
+        {t(($) => $['newKnowledge.providerConnected'])}
       </div>
-      <div className="mt-4 rounded-lg border border-dashed border-divider-regular bg-background-section px-4 py-5 text-center">
-        <p className="system-xs-medium text-text-secondary">
-          {t(($) => $['newKnowledge.crawlSetupUnavailableTitle'])}
-        </p>
-        <p className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.crawlSetupUnavailableDescription'])}
-        </p>
-        <Button className="mt-3" disabled>
-          {t(($) => $['newKnowledge.crawlAndPreview'])}
-        </Button>
+      <div className="mt-4 space-y-4">
+        <label className="block">
+          <span className="system-xs-medium text-text-secondary">
+            {tDocuments(($) => $['metadata.field.webPage.url'])}
+          </span>
+          <input
+            type="url"
+            disabled
+            placeholder={tDocuments(($) => $['metadata.field.webPage.url'])}
+            className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
+          />
+        </label>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="system-xs-medium text-text-secondary">
+              {tCreation(($) => $['stepOne.website.crawlSubPage'])}
+            </span>
+            <select
+              disabled
+              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
+            >
+              <option>{t(($) => $['newKnowledge.booleanTrue'])}</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="system-xs-medium text-text-secondary">
+              {tCreation(($) => $['stepOne.website.limit'])}
+            </span>
+            <input
+              type="number"
+              disabled
+              value="10"
+              readOnly
+              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
+            />
+          </label>
+        </div>
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="system-xs-regular text-text-tertiary">
+            {t(($) => $['newKnowledge.crawlSetupUnavailableDescription'])}
+          </p>
+          <Button variant="primary" disabled>
+            {t(($) => $['newKnowledge.crawlAndPreview'])}
+          </Button>
+        </div>
       </div>
     </div>
   )
@@ -479,7 +533,8 @@ function ProvisioningConnection({
     setPending(true)
     setError(false)
     try {
-      await onReconcile()
+      const reconciledConnection = await onReconcile()
+      if (!reconciledConnection) setError(true)
     } catch {
       setError(true)
     } finally {
@@ -528,10 +583,23 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const remoteConnections = connectionsQuery.data?.pages.flatMap((page) => page.items) ?? []
   const remoteConnection = findProviderConnection(remoteConnections, provider?.id)
   const [connectionOverride, setConnectionOverride] = useState<Connection>()
-  const connection = useMemo(
-    () => (connectionOverride?.providerId === provider?.id ? connectionOverride : remoteConnection),
-    [connectionOverride, provider?.id, remoteConnection],
-  )
+  const connection = useMemo(() => {
+    const localConnection = connectionOverride
+    if (!localConnection || localConnection.providerId !== provider?.id) return remoteConnection
+    if (!remoteConnection) return localConnection
+    if (remoteConnection.id === localConnection.id) {
+      if (remoteConnection.version > localConnection.version) return remoteConnection
+      if (remoteConnection.version < localConnection.version) return localConnection
+      if (remoteConnection.updatedAt > localConnection.updatedAt) return remoteConnection
+      if (remoteConnection.updatedAt < localConnection.updatedAt) return localConnection
+      if (
+        CONNECTION_STATUS_PRIORITY[remoteConnection.status] <
+        CONNECTION_STATUS_PRIORITY[localConnection.status]
+      )
+        return remoteConnection
+    }
+    return localConnection
+  }, [connectionOverride, provider?.id, remoteConnection])
   const supportsDirectConnection = provider ? getSupportedAuthKinds(provider).length > 0 : false
   const {
     fetchNextPage: fetchNextConnectionPage,
@@ -541,8 +609,18 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   } = connectionsQuery
 
   useEffect(() => {
-    if (hasNextConnectionPage && !isFetchingNextConnectionPage) void fetchNextConnectionPage()
-  }, [fetchNextConnectionPage, hasNextConnectionPage, isFetchingNextConnectionPage])
+    if (
+      hasNextConnectionPage &&
+      !isFetchingNextConnectionPage &&
+      !connectionsQuery.isFetchNextPageError
+    )
+      void fetchNextConnectionPage()
+  }, [
+    connectionsQuery.isFetchNextPageError,
+    fetchNextConnectionPage,
+    hasNextConnectionPage,
+    isFetchingNextConnectionPage,
+  ])
 
   const rememberConnection = useCallback(
     (updatedConnection: Connection) => {
@@ -560,7 +638,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       refreshed.data?.pages.flatMap((page) => page.items) ?? [],
       provider?.id,
     )
-    if (updatedConnection) setConnectionOverride(updatedConnection)
+    setConnectionOverride(updatedConnection)
     return updatedConnection
   }, [provider?.id, refetchConnections])
 
@@ -575,7 +653,8 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       </div>
     )
 
-  const queryError = providersQuery.error || connectionsQuery.error
+  const queryError =
+    providersQuery.error || connectionsQuery.error || connectionsQuery.isFetchNextPageError
 
   return (
     <main className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
@@ -589,15 +668,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       </header>
       <div className="mt-5 w-full max-w-2xl space-y-4">
         <SourceTypeSelector />
-        {provider && (
-          <div
-            aria-label={FIRECRAWL_CONNECTION_NAME}
-            className="flex h-9 items-center justify-center gap-2 rounded-lg border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg px-3 system-xs-medium text-text-primary sm:w-40"
-          >
-            <span aria-hidden className="i-ri-fire-line size-4 text-text-warning" />
-            {FIRECRAWL_CONNECTION_NAME}
-          </div>
-        )}
+        {provider && <ProviderSelector />}
         {queryError ? (
           <div className="rounded-xl bg-background-section p-4">
             <p className="system-sm-semibold text-text-primary">

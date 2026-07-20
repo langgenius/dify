@@ -128,17 +128,40 @@ function SourcesEmpty({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-      <div aria-hidden className="flex items-center gap-3 text-text-quaternary">
-        {[
-          'i-ri-fire-line',
-          'i-ri-global-line',
-          'i-ri-file-text-line',
-          'i-ri-folder-line',
-          'i-ri-links-line',
-          'i-ri-database-2-line',
-        ].map((icon) => (
-          <span key={icon} className={`${icon} size-5`} />
-        ))}
+      <div aria-hidden className="flex items-center gap-3">
+        <span data-brand="firecrawl" className="i-ri-fire-fill size-5 text-orange-500" />
+        <span
+          data-brand="jina"
+          className="flex size-5 items-center justify-center rounded bg-gradient-to-br from-indigo-500 to-cyan-400 text-[11px] font-semibold text-white"
+        >
+          J
+        </span>
+        <span
+          data-brand="notion"
+          className="i-custom-public-common-notion size-5 text-text-primary"
+        />
+        <svg data-brand="google-drive" viewBox="0 0 24 24" className="size-5">
+          <path fill="#0F9D58" d="M8.2 3h5.1l7.6 13.2h-5.1z" />
+          <path fill="#F4B400" d="M8.2 3 .7 16.2l2.6 4.5 7.5-13.2z" />
+          <path fill="#4285F4" d="M3.3 20.7h15.2l2.4-4.5H5.9z" />
+        </svg>
+        <svg data-brand="confluence" viewBox="0 0 24 24" className="size-5 text-blue-600">
+          <path
+            fill="currentColor"
+            d="M4.1 15.7c-.4.7-.8 1.5-1.1 2.1-.2.5 0 1 .5 1.3l3.4 1.6c.5.2 1 0 1.3-.4.3-.6.7-1.3 1.1-2 2.9-4.8 5.9-4.2 11.1-1.8.5.2 1.1 0 1.3-.5l1.3-3.5c.2-.5-.1-1.1-.6-1.3-7.6-3.5-13.8-3.6-18.3 4.5Z"
+          />
+          <path
+            fill="currentColor"
+            opacity=".55"
+            d="M19.9 8.3c.4-.7.8-1.5 1.1-2.1.2-.5 0-1-.5-1.3l-3.4-1.6c-.5-.2-1 0-1.3.4-.3.6-.7 1.3-1.1 2-2.9 4.8-5.9 4.2-11.1 1.8-.5-.2-1.1 0-1.3.5L1 11.5c-.2.5.1 1.1.6 1.3 7.6 3.5 13.8 3.6 18.3-4.5Z"
+          />
+        </svg>
+        <svg data-brand="dropbox" viewBox="0 0 24 24" className="size-5 text-blue-500">
+          <path
+            fill="currentColor"
+            d="m7 3-5 3.2L7 9.4l5-3.2L7 3Zm10 0-5 3.2 5 3.2 5-3.2L17 3ZM7 10.6l-5 3.2L7 17l5-3.2-5-3.2Zm10 0-5 3.2 5 3.2 5-3.2-5-3.2ZM7.2 18.1l4.8 3 4.8-3-4.8-3-4.8 3Z"
+          />
+        </svg>
       </div>
       <h2 className="mt-5 title-xl-semi-bold text-text-primary">
         {t(($) => $['newKnowledge.sourcesEmptyTitle'])}
@@ -194,8 +217,20 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   } = sourcesQuery
 
   useEffect(() => {
-    if (filterActive && hasNextSourcePage && !isFetchingNextSourcePage) void fetchNextSourcePage()
-  }, [filterActive, fetchNextSourcePage, hasNextSourcePage, isFetchingNextSourcePage])
+    if (
+      filterActive &&
+      hasNextSourcePage &&
+      !isFetchingNextSourcePage &&
+      !sourcesQuery.isFetchNextPageError
+    )
+      void fetchNextSourcePage()
+  }, [
+    filterActive,
+    fetchNextSourcePage,
+    hasNextSourcePage,
+    isFetchingNextSourcePage,
+    sourcesQuery.isFetchNextPageError,
+  ])
 
   return (
     <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7">

@@ -89,7 +89,7 @@ describe('SourcesPage', () => {
   it('renders the designed empty state and enters the real add-source route', () => {
     sourcesQuery.data = { pages: [{ items: [] }] }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { container } = render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('dataset.newKnowledge.sourcesEmptyTitle')).toBeInTheDocument()
     expect(
@@ -99,6 +99,8 @@ describe('SourcesPage', () => {
       'href',
       '/datasets/new/space-1/sources/new',
     )
+    for (const brand of ['firecrawl', 'jina', 'notion', 'google-drive', 'confluence', 'dropbox'])
+      expect(container.querySelector(`[data-brand="${brand}"]`)).toBeInTheDocument()
   })
 
   it('renders real source statuses and filters by status and search text', async () => {
@@ -196,6 +198,22 @@ describe('SourcesPage', () => {
 
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
+  })
+
+  it('stops automatic filtered pagination after a cursor error', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})], nextCursor: 'next' }] }
+    sourcesQuery.hasNextPage = true
+    sourcesQuery.isFetchNextPageError = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
+      'later page',
+    )
+
+    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
   })
 
   it('shows provider and source type as separate row details', () => {

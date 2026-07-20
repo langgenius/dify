@@ -25,6 +25,7 @@ const queryState = vi.hoisted(() => ({
     error: null as unknown,
     fetchNextPage: vi.fn(),
     hasNextPage: false,
+    isFetchNextPageError: false,
     isFetchingNextPage: false,
     isPending: false,
     refetch: vi.fn(),
@@ -162,6 +163,7 @@ describe('AddSourcePage', () => {
     queryState.connections.data = { pages: [{ items: [] }] }
     queryState.connections.error = null
     queryState.connections.hasNextPage = false
+    queryState.connections.isFetchNextPageError = false
     queryState.connections.isFetchingNextPage = false
     queryState.connections.isPending = false
   })
@@ -193,12 +195,30 @@ describe('AddSourcePage', () => {
     await waitFor(() => expect(queryState.connections.fetchNextPage).toHaveBeenCalledOnce())
   })
 
+  it('stops automatic connection pagination after a cursor error', () => {
+    queryState.connections.error = new Error('next page failed')
+    queryState.connections.hasNextPage = true
+    queryState.connections.isFetchNextPageError = true
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    expect(queryState.connections.fetchNextPage).not.toHaveBeenCalled()
+    expect(screen.getByText('dataset.newKnowledge.providerLoadFailed')).toBeInTheDocument()
+  })
+
   it('finds the provider connection on a later loaded page', () => {
     queryState.connections.data = { pages: [{ items: [] }, { items: [connection('active')] }] }
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    expect(
+      screen.getByRole('textbox', { name: 'datasetDocuments.metadata.field.webPage.url' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+    ).toBeDisabled()
   })
 
   it('creates the exact Firecrawl provider connection without leaking credentials', async () => {
@@ -385,6 +405,23 @@ describe('AddSourcePage', () => {
     )
   })
 
+  it('lets a newer remote connection version replace a local mutation response', async () => {
+    const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    clientMock.refreshConnection.mockResolvedValue(connection('provisioning', 3))
+
+    const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(
+      await screen.findByText('dataset.newKnowledge.connectionProvisioning'),
+    ).toBeInTheDocument()
+
+    queryState.connections.data = { pages: [{ items: [connection('active', 3)] }] }
+    view.rerender(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
+  })
+
   it('reconciles a provisioning connection with the refreshed server state', async () => {
     const user = userEvent.setup()
     queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
@@ -415,6 +452,21 @@ describe('AddSourcePage', () => {
     )
   })
 
+  it('shows a retryable error when provisioning reconciliation finds no connection', async () => {
+    const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
+    queryState.connections.refetch.mockResolvedValue({ data: { pages: [{ items: [] }] } })
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.refreshConnectionStatus' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.connectionRefreshFailed',
+    )
+  })
+
   it('uses native selected and disabled source type controls', () => {
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
@@ -424,6 +476,10 @@ describe('AddSourcePage', () => {
     ).toBeDisabled()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeDisabled()
     expect(screen.queryByText('Jina Reader')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
   })
 
   it('keeps the unavailable final Add source action honest', () => {
