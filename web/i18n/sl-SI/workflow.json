@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Trenutni potek dela",
   "common.debugAndPreview": "Predogled",
   "common.disconnect": "Odklop",
+  "common.draftSaveFailed": "Shranjevanje osnutka ni uspelo",
   "common.duplicate": "Podvojiti",
   "common.editing": "Urejanje",
   "common.effectVarConfirm.content": "Spremenljivka se uporablja v drugih vozliščih. Ali jo še vedno želite odstraniti?",
