@@ -2,7 +2,10 @@
 
 import type { DocumentProcessingTask } from '@dify/contracts/knowledge-fs/types.gen'
 import type { DocumentFilter } from './document-list'
-import type { ProcessingTaskEvent } from './services/processing-task-events'
+import type {
+  ProcessingTaskEvent,
+  ProcessingTaskProgressEvent,
+} from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -92,6 +95,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     Record<string, Partial<DocumentProcessingTask>>
   >({})
   const [terminalTaskPins, setTerminalTaskPins] = useState<Record<string, TerminalTaskPin>>({})
+  const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
   const { mutateAsync: uploadDocument } = useMutation(
@@ -506,8 +510,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       const eventVersion = event.event === 'progress' ? event.data.updatedAt : taskVersion
       const terminalSnapshot = !ACTIVE_TASK_STATES.has(event.data.state)
       const serverVersion = baseTaskUpdatedAtRef.current.get(taskId)
-      if (terminalSnapshot && serverVersion && taskVersionIsAfter(serverVersion, eventVersion))
+      if (terminalSnapshot && serverVersion && taskVersionIsAfter(serverVersion, eventVersion)) {
+        pendingTerminalProgressRef.current.delete(taskId)
         return false
+      }
+
+      if (event.event === 'progress' && terminalSnapshot) {
+        pendingTerminalProgressRef.current.set(taskId, event)
+        return true
+      }
+
+      const pendingTerminalProgress =
+        event.event === 'terminal' ? pendingTerminalProgressRef.current.get(taskId) : undefined
+      if (event.event === 'terminal') pendingTerminalProgressRef.current.delete(taskId)
 
       setTaskOverrides((current) => {
         const previous = current[taskId]
@@ -530,12 +545,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               : {
                   errorCode: event.data.errorCode,
                   ...(event.data.state === 'failed' ? {} : { errorMessage: undefined }),
+                  ...(pendingTerminalProgress
+                    ? {
+                        progressPercent: pendingTerminalProgress.data.progressPercent,
+                        stage: pendingTerminalProgress.data.stage,
+                      }
+                    : {}),
                   state: event.data.state,
-                  updatedAt: previous?.updatedAt ?? eventVersion,
+                  updatedAt: eventVersion,
                 },
         }
       })
-      if (terminalSnapshot) {
+      if (event.event === 'terminal') {
         setTerminalTaskPins((current) => ({
           ...current,
           [taskId]: { observedAt: eventVersion },
@@ -551,12 +572,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const handleTaskUpdated = useCallback((task: DocumentProcessingTask) => {
     setTaskOverrides((current) => ({ ...current, [task.id]: task }))
-    if (taskIsActive(task))
+    if (taskIsActive(task)) {
+      pendingTerminalProgressRef.current.delete(task.id)
       setTerminalTaskPins((current) => {
         const next = { ...current }
         delete next[task.id]
         return next
       })
+    }
   }, [])
 
   const toggleDocument = useCallback(

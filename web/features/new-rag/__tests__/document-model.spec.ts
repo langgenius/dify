@@ -92,7 +92,7 @@ describe('new Knowledge document model', () => {
   it('keeps task badge and actions aligned with the contract states', () => {
     expect(taskIsActive(task({ state: 'running' }))).toBe(true)
     expect(taskNeedsAttention(task({ state: 'failed' }))).toBe(true)
-    expect(taskCanRetry(task({ state: 'canceled' }))).toBe(true)
+    expect(taskCanRetry(task({ state: 'canceled' }))).toBe(false)
     expect(taskNeedsAttention(task({ state: 'succeeded' }))).toBe(false)
     expect(taskCanRetry(task({ state: 'superseded' }))).toBe(false)
   })

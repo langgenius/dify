@@ -156,6 +156,7 @@ export function ProcessingTasksDrawer({
                       const timestamp = Date.parse(
                         taskIsActive(task) ? task.createdAt : taskTime(task),
                       )
+                      const taskError = task.errorMessage ?? task.errorCode
                       return (
                         <li key={task.id} className="flex min-h-[62px] items-center gap-2.5 py-3.5">
                           <span
@@ -185,9 +186,9 @@ export function ProcessingTasksDrawer({
                                 </>
                               )}
                             </p>
-                            {task.errorMessage && (
+                            {taskError && (
                               <p className="mt-1 truncate system-2xs-regular text-text-destructive">
-                                {task.errorMessage}
+                                {taskError}
                               </p>
                             )}
                             {actionErrors[task.id] && (

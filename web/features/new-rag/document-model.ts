@@ -75,5 +75,5 @@ export function taskIsActive(task: DocumentProcessingTask) {
 }
 
 export function taskCanRetry(task: DocumentProcessingTask) {
-  return task.state === 'failed' || task.state === 'canceled'
+  return task.state === 'failed'
 }

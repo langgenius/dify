@@ -2,7 +2,6 @@
 
 import type { ProcessingTaskEvent } from './services/processing-task-events'
 import { useEffect, useRef } from 'react'
-import { ACTIVE_TASK_STATES } from './document-model'
 import { streamProcessingTaskEvents } from './services/processing-task-events'
 
 const TASK_EVENT_RECONNECT_DELAY = 1000
@@ -63,7 +62,7 @@ export function TaskEventObserver({
               restartForNewerTask = true
               break
             }
-            if (event.event === 'terminal' || !ACTIVE_TASK_STATES.has(event.data.state)) return
+            if (event.event === 'terminal') return
           }
         } catch {
           if (controller.signal.aborted) return

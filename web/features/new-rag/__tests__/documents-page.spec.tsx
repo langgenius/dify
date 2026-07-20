@@ -903,7 +903,7 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
 
     tasksQuery.data = {
-      pages: [{ items: [task({ id: 'shared-task', state: 'canceled' })] }],
+      pages: [{ items: [task({ id: 'shared-task', state: 'failed' })] }],
     }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     const retry = screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' })
@@ -934,6 +934,57 @@ describe('DocumentsPage', () => {
     )
   })
 
+  it('does not offer retry for a canceled task', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'canceled', state: 'canceled' })] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('consumes the terminal error after final progress without duplicate side effects', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'failed-stream' })] }] }
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      yield {
+        data: {
+          progressPercent: 80,
+          stage: 'parsed' as const,
+          state: 'failed' as const,
+          updatedAt: '2026-07-20T10:03:00Z',
+        },
+        event: 'progress' as const,
+        id: 'failed-stream:2026-07-20T10:03:00Z',
+      }
+      yield {
+        data: { errorCode: 'PARSER_FAILED', state: 'failed' as const },
+        event: 'terminal' as const,
+        id: 'failed-stream:terminal',
+      }
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+
+    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(toastMock.error).toHaveBeenCalledTimes(1)
+    expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(2)
+  })
+
   it('applies task events and clears the attention badge after completion', async () => {
     documentsQuery.data = { pages: [{ items: [document({})] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'running' })] }] }
@@ -950,6 +1001,11 @@ describe('DocumentsPage', () => {
           },
           event: 'progress' as const,
           id: 'running:2026-07-20T10:06:00Z',
+        }
+        yield {
+          data: { state: 'succeeded' as const },
+          event: 'terminal' as const,
+          id: 'running:terminal',
         }
         return
       }
@@ -1052,6 +1108,11 @@ describe('DocumentsPage', () => {
           },
           event: 'progress' as const,
           id: 'externally-retried:2026-07-20T10:04:00Z',
+        }
+        yield {
+          data: { state: 'succeeded' as const },
+          event: 'terminal' as const,
+          id: 'externally-retried:terminal',
         }
         return
       }
