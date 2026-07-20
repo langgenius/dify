@@ -2,7 +2,8 @@ import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
@@ -75,6 +76,7 @@ const PermissionSelector = ({
   const selectedMemberNames = selectedMembers.map((member) => member.name).join(', ')
   const isDisabledByRbac = isRbacEnabled
   const isDisabled = disabled || isDisabledByRbac
+  const permissionLabel = t(($) => $['form.permissions'], { ns: 'datasetSettings' })
 
   return (
     <Popover>
@@ -164,9 +166,20 @@ const PermissionSelector = ({
         sideOffset={4}
         popupClassName="border-none bg-transparent shadow-none"
       >
+        <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
         <div className="relative w-[480px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
-          <div className="p-1">
+          <RadioGroup<DatasetPermission>
+            value={permission}
+            onValueChange={(nextPermission) => {
+              onChange(nextPermission)
+              if (nextPermission === DatasetPermission.partialMembers)
+                onMemberSelect([userProfile.id])
+            }}
+            aria-label={permissionLabel}
+            className="flex-col items-stretch gap-0 p-1"
+          >
             <PermissionItem
+              value={DatasetPermission.onlyMe}
               closeOnSelect
               leftIcon={
                 <Avatar
@@ -177,10 +190,10 @@ const PermissionSelector = ({
                 />
               }
               text={t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })}
-              onClick={() => onChange(DatasetPermission.onlyMe)}
               isSelected={isOnlyMe}
             />
             <PermissionItem
+              value={DatasetPermission.allTeamMembers}
               closeOnSelect
               leftIcon={
                 <div className="flex size-6 shrink-0 items-center justify-center">
@@ -191,10 +204,10 @@ const PermissionSelector = ({
                 </div>
               }
               text={t(($) => $['form.permissionsAllMember'], { ns: 'datasetSettings' })}
-              onClick={() => onChange(DatasetPermission.allTeamMembers)}
               isSelected={isAllTeamMembers}
             />
             <PermissionItem
+              value={DatasetPermission.partialMembers}
               leftIcon={
                 <div className="flex size-6 shrink-0 items-center justify-center">
                   <span
@@ -204,13 +217,9 @@ const PermissionSelector = ({
                 </div>
               }
               text={t(($) => $['form.permissionsInvitedMembers'], { ns: 'datasetSettings' })}
-              onClick={() => {
-                onChange(DatasetPermission.partialMembers)
-                onMemberSelect([userProfile.id])
-              }}
               isSelected={isPartialMembers}
             />
-          </div>
+          </RadioGroup>
           {isPartialMembers && (
             <div className="max-h-[360px] overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
               <div className="sticky top-0 left-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">

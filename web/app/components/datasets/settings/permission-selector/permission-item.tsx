@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react'
+import type { DatasetPermission } from '@/models/datasets'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
+import { RadioItem } from '@langgenius/dify-ui/radio'
 
 type PermissionItemProps = {
+  value: DatasetPermission
   leftIcon: ReactNode
   text: string
-  onClick: () => void
   isSelected: boolean
   closeOnSelect?: boolean
 }
@@ -13,9 +15,9 @@ const className =
   'flex w-full touch-manipulation cursor-pointer items-center gap-x-1 rounded-lg border-none bg-transparent px-2 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const PermissionItem = ({
+  value,
   leftIcon,
   text,
-  onClick,
   isSelected,
   closeOnSelect = false,
 }: PermissionItemProps) => {
@@ -31,16 +33,16 @@ const PermissionItem = ({
 
   if (closeOnSelect) {
     return (
-      <PopoverClose type="button" className={className} aria-pressed={isSelected} onClick={onClick}>
+      <PopoverClose render={<RadioItem<DatasetPermission> value={value} />} className={className}>
         {content}
       </PopoverClose>
     )
   }
 
   return (
-    <button type="button" className={className} aria-pressed={isSelected} onClick={onClick}>
+    <RadioItem<DatasetPermission> value={value} className={className}>
       {content}
-    </button>
+    </RadioItem>
   )
 }
 

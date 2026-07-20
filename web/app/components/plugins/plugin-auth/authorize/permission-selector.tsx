@@ -1,6 +1,13 @@
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { userProfileAtom } from '@/context/account-state'
@@ -24,6 +31,7 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
   const userProfile = useAtomValue(userProfileAtom)
   const isOnlyMe = permission === PermissionLevel.onlyMe
   const isAllTeamMembers = permission === PermissionLevel.allTeamMembers
+  const permissionLabel = t(($) => $['auth.whoCanUse'], { ns: 'plugin' })
 
   return (
     <Popover>
@@ -60,12 +68,16 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
         />
       </PopoverTrigger>
       <PopoverContent placement="bottom-start" sideOffset={4} popupClassName="w-[480px] p-0">
-        <div className="p-1">
+        <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
+        <RadioGroup<CredentialPermission>
+          value={permission}
+          onValueChange={onChange}
+          aria-label={permissionLabel}
+          className="flex-col items-stretch gap-0 p-1"
+        >
           <PopoverClose
-            type="button"
+            render={<RadioItem<CredentialPermission> value={PermissionLevel.onlyMe} />}
             className={optionClassName}
-            aria-pressed={isOnlyMe}
-            onClick={() => onChange(PermissionLevel.onlyMe)}
           >
             <Avatar
               avatar={userProfile.avatar_url}
@@ -81,10 +93,8 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
             )}
           </PopoverClose>
           <PopoverClose
-            type="button"
+            render={<RadioItem<CredentialPermission> value={PermissionLevel.allTeamMembers} />}
             className={optionClassName}
-            aria-pressed={isAllTeamMembers}
-            onClick={() => onChange(PermissionLevel.allTeamMembers)}
           >
             <div className="flex size-6 shrink-0 items-center justify-center">
               <span aria-hidden="true" className="i-ri-group-2-line size-4 text-text-secondary" />
@@ -96,7 +106,7 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
               <span aria-hidden="true" className="i-ri-check-line size-4 text-text-accent" />
             )}
           </PopoverClose>
-        </div>
+        </RadioGroup>
       </PopoverContent>
     </Popover>
   )

@@ -2,7 +2,7 @@ import type { ApiKeyModalProps } from '../api-key-modal'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -297,7 +297,22 @@ describe('ApiKeyModal', () => {
     const trigger = screen.getByRole('button', { name: /permissionsAllMember/ })
     expect(trigger).toHaveAttribute('type', 'button')
     await user.click(trigger)
-    await user.click(screen.getByRole('button', { name: /permissionsOnlyMe/ }))
+    const permissionDialog = screen.getByRole('dialog', { name: /auth.whoCanUse/ })
+    const permissionGroup = within(permissionDialog).getByRole('radiogroup', {
+      name: /auth.whoCanUse/,
+    })
+    const allMembers = within(permissionGroup).getByRole('radio', {
+      name: /permissionsAllMember/,
+    })
+    const onlyMe = within(permissionGroup).getByRole('radio', { name: /permissionsOnlyMe/ })
+    expect(allMembers).toBeChecked()
+
+    allMembers.focus()
+    await user.keyboard('{ArrowUp}')
+    expect(onlyMe).toBeChecked()
+    expect(permissionDialog).toBeInTheDocument()
+
+    await user.click(onlyMe)
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {

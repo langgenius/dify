@@ -108,7 +108,9 @@ describe('PermissionSelector', () => {
     expect(trigger).toHaveFocus()
     await user.keyboard('{Enter}')
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', { name: /form.permissions/ })
+    expect(within(dialog).getByRole('radiogroup', { name: /form.permissions/ })).toBeInTheDocument()
+    expect(within(dialog).getByRole('radio', { name: /permissionsOnlyMe/ })).toBeChecked()
   })
 
   it.each([
@@ -147,8 +149,8 @@ describe('PermissionSelector', () => {
           permission === DatasetPermission.onlyMe ? /permissionsAllMember/ : /permissionsOnlyMe/,
       }),
     )
-    const popover = screen.getByRole('dialog')
-    await user.click(within(popover).getByRole('button', { name: optionName }))
+    const popover = screen.getByRole('dialog', { name: /form.permissions/ })
+    await user.click(within(popover).getByRole('radio', { name: optionName }))
 
     expect(onChange).toHaveBeenCalledWith(permission)
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -161,12 +163,27 @@ describe('PermissionSelector', () => {
     renderSelector({ onChange, onMemberSelect })
 
     await user.click(screen.getByRole('button', { name: /permissionsOnlyMe/ }))
-    const popover = screen.getByRole('dialog')
-    await user.click(within(popover).getByRole('button', { name: /permissionsInvitedMembers/ }))
+    const popover = screen.getByRole('dialog', { name: /form.permissions/ })
+    await user.click(within(popover).getByRole('radio', { name: /permissionsInvitedMembers/ }))
 
     expect(onChange).toHaveBeenCalledWith(DatasetPermission.partialMembers)
     expect(onMemberSelect).toHaveBeenCalledWith(['user-1'])
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: /form.permissions/ })).toBeInTheDocument()
+  })
+
+  it('uses radio keyboard navigation without closing the popover', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderSelector({ onChange })
+
+    await user.click(screen.getByRole('button', { name: /permissionsOnlyMe/ }))
+    const dialog = screen.getByRole('dialog', { name: /form.permissions/ })
+    const onlyMe = within(dialog).getByRole('radio', { name: /permissionsOnlyMe/ })
+    onlyMe.focus()
+    await user.keyboard('{ArrowDown}')
+
+    expect(onChange).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
+    expect(dialog).toBeInTheDocument()
   })
 
   it.each([
