@@ -47,6 +47,7 @@ export const e2eWebEnvOverrides = {
   NEXT_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/console/api',
   NEXT_PUBLIC_ENABLE_AGENT_V2: 'true',
   NEXT_PUBLIC_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/api',
+  NEXT_PUBLIC_SOCKET_URL: 'ws://127.0.0.1:5001',
 } satisfies Record<string, string>
 
 const formatCommand = (command: string, args: string[]) => [command, ...args].join(' ')

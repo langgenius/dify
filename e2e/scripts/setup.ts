@@ -330,7 +330,7 @@ export const startApi = async () => {
       '--worker-class',
       'geventwebsocket.gunicorn.workers.GeventWebSocketWorker',
       '--worker-connections',
-      '10',
+      '1000',
       '--timeout',
       '200',
       'app:socketio_app',
