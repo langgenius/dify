@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   }),
   headers: vi.fn(),
   resolveServerConsoleApiUrl: vi.fn(),
+  basePath: '',
 }))
 
 vi.mock('@/context/query-client-server', () => ({
@@ -27,6 +28,12 @@ vi.mock('@/next/headers', () => ({
 
 vi.mock('@/next/navigation', () => ({
   redirect: (url: string) => mocks.redirect(url),
+}))
+
+vi.mock('@/utils/var', () => ({
+  get basePath() {
+    return mocks.basePath
+  },
 }))
 
 vi.mock('@/features/account-profile/server', () => ({
@@ -62,6 +69,7 @@ vi.mock('@/features/system-features/server', () => ({
 describe('CommonLayoutHydrationBoundary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.basePath = ''
     mocks.queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mocks.headers.mockResolvedValue(
       new Headers({
@@ -126,6 +134,7 @@ describe('CommonLayoutHydrationBoundary', () => {
   })
 
   it('should redirect unauthorized users to the refresh route with the current path', async () => {
+    mocks.basePath = '/workflow'
     mocks.profileQueryFn.mockRejectedValue(
       new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
     )
@@ -150,15 +159,17 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(mocks.redirect).toHaveBeenCalledWith('/auth/refresh?redirect_url=%2F')
   })
 
-  it('should redirect setup errors to install', async () => {
-    mocks.profileQueryFn.mockRejectedValue(
-      new Response(JSON.stringify({ code: 'not_setup' }), { status: 401 }),
-    )
+  it.each([
+    ['not_setup', '/install'],
+    ['not_init_validated', '/init'],
+  ])('should use a basePath-relative destination for %s errors', async (code, destination) => {
+    mocks.basePath = '/workflow'
+    mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code }), { status: 401 }))
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mocks.redirect).toHaveBeenCalledWith('/install')
+    expect(mocks.redirect).toHaveBeenCalledWith(destination)
   })
 
   it('should render children without server prefetch when the server API URL is not resolvable', async () => {

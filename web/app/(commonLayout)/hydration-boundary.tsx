@@ -42,15 +42,15 @@ const getCurrentPath = async () => {
 
 const redirectToAuthRefresh = async () => {
   const currentPath = await getCurrentPath()
-  redirect(`${basePath}${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
+  redirect(`${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
 }
 
 const handleProfileError = async (error: unknown) => {
   if (!(error instanceof Response)) throw error
 
   const errorData = await parseConsoleErrorPayload(error)
-  if (errorData?.code === 'not_setup') redirect(`${basePath}/install`)
-  if (errorData?.code === 'not_init_validated') redirect(`${basePath}/init`)
+  if (errorData?.code === 'not_setup') redirect('/install')
+  if (errorData?.code === 'not_init_validated') redirect('/init')
   if (error.status === 401) await redirectToAuthRefresh()
 
   throw error
