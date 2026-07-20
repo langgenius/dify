@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   }),
   headers: vi.fn(),
   resolveServerConsoleApiUrl: vi.fn(),
+  basePath: '',
 }))
 
 vi.mock('@/context/query-client-server', () => ({
@@ -27,6 +28,12 @@ vi.mock('@/next/headers', () => ({
 
 vi.mock('@/next/navigation', () => ({
   redirect: (url: string) => mocks.redirect(url),
+}))
+
+vi.mock('@/utils/var', () => ({
+  get basePath() {
+    return mocks.basePath
+  },
 }))
 
 vi.mock('@/features/account-profile/server', () => ({
@@ -148,6 +155,36 @@ describe('CommonLayoutHydrationBoundary', () => {
     await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mocks.redirect).toHaveBeenCalledWith('/auth/refresh?redirect_url=%2F')
+  })
+
+  // Regression for https://github.com/langgenius/dify/issues/39271
+  // When NEXT_PUBLIC_BASE_PATH is set, the proxy sets `x-dify-pathname` to the
+  // full path including basePath, and next/navigation's redirect() also
+  // prepends basePath. The redirect destination must therefore be
+  // basePath-relative; the previous code prepended basePath manually and
+  // produced a doubled prefix (e.g. /workflow/workflow/auth/refresh).
+  it('should not double the basePath in the refresh redirect destination', async () => {
+    mocks.basePath = '/workflow'
+    mocks.headers.mockResolvedValue(
+      new Headers({
+        'x-dify-pathname': '/workflow/apps',
+        'x-dify-search': '?tag=workflow',
+      }),
+    )
+    mocks.profileQueryFn.mockRejectedValue(
+      new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
+    )
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+
+    await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
+
+    // destination is basePath-relative (Next.js prepends /workflow itself);
+    // redirect_url preserves the full path including basePath
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      '/auth/refresh?redirect_url=%2Fworkflow%2Fapps%3Ftag%3Dworkflow',
+    )
+    const destination = mocks.redirect.mock.calls[0]![0] as string
+    expect(destination.startsWith('/workflow/')).toBe(false)
   })
 
   it('should redirect setup errors to install', async () => {

@@ -42,15 +42,22 @@ const getCurrentPath = async () => {
 
 const redirectToAuthRefresh = async () => {
   const currentPath = await getCurrentPath()
-  redirect(`${basePath}${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
+  // next/navigation's redirect() automatically prepends the configured
+  // `basePath` (next.config.ts -> basePath), so the destination must be a
+  // basePath-relative path. Prefixing it manually (as the previous
+  // `${basePath}${...}` did) results in a doubled base path, e.g.
+  // `/workflow/workflow/auth/refresh` when NEXT_PUBLIC_BASE_PATH=/workflow.
+  // The `redirect_url` query value still carries the basePath because the
+  // proxy already sets `x-dify-pathname` to the full path including basePath.
+  redirect(`${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
 }
 
 const handleProfileError = async (error: unknown) => {
   if (!(error instanceof Response)) throw error
 
   const errorData = await parseConsoleErrorPayload(error)
-  if (errorData?.code === 'not_setup') redirect(`${basePath}/install`)
-  if (errorData?.code === 'not_init_validated') redirect(`${basePath}/init`)
+  if (errorData?.code === 'not_setup') redirect('/install')
+  if (errorData?.code === 'not_init_validated') redirect('/init')
   if (error.status === 401) await redirectToAuthRefresh()
 
   throw error
