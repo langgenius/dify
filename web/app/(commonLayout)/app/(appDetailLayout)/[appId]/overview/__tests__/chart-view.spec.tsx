@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AppACLPermission } from '@/utils/permission'
 import ChartView from '../chart-view'
 
@@ -13,6 +14,13 @@ const testState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
   chartRenderSpy: vi.fn(),
 }))
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
@@ -83,6 +91,14 @@ vi.mock('../long-time-range-picker', () => ({
 vi.mock('../time-range-picker', () => ({
   default: () => <button type="button">time range</button>,
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('ChartView monitor permission', () => {
   beforeEach(() => {

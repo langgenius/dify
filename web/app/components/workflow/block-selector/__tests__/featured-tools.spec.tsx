@@ -114,10 +114,7 @@ describe('FeaturedTools', () => {
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Provider One')).toBeInTheDocument()
-    expect(globalThis.localStorage.setItem).toHaveBeenCalledWith(
-      'workflow_tools_featured_collapsed',
-      'false',
-    )
+    expect(globalThis.localStorage.getItem('workflow_tools_featured_collapsed')).toBe('false')
   })
 
   it('keeps the marketplace link and row actions keyboard reachable', async () => {

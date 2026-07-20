@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
@@ -75,6 +76,13 @@ type MockWorkflowWithInnerContextProps = Pick<
   hooksStore?: Record<string, unknown>
   children?: ReactNode
 }
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeaturesStore: () => ({
@@ -341,6 +349,14 @@ vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas
 vi.mock('../workflow-children', () => ({
   default: () => <div data-testid="workflow-children">workflow-children</div>,
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('WorkflowMain', () => {
   beforeEach(() => {

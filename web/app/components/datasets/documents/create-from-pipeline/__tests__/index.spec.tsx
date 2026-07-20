@@ -1,4 +1,5 @@
-import { render, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import CreateFromPipeline from '../index'
 
 let mockDatasetPermissionKeys = ['dataset.acl.use']
@@ -15,61 +16,44 @@ vi.mock('@/context/provider-context', () => ({
   ) => selector({ plan: mockPlan, enableBilling: true }),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
   }))
 })
 
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
   }))
 })
 
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
   }))
 })
 
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createSystemFeaturesStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
   }))
-})
-
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-    isLoadingWorkspacePermissionKeys: false,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
 })
 
 vi.mock('@/context/dataset-detail', () => ({
