@@ -100,7 +100,7 @@ function PageState({
       </div>
       <h2 className="title-2xl-semi-bold text-text-primary">{title}</h2>
       <p className="mt-2 max-w-[520px] body-md-regular text-text-tertiary">{description}</p>
-      {action && <div className="mt-6">{action}</div>}
+      {action ? <div className="mt-6">{action}</div> : null}
     </div>
   )
 }
