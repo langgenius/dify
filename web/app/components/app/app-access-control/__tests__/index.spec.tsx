@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
@@ -123,5 +124,21 @@ describe('AccessControl', () => {
 
     expect(screen.getByText('app.accessControlDialog.accessItems.external')).toBeInTheDocument()
     expect(screen.getByText('app.accessControlDialog.accessItems.anyone')).toBeInTheDocument()
+  })
+
+  it('should preserve an unfinished selection when the parent rerenders', async () => {
+    const user = userEvent.setup()
+    const app = { id: 'app-id-3', access_mode: AccessMode.PUBLIC } as App
+    const { rerender } = render(<AccessControl app={app} onClose={vi.fn()} />)
+
+    const organization = screen.getByRole('radio', {
+      name: 'app.accessControlDialog.accessItems.organization',
+    })
+    await user.click(organization)
+    expect(organization).toBeChecked()
+
+    rerender(<AccessControl app={{ ...app }} onClose={vi.fn()} />)
+
+    expect(organization).toBeChecked()
   })
 })

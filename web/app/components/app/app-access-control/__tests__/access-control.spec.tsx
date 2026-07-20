@@ -7,7 +7,6 @@ import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-syste
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import AccessControlDialog from '../access-control-dialog'
-import AccessControlItem from '../access-control-item'
 import AddMemberOrGroupDialog from '../add-member-or-group-pop'
 import AccessControl from '../index'
 import SpecificGroupsOrMembers from '../specific-groups-or-members'
@@ -122,39 +121,6 @@ beforeEach(() => {
     isFetchingNextPage: false,
     fetchNextPage: vi.fn(),
     data: { pages: [{ currPage: 1, subjects: [groupSubject, memberSubject], hasMore: false }] },
-  })
-})
-
-// AccessControlItem handles selected vs. unselected styling and click state updates
-describe('AccessControlItem', () => {
-  it('should update current menu when selecting a different access type', () => {
-    useAccessControlStore.setState({ currentMenu: AccessMode.PUBLIC })
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
-    )
-
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    expect(option).toHaveClass('cursor-pointer')
-
-    fireEvent.click(option)
-
-    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
-  })
-
-  it('should keep current menu when clicking the selected access type', () => {
-    useAccessControlStore.setState({ currentMenu: AccessMode.ORGANIZATION })
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
-    )
-
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    fireEvent.click(option)
-
-    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
   })
 })
 

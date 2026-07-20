@@ -3,10 +3,11 @@ import type { Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
@@ -25,6 +26,7 @@ type AccessControlProps = {
 export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
   const { id: appId, access_mode: appAccessMode } = app
+  const accessControlOptionsLabelId = useId()
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const setAppId = useAccessControlStore((s) => s.setAppId)
@@ -80,9 +82,14 @@ export default function AccessControl(props: AccessControlProps) {
             {t(($) => $['accessControlDialog.description'], { ns: 'app' })}
           </DialogDescription>
         </div>
-        <div className="flex flex-col gap-y-1 px-6 pb-3">
+        <RadioGroup<AccessMode>
+          value={currentMenu}
+          onValueChange={setCurrentMenu}
+          className="flex flex-col items-stretch gap-y-1 px-6 pb-3"
+          aria-labelledby={accessControlOptionsLabelId}
+        >
           <div className="leading-6">
-            <p className="system-sm-medium text-text-tertiary">
+            <p id={accessControlOptionsLabelId} className="system-sm-medium text-text-tertiary">
               {t(($) => $['accessControlDialog.accessLabel'], { ns: 'app' })}
             </p>
           </div>
@@ -118,7 +125,7 @@ export default function AccessControl(props: AccessControlProps) {
               </p>
             </div>
           </AccessControlItem>
-        </div>
+        </RadioGroup>
         <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
           <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button
