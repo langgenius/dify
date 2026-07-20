@@ -1,6 +1,7 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach } from 'vitest'
+import { render } from '@/test/console/render'
 import SecretKeyModal from '../secret-key-modal'
 
 async function renderModal(ui: React.ReactElement) {
@@ -27,57 +28,13 @@ const mockCurrentWorkspace = vi.fn().mockReturnValue({
 const mockIsCurrentWorkspaceManager = vi.fn().mockReturnValue(true)
 const mockIsCurrentWorkspaceEditor = vi.fn().mockReturnValue(true)
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: mockCurrentWorkspace(),
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: mockCurrentWorkspace(),
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: mockCurrentWorkspace(),
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: mockCurrentWorkspace(),
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: mockCurrentWorkspace(),
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/hooks/use-timestamp', () => ({

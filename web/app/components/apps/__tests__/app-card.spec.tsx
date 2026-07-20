@@ -2,11 +2,11 @@ import type { Mock } from 'vitest'
 import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
 import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { AppCard } from '../app-card'
@@ -20,7 +20,7 @@ const mockUserCanAccessApp = vi.hoisted(() => ({
 }))
 
 const render = (ui: React.ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: {
       webapp_auth: { enabled: mockWebappAuthEnabled },
       branding: { enabled: false },
@@ -80,7 +80,7 @@ vi.mock('use-context-selector', () => ({
     }),
 }))
 
-const mockAppContext = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   isCurrentWorkspaceEditor: true,
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
@@ -88,37 +88,17 @@ const mockAppContext = vi.hoisted(() => ({
 
 // Mock app context
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
 // Mock provider context
@@ -545,9 +525,9 @@ describe('AppCard', () => {
     mockUserCanAccessApp.isLoading = false
     mockDeleteMutationPending = false
     mockToggleStarMutationPending = false
-    mockAppContext.isCurrentWorkspaceEditor = true
-    mockAppContext.userProfile = { id: 'user-1' }
-    mockAppContext.workspacePermissionKeys = ['app.create_and_management']
+    mockConsoleState.isCurrentWorkspaceEditor = true
+    mockConsoleState.userProfile = { id: 'user-1' }
+    mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
   })
 
   describe('Rendering', () => {
@@ -696,9 +676,9 @@ describe('AppCard', () => {
     })
 
     it('should allow app edit permission to bind tags without workspace tag management permission', () => {
-      mockAppContext.isCurrentWorkspaceEditor = false
-      mockAppContext.workspacePermissionKeys = []
-      mockAppContext.userProfile = { id: 'user-2' }
+      mockConsoleState.isCurrentWorkspaceEditor = false
+      mockConsoleState.workspacePermissionKeys = []
+      mockConsoleState.userProfile = { id: 'user-2' }
       const editableApp = createMockApp({
         maintainer: 'user-1',
         tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: '' }],
@@ -714,9 +694,9 @@ describe('AppCard', () => {
     })
 
     it('should allow workspace app tag management permission to bind tags without app edit permission', () => {
-      mockAppContext.isCurrentWorkspaceEditor = false
-      mockAppContext.workspacePermissionKeys = ['app.tag.manage']
-      mockAppContext.userProfile = { id: 'user-2' }
+      mockConsoleState.isCurrentWorkspaceEditor = false
+      mockConsoleState.workspacePermissionKeys = ['app.tag.manage']
+      mockConsoleState.userProfile = { id: 'user-2' }
       const tagManageApp = createMockApp({
         maintainer: 'user-1',
         tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: '' }],
@@ -732,9 +712,9 @@ describe('AppCard', () => {
     })
 
     it('should render existing app tags as readonly without app edit or workspace tag management permission', () => {
-      mockAppContext.isCurrentWorkspaceEditor = false
-      mockAppContext.workspacePermissionKeys = []
-      mockAppContext.userProfile = { id: 'user-2' }
+      mockConsoleState.isCurrentWorkspaceEditor = false
+      mockConsoleState.workspacePermissionKeys = []
+      mockConsoleState.userProfile = { id: 'user-2' }
       const readonlyApp = createMockApp({
         maintainer: 'user-1',
         tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: '' }],
@@ -948,7 +928,7 @@ describe('AppCard', () => {
     })
 
     it('should show switch option when user can edit app without app creation permission', async () => {
-      mockAppContext.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
       const editableChatApp = createMockApp({
         created_by: 'another-user',
         maintainer: 'another-user',

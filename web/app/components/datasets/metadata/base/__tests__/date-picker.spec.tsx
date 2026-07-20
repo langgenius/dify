@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import WrappedDatePicker from '../date-picker'
 
 type TriggerArgs = {

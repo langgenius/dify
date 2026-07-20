@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Credential, ModelProvider } from '../../declarations'
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '../../declarations'
 import ModelModal from '../index'
 
@@ -22,6 +23,13 @@ let mockDeleteCredentialId: string | null = null
 
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
   default: () => <div data-testid="auth-form" />,
@@ -132,6 +140,14 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
     allow_custom_token: true,
     ...overrides,
   }) as unknown as ModelProvider
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('ModelModal dialog branches', () => {
   beforeEach(() => {

@@ -1,46 +1,27 @@
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ICurrentWorkspace } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { updateWorkspaceInfo } from '@/service/common'
+import { render } from '@/test/console/render'
 import EditWorkspaceModal from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
-const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextStateMockState>,
+const mockConsoleState = vi.hoisted(() => ({
+  current: {} as Partial<ConsoleStateFixture>,
 }))
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
 const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState.current)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
+
 vi.mock('@/service/common')
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
@@ -61,12 +42,12 @@ describe('EditWorkspaceModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    const appContextValue = {
+    const consoleState = {
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: true,
-    } as unknown as AppContextStateMockState
-    mockAppContextState.current = appContextValue
-    mockUseAppContext.mockReturnValue(appContextValue)
+    } as unknown as ConsoleStateFixture
+    mockConsoleState.current = consoleState
+    mockConsoleStateReader.mockReturnValue(consoleState)
   })
 
   afterEach(() => {
@@ -188,10 +169,10 @@ describe('EditWorkspaceModal', () => {
   })
 
   it('should disable confirm button for non-owners', async () => {
-    mockUseAppContext.mockReturnValue({
+    mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
-    } as unknown as AppContextStateMockState)
+    } as unknown as ConsoleStateFixture)
 
     renderModal()
 
