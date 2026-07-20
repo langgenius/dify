@@ -169,6 +169,7 @@
   "common.currentWorkflow": "เวิร์กโฟลว์ปัจจุบัน",
   "common.debugAndPreview": "ดูตัวอย่าง",
   "common.disconnect": "ยก เลิก",
+  "common.draftSaveFailed": "บันทึกฉบับร่างไม่สำเร็จ",
   "common.duplicate": "สำเนา",
   "common.editing": "แก้ไข",
   "common.effectVarConfirm.content": "ตัวแปรนี้ใช้ในโหนดอื่น คุณยังต้องการลบออกหรือไม่?",

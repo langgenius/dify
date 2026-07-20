@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
+import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import {
   isCurrentWorkspaceDatasetOperatorAtom,
@@ -131,13 +132,16 @@ export function MainNav({ className }: MainNavProps) {
           </div>
         )}
       </div>
-      <div className="flex w-60 items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
-        <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-          <AccountSection />
+      <div className="relative w-60 shrink-0">
+        <div className="flex w-60 items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
+          <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+            <AccountSection />
+          </div>
+          <div className="flex shrink-0 items-center justify-center rounded-full p-1">
+            <HelpMenu />
+          </div>
         </div>
-        <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-          <HelpMenu />
-        </div>
+        <StepByStepTourMount className="absolute -top-7 left-2.5 h-8 w-[183px] overflow-visible" />
       </div>
     </aside>
   )

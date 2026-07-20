@@ -169,6 +169,7 @@
   "common.currentWorkflow": "वर्तमान कार्यप्रवाह",
   "common.debugAndPreview": "पूर्वावलोकन",
   "common.disconnect": "अलग करना",
+  "common.draftSaveFailed": "ड्राफ़्ट सहेजना विफल रहा",
   "common.duplicate": "डुप्लिकेट करें",
   "common.editing": "संपादन",
   "common.effectVarConfirm.content": "वेरिएबल अन्य नोड्स में उपयोग किया जाता है। क्या आप अभी भी इसे हटाना चाहते हैं?",

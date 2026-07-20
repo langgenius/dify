@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Quy trình làm việc hiện tại",
   "common.debugAndPreview": "Xem trước",
   "common.disconnect": "Ngắt kết nối",
+  "common.draftSaveFailed": "Lưu bản nháp thất bại",
   "common.duplicate": "Nhân bản",
   "common.editing": "Đang chỉnh sửa",
   "common.effectVarConfirm.content": "Biến được sử dụng trong các nút khác. Bạn có chắc chắn muốn xóa nó không?",
