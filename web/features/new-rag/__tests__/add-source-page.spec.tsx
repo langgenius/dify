@@ -389,7 +389,20 @@ describe('AddSourcePage', () => {
       .mockRejectedValueOnce(new Error('version conflict'))
       .mockResolvedValueOnce(connection('active', 4))
     queryState.connections.refetch.mockResolvedValue({
-      data: { pages: [{ items: [connection('error', 3)] }] },
+      data: {
+        pages: [
+          {
+            items: [
+              connection('error', 3),
+              {
+                ...connection('error', 8),
+                id: 'connection-2',
+                updatedAt: '2026-07-20T11:00:00Z',
+              },
+            ],
+          },
+        ],
+      },
     })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)

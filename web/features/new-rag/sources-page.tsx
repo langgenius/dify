@@ -330,11 +330,13 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 ))}
               </tbody>
             </table>
-            {!filteredSources.length && !completingFilteredResults && (
-              <p className="py-16 text-center body-sm-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.noMatchingSources'])}
-              </p>
-            )}
+            {!filteredSources.length &&
+              !completingFilteredResults &&
+              !sourcesQuery.isFetchNextPageError && (
+                <p className="py-16 text-center body-sm-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.noMatchingSources'])}
+                </p>
+              )}
             {!filteredSources.length && completingFilteredResults && (
               <div className="flex min-h-40 items-center justify-center">
                 <Loading />

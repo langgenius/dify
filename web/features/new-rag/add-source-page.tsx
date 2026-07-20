@@ -62,6 +62,12 @@ function findProviderConnection(connections: Connection[], providerId?: string) 
   )[0]
 }
 
+function findConnectionById(connections: Connection[], connectionId: string) {
+  return [...connections.filter((connection) => connection.id === connectionId)].sort(
+    (left, right) => right.version - left.version || right.updatedAt.localeCompare(left.updatedAt),
+  )[0]
+}
+
 function getSupportedAuthKinds(provider: Provider) {
   const fields = provider.configuration.filter(
     (field) => !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
@@ -640,10 +646,10 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const reconcileConnection = useCallback(async () => {
     if (connection) setConnectionOverride(connection)
     const refreshed = await refetchConnections()
-    const updatedConnection = findProviderConnection(
-      refreshed.data?.pages.flatMap((page) => page.items) ?? [],
-      provider?.id,
-    )
+    const refreshedConnections = refreshed.data?.pages.flatMap((page) => page.items) ?? []
+    const updatedConnection = connection
+      ? findConnectionById(refreshedConnections, connection.id)
+      : findProviderConnection(refreshedConnections, provider?.id)
     if (updatedConnection) setConnectionOverride(updatedConnection)
     return updatedConnection
   }, [connection, provider?.id, refetchConnections])
