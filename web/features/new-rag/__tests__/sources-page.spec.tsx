@@ -1,0 +1,182 @@
+import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
+import { SourcesPage } from '../sources-page'
+
+type SourcesInfiniteOptions = {
+  getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
+  input: (pageParam: string | null) => unknown
+  initialPageParam: string | null
+}
+
+const sourcesQuery = vi.hoisted(() => ({
+  data: undefined as { pages: Array<{ items: Source[]; nextCursor?: string }> } | undefined,
+  error: null as unknown,
+  fetchNextPage: vi.fn(),
+  hasNextPage: false,
+  isFetchNextPageError: false,
+  isFetchingNextPage: false,
+  isPending: false,
+  refetch: vi.fn(),
+}))
+
+const infiniteOptionsMock = vi.hoisted(() => vi.fn((_options: SourcesInfiniteOptions) => ({})))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useInfiniteQuery: () => sourcesQuery,
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    knowledgeFs: {
+      getKnowledgeSpacesByIdSources: {
+        infiniteOptions: infiniteOptionsMock,
+      },
+    },
+  },
+}))
+
+const source = (overrides: Partial<Source>): Source => ({
+  createdAt: '2026-07-20T10:00:00Z',
+  id: 'source-1',
+  knowledgeSpaceId: 'space-1',
+  metadata: {},
+  name: 'Product documentation',
+  status: 'active',
+  type: 'web',
+  updatedAt: '2026-07-20T10:00:00Z',
+  uri: 'https://docs.example.com',
+  ...overrides,
+})
+
+describe('SourcesPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    sourcesQuery.data = undefined
+    sourcesQuery.error = null
+    sourcesQuery.hasNextPage = false
+    sourcesQuery.isFetchNextPageError = false
+    sourcesQuery.isFetchingNextPage = false
+    sourcesQuery.isPending = false
+  })
+
+  it('loads sources through the KnowledgeFS contract', () => {
+    sourcesQuery.isPending = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const options = infiniteOptionsMock.mock.lastCall?.[0]
+    expect(options).toBeDefined()
+    if (!options) throw new Error('Expected source infinite query options')
+    expect(options.input(null)).toEqual({
+      params: { id: 'space-1' },
+      query: { limit: 50 },
+    })
+    expect(options.input('next')).toEqual({
+      params: { id: 'space-1' },
+      query: { cursor: 'next', limit: 50 },
+    })
+    expect(options.getNextPageParam({ nextCursor: 'next' })).toBe('next')
+    expect(options.initialPageParam).toBeNull()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('renders the designed empty state and enters the real add-source route', () => {
+    sourcesQuery.data = { pages: [{ items: [] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('dataset.newKnowledge.sourcesEmptyTitle')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.addSource' })).toHaveAttribute(
+      'href',
+      '/datasets/new/space-1/sources/new',
+    )
+  })
+
+  it('renders real source statuses and filters by status and search text', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({ id: 'active', name: 'Product documentation', status: 'active' }),
+            source({ id: 'syncing', name: 'API reference', status: 'syncing' }),
+            source({ id: 'disabled', name: 'Legacy FAQ', status: 'disabled' }),
+            source({ id: 'error', name: 'Support site', status: 'error' }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getAllByText('dataset.newKnowledge.sourceStatus.active')).toHaveLength(2)
+    expect(screen.getAllByText('dataset.newKnowledge.sourceStatus.syncing')).toHaveLength(2)
+    expect(screen.getAllByText('dataset.newKnowledge.sourceStatus.disabled')).toHaveLength(2)
+    expect(screen.getAllByText('dataset.newKnowledge.sourceStatus.error')).toHaveLength(2)
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.sourceFilterLabel' }),
+      'error',
+    )
+    expect(screen.getByText('Support site')).toBeInTheDocument()
+    expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.sourceFilterLabel' }),
+      'all',
+    )
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
+      'api',
+    )
+    expect(screen.getByText('API reference')).toBeInTheDocument()
+    expect(screen.queryByText('Support site')).not.toBeInTheDocument()
+  })
+
+  it('exposes the row action structure without pretending unsupported mutations work', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+
+    for (const label of [
+      'dataset.newKnowledge.syncNow',
+      'dataset.newKnowledge.editSource',
+      'dataset.newKnowledge.disableSource',
+      'dataset.newKnowledge.removeSource',
+    ])
+      expect(screen.getByRole('menuitem', { name: label })).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('offers a real retry when the source list cannot load', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.error = new Error('temporary failure')
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
+  })
+
+  it('loads the next real cursor page on demand', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})], nextCursor: 'next' }] }
+    sourcesQuery.hasNextPage = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+})
