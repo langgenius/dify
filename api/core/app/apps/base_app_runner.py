@@ -32,7 +32,8 @@ from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
-from core.tools.tool_file_manager import ToolFileManager
+from core.tools.signature import sign_tool_file
+from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -419,7 +420,6 @@ class AppRunner:
 
                 image_binary = base64.b64decode(base64_data)
                 mimetype = content.mime_type or "image/png"
-                extension = guess_extension(mimetype) or ".png"
 
                 tool_file = tool_file_manager.create_file_by_raw(
                     user_id=user_id,
@@ -427,7 +427,7 @@ class AppRunner:
                     conversation_id=None,
                     file_binary=image_binary,
                     mimetype=mimetype,
-                    filename=f"generated_image{extension}",
+                    filename=f"generated_image{guess_extension(mimetype) or '.png'}",
                 )
                 _logger.info("Image saved successfully, tool_file_id: %s", tool_file.id)
             else:
@@ -435,6 +435,12 @@ class AppRunner:
         except Exception:
             _logger.exception("Failed to save image file")
             return None
+
+        # Resolve the file extension once for both branches and build a signed URL.
+        # The /files/tools/<id> endpoint (controllers/files/tool_files.py) requires
+        # signed query parameters (timestamp, nonce, sign); an unsigned URL is
+        # rejected with a 400 ValidationError at request time.
+        extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
 
         # Create MessageFile record.
         # Use an independent session so this side-effect write does not
@@ -444,7 +450,7 @@ class AppRunner:
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             belongs_to=MessageFileBelongsTo.ASSISTANT,
-            url=f"/files/tools/{tool_file.id}",
+            url=sign_tool_file(tool_file_id=tool_file.id, extension=extension),
             upload_file_id=tool_file.id,
             created_by_role=(
                 CreatorUserRole.ACCOUNT if queue_manager.invoke_from.runs_as_account() else CreatorUserRole.END_USER

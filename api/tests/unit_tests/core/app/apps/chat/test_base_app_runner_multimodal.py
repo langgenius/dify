@@ -42,6 +42,8 @@ class TestBaseAppRunnerMultimodal:
         """Create a mock tool file."""
         tool_file = MagicMock()
         tool_file.id = str(uuid4())
+        tool_file.name = "image.png"
+        tool_file.mimetype = "image/png"
         return tool_file
 
     @pytest.fixture
@@ -109,6 +111,14 @@ class TestBaseAppRunnerMultimodal:
                 assert call_kwargs["transfer_method"] == FileTransferMethod.TOOL_FILE
                 assert call_kwargs["belongs_to"] == "assistant"
                 assert call_kwargs["created_by"] == mock_user_id
+
+                # The stored URL must be signed (timestamp/nonce/sign query params)
+                # so the /files/tools/<id> endpoint accepts it instead of 400ing.
+                signed_url = call_kwargs["url"]
+                assert "timestamp=" in signed_url
+                assert "nonce=" in signed_url
+                assert "sign=" in signed_url
+                assert f"/files/tools/{mock_tool_file.id}" in signed_url
 
                 file_session.add.assert_called_once_with(mock_message_file)
                 file_session.flush.assert_called_once()
