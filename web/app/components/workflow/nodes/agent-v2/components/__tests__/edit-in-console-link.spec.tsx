@@ -13,6 +13,9 @@ describe('EditInConsoleLink', () => {
     render(<EditInConsoleLink agentId="agent-1" canManageAgents={false} />)
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
-    expect(screen.getByText(/editInConsole/).closest('[aria-disabled="true"]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: /editInConsole/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 })

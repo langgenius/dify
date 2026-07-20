@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 
 const mocks = vi.hoisted(() => ({
@@ -6,6 +7,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../feature-guard', () => ({
   guardAgentV2Route: () => mocks.guardAgentV2Route(),
+}))
+
+// Access control is covered by agents-access-guard.spec.tsx; this suite is
+// about the feature-flag guard only.
+vi.mock('../agents-access-guard', () => ({
+  default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 
 describe('RosterLayout', () => {
