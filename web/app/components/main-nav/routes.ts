@@ -1,6 +1,6 @@
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 
-type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'appDeployEditor'
+type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'appDeployEditor' | 'canManageAgents'
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
@@ -18,6 +18,7 @@ export type MainNavRouteConfig = {
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
+  canManageAgents: boolean
   canUseAppDeploy: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
@@ -61,7 +62,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/agents'),
     icon: 'i-custom-vender-main-nav-roster',
     activeIcon: 'i-custom-vender-main-nav-roster-active',
-    visibility: 'notDatasetOperator',
+    visibility: 'canManageAgents',
     feature: 'agentV2',
   },
   {
@@ -114,6 +115,8 @@ export function isMainNavRouteVisible(
   if (route.feature === 'marketplace' && !options.marketplaceEnabled) return false
 
   if (route.visibility === 'all') return true
+
+  if (route.visibility === 'canManageAgents') return options.canManageAgents
 
   if (route.visibility === 'notDatasetOperator') return !options.isCurrentWorkspaceDatasetOperator
 
