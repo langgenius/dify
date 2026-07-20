@@ -145,6 +145,13 @@ const baseEdges = [
   },
 ] as unknown as Edge[]
 
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
@@ -493,6 +500,14 @@ function getPane(container: HTMLElement) {
 
   return pane
 }
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('Workflow edge event wiring', () => {
   beforeEach(() => {
