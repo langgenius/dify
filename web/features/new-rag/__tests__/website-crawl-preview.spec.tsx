@@ -282,6 +282,31 @@ describe('WebsiteCrawlPreview', () => {
     )
   })
 
+  it('reconciles a response-lost start before discarding its workflow', async () => {
+    clientMock.startPreview
+      .mockRejectedValueOnce(new Error('response lost'))
+      .mockResolvedValueOnce(run('running'))
+    clientMock.cancel.mockResolvedValue(run('canceled'))
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByRole('alert')
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+
+    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
+    expect(clientMock.startPreview.mock.calls[0]?.[0].headers).toEqual(
+      clientMock.startPreview.mock.calls[1]?.[0].headers,
+    )
+    await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+    )
+  })
+
   it('does not start a crawl when discard is confirmed during source creation', async () => {
     const sourceRequest = deferred<Source>()
     clientMock.createSource.mockReturnValue(sourceRequest.promise)
@@ -331,6 +356,38 @@ describe('WebsiteCrawlPreview', () => {
     )
   })
 
+  it('reconciles a response-lost retry before leaving the preview', async () => {
+    const previousRun = run('succeeded', { progressCompleted: 1, progressTotal: 1 })
+    clientMock.getRun
+      .mockResolvedValueOnce(previousRun)
+      .mockResolvedValueOnce(previousRun)
+      .mockResolvedValueOnce(run('running', { executionAttempts: 2 }))
+    clientMock.retry.mockRejectedValue(new Error('response lost'))
+    clientMock.cancel.mockResolvedValue(run('canceled', { executionAttempts: 2 }))
+    render(
+      <>
+        <a href="/datasets/new/space-1/documents">Documents navigation</a>
+        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
+      </>,
+    )
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' }))
+    await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(2))
+
+    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+
+    await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
+    )
+  })
+
   it('keeps the started run available when discard cancellation must be retried', async () => {
     clientMock.getRun.mockReturnValue(new Promise<SourceWorkflowRun>(() => {}))
     clientMock.cancel
@@ -359,6 +416,67 @@ describe('WebsiteCrawlPreview', () => {
     expect(clientMock.cancel.mock.calls[1]?.[0].params.runId).toBe('run-1')
     await waitFor(() =>
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+    )
+  })
+
+  it('restores polling after cancel failure and honors the latest terminal snapshot', async () => {
+    const retryRequest = deferred<SourceWorkflowRun>()
+    clientMock.getRun
+      .mockResolvedValueOnce(run('succeeded', { progressCompleted: 1, progressTotal: 1 }))
+      .mockResolvedValueOnce(
+        run('canceled', {
+          executionAttempts: 2,
+          progressCompleted: 1,
+          updatedAt: '2026-07-20T10:02:00Z',
+        }),
+      )
+    clientMock.getPages
+      .mockResolvedValueOnce({
+        items: [
+          {
+            pageId: 'page-1',
+            sourceUrl: 'https://docs.dify.ai/getting-started',
+            title: 'Getting started',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ items: [] })
+    clientMock.retry.mockReturnValue(retryRequest.promise)
+    clientMock.cancel.mockRejectedValue(Object.assign(new Error('conflict'), { status: 409 }))
+    render(
+      <>
+        <a href="/datasets/new/space-1/documents">Documents navigation</a>
+        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
+      </>,
+    )
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' }))
+    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+    retryRequest.resolve(
+      run('running', { executionAttempts: 2, updatedAt: '2026-07-20T10:01:00Z' }),
+    )
+
+    expect(await within(screen.getByRole('alertdialog')).findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.crawlFailedDescription',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.keepEditing' }))
+    await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText('dataset.newKnowledge.crawlStopped')).toBeInTheDocument()
+    expect(screen.queryByText('Getting started')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+
+    expect(clientMock.cancel).toHaveBeenCalledOnce()
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
     )
   })
 
@@ -422,6 +540,26 @@ describe('WebsiteCrawlPreview', () => {
 
     await waitFor(() =>
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+    )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('leaves through a same-origin link after a dirty form is cleared', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <a href="/datasets/new/space-1/documents">Documents navigation</a>
+        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
+      </>,
+    )
+    const rootUrl = screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)
+    await user.type(rootUrl, 'x')
+    await user.clear(rootUrl)
+
+    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
+
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
     )
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
