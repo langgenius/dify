@@ -815,11 +815,6 @@
       "count": 1
     }
   },
-  "web/app/components/apps/list.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/base/action-button/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -2885,11 +2880,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/list/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/metadata/edit-metadata-batch/add-row.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -2999,11 +2989,6 @@
   "web/app/components/develop/md.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/explore/app-list/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/components/explore/item-operation/__tests__/index.spec.tsx": {

@@ -2,21 +2,19 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
-import type { createStore } from 'jotai'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
-import type {
-  StepByStepTourAccountState,
-  StepByStepTourUiState,
-} from '@/app/components/step-by-step-tour/types'
+import type { StepByStepTourTestState } from '@/app/components/step-by-step-tour/__tests__/test-utils'
+import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { Provider as JotaiProvider } from 'jotai'
+import { createStore, Provider as JotaiProvider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import {
   createTestQueryClient,
   renderWithSystemFeatures,
@@ -30,7 +28,7 @@ import {
   StepByStepTourTestStateObserver,
   StepByStepTourTestUiStateHydrator,
 } from '@/app/components/step-by-step-tour/__tests__/test-utils'
-import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/shell-storage'
+import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -39,6 +37,8 @@ import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { MainNav } from '../index'
+
+type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
 
 const activeGradientMaskClassName = 'aria-[current=page]:dify-blue-glass-surface'
 const activeStackingClassName = 'aria-[current=page]:z-1'
@@ -63,8 +63,8 @@ const mockStepByStepTour = vi.hoisted(() => {
     ...overrides,
   })
   const createUiState = (
-    overrides: Partial<StepByStepTourUiState> = {},
-  ): StepByStepTourUiState => ({
+    overrides: Partial<StepByStepTourTestUiState> = {},
+  ): StepByStepTourTestUiState => ({
     activeGuideGroup: undefined,
     activeGuideIndex: undefined,
     activeGuideIndexes: undefined,
@@ -74,7 +74,7 @@ const mockStepByStepTour = vi.hoisted(() => {
   })
   let state = createState()
   let uiState = createUiState()
-  let observedState: StepByStepTourAccountState | undefined
+  let observedState: StepByStepTourTestState | undefined
   const patchState = vi.fn(
     async ({
       body,
@@ -137,14 +137,20 @@ const mockStepByStepTour = vi.hoisted(() => {
       observedState = undefined
       patchState.mockClear()
     },
-    setObservedState(nextState: StepByStepTourAccountState) {
+    setObservedState(nextState: StepByStepTourTestState) {
       observedState = nextState
     },
     setState(overrides: Partial<StepByStepTourStateResponse> = {}) {
       state = createState(overrides)
     },
-    setUiState(overrides: Partial<StepByStepTourUiState> = {}) {
+    setUiState(overrides: Partial<StepByStepTourTestUiState> = {}) {
       uiState = createUiState(overrides)
+      if (overrides.minimized !== undefined) {
+        localStorage.setItem(
+          STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY,
+          overrides.minimized ? 'collapsed' : 'expanded',
+        )
+      }
     },
     stateQueryKey,
   }
@@ -167,7 +173,14 @@ vi.mock('@/context/account-state', async (importOriginal) => {
 })
 vi.mock('@/context/workspace-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+  const { atom } = await import('jotai/vanilla')
+  const getState = () => mockAppContextState.current ?? {}
+  const mockedModule = await createAppContextStateAtomMock(importOriginal, getState)
+
+  return {
+    ...mockedModule,
+    currentWorkspaceIdAtom: atom(() => getState().currentWorkspace?.id ?? 'workspace-1'),
+  }
 })
 vi.mock('@/context/permission-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
@@ -289,8 +302,9 @@ vi.mock('@/service/client', async (importOriginal) => {
                 }),
               },
               patch: {
-                mutationOptions: () => ({
+                mutationOptions: (options = {}) => ({
                   mutationFn: mockStepByStepTour.patchState,
+                  ...options,
                 }),
               },
             },
@@ -465,6 +479,8 @@ const renderMainNav = (
   })
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
+  const store = options.store ?? createStore()
+  store.set(queryClientAtom, queryClient)
   const resolvedSystemFeatures = {
     ...defaultMainNavSystemFeatures,
     ...systemFeatures,
@@ -474,7 +490,7 @@ const renderMainNav = (
     },
   }
   return renderWithSystemFeatures(
-    <JotaiProvider store={options.store}>
+    <JotaiProvider store={store}>
       <StepByStepTourTestUiStateHydrator initialState={mockStepByStepTour.uiState}>
         <StepByStepTourTestStateObserver onChange={mockStepByStepTour.setObservedState} />
         <MainNav />

@@ -1,4 +1,4 @@
-import type { StepByStepTourTaskDefinition, StepByStepTourUiState } from './types'
+import type { StepByStepTourTaskDefinition } from './types'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { STEP_BY_STEP_TOUR_TARGETS } from './target-registry'
 
@@ -42,11 +42,3 @@ export const STEP_BY_STEP_TOUR_TASKS = [
     permissionFallback: 'show-disabled-reason',
   },
 ] as const satisfies readonly StepByStepTourTaskDefinition[]
-
-export const createDefaultStepByStepTourUiState = (): StepByStepTourUiState => ({
-  activeTaskId: undefined,
-  activeGuideIndex: undefined,
-  activeGuideGroup: undefined,
-  activeGuideIndexes: undefined,
-  minimized: false,
-})

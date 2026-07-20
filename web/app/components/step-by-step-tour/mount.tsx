@@ -2,9 +2,7 @@
 
 import type { StepByStepTourGuide } from './target-registry'
 import type {
-  StepByStepTourAccountState,
   StepByStepTourGuideGroup,
-  StepByStepTourPersistentState,
   StepByStepTourTaskId,
   StepByStepTourTaskView,
 } from './types'
@@ -12,7 +10,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
@@ -25,20 +23,26 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
 import { getStepByStepTourPermissionVariant, trackStepByStepTourEvent } from './analytics'
-import {
-  useSetStepByStepTourSkipRecoveryVisible,
-  useStepByStepTourSkipRecoveryVisible,
-} from './atoms'
 import { StepByStepTourCoachmark } from './coachmark'
-import { STEP_BY_STEP_TOUR_TASKS } from './constants'
 import { FloatingChecklist } from './floating-widget'
-import { useSetStepByStepTourShellMode, useStepByStepTourShellModeValue } from './shell-storage'
 import {
-  getStepByStepTourEnabledForCurrentWorkspace,
-  useSetStepByStepTourAccountState as useSetStepByStepTourAccount,
-  useStepByStepTourAccountStateValue as useStepByStepTourAccountValue,
-  useStepByStepTourStateActions,
-} from './storage'
+  activeStepByStepTourGuideGroupAtom,
+  activeStepByStepTourGuideIndexAtom,
+  activeStepByStepTourGuideIndexesAtom,
+  activeStepByStepTourTaskIdAtom,
+  advanceStepByStepTourGuideAtom,
+  completedStepByStepTourTaskIdsAtom,
+  completeStepByStepTourTaskAtom,
+  resetStepByStepTourSessionAtom,
+  skipStepByStepTourAtom,
+  startStepByStepTourTaskAtom,
+  stepByStepTourEnabledForCurrentWorkspaceAtom,
+  stepByStepTourFirstWorkspaceIdAtom,
+  stepByStepTourSkippedAtom,
+  stepByStepTourSkipRecoveryVisibleAtom,
+  uncompleteStepByStepTourTaskAtom,
+} from './state'
+import { useSetStepByStepTourShellMode, useStepByStepTourShellModeValue } from './storage'
 import {
   getStepByStepTourGuideInteractionPolicy,
   getStepByStepTourGuideKind,
@@ -46,6 +50,7 @@ import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from './target-registry'
+import { STEP_BY_STEP_TOUR_TASKS } from './tasks'
 import { useStepByStepTourTarget } from './use-tour-target'
 
 type StepByStepTourTask = (typeof STEP_BY_STEP_TOUR_TASKS)[number]
@@ -127,17 +132,27 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
   const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
-  const accountState = useStepByStepTourAccountValue()
-  const setAccountState = useSetStepByStepTourAccount()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour state actions are not React useState calls.
-  const stepByStepTourActions = useStepByStepTourStateActions()
-  const skipRecoveryVisible = useStepByStepTourSkipRecoveryVisible()
-  const setSkipRecoveryVisible = useSetStepByStepTourSkipRecoveryVisible()
+  const completedTaskIds = useAtomValue(completedStepByStepTourTaskIdsAtom)
+  const skipped = useAtomValue(stepByStepTourSkippedAtom)
+  const firstWorkspaceId = useAtomValue(stepByStepTourFirstWorkspaceIdAtom)
+  const enabledForCurrentWorkspace = useAtomValue(stepByStepTourEnabledForCurrentWorkspaceAtom)
+  const activeTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
+  const sessionGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
+  const sessionGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
+  const sessionGuideIndexes = useAtomValue(activeStepByStepTourGuideIndexesAtom)
+  const skipRecoveryVisible = useAtomValue(stepByStepTourSkipRecoveryVisibleAtom)
+  const setSkipRecoveryVisible = useSetAtom(stepByStepTourSkipRecoveryVisibleAtom)
+  const advanceGuide = useSetAtom(advanceStepByStepTourGuideAtom)
+  const completeTask = useSetAtom(completeStepByStepTourTaskAtom)
+  const resetSession = useSetAtom(resetStepByStepTourSessionAtom)
+  const patchSkipTour = useSetAtom(skipStepByStepTourAtom)
+  const startTask = useSetAtom(startStepByStepTourTaskAtom)
+  const uncompleteTask = useSetAtom(uncompleteStepByStepTourTaskAtom)
   const shellMode = useStepByStepTourShellModeValue()
   const setShellMode = useSetStepByStepTourShellMode()
   const anchorRef = useRef<HTMLDivElement>(null)
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
-  const previousSkippedRef = useRef(accountState.skipped)
+  const previousSkippedRef = useRef(skipped)
   const permissionFallbackAnalyticsKeyRef = useRef<string | undefined>(undefined)
   const shownAnalyticsKeyRef = useRef<string | undefined>(undefined)
   const skipTimeoutRef = useRef<number | undefined>(undefined)
@@ -167,11 +182,6 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     [],
   )
 
-  const enabledForCurrentWorkspace = getStepByStepTourEnabledForCurrentWorkspace(
-    accountState,
-    currentWorkspaceId,
-  )
-  const completedTaskIds = accountState.completedTaskIds
   const learnDifyEnabled = systemFeatures?.enable_learn_app ?? true
   const stepByStepTourFeatureEnabled = Boolean(systemFeatures?.enable_step_by_step_tour)
   const availableTasks = learnDifyEnabled
@@ -183,23 +193,23 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   )
   const allTasksCompleted = hasCompletedAllStepByStepTourTasks(completedTaskIds, availableTasks)
   const currentTask = availableTasks.find((task) => !completedTaskIds.includes(task.id))
-  const activeTask = accountState.activeTaskId
-    ? availableTasks.find((task) => task.id === accountState.activeTaskId)
+  const activeTask = activeTaskId
+    ? availableTasks.find((task) => task.id === activeTaskId)
     : undefined
   const activeGuideGroup: StepByStepTourGuideGroup | undefined =
     activeTask?.id === 'home'
       ? homeGuideGroup
       : activeTask?.id === 'integration'
         ? integrationGuideGroup
-        : accountState.activeGuideGroup
+        : sessionGuideGroup
   const activeGuides = activeTask ? getStepByStepTourGuides(activeTask.id, activeGuideGroup) : []
-  const activeGuideIndex = accountState.activeGuideIndex ?? 0
+  const activeGuideIndex = sessionGuideIndex ?? 0
   const activeGuide = activeGuides[activeGuideIndex]
   const hasActiveGuide = Boolean(activeTask && activeGuide)
   const minimized = Boolean(activeTask) || shellMode === 'collapsed'
   const activeGuideIndexes =
     activeGuides.length > 0
-      ? getActiveGuideIndexes(activeGuides, accountState.activeGuideIndexes)
+      ? getActiveGuideIndexes(activeGuides, sessionGuideIndexes)
           .filter((index) => isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences))
           .filter((index) => isOptionalGuideTargetAvailable(activeGuides[index]!, pathname))
       : []
@@ -243,10 +253,10 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     })
 
   const trackTaskCompleted = (
-    persistentState: StepByStepTourPersistentState,
+    completedTaskIds: StepByStepTourTaskId[],
     taskId: StepByStepTourTaskId,
   ) => {
-    const completedAvailableTaskIds = persistentState.completedTaskIds.filter((completedTaskId) =>
+    const completedAvailableTaskIds = completedTaskIds.filter((completedTaskId) =>
       availableTaskIds.includes(completedTaskId),
     )
 
@@ -258,7 +268,7 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
       task_total: availableTasks.length,
     })
 
-    if (hasCompletedAllStepByStepTourTasks(persistentState.completedTaskIds, availableTasks)) {
+    if (hasCompletedAllStepByStepTourTasks(completedTaskIds, availableTasks)) {
       trackStepByStepTourEvent({
         action: 'tour_completed',
         completed_task_count: completedAvailableTaskIds.length,
@@ -267,13 +277,12 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     }
   }
 
-  const trackTourSkipped = (persistentState: StepByStepTourPersistentState) => {
+  const trackTourSkipped = (completedTaskIds: StepByStepTourTaskId[]) => {
     trackStepByStepTourEvent({
       action: 'tour_skipped',
       task_id: activeTask?.id,
-      completed_task_count: persistentState.completedTaskIds.filter((taskId) =>
-        availableTaskIds.includes(taskId),
-      ).length,
+      completed_task_count: completedTaskIds.filter((taskId) => availableTaskIds.includes(taskId))
+        .length,
     })
   }
 
@@ -303,7 +312,7 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
 
     const entryPoint = previousSkippedRef.current
       ? 'reenabled_after_skip'
-      : accountState.firstWorkspaceId === currentWorkspaceId
+      : firstWorkspaceId === currentWorkspaceId
         ? 'first_workspace'
         : 'help_menu_enabled'
     const shownAnalyticsKey = `${currentWorkspaceId}:${entryPoint}`
@@ -317,10 +326,10 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
       task_total: availableTasks.length,
     })
   }, [
-    accountState,
     availableTasks.length,
     completedAvailableTaskIds.length,
     currentWorkspaceId,
+    firstWorkspaceId,
     visible,
   ])
 
@@ -393,8 +402,8 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   ])
 
   useEffect(() => {
-    previousSkippedRef.current = accountState.skipped
-  }, [accountState.skipped])
+    previousSkippedRef.current = skipped
+  }, [skipped])
 
   if (!visible && !skipRecoveryVisible) return null
   const title = t(($) => $['stepByStepTour.title'])
@@ -454,21 +463,20 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     }
   })
 
-  const updateAccountState = (nextState: StepByStepTourAccountState) => {
-    setAccountState(nextState)
-  }
-
   const skipTour = () => {
     if (checklistExiting) return
 
     setChecklistExiting(true)
 
     skipTimeoutRef.current = window.setTimeout(() => {
-      stepByStepTourActions.skipTour(currentWorkspaceId, {
-        onSuccess: trackTourSkipped,
+      patchSkipTour({
+        onSuccess: (completedTaskIds) => {
+          trackTourSkipped(completedTaskIds)
+          setChecklistExiting(false)
+          setSkipRecoveryVisible(true)
+        },
+        onError: () => setChecklistExiting(false),
       })
-      setChecklistExiting(false)
-      setSkipRecoveryVisible(true)
     }, 160)
   }
 
@@ -482,14 +490,7 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
       })
     }
 
-    updateAccountState({
-      ...accountState,
-      activeTaskId: undefined,
-      activeGuideIndex: undefined,
-      activeGuideGroup: undefined,
-      activeGuideIndexes: undefined,
-      minimized: false,
-    })
+    resetSession()
     setShellMode('expanded')
   }
 
@@ -543,57 +544,42 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
       const nextActiveGuide = getNextVisibleActiveGuideIndex(activeGuideIndex + 1)
 
       if (nextActiveGuide.activeGuideIndex === -1) {
-        stepByStepTourActions.completeTask(activeTask.id, {
-          onSuccess: (state) => trackTaskCompleted(state, activeTask.id),
+        completeTask({
+          taskId: activeTask.id,
+          onSuccess: (completedTaskIds) => {
+            trackTaskCompleted(completedTaskIds, activeTask.id)
+            resetSession()
+            setShellMode('expanded')
+          },
         })
-        updateAccountState({
-          ...accountState,
-          activeTaskId: undefined,
-          activeGuideIndex: undefined,
-          activeGuideGroup: undefined,
-          activeGuideIndexes: undefined,
-          minimized: false,
-        })
-        setShellMode('expanded')
         return
       }
 
-      updateAccountState({
-        ...accountState,
-        activeGuideIndex: nextActiveGuide.activeGuideIndex,
-        activeGuideIndexes: nextActiveGuide.activeGuideIndexes,
-        minimized: true,
+      advanceGuide({
+        guideIndex: nextActiveGuide.activeGuideIndex,
+        guideIndexes: nextActiveGuide.activeGuideIndexes,
       })
       return
     }
 
-    stepByStepTourActions.completeTask(activeTask.id, {
-      onSuccess: (state) => trackTaskCompleted(state, activeTask.id),
+    completeTask({
+      taskId: activeTask.id,
+      onSuccess: (completedTaskIds) => {
+        trackTaskCompleted(completedTaskIds, activeTask.id)
+        resetSession()
+        setShellMode('expanded')
+      },
     })
-    updateAccountState({
-      ...accountState,
-      activeTaskId: undefined,
-      activeGuideIndex: undefined,
-      activeGuideGroup: undefined,
-      activeGuideIndexes: undefined,
-      minimized: false,
-    })
-    setShellMode('expanded')
   }
 
   const dismissCompletedTour = () => {
-    stepByStepTourActions.skipTour(currentWorkspaceId, {
-      onSuccess: trackTourSkipped,
+    patchSkipTour({
+      onSuccess: (completedTaskIds) => {
+        trackTourSkipped(completedTaskIds)
+        resetSession()
+        setShellMode('expanded')
+      },
     })
-    updateAccountState({
-      ...accountState,
-      activeTaskId: undefined,
-      activeGuideIndex: undefined,
-      activeGuideGroup: undefined,
-      activeGuideIndexes: undefined,
-      minimized: false,
-    })
-    setShellMode('expanded')
   }
 
   const floatingChecklist = (
@@ -631,23 +617,22 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
         t(($) => $['stepByStepTour.markTaskIncomplete'], { title: taskTitle })
       }
       onMinimize={() => {
-        updateAccountState({ ...accountState, minimized: true })
         setShellMode('collapsed')
       }}
       onRestore={() => {
-        updateAccountState({ ...accountState, minimized: false })
         setShellMode('expanded')
       }}
       onSkip={skipTour}
       onCompleteTask={(taskId) => {
-        const guides = getStepByStepTourGuides(taskId, accountState.activeGuideGroup)
+        const guides = getStepByStepTourGuides(taskId, sessionGuideGroup)
         const hasExternalCompletionGuide = guides.some(
           (guide) => getStepByStepTourGuideKind(guide) === 'action',
         )
         if (hasExternalCompletionGuide) return
 
-        stepByStepTourActions.completeTask(taskId, {
-          onSuccess: (state) => trackTaskCompleted(state, taskId),
+        completeTask({
+          taskId,
+          onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
         })
       }}
       onStartTask={(taskId) => {
@@ -668,18 +653,14 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
         })
 
         if (taskId === 'knowledge' && !hasKnowledgeWalkthroughPermissions) {
-          stepByStepTourActions.completeTask(taskId, {
-            onSuccess: (state) => trackTaskCompleted(state, taskId),
+          completeTask({
+            taskId,
+            onSuccess: (completedTaskIds) => {
+              trackTaskCompleted(completedTaskIds, taskId)
+              resetSession()
+              setShellMode('expanded')
+            },
           })
-          updateAccountState({
-            ...accountState,
-            activeTaskId: undefined,
-            activeGuideIndex: undefined,
-            activeGuideGroup: undefined,
-            activeGuideIndexes: undefined,
-            minimized: false,
-          })
-          setShellMode('expanded')
           return
         }
 
@@ -687,23 +668,21 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
         const guideIndexes = createGuideIndexes(guides).filter((index) =>
           isGuideEligibleForPlan(guides[index]!, canSetPluginPreferences),
         )
-        updateAccountState({
-          ...accountState,
-          activeTaskId: taskId,
-          activeGuideIndex: 0,
-          activeGuideGroup: guideGroup,
-          activeGuideIndexes: guideIndexes.length > 0 ? guideIndexes : undefined,
-          minimized: true,
+        startTask({
+          taskId,
+          guideGroup,
+          guideIndexes: guideIndexes.length > 0 ? guideIndexes : undefined,
         })
         router.push(task.route)
       }}
       onUncompleteTask={(taskId) => {
-        stepByStepTourActions.uncompleteTask(taskId, {
-          onSuccess: (state) => {
+        uncompleteTask({
+          taskId,
+          onSuccess: (completedTaskIds) => {
             trackStepByStepTourEvent({
               action: 'task_reopened',
               task_id: taskId,
-              completed_task_count: state.completedTaskIds.filter((completedTaskId) =>
+              completed_task_count: completedTaskIds.filter((completedTaskId) =>
                 availableTaskIds.includes(completedTaskId),
               ).length,
             })

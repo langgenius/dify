@@ -11,14 +11,16 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNeedRefreshAppList } from '@/app/components/apps/storage'
 import {
-  useSetStepByStepTourAccountState,
-  useStepByStepTourAccountStateValue,
-} from '@/app/components/step-by-step-tour/storage'
+  activeStepByStepTourGuideGroupAtom,
+  activeStepByStepTourGuideIndexAtom,
+  activeStepByStepTourTaskIdAtom,
+  resolveStepByStepTourGuideGroupAtom,
+} from '@/app/components/step-by-step-tour/state'
 import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
@@ -63,7 +65,7 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { onPlanInfoChanged } = useProviderContext()
 
-  // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
+  // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
   const {
     query: { category, keywords, creatorIDs },
     setCategory,
@@ -80,10 +82,10 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
   const [needsRefreshAppList, setNeedsRefreshAppList] = useNeedRefreshAppList()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
+  const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
+  const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
+  const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
+  const resolveStepByStepTourGuideGroup = useSetAtom(resolveStepByStepTourGuideGroupAtom)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const handleDSLFileDropped = useCallback(
@@ -250,13 +252,12 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
       : showNoCreateEmptyState
         ? 'studioNoCreateEmpty'
         : undefined
-  const effectiveActiveStudioGuideGroup =
-    stepByStepTourAccountState.activeGuideGroup ?? activeStudioGuideGroup
+  const effectiveActiveStudioGuideGroup = activeStepByStepTourGuideGroup ?? activeStudioGuideGroup
   const activeStudioGuides =
-    stepByStepTourAccountState.activeTaskId === 'studio' && effectiveActiveStudioGuideGroup
+    activeStepByStepTourTaskId === 'studio' && effectiveActiveStudioGuideGroup
       ? getStepByStepTourGuides('studio', effectiveActiveStudioGuideGroup)
       : []
-  const activeStudioGuide = activeStudioGuides[stepByStepTourAccountState.activeGuideIndex ?? 0]
+  const activeStudioGuide = activeStudioGuides[activeStepByStepTourGuideIndex ?? 0]
   const shouldOpenStepByStepTourCreateMenu =
     activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate
   const shouldOpenStepByStepTourAppCardActionMenu =
@@ -278,24 +279,21 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
   }, [canCreateApp])
 
   useEffect(() => {
-    if (stepByStepTourAccountState.activeTaskId !== 'studio') return
+    if (activeStepByStepTourTaskId !== 'studio') return
     if (!hasResolvedFirstPage || showSkeleton || !activeStudioGuideGroup) return
-    if (stepByStepTourAccountState.activeGuideGroup === activeStudioGuideGroup) return
+    if (activeStepByStepTourGuideGroup === activeStudioGuideGroup) return
 
-    // Sync the active walkthrough branch into the tour storage owner after the
-    // Studio list data resolves.
-    // eslint-disable-next-line react/set-state-in-effect
-    setStepByStepTourAccountState({
-      ...stepByStepTourAccountState,
-      activeGuideGroup: activeStudioGuideGroup,
-      activeGuideIndex: 0,
+    resolveStepByStepTourGuideGroup({
+      taskId: 'studio',
+      guideGroup: activeStudioGuideGroup,
     })
   }, [
+    activeStepByStepTourGuideGroup,
+    activeStepByStepTourTaskId,
     activeStudioGuideGroup,
     hasResolvedFirstPage,
-    setStepByStepTourAccountState,
+    resolveStepByStepTourGuideGroup,
     showSkeleton,
-    stepByStepTourAccountState,
   ])
 
   return (

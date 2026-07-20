@@ -1,14 +1,16 @@
 'use client'
 
 import { useBoolean, useDebounceFn } from 'ahooks'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 // Libraries
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  useSetStepByStepTourAccountState,
-  useStepByStepTourAccountStateValue,
-} from '@/app/components/step-by-step-tour/storage'
+  activeStepByStepTourGuideGroupAtom,
+  activeStepByStepTourGuideIndexAtom,
+  activeStepByStepTourTaskIdAtom,
+  resolveStepByStepTourGuideGroupAtom,
+} from '@/app/components/step-by-step-tour/state'
 import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
@@ -95,41 +97,40 @@ const List = () => {
     hasResolvedFirstPage &&
     !hasActiveFilters
   const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
-  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hook is not a React useState call.
-  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
+  const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
+  const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
+  const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
+  const resolveStepByStepTourGuideGroup = useSetAtom(resolveStepByStepTourGuideGroupAtom)
   const activeKnowledgeGuideGroup = hasAnyDataset
     ? 'knowledgeWithDatasets'
     : showEmptyDataList && canCreateDataset && canConnectExternalDataset
       ? 'knowledgeEmpty'
       : undefined
   const activeKnowledgeGuides =
-    stepByStepTourAccountState.activeTaskId === 'knowledge' && activeKnowledgeGuideGroup
+    activeStepByStepTourTaskId === 'knowledge' && activeKnowledgeGuideGroup
       ? getStepByStepTourGuides('knowledge', activeKnowledgeGuideGroup)
       : []
-  const activeKnowledgeGuide =
-    activeKnowledgeGuides[stepByStepTourAccountState.activeGuideIndex ?? 0]
+  const activeKnowledgeGuide = activeKnowledgeGuides[activeStepByStepTourGuideIndex ?? 0]
   const shouldOpenStepByStepTourCreateMenu =
     activeKnowledgeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate
   const shouldOpenStepByStepTourDatasetCardActionMenu =
     activeKnowledgeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard
 
   useEffect(() => {
-    if (stepByStepTourAccountState.activeTaskId !== 'knowledge') return
+    if (activeStepByStepTourTaskId !== 'knowledge') return
     if (!hasResolvedFirstPage || !activeKnowledgeGuideGroup) return
-    if (stepByStepTourAccountState.activeGuideGroup === activeKnowledgeGuideGroup) return
+    if (activeStepByStepTourGuideGroup === activeKnowledgeGuideGroup) return
 
-    // eslint-disable-next-line react/set-state-in-effect -- Sync the resolved Knowledge branch once list data is available.
-    setStepByStepTourAccountState({
-      ...stepByStepTourAccountState,
-      activeGuideGroup: activeKnowledgeGuideGroup,
-      activeGuideIndex: 0,
+    resolveStepByStepTourGuideGroup({
+      taskId: 'knowledge',
+      guideGroup: activeKnowledgeGuideGroup,
     })
   }, [
+    activeStepByStepTourGuideGroup,
+    activeStepByStepTourTaskId,
     activeKnowledgeGuideGroup,
     hasResolvedFirstPage,
-    setStepByStepTourAccountState,
-    stepByStepTourAccountState,
+    resolveStepByStepTourGuideGroup,
   ])
 
   return (

@@ -5,24 +5,20 @@ import type {
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type {
-  StepByStepTourAccountState,
-  StepByStepTourUiState,
-} from '@/app/components/step-by-step-tour/types'
+import type { StepByStepTourTestState } from '@/app/components/step-by-step-tour/__tests__/test-utils'
+import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { createStore, Provider as JotaiProvider } from 'jotai'
+import { createStore, Provider as JotaiProvider, useSetAtom } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import {
   StepByStepTourTestStateObserver,
   StepByStepTourTestUiStateHydrator,
 } from '@/app/components/step-by-step-tour/__tests__/test-utils'
-import {
-  useSetStepByStepTourAccountState,
-  useStepByStepTourAccountStateValue,
-} from '@/app/components/step-by-step-tour/storage'
+import { resetStepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -30,6 +26,8 @@ import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/storage'
 import AppList from '../index'
+
+type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
 
 const mockAppContextState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
@@ -66,8 +64,8 @@ const mockStepByStepTour = vi.hoisted(() => {
     ...overrides,
   })
   const createUiState = (
-    overrides: Partial<StepByStepTourUiState> = {},
-  ): StepByStepTourUiState => ({
+    overrides: Partial<StepByStepTourTestUiState> = {},
+  ): StepByStepTourTestUiState => ({
     activeGuideGroup: undefined,
     activeGuideIndex: undefined,
     activeGuideIndexes: undefined,
@@ -76,8 +74,8 @@ const mockStepByStepTour = vi.hoisted(() => {
     ...overrides,
   })
   let state = createState()
-  let uiState: StepByStepTourUiState = createUiState()
-  let observedState: StepByStepTourAccountState | undefined
+  let uiState: StepByStepTourTestUiState = createUiState()
+  let observedState: StepByStepTourTestState | undefined
   const patchState = vi.fn(
     async ({
       body,
@@ -157,13 +155,13 @@ const mockStepByStepTour = vi.hoisted(() => {
       observedState = undefined
       patchState.mockClear()
     },
-    setObservedState(nextState: StepByStepTourAccountState) {
+    setObservedState(nextState: StepByStepTourTestState) {
       observedState = nextState
     },
     setState(overrides: Partial<StepByStepTourStateResponse> = {}) {
       state = createState(overrides)
     },
-    setUiState(overrides: Partial<StepByStepTourUiState> = {}) {
+    setUiState(overrides: Partial<StepByStepTourTestUiState> = {}) {
       uiState = createUiState(overrides)
     },
     stateQueryKey,
@@ -273,8 +271,9 @@ vi.mock('@/service/client', () => ({
             }),
           },
           patch: {
-            mutationOptions: () => ({
+            mutationOptions: (options = {}) => ({
               mutationFn: mockStepByStepTour.patchState,
+              ...options,
             }),
           },
         },
@@ -559,6 +558,7 @@ const renderAppList = (
   const mockFetchAppList = fetchAppList as unknown as Mock
   const mockFetchBanners = fetchBanners as unknown as Mock
   const jotaiStore = createStore()
+  jotaiStore.set(queryClientAtom, queryClient)
 
   if (mockIsLoading) {
     mockFetchAppList.mockImplementation(() => new Promise(() => {}))
@@ -598,26 +598,10 @@ const renderAppList = (
 }
 
 function SkipHomeGuideProbe() {
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
+  const resetStepByStepTourSession = useSetAtom(resetStepByStepTourSessionAtom)
 
   return (
-    <button
-      type="button"
-      data-testid="skip-home-guide"
-      onClick={() =>
-        setStepByStepTourAccountState({
-          ...stepByStepTourAccountState,
-          activeTaskId: undefined,
-          activeGuideIndex: undefined,
-          activeGuideGroup: undefined,
-          activeGuideIndexes: undefined,
-          minimized: false,
-        })
-      }
-    >
+    <button type="button" data-testid="skip-home-guide" onClick={resetStepByStepTourSession}>
       skip home guide
     </button>
   )

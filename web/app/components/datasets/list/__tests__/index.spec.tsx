@@ -1,8 +1,18 @@
 import type { ReactNode } from 'react'
-import type { StepByStepTourAccountState } from '@/app/components/step-by-step-tour/types'
+import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import List from '../index'
+
+type StepByStepTourTestState = StepByStepTourSessionState & {
+  completedTaskIds: ['home', 'studio']
+  firstWorkspaceId: string
+  manuallyDisabledWorkspaceIds: string[]
+  manuallyEnabledWorkspaceIds: string[]
+  minimized: boolean
+  skipped: boolean
+  updatedAt: null
+}
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -14,8 +24,8 @@ let mockAppContextState = {
 }
 const mockStepByStepTour = vi.hoisted(() => {
   const createState = (
-    overrides: Partial<StepByStepTourAccountState> = {},
-  ): StepByStepTourAccountState => ({
+    overrides: Partial<StepByStepTourTestState> = {},
+  ): StepByStepTourTestState => ({
     activeGuideGroup: undefined,
     activeGuideIndex: undefined,
     activeGuideIndexes: undefined,
@@ -38,10 +48,10 @@ const mockStepByStepTour = vi.hoisted(() => {
     reset() {
       state = createState()
     },
-    setState(nextState: StepByStepTourAccountState) {
+    setState(nextState: StepByStepTourTestState) {
       state = nextState
     },
-    setTestState(overrides: Partial<StepByStepTourAccountState> = {}) {
+    setTestState(overrides: Partial<StepByStepTourTestState> = {}) {
       state = createState(overrides)
     },
   }
@@ -53,11 +63,11 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/app/components/step-by-step-tour/storage', () => ({
-  useSetStepByStepTourAccountState: () => (nextState: StepByStepTourAccountState) => {
-    mockStepByStepTour.setState(nextState)
-  },
-  useStepByStepTourAccountStateValue: () => mockStepByStepTour.state,
+vi.mock('@/app/components/step-by-step-tour/state', () => ({
+  activeStepByStepTourGuideGroupAtom: { tourStateKind: 'guideGroup' },
+  activeStepByStepTourGuideIndexAtom: { tourStateKind: 'guideIndex' },
+  activeStepByStepTourTaskIdAtom: { tourStateKind: 'taskId' },
+  resolveStepByStepTourGuideGroupAtom: { tourStateKind: 'resolveGuideGroup' },
 }))
 
 // Mock app context
@@ -105,8 +115,30 @@ vi.mock('@/context/external-api-panel-context', () => ({
 vi.mock('jotai', async (importOriginal) => {
   const { createDatasetAccessJotaiMock } =
     await import('@/app/components/datasets/__tests__/mock-dataset-access')
+  const mockedJotai = await createDatasetAccessJotaiMock(importOriginal)
 
-  return createDatasetAccessJotaiMock(importOriginal)
+  return {
+    ...mockedJotai,
+    useAtomValue: (atom: { tourStateKind?: string }) => {
+      if (atom.tourStateKind === 'guideGroup') return mockStepByStepTour.state.activeGuideGroup
+      if (atom.tourStateKind === 'guideIndex') return mockStepByStepTour.state.activeGuideIndex
+      if (atom.tourStateKind === 'taskId') return mockStepByStepTour.state.activeTaskId
+      return mockedJotai.useAtomValue(atom)
+    },
+    useSetAtom: (atom: { tourStateKind?: string }) => {
+      if (atom.tourStateKind === 'resolveGuideGroup') {
+        return ({ guideGroup }: { guideGroup: StepByStepTourTestState['activeGuideGroup'] }) => {
+          mockStepByStepTour.setState({
+            ...mockStepByStepTour.state,
+            activeGuideGroup: guideGroup,
+            activeGuideIndex: 0,
+            activeGuideIndexes: undefined,
+          })
+        }
+      }
+      return (mockedJotai.useSetAtom as (atom: unknown) => unknown)(atom)
+    },
+  }
 })
 
 // Mock useDocumentTitle hook

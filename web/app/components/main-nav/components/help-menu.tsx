@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -30,15 +30,13 @@ import {
 import GithubStar from '@/app/components/header/github-star'
 import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'
 import {
-  useSetStepByStepTourSkipRecoveryVisible,
-  useStepByStepTourSkipRecoveryVisible,
-} from '@/app/components/step-by-step-tour/atoms'
-import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/shell-storage'
-import {
-  getStepByStepTourEnabledForCurrentWorkspace,
-  useStepByStepTourAccountStateValue,
-  useStepByStepTourStateActions,
-} from '@/app/components/step-by-step-tour/storage'
+  disableStepByStepTourForCurrentWorkspaceAtom,
+  enableStepByStepTourForCurrentWorkspaceAtom,
+  stepByStepTourEnabledForCurrentWorkspaceAtom,
+  stepByStepTourSkipRecoveryVisibleAtom,
+  stepByStepTourStateUpdatingAtom,
+} from '@/app/components/step-by-step-tour/state'
+import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
@@ -95,22 +93,19 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const learnDifyHidden = useLearnDifyHiddenValue()
   const setLearnDifyHidden = useSetLearnDifyHidden()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour state actions are not React useState calls.
-  const stepByStepTourActions = useStepByStepTourStateActions()
-  const skipRecoveryVisible = useStepByStepTourSkipRecoveryVisible()
-  const setSkipRecoveryVisible = useSetStepByStepTourSkipRecoveryVisible()
+  const stepByStepTourEnabled = useAtomValue(stepByStepTourEnabledForCurrentWorkspaceAtom)
+  const stepByStepTourStateUpdating = useAtomValue(stepByStepTourStateUpdatingAtom)
+  const skipRecoveryVisible = useAtomValue(stepByStepTourSkipRecoveryVisibleAtom)
+  const setSkipRecoveryVisible = useSetAtom(stepByStepTourSkipRecoveryVisibleAtom)
+  const enableStepByStepTour = useSetAtom(enableStepByStepTourForCurrentWorkspaceAtom)
+  const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
   const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
-  const canToggleStepByStepTour = Boolean(currentWorkspaceId) && !isLoadingCurrentWorkspace
-  const stepByStepTourEnabled = getStepByStepTourEnabledForCurrentWorkspace(
-    stepByStepTourAccountState,
-    currentWorkspaceId,
-  )
+  const canToggleStepByStepTour =
+    Boolean(currentWorkspaceId) && !isLoadingCurrentWorkspace && !stepByStepTourStateUpdating
 
   const handleStepByStepTourCheckedChange = (checked: boolean) => {
     if (!canToggleStepByStepTour) return
@@ -121,11 +116,11 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
 
     if (checked) {
       setStepByStepTourShellMode('expanded')
-      stepByStepTourActions.enableCurrentWorkspace(currentWorkspaceId, {
+      enableStepByStepTour({
         onSuccess: trackVisibilityToggled,
       })
     } else {
-      stepByStepTourActions.disableCurrentWorkspace(currentWorkspaceId, {
+      disableStepByStepTour({
         onSuccess: trackVisibilityToggled,
       })
     }

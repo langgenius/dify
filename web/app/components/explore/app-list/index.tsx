@@ -1,10 +1,7 @@
 'use client'
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type {
-  StepByStepTourPersistentState,
-  StepByStepTourTaskId,
-} from '@/app/components/step-by-step-tour/types'
+import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
@@ -13,7 +10,7 @@ import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { queryOptions, useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -26,13 +23,16 @@ import {
   getStepByStepTourPermissionVariant,
   trackStepByStepTourEvent,
 } from '@/app/components/step-by-step-tour/analytics'
-import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/constants'
 import {
-  useSetStepByStepTourAccountState,
-  useStepByStepTourAccountStateValue,
-  useStepByStepTourStateActions,
-} from '@/app/components/step-by-step-tour/storage'
+  activeStepByStepTourGuideIndexAtom,
+  activeStepByStepTourTaskIdAtom,
+  advanceStepByStepTourGuideAtom,
+  completedStepByStepTourTaskIdsAtom,
+  completeStepByStepTourTaskAtom,
+  resetStepByStepTourSessionAtom,
+} from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/tasks'
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -139,18 +139,21 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   })
   const allCategoriesEn = t(($) => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour state actions are not React useState calls.
-  const stepByStepTourActions = useStepByStepTourStateActions()
+  const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
+  const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
+  const completedStepByStepTourTaskIds = useAtomValue(completedStepByStepTourTaskIdsAtom)
+  const advanceStepByStepTourGuide = useSetAtom(advanceStepByStepTourGuideAtom)
+  const completeStepByStepTourTask = useSetAtom(completeStepByStepTourTaskAtom)
+  const resetStepByStepTourSession = useSetAtom(resetStepByStepTourSessionAtom)
   const trackHomeTourCompleted = useCallback(
-    (state: StepByStepTourPersistentState, homeOutcome: 'lesson_app_created' | 'lesson_opened') => {
+    (
+      completedTaskIds: StepByStepTourTaskId[],
+      homeOutcome: 'lesson_app_created' | 'lesson_opened',
+    ) => {
       trackStepByStepTourEvent({
         action: 'task_completed',
         task_id: HOME_STEP_BY_STEP_TOUR_TASK_ID,
-        completed_task_count: state.completedTaskIds.length,
+        completed_task_count: completedTaskIds.length,
         home_outcome: homeOutcome,
         permission_variant: getStepByStepTourPermissionVariant({
           canCreateApp,
@@ -161,10 +164,10 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
         task_total: STEP_BY_STEP_TOUR_TASKS.length,
       })
 
-      if (STEP_BY_STEP_TOUR_TASKS.every((task) => state.completedTaskIds.includes(task.id))) {
+      if (STEP_BY_STEP_TOUR_TASKS.every((task) => completedTaskIds.includes(task.id))) {
         trackStepByStepTourEvent({
           action: 'tour_completed',
-          completed_task_count: state.completedTaskIds.length,
+          completed_task_count: completedTaskIds.length,
           task_total: STEP_BY_STEP_TOUR_TASKS.length,
         })
       }
@@ -240,75 +243,60 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const wasHomeTryAppCreateGuideActiveRef = useRef(false)
   const isShowTryAppPanel = !!currentTryApp
   const shouldForceShowLearnDifyForTour =
-    stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
-    !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
-    (stepByStepTourAccountState.activeGuideIndex ?? 0) === 0
+    activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
+    !completedStepByStepTourTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
+    (activeStepByStepTourGuideIndex ?? 0) === 0
   const abandonHomeTour = useCallback(() => {
     if (
-      stepByStepTourAccountState.activeTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID ||
-      stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+      activeStepByStepTourTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID ||
+      completedStepByStepTourTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
     ) {
       return
     }
 
-    setStepByStepTourAccountState({
-      ...stepByStepTourAccountState,
-      activeTaskId: undefined,
-      activeGuideIndex: undefined,
-      activeGuideGroup: undefined,
-      activeGuideIndexes: undefined,
-      minimized: true,
-    })
-  }, [setStepByStepTourAccountState, stepByStepTourAccountState])
+    resetStepByStepTourSession()
+  }, [activeStepByStepTourTaskId, completedStepByStepTourTaskIds, resetStepByStepTourSession])
 
   const completeHomeTourAfterCreate = useCallback(() => {
     if (!shouldCompleteHomeTourOnCreateRef.current) return
 
-    setStepByStepTourAccountState({
-      ...stepByStepTourAccountState,
-      activeTaskId: undefined,
-      activeGuideIndex: undefined,
-      activeGuideGroup: undefined,
-      activeGuideIndexes: undefined,
-      minimized: false,
+    completeStepByStepTourTask({
+      taskId: HOME_STEP_BY_STEP_TOUR_TASK_ID,
+      onSuccess: (completedTaskIds) => {
+        resetStepByStepTourSession()
+        trackHomeTourCompleted(completedTaskIds, 'lesson_app_created')
+        isCurrentTryAppFromLearnDifyRef.current = false
+        shouldCompleteHomeTourOnCreateRef.current = false
+        isSubmittingHomeTourCreateRef.current = false
+      },
+      onError: () => {
+        isSubmittingHomeTourCreateRef.current = false
+      },
     })
-    stepByStepTourActions.completeTask(HOME_STEP_BY_STEP_TOUR_TASK_ID, {
-      onSuccess: (state) => trackHomeTourCompleted(state, 'lesson_app_created'),
-    })
-    isCurrentTryAppFromLearnDifyRef.current = false
-    shouldCompleteHomeTourOnCreateRef.current = false
-    isSubmittingHomeTourCreateRef.current = false
-  }, [
-    setStepByStepTourAccountState,
-    stepByStepTourAccountState,
-    stepByStepTourActions,
-    trackHomeTourCompleted,
-  ])
+  }, [completeStepByStepTourTask, resetStepByStepTourSession, trackHomeTourCompleted])
 
   const completeHomeTourAfterOpenDetails = useCallback(() => {
     if (
-      stepByStepTourAccountState.activeTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID ||
-      stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) ||
-      (stepByStepTourAccountState.activeGuideIndex ?? 0) !== 0
+      activeStepByStepTourTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID ||
+      completedStepByStepTourTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) ||
+      (activeStepByStepTourGuideIndex ?? 0) !== 0
     ) {
       return
     }
 
-    setStepByStepTourAccountState({
-      ...stepByStepTourAccountState,
-      activeTaskId: undefined,
-      activeGuideIndex: undefined,
-      activeGuideGroup: undefined,
-      activeGuideIndexes: undefined,
-      minimized: false,
-    })
-    stepByStepTourActions.completeTask(HOME_STEP_BY_STEP_TOUR_TASK_ID, {
-      onSuccess: (state) => trackHomeTourCompleted(state, 'lesson_opened'),
+    completeStepByStepTourTask({
+      taskId: HOME_STEP_BY_STEP_TOUR_TASK_ID,
+      onSuccess: (completedTaskIds) => {
+        resetStepByStepTourSession()
+        trackHomeTourCompleted(completedTaskIds, 'lesson_opened')
+      },
     })
   }, [
-    setStepByStepTourAccountState,
-    stepByStepTourAccountState,
-    stepByStepTourActions,
+    activeStepByStepTourGuideIndex,
+    activeStepByStepTourTaskId,
+    completedStepByStepTourTaskIds,
+    completeStepByStepTourTask,
+    resetStepByStepTourSession,
     trackHomeTourCompleted,
   ])
 
@@ -326,13 +314,13 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
 
   const hideTryAppPanel = useCallback(() => {
     abandonHomeTourCreate()
-    // eslint-disable-next-line react/set-state-in-effect -- Also called from the tour-state sync effect when the Learn Dify action guide is skipped.
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Also called from the tour-state sync effect when the Learn Dify action guide is skipped.
     setCurrentTryApp(undefined)
   }, [abandonHomeTourCreate])
   const homeTryAppCreateGuideActive =
-    stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
-    stepByStepTourAccountState.activeGuideIndex === 1 &&
-    !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+    activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
+    activeStepByStepTourGuideIndex === 1 &&
+    !completedStepByStepTourTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
   useEffect(() => {
     if (!isCurrentTryAppFromLearnDifyRef.current || !currentTryApp || isShowCreateModal) {
       wasHomeTryAppCreateGuideActiveRef.current = false
@@ -359,9 +347,9 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       setCurrentTryApp(params)
 
       if (
-        stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
-        !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
-        (stepByStepTourAccountState.activeGuideIndex ?? 0) === 0
+        activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
+        !completedStepByStepTourTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
+        (activeStepByStepTourGuideIndex ?? 0) === 0
       ) {
         if (!canCreateApp) {
           completeHomeTourAfterOpenDetails()
@@ -369,18 +357,18 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
           return
         }
 
-        setStepByStepTourAccountState({
-          ...stepByStepTourAccountState,
-          activeGuideIndex: 1,
-          minimized: true,
+        advanceStepByStepTourGuide({
+          guideIndex: 1,
         })
       }
     },
     [
+      activeStepByStepTourGuideIndex,
+      activeStepByStepTourTaskId,
+      advanceStepByStepTourGuide,
       canCreateApp,
+      completedStepByStepTourTaskIds,
       completeHomeTourAfterOpenDetails,
-      setStepByStepTourAccountState,
-      stepByStepTourAccountState,
     ],
   )
   const handleShowFromTryApp = useCallback(() => {
@@ -391,11 +379,17 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     }
     shouldCompleteHomeTourOnCreateRef.current =
       isCurrentTryAppFromLearnDifyRef.current &&
-      stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
-      !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
-      stepByStepTourAccountState.activeGuideIndex === 1
+      activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
+      !completedStepByStepTourTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
+      activeStepByStepTourGuideIndex === 1
     setIsShowCreateModal(true)
-  }, [currentTryApp?.app, currentTryApp?.appId, stepByStepTourAccountState])
+  }, [
+    activeStepByStepTourGuideIndex,
+    activeStepByStepTourTaskId,
+    completedStepByStepTourTaskIds,
+    currentTryApp?.app,
+    currentTryApp?.appId,
+  ])
   const handleCreateFromLearnDify = useCallback((app: App) => {
     setCurrApp(app)
     setIsShowCreateModal(true)
