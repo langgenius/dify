@@ -75,6 +75,7 @@ from services.errors.account import (
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.telemetry_service import CommunityTelemetryService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import (
@@ -1961,7 +1962,7 @@ class RegisterService:
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True, session=session)
 
-            dify_setup = DifySetup(version=dify_config.project.version)
+            dify_setup = DifySetup(version=dify_config.project.version, instance_id=str(uuid.uuid4()))
             session.add(dify_setup)
             session.commit()
         except Exception as e:
@@ -1973,6 +1974,11 @@ class RegisterService:
 
             logger.exception("Setup account failed, email: %s, name: %s", email, name)
             raise ValueError(f"Setup failed: {e}")
+
+        try:
+            CommunityTelemetryService.report_install(session=session)
+        except Exception:
+            logger.debug("Failed to report install telemetry", exc_info=True)
 
     @classmethod
     def register(

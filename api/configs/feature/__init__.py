@@ -794,6 +794,41 @@ class UpdateConfig(BaseSettings):
     )
 
 
+class CommunityTelemetryConfig(BaseSettings):
+    """
+    Configuration for anonymous self-hosted community telemetry.
+    """
+
+    DISABLE_TELEMETRY: bool = Field(
+        description="Disable anonymous community telemetry",
+        default=False,
+    )
+    DO_NOT_TRACK: bool = Field(
+        description="Respect the standard do-not-track opt-out signal for telemetry",
+        default=False,
+    )
+    TELEMETRY_ENDPOINT: str = Field(
+        description="Endpoint for anonymous community telemetry events",
+        default="https://telemetry.langgenius.app/v1/events",
+    )
+    TELEMETRY_FALLBACK_ENDPOINT: str = Field(
+        description="Fallback endpoint for anonymous community telemetry events",
+        default="https://telemetry.langgenius.app/v1/events",
+    )
+    TELEMETRY_TIMEOUT_SECONDS: PositiveInt = Field(
+        description="HTTP timeout in seconds for anonymous community telemetry requests",
+        default=2,
+    )
+    TELEMETRY_HEARTBEAT_INTERVAL_MINUTES: PositiveInt = Field(
+        description="Celery beat interval in minutes for checking whether heartbeat telemetry is due",
+        default=30,
+    )
+    CI: bool = Field(
+        description="Whether the process is running in CI; telemetry is skipped when true",
+        default=False,
+    )
+
+
 class WorkflowVariableTruncationConfig(BaseSettings):
     WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
         # 1000 KiB
@@ -1562,6 +1597,7 @@ class FeatureConfig(
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
+    CommunityTelemetryConfig,
     WorkflowConfig,
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,

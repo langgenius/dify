@@ -361,6 +361,9 @@ class DifySetup(TypeBase):
     __table_args__ = (sa.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
 
     version: Mapped[str] = mapped_column(String(255), nullable=False)
+    instance_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    install_reported_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     setup_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
