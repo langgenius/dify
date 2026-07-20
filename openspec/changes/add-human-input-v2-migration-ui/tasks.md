@@ -55,7 +55,14 @@
 
 ## 8. Verification and Scope Audit
 
-- [ ] 8.1 Run the focused Human Input, block-selector, workflow-state/history, clipboard/duplicate, migration planner, dialog, and localization Vitest suites and resolve failures.
-- [ ] 8.2 Run frontend formatting, Oxlint/ESLint checks, and TypeScript checking through the repository's `pnpm check` workflow; document any unrelated pre-existing failure.
-- [ ] 8.3 Compare implemented banner, badges, disabled selector/preview, confirmation dialog, and success toast against Figma nodes `1333:5041`, `1333:5414`, `1333:5404`, `1333:5522`, and `1333:5532`, including keyboard and read-only states.
-- [ ] 8.4 Audit the final diff to prove it is limited to `web/` and this OpenSpec change, preserves the legacy renderer and exact v2 wire keys, and adds no backend, graphon, runtime, database, API, or generated-client changes.
+- [x] 8.1 Run the focused Human Input, block-selector, workflow-state/history, clipboard/duplicate, migration planner, dialog, and localization Vitest suites and resolve failures.
+- [x] 8.2 Run frontend formatting, Oxlint/ESLint checks, and TypeScript checking through the repository's `pnpm check` workflow; document any unrelated pre-existing failure.
+- [x] 8.3 Compare implemented banner, badges, disabled selector/preview, confirmation dialog, and success toast against Figma nodes `1333:5041`, `1333:5414`, `1333:5404`, `1333:5522`, and `1333:5532`, including keyboard and read-only states.
+- [x] 8.4 Audit the final diff to prove it is limited to `web/` and this OpenSpec change, preserves the legacy renderer and exact v2 wire keys, and adds no backend, graphon, runtime, database, API, or generated-client changes.
+
+## Verification Notes
+
+- Focused Human Input, migration, selector, insertion, history, and locale suites pass: 26 files and 174 tests.
+- `pnpm check` reaches pre-existing Markdown formatting failures under `openspec/changes/hitl-im-contact-domain-discovery/` and `openspec/changes/human-input-v2-api-contracts/`. The complete `web/` Vite+ formatting, lint, and type check passes with zero errors, and the repository ESLint fallback passes.
+- The rollout surfaces match the captured Figma states and copy for nodes `1333:5041`, `1333:5414`, `1333:5404`, `1333:5522`, and `1333:5532`; component tests cover keyboard focus, Escape/Cancel, pending submission, and read-only behavior.
+- The implementation commits touch only `web/` and this change's `tasks.md`; locale changes are limited to `en-US` and `zh-Hans`. Exact string `version: '2'`, literal `recpients_spec`, legacy `delivery_methods` routing, and frontend-only scope are preserved.
