@@ -132,24 +132,39 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-function renderSelectionForm() {
+function renderSelectionForm(onCancel = vi.fn(), workflowUncertain = false) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
   })
-  return render(
+  const onSubmissionUncertainChange = vi.fn()
+  const onRecrawl = vi.fn()
+  const onWorkflowPending = vi.fn()
+  const onWorkflowRun = vi.fn()
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <CrawlSelectionForm
         knowledgeSpaceId="space-1"
-        onCancel={vi.fn()}
-        onRecrawl={vi.fn()}
+        onCancel={onCancel}
+        onRecrawl={onRecrawl}
+        onSubmissionUncertainChange={onSubmissionUncertainChange}
         onSubmitted={vi.fn()}
+        onWorkflowPending={onWorkflowPending}
+        onWorkflowRun={onWorkflowRun}
         pages={pages}
         rootUrl="https://docs.dify.ai/"
         run={run}
         source={source}
+        workflowUncertain={workflowUncertain}
       />
     </QueryClientProvider>,
   )
+  return {
+    ...view,
+    onRecrawl,
+    onSubmissionUncertainChange,
+    onWorkflowPending,
+    onWorkflowRun,
+  }
 }
 
 describe('CrawlSelectionForm', () => {
@@ -189,6 +204,38 @@ describe('CrawlSelectionForm', () => {
     expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Guides' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Edit this page' })).not.toBeChecked()
+  })
+
+  it('toggles selection from the visible checkbox labels', async () => {
+    const user = userEvent.setup()
+    renderSelectionForm()
+    await screen.findByRole('button', { name: 'dataset.newKnowledge.addSource' })
+
+    await user.click(screen.getByText('Getting started'))
+    expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeChecked()
+    await user.click(screen.getByText('dataset.newKnowledge.selectAll'))
+
+    expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Guides' })).toBeChecked()
+  })
+
+  it('locks stale selections while keeping workflow reconciliation available', async () => {
+    const onCancel = vi.fn()
+    const user = userEvent.setup()
+    const { onRecrawl } = renderSelectionForm(onCancel, true)
+    await screen.findByRole('button', { name: 'dataset.newKnowledge.addSource' })
+
+    expect(screen.getByRole('checkbox', { name: 'Getting started' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+
+    expect(onRecrawl).toHaveBeenCalledOnce()
+    expect(onCancel).toHaveBeenCalledOnce()
   })
 
   it('validates a custom interval and submits policy plus selection exactly once', async () => {
@@ -357,13 +404,26 @@ describe('CrawlSelectionForm', () => {
     ).toBeDisabled()
   })
 
+  it('keeps Cancel available when the sync policy cannot load', async () => {
+    clientMock.getPolicy.mockRejectedValue(new Error('temporary failure'))
+    const onCancel = vi.fn()
+    const user = userEvent.setup()
+    renderSelectionForm(onCancel)
+
+    await screen.findByRole('alert')
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+
+    expect(onCancel).toHaveBeenCalledOnce()
+  })
+
   it('reuses the selection idempotency key after a lost response without rewriting policy', async () => {
     clientMock.getPolicy.mockResolvedValue(policy({ enabled: false, mode: 'manual' }))
     clientMock.selectPages
       .mockRejectedValueOnce(new Error('response lost'))
       .mockResolvedValueOnce({ ...run, checkpoint: 'import', state: 'queued' })
     const user = userEvent.setup()
-    renderSelectionForm()
+    const { onSubmissionUncertainChange, onWorkflowPending, onWorkflowRun } = renderSelectionForm()
 
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
     await user.selectOptions(
@@ -374,9 +434,24 @@ describe('CrawlSelectionForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.addSourceFailed',
     )
+    expect(onWorkflowPending).toHaveBeenCalledOnce()
+    expect(onSubmissionUncertainChange).toHaveBeenLastCalledWith(true)
+    expect(screen.getByRole('checkbox', { name: 'Guides' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }),
+    ).toBeDisabled()
+    await user.click(screen.getByText('Guides'))
+    expect(screen.getByRole('checkbox', { name: 'Guides' })).not.toBeChecked()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
 
     await waitFor(() => expect(clientMock.selectPages).toHaveBeenCalledTimes(2))
+    expect(onWorkflowRun).toHaveBeenCalledWith(
+      expect.objectContaining({ checkpoint: 'import', state: 'queued' }),
+    )
     expect(clientMock.updatePolicy).not.toHaveBeenCalled()
     expect(clientMock.selectPages.mock.calls[0]?.[0].headers).toEqual(
       clientMock.selectPages.mock.calls[1]?.[0].headers,

@@ -131,7 +131,19 @@ function isRetryConfirmed(previous: SourceWorkflowRun, current: SourceWorkflowRu
   return (
     previous.id === current.id &&
     (current.executionAttempts > previous.executionAttempts ||
-      (isTerminal(previous.state) && !isTerminal(current.state)))
+      current.updatedAt > previous.updatedAt ||
+      current.checkpoint !== previous.checkpoint ||
+      normalizedState(current.state) !== normalizedState(previous.state))
+  )
+}
+
+function sameWorkflowSnapshot(left: SourceWorkflowRun, right: SourceWorkflowRun) {
+  return (
+    left.id === right.id &&
+    left.executionAttempts === right.executionAttempts &&
+    left.updatedAt === right.updatedAt &&
+    left.checkpoint === right.checkpoint &&
+    normalizedState(left.state) === normalizedState(right.state)
   )
 }
 
@@ -308,6 +320,7 @@ export function WebsiteCrawlPreview({
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false)
   const [discarding, setDiscarding] = useState(false)
   const [discardError, setDiscardError] = useState(false)
+  const [uncertainOperation, setUncertainOperation] = useState(false)
   const draftRef = useRef<PreviewDraft | undefined>(undefined)
   const actionPendingRef = useRef(false)
   const retryFingerprintRef = useRef<string | undefined>(undefined)
@@ -323,6 +336,7 @@ export function WebsiteCrawlPreview({
   )
   const pendingCancelRunRef = useRef<SourceWorkflowRun | undefined>(undefined)
   const runRef = useRef<SourceWorkflowRun | undefined>(undefined)
+  const retryPredecessorRef = useRef<SourceWorkflowRun | undefined>(undefined)
   const uncertainWorkflowRef = useRef<(() => Promise<SourceWorkflowRun | undefined>) | undefined>(
     undefined,
   )
@@ -338,8 +352,18 @@ export function WebsiteCrawlPreview({
   }, [])
 
   const updateRun = useCallback((nextRun: SourceWorkflowRun | undefined) => {
+    if (nextRun && pendingCancelRunRef.current?.id === nextRun.id)
+      pendingCancelRunRef.current = nextRun
     runRef.current = nextRun
     setRun(nextRun)
+  }, [])
+
+  const trackPendingWorkflow = useCallback((request: Promise<SourceWorkflowRun | undefined>) => {
+    pendingWorkflowPromiseRef.current = request
+    void request.finally(() => {
+      if (pendingWorkflowPromiseRef.current === request)
+        pendingWorkflowPromiseRef.current = undefined
+    })
   }, [])
 
   const normalizedURL = useMemo(() => normalizeURL(rootUrl), [rootUrl])
@@ -364,7 +388,7 @@ export function WebsiteCrawlPreview({
     run && !starting && !stopping && !pollPaused && (active || !pagesLoaded),
   )
   const runId = run?.id
-  const locked = starting || stopping || active || successfulPreview
+  const locked = starting || stopping || active || successfulPreview || uncertainOperation
   const dirty = Boolean(
     rootUrl || sourceName || run || !includeSubpages || pageLimit !== DEFAULT_PAGE_LIMIT,
   )
@@ -496,8 +520,10 @@ export function WebsiteCrawlPreview({
         const reconciled = await findProvisionalSource(knowledgeSpaceId, draft.clientRequestId)
         if (reconciled) {
           draft.source = reconciled
+          setUncertainOperation(false)
           return draft
         }
+        setUncertainOperation(true)
         throw new Error('Provisional source creation is still reconciling')
       }
 
@@ -522,14 +548,20 @@ export function WebsiteCrawlPreview({
           },
           params: { id: knowledgeSpaceId },
         })
+        setUncertainOperation(false)
       } catch (error) {
         if (isDefinitiveRequestFailure(error)) {
           draft.creationAttempted = false
+          setUncertainOperation(false)
           throw error
         }
         const reconciled = await findProvisionalSource(knowledgeSpaceId, draft.clientRequestId)
-        if (!reconciled) throw error
+        if (!reconciled) {
+          setUncertainOperation(true)
+          throw error
+        }
         draft.source = reconciled
+        setUncertainOperation(false)
       }
       return draft
     },
@@ -547,6 +579,7 @@ export function WebsiteCrawlPreview({
         resetPreviewPages()
         updateRun(undefined)
         let draft: PreviewDraft | undefined
+        const existingUncertainWorkflow = uncertainWorkflowRef.current
         try {
           draft = await ensureProvisionalSource(nextConfiguration)
           if (!draft.source) throw new Error('Provisional source is missing')
@@ -557,6 +590,8 @@ export function WebsiteCrawlPreview({
               params: { id: knowledgeSpaceId, sourceId: draft.source.id },
             })
           uncertainWorkflowRef.current = undefined
+          retryPredecessorRef.current = undefined
+          setUncertainOperation(false)
           if (!discardRequestedRef.current) updateRun(nextRun)
           return nextRun
         } catch (error) {
@@ -575,7 +610,11 @@ export function WebsiteCrawlPreview({
                 return undefined
               }
             }
-          } else uncertainWorkflowRef.current = undefined
+            setUncertainOperation(true)
+          } else if (isDefinitiveRequestFailure(error) && !existingUncertainWorkflow) {
+            uncertainWorkflowRef.current = undefined
+            setUncertainOperation(false)
+          }
           setRequestError('START_FAILED')
           return undefined
         } finally {
@@ -597,6 +636,7 @@ export function WebsiteCrawlPreview({
     if (!run || actionPendingRef.current) return undefined
     const attemptKey = workflowAttemptKey(run)
     const retryAlreadySent = retryFingerprintRef.current === attemptKey
+    const existingUncertainWorkflow = uncertainWorkflowRef.current
     actionPendingRef.current = true
     const request = (async () => {
       setStarting(true)
@@ -604,6 +644,8 @@ export function WebsiteCrawlPreview({
       setPollPaused(false)
       const acceptRun = (nextRun: SourceWorkflowRun) => {
         uncertainWorkflowRef.current = undefined
+        retryPredecessorRef.current = run
+        setUncertainOperation(false)
         if (!discardRequestedRef.current) {
           resetPreviewPages()
           updateRun(nextRun)
@@ -648,12 +690,16 @@ export function WebsiteCrawlPreview({
           return acceptRun(retried)
         } catch (error) {
           if (isDefinitiveRequestFailure(error)) {
-            retryFingerprintRef.current = undefined
-            uncertainWorkflowRef.current = undefined
+            if (!existingUncertainWorkflow) {
+              retryFingerprintRef.current = undefined
+              uncertainWorkflowRef.current = undefined
+              setUncertainOperation(false)
+            }
             setRequestError('RETRY_FAILED')
             return undefined
           }
           uncertainWorkflowRef.current = reconcileRetry
+          setUncertainOperation(true)
           const reconciled = await reconcileRetry()
           if (!reconciled) {
             setRequestError('RETRY_FAILED')
@@ -687,6 +733,13 @@ export function WebsiteCrawlPreview({
           })
         if (disposed) return
         const currentRun = runRef.current
+        const retryPredecessor = retryPredecessorRef.current
+        if (retryPredecessor && sameWorkflowSnapshot(retryPredecessor, nextRun)) {
+          if (currentRun && !isTerminal(currentRun.state))
+            timer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
+          return
+        }
+        retryPredecessorRef.current = undefined
         if (currentRun && latestWorkflowRun(currentRun, nextRun) === currentRun) {
           if (!isTerminal(currentRun.state)) timer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
           return
@@ -853,6 +906,8 @@ export function WebsiteCrawlPreview({
         : run && isSuccessful(run.state) && pagesLoaded && pages.length === 0
           ? t(($) => $['newKnowledge.adjustAndRecrawl'])
           : t(($) => $['newKnowledge.crawlAndPreview'])
+  const canReconcileUncertainOperation =
+    uncertainOperation && (requestError === 'START_FAILED' || requestError === 'RETRY_FAILED')
 
   const showFailure = Boolean(
     requestError === 'START_FAILED' ||
@@ -889,18 +944,20 @@ export function WebsiteCrawlPreview({
     let pendingRun = await pendingWorkflowPromiseRef.current
     if (!pendingRun && uncertainWorkflowRef.current)
       pendingRun = await uncertainWorkflowRef.current()
-    if (!pendingRun && uncertainWorkflowRef.current) {
+    if (
+      !pendingRun &&
+      (uncertainWorkflowRef.current || (uncertainOperation && !pendingCancelRunRef.current))
+    ) {
       discardRequestedRef.current = false
       setDiscarding(false)
       setDiscardError(true)
       return
     }
-    if (pendingRun) uncertainWorkflowRef.current = undefined
-    const latestKnownRun = latestWorkflowRun(
-      latestWorkflowRun(pendingCancelRunRef.current, pendingRun),
-      runRef.current,
-    )
-    const runToCancel = latestKnownRun
+    if (pendingRun) {
+      uncertainWorkflowRef.current = undefined
+      setUncertainOperation(false)
+    }
+    const runToCancel = pendingRun ?? pendingCancelRunRef.current ?? runRef.current
     if (runToCancel && !isTerminal(runToCancel.state) && !(await stop(runToCancel))) {
       pendingCancelRunRef.current = runToCancel
       discardRequestedRef.current = false
@@ -912,6 +969,7 @@ export function WebsiteCrawlPreview({
       return
     }
     pendingCancelRunRef.current = undefined
+    retryPredecessorRef.current = undefined
     submittedRef.current = true
     setCancelConfirmationOpen(false)
     const pendingNavigation = pendingNavigationRef.current
@@ -1052,7 +1110,10 @@ export function WebsiteCrawlPreview({
             type="submit"
             variant="primary"
             className="mt-4 w-full"
-            disabled={!configuration || (locked && requestError !== 'POLL_FAILED')}
+            disabled={
+              !configuration ||
+              (locked && requestError !== 'POLL_FAILED' && !canReconcileUncertainOperation)
+            }
             loading={starting}
           >
             {primaryLabel}
@@ -1112,6 +1173,7 @@ export function WebsiteCrawlPreview({
             knowledgeSpaceId={knowledgeSpaceId}
             onCancel={cancel}
             onRecrawl={handlePrimaryAction}
+            onSubmissionUncertainChange={setUncertainOperation}
             onSubmitted={() =>
               new Promise<void>((resolve) => {
                 pendingNavigationRef.current = undefined
@@ -1119,10 +1181,15 @@ export function WebsiteCrawlPreview({
                 leaveHistoryGuard(resolve)
               })
             }
+            onWorkflowPending={trackPendingWorkflow}
+            onWorkflowRun={(nextRun) => {
+              pendingCancelRunRef.current = nextRun
+            }}
             pages={pages}
             rootUrl={configuration.url}
             run={run}
             source={draftRef.current.source}
+            workflowUncertain={uncertainOperation}
           />
         )}
         {showCanceled && (

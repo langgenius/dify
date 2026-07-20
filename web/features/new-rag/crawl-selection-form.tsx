@@ -27,6 +27,19 @@ const MAX_CUSTOM_INTERVAL_HOURS = 720
 
 type PageSkipReason = 'failed' | 'off-domain'
 
+function requestStatus(error: unknown) {
+  if (error instanceof Response) return error.status
+  if (!error || typeof error !== 'object') return undefined
+  if ('status' in error && typeof error.status === 'number') return error.status
+  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data)
+    return typeof error.data.status === 'number' ? error.data.status : undefined
+}
+
+function isDefinitiveRequestFailure(error: unknown) {
+  const status = requestStatus(error)
+  return status !== undefined && [400, 401, 403, 404, 409, 422, 429].includes(status)
+}
+
 function pageSkipReason(page: PreviewPage, rootUrl: string): PageSkipReason | undefined {
   try {
     const root = new URL(rootUrl)
@@ -85,23 +98,31 @@ function ReadyCrawlSelectionForm({
   knowledgeSpaceId,
   onCancel,
   onRecrawl,
+  onSubmissionUncertainChange,
   onSubmitted,
+  onWorkflowPending,
+  onWorkflowRun,
   pages,
   policy,
   rootUrl,
   run,
   source,
+  workflowUncertain,
 }: {
   busy: boolean
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
+  onSubmissionUncertainChange: (uncertain: boolean) => void
   onSubmitted: () => Promise<void> | void
+  onWorkflowPending: (request: Promise<SourceWorkflowRun | undefined>) => void
+  onWorkflowRun: (run: SourceWorkflowRun) => void
   pages: PreviewPage[]
   policy: SyncPolicy
   rootUrl: string
   run: SourceWorkflowRun
   source: Source
+  workflowUncertain: boolean
 }) {
   const { t } = useTranslation('dataset')
   const router = useRouter()
@@ -126,6 +147,7 @@ function ReadyCrawlSelectionForm({
   )
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(false)
+  const [submissionUncertain, setSubmissionUncertain] = useState(false)
   const policySnapshotRef = useRef(policy)
   const submissionPendingRef = useRef(false)
   const selectionRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(
@@ -147,9 +169,16 @@ function ReadyCrawlSelectionForm({
     customIntervalHours <= MAX_CUSTOM_INTERVAL_HOURS
   const canSubmit = selectedPageIds.size > 0 && (syncMode !== 'custom' || customIntervalValid)
   const formBusy = busy || submitting
+  const submissionLocked = formBusy || submissionUncertain
+  const selectionLocked = submissionLocked || workflowUncertain
+  const updateSubmissionUncertain = (uncertain: boolean) => {
+    setSubmissionUncertain(uncertain)
+    onSubmissionUncertainChange(uncertain)
+  }
 
   const togglePage = (pageId: string) => {
-    if (!selectablePageIds.has(pageId) || submissionPendingRef.current) return
+    if (!selectablePageIds.has(pageId) || submissionPendingRef.current || submissionUncertain)
+      return
     setSelectedPageIds((current) => {
       const next = new Set(current)
       if (next.has(pageId)) next.delete(pageId)
@@ -160,7 +189,7 @@ function ReadyCrawlSelectionForm({
   }
 
   const toggleAll = () => {
-    if (submissionPendingRef.current) return
+    if (submissionPendingRef.current || submissionUncertain) return
     setSelectedPageIds(allSelected ? new Set() : new Set(selectablePageIds))
     setSubmitError(false)
   }
@@ -177,6 +206,12 @@ function ReadyCrawlSelectionForm({
     )
     const sortedPageIds = [...selectedPageIds].sort()
     const fingerprint = JSON.stringify({ pageIds: sortedPageIds, policy: desiredPolicy })
+    if (submissionUncertain && selectionRequestRef.current?.fingerprint !== fingerprint) {
+      submissionPendingRef.current = false
+      setSubmitting(false)
+      setSubmitError(true)
+      return
+    }
     if (selectionRequestRef.current?.fingerprint !== fingerprint) {
       selectionRequestRef.current = {
         fingerprint,
@@ -198,22 +233,42 @@ function ReadyCrawlSelectionForm({
             params: { id: knowledgeSpaceId, sourceId: source.id },
           })
         } catch (error) {
-          const reconciled =
-            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy({
-              params: { id: knowledgeSpaceId, sourceId: source.id },
-            })
+          let reconciled: SyncPolicy
+          try {
+            reconciled =
+              await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy({
+                params: { id: knowledgeSpaceId, sourceId: source.id },
+              })
+          } catch (reconciliationError) {
+            if (!isDefinitiveRequestFailure(error)) updateSubmissionUncertain(true)
+            throw reconciliationError
+          }
           policySnapshotRef.current = reconciled
-          if (!policyMatches(reconciled, desiredPolicy)) throw error
+          if (!policyMatches(reconciled, desiredPolicy)) {
+            if (!isDefinitiveRequestFailure(error)) updateSubmissionUncertain(true)
+            throw error
+          }
           currentPolicy = reconciled
         }
         policySnapshotRef.current = currentPolicy
       }
 
-      await selectPages.mutateAsync({
-        body: { pageIds: sortedPageIds },
-        headers: { 'Idempotency-Key': selectionRequestRef.current.requestId },
-        params: { id: knowledgeSpaceId, runId: run.id },
-      })
+      try {
+        const selectionRequest = selectPages.mutateAsync({
+          body: { pageIds: sortedPageIds },
+          headers: { 'Idempotency-Key': selectionRequestRef.current.requestId },
+          params: { id: knowledgeSpaceId, runId: run.id },
+        })
+        onWorkflowPending(
+          selectionRequest.then((selectionRun) => selectionRun).catch(() => undefined),
+        )
+        const selectionRun = await selectionRequest
+        onWorkflowRun(selectionRun)
+      } catch (error) {
+        updateSubmissionUncertain(!isDefinitiveRequestFailure(error))
+        throw error
+      }
+      updateSubmissionUncertain(true)
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
       })
@@ -254,7 +309,7 @@ function ReadyCrawlSelectionForm({
             type="button"
             variant="tertiary"
             size="small"
-            disabled={formBusy}
+            disabled={submissionLocked}
             loading={busy}
             onClick={onRecrawl}
           >
@@ -262,45 +317,46 @@ function ReadyCrawlSelectionForm({
           </Button>
         </div>
         <div className="mt-3 overflow-hidden rounded-xl border border-divider-regular">
-          <div className="flex items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
+          <label className="flex cursor-pointer items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
             <Checkbox
               checked={allSelected}
               indeterminate={someSelected && !allSelected}
               onCheckedChange={toggleAll}
-              disabled={!selectablePages.length || formBusy}
-              aria-label={t(($) => $['newKnowledge.selectAll'])}
+              disabled={!selectablePages.length || selectionLocked}
             />
             {t(($) => $['newKnowledge.selectAll'])}
-          </div>
+          </label>
           <ul className="max-h-[280px] divide-y divide-divider-subtle overflow-y-auto">
             {pages.map((page) => {
               const skipReason = pageSkipReasons.get(page.pageId)
               const selectable = !skipReason
               return (
                 <li key={page.pageId}>
-                  <div className="flex items-center gap-2.5 px-3 py-2.5">
+                  <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5">
                     <Checkbox
                       checked={selectedPageIds.has(page.pageId)}
-                      disabled={!selectable || formBusy}
-                      aria-label={page.title || page.sourceUrl}
+                      disabled={!selectable || selectionLocked}
                       onCheckedChange={() => togglePage(page.pageId)}
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate system-xs-medium text-text-primary">
                         {page.title || page.sourceUrl}
                       </span>
-                      <span className="block truncate system-2xs-regular text-text-tertiary">
+                      <span
+                        aria-hidden
+                        className="block truncate system-2xs-regular text-text-tertiary"
+                      >
                         {page.sourceUrl}
                       </span>
                     </span>
                     {!selectable && (
-                      <span className="shrink-0 system-xs-medium text-text-tertiary">
+                      <span aria-hidden className="shrink-0 system-xs-medium text-text-tertiary">
                         {skipReason === 'off-domain'
                           ? t(($) => $['newKnowledge.skippedOffDomain'])
                           : t(($) => $['newKnowledge.skippedFailed'])}
                       </span>
                     )}
-                  </div>
+                  </label>
                 </li>
               )
             })}
@@ -308,7 +364,7 @@ function ReadyCrawlSelectionForm({
         </div>
       </section>
 
-      <fieldset disabled={formBusy}>
+      <fieldset disabled={selectionLocked}>
         <label className="block">
           <span className="system-xs-medium text-text-secondary">
             {t(($) => $['newKnowledge.syncPolicy'])}
@@ -366,13 +422,13 @@ function ReadyCrawlSelectionForm({
         </p>
       )}
       <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-        <Button type="button" disabled={formBusy} onClick={onCancel}>
+        <Button type="button" disabled={submissionLocked} onClick={onCancel}>
           {t(($) => $['newKnowledge.cancelAddSource'])}
         </Button>
         <Button
           type="submit"
           variant="primary"
-          disabled={!canSubmit || formBusy}
+          disabled={!canSubmit || formBusy || workflowUncertain}
           loading={submitting}
           aria-describedby={!selectedPageIds.size ? 'add-source-selection-requirement' : undefined}
         >
@@ -393,21 +449,29 @@ export function CrawlSelectionForm({
   knowledgeSpaceId,
   onCancel,
   onRecrawl,
+  onSubmissionUncertainChange,
   onSubmitted,
+  onWorkflowPending,
+  onWorkflowRun,
   pages,
   rootUrl,
   run,
   source,
+  workflowUncertain = false,
 }: {
   busy?: boolean
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
+  onSubmissionUncertainChange: (uncertain: boolean) => void
   onSubmitted: () => Promise<void> | void
+  onWorkflowPending: (request: Promise<SourceWorkflowRun | undefined>) => void
+  onWorkflowRun: (run: SourceWorkflowRun) => void
   pages: PreviewPage[]
   rootUrl: string
   run: SourceWorkflowRun
   source: Source
+  workflowUncertain?: boolean
 }) {
   const { t } = useTranslation('dataset')
   const policyQuery = useQuery(
@@ -420,13 +484,23 @@ export function CrawlSelectionForm({
   if (policyQuery.isPending) return <PolicyLoading />
   if (policyQuery.error || !policyQuery.data) {
     return (
-      <div role="alert" className="rounded-xl border border-divider-regular p-4">
-        <p className="system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.syncPolicyLoadFailed'])}
-        </p>
-        <Button className="mt-3" onClick={() => void policyQuery.refetch()}>
-          {t(($) => $['newKnowledge.retrySyncPolicy'])}
-        </Button>
+      <div className="space-y-4">
+        <div role="alert" className="rounded-xl border border-divider-regular p-4">
+          <p className="system-xs-regular text-text-destructive">
+            {t(($) => $['newKnowledge.syncPolicyLoadFailed'])}
+          </p>
+          <Button className="mt-3" onClick={() => void policyQuery.refetch()}>
+            {t(($) => $['newKnowledge.retrySyncPolicy'])}
+          </Button>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
+          <Button type="button" onClick={onCancel}>
+            {t(($) => $['newKnowledge.cancelAddSource'])}
+          </Button>
+          <Button type="button" variant="primary" disabled>
+            {t(($) => $['newKnowledge.addSource'])}
+          </Button>
+        </div>
       </div>
     )
   }
@@ -438,12 +512,16 @@ export function CrawlSelectionForm({
       knowledgeSpaceId={knowledgeSpaceId}
       onCancel={onCancel}
       onRecrawl={onRecrawl}
+      onSubmissionUncertainChange={onSubmissionUncertainChange}
       onSubmitted={onSubmitted}
+      onWorkflowPending={onWorkflowPending}
+      onWorkflowRun={onWorkflowRun}
       pages={pages}
       policy={policyQuery.data}
       rootUrl={rootUrl}
       run={run}
       source={source}
+      workflowUncertain={workflowUncertain}
     />
   )
 }
