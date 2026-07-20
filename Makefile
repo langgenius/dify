@@ -101,6 +101,9 @@ type-check-core:
 	@uv --directory api run mypy --exclude-gitignore --exclude '(^|/)conftest\.py$$' --exclude 'tests/' --exclude 'migrations/' --exclude 'dev/generate_swagger_specs.py' --exclude 'dev/generate_fastopenapi_specs.py' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Core type checks complete"
 
+# Avoid a remote LiteLLM cost-map fetch in every pytest/xdist process.
+test test-all: export LITELLM_LOCAL_MODEL_COST_MAP := true
+
 test:
 	@echo "🧪 Running backend unit tests..."
 	@if [ -n "$(TARGET_TESTS)" ]; then \
@@ -114,7 +117,7 @@ test:
 			api/providers/vdb/*/tests/unit_tests \
 			api/providers/trace/*/tests/unit_tests \
 			--ignore=api/tests/unit_tests/controllers; \
-		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
+		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" -n auto --cov-append \
 			api/tests/unit_tests/controllers; \
 	fi
 	@echo "✅ Unit tests complete"
@@ -132,14 +135,18 @@ test-all:
 			api/providers/vdb/*/tests/unit_tests \
 			api/providers/trace/*/tests/unit_tests \
 			--ignore=api/tests/unit_tests/controllers; \
-		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
+		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" -n auto --cov-append \
 			api/tests/unit_tests/controllers; \
 		echo "Running backend integration tests"; \
 		uv run --project api --dev pytest -p no:benchmark --start-middleware -n auto \
 			--timeout "$${PYTEST_TIMEOUT:-180}" \
 			--cov-append \
 			api/tests/integration_tests/workflow \
-			api/tests/integration_tests/tools \
+			api/tests/integration_tests/tools; \
+		echo "Running testcontainers integration tests"; \
+		uv run --project api --dev pytest -p no:benchmark \
+			--timeout "$${PYTEST_TIMEOUT:-180}" \
+			--cov-append \
 			api/tests/test_containers_integration_tests; \
 		echo "Running VDB smoke tests"; \
 		uv run --project api --dev pytest --start-vdb \
