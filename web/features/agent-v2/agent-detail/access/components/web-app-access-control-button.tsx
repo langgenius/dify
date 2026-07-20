@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAppACLCapabilities } from '@/hooks/use-app-acl-capabilities'
-import { AccessMode, isAccessMode } from '@/models/access-control'
+import { isAccessMode } from '@/models/access-control'
 
 export function WebAppAccessControlButton({
   agent,
@@ -21,16 +21,15 @@ export function WebAppAccessControlButton({
   const [showAccessControl, setShowAccessControl] = useState(false)
   const appId = agent?.app_id
   const rawAccessMode = agent?.access_mode
-  const accessMode = isAccessMode(rawAccessMode)
-    ? rawAccessMode
-    : AccessMode.SPECIFIC_GROUPS_MEMBERS
+  const accessMode = isAccessMode(rawAccessMode) ? rawAccessMode : undefined
   const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
   const { canReleaseAndVersion: canManageWebAppAccessControl } = useAppACLCapabilities(
     agent?.permission_keys,
     agent?.maintainer,
   )
 
-  if (!systemFeatures?.webapp_auth.enabled || !canManageWebAppAccessControl || !appId) return null
+  if (!systemFeatures?.webapp_auth.enabled || !canManageWebAppAccessControl || !appId || !accessMode)
+    return null
 
   const handleConfirm = async () => {
     setShowAccessControl(false)

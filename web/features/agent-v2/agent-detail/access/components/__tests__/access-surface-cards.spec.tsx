@@ -792,6 +792,39 @@ describe('Agent access surface cards', () => {
       })
     })
 
+    it.each([null, 'future-access-mode'])(
+      'should hide the access control button when the access mode is %s',
+      (accessMode) => {
+        const queryClient = createTestQueryClient()
+        queryClient.setQueryData(['system-features'], {
+          webapp_auth: {
+            enabled: true,
+            allow_sso: false,
+            allow_email_password_login: true,
+            allow_email_code_login: false,
+          },
+        })
+
+        render(
+          <QueryClientProvider client={queryClient}>
+            <WebAppAccessCard
+              agent={createAgent({
+                access_mode: accessMode,
+                maintainer: 'user-1',
+                permission_keys: ['app.acl.release_and_version'],
+              })}
+              agentId="agent-1"
+              isLoading={false}
+            />
+          </QueryClientProvider>,
+        )
+
+        expect(
+          screen.queryByRole('button', { name: accessControlButtonName }),
+        ).not.toBeInTheDocument()
+      },
+    )
+
     it('should open the access control dialog wired with the backing app id', async () => {
       const user = userEvent.setup()
 
