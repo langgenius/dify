@@ -36,6 +36,10 @@ import AppIcon from '@/app/components/base/app-icon'
 import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '@/app/components/step-by-step-tour/dropdown-menu'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
@@ -105,6 +109,10 @@ type AppCardProps = {
   onlineUsers?: WorkflowOnlineUser[]
   onRefresh?: () => void
   onOpenTagManagement?: () => void
+  stepByStepTourActionMenuOpen?: boolean
+  stepByStepTourCardTarget?: string
+  stepByStepTourCardHighlightPart?: string
+  stepByStepTourActionMenuHighlightPart?: string
 }
 
 type AppAccessModeIconProps = {
@@ -816,6 +824,10 @@ export function AppCard({
   onlineUsers = [],
   onRefresh,
   onOpenTagManagement = () => {},
+  stepByStepTourActionMenuOpen = false,
+  stepByStepTourCardTarget,
+  stepByStepTourCardHighlightPart,
+  stepByStepTourActionMenuHighlightPart,
 }: AppCardProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -831,7 +843,12 @@ export function AppCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
+  const operationsMenu = useStepByStepTourControlledDropdown({
+    allowTriggerCloseWhileControlled: false,
+    controlledOpen: stepByStepTourActionMenuOpen,
+  })
+  const isOperationsMenuOpen = operationsMenu.open
+  const setIsOperationsMenuOpen = operationsMenu.onOpenChange
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
@@ -1204,6 +1221,8 @@ export function AppCard({
             aria-disabled="true"
             aria-labelledby={appNameId}
             aria-describedby={app.description ? appDescriptionId : undefined}
+            data-step-by-step-tour-target={stepByStepTourCardTarget}
+            data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={appCardClassName}
             onClick={showPreviewOnlyAccessWarning}
             onKeyDown={handlePreviewOnlyCardKeyDown}
@@ -1215,6 +1234,8 @@ export function AppCard({
             href={appHref}
             aria-labelledby={appNameId}
             aria-describedby={app.description ? appDescriptionId : undefined}
+            data-step-by-step-tour-target={stepByStepTourCardTarget}
+            data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={appCardClassName}
           >
             {appCardContent}
@@ -1297,6 +1318,10 @@ export function AppCard({
                   placement="bottom-end"
                   sideOffset={4}
                   popupClassName={operationsMenuWidthClassName}
+                  {...getStepByStepTourDropdownMenuContentProps({
+                    highlightPart: stepByStepTourActionMenuHighlightPart,
+                    interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+                  })}
                 >
                   {systemFeatures.webapp_auth.enabled ? (
                     <AppCardOperationsMenuContent

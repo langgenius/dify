@@ -11,10 +11,20 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNeedRefreshAppList } from '@/app/components/apps/storage'
+import {
+  activeStepByStepTourGuideGroupAtom,
+  activeStepByStepTourGuideIndexAtom,
+  activeStepByStepTourTaskIdAtom,
+  resolveStepByStepTourGuideGroupAtom,
+} from '@/app/components/step-by-step-tour/state'
+import {
+  getStepByStepTourGuides,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -38,6 +48,7 @@ import { StarredAppList } from './starred-app-list'
 import { StudioListHeader } from './studio-list-header'
 
 const STARRED_APP_LIMIT = 100
+const STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT = 4
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
@@ -71,6 +82,10 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
   const [needsRefreshAppList, setNeedsRefreshAppList] = useNeedRefreshAppList()
+  const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
+  const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
+  const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
+  const resolveStepByStepTourGuideGroup = useSetAtom(resolveStepByStepTourGuideGroupAtom)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const handleDSLFileDropped = useCallback(
@@ -224,6 +239,35 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
   const showFirstEmptyState =
     !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
+  const showNoCreateEmptyState =
+    !showSkeleton && !hasAnyApp && !canCreateApp && hasResolvedFirstPage && !hasActiveFilters
+  const activeStudioGuideGroup = canCreateApp
+    ? showFirstEmptyState
+      ? 'studioEmpty'
+      : hasAnyApp
+        ? 'studioWithApps'
+        : undefined
+    : hasAnyApp
+      ? 'studioNoCreateWithApps'
+      : showNoCreateEmptyState
+        ? 'studioNoCreateEmpty'
+        : undefined
+  const effectiveActiveStudioGuideGroup = activeStepByStepTourGuideGroup ?? activeStudioGuideGroup
+  const activeStudioGuides =
+    activeStepByStepTourTaskId === 'studio' && effectiveActiveStudioGuideGroup
+      ? getStepByStepTourGuides('studio', effectiveActiveStudioGuideGroup)
+      : []
+  const activeStudioGuide = activeStudioGuides[activeStepByStepTourGuideIndex ?? 0]
+  const shouldOpenStepByStepTourCreateMenu =
+    activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate
+  const shouldOpenStepByStepTourAppCardActionMenu =
+    activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
+  const shouldHighlightStepByStepTourNoCreateAppRow =
+    activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
+  const shouldHighlightStepByStepTourStarredAppRow =
+    shouldHighlightStepByStepTourNoCreateAppRow && starredApps.length > 0
+  const shouldHighlightStepByStepTourAllAppsRow =
+    shouldHighlightStepByStepTourNoCreateAppRow && !shouldHighlightStepByStepTourStarredAppRow
   const openCreateBlankModal = useCallback(() => {
     if (canCreateApp) setShowNewAppModal(true)
   }, [canCreateApp])
@@ -233,6 +277,24 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
   const openCreateFromDSLModal = useCallback(() => {
     if (canCreateApp) setShowCreateFromDSLModal(true)
   }, [canCreateApp])
+
+  useEffect(() => {
+    if (activeStepByStepTourTaskId !== 'studio') return
+    if (!hasResolvedFirstPage || showSkeleton || !activeStudioGuideGroup) return
+    if (activeStepByStepTourGuideGroup === activeStudioGuideGroup) return
+
+    resolveStepByStepTourGuideGroup({
+      taskId: 'studio',
+      guideGroup: activeStudioGuideGroup,
+    })
+  }, [
+    activeStepByStepTourGuideGroup,
+    activeStepByStepTourTaskId,
+    activeStudioGuideGroup,
+    hasResolvedFirstPage,
+    resolveStepByStepTourGuideGroup,
+    showSkeleton,
+  ])
 
   return (
     <>
@@ -269,6 +331,13 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
             onImportDSL={openCreateFromDSLModal}
             onOpenTagManagement={() => setShowTagManagementModal(true)}
             showCreateButton={canCreateApp}
+            stepByStepTourCreateMenuOpen={
+              activeStudioGuide ? shouldOpenStepByStepTourCreateMenu : undefined
+            }
+            stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate}
+            stepByStepTourCreateMenuHighlightPart={
+              STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu
+            }
           />
         </StudioListHeader>
         {showFirstEmptyState ? (
@@ -283,7 +352,25 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
         ) : (
           <>
             {starredApps.length > 0 && (
-              <StarredAppList apps={starredApps} onRefresh={refreshAppLists} />
+              <StarredAppList
+                apps={starredApps}
+                onRefresh={refreshAppLists}
+                stepByStepTourCardTarget={
+                  shouldHighlightStepByStepTourStarredAppRow
+                    ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
+                    : undefined
+                }
+                stepByStepTourCardHighlightPart={
+                  shouldHighlightStepByStepTourStarredAppRow
+                    ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
+                    : undefined
+                }
+                stepByStepTourHighlightedCardCount={
+                  shouldHighlightStepByStepTourStarredAppRow
+                    ? STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT
+                    : 0
+                }
+              />
             )}
             <div
               className={cn(
@@ -294,17 +381,46 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
               {showSkeleton ? (
                 <AppCardSkeleton count={6} />
               ) : hasAnyApp ? (
-                apps.map((app) => (
+                apps.map((app, index) => (
                   <AppCard
                     key={app.id}
                     app={app}
                     onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
                     onRefresh={refreshAppLists}
                     onOpenTagManagement={() => setShowTagManagementModal(true)}
+                    stepByStepTourActionMenuOpen={
+                      index === 0 ? shouldOpenStepByStepTourAppCardActionMenu : undefined
+                    }
+                    stepByStepTourCardTarget={
+                      index === 0
+                        ? shouldHighlightStepByStepTourAllAppsRow
+                          ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
+                          : canCreateApp
+                            ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
+                            : undefined
+                        : undefined
+                    }
+                    stepByStepTourCardHighlightPart={
+                      index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT &&
+                      shouldHighlightStepByStepTourAllAppsRow
+                        ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
+                        : undefined
+                    }
+                    stepByStepTourActionMenuHighlightPart={
+                      index === 0 && shouldOpenStepByStepTourAppCardActionMenu
+                        ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
+                        : undefined
+                    }
                   />
                 ))
               ) : (
-                <Empty />
+                <Empty
+                  stepByStepTourTarget={
+                    showNoCreateEmptyState
+                      ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty
+                      : undefined
+                  }
+                />
               )}
               {isFetchingNextPage && <AppCardSkeleton count={3} />}
             </div>
