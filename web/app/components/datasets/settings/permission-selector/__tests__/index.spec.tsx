@@ -1,10 +1,10 @@
 import type { Member } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { DatasetPermission } from '@/models/datasets'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import PermissionSelector from '../index'
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
     name: 'Current User',
@@ -16,72 +16,30 @@ const mockAppContextState = vi.hoisted(() => ({
 
 let mockIsRbacEnabled = false
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
+  return createSystemFeaturesStateModuleMock(() => ({
+    ...(() => mockConsoleState)(),
+    datasetRbacEnabled: (() => ({
       isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
+    }))().isRbacEnabled,
+  }))
 })
 
 describe('PermissionSelector', () => {
@@ -151,21 +109,21 @@ describe('PermissionSelector', () => {
 
   describe('Rendering', () => {
     it('should render Only Me option when permission is onlyMe', () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.onlyMe} />,
       )
       expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
     })
 
     it('should render All Team Members option when permission is allTeamMembers', () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.allTeamMembers} />,
       )
       expect(screen.getByText(/form\.permissionsAllMember/))!.toBeInTheDocument()
     })
 
     it('should render selected member names when permission is partialMembers', () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector
           {...defaultProps}
           permission={DatasetPermission.partialMembers}
@@ -180,7 +138,7 @@ describe('PermissionSelector', () => {
 
   describe('Dropdown Toggle', () => {
     it('should open dropdown when clicked', async () => {
-      renderWithSystemFeatures(<PermissionSelector {...defaultProps} />)
+      renderWithConsoleQuery(<PermissionSelector {...defaultProps} />)
 
       const trigger = screen.getByText(/form\.permissionsOnlyMe/)
       fireEvent.click(trigger)
@@ -192,7 +150,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should not open dropdown when disabled', () => {
-      renderWithSystemFeatures(<PermissionSelector {...defaultProps} disabled={true} />)
+      renderWithConsoleQuery(<PermissionSelector {...defaultProps} disabled={true} />)
 
       const trigger = screen.getByText(/form\.permissionsOnlyMe/)
       fireEvent.click(trigger)
@@ -205,7 +163,7 @@ describe('PermissionSelector', () => {
   describe('Permission Selection', () => {
     it('should call onChange with onlyMe when Only Me is selected', async () => {
       const handleChange = vi.fn()
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector
           {...defaultProps}
           onChange={handleChange}
@@ -226,7 +184,7 @@ describe('PermissionSelector', () => {
 
     it('should call onChange with allTeamMembers when All Team Members is selected', async () => {
       const handleChange = vi.fn()
-      renderWithSystemFeatures(<PermissionSelector {...defaultProps} onChange={handleChange} />)
+      renderWithConsoleQuery(<PermissionSelector {...defaultProps} onChange={handleChange} />)
 
       const trigger = screen.getByText(/form\.permissionsOnlyMe/)
       fireEvent.click(trigger)
@@ -242,7 +200,7 @@ describe('PermissionSelector', () => {
     it('should call onChange with partialMembers when Invited Members is selected', async () => {
       const handleChange = vi.fn()
       const handleMemberSelect = vi.fn()
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector
           {...defaultProps}
           onChange={handleChange}
@@ -265,7 +223,7 @@ describe('PermissionSelector', () => {
 
   describe('Member Selection', () => {
     it('should show member list when partialMembers is selected', async () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />,
       )
 
@@ -282,7 +240,7 @@ describe('PermissionSelector', () => {
 
     it('should call onMemberSelect when a member is clicked', async () => {
       const handleMemberSelect = vi.fn()
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector
           {...defaultProps}
           permission={DatasetPermission.partialMembers}
@@ -303,7 +261,7 @@ describe('PermissionSelector', () => {
 
     it('should deselect member when clicked again', async () => {
       const handleMemberSelect = vi.fn()
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector
           {...defaultProps}
           permission={DatasetPermission.partialMembers}
@@ -326,7 +284,7 @@ describe('PermissionSelector', () => {
 
   describe('Search Functionality', () => {
     it('should allow typing in search input', async () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />,
       )
 
@@ -342,7 +300,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should render search input in partial members mode', async () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />,
       )
 
@@ -355,7 +313,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should filter members after debounce completes', async () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />,
       )
 
@@ -378,7 +336,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should handle clear search functionality', async () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />,
       )
 
@@ -402,7 +360,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should filter members by email', async () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />,
       )
 
@@ -425,7 +383,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should show no results message when search matches nothing', async () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />,
       )
 
@@ -448,7 +406,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should show current user when search matches user name', async () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />,
       )
 
@@ -471,7 +429,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should show current user when search matches user email', async () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />,
       )
 
@@ -494,7 +452,7 @@ describe('PermissionSelector', () => {
 
   describe('Disabled State', () => {
     it('should apply disabled styles when disabled', () => {
-      const { container } = renderWithSystemFeatures(
+      const { container } = renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} disabled={true} />,
       )
       // When disabled, the component has cursor-not-allowed! class (escaped in Tailwind)
@@ -505,7 +463,7 @@ describe('PermissionSelector', () => {
     it('should show access config hint and remain closed when RBAC is enabled', () => {
       mockIsRbacEnabled = true
 
-      renderWithSystemFeatures(<PermissionSelector {...defaultProps} />, {
+      renderWithConsoleQuery(<PermissionSelector {...defaultProps} />, {
         systemFeatures: {
           rbac_enabled: true,
         },
@@ -521,7 +479,7 @@ describe('PermissionSelector', () => {
 
   describe('Display Variations', () => {
     it('should display single avatar when only one member selected', () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector
           {...defaultProps}
           permission={DatasetPermission.partialMembers}
@@ -535,7 +493,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should display two avatars when two or more members selected', () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector
           {...defaultProps}
           permission={DatasetPermission.partialMembers}
@@ -551,13 +509,13 @@ describe('PermissionSelector', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty member list', () => {
-      renderWithSystemFeatures(<PermissionSelector {...defaultProps} memberList={[]} />)
+      renderWithConsoleQuery(<PermissionSelector {...defaultProps} memberList={[]} />)
 
       expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
     })
 
     it('should handle member list with only current user', () => {
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} memberList={[mockMemberList[0]!]} />,
       )
 
@@ -584,7 +542,7 @@ describe('PermissionSelector', () => {
         },
       ]
 
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <PermissionSelector
           {...defaultProps}
           memberList={memberListWithNormalUser}
@@ -600,7 +558,7 @@ describe('PermissionSelector', () => {
 
   describe('Props', () => {
     it('should update when permission prop changes', () => {
-      const { rerender } = renderWithSystemFeatures(
+      const { rerender } = renderWithConsoleQuery(
         <PermissionSelector {...defaultProps} permission={DatasetPermission.onlyMe} />,
       )
 
