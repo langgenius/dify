@@ -260,17 +260,14 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const completeHomeTourAfterCreate = useCallback(() => {
     if (!shouldCompleteHomeTourOnCreateRef.current) return
 
+    resetStepByStepTourSession()
+    isCurrentTryAppFromLearnDifyRef.current = false
+    shouldCompleteHomeTourOnCreateRef.current = false
+    isSubmittingHomeTourCreateRef.current = false
     completeStepByStepTourTask({
       taskId: HOME_STEP_BY_STEP_TOUR_TASK_ID,
       onSuccess: (completedTaskIds) => {
-        resetStepByStepTourSession()
         trackHomeTourCompleted(completedTaskIds, 'lesson_app_created')
-        isCurrentTryAppFromLearnDifyRef.current = false
-        shouldCompleteHomeTourOnCreateRef.current = false
-        isSubmittingHomeTourCreateRef.current = false
-      },
-      onError: () => {
-        isSubmittingHomeTourCreateRef.current = false
       },
     })
   }, [completeStepByStepTourTask, resetStepByStepTourSession, trackHomeTourCompleted])
@@ -284,12 +281,10 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       return
     }
 
+    resetStepByStepTourSession()
     completeStepByStepTourTask({
       taskId: HOME_STEP_BY_STEP_TOUR_TASK_ID,
-      onSuccess: (completedTaskIds) => {
-        resetStepByStepTourSession()
-        trackHomeTourCompleted(completedTaskIds, 'lesson_opened')
-      },
+      onSuccess: (completedTaskIds) => trackHomeTourCompleted(completedTaskIds, 'lesson_opened'),
     })
   }, [
     activeStepByStepTourGuideIndex,

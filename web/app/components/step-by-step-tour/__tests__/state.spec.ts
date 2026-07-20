@@ -21,11 +21,14 @@ import {
   startStepByStepTourTaskAtom,
   stepByStepTourEnabledForCurrentWorkspaceAtom,
   stepByStepTourStateErrorAtom,
+  stepByStepTourStateUpdatingAtom,
   uncompleteStepByStepTourTaskAtom,
 } from '../state'
 
 const stepByStepTourStateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
 let mockStepByStepTourState: StepByStepTourStateResponse
+
+const getStepByStepTourState = vi.fn(async () => mockStepByStepTourState)
 
 const applyPatch = (
   state: StepByStepTourStateResponse,
@@ -90,7 +93,7 @@ vi.mock('@/service/client', () => ({
             queryKey: () => stepByStepTourStateQueryKey,
             queryOptions: () => ({
               queryKey: stepByStepTourStateQueryKey,
-              queryFn: async () => mockStepByStepTourState,
+              queryFn: getStepByStepTourState,
             }),
           },
           patch: {
@@ -124,6 +127,17 @@ const createQueryClient = () =>
       queries: { retry: false, staleTime: Infinity },
     },
   })
+
+const createDeferred = <T>() => {
+  let reject!: (reason?: unknown) => void
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    reject = rejectPromise
+    resolve = resolvePromise
+  })
+
+  return { promise, reject, resolve }
+}
 
 describe('step-by-step tour state', () => {
   let queryClient: QueryClient
@@ -242,14 +256,39 @@ describe('step-by-step tour state', () => {
     },
   )
 
-  it('replaces the query cache with the canonical mutation response', async () => {
+  it('projects a command immediately and replaces the canonical cache after delayed success', async () => {
+    const deferred = createDeferred<StepByStepTourStateResponse>()
     const onSuccess = vi.fn()
+    const onError = vi.fn()
+    patchStepByStepTourState.mockImplementationOnce(() => deferred.promise)
 
-    store.set(completeStepByStepTourTaskAtom, { taskId: 'home', onSuccess })
+    const command = store.set(completeStepByStepTourTaskAtom, {
+      taskId: 'home',
+      onSuccess,
+      onError,
+    })
 
     await vi.waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith(['home'])
+      expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual(['home'])
     })
+    expect(
+      queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey)
+        ?.completed_task_ids,
+    ).toEqual([])
+    expect(store.get(stepByStepTourStateUpdatingAtom)).toBe(true)
+    expect(onSuccess).not.toHaveBeenCalled()
+    expect(onError).not.toHaveBeenCalled()
+
+    mockStepByStepTourState = applyPatch(mockStepByStepTourState, {
+      action: 'complete_task',
+      task_id: 'home',
+    })
+    deferred.resolve(mockStepByStepTourState)
+    await command
+
+    expect(onSuccess).toHaveBeenCalledWith(['home'])
+    expect(onError).not.toHaveBeenCalled()
+    expect(store.get(stepByStepTourStateUpdatingAtom)).toBe(false)
     expect(
       queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey)
         ?.completed_task_ids,
@@ -272,6 +311,161 @@ describe('step-by-step tour state', () => {
       queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey)
         ?.completed_task_ids,
     ).toEqual([])
+    unsubscribe()
+  })
+
+  it('rolls back a failed projection before canonical reconciliation settles', async () => {
+    const reconciliation = createDeferred<StepByStepTourStateResponse>()
+    const onError = vi.fn()
+    getStepByStepTourState.mockImplementationOnce(() => reconciliation.promise)
+    patchStepByStepTourState.mockRejectedValueOnce(new Error('patch failed'))
+    const unsubscribe = store.sub(completedStepByStepTourTaskIdsAtom, () => {})
+
+    const command = store.set(completeStepByStepTourTaskAtom, { taskId: 'home', onError })
+
+    await vi.waitFor(() => {
+      expect(getStepByStepTourState).toHaveBeenCalledOnce()
+      expect(onError).toHaveBeenCalledOnce()
+      expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual([])
+      expect(store.get(stepByStepTourStateUpdatingAtom)).toBe(false)
+    })
+
+    reconciliation.resolve(mockStepByStepTourState)
+    await command
+    unsubscribe()
+  })
+
+  it('refetches canonical state when the server commits before the response fails', async () => {
+    const error = new Error('response lost after commit')
+    const onError = vi.fn()
+    const unsubscribe = store.sub(completedStepByStepTourTaskIdsAtom, () => {})
+    patchStepByStepTourState.mockImplementationOnce(async ({ body }) => {
+      mockStepByStepTourState = applyPatch(mockStepByStepTourState, body)
+      throw error
+    })
+
+    await store.set(completeStepByStepTourTaskAtom, { taskId: 'home', onError })
+
+    expect(onError).toHaveBeenCalledOnce()
+    await vi.waitFor(() => {
+      expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual(['home'])
+      expect(
+        queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey)
+          ?.completed_task_ids,
+      ).toEqual(['home'])
+    })
+    unsubscribe()
+  })
+
+  it.each([false, true])(
+    'serializes overlapping commands without dropping optimistic intent when observed=%s',
+    async (observeUpdating) => {
+      const first = createDeferred<StepByStepTourStateResponse>()
+      const second = createDeferred<StepByStepTourStateResponse>()
+      const firstOnSuccess = vi.fn()
+      const secondOnSuccess = vi.fn()
+      const unsubscribeState = store.sub(completedStepByStepTourTaskIdsAtom, () => {})
+      const unsubscribeUpdating = observeUpdating
+        ? store.sub(stepByStepTourStateUpdatingAtom, () => {})
+        : undefined
+      patchStepByStepTourState
+        .mockImplementationOnce(() => first.promise)
+        .mockImplementationOnce(() => second.promise)
+
+      const firstCommand = store.set(completeStepByStepTourTaskAtom, {
+        taskId: 'home',
+        onSuccess: firstOnSuccess,
+      })
+      const secondCommand = store.set(completeStepByStepTourTaskAtom, {
+        taskId: 'studio',
+        onSuccess: secondOnSuccess,
+      })
+
+      await vi.waitFor(() => {
+        expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual(['home', 'studio'])
+        expect(patchStepByStepTourState).toHaveBeenCalledTimes(1)
+      })
+
+      mockStepByStepTourState = applyPatch(mockStepByStepTourState, {
+        action: 'complete_task',
+        task_id: 'home',
+      })
+      first.resolve(mockStepByStepTourState)
+
+      await vi.waitFor(() => {
+        expect(patchStepByStepTourState).toHaveBeenCalledTimes(2)
+        expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual(['home', 'studio'])
+      })
+
+      mockStepByStepTourState = applyPatch(mockStepByStepTourState, {
+        action: 'complete_task',
+        task_id: 'studio',
+      })
+      second.resolve(mockStepByStepTourState)
+      await Promise.all([firstCommand, secondCommand])
+
+      expect(patchStepByStepTourState.mock.calls.map(([variables]) => variables.body)).toEqual([
+        { action: 'complete_task', task_id: 'home' },
+        { action: 'complete_task', task_id: 'studio' },
+      ])
+      expect(firstOnSuccess).toHaveBeenCalledOnce()
+      expect(secondOnSuccess).toHaveBeenCalledOnce()
+      await vi.waitFor(() => {
+        expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual(['home', 'studio'])
+        expect(store.get(stepByStepTourStateUpdatingAtom)).toBe(false)
+      })
+      unsubscribeUpdating?.()
+      unsubscribeState()
+    },
+  )
+
+  it('continues the command queue after an earlier command fails', async () => {
+    const first = createDeferred<StepByStepTourStateResponse>()
+    const second = createDeferred<StepByStepTourStateResponse>()
+    const firstOnSuccess = vi.fn()
+    const firstOnError = vi.fn()
+    const secondOnSuccess = vi.fn()
+    const unsubscribe = store.sub(completedStepByStepTourTaskIdsAtom, () => {})
+    patchStepByStepTourState
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise)
+
+    const firstCommand = store.set(completeStepByStepTourTaskAtom, {
+      taskId: 'home',
+      onSuccess: firstOnSuccess,
+      onError: firstOnError,
+    })
+    const secondCommand = store.set(completeStepByStepTourTaskAtom, {
+      taskId: 'studio',
+      onSuccess: secondOnSuccess,
+    })
+
+    await vi.waitFor(() => {
+      expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual(['home', 'studio'])
+    })
+    first.reject(new Error('first patch failed'))
+
+    await vi.waitFor(() => {
+      expect(firstOnError).toHaveBeenCalledOnce()
+      expect(patchStepByStepTourState).toHaveBeenCalledTimes(2)
+      expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual(['studio'])
+    })
+    expect(getStepByStepTourState).not.toHaveBeenCalled()
+
+    mockStepByStepTourState = applyPatch(mockStepByStepTourState, {
+      action: 'complete_task',
+      task_id: 'studio',
+    })
+    second.resolve(mockStepByStepTourState)
+    await Promise.all([firstCommand, secondCommand])
+
+    expect(firstOnSuccess).not.toHaveBeenCalled()
+    expect(secondOnSuccess).toHaveBeenCalledWith(['studio'])
+    expect(getStepByStepTourState).toHaveBeenCalledOnce()
+    await vi.waitFor(() => {
+      expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual(['studio'])
+      expect(store.get(stepByStepTourStateUpdatingAtom)).toBe(false)
+    })
     unsubscribe()
   })
 })

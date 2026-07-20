@@ -470,13 +470,14 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
 
     skipTimeoutRef.current = window.setTimeout(() => {
       patchSkipTour({
-        onSuccess: (completedTaskIds) => {
-          trackTourSkipped(completedTaskIds)
+        onSuccess: trackTourSkipped,
+        onError: () => {
           setChecklistExiting(false)
-          setSkipRecoveryVisible(true)
+          setSkipRecoveryVisible(false)
         },
-        onError: () => setChecklistExiting(false),
       })
+      setChecklistExiting(false)
+      setSkipRecoveryVisible(true)
     }, 160)
   }
 
@@ -546,12 +547,10 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
       if (nextActiveGuide.activeGuideIndex === -1) {
         completeTask({
           taskId: activeTask.id,
-          onSuccess: (completedTaskIds) => {
-            trackTaskCompleted(completedTaskIds, activeTask.id)
-            resetSession()
-            setShellMode('expanded')
-          },
+          onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, activeTask.id),
         })
+        resetSession()
+        setShellMode('expanded')
         return
       }
 
@@ -564,22 +563,18 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
 
     completeTask({
       taskId: activeTask.id,
-      onSuccess: (completedTaskIds) => {
-        trackTaskCompleted(completedTaskIds, activeTask.id)
-        resetSession()
-        setShellMode('expanded')
-      },
+      onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, activeTask.id),
     })
+    resetSession()
+    setShellMode('expanded')
   }
 
   const dismissCompletedTour = () => {
     patchSkipTour({
-      onSuccess: (completedTaskIds) => {
-        trackTourSkipped(completedTaskIds)
-        resetSession()
-        setShellMode('expanded')
-      },
+      onSuccess: trackTourSkipped,
     })
+    resetSession()
+    setShellMode('expanded')
   }
 
   const floatingChecklist = (
@@ -655,12 +650,10 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
         if (taskId === 'knowledge' && !hasKnowledgeWalkthroughPermissions) {
           completeTask({
             taskId,
-            onSuccess: (completedTaskIds) => {
-              trackTaskCompleted(completedTaskIds, taskId)
-              resetSession()
-              setShellMode('expanded')
-            },
+            onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
           })
+          resetSession()
+          setShellMode('expanded')
           return
         }
 

@@ -490,6 +490,17 @@ const createTourTarget = (targetName: string, top = 114, rect?: Partial<TestRect
 const createTourHighlightPart = (targetName: string, rect: TestRect) =>
   createTourElement('stepByStepTourHighlightPart', targetName, rect)
 
+const createDeferred = <T,>() => {
+  let reject!: (reason?: unknown) => void
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    reject = rejectPromise
+    resolve = resolvePromise
+  })
+
+  return { promise, reject, resolve }
+}
+
 function TargetRectProbe({
   highlightPartSelectors,
   targetElement,
@@ -650,6 +661,42 @@ describe('StepByStepTourMount', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('restores the checklist after Skip fails and allows retry', async () => {
+    const deferred = createDeferred<StepByStepTourStateResponse>()
+    mockStepByStepTour.patchState.mockImplementationOnce(() => deferred.promise)
+    renderStepByStepTourMount()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Skip tour' }))
+
+    await waitFor(() => {
+      expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(1)
+      expect(
+        screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+      ).toBeInTheDocument()
+    })
+    deferred.reject(new Error('patch failed'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+      ).not.toBeInTheDocument()
+    })
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(
+      'step_tour',
+      expect.objectContaining({ action: 'tour_skipped' }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip tour' }))
+
+    await waitFor(() => {
+      expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(2)
+      expect(
+        screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('shows a dismissible completion prompt at the bottom of the checklist after all tasks are complete', async () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
@@ -682,8 +729,8 @@ describe('StepByStepTourMount', () => {
       const state = mockStepByStepTour.observedState
       expect(state.skipped).toBe(true)
       expect(state.manuallyEnabledWorkspaceIds).toEqual([])
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
-    expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
   it('keeps the tour hidden after completion dismiss closes the tour', async () => {
@@ -1762,7 +1809,7 @@ describe('StepByStepTourMount', () => {
       })
       expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
-        screen.getByRole('region', { name: 'Step-by-step Tour completed' }),
+        await screen.findByRole('region', { name: 'Step-by-step Tour completed' }),
       ).toBeInTheDocument()
     } finally {
       targets.forEach((target) => target.remove())

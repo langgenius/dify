@@ -13,6 +13,7 @@ import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import {
@@ -1052,26 +1053,37 @@ describe('MainNav', () => {
   })
 
   it('restores the expanded Step-by-step Tour after toggling it off and on again', async () => {
+    const user = userEvent.setup()
     renderMainNav({ enable_learn_app: true })
 
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeVisible()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
     const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', {
       name: 'common.mainNav.help.stepByStepTour',
     })
 
-    fireEvent.click(stepByStepTourItem)
+    await user.click(stepByStepTourItem)
 
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+      expect(stepByStepTourItem).toBeEnabled()
+      expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'false')
     })
 
-    fireEvent.click(stepByStepTourItem)
+    await user.click(
+      screen.getByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+    )
 
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeVisible()
+      expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(2)
+      expect(mockStepByStepTour.patchState.mock.calls.map(([variables]) => variables.body)).toEqual(
+        [{ action: 'disable_current_workspace' }, { action: 'enable_current_workspace' }],
+      )
+      expect(mockStepByStepTour.observedState?.manuallyDisabledWorkspaceIds).toEqual([])
+      expect(mockStepByStepTour.observedState?.manuallyEnabledWorkspaceIds).toEqual(['workspace-1'])
     })
+    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeVisible()
     expect(mockStepByStepTour.patchState.mock.lastCall?.[0]).toEqual({
       body: { action: 'enable_current_workspace' },
     })

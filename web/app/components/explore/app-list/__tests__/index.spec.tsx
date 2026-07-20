@@ -313,8 +313,16 @@ vi.mock('@/context/account-state', async (importOriginal) => {
 })
 vi.mock('@/context/workspace-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { atom } = await import('jotai/vanilla')
+  const mockedModule = await createAppContextStateAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+  )
 
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+  return {
+    ...mockedModule,
+    currentWorkspaceIdAtom: atom('workspace-1'),
+  }
 })
 vi.mock('@/context/permission-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
@@ -1200,6 +1208,76 @@ describe('AppList', () => {
         expect.any(Object),
         expect.objectContaining({
           skipRedirectOnSuccess: true,
+        }),
+      )
+    })
+
+    it('should clear the Learn Dify session and provenance when completion persistence fails', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockStepByStepTour.setUiState({
+        activeTaskId: 'home',
+        activeGuideIndex: 0,
+        activeGuideIndexes: [0, 1],
+        minimized: true,
+      })
+      mockStepByStepTour.patchState.mockRejectedValueOnce(new Error('patch failed'))
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml-content',
+        mode: AppModeEnum.CHAT,
+      })
+      mockHandleImportDSL.mockImplementation(
+        async (
+          _payload: unknown,
+          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+        ) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
+
+      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() => {
+        expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(1)
+        expect(mockStepByStepTour.observedState?.activeTaskId).toBeUndefined()
+        expect(mockStepByStepTour.observedState?.activeGuideIndex).toBeUndefined()
+        expect(mockStepByStepTour.observedState?.activeGuideIndexes).toBeUndefined()
+        expect(mockStepByStepTour.observedState?.completedTaskIds).toEqual([])
+      })
+      expect(mockTrackEvent).not.toHaveBeenCalledWith(
+        'step_tour',
+        expect.objectContaining({
+          action: 'task_completed',
+          home_outcome: 'lesson_app_created',
+        }),
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() => {
+        expect(mockHandleImportDSL).toHaveBeenCalledTimes(2)
+      })
+      expect(mockHandleImportDSL).toHaveBeenLastCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          skipRedirectOnSuccess: false,
+        }),
+      )
+      expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(1)
+      expect(mockTrackEvent).not.toHaveBeenCalledWith(
+        'step_tour',
+        expect.objectContaining({
+          action: 'task_completed',
+          home_outcome: 'lesson_app_created',
         }),
       )
     })
