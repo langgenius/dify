@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
 import BlockIcon from '../block-icon'
+import { getHumanInputCreationPolicy } from '../nodes/human-input-v2/migration/policy'
 import { BlockEnum } from '../types'
 import { AgentBlockItem } from './agent-selector'
 import { BLOCK_CLASSIFICATIONS } from './constants'
@@ -98,6 +99,7 @@ const Blocks = ({
       })
       const { getNodes } = store.getState()
       const nodes = getNodes()
+      const humanInputPolicy = getHumanInputCreationPolicy(nodes, true)
       const hasKnowledgeBaseNode = nodes.some((node) => node.data.type === BlockEnum.KnowledgeBase)
       const filteredList = list.filter((block) => {
         if (hasKnowledgeBaseNode) return block.metaData.type !== BlockEnum.KnowledgeBase
@@ -143,6 +145,12 @@ const Blocks = ({
             const previewDescriptionId = block.metaData.description
               ? `${previewDescriptionBaseId}-${block.metaData.type}`
               : undefined
+            const isHumanInputDisabled =
+              block.metaData.type === BlockEnum.HumanInputV2 && humanInputPolicy.hasLegacyHumanInput
+            const disabledReasonId = isHumanInputDisabled
+              ? `${previewDescriptionBaseId}-${block.metaData.type}-disabled`
+              : undefined
+            const describedBy = [previewDescriptionId, disabledReasonId].filter(Boolean).join(' ')
 
             return (
               <Fragment key={block.metaData.type}>
@@ -154,14 +162,24 @@ const Blocks = ({
                   render={
                     <button
                       type="button"
-                      aria-describedby={previewDescriptionId}
-                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      aria-label={block.metaData.title}
+                      aria-describedby={describedBy || undefined}
+                      disabled={isHumanInputDisabled}
+                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent"
                       onClick={() => onSelect(block.metaData.type)}
                     >
                       <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
                       <span className="min-w-0 grow truncate text-sm text-text-secondary">
                         {block.metaData.title}
                       </span>
+                      {isHumanInputDisabled && (
+                        <Badge
+                          text={t(($) => $['nodes.humanInputMigration.disabledBadge'], {
+                            ns: 'workflow',
+                          })}
+                          className="ml-2 shrink-0"
+                        />
+                      )}
                       {block.metaData.type === BlockEnum.LoopEnd && (
                         <Badge
                           text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflow' })}
@@ -174,6 +192,11 @@ const Blocks = ({
                 {previewDescriptionId && (
                   <span id={previewDescriptionId} className="sr-only">
                     {block.metaData.description}
+                  </span>
+                )}
+                {disabledReasonId && (
+                  <span id={disabledReasonId} className="sr-only">
+                    {t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' })}
                   </span>
                 )}
               </Fragment>

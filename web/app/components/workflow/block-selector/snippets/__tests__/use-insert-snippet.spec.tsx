@@ -36,6 +36,7 @@ const mockFetchQuery = vi.fn()
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
 const mockToastError = vi.fn()
+const mockToastWarning = vi.fn()
 const mockGetNodes = vi.fn()
 const mockSetNodes = vi.fn()
 const mockSetEdges = vi.fn()
@@ -74,6 +75,7 @@ vi.mock('../../../hooks', () => ({
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
+    warning: (...args: unknown[]) => mockToastWarning(...args),
   },
 }))
 
@@ -97,6 +99,40 @@ describe('useInsertSnippet', () => {
   })
 
   describe('Insert Flow', () => {
+    it('blocks snippets containing Human Input while the draft has a legacy node', async () => {
+      mockGetNodes.mockReturnValue([
+        {
+          id: 'legacy-human-input',
+          position: { x: 0, y: 0 },
+          data: { type: 'human-input' },
+        },
+      ])
+      mockFetchQuery.mockResolvedValue({
+        graph: {
+          nodes: [
+            {
+              id: 'snippet-human-input',
+              position: { x: 10, y: 20 },
+              data: { type: 'human-input', version: '2' },
+            },
+          ],
+          edges: [],
+        },
+      })
+      const { result } = renderHook(() => useInsertSnippet())
+
+      await act(async () => {
+        expect(await result.current.handleInsertSnippet('snippet-1')).toBe(false)
+      })
+
+      expect(mockToastWarning).toHaveBeenCalledWith(
+        'workflow.nodes.humanInputMigration.disabledReason',
+      )
+      expect(mockSetNodes).not.toHaveBeenCalled()
+      expect(mockSetEdges).not.toHaveBeenCalled()
+      expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
+    })
+
     it('should append remapped snippet graph into current workflow graph', async () => {
       mockFetchQuery.mockResolvedValue({
         graph: {

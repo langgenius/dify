@@ -173,6 +173,51 @@ describe('Blocks', () => {
     expect(screen.getByText('workflow.tabs.noResult')).toBeInTheDocument()
   })
 
+  it('keeps Human Input searchable but disables it while a legacy node exists', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    runtimeState.nodes = [
+      {
+        data: {
+          type: BlockEnum.HumanInput,
+        },
+      },
+    ]
+
+    const { rerender } = render(
+      <Blocks
+        searchText="Human"
+        onSelect={onSelect}
+        availableBlocksTypes={[BlockEnum.HumanInputV2]}
+        blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+      />,
+    )
+
+    const humanInputButton = screen.getByRole('button', { name: 'Human Input' })
+    expect(humanInputButton).toBeDisabled()
+    expect(humanInputButton).toHaveAccessibleDescription(
+      expect.stringContaining('workflow.nodes.humanInputMigration.disabledReason'),
+    )
+    expect(screen.getByText('workflow.nodes.humanInputMigration.disabledBadge')).toBeInTheDocument()
+
+    await user.click(humanInputButton)
+    expect(onSelect).not.toHaveBeenCalled()
+
+    runtimeState.nodes = []
+    rerender(
+      <Blocks
+        searchText="Human"
+        onSelect={onSelect}
+        availableBlocksTypes={[BlockEnum.HumanInputV2]}
+        blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+      />,
+    )
+    const enabledButton = screen.getByRole('button', { name: 'Human Input' })
+    expect(enabledButton).toBeEnabled()
+    await user.click(enabledButton)
+    expect(onSelect).toHaveBeenCalledWith(BlockEnum.HumanInputV2)
+  })
+
   it('opens the agent selector on Agent block hover', async () => {
     const user = userEvent.setup()
     mockInviteOptionsResponse([])

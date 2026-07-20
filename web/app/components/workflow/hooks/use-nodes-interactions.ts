@@ -33,6 +33,10 @@ import {
 import { getNodeUsedVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useCreateInlineAgentBinding } from '../nodes/agent-v2/hooks'
 import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '../nodes/agent-v2/types'
+import {
+  canInsertHumanInput,
+  isHumanInputInsertion,
+} from '../nodes/human-input-v2/migration/policy'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
@@ -836,6 +840,10 @@ export const useNodesInteractions = () => {
       if (getNodesReadOnly()) return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
+      if (!canInsertHumanInput(nodes, nodeType)) {
+        toast.warning(t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' }))
+        return
+      }
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
       if (!nodeMetaData) return
       const { defaultValue } = nodeMetaData
@@ -1336,6 +1344,7 @@ export const useNodesInteractions = () => {
       workflowStore,
       getAfterNodesInSameBranch,
       nodesMetaDataMap,
+      t,
     ],
   )
 
@@ -1349,6 +1358,10 @@ export const useNodesInteractions = () => {
       if (getNodesReadOnly()) return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
+      if (!canInsertHumanInput(nodes, nodeType)) {
+        toast.warning(t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' }))
+        return
+      }
       const currentNode = nodes.find((node) => node.id === currentNodeId)!
       const connectedEdges = getConnectedEdges([currentNode], edges)
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
@@ -1545,6 +1558,7 @@ export const useNodesInteractions = () => {
       saveStateToHistory,
       nodesMetaDataMap,
       autoGenerateWebhookUrl,
+      t,
     ],
   )
 
@@ -1709,6 +1723,13 @@ export const useNodesInteractions = () => {
     if (!validatedClipboardElements.length) return
 
     const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
+    const containsHumanInput = validatedClipboardElements.some((node) =>
+      isHumanInputInsertion(node.data.type, node.data),
+    )
+    if (containsHumanInput && !canInsertHumanInput(nodes, BlockEnum.HumanInputV2)) {
+      toast.warning(t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' }))
+      return
+    }
     const reservedNodeTitles = new Set(
       nodes
         .map((node) => node.data.title)

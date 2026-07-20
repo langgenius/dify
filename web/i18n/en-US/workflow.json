@@ -722,6 +722,8 @@
   "nodes.humanInput.userActions.title": "User Actions",
   "nodes.humanInput.userActions.tooltip": "Define buttons that users can click to respond to this form. Action ID controls branching. Action Value is exposed downstream as the selected built-in output. Action ID must start with a letter or underscores, followed by letters, numbers, or underscores.",
   "nodes.humanInput.userActions.triggered": "<strong>{{actionName}}</strong> has been triggered",
+  "nodes.humanInputMigration.disabledBadge": "DISABLED",
+  "nodes.humanInputMigration.disabledReason": "Migrate old Human Input nodes before adding a new one.",
   "nodes.humanInputV2.card.configured": "{{count}} recipients configured",
   "nodes.humanInputV2.card.contactsOnly": "{{count}} contacts",
   "nodes.humanInputV2.card.empty": "No one can approve this step yet",

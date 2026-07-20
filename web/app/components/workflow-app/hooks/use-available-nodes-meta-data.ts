@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
+import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import StartPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import StartDefault from '@/app/components/workflow/nodes/start/default'
 import TriggerPluginDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
@@ -45,11 +46,12 @@ export const useAvailableNodesMetaData = () => {
   )
 
   const mergedNodesMetaData = useMemo(() => {
-    const commonNodes = WORKFLOW_COMMON_NODES.filter((node) =>
-      agentV2Enabled
+    const commonNodes = WORKFLOW_COMMON_NODES.filter((node) => {
+      if (node.metaData.type === BlockEnum.HumanInput) return false
+      return agentV2Enabled
         ? node.metaData.type !== BlockEnum.Agent
-        : node.metaData.type !== BlockEnum.AgentV2,
-    )
+        : node.metaData.type !== BlockEnum.AgentV2
+    })
 
     return [
       ...commonNodes,
@@ -66,34 +68,51 @@ export const useAvailableNodesMetaData = () => {
     ]
   }, [agentV2Enabled, isChatMode, startNodeMetaData])
 
-  const availableNodesMetaData = useMemo(
-    () =>
-      mergedNodesMetaData.map((node) => {
-        const { metaData } = node
-        const title = t(($) => $[`blocks.${metaData.type}`], { ns: 'workflow' })
-        const description = t(
-          ($) =>
-            $[`blocksAbout.${metaData.type}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>],
-          { ns: 'workflow' },
-        )
-        const helpLinkPath = getNodeHelpLinkPath(metaData.helpLinkUri)
-        return {
-          ...node,
-          metaData: {
-            ...metaData,
-            title,
-            description,
-            helpLinkUri: helpLinkPath ? docLink(helpLinkPath) : undefined,
-          },
-          defaultValue: {
-            ...node.defaultValue,
-            type: getNodePersistedType(metaData.type),
-            title,
-          },
-        }
-      }),
-    [mergedNodesMetaData, t, docLink],
-  )
+  const availableNodesMetaData = useMemo(() => {
+    const localizeNode = (node: (typeof mergedNodesMetaData)[number]) => {
+      const { metaData } = node
+      const titleKey =
+        metaData.type === BlockEnum.HumanInputV2 ? BlockEnum.HumanInput : metaData.type
+      const title = t(($) => $[`blocks.${titleKey}`], { ns: 'workflow' })
+      const description = t(
+        ($) => $[`blocksAbout.${titleKey}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>],
+        { ns: 'workflow' },
+      )
+      const helpLinkPath = getNodeHelpLinkPath(metaData.helpLinkUri)
+      return {
+        ...node,
+        metaData: {
+          ...metaData,
+          title,
+          description,
+          helpLinkUri: helpLinkPath ? docLink(helpLinkPath) : undefined,
+        },
+        defaultValue: {
+          ...node.defaultValue,
+          type: getNodePersistedType(metaData.type),
+          title,
+        },
+      }
+    }
+
+    return mergedNodesMetaData.map(localizeNode)
+  }, [mergedNodesMetaData, t, docLink])
+
+  const legacyHumanInputMetaData = useMemo(() => {
+    const { metaData } = HumanInputDefault
+    const title = t(($) => $[`blocks.${BlockEnum.HumanInput}`], { ns: 'workflow' })
+    const description = t(($) => $[`blocksAbout.${BlockEnum.HumanInput}`], { ns: 'workflow' })
+
+    return {
+      ...HumanInputDefault,
+      metaData: { ...metaData, title, description },
+      defaultValue: {
+        ...HumanInputDefault.defaultValue,
+        type: BlockEnum.HumanInput,
+        title,
+      },
+    }
+  }, [t])
 
   const availableNodesMetaDataMap = useMemo(
     () =>
@@ -102,9 +121,11 @@ export const useAvailableNodesMetaData = () => {
           acc![node.metaData.type] = node
           return acc
         },
-        {} as AvailableNodesMetaData['nodesMap'],
+        {
+          [BlockEnum.HumanInput]: legacyHumanInputMetaData,
+        } as unknown as AvailableNodesMetaData['nodesMap'],
       ),
-    [availableNodesMetaData],
+    [availableNodesMetaData, legacyHumanInputMetaData],
   )
 
   return useMemo(() => {

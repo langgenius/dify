@@ -722,6 +722,8 @@
   "nodes.humanInput.userActions.title": "用户操作",
   "nodes.humanInput.userActions.tooltip": "定义用户可以点击以响应此表单的按钮。操作 ID 控制分支。操作值作为所选内置输出在下游公开。操作 ID 必须以字母或下划线开头，后跟字母、数字或下划线。",
   "nodes.humanInput.userActions.triggered": "已触发<strong>{{actionName}}</strong>",
+  "nodes.humanInputMigration.disabledBadge": "已禁用",
+  "nodes.humanInputMigration.disabledReason": "请先迁移旧版人工介入节点，再添加新节点。",
   "nodes.humanInputV2.card.configured": "已配置 {{count}} 个收件人",
   "nodes.humanInputV2.card.contactsOnly": "{{count}} 个联系人",
   "nodes.humanInputV2.card.empty": "暂时没有人可以审批此步骤",

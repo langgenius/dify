@@ -17,11 +17,11 @@
 
 ## 3. V2-Only Catalog and Central Insertion Guard
 
-- [ ] 3.1 Add failing catalog tests proving users see one candidate named Human Input, legacy defaults are not listed, and enabled creation always persists `type: human-input` with string `version: '2'`.
-- [ ] 3.2 Replace the two user-facing Human Input catalog entries with the single v2-backed candidate while retaining legacy metadata/defaults only for existing-node routing.
-- [ ] 3.3 Extend block-selector metadata/rendering to support a visible, searchable, per-candidate disabled state with the Figma `DISABLED` badge and accessible reason.
-- [ ] 3.4 Apply the centralized insertion guard to selector, keyboard/quick-add, duplicate, clipboard paste, and template/snippet insertion boundaries without blocking restoration of a complete saved legacy DSL.
-- [ ] 3.5 Add integration tests proving all insertion paths are blocked in legacy/mixed drafts and become available immediately after the last legacy node is migrated or removed.
+- [x] 3.1 Add failing catalog tests proving users see one candidate named Human Input, legacy defaults are not listed, and enabled creation always persists `type: human-input` with string `version: '2'`.
+- [x] 3.2 Replace the two user-facing Human Input catalog entries with the single v2-backed candidate while retaining legacy metadata/defaults only for existing-node routing.
+- [x] 3.3 Extend block-selector metadata/rendering to support a visible, searchable, per-candidate disabled state with the Figma `DISABLED` badge and accessible reason.
+- [x] 3.4 Apply the centralized insertion guard to selector, keyboard/quick-add, duplicate, clipboard paste, and template/snippet insertion boundaries without blocking restoration of a complete saved legacy DSL.
+- [x] 3.5 Add integration tests proving all insertion paths are blocked in legacy/mixed drafts and become available immediately after the last legacy node is migrated or removed.
 
 ## 4. Legacy Guidance Surfaces
 
