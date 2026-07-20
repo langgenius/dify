@@ -220,6 +220,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 depth={depth}
                 hideProcessDetail={hideProcessDetail}
                 isError={isError}
+                isResponding={isResponding}
                 onSubmitHumanInputForm={handleSubmitHumanInputForm}
                 onSwitchTab={switchTab}
                 showResultTabs={showResultTabs}
@@ -247,7 +248,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               )}
               {!workflowProcessData && !isError && typeof content === 'string' && (
                 <div className={cn('p-4', taskId && 'pt-0')}>
-                  <Markdown content={content} />
+                  <Markdown content={content} isAnimating={Boolean(isResponding)} />
                 </div>
               )}
             </div>

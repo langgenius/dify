@@ -6,32 +6,40 @@
 import { flow } from 'es-toolkit/compat'
 import { ALLOW_UNSAFE_DATA_SCHEME } from '@/config'
 
+const FENCED_CODE_BLOCK_REGEX = /(```[\s\S]*?(?:```|$))/g
+const LATEX_DELIMITER_MARKER_REGEX = /\\[[(]/
+const THINK_TAG_MARKER_REGEX = /<think>|<\/think>|<\/details>/
+const THINK_OPEN_TAG_REGEX = /(<think>\s*)+/g
+const THINK_CLOSE_TAG_REGEX = /(\s*<\/think>)+/g
+const DETAILS_WITHOUT_TRAILING_NEWLINE_REGEX = /(<\/details>)(?![^\S\r\n]*[\r\n])(?![^\S\r\n]*$)/g
+
+const preprocessTextLaTeX = flow([
+  (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
+  (str: string) => str.replace(/\\\[([\s\S]*?)\\\]/g, (_, equation) => `$$${equation}$$`),
+  (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
+  (str: string) =>
+    str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
+])
+
+const replaceThinkTags = flow([
+  (str: string) => str.replace(THINK_OPEN_TAG_REGEX, '<details data-think=true>\n'),
+  (str: string) => str.replace(THINK_CLOSE_TAG_REGEX, '\n[ENDTHINKFLAG]</details>'),
+  (str: string) => str.replace(DETAILS_WITHOUT_TRAILING_NEWLINE_REGEX, '$1\n'),
+])
+
 export const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string') return content
-
-  const fencedCodeBlockRegex = /(```[\s\S]*?(?:```|$))/g
-  const preprocessText = flow([
-    (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
-    (str: string) => str.replace(/\\\[([\s\S]*?)\\\]/g, (_, equation) => `$$${equation}$$`),
-    (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
-    (str: string) =>
-      str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
-  ])
+  if (!LATEX_DELIMITER_MARKER_REGEX.test(content)) return content
 
   return content
-    .split(fencedCodeBlockRegex)
-    .map((segment) => (segment.startsWith('```') ? segment : preprocessText(segment)))
+    .split(FENCED_CODE_BLOCK_REGEX)
+    .map((segment) => (segment.startsWith('```') ? segment : preprocessTextLaTeX(segment)))
     .join('')
 }
 
 export const preprocessThinkTag = (content: string) => {
-  const thinkOpenTagRegex = /(<think>\s*)+/g
-  const thinkCloseTagRegex = /(\s*<\/think>)+/g
-  return flow([
-    (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
-    (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
-    (str: string) => str.replace(/(<\/details>)(?![^\S\r\n]*[\r\n])(?![^\S\r\n]*$)/g, '$1\n'),
-  ])(content)
+  if (!THINK_TAG_MARKER_REGEX.test(content)) return content
+  return replaceThinkTags(content)
 }
 
 /**

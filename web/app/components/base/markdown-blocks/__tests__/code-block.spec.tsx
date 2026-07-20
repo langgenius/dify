@@ -93,9 +93,11 @@ vi.mock('echarts-for-react', async () => {
       {
         onChartReady,
         onEvents,
+        option,
       }: {
         onChartReady?: (instance: typeof mockEcharts.echartsInstance) => void
         onEvents?: { finished?: (event?: unknown) => void }
+        option?: unknown
       },
       ref: React.ForwardedRef<{ getEchartsInstance: () => typeof mockEcharts.echartsInstance }>,
     ) => {
@@ -112,7 +114,7 @@ vi.mock('echarts-for-react', async () => {
         }
       }, [onChartReady, onEvents])
 
-      return <div className="echarts-for-react" />
+      return <div className="echarts-for-react" data-option={JSON.stringify(option)} />
     },
   )
 
@@ -215,6 +217,19 @@ describe('CodeBlock', () => {
       const { container } = render(<CodeBlock>plain text</CodeBlock>)
 
       expect(container.querySelector('code')?.textContent).toBe('plain text')
+    })
+
+    it('should render an unlabeled fenced code block with block semantics', async () => {
+      const { container } = render(
+        <CodeBlock data-block="true" node={{ type: 'element' }}>
+          plain text
+        </CodeBlock>,
+      )
+
+      await waitFor(() => {
+        expect(container.querySelector('pre')).not.toBeNull()
+      })
+      expect(container.querySelector('[node]')).toBeNull()
     })
 
     it('should render syntax-highlighted output when language is standard', async () => {
@@ -422,28 +437,34 @@ describe('CodeBlock', () => {
       expect(await screen.findByText(/Chart loading.../i))!.toBeInTheDocument()
     })
 
-    it('should keep chart instance stable when window resize is triggered', async () => {
+    it('should resize the ready chart when the window resizes', async () => {
       render(<CodeBlock className="language-echarts">{'{}'}</CodeBlock>)
 
       await findEchartsHost()
+      await waitFor(() => {
+        expect(mockEcharts.echartsInstance.resize).toHaveBeenCalled()
+      })
+      mockEcharts.echartsInstance.resize.mockClear()
 
       act(() => {
         window.dispatchEvent(new Event('resize'))
       })
 
-      expect(await findEchartsHost())!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(mockEcharts.echartsInstance.resize).toHaveBeenCalled()
+      })
     })
 
-    it('should keep rendering when echarts content updates repeatedly', async () => {
+    it('should update the chart option when complete content changes', async () => {
       const { rerender } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
-      await findEchartsHost()
+      const host = await findEchartsHost()
+      expect(host).toHaveAttribute('data-option', '{"a":1}')
 
       rerender(<CodeBlock className="language-echarts">{'{"a":2}'}</CodeBlock>)
-      rerender(<CodeBlock className="language-echarts">{'{"a":3}'}</CodeBlock>)
-      rerender(<CodeBlock className="language-echarts">{'{"a":4}'}</CodeBlock>)
-      rerender(<CodeBlock className="language-echarts">{'{"a":5}'}</CodeBlock>)
 
-      expect(await findEchartsHost())!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(host).toHaveAttribute('data-option', '{"a":2}')
+      })
     })
 
     it('should stop processing extra finished events when chart finished callback fires repeatedly', async () => {

@@ -1,3 +1,4 @@
+import type { EChartsOption } from 'echarts'
 import type { JSX } from 'react'
 import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
 import { useThrottle } from 'ahooks'
@@ -155,14 +156,81 @@ type EChartsEventParams = {
   [key: string]: any
 }
 
-const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
+type EChartsRenderResult = {
+  chartState: 'loading' | 'success' | 'error'
+  finalChartOption: EChartsOption | null
+}
+
+const ECHARTS_LOADING_RESULT: EChartsRenderResult = {
+  chartState: 'loading',
+  finalChartOption: null,
+}
+
+const ECHARTS_ERROR_RESULT: EChartsRenderResult = {
+  chartState: 'error',
+  finalChartOption: null,
+}
+
+function parseEChartsContent(content: string): EChartsRenderResult {
+  const trimmedContent = content.trim()
+  if (!trimmedContent) return ECHARTS_LOADING_RESULT
+
+  const isCompleteJson =
+    (trimmedContent.startsWith('{') &&
+      trimmedContent.endsWith('}') &&
+      trimmedContent.split('{').length === trimmedContent.split('}').length) ||
+    (trimmedContent.startsWith('[') &&
+      trimmedContent.endsWith(']') &&
+      trimmedContent.split('[').length === trimmedContent.split(']').length)
+
+  if (isCompleteJson) {
+    try {
+      const parsed: unknown = JSON.parse(trimmedContent)
+      if (typeof parsed === 'object' && parsed !== null)
+        return { chartState: 'success', finalChartOption: parsed as EChartsOption }
+
+      return ECHARTS_LOADING_RESULT
+    } catch {
+      return ECHARTS_ERROR_RESULT
+    }
+  }
+
+  const isIncomplete =
+    trimmedContent.length < 5 ||
+    (trimmedContent.startsWith('{') &&
+      (!trimmedContent.endsWith('}') ||
+        trimmedContent.split('{').length !== trimmedContent.split('}').length)) ||
+    (trimmedContent.startsWith('[') &&
+      (!trimmedContent.endsWith(']') ||
+        trimmedContent.split('[').length !== trimmedContent.split(']').length)) ||
+    trimmedContent.split('"').length % 2 !== 1 ||
+    (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
+
+  if (isIncomplete) return ECHARTS_LOADING_RESULT
+
+  try {
+    const parsed: unknown = JSON.parse(trimmedContent)
+    if (typeof parsed === 'object' && parsed !== null)
+      return { chartState: 'success', finalChartOption: parsed as EChartsOption }
+
+    return ECHARTS_LOADING_RESULT
+  } catch {
+    return ECHARTS_ERROR_RESULT
+  }
+}
+
+const CodeBlock: any = memo((codeBlockProps: any) => {
+  const {
+    inline,
+    className,
+    children = '',
+    node: _node,
+    'data-block': dataBlock,
+    ...props
+  } = codeBlockProps
   const isCodeFenceIncomplete = useIsCodeFenceIncomplete()
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
-  const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
-  const [finalChartOption, setFinalChartOption] = useState<any>(null)
-  const contentRef = useRef<string>('')
-  const processedRef = useRef<boolean>(false) // Track if content was successfully processed
   const chartInstanceRef = useRef<any>(null) // Direct reference to ECharts instance
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null) // For debounce handling
   const chartReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -171,6 +239,13 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
   const isDarkMode = theme === Theme.dark
+  const { chartState, finalChartOption } = useMemo(
+    () =>
+      language === 'echarts' && !isCodeFenceIncomplete
+        ? parseEChartsContent(String(children).replace(/\n$/, ''))
+        : ECHARTS_LOADING_RESULT,
+    [children, isCodeFenceIncomplete, language],
+  )
 
   const clearResizeTimer = useCallback(() => {
     if (!resizeTimerRef.current) return
@@ -250,7 +325,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
   // Handle container resize for echarts
   useEffect(() => {
-    if (language !== 'echarts' || !chartInstanceRef.current) return
+    if (language !== 'echarts') return
 
     const handleResize = () => {
       if (chartInstanceRef.current)
@@ -275,90 +350,6 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       chartInstanceRef.current = null
     }
   }, [clearResizeTimer, clearChartReadyTimer])
-  // Process chart data when content changes
-  useEffect(() => {
-    // Only process echarts content
-    if (language !== 'echarts' || isCodeFenceIncomplete) return
-
-    // Reset state when new content is detected
-    if (!contentRef.current) {
-      setChartState('loading')
-      processedRef.current = false
-    }
-
-    const newContent = String(children).replace(/\n$/, '')
-
-    // Skip if content hasn't changed
-    if (contentRef.current === newContent) return
-    contentRef.current = newContent
-
-    const trimmedContent = newContent.trim()
-    if (!trimmedContent) return
-
-    // Detect if this is historical data (already complete)
-    // Historical data typically comes as a complete code block with complete JSON
-    const isCompleteJson =
-      (trimmedContent.startsWith('{') &&
-        trimmedContent.endsWith('}') &&
-        trimmedContent.split('{').length === trimmedContent.split('}').length) ||
-      (trimmedContent.startsWith('[') &&
-        trimmedContent.endsWith(']') &&
-        trimmedContent.split('[').length === trimmedContent.split(']').length)
-
-    // If the JSON structure looks complete, try to parse it right away
-    if (isCompleteJson && !processedRef.current) {
-      try {
-        const parsed = JSON.parse(trimmedContent)
-        if (typeof parsed === 'object' && parsed !== null) {
-          setFinalChartOption(parsed)
-          setChartState('success')
-          processedRef.current = true
-          return
-        }
-      } catch {
-        // Avoid executing arbitrary code; require valid JSON for chart options.
-        setChartState('error')
-        processedRef.current = true
-        return
-      }
-    }
-
-    // If we get here, either the JSON isn't complete yet, or we failed to parse it
-    // Check more conditions for streaming data
-    const isIncomplete =
-      trimmedContent.length < 5 ||
-      (trimmedContent.startsWith('{') &&
-        (!trimmedContent.endsWith('}') ||
-          trimmedContent.split('{').length !== trimmedContent.split('}').length)) ||
-      (trimmedContent.startsWith('[') &&
-        (!trimmedContent.endsWith(']') ||
-          trimmedContent.split('[').length !== trimmedContent.split(']').length)) ||
-      trimmedContent.split('"').length % 2 !== 1 ||
-      (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
-
-    // Only try to parse streaming data if it looks complete and hasn't been processed
-    if (!isIncomplete && !processedRef.current) {
-      let isValidOption = false
-
-      try {
-        const parsed = JSON.parse(trimmedContent)
-        if (typeof parsed === 'object' && parsed !== null) {
-          setFinalChartOption(parsed)
-          isValidOption = true
-        }
-      } catch {
-        // Only accept JSON to avoid executing arbitrary code from the message.
-        setChartState('error')
-        processedRef.current = true
-      }
-
-      if (isValidOption) {
-        setChartState('success')
-        processedRef.current = true
-      }
-    }
-  }, [language, children, isCodeFenceIncomplete])
-
   // Cache rendered content to avoid unnecessary re-renders
   const renderCodeContent = useMemo(() => {
     const content = String(children).replace(/\n$/, '')
@@ -544,7 +535,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     echartsEvents,
   ])
 
-  if (inline || !match)
+  if (inline || (!match && dataBlock === undefined))
     return (
       <code {...props} className={className}>
         {children}

@@ -54,7 +54,9 @@ vi.mock('@/app/components/base/chat/chat/context', () => ({
 }))
 
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div>{`markdown:${content}`}</div>,
+  Markdown: ({ content, isAnimating }: { content: string; isAnimating?: boolean }) => (
+    <div data-animating={String(Boolean(isAnimating))}>{`markdown:${content}`}</div>
+  ),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -67,10 +69,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('../workflow-body', () => ({
   default: ({
     currentTab,
+    isResponding,
     onSubmitHumanInputForm,
     onSwitchTab,
   }: {
     currentTab: string
+    isResponding?: boolean
     onSubmitHumanInputForm: (
       token: string,
       data: { inputs: Record<string, string>; action: string },
@@ -78,7 +82,7 @@ vi.mock('../workflow-body', () => ({
     onSwitchTab: (tab: string) => Promise<void>
   }) => (
     <div>
-      <div>{`workflow-body:${currentTab}`}</div>
+      <div data-responding={String(Boolean(isResponding))}>{`workflow-body:${currentTab}`}</div>
       <button
         onClick={() =>
           void onSubmitHumanInputForm('token-1', { action: 'submit', inputs: { name: 'dify' } })
@@ -145,6 +149,36 @@ describe('GenerationItem', () => {
       AppSourceType.webApp,
       undefined,
     )
+  })
+
+  it('should mark live text and workflow results as responding', () => {
+    const { rerender } = render(
+      <GenerationItem
+        appSourceType={AppSourceType.webApp}
+        content="streaming text"
+        isError={false}
+        isResponding
+        onRetry={vi.fn()}
+        siteInfo={null}
+      />,
+    )
+
+    expect(screen.getByText('markdown:streaming text')).toHaveAttribute('data-animating', 'true')
+
+    rerender(
+      <GenerationItem
+        appSourceType={AppSourceType.webApp}
+        content="streaming workflow"
+        isError={false}
+        isResponding
+        isWorkflow
+        onRetry={vi.fn()}
+        siteInfo={null}
+        workflowProcessData={{ resultText: 'streaming workflow' } as any}
+      />,
+    )
+
+    expect(screen.getByText('workflow-body:RESULT')).toHaveAttribute('data-responding', 'true')
   })
 
   it('should open the prompt log modal with normalized log data', async () => {

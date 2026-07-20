@@ -25,7 +25,9 @@ vi.mock('@/app/components/base/chat/chat/answer/human-input-filled-form-list', (
 }))
 
 vi.mock('../result-tab', () => ({
-  default: ({ currentTab }: { currentTab: string }) => <div>{`result-tab:${currentTab}`}</div>,
+  default: ({ currentTab, isResponding }: { currentTab: string; isResponding?: boolean }) => (
+    <div data-responding={String(Boolean(isResponding))}>{`result-tab:${currentTab}`}</div>
+  ),
 }))
 
 describe('WorkflowBody', () => {
@@ -40,6 +42,7 @@ describe('WorkflowBody', () => {
         currentTab="RESULT"
         depth={2}
         isError={false}
+        isResponding
         onSubmitHumanInputForm={mockSubmit}
         onSwitchTab={mockSwitchTab}
         showResultTabs
@@ -58,6 +61,7 @@ describe('WorkflowBody', () => {
     expect(screen.getByText('workflow-process')).toBeInTheDocument()
     expect(screen.getByText('task-1-1')).toBeInTheDocument()
     expect(screen.getByText('result-tab:RESULT')).toBeInTheDocument()
+    expect(screen.getByText('result-tab:RESULT')).toHaveAttribute('data-responding', 'true')
 
     fireEvent.click(screen.getByText(/(?:^|\.)detail(?=$|:)/))
 

@@ -1755,7 +1755,7 @@
   },
   "web/app/components/base/markdown-blocks/code-block.tsx": {
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 7
     }
   },
   "web/app/components/base/markdown-blocks/form.tsx": {
