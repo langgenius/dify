@@ -58,9 +58,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number] & {
-  status?: string
-}
+type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number]
 
 const source: Source = {
   connectionId: 'connection-1',
@@ -85,9 +83,9 @@ const run: SourceWorkflowRun = {
   kind: 'crawl-preview',
   maxExecutionAttempts: 3,
   progressCompleted: 3,
-  progressFailed: 0,
+  progressFailed: 1,
   progressSkipped: 0,
-  progressTotal: 3,
+  progressTotal: 4,
   sourceId: source.id,
   state: 'succeeded',
   updatedAt: '2026-07-20T10:01:00Z',
@@ -108,12 +106,6 @@ const pages: PreviewPage[] = [
     pageId: 'off-domain',
     sourceUrl: 'https://github.com/langgenius/dify/edit/main/docs.md',
     title: 'Edit this page',
-  },
-  {
-    pageId: 'failed',
-    sourceUrl: 'https://docs.dify.ai/unavailable',
-    status: 'failed',
-    title: 'Failed page',
   },
 ]
 
@@ -181,11 +173,7 @@ describe('CrawlSelectionForm', () => {
       'true',
     )
     expect(screen.getByText('dataset.newKnowledge.skippedOffDomain')).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Failed page' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(screen.getByText('dataset.newKnowledge.skippedFailed')).toBeInTheDocument()
+    expect(screen.getByText(/dataset\.newKnowledge\.skippedFailed/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
     expect(addSource).toBeEnabled()

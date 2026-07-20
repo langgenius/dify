@@ -286,6 +286,7 @@ export function WebsiteCrawlPreview({
   const [pollPaused, setPollPaused] = useState(false)
   const [requestError, setRequestError] = useState<string>()
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false)
+  const [discarding, setDiscarding] = useState(false)
   const draftRef = useRef<PreviewDraft | undefined>(undefined)
   const actionPendingRef = useRef(false)
   const retryFingerprintRef = useRef<string | undefined>(undefined)
@@ -295,6 +296,8 @@ export function WebsiteCrawlPreview({
   const pageMapRef = useRef(new Map<string, PreviewPage>())
   const pageCursorRef = useRef<string | undefined>(undefined)
   const submittedRef = useRef(false)
+  const discardRequestedRef = useRef(false)
+  const startPromiseRef = useRef<Promise<SourceWorkflowRun | undefined> | undefined>(undefined)
   const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined)
   const historyGuardRef = useRef<string | undefined>(undefined)
   const historyGuardCompletionRef = useRef<(() => void) | undefined>(undefined)
@@ -352,10 +355,10 @@ export function WebsiteCrawlPreview({
 
   useEffect(() => {
     if (!dirty || submittedRef.current) return
-    const guardId = historyGuardRef.current ?? (successfulPreview ? createRequestId() : undefined)
+    const guardId = historyGuardRef.current ?? createRequestId()
     const currentState =
       window.history.state && typeof window.history.state === 'object' ? window.history.state : {}
-    if (guardId && !historyGuardRef.current) {
+    if (!historyGuardRef.current) {
       window.history.pushState(
         { ...currentState, difyUnsavedSourceGuard: guardId },
         '',
@@ -372,7 +375,6 @@ export function WebsiteCrawlPreview({
         complete?.()
         return
       }
-      if (!guardId) return
       window.history.pushState(
         { ...currentState, difyUnsavedSourceGuard: guardId },
         '',
@@ -411,13 +413,13 @@ export function WebsiteCrawlPreview({
       setCancelConfirmationOpen(true)
     }
 
-    if (guardId) window.addEventListener('popstate', handlePopState)
+    window.addEventListener('popstate', handlePopState)
     document.addEventListener('click', handleLinkClick, true)
     return () => {
       window.removeEventListener('popstate', handlePopState)
       document.removeEventListener('click', handleLinkClick, true)
     }
-  }, [dirty, successfulPreview])
+  }, [dirty])
 
   const leaveHistoryGuard = useCallback((complete: () => void) => {
     if (!historyGuardRef.current) {
@@ -487,29 +489,39 @@ export function WebsiteCrawlPreview({
   )
 
   const startPreview = useCallback(
-    async (nextConfiguration: CrawlConfiguration) => {
-      if (actionPendingRef.current) return
+    (nextConfiguration: CrawlConfiguration) => {
+      if (actionPendingRef.current) return undefined
       actionPendingRef.current = true
-      setStarting(true)
-      setRequestError(undefined)
-      setPollPaused(false)
-      resetPreviewPages()
-      setRun(undefined)
-      try {
-        const draft = await ensureProvisionalSource(nextConfiguration)
-        if (!draft.source) throw new Error('Provisional source is missing')
-        const nextRun =
-          await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview({
-            headers: { 'Idempotency-Key': draft.previewRequestId },
-            params: { id: knowledgeSpaceId, sourceId: draft.source.id },
-          })
-        setRun(nextRun)
-      } catch {
-        setRequestError('START_FAILED')
-      } finally {
-        actionPendingRef.current = false
-        setStarting(false)
-      }
+      const request = (async () => {
+        setStarting(true)
+        setRequestError(undefined)
+        setPollPaused(false)
+        resetPreviewPages()
+        setRun(undefined)
+        try {
+          const draft = await ensureProvisionalSource(nextConfiguration)
+          if (!draft.source) throw new Error('Provisional source is missing')
+          if (discardRequestedRef.current) return undefined
+          const nextRun =
+            await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview({
+              headers: { 'Idempotency-Key': draft.previewRequestId },
+              params: { id: knowledgeSpaceId, sourceId: draft.source.id },
+            })
+          if (!discardRequestedRef.current) setRun(nextRun)
+          return nextRun
+        } catch {
+          setRequestError('START_FAILED')
+          return undefined
+        } finally {
+          actionPendingRef.current = false
+          setStarting(false)
+        }
+      })()
+      startPromiseRef.current = request
+      void request.finally(() => {
+        if (startPromiseRef.current === request) startPromiseRef.current = undefined
+      })
+      return request
     },
     [ensureProvisionalSource, knowledgeSpaceId, resetPreviewPages],
   )
@@ -646,9 +658,10 @@ export function WebsiteCrawlPreview({
     }
   }, [knowledgeSpaceId, runId, shouldPoll])
 
-  const stop = async () => {
-    if (!run || actionPendingRef.current || !active) return false
-    const attemptKey = workflowAttemptKey(run)
+  const stop = async (targetRun = run) => {
+    if (!targetRun || isTerminal(targetRun.state)) return true
+    if (actionPendingRef.current) return false
+    const attemptKey = workflowAttemptKey(targetRun)
     const cancelAlreadySent = cancelFingerprintRef.current === attemptKey
     actionPendingRef.current = true
     setStopping(true)
@@ -658,7 +671,7 @@ export function WebsiteCrawlPreview({
         try {
           const reconciled =
             await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-              params: { id: knowledgeSpaceId, runId: run.id },
+              params: { id: knowledgeSpaceId, runId: targetRun.id },
             })
           if (!isCancelConfirmed(reconciled)) {
             setRequestError('CANCEL_FAILED')
@@ -678,7 +691,7 @@ export function WebsiteCrawlPreview({
         const canceled =
           await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel({
             body: { reason: 'user_requested' },
-            params: { id: knowledgeSpaceId, runId: run.id },
+            params: { id: knowledgeSpaceId, runId: targetRun.id },
           })
         cancelFingerprintRef.current = undefined
         setRun(canceled)
@@ -692,7 +705,7 @@ export function WebsiteCrawlPreview({
         try {
           const reconciled =
             await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-              params: { id: knowledgeSpaceId, runId: run.id },
+              params: { id: knowledgeSpaceId, runId: targetRun.id },
             })
           if (!isCancelConfirmed(reconciled)) {
             setRequestError('CANCEL_FAILED')
@@ -768,6 +781,7 @@ export function WebsiteCrawlPreview({
 
   const cancel = () => {
     if (dirty) {
+      pendingNavigationRef.current = undefined
       setCancelConfirmationOpen(true)
       return
     }
@@ -776,7 +790,16 @@ export function WebsiteCrawlPreview({
   }
 
   const discardAndCancel = async () => {
-    if (active && !(await stop())) return
+    if (discarding) return
+    setDiscarding(true)
+    discardRequestedRef.current = true
+    const startingRun = await startPromiseRef.current
+    const runToCancel = startingRun && !isTerminal(startingRun.state) ? startingRun : run
+    if (runToCancel && !isTerminal(runToCancel.state) && !(await stop(runToCancel))) {
+      discardRequestedRef.current = false
+      setDiscarding(false)
+      return
+    }
     submittedRef.current = true
     setCancelConfirmationOpen(false)
     const pendingNavigation = pendingNavigationRef.current
@@ -790,6 +813,12 @@ export function WebsiteCrawlPreview({
             : newKnowledgeDetailPath(knowledgeSpaceId),
         )
     })
+  }
+
+  const handleCancelConfirmationOpenChange = (open: boolean) => {
+    if (discarding) return
+    setCancelConfirmationOpen(open)
+    if (!open) pendingNavigationRef.current = undefined
   }
 
   return (
@@ -1046,7 +1075,7 @@ export function WebsiteCrawlPreview({
           </Button>
         </div>
       )}
-      <AlertDialog open={cancelConfirmationOpen} onOpenChange={setCancelConfirmationOpen}>
+      <AlertDialog open={cancelConfirmationOpen} onOpenChange={handleCancelConfirmationOpenChange}>
         <AlertDialogContent>
           <div>
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
@@ -1057,10 +1086,14 @@ export function WebsiteCrawlPreview({
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={discarding}>
               {t(($) => $['newKnowledge.keepEditing'])}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={() => void discardAndCancel()}>
+            <AlertDialogConfirmButton
+              disabled={discarding}
+              loading={discarding}
+              onClick={() => void discardAndCancel()}
+            >
               {t(($) => $['newKnowledge.discardSourceChangesConfirm'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

@@ -17,12 +17,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { newKnowledgeDetailPath } from './routes'
 
-type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number] & {
-  error?: unknown
-  skipReason?: unknown
-  state?: unknown
-  status?: unknown
-}
+type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number]
 type SyncPolicy = GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse
 type SyncMode = SyncPolicy['mode']
 type SyncPolicyBody = PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData['body']
@@ -33,20 +28,6 @@ const MAX_CUSTOM_INTERVAL_HOURS = 720
 type PageSkipReason = 'failed' | 'off-domain'
 
 function pageSkipReason(page: PreviewPage, rootUrl: string): PageSkipReason | undefined {
-  const explicitReason = typeof page.skipReason === 'string' ? page.skipReason.toLowerCase() : ''
-  if (explicitReason.includes('domain')) return 'off-domain'
-  const explicitState =
-    typeof page.status === 'string'
-      ? page.status.toLowerCase()
-      : typeof page.state === 'string'
-        ? page.state.toLowerCase()
-        : ''
-  if (
-    page.error ||
-    ['error', 'failed', 'skipped'].includes(explicitState) ||
-    (explicitReason && explicitReason !== 'success')
-  )
-    return 'failed'
   try {
     const root = new URL(rootUrl)
     const candidate = new URL(page.sourceUrl)
@@ -264,6 +245,11 @@ function ReadyCrawlSelectionForm({
           <span className="system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.pagesSelected'], { count: selectedPageIds.size })}
           </span>
+          {run.progressFailed > 0 && (
+            <span className="system-xs-regular text-text-destructive">
+              {run.progressFailed} {t(($) => $['newKnowledge.skippedFailed'])}
+            </span>
+          )}
           <Button
             type="button"
             variant="tertiary"
