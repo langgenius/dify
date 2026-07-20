@@ -1,5 +1,6 @@
 'use client'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
+import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { useAtomValue } from 'jotai'
@@ -59,6 +60,16 @@ const Apps = () => {
     setIsShowTryAppPanel(showTryAppPanel)
   }
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
+
+  const handleTryLearnDify = (params: TryAppSelection) => {
+    setShowTryAppPanel(true, params)
+  }
+  const handleCreateLearnDify = (app: App) => {
+    if (!canCreateApp) return
+
+    setCurrentTryAppParams({ appId: app.app_id, app })
+    setIsShowCreateModal(true)
+  }
 
   const handleShowFromTryApp = useCallback(() => {
     if (!canCreateApp) return
@@ -190,7 +201,11 @@ const Apps = () => {
       }}
     >
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-        <List controlRefreshList={controlRefreshList} />
+        <List
+          controlRefreshList={controlRefreshList}
+          onCreateLearnDify={handleCreateLearnDify}
+          onTryLearnDify={handleTryLearnDify}
+        />
         {isShowTryAppPanel && (
           <TryApp
             appId={currentTryAppParams?.appId || ''}

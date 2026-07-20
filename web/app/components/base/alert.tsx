@@ -27,15 +27,12 @@ const Alert: React.FC<Props> = ({ type = 'info', message, onHide, className }) =
             'pointer-events-none absolute inset-0 bg-linear-to-r opacity-[0.4]',
             bgVariants({ type }),
           )}
-          data-testid="alert-gradient"
         ></div>
         <div className="flex size-6 items-center justify-center">
-          <span className="i-ri-information-2-fill text-text-accent" data-testid="info-icon" />
+          <span className="i-ri-information-2-fill text-text-accent" />
         </div>
         <div className="p-1">
-          <div className="system-xs-regular text-text-secondary" data-testid="msg-container">
-            {message}
-          </div>
+          <div className="system-xs-regular text-text-secondary">{message}</div>
         </div>
         <button
           type="button"

@@ -13,11 +13,6 @@ describe('AuthenticationSection', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<AuthenticationSection {...defaultProps} />)
-      expect(screen.getByText('tools.mcp.modal.useDynamicClientRegistration'))!.toBeInTheDocument()
-    })
-
     it('should render switch for dynamic registration', () => {
       render(<AuthenticationSection {...defaultProps} />)
       expect(screen.getByRole('switch'))!.toBeInTheDocument()

@@ -6,7 +6,6 @@ import { expect } from '@playwright/test'
 import { getAgentComposerDraft, saveAgentComposerDraft } from '../../agent-v2/support/agent'
 import {
   agentBuildDraftExists,
-  applyAgentBuildDraft,
   getAgentBuildDraft,
   saveAgentBuildDraft,
 } from '../../agent-v2/support/agent-build-draft'
@@ -61,81 +60,65 @@ const getLastBuildChatAnswerText = async (page: Page) => {
 const formatBuildChatAnswerText = (text: string) =>
   text.length > 500 ? `${text.slice(0, 500)}...` : text
 
+const saveSupportedBuildDraft = async (
+  world: DifyWorld,
+  { retainSkillInNormalDraft }: { retainSkillInNormalDraft: boolean },
+) => {
+  const agentId = getCurrentAgentId(world)
+  const configFile = await uploadAgentConfigFileToDraft({
+    agentId,
+    fileName: agentBuilderTestMaterials.smallFile,
+    filePath: getAgentBuilderTestMaterialPath('smallFile'),
+  })
+  const skill = await uploadSummaryConfigSkillForBuildDraft(world)
+
+  if (!configFile.file_id)
+    throw new Error('Agent v2 build draft config file fixture did not return a file_id.')
+  world.createdAgentConfigFiles.push({ agentId, name: configFile.name })
+
+  const stableModel = world.agentBuilder.fixtures.stableModel
+  const normalConfig = stableModel
+    ? createAgentSoulConfigWithModel(normalAgentSoulConfig, stableModel)
+    : normalAgentSoulConfig
+  const updatedConfig = stableModel
+    ? createAgentSoulConfigWithModel(updatedAgentSoulConfig, stableModel)
+    : updatedAgentSoulConfig
+  const configSkills = [skill]
+
+  await saveAgentComposerDraft(agentId, {
+    ...normalConfig,
+    ...(retainSkillInNormalDraft ? { config_skills: configSkills } : {}),
+  })
+  await saveAgentBuildDraft(agentId, {
+    ...updatedConfig,
+    config_files: [configFile],
+    config_skills: configSkills,
+    env: {
+      secret_refs: [],
+      variables: [
+        {
+          id: agentBuilderFixedInputs.envPlainKey,
+          key: agentBuilderFixedInputs.envPlainKey,
+          name: agentBuilderFixedInputs.envPlainKey,
+          value: agentBuilderFixedInputs.envPlainValue,
+          variable: agentBuilderFixedInputs.envPlainKey,
+        },
+      ],
+    },
+  })
+}
+
 Given(
   'an Agent v2 Build draft adds the supported E2E files, skills, and env',
   async function (this: DifyWorld) {
-    const agentId = getCurrentAgentId(this)
-    const configFile = await uploadAgentConfigFileToDraft({
-      agentId,
-      fileName: agentBuilderTestMaterials.smallFile,
-      filePath: getAgentBuilderTestMaterialPath('smallFile'),
-    })
-    const skill = await uploadSummaryConfigSkillForBuildDraft(this)
-
-    if (!configFile.file_id)
-      throw new Error('Agent v2 build draft config file fixture did not return a file_id.')
-    this.createdAgentConfigFiles.push({ agentId, name: configFile.name })
-
-    const normalConfig = this.agentBuilder.preflight.stableModel
-      ? createAgentSoulConfigWithModel(
-          normalAgentSoulConfig,
-          this.agentBuilder.preflight.stableModel,
-        )
-      : normalAgentSoulConfig
-    const updatedConfig = this.agentBuilder.preflight.stableModel
-      ? createAgentSoulConfigWithModel(
-          updatedAgentSoulConfig,
-          this.agentBuilder.preflight.stableModel,
-        )
-      : updatedAgentSoulConfig
-
-    await saveAgentComposerDraft(agentId, normalConfig)
-    await saveAgentBuildDraft(agentId, {
-      ...updatedConfig,
-      config_files: [configFile],
-      config_skills: [skill],
-      env: {
-        secret_refs: [],
-        variables: [
-          {
-            id: agentBuilderFixedInputs.envPlainKey,
-            key: agentBuilderFixedInputs.envPlainKey,
-            name: agentBuilderFixedInputs.envPlainKey,
-            value: agentBuilderFixedInputs.envPlainValue,
-            variable: agentBuilderFixedInputs.envPlainKey,
-          },
-        ],
-      },
-    })
+    await saveSupportedBuildDraft(this, { retainSkillInNormalDraft: false })
   },
 )
 
 Given(
-  'an Agent v2 Build draft includes the existing e2e-summary-skill Skill',
+  'an Agent v2 Build draft adds supported E2E files and env while retaining the existing Skill',
   async function (this: DifyWorld) {
-    const skill = await uploadSummaryConfigSkillForBuildDraft(this)
-    const normalConfig = this.agentBuilder.preflight.stableModel
-      ? createAgentSoulConfigWithModel(
-          normalAgentSoulConfig,
-          this.agentBuilder.preflight.stableModel,
-        )
-      : normalAgentSoulConfig
-    const updatedConfig = this.agentBuilder.preflight.stableModel
-      ? createAgentSoulConfigWithModel(
-          updatedAgentSoulConfig,
-          this.agentBuilder.preflight.stableModel,
-        )
-      : updatedAgentSoulConfig
-    const configSkills = [skill]
-
-    await saveAgentComposerDraft(getCurrentAgentId(this), {
-      ...normalConfig,
-      config_skills: configSkills,
-    })
-    await saveAgentBuildDraft(getCurrentAgentId(this), {
-      ...updatedConfig,
-      config_skills: configSkills,
-    })
+    await saveSupportedBuildDraft(this, { retainSkillInNormalDraft: true })
   },
 )
 
@@ -146,16 +129,16 @@ Given('an Agent v2 Build draft uses the updated E2E prompt', async function (thi
 Given(
   'an Agent v2 Build draft uses the updated E2E prompt with the stable E2E model',
   async function (this: DifyWorld) {
-    if (!this.agentBuilder.preflight.stableModel)
+    if (!this.agentBuilder.fixtures.stableModel)
       throw new Error(
-        'Create an Agent v2 Build draft with a stable model after stable model preflight.',
+        'Create an Agent v2 Build draft with a stable model after stable model fixture setup.',
       )
 
     await saveAgentBuildDraft(
       getCurrentAgentId(this),
       createAgentSoulConfigWithModel(
         updatedAgentSoulConfig,
-        this.agentBuilder.preflight.stableModel,
+        this.agentBuilder.fixtures.stableModel,
       ),
     )
   },
@@ -278,10 +261,6 @@ When(
     await expect(page.getByText('Action succeeded')).toBeVisible()
   },
 )
-
-When('I apply the Agent v2 Build draft via API', async function (this: DifyWorld) {
-  await applyAgentBuildDraft(getCurrentAgentId(this))
-})
 
 Then('I should see the Agent v2 Build draft pending changes', async function (this: DifyWorld) {
   const page = this.getPage()

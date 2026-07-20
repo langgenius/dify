@@ -34,6 +34,13 @@ vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
   ToolPickerContent: () => <div>Mock tool picker</div>,
 }))
 
+vi.mock('@/context/account-state', async () => {
+  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
+  return {
+    userProfileIdAtom: atom('user-1'),
+  }
+})
+
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ toolIcon }: { toolIcon?: string | { content: string; background: string } }) => (
     <span aria-hidden data-testid="tool-icon">
@@ -80,11 +87,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
   }: {
     formSchemas: Array<{ label?: Record<string, string>; variable?: string }>
   }) => (
-    <div data-testid="tool-setting-form">
+    <form aria-label="tool settings">
       {formSchemas.map((schema) => (
         <div key={schema.variable}>{schema.label?.en_US}</div>
       ))}
-    </div>
+    </form>
   ),
 }))
 
@@ -632,7 +639,7 @@ describe('AgentTools', () => {
       )
 
       expect(baseElement.querySelector('[style*="duckduckgo.svg"]')).toBeInTheDocument()
-      expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
+      expect(screen.getByRole('form', { name: 'tool settings' })).toBeInTheDocument()
       expect(screen.getByText('Search Query')).toBeInTheDocument()
     })
 
@@ -652,7 +659,7 @@ describe('AgentTools', () => {
         }),
       )
 
-      expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
+      expect(screen.getByRole('form', { name: 'tool settings' })).toBeInTheDocument()
 
       act(() => {
         store.set(agentComposerDraftAtom, {
@@ -661,7 +668,7 @@ describe('AgentTools', () => {
         })
       })
 
-      expect(screen.queryByTestId('tool-setting-form')).not.toBeInTheDocument()
+      expect(screen.queryByRole('form', { name: 'tool settings' })).not.toBeInTheDocument()
     })
   })
 })

@@ -93,16 +93,6 @@ describe('ContextBlockReplacementBlock', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderWithEditor(
-        <>
-          <ContextBlockReplacementBlock />
-          <EditorCapture />
-        </>,
-      )
-      expect(capturedEditor).not.toBeNull()
-    })
-
     it('should return null (no visible output from the plugin itself)', () => {
       const { container } = renderWithEditor(
         <>

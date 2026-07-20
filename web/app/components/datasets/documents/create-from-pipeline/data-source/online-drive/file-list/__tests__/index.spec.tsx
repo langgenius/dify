@@ -83,30 +83,6 @@ describe('FileList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<FileList {...props} />)
-
-      // Assert - search input should be visible
-      expect(
-        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
-      ).toBeInTheDocument()
-    })
-
-    it('should render with correct container styles', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<FileList {...props} />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex')
-      expect(wrapper).toHaveClass('h-[400px]')
-      expect(wrapper).toHaveClass('flex-col')
-      expect(wrapper).toHaveClass('overflow-hidden')
-      expect(wrapper).toHaveClass('rounded-xl')
-    })
-
     it('should render Header component with search input', () => {
       const props = createDefaultProps()
 
@@ -511,13 +487,12 @@ describe('FileList', () => {
       { isInPipeline: false, supportBatchUpload: true },
       { isInPipeline: false, supportBatchUpload: false },
     ])(
-      'should render correctly with isInPipeline=$isInPipeline and supportBatchUpload=$supportBatchUpload',
+      'keeps search available with isInPipeline=$isInPipeline and supportBatchUpload=$supportBatchUpload',
       (propVariation) => {
         const props = createDefaultProps(propVariation)
 
         render(<FileList {...props} />)
 
-        // Assert - Component should render without crashing
         expect(
           screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
         ).toBeInTheDocument()

@@ -1,7 +1,6 @@
 import type {
   AgentAppComposerResponse,
   AgentAppDetailWithSite,
-  AgentConfigSnapshotDetailResponse,
   AgentReferencingWorkflowResponse,
   AgentReferencingWorkflowsResponse,
   AgentSoulConfig,
@@ -81,20 +80,6 @@ export async function getTestAgent(agentId: string): Promise<AgentSeed> {
     const response = await ctx.get(`/console/api/agent/${agentId}`)
     await expectApiResponseOK(response, `Get Agent v2 test agent ${agentId}`)
     return (await response.json()) as AgentSeed
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export async function getAgentVersionDetail(
-  agentId: string,
-  versionId: string,
-): Promise<AgentConfigSnapshotDetailResponse> {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agentId}/versions/${versionId}`)
-    await expectApiResponseOK(response, `Get Agent v2 version ${versionId} for ${agentId}`)
-    return (await response.json()) as AgentConfigSnapshotDetailResponse
   } finally {
     await ctx.dispose()
   }

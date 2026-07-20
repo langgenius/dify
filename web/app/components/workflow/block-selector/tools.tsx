@@ -1,6 +1,6 @@
 import type { BlockEnum, ToolWithProvider } from '../types'
 import type { ToolActionPreviewPayload } from './tool/action-item'
-import type { ToolDefaultValue, ToolTypeEnum, ToolValue } from './types'
+import type { ToolDefaultValue, ToolType, ToolValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/preview-card'
 import { memo, useMemo, useRef } from 'react'
@@ -19,7 +19,7 @@ type ToolsProps = {
   tools: ToolWithProvider[]
   viewType: ViewType
   hasSearchText: boolean
-  toolType?: ToolTypeEnum
+  toolType?: ToolType
   isAgent?: boolean
   className?: string
   indexBarClassName?: string

@@ -59,7 +59,6 @@ jobs:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
           E2E_ADMIN_NAME: E2E Admin
           E2E_ADMIN_PASSWORD: E2eAdmin12345
-          E2E_CUCUMBER_REPORT_PROFILE: core
           E2E_FORCE_WEB_BUILD: "1"
           E2E_INIT_PASSWORD: E2eInit12345
         run: vp run e2e:full
@@ -81,7 +80,6 @@ jobs:
           E2E_ADMIN_NAME: E2E Admin
           E2E_ADMIN_PASSWORD: E2eAdmin12345
           E2E_BROWSER: webkit
-          E2E_CUCUMBER_REPORT_PROFILE: webkit-browser-smoke
           E2E_INIT_PASSWORD: E2eInit12345
         run: |
           teardown_webkit_smoke() {
@@ -110,7 +108,7 @@ jobs:
             mv e2e/.logs e2e/.logs-webkit
           fi
 
-      - name: Run external runtime E2E tests
+      - name: Run prepared and external runtime E2E tests
         if: ${{ inputs.run-external-runtime }}
         working-directory: ./e2e
         env:
@@ -120,13 +118,10 @@ jobs:
           E2E_AGENT_DECISION_MODEL_NAME: ${{ vars.E2E_AGENT_DECISION_MODEL_NAME || 'gpt-5.5' }}
           E2E_AGENT_DECISION_MODEL_PROVIDER: ${{ vars.E2E_AGENT_DECISION_MODEL_PROVIDER || 'openai' }}
           E2E_AGENT_DECISION_MODEL_TYPE: ${{ vars.E2E_AGENT_DECISION_MODEL_TYPE || 'llm' }}
-          E2E_CUCUMBER_REPORT_PROFILE: external
-          E2E_EXTERNAL_RUNTIME_SEED_SPECS: ${{ vars.E2E_EXTERNAL_RUNTIME_SEED_SPECS }}
           E2E_FORCE_WEB_BUILD: "1"
           E2E_INIT_PASSWORD: E2eInit12345
           E2E_MARKETPLACE_API_URL: ${{ vars.E2E_MARKETPLACE_API_URL }}
           E2E_MARKETPLACE_PLUGIN_IDS: ${{ vars.E2E_MARKETPLACE_PLUGIN_IDS }}
-          E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS: ${{ vars.E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS }}
           E2E_MODEL_PROVIDER_CREDENTIALS_JSON: ${{ secrets.E2E_MODEL_PROVIDER_CREDENTIALS_JSON }}
           E2E_SPEECH_TO_TEXT_MODEL_NAME: ${{ vars.E2E_SPEECH_TO_TEXT_MODEL_NAME || 'gpt-4o-mini-transcribe' }}
           E2E_SPEECH_TO_TEXT_MODEL_PROVIDER: ${{ vars.E2E_SPEECH_TO_TEXT_MODEL_PROVIDER || 'openai' }}
@@ -164,8 +159,8 @@ jobs:
 
           trap teardown_external_runtime EXIT
           vp run e2e:middleware:up
-          vp run e2e:external:prepare
-          vp run e2e:external
+          vp run e2e:post-merge:prepare
+          vp run e2e:post-merge
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}

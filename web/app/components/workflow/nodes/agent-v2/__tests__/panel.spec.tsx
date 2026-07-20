@@ -425,8 +425,8 @@ describe('agent/panel', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
     expect(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.advancedSetting' }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: 'workflow.nodes.agent.advancedSetting' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('text')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.queryByText('usage')).not.toBeInTheDocument()

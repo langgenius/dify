@@ -174,11 +174,6 @@ describe('Datasets', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Datasets {...defaultProps} />)
-      expect(screen.getByRole('navigation')).toBeInTheDocument()
-    })
-
     it('should not render NewDatasetCard in dataset list', () => {
       render(<Datasets {...defaultProps} />)
 

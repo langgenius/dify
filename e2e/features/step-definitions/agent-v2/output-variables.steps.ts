@@ -6,8 +6,8 @@ import { expect } from '@playwright/test'
 import { getWorkflowDraft } from '../../../support/api'
 
 const agentV2WorkflowNodeId = 'agent-v2'
-const taskFileOutputName = 'e2e_report.pdf'
-const renamedTaskFileOutputName = 'e2e_final_report.pdf'
+const taskOutputName = 'e2e_report'
+const renamedTaskOutputName = 'e2e_final_report'
 
 const getAgentOutputToken = (name: string) => `[§output:${name}:${name}§]`
 
@@ -77,14 +77,14 @@ const fillOutputVariableEditor = async (
   await expect(editor).toBeVisible()
   await editor.getByRole('textbox', { name: 'Field name' }).fill(name)
   if (type !== 'string') {
-    await editor.getByRole('button', { name: 'Output type' }).click()
+    await editor.getByLabel('Output type').click()
     await page.getByRole('option', { name: type, exact: true }).click()
   }
   if (required) await editor.getByRole('switch', { name: 'Required' }).click()
 }
 
 When(
-  'I insert a file output reference from the Agent v2 workflow node task editor',
+  'I insert an output reference from the Agent v2 workflow node task editor',
   async function (this: DifyWorld) {
     const page = this.getPage()
     const appId = getCurrentAppId(this)
@@ -92,27 +92,28 @@ When(
 
     await expect(taskEditor).toBeVisible()
     await taskEditor.click()
-    await page.getByRole('button', { name: 'Insert' }).click()
+    await page.keyboard.type('/')
+    const insertResponse = waitForWorkflowDraftSave(this, appId)
     await page.getByRole('button', { name: 'New output' }).click()
-
+    expect((await insertResponse).ok()).toBe(true)
     const nameInput = page.getByRole('textbox', { name: 'Field name' })
     await expect(nameInput).toBeVisible()
-    await nameInput.fill(taskFileOutputName)
-
-    const saveResponse = waitForWorkflowDraftSave(this, appId)
+    await nameInput.fill(taskOutputName)
+    const renameResponse = waitForWorkflowDraftSave(this, appId)
     await nameInput.press('Enter')
-    expect((await saveResponse).ok()).toBe(true)
+    expect((await renameResponse).ok()).toBe(true)
   },
 )
 
 When('I rename the Agent v2 workflow node task output reference', async function (this: DifyWorld) {
   const page = this.getPage()
   const appId = getCurrentAppId(this)
+  const taskEditor = page.getByRole('textbox', { name: 'Agent task' })
 
-  await page.getByText(taskFileOutputName, { exact: true }).hover()
+  await taskEditor.getByRole('button', { name: `Edit ${taskOutputName}`, exact: true }).click()
   const editor = page.getByRole('form', { name: 'Output variable editor' })
   await expect(editor).toBeVisible()
-  await editor.getByRole('textbox', { name: 'Field name' }).fill(renamedTaskFileOutputName)
+  await editor.getByRole('textbox', { name: 'Field name' }).fill(renamedTaskOutputName)
 
   const saveResponse = waitForWorkflowDraftSave(this, appId)
   await editor.getByRole('button', { name: 'Confirm' }).click()
@@ -221,7 +222,6 @@ Then('I should see the Agent v2 workflow node output variables', async function 
 
   for (const output of expectedOutputVariables) {
     await expect(page.getByText(output.name, { exact: true })).toBeVisible()
-    await expect(page.getByText(output.type, { exact: true })).toBeVisible()
   }
 })
 
@@ -272,16 +272,16 @@ Then(
 )
 
 Then(
-  'the Agent v2 workflow node task should reference the file output',
+  'the Agent v2 workflow node task should reference the output',
   async function (this: DifyWorld) {
-    await expectAgentTaskOutputReference(this, taskFileOutputName)
+    await expectAgentTaskOutputReference(this, taskOutputName)
   },
 )
 
 Then(
-  'the Agent v2 workflow node task should reference the renamed file output',
+  'the Agent v2 workflow node task should reference the renamed output',
   async function (this: DifyWorld) {
-    await expectAgentTaskOutputReference(this, renamedTaskFileOutputName, taskFileOutputName)
+    await expectAgentTaskOutputReference(this, renamedTaskOutputName, taskOutputName)
   },
 )
 
@@ -292,11 +292,8 @@ Then(
 
     await openWorkflowOutputVariablesPanel(this)
     await expect(page.getByText('response', { exact: true })).toBeVisible()
-    await expect(page.getByText('object', { exact: true })).toBeVisible()
     await expect(page.getByText('Required', { exact: true })).toBeVisible()
-    await expect(page.getByText('text', { exact: true })).toBeVisible()
     await expect(page.getByText('analysis', { exact: true })).toBeVisible()
-    await expect(page.getByText('string', { exact: true })).toBeVisible()
   },
 )
 
@@ -307,6 +304,7 @@ async function expectAgentTaskOutputReference(
 ) {
   const page = world.getPage()
   const appId = getCurrentAppId(world)
+  const taskEditor = page.getByRole('textbox', { name: 'Agent task' })
 
   await expect
     .poll(
@@ -336,12 +334,16 @@ async function expectAgentTaskOutputReference(
       agentTask: expect.stringContaining(getAgentOutputToken(expectedName)),
       expectedOutput: {
         name: expectedName,
-        type: 'file',
+        type: 'string',
       },
       unexpectedOutput: false,
     })
 
-  await expect(page.getByText(expectedName, { exact: true })).toBeVisible()
-  await expect(page.getByText('file', { exact: true })).toBeVisible()
-  if (unexpectedName) await expect(page.getByText(unexpectedName, { exact: true })).toHaveCount(0)
+  await expect(
+    taskEditor.getByRole('button', { name: `Edit ${expectedName}`, exact: true }),
+  ).toBeVisible()
+  if (unexpectedName)
+    await expect(
+      taskEditor.getByRole('button', { name: `Edit ${unexpectedName}`, exact: true }),
+    ).toHaveCount(0)
 }

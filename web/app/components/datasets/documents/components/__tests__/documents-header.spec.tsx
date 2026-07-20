@@ -61,11 +61,6 @@ describe('DocumentsHeader', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByText(/list\.title/i)).toBeInTheDocument()
-    })
-
     it('should render title', () => {
       render(<DocumentsHeader {...defaultProps} />)
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/list\.title/i)

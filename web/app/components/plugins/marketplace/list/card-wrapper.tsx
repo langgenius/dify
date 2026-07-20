@@ -16,8 +16,13 @@ import { getPluginLinkInMarketplace } from '../utils'
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
+  isInstalled?: boolean
 }
-const CardWrapperComponent = ({ plugin, showInstallButton }: CardWrapperProps) => {
+const CardWrapperComponent = ({
+  plugin,
+  showInstallButton,
+  isInstalled = false,
+}: CardWrapperProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const [
@@ -68,11 +73,14 @@ const CardWrapperComponent = ({ plugin, showInstallButton }: CardWrapperProps) =
         />
         <div className="pointer-events-none absolute right-[-0.5px] bottom-[-0.5px] left-[-0.5px] z-10 flex items-center gap-2 rounded-b-xl bg-linear-to-t from-components-panel-on-panel-item-bg-hover from-[60%] to-background-gradient-mask-transparent px-4 pt-8 pb-4 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           <Button
-            variant="primary"
+            variant={isInstalled ? 'secondary' : 'primary'}
             className="min-w-0 flex-1 shadow-md"
-            onClick={showInstallFromMarketplace}
+            disabled={isInstalled}
+            onClick={isInstalled ? undefined : showInstallFromMarketplace}
           >
-            {t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
+            {isInstalled
+              ? t(($) => $['task.installed'], { ns: 'plugin' })
+              : t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
           <Button
             className="min-w-0 flex-1 gap-0.5 shadow-xs backdrop-blur-[5px]"

@@ -332,6 +332,7 @@
   "modelProvider.auth.manageCredentials": "Gestionați acreditările",
   "modelProvider.auth.modelCredential": "Model de acreditare",
   "modelProvider.auth.modelCredentials": "Credențiale model",
+  "modelProvider.auth.openAIResponsesAPITip": "Pentru GPT-5.6 și modelele ulterioare, recomandăm utilizarea API-ului Responses.",
   "modelProvider.auth.providerManaged": "Gestionat de furnizor",
   "modelProvider.auth.providerManagedTip": "Configurarea curentă este găzduită de furnizor.",
   "modelProvider.auth.removeModel": "Eliminați modelul",

@@ -1,6 +1,6 @@
 @agent-v2 @authenticated @knowledge @knowledge-fixture
 Feature: Agent v2 Knowledge Retrieval
-  @core
+  @core @prepared
   Scenario: Agent decide Knowledge Retrieval settings are saved and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
@@ -12,7 +12,7 @@ Feature: Agent v2 Knowledge Retrieval
     When I refresh the current page
     Then I should see the Agent v2 Agent decide Knowledge Retrieval settings
 
-  @core
+  @core @prepared
   Scenario: Custom query Knowledge Retrieval settings are saved and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
@@ -58,7 +58,7 @@ Feature: Agent v2 Knowledge Retrieval
     When I send the Agent v2 Backend service API knowledge request
     Then the Agent v2 Backend service API response should include the knowledge E2E marker
 
-  @core
+  @core @prepared
   Scenario: Removing Knowledge Retrieval clears the saved dataset reference
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready

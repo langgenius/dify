@@ -95,14 +95,6 @@ describe('PageSelector', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<PageSelector {...props} />)
-
-      expect(screen.getByTestId('virtual-list'))!.toBeInTheDocument()
-    })
-
     it('should render empty state when list is empty', () => {
       const props = createDefaultProps({
         list: [],
