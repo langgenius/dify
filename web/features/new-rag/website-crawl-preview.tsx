@@ -8,7 +8,7 @@ import type {
 import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient } from '@/service/client'
 
@@ -32,6 +32,16 @@ type PreviewDraft = {
   creationAttempted?: boolean
   previewRequestId: string
   source?: Source
+}
+
+function previewPagesEqual(left: PreviewPage, right: PreviewPage) {
+  return (
+    left.pageId === right.pageId &&
+    left.description === right.description &&
+    left.etag === right.etag &&
+    left.sourceUrl === right.sourceUrl &&
+    left.title === right.title
+  )
 }
 
 const PAGE_SIZE = 200
@@ -99,7 +109,8 @@ function responseStatus(error: unknown) {
 }
 
 function isDefinitiveRequestFailure(error: unknown) {
-  return responseStatus(error) !== undefined
+  const status = responseStatus(error)
+  return status !== undefined && [400, 401, 403, 404, 409, 422, 429].includes(status)
 }
 
 function isRetryConfirmed(previous: SourceWorkflowRun, current: SourceWorkflowRun) {
@@ -118,10 +129,15 @@ function createRequestId() {
   return globalThis.crypto.randomUUID()
 }
 
-async function listWorkflowPages(knowledgeSpaceId: string, runId: string) {
+async function listWorkflowPageUpdates(
+  knowledgeSpaceId: string,
+  runId: string,
+  initialCursor?: string,
+) {
   const pages = new Map<string, PreviewPage>()
-  const seenCursors = new Set<string>()
-  let cursor: string | undefined
+  const seenCursors = new Set(initialCursor ? [initialCursor] : [])
+  let cursor = initialCursor
+  let resumeCursor = initialCursor
   let pageCount = 0
 
   do {
@@ -137,9 +153,10 @@ async function listWorkflowPages(knowledgeSpaceId: string, runId: string) {
     if (!nextCursor || seenCursors.has(nextCursor)) break
     seenCursors.add(nextCursor)
     cursor = nextCursor
+    resumeCursor = nextCursor
   } while (cursor)
 
-  return [...pages.values()]
+  return { items: [...pages.values()], resumeCursor }
 }
 
 async function findProvisionalSource(knowledgeSpaceId: string, clientRequestId: string) {
@@ -167,32 +184,52 @@ async function findProvisionalSource(knowledgeSpaceId: string, clientRequestId: 
   return undefined
 }
 
-function CrawlPageList({ pages }: { pages: PreviewPage[] }) {
-  if (!pages.length) return null
+const CrawlPageList = memo(
+  ({ loading = false, pages }: { loading?: boolean; pages: PreviewPage[] }) => {
+    if (!pages.length && !loading) return null
 
-  return (
-    <ul className="max-h-64 divide-y divide-divider-subtle overflow-y-auto" aria-live="polite">
-      {pages.map((page) => (
-        <li key={page.pageId} className="flex items-start gap-2.5 px-4 py-2.5">
-          <input
-            type="checkbox"
-            disabled
-            aria-label={page.title || page.sourceUrl}
-            className="mt-0.5 size-4"
-          />
-          <span className="min-w-0">
-            <span className="block truncate system-xs-medium text-text-primary">
-              {page.title || page.sourceUrl}
+    return (
+      <ul className="max-h-64 divide-y divide-divider-subtle overflow-y-auto" aria-live="polite">
+        {pages.map((page) => (
+          <li
+            key={page.pageId}
+            className="flex items-start gap-2.5 px-4 py-2.5 [contain-intrinsic-size:auto_40px] [content-visibility:auto]"
+          >
+            <input
+              type="checkbox"
+              disabled
+              aria-label={page.title || page.sourceUrl}
+              className="mt-0.5 size-4"
+            />
+            <span className="min-w-0">
+              <span className="block truncate system-xs-medium text-text-primary">
+                {page.title || page.sourceUrl}
+              </span>
+              <span className="block truncate system-2xs-regular text-text-tertiary">
+                {page.sourceUrl}
+              </span>
             </span>
-            <span className="block truncate system-2xs-regular text-text-tertiary">
-              {page.sourceUrl}
-            </span>
-          </span>
-        </li>
-      ))}
-    </ul>
-  )
-}
+          </li>
+        ))}
+        {loading &&
+          [0, 1].map((placeholder) => (
+            <li
+              key={`placeholder-${placeholder}`}
+              data-testid="crawl-page-skeleton"
+              aria-hidden
+              className="flex items-start gap-2.5 px-4 py-2.5"
+            >
+              <span className="size-4 animate-pulse rounded bg-background-section" />
+              <span className="min-w-0 flex-1 space-y-1.5">
+                <span className="block h-3 w-2/3 animate-pulse rounded bg-background-section" />
+                <span className="block h-2.5 w-full animate-pulse rounded bg-background-section" />
+              </span>
+            </li>
+          ))}
+      </ul>
+    )
+  },
+)
 
 function EmptyPreview() {
   const { t } = useTranslation('dataset')
@@ -239,6 +276,15 @@ export function WebsiteCrawlPreview({
   const cancelFingerprintRef = useRef<string | undefined>(undefined)
   const rootUrlInputRef = useRef<HTMLInputElement>(null)
   const sourceNameInputRef = useRef<HTMLInputElement>(null)
+  const pageMapRef = useRef(new Map<string, PreviewPage>())
+  const pageCursorRef = useRef<string | undefined>(undefined)
+
+  const resetPreviewPages = useCallback(() => {
+    pageMapRef.current.clear()
+    pageCursorRef.current = undefined
+    setPages([])
+    setPagesLoaded(false)
+  }, [])
 
   const normalizedURL = useMemo(() => normalizeURL(rootUrl), [rootUrl])
   const normalizedLimit = Math.min(Math.max(Math.trunc(pageLimit) || 1, 1), MAX_PAGE_LIMIT)
@@ -336,8 +382,7 @@ export function WebsiteCrawlPreview({
       setStarting(true)
       setRequestError(undefined)
       setPollPaused(false)
-      setPages([])
-      setPagesLoaded(false)
+      resetPreviewPages()
       setRun(undefined)
       try {
         const draft = await ensureProvisionalSource(nextConfiguration)
@@ -355,59 +400,70 @@ export function WebsiteCrawlPreview({
         setStarting(false)
       }
     },
-    [ensureProvisionalSource, knowledgeSpaceId],
+    [ensureProvisionalSource, knowledgeSpaceId, resetPreviewPages],
   )
 
   const retryRun = useCallback(async () => {
     if (!run || actionPendingRef.current) return
     const attemptKey = workflowAttemptKey(run)
     const retryAlreadySent = retryFingerprintRef.current === attemptKey
-    if (!retryAlreadySent) retryFingerprintRef.current = attemptKey
     actionPendingRef.current = true
     setStarting(true)
     setRequestError(undefined)
     setPollPaused(false)
     try {
-      const retried = retryAlreadySent
-        ? await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-            params: { id: knowledgeSpaceId, runId: run.id },
-          })
-        : await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry({
-            params: { id: knowledgeSpaceId, runId: run.id },
-          })
-      if (retryAlreadySent && !isRetryConfirmed(run, retried)) {
-        setRequestError('RETRY_FAILED')
-        return
-      }
-      setPages([])
-      setPagesLoaded(false)
-      setRun(retried)
-    } catch (error) {
-      if (isDefinitiveRequestFailure(error)) {
-        retryFingerprintRef.current = undefined
-        setRequestError('RETRY_FAILED')
-        return
-      }
-      try {
-        const reconciled =
-          await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-            params: { id: knowledgeSpaceId, runId: run.id },
-          })
-        if (!isRetryConfirmed(run, reconciled)) {
-          setRequestError('RETRY_FAILED')
-        } else {
-          setPages([])
-          setPagesLoaded(false)
+      if (retryAlreadySent) {
+        try {
+          const reconciled =
+            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+              params: { id: knowledgeSpaceId, runId: run.id },
+            })
+          if (!isRetryConfirmed(run, reconciled)) {
+            setRequestError('RETRY_FAILED')
+            return
+          }
+          resetPreviewPages()
           setRun(reconciled)
+        } catch {
+          setRequestError('RETRY_FAILED')
         }
-      } catch {
-        setRequestError('RETRY_FAILED')
+        return
+      }
+
+      retryFingerprintRef.current = attemptKey
+      try {
+        const retried =
+          await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry({
+            params: { id: knowledgeSpaceId, runId: run.id },
+          })
+        resetPreviewPages()
+        setRun(retried)
+      } catch (error) {
+        if (isDefinitiveRequestFailure(error)) {
+          retryFingerprintRef.current = undefined
+          setRequestError('RETRY_FAILED')
+          return
+        }
+        try {
+          const reconciled =
+            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+              params: { id: knowledgeSpaceId, runId: run.id },
+            })
+          if (!isRetryConfirmed(run, reconciled)) {
+            setRequestError('RETRY_FAILED')
+          } else {
+            resetPreviewPages()
+            setRun(reconciled)
+          }
+        } catch {
+          setRequestError('RETRY_FAILED')
+        }
       }
     } finally {
       actionPendingRef.current = false
       setStarting(false)
     }
-  }, [knowledgeSpaceId, run])
+  }, [knowledgeSpaceId, resetPreviewPages, run])
 
   useEffect(() => {
     if (!runId || !shouldPoll) return
@@ -421,9 +477,13 @@ export function WebsiteCrawlPreview({
             params: { id: knowledgeSpaceId, runId },
           })
         if (disposed) return
-        let nextPages: PreviewPage[]
+        let pageUpdates: Awaited<ReturnType<typeof listWorkflowPageUpdates>>
         try {
-          nextPages = await listWorkflowPages(knowledgeSpaceId, runId)
+          pageUpdates = await listWorkflowPageUpdates(
+            knowledgeSpaceId,
+            runId,
+            pageCursorRef.current,
+          )
         } catch (error) {
           if (isFailed(nextRun.state) || isCanceled(nextRun.state)) {
             setRun(nextRun)
@@ -434,8 +494,17 @@ export function WebsiteCrawlPreview({
           throw error
         }
         if (disposed) return
+        let pagesChanged = false
+        for (const page of pageUpdates.items) {
+          const current = pageMapRef.current.get(page.pageId)
+          if (!current || !previewPagesEqual(current, page)) {
+            pageMapRef.current.set(page.pageId, page)
+            pagesChanged = true
+          }
+        }
+        pageCursorRef.current = pageUpdates.resumeCursor
         setRun(nextRun)
-        setPages(nextPages)
+        if (pagesChanged) setPages([...pageMapRef.current.values()])
         setPagesLoaded(true)
         setRequestError(undefined)
         if (!isTerminal(nextRun.state)) timer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
@@ -457,44 +526,57 @@ export function WebsiteCrawlPreview({
     if (!run || actionPendingRef.current || !active) return
     const attemptKey = workflowAttemptKey(run)
     const cancelAlreadySent = cancelFingerprintRef.current === attemptKey
-    if (!cancelAlreadySent) cancelFingerprintRef.current = attemptKey
     actionPendingRef.current = true
     setStopping(true)
     setRequestError(undefined)
     try {
-      const canceled = cancelAlreadySent
-        ? await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-            params: { id: knowledgeSpaceId, runId: run.id },
-          })
-        : await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel({
+      if (cancelAlreadySent) {
+        try {
+          const reconciled =
+            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+              params: { id: knowledgeSpaceId, runId: run.id },
+            })
+          if (!isCancelConfirmed(reconciled)) {
+            setRequestError('CANCEL_FAILED')
+            return
+          }
+          cancelFingerprintRef.current = undefined
+          setRun(reconciled)
+        } catch {
+          setRequestError('CANCEL_FAILED')
+        }
+        return
+      }
+
+      cancelFingerprintRef.current = attemptKey
+      try {
+        const canceled =
+          await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel({
             body: { reason: 'user_requested' },
             params: { id: knowledgeSpaceId, runId: run.id },
           })
-      if (cancelAlreadySent && !isCancelConfirmed(canceled)) {
-        setRequestError('CANCEL_FAILED')
-        return
-      }
-      cancelFingerprintRef.current = undefined
-      setRun(canceled)
-    } catch (error) {
-      if (isDefinitiveRequestFailure(error)) {
         cancelFingerprintRef.current = undefined
-        setRequestError('CANCEL_FAILED')
-        return
-      }
-      try {
-        const reconciled =
-          await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-            params: { id: knowledgeSpaceId, runId: run.id },
-          })
-        if (!isCancelConfirmed(reconciled)) {
-          setRequestError('CANCEL_FAILED')
-        } else {
+        setRun(canceled)
+      } catch (error) {
+        if (isDefinitiveRequestFailure(error)) {
           cancelFingerprintRef.current = undefined
-          setRun(reconciled)
+          setRequestError('CANCEL_FAILED')
+          return
         }
-      } catch {
-        setRequestError('CANCEL_FAILED')
+        try {
+          const reconciled =
+            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+              params: { id: knowledgeSpaceId, runId: run.id },
+            })
+          if (!isCancelConfirmed(reconciled)) {
+            setRequestError('CANCEL_FAILED')
+          } else {
+            cancelFingerprintRef.current = undefined
+            setRun(reconciled)
+          }
+        } catch {
+          setRequestError('CANCEL_FAILED')
+        }
       }
     } finally {
       actionPendingRef.current = false
@@ -683,16 +765,14 @@ export function WebsiteCrawlPreview({
         {!run && !requestError && <EmptyPreview />}
         {run && active && !pollPaused && (
           <div className="overflow-hidden rounded-xl border border-divider-regular">
-            <div
-              className="flex flex-wrap items-center gap-2 px-4 py-3"
-              role="status"
-              aria-live="polite"
-            >
+            <div className="flex flex-wrap items-center gap-2 px-4 py-3">
               <span
                 aria-hidden
                 className="i-ri-loader-4-line size-4 animate-spin text-text-accent"
               />
               <span
+                role="status"
+                aria-live="polite"
                 className="min-w-0 flex-1 truncate system-xs-medium text-text-primary"
                 title={crawlingStatusText}
               >
@@ -724,28 +804,7 @@ export function WebsiteCrawlPreview({
                 className="block h-1 w-full accent-state-accent-solid"
               />
             )}
-            <CrawlPageList pages={pages} />
-            <div
-              className={cn(
-                'space-y-3 px-4 py-3',
-                pages.length > 0 && 'border-t border-divider-subtle',
-              )}
-              aria-hidden
-            >
-              {[0, 1].map((placeholder) => (
-                <div
-                  key={placeholder}
-                  data-testid="crawl-page-skeleton"
-                  className="flex items-start gap-2.5"
-                >
-                  <span className="size-4 animate-pulse rounded bg-background-section" />
-                  <span className="min-w-0 flex-1 space-y-1.5">
-                    <span className="block h-3 w-2/3 animate-pulse rounded bg-background-section" />
-                    <span className="block h-2.5 w-full animate-pulse rounded bg-background-section" />
-                  </span>
-                </div>
-              ))}
-            </div>
+            <CrawlPageList pages={pages} loading />
           </div>
         )}
         {showSuccess && (

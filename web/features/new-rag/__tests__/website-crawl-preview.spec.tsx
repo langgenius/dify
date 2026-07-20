@@ -227,9 +227,18 @@ describe('WebsiteCrawlPreview', () => {
         name: 'dataset.newKnowledge.crawlProgress:{"host":"docs.dify.ai"}',
       }),
     ).toHaveValue(2)
-    expect(screen.getAllByTestId('crawl-page-skeleton')).toHaveLength(2)
+    const status = screen.getByText(/^dataset\.newKnowledge\.crawlingPages/)
+    expect(status).toHaveAttribute('role', 'status')
+    expect(status.querySelector('button')).not.toBeInTheDocument()
+    const skeletons = screen.getAllByTestId('crawl-page-skeleton')
+    expect(skeletons).toHaveLength(2)
+    expect(skeletons[0]?.closest('ul')).toBe(screen.getByRole('list'))
     await act(async () => vi.advanceTimersByTime(1500))
     expect(await screen.findByText('Three')).toBeInTheDocument()
+    expect(clientMock.getPages).toHaveBeenNthCalledWith(3, {
+      params: { id: 'space-1', runId: 'run-1' },
+      query: { cursor: 'page-2', limit: 200 },
+    })
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }),
     ).not.toBeInTheDocument()
@@ -279,12 +288,18 @@ describe('WebsiteCrawlPreview', () => {
 
   it('only reconciles Stop while an ambiguous cancel response remains stale', async () => {
     clientMock.getRun.mockResolvedValue(run('running', { progressCompleted: 1 }))
-    clientMock.cancel.mockRejectedValue(new Error('response lost'))
+    clientMock.cancel.mockRejectedValue(
+      Object.assign(new Error('proxy connection lost'), { status: 502 }),
+    )
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByText('Getting started')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
+    clientMock.getRun.mockRejectedValueOnce(
+      Object.assign(new Error('reconciliation unavailable'), { status: 503 }),
+    )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
 
@@ -295,7 +310,7 @@ describe('WebsiteCrawlPreview', () => {
   it('allows Stop to be retried after a definitive HTTP rejection', async () => {
     clientMock.getRun.mockResolvedValue(run('running', { progressCompleted: 1 }))
     clientMock.cancel
-      .mockRejectedValueOnce(Object.assign(new Error('unavailable'), { status: 503 }))
+      .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
       .mockResolvedValueOnce(run('canceled', { progressCompleted: 1 }))
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
@@ -364,11 +379,16 @@ describe('WebsiteCrawlPreview', () => {
   })
 
   it('only reconciles Retry while an ambiguous retry response remains stale', async () => {
-    clientMock.getRun.mockResolvedValue(
-      run('failed', { lastErrorCode: 'PROVIDER_403', progressFailed: 1 }),
-    )
+    const failedRun = run('failed', { lastErrorCode: 'PROVIDER_403', progressFailed: 1 })
+    clientMock.getRun
+      .mockResolvedValueOnce(failedRun)
+      .mockResolvedValueOnce(failedRun)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('reconciliation unavailable'), { status: 503 }),
+      )
+      .mockResolvedValue(failedRun)
     clientMock.getPages.mockResolvedValue({ items: [] })
-    clientMock.retry.mockRejectedValue(new Error('response lost'))
+    clientMock.retry.mockRejectedValue(Object.assign(new Error('proxy timeout'), { status: 504 }))
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
@@ -376,8 +396,9 @@ describe('WebsiteCrawlPreview', () => {
     await screen.findByRole('alert')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
 
-    await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(4))
     expect(clientMock.retry).toHaveBeenCalledOnce()
   })
 
@@ -387,7 +408,7 @@ describe('WebsiteCrawlPreview', () => {
     )
     clientMock.getPages.mockResolvedValue({ items: [] })
     clientMock.retry
-      .mockRejectedValueOnce(Object.assign(new Error('unavailable'), { status: 503 }))
+      .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
       .mockResolvedValueOnce(run('running', { executionAttempts: 2 }))
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
@@ -526,7 +547,9 @@ describe('WebsiteCrawlPreview', () => {
   })
 
   it('never repeats source creation while an ambiguous result remains unreconciled', async () => {
-    clientMock.createSource.mockRejectedValue(new Error('response lost'))
+    clientMock.createSource.mockRejectedValue(
+      Object.assign(new Error('proxy timeout'), { status: 504 }),
+    )
     clientMock.listSources.mockResolvedValue({ items: [] })
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
@@ -543,7 +566,7 @@ describe('WebsiteCrawlPreview', () => {
 
   it('retries source creation after a definitive HTTP rejection', async () => {
     clientMock.createSource
-      .mockRejectedValueOnce(Object.assign(new Error('unavailable'), { status: 503 }))
+      .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
       .mockResolvedValueOnce(source())
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
