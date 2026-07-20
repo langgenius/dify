@@ -101,6 +101,8 @@ describe('SourcesPage', () => {
     )
     for (const brand of ['firecrawl', 'jina', 'notion', 'google-drive', 'confluence', 'dropbox'])
       expect(container.querySelector(`[data-brand="${brand}"]`)).toBeInTheDocument()
+    expect(container.querySelector('[data-brand="firecrawl"]')?.tagName).toBe('svg')
+    expect(container.querySelector('[data-brand="jina"]')).toHaveClass('i-custom-public-llm-jina')
   })
 
   it('renders real source statuses and filters by status and search text', async () => {
@@ -214,6 +216,7 @@ describe('SourcesPage', () => {
 
     expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('shows provider and source type as separate row details', () => {

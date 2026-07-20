@@ -583,23 +583,28 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const remoteConnections = connectionsQuery.data?.pages.flatMap((page) => page.items) ?? []
   const remoteConnection = findProviderConnection(remoteConnections, provider?.id)
   const [connectionOverride, setConnectionOverride] = useState<Connection>()
+  const matchingRemoteConnection = connectionOverride
+    ? remoteConnections.find((candidate) => candidate.id === connectionOverride.id)
+    : undefined
   const connection = useMemo(() => {
     const localConnection = connectionOverride
     if (!localConnection || localConnection.providerId !== provider?.id) return remoteConnection
-    if (!remoteConnection) return localConnection
-    if (remoteConnection.id === localConnection.id) {
-      if (remoteConnection.version > localConnection.version) return remoteConnection
-      if (remoteConnection.version < localConnection.version) return localConnection
-      if (remoteConnection.updatedAt > localConnection.updatedAt) return remoteConnection
-      if (remoteConnection.updatedAt < localConnection.updatedAt) return localConnection
+    if (!matchingRemoteConnection) return localConnection
+    if (matchingRemoteConnection.id === localConnection.id) {
+      if (matchingRemoteConnection.version > localConnection.version)
+        return matchingRemoteConnection
+      if (matchingRemoteConnection.version < localConnection.version) return localConnection
+      if (matchingRemoteConnection.updatedAt > localConnection.updatedAt)
+        return matchingRemoteConnection
+      if (matchingRemoteConnection.updatedAt < localConnection.updatedAt) return localConnection
       if (
-        CONNECTION_STATUS_PRIORITY[remoteConnection.status] <
+        CONNECTION_STATUS_PRIORITY[matchingRemoteConnection.status] <
         CONNECTION_STATUS_PRIORITY[localConnection.status]
       )
-        return remoteConnection
+        return matchingRemoteConnection
     }
     return localConnection
-  }, [connectionOverride, provider?.id, remoteConnection])
+  }, [connectionOverride, matchingRemoteConnection, provider?.id, remoteConnection])
   const supportsDirectConnection = provider ? getSupportedAuthKinds(provider).length > 0 : false
   const {
     fetchNextPage: fetchNextConnectionPage,
@@ -633,14 +638,15 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
 
   const reconcileConnection = useCallback(async () => {
+    if (connection) setConnectionOverride(connection)
     const refreshed = await refetchConnections()
     const updatedConnection = findProviderConnection(
       refreshed.data?.pages.flatMap((page) => page.items) ?? [],
       provider?.id,
     )
-    setConnectionOverride(updatedConnection)
+    if (updatedConnection) setConnectionOverride(updatedConnection)
     return updatedConnection
-  }, [provider?.id, refetchConnections])
+  }, [connection, provider?.id, refetchConnections])
 
   const loadingConnections =
     connectionsQuery.isPending ||

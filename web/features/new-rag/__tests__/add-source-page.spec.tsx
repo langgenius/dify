@@ -416,7 +416,20 @@ describe('AddSourcePage', () => {
       await screen.findByText('dataset.newKnowledge.connectionProvisioning'),
     ).toBeInTheDocument()
 
-    queryState.connections.data = { pages: [{ items: [connection('active', 3)] }] }
+    queryState.connections.data = {
+      pages: [
+        {
+          items: [
+            connection('active', 3),
+            {
+              ...connection('active', 10),
+              id: 'connection-2',
+              updatedAt: '2026-07-20T11:00:00Z',
+            },
+          ],
+        },
+      ],
+    }
     view.rerender(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
@@ -455,16 +468,23 @@ describe('AddSourcePage', () => {
   it('shows a retryable error when provisioning reconciliation finds no connection', async () => {
     const user = userEvent.setup()
     queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
-    queryState.connections.refetch.mockResolvedValue({ data: { pages: [{ items: [] }] } })
+    queryState.connections.refetch.mockImplementation(async () => {
+      queryState.connections.data = { pages: [{ items: [] }] }
+      return { data: queryState.connections.data }
+    })
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', { name: 'dataset.newKnowledge.refreshConnectionStatus' }),
     )
+    view.rerender(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.connectionRefreshFailed',
     )
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.configureProvider' }),
+    ).not.toBeInTheDocument()
   })
 
   it('uses native selected and disabled source type controls', () => {

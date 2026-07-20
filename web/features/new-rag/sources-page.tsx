@@ -129,13 +129,13 @@ function SourcesEmpty({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <div aria-hidden className="flex items-center gap-3">
-        <span data-brand="firecrawl" className="i-ri-fire-fill size-5 text-orange-500" />
-        <span
-          data-brand="jina"
-          className="flex size-5 items-center justify-center rounded bg-gradient-to-br from-indigo-500 to-cyan-400 text-[11px] font-semibold text-white"
-        >
-          J
-        </span>
+        <svg data-brand="firecrawl" viewBox="0 0 28 40" className="size-5">
+          <path
+            fill="#FA5D19"
+            d="M23.36 12.83c-1.55.46-2.71 1.5-3.57 2.62-.18.25-.56.07-.49-.23 1.64-6.73-.52-12.31-7.26-15.07-.34-.14-.7.17-.6.53C14.5 12.98 1.61 11.94 3.24 25.88c.03.24-.24.41-.44.27-.6-.44-1.29-1.36-1.75-2-.14-.19-.44-.14-.5.09A14.3 14.3 0 0 0 0 28.12c0 4.9 2.52 9.21 6.33 11.71.22.14.5-.06.42-.31a7.7 7.7 0 0 1-.31-2.08c0-.44.03-.89.1-1.31.16-1.06.52-2.06 1.14-2.97 2.11-3.17 6.35-6.24 5.67-10.4-.04-.26.27-.43.46-.25 2.99 2.72 3.58 6.39 3.09 9.68-.05.28.31.44.49.21.46-.57 1.01-1.07 1.62-1.45.15-.09.35-.02.41.15.34.98.84 1.9 1.31 2.82.57 1.11.87 2.37.82 3.71a7.7 7.7 0 0 1-.31 1.88c-.08.26.2.47.42.32A14 14 0 0 0 28 28.12c0-1.71-.3-3.38-.86-4.94-1.19-3.29-4.19-5.75-3.43-10.03.04-.2-.15-.38-.35-.32Z"
+          />
+        </svg>
+        <span data-brand="jina" className="i-custom-public-llm-jina size-5" />
         <span
           data-brand="notion"
           className="i-custom-public-common-notion size-5 text-text-primary"
@@ -209,7 +209,9 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   }, [filter, search, sources])
   const filterActive = filter !== 'all' || Boolean(search.trim())
   const completingFilteredResults =
-    filterActive && (sourcesQuery.hasNextPage || sourcesQuery.isFetchingNextPage)
+    filterActive &&
+    !sourcesQuery.isFetchNextPageError &&
+    (sourcesQuery.hasNextPage || sourcesQuery.isFetchingNextPage)
   const {
     fetchNextPage: fetchNextSourcePage,
     hasNextPage: hasNextSourcePage,
