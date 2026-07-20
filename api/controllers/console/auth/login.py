@@ -227,9 +227,13 @@ class ResetPasswordSendEmailApi(Resource):
         except AccountRegisterError:
             raise AccountInFreezeError()
 
+        # Resolve account.id while the request session is still bound to avoid a
+        # DetachedInstanceError in the downstream token flow (#39287).
+        account_id = account.id if account else None
         token = AccountService.send_reset_password_email(
             email=normalized_email,
             account=account,
+            account_id=account_id,
             language=language,
             is_allow_register=FeatureService.get_system_features().is_allow_register,
         )

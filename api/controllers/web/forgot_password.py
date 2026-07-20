@@ -73,7 +73,14 @@ class ForgotPasswordSendEmailApi(Resource):
         if account is None:
             raise AuthenticationFailedError()
         else:
-            token = AccountService.send_reset_password_email(account=account, email=normalized_email, language=language)
+            # Resolve account.id while the request session is still bound to avoid
+            # a DetachedInstanceError in the downstream token flow (#39287).
+            token = AccountService.send_reset_password_email(
+                account=account,
+                account_id=account.id,
+                email=normalized_email,
+                language=language,
+            )
 
         return {"result": "success", "data": token}
 

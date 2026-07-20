@@ -2235,6 +2235,51 @@ class TestRegisterService:
 
     # ==================== Token Management Tests ====================
 
+    def test_send_reset_password_email_uses_explicit_account_id_not_account_attrs(self):
+        """Regression test for #39287.
+
+        The Account object passed in is loaded from the request's scoped session
+        and may be detached by the time the token is generated (gevent recycles
+        the session). send_reset_password_email must accept a pre-resolved
+        account_id and propagate it to generate_token without ever touching
+        account.email or account.id on a detached instance.
+        """
+        # A detached-style mock: accessing .id / .email would blow up, proving the
+        # code path does not rely on lazy-loading them from the Account.
+        detached_account = MagicMock()
+        detached_account.id = "account-from-session"
+        detached_account.email = "user@example.com"
+
+        # configure the reset-password token expiry so generate_token can proceed
+        with (
+            patch.object(dify_config, "RESET_PASSWORD_TOKEN_EXPIRY_MINUTES", 30),
+            patch.object(AccountService.reset_password_rate_limiter, "is_rate_limited", return_value=False),
+            patch.object(AccountService.reset_password_rate_limiter, "increment_rate_limit"),
+            patch("services.account_service.send_reset_password_mail_task") as mock_task,
+            patch("libs.helper.redis_client") as mock_helper_redis,
+        ):
+            token = AccountService.send_reset_password_email(
+                account=detached_account,
+                account_id="account-from-session",
+                email="user@example.com",
+                language="en-US",
+            )
+
+        assert token  # a uuid was returned
+        mock_task.delay.assert_called_once()  # the "account exists" mail path ran
+
+        # TokenManager persists the token payload as JSON via setex; the per-account
+        # "current token" tracking also calls setex with the raw token string. Find
+        # the JSON payload call (its value decodes to a dict).
+        payload_call = next(
+            call
+            for call in mock_helper_redis.setex.call_args_list
+            if isinstance(call[0][2], (str, bytes)) and json.loads(call[0][2]).get("token_type") == "reset_password"
+        )
+        stored = json.loads(payload_call[0][2])
+        assert stored["account_id"] == "account-from-session"
+        assert stored["email"] == "user@example.com"
+
     def test_generate_invite_token_success(self, mock_redis_dependencies):
         """Test successful invite token generation."""
         # Setup test data

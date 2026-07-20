@@ -66,12 +66,53 @@ class TestForgotPasswordSendEmailApi:
         assert response == {"result": "success", "data": "token-123"}
         mock_send_email.assert_called_once_with(
             account=mock_account,
+            account_id=mock_account.id,
             email="user@example.com",
             language="zh-Hans",
             is_allow_register=True,
         )
         mock_is_ip_limit.assert_called_once_with("127.0.0.1")
         mock_extract_ip.assert_called_once()
+
+    @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email")
+    @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
+    @patch("controllers.console.auth.forgot_password.extract_remote_ip", return_value="127.0.0.1")
+    def test_send_passes_explicit_account_id(
+        self,
+        mock_extract_ip,
+        mock_is_ip_limit,
+        mock_send_email,
+        mock_get_account,
+        app: Flask,
+    ):
+        # Regression for #39287: the controller must resolve account.id while the
+        # request session is still bound and hand it to send_reset_password_email,
+        # so the token flow never lazy-loads from a detached Account instance.
+        mock_account = MagicMock()
+        mock_account.id = "account-abc"
+        mock_get_account.return_value = mock_account
+        mock_send_email.return_value = "token-456"
+
+        wraps_features = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
+        controller_features = SystemFeatureModel(is_allow_register=True)
+        with (
+            patch(
+                "controllers.console.auth.forgot_password.FeatureService.get_system_features",
+                return_value=controller_features,
+            ),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+        ):
+            with app.test_request_context(
+                "/forgot-password",
+                method="POST",
+                json={"email": "user@example.com", "language": "en-US"},
+            ):
+                ForgotPasswordSendEmailApi().post()
+
+        _, kwargs = mock_send_email.call_args
+        assert kwargs["account_id"] == "account-abc"
 
 
 class TestForgotPasswordCheckApi:
