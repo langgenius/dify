@@ -3,18 +3,17 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useAppACLCapabilities } from '@/hooks/use-app-acl-capabilities'
 import { isAccessMode } from '@/models/access-control'
+import { getAppACLCapabilities } from '@/utils/permission'
 
-export function WebAppAccessControlButton({
-  agent,
-}: {
-  agent?: AgentAppDetailWithSite
-}) {
+export function WebAppAccessControlButton({ agent }: { agent?: AgentAppDetailWithSite }) {
   const { t } = useTranslation('agentV2')
   const [showAccessControl, setShowAccessControl] = useState(false)
   const appId = agent?.backing_app_id
@@ -24,13 +23,18 @@ export function WebAppAccessControlButton({
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.webapp_auth.enabled,
   })
-  const { canReleaseAndVersion: canManageWebAppAccessControl } = useAppACLCapabilities(
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const { canReleaseAndVersion: canManageWebAppAccessControl } = getAppACLCapabilities(
     agent?.permission_keys,
-    agent?.maintainer,
+    {
+      currentUserId,
+      resourceMaintainer: agent?.maintainer,
+      workspacePermissionKeys,
+    },
   )
 
-  if (!webAppAuthEnabled || !canManageWebAppAccessControl || !appId || !accessMode)
-    return null
+  if (!webAppAuthEnabled || !canManageWebAppAccessControl || !appId || !accessMode) return null
 
   return (
     <>
