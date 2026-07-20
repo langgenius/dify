@@ -91,7 +91,7 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
           <SelectItem
             key={item.value}
             value={item.value}
-            className="h-8 py-0 pr-2 pl-7 system-md-regular"
+            className="relative h-8 py-0 pr-2 pl-7 system-md-regular"
           >
             <SelectItemText className="px-0">{item.name}</SelectItemText>
             <SelectItemIndicator className="absolute top-[8px] left-2 ml-0" />

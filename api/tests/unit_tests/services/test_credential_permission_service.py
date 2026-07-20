@@ -10,9 +10,15 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from models.credential_permission import CredentialType
+from models.credential_permission import CredentialPermission, CredentialType
 from services.credential_permission_service import CredentialPermissionService
+
+pytestmark = [
+    pytest.mark.usefixtures("sqlite_session"),
+    pytest.mark.parametrize("sqlite_session", [(CredentialPermission,)], indirect=True),
+]
 
 
 @pytest.fixture
@@ -36,23 +42,50 @@ def credential_id():
 
 
 class TestGetPartialMemberList:
-    def test_returns_empty_when_no_permissions(self, credential_id):
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = []
-        result = CredentialPermissionService.get_partial_member_list(
-            credential_id, CredentialType.TRIGGER_SUBSCRIPTION, session=session
+    def test_returns_empty_when_no_permissions(
+        self, sqlite_session: Session, credential_id: str, tenant_id: str, user_id: str
+    ) -> None:
+        unrelated_permission = CredentialPermission(
+            credential_id=str(uuid4()),
+            credential_type=CredentialType.TRIGGER_SUBSCRIPTION,
+            account_id=user_id,
+            tenant_id=tenant_id,
         )
-        assert result == []
-        session.scalars.assert_called_once()
+        sqlite_session.add(unrelated_permission)
+        sqlite_session.commit()
 
-    def test_returns_account_ids(self, credential_id, user_id, other_user_id):
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = [user_id, other_user_id]
         result = CredentialPermissionService.get_partial_member_list(
-            credential_id, CredentialType.TRIGGER_SUBSCRIPTION, session=session
+            credential_id, CredentialType.TRIGGER_SUBSCRIPTION, session=sqlite_session
         )
+
+        assert result == []
+
+    def test_returns_account_ids(
+        self,
+        sqlite_session: Session,
+        credential_id: str,
+        user_id: str,
+        other_user_id: str,
+        tenant_id: str,
+    ) -> None:
+        sqlite_session.add_all(
+            [
+                CredentialPermission(
+                    credential_id=credential_id,
+                    credential_type=CredentialType.TRIGGER_SUBSCRIPTION,
+                    account_id=account_id,
+                    tenant_id=tenant_id,
+                )
+                for account_id in (user_id, other_user_id)
+            ]
+        )
+        sqlite_session.commit()
+
+        result = CredentialPermissionService.get_partial_member_list(
+            credential_id, CredentialType.TRIGGER_SUBSCRIPTION, session=sqlite_session
+        )
+
         assert set(result) == {user_id, other_user_id}
-        session.scalars.assert_called_once()
 
 
 class TestApplyVisibilityFilter:

@@ -8,6 +8,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import LicenseNav from '@/app/components/header/license-env'
@@ -21,7 +22,7 @@ import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { formatCredits, getRemainingCredits } from '../utils'
-import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
+import { WorkspaceMenuItemContent } from './workspace-menu-content'
 import WorkspacePlanBadge from './workspace-plan-badge'
 import { WorkspaceSwitcher } from './workspace-switcher'
 
@@ -106,17 +107,17 @@ function WorkspaceCardTrigger({
   const showStatus = status !== undefined && status !== null
 
   return (
-    <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs transition-colors hover:bg-components-card-bg-alt">
+    <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs">
       <PopoverTrigger
         aria-label={t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })}
         title={name}
         className={cn(
-          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
+          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
           showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
           open && 'bg-linear-to-b from-background-section-burn to-background-section',
         )}
       >
-        <WorkspaceIcon name={name} className="h-6 w-6 rounded-lg" />
+        <WorkspaceAvatar name={name} size="sm" />
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1 pr-0.5">
             <span
@@ -189,7 +190,7 @@ function WorkspaceMenuHeader({
             </PopoverTitle>
             {status}
           </div>
-          <WorkspaceIcon name={name} className="h-9 w-9 shrink-0" />
+          <WorkspaceAvatar name={name} size="lg" />
         </div>
         <button
           type="button"

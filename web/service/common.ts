@@ -9,7 +9,6 @@ import type {
   CommonResponse,
   ICurrentWorkspace,
   InitValidateStatusResponse,
-  InvitationResponse,
   SetupStatusResponse,
 } from '@/models/common'
 import { del, get, patch, post } from './base'
@@ -69,15 +68,6 @@ export const updateUserProfile = ({
   return post<CommonResponse>(url, { body })
 }
 
-export const inviteMember = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<InvitationResponse> => {
-  return post<InvitationResponse>(url, { body })
-}
 export const deleteMemberOrCancelInvitation = ({
   url,
 }: {

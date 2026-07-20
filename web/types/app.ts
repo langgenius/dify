@@ -51,13 +51,20 @@ export const RETRIEVE_METHOD = {
 /**
  * App modes
  */
-export type AppModeEnum = 'completion' | 'workflow' | 'chat' | 'advanced-chat' | 'agent-chat'
+export type AppModeEnum =
+  | 'completion'
+  | 'workflow'
+  | 'chat'
+  | 'advanced-chat'
+  | 'agent-chat'
+  | 'agent'
 export const AppModeEnum = {
   COMPLETION: 'completion' as AppModeEnum,
   WORKFLOW: 'workflow' as AppModeEnum,
   CHAT: 'chat' as AppModeEnum,
   ADVANCED_CHAT: 'advanced-chat' as AppModeEnum,
   AGENT_CHAT: 'agent-chat' as AppModeEnum,
+  AGENT: 'agent' as AppModeEnum,
 } as const
 export const AppModes = [
   AppModeEnum.COMPLETION,

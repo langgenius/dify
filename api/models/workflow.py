@@ -285,12 +285,18 @@ class Workflow(Base):  # bug
         return workflow
 
     @property
-    def created_by_account(self):
-        return db.session.get(Account, self.created_by)
+    def created_by_account(self) -> Account | None:
+        return self.get_created_by_account(session=db.session())
+
+    def get_created_by_account(self, *, session: orm.Session) -> Account | None:
+        return session.get(Account, self.created_by)
 
     @property
-    def updated_by_account(self):
-        return db.session.get(Account, self.updated_by) if self.updated_by else None
+    def updated_by_account(self) -> Account | None:
+        return self.get_updated_by_account(session=db.session())
+
+    def get_updated_by_account(self, *, session: orm.Session) -> Account | None:
+        return session.get(Account, self.updated_by) if self.updated_by else None
 
     @property
     def kind_or_standard(self) -> str:
@@ -552,6 +558,9 @@ class Workflow(Base):  # bug
         "not if this specific workflow version is the one being used by the tool."
     )
     def tool_published(self) -> bool:
+        return self.get_tool_published(session=db.session())
+
+    def get_tool_published(self, *, session: orm.Session) -> bool:
         """
         DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
         It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
@@ -567,7 +576,7 @@ class Workflow(Base):  # bug
                 WorkflowToolProvider.app_id == self.app_id,
             )
         )
-        return db.session.execute(stmt).scalar_one()
+        return session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(
@@ -1444,6 +1453,40 @@ class WorkflowArchiveLog(TypeBase):
             "elapsed_time": self.run_elapsed_time,
             "total_tokens": self.run_total_tokens,
         }
+
+
+class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
+    """
+    Query index for one immutable V2 workflow-run archive bundle.
+
+    R2 manifest objects remain the recoverable archive source of truth. This table stores the small subset needed to
+    list tenant/month archives and locate bundles without listing object storage online. Missing rows can be rebuilt
+    from existing manifests by a backfill/reconciliation command.
+    """
+
+    __tablename__ = "workflow_run_archive_bundles"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_run_archive_bundle_pkey"),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "year",
+            "month",
+            "shard",
+            "bundle_id",
+            name="workflow_run_archive_bundle_identity_uq",
+        ),
+        sa.Index("workflow_run_archive_bundle_tenant_month_idx", "tenant_id", "year", "month"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    year: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    month: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    shard: Mapped[str] = mapped_column(String(32), nullable=False)
+    bundle_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    workflow_run_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    row_count: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archive_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class ConversationVariable(TypeBase):

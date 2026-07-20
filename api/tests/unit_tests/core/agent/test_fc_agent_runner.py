@@ -300,6 +300,8 @@ class TestRunMethod:
 
         outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) == 1
+        assert "session" not in runner.create_agent_thought.call_args.kwargs
+        assert "session" not in runner.save_agent_thought.call_args.kwargs
         assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
         runner.queue_manager.publish.assert_called()
 
@@ -309,16 +311,22 @@ class TestRunMethod:
     def test_run_streaming_branch(self, runner: FunctionCallAgentRunner):
         message = MagicMock(id="m1")
         runner.stream_tool_call = True
+        events: list[str] = []
+        session = MagicMock()
+        session.commit.side_effect = lambda: events.append("commit")
+        session.close.side_effect = lambda: events.append("close")
 
         content = [TextPromptMessageContent(data="hi")]
         chunk = DummyChunk(message=DummyMessage(content=content), usage=build_usage())
 
         def generator():
+            events.append("first-chunk")
             yield chunk
 
         runner.model_instance.invoke_llm.return_value = generator()
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(session, message, "query"))
+        assert events == ["commit", "close", "first-chunk"]
         assert len(outputs) == 1
 
     def test_run_streaming_tool_calls_list_content(self, runner: FunctionCallAgentRunner):

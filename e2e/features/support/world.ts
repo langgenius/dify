@@ -1,8 +1,9 @@
 import type { IWorldOptions } from '@cucumber/cucumber'
-import type { Browser, BrowserContext, ConsoleMessage, Download, Page } from '@playwright/test'
+import type { Browser, BrowserContext, Download, Page } from '@playwright/test'
 import type { AuthSessionMetadata } from '../../fixtures/auth'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
+import { runCleanupTasks } from '../../support/cleanup'
 import { baseURL, defaultLocale } from '../../test-env'
 
 export type ScenarioCleanup = () => Promise<void> | void
@@ -29,7 +30,7 @@ export type AgentBuilderChatModel = {
 }
 export type AgentBuilderPreseededResource = {
   id: string
-  kind: 'agent' | 'api-key' | 'dataset' | 'skill' | 'tool' | 'workflow'
+  kind: 'agent' | 'dataset' | 'skill' | 'tool' | 'workflow'
   name: string
 }
 export type AgentV2WorkflowOutputVariable = {
@@ -43,9 +44,8 @@ export type AgentBuilderSpeechToTextRequest = {
 }
 
 export const createAgentBuilderWorldState = () => ({
-  preflight: {
+  fixtures: {
     agentDecisionModel: undefined as AgentBuilderChatModel | undefined,
-    brokenModel: undefined as AgentBuilderChatModel | undefined,
     preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
     speechToTextModel: undefined as AgentBuilderChatModel | undefined,
     stableModel: undefined as AgentBuilderChatModel | undefined,
@@ -82,6 +82,7 @@ export class DifyWorld extends World {
   scenarioStartedAt: number | undefined
   session: AuthSessionMetadata | undefined
   lastCreatedAppName: string | undefined
+  lastSelectedAppType: string | undefined
   lastCreatedAgentName: string | undefined
   lastCreatedAgentRole: string | undefined
   createdAppIds: string[] = []
@@ -105,6 +106,7 @@ export class DifyWorld extends World {
     this.consoleErrors = []
     this.pageErrors = []
     this.lastCreatedAppName = undefined
+    this.lastSelectedAppType = undefined
     this.lastCreatedAgentName = undefined
     this.lastCreatedAgentRole = undefined
     this.createdAppIds = []
@@ -128,18 +130,16 @@ export class DifyWorld extends World {
       ...(authenticated ? { storageState: authStatePath } : {}),
     })
     this.context.setDefaultTimeout(30_000)
-    this.page = await this.context.newPage()
-    this.page.setDefaultTimeout(30_000)
-
-    this.page.on('console', (message: ConsoleMessage) => {
+    this.context.on('console', (message) => {
       if (message.type() === 'error') this.consoleErrors.push(message.text())
     })
-    this.page.on('pageerror', (error) => {
-      this.pageErrors.push(error.message)
+    this.context.on('weberror', (webError) => {
+      this.pageErrors.push(webError.error().message)
     })
-    this.page.on('download', (dl) => {
+    this.context.on('download', (dl) => {
       this.capturedDownloads.push(dl)
     })
+    this.page = await this.context.newPage()
   }
 
   async startAuthenticatedSession(browser: Browser) {
@@ -165,27 +165,25 @@ export class DifyWorld extends World {
     this.scenarioCleanups.push(cleanup)
   }
 
-  async runRegisteredCleanups() {
-    const errors: string[] = []
-
-    for (const cleanup of this.scenarioCleanups.toReversed()) {
-      try {
-        await cleanup()
-      } catch (error) {
-        errors.push(error instanceof Error ? error.message : String(error))
-      }
-    }
-
-    if (errors.length > 0) this.attach(`Cleanup errors:\n${errors.join('\n')}`, 'text/plain')
+  runRegisteredCleanups() {
+    return runCleanupTasks(
+      this.scenarioCleanups.toReversed().map((run, index) => ({
+        label: `Registered cleanup ${index + 1}`,
+        run,
+      })),
+    )
   }
 
   async closeSession() {
-    await this.context?.close()
-    this.context = undefined
-    this.page = undefined
-    this.session = undefined
-    this.scenarioStartedAt = undefined
-    this.resetScenarioState()
+    try {
+      await this.context?.close()
+    } finally {
+      this.context = undefined
+      this.page = undefined
+      this.session = undefined
+      this.scenarioStartedAt = undefined
+      this.resetScenarioState()
+    }
   }
 }
 

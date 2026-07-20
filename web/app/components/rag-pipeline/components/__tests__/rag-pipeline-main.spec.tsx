@@ -1,13 +1,21 @@
 import type { PropsWithChildren } from 'react'
 import type { Edge, Node, Viewport } from 'reactflow'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 import RagPipelineMain from '../rag-pipeline-main'
 
 const mockPermissionState = vi.hoisted(() => ({
   permissionKeys: ['dataset.acl.edit'] as string[],
 }))
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('../../hooks', () => ({
   useAvailableNodesMetaData: () => ({ nodes: [], nodesMap: {} }),
@@ -114,10 +122,9 @@ vi.mock('@/app/components/workflow', () => ({
     hooksStore,
   }: PropsWithChildren<{
     onWorkflowDataUpdate?: (payload: unknown) => void
-    hooksStore?: { accessControl?: { canComment?: boolean; canEdit?: boolean } }
+    hooksStore?: { accessControl?: { canEdit?: boolean } }
   }>) => (
     <div data-testid="workflow-inner-context">
-      <div data-testid="can-comment">{String(hooksStore?.accessControl?.canComment)}</div>
       <div data-testid="can-edit">{String(hooksStore?.accessControl?.canEdit)}</div>
       {children}
       <button
@@ -154,6 +161,14 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 describe('RagPipelineMain', () => {
   const defaultProps = {
     nodes: [] as Node[],
@@ -167,12 +182,6 @@ describe('RagPipelineMain', () => {
   })
 
   describe('rendering', () => {
-    it('should render without crashing', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
     it('should render RagPipelineChildren', () => {
       render(<RagPipelineMain {...defaultProps} />)
 
@@ -235,15 +244,6 @@ describe('RagPipelineMain', () => {
   })
 
   describe('hooks integration', () => {
-    it('should pass readonly ACL permission as comment-only workflow access', () => {
-      mockPermissionState.permissionKeys = [DatasetACLPermission.Readonly]
-
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('can-comment')).toHaveTextContent('true')
-      expect(screen.getByTestId('can-edit')).toHaveTextContent('false')
-    })
-
     it('should use useNodesSyncDraft hook', () => {
       render(<RagPipelineMain {...defaultProps} />)
 

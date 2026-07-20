@@ -1,4 +1,3 @@
-import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { FormEvent } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type {
@@ -45,6 +44,7 @@ import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import AccessControl from '../app-access-control'
+import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import {
   PublisherAccessSection,
   PublisherActionsSection,
@@ -80,9 +80,6 @@ export type AppPublisherProps = {
   startNodeLimitExceeded?: boolean
   hasHumanInputNode?: boolean
 }
-
-const PUBLISH_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
-const PUBLISH_SHORTCUT = PUBLISH_HOTKEY.split('+')
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
@@ -307,7 +304,7 @@ export function AppPublisher({
     }
   }
 
-  useHotkey(PUBLISH_HOTKEY, (e) => {
+  useHotkey(APP_PUBLISH_HOTKEY, (e) => {
     e.preventDefault()
     if (publishDisabled || published) return
     handlePublish()
@@ -410,7 +407,6 @@ export function AppPublisher({
               publishDisabled={publishDisabled}
               published={published}
               publishedAt={publishedAt}
-              publishShortcut={PUBLISH_SHORTCUT}
               startNodeLimitExceeded={startNodeLimitExceeded}
               upgradeHighlightStyle={upgradeHighlightStyle}
             />

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppACLPermission } from '@/utils/permission'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
@@ -76,6 +76,13 @@ type MockWorkflowWithInnerContextProps = Pick<
   hooksStore?: Record<string, unknown>
   children?: ReactNode
 }
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeaturesStore: () => ({
@@ -343,6 +350,14 @@ vi.mock('../workflow-children', () => ({
   default: () => <div data-testid="workflow-children">workflow-children</div>,
 }))
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 describe('WorkflowMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -442,24 +457,6 @@ describe('WorkflowMain', () => {
       handleExportDSL: hookFns.handleExportDSL,
       fetchInspectVars: hookFns.fetchInspectVars,
       configsMap: { flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } },
-    })
-  })
-
-  it('should pass view-layout ACL permission as comment-only workflow access', () => {
-    useAppStore.setState({
-      appDetail: {
-        permission_keys: [AppACLPermission.ViewLayout],
-      } as never,
-    })
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    expect(capturedContextProps?.hooksStore).toMatchObject({
-      accessControl: {
-        canEdit: false,
-        canComment: true,
-        canRun: false,
-      },
     })
   })
 

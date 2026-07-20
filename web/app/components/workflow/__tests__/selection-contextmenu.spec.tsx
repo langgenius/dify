@@ -23,41 +23,11 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['snippets.create_and_modify'] as string[],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/app/components/snippets/hooks/use-create-snippet', async () => {
@@ -80,7 +50,7 @@ vi.mock('@/app/components/snippets/hooks/use-create-snippet', async () => {
 })
 
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  default: (props: {
+  CreateSnippetDialog: (props: {
     isOpen: boolean
     selectedGraph?: {
       nodes: Node[]
@@ -200,7 +170,7 @@ describe('SelectionContextmenu', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByTestId('selection-contextmenu-item-left')).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /operator.alignLeft/ })).toBeInTheDocument()
     })
   })
 
@@ -409,7 +379,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(20)
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(20)
@@ -442,7 +412,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-distributeHorizontal'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.distributeHorizontal/ }))
 
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(150)
   })
@@ -481,7 +451,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(40)
     expect(latestNodes.find((node) => node.id === 'other')?.position.x).toBe(40)
@@ -500,7 +470,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
   })
@@ -518,7 +488,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(0)
@@ -549,7 +519,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(0)

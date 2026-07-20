@@ -366,6 +366,10 @@ function AgentConfigurePageComposerContent({
             setShowPreviewVersions(true)
           }}
           onExitVersions={() => selectVersion(null)}
+          onVersionRestored={async () => {
+            await composerQuery.refetch()
+            onComposerRebase()
+          }}
         />
       }
       rightPanel={

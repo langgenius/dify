@@ -90,9 +90,18 @@ export const zEndpointUpdatePayload = z.object({
  * MemberInvitePayload
  */
 export const zMemberInvitePayload = z.object({
-  emails: z.array(z.string()).optional(),
+  emails: z.array(z.string()).min(1),
   language: z.string().nullish(),
   role: z.string(),
+})
+
+/**
+ * MemberInviteErrorResponse
+ */
+export const zMemberInviteErrorResponse = z.object({
+  code: z.enum(['invalid_param', 'invalid_role', 'limit_exceeded']),
+  message: z.string(),
+  status: z.literal(400),
 })
 
 /**
@@ -624,6 +633,7 @@ export const zTenantInfoResponse = z.object({
   role: z.string().nullish(),
   status: z.string().nullish(),
   trial_credits: z.int().nullish(),
+  trial_credits_exhausted_at: z.int().nullish(),
   trial_credits_used: z.int().nullish(),
   trial_end_reason: z.string().nullish(),
 })
@@ -780,6 +790,18 @@ export const zSnippetPaginationResponse = z.object({
 export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
 
 /**
+ * DslImportWarning
+ *
+ * Portable DSL reference that could not be restored in the target workspace.
+ */
+export const zDslImportWarning = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  path: z.string(),
+})
+
+/**
  * SnippetImportResponse
  */
 export const zSnippetImportResponse = z.object({
@@ -789,6 +811,7 @@ export const zSnippetImportResponse = z.object({
   imported_dsl_version: z.string(),
   snippet_id: z.string().nullable(),
   status: zImportStatus,
+  warnings: z.array(zDslImportWarning),
 })
 
 /**
@@ -816,21 +839,56 @@ export const zAccountWithRoleListResponse = z.object({
 })
 
 /**
- * MemberInviteResultResponse
+ * MemberInviteSuccessResponse
  */
-export const zMemberInviteResultResponse = z.object({
+export const zMemberInviteSuccessResponse = z.object({
   email: z.string(),
-  message: z.string().nullish(),
-  status: z.string(),
-  url: z.string().nullish(),
+  status: z.literal('success'),
+  url: z.string(),
+})
+
+/**
+ * MemberInviteAlreadyMemberResponse
+ */
+export const zMemberInviteAlreadyMemberResponse = z.object({
+  email: z.string(),
+  message: z.string(),
+  status: z.literal('already_member'),
+})
+
+/**
+ * MemberInviteFailedResponse
+ */
+export const zMemberInviteFailedResponse = z.object({
+  email: z.string(),
+  message: z.string(),
+  status: z.literal('failed'),
 })
 
 /**
  * MemberInviteResponse
  */
 export const zMemberInviteResponse = z.object({
-  invitation_results: z.array(zMemberInviteResultResponse),
-  result: z.string(),
+  invitation_results: z.array(
+    z.union([
+      z
+        .object({
+          status: z.literal('success'),
+        })
+        .and(zMemberInviteSuccessResponse),
+      z
+        .object({
+          status: z.literal('already_member'),
+        })
+        .and(zMemberInviteAlreadyMemberResponse),
+      z
+        .object({
+          status: z.literal('failed'),
+        })
+        .and(zMemberInviteFailedResponse),
+    ]),
+  ),
+  result: z.literal('success'),
   tenant_id: z.string(),
 })
 

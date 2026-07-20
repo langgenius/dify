@@ -11,6 +11,8 @@ import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -25,6 +27,8 @@ function NormalForm() {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryString = searchParams.toString()
+  const signupHref = queryString ? `/signup?${queryString}` : '/signup'
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
   // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
   // prevents the redirect loop on 401.
@@ -89,8 +93,7 @@ function NormalForm() {
       return
     }
 
-    const redirectUrl = resolvePostLoginRedirect(searchParams)
-    router.replace(redirectUrl || '/')
+    replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
   }, [isInviteLink, isLoggedIn, router, searchParams])
 
   useEffect(() => {
@@ -269,7 +272,7 @@ function NormalForm() {
           {systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t(($) => $['signup.noAccount'], { ns: 'login' })}</span>
-              <Link className="text-text-accent" href="/signup">
+              <Link className="text-text-accent" href={signupHref}>
                 {t(($) => $['signup.signUp'], { ns: 'login' })}
               </Link>
             </div>

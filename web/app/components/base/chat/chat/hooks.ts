@@ -1242,6 +1242,7 @@ export const useChat = (
           })
         },
         onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
+          handleResponding(true)
           // If there are no streaming messages, we still need to set the conversation_id to avoid create a new conversation when regeneration in chat-flow.
           if (conversation_id) {
             conversationIdRef.current = conversation_id

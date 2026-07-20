@@ -1,14 +1,14 @@
 """
 Workflow generator runner.
 
-Slim planner→builder pipeline. Pure domain logic; the model instance is
+Slim planner→parallel-node-builder pipeline. Pure domain logic; the model instance is
 injected by ``WorkflowGeneratorService`` so this module stays cleanly
 separated from the infrastructure layer.
 
 Pipeline:
 
     1. PLANNER  — short LLM call producing a high-level node list.
-    2. BUILDER  — structured-output LLM call producing the full graph JSON.
+    2. BUILDERS — bounded concurrent LLM calls producing compact node configs.
     3. POSTPROC — fill safe defaults, lay nodes out left-to-right, dedupe
                   edge ids, and run a final structural sanity check.
 
@@ -20,7 +20,8 @@ Intentionally NOT here (deferred to a future iteration):
     - Tool / model catalogue filtering
 
 If quality regresses below product threshold we add those back; for now the
-single planner+builder pair shipped behind cmd+k `/create` is enough.
+planner and bounded parallel node builders shipped behind cmd+k `/create` are
+enough.
 """
 
 import json
@@ -28,17 +29,22 @@ import logging
 import re
 import time
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from copy import deepcopy
 from typing import Any, ClassVar, cast
 
 import json_repair
 
-from core.workflow.generator.prompts.builder_prompts import (
-    BUILDER_USER_PROMPT,
-    format_builder_existing_graph_section,
-    format_builder_tool_catalogue_section,
-    format_plan_block,
+from configs import dify_config
+from core.workflow.generator.prompts.node_builder_prompts import (
+    NODE_BUILDER_USER_PROMPT,
+    format_mode_section,
+    format_parallel_plan,
     format_start_inputs_section,
-    get_builder_system_prompt,
+    get_node_builder_system_prompt,
+)
+from core.workflow.generator.prompts.node_builder_prompts import (
+    format_tool_catalogue_section as format_node_tool_catalogue_section,
 )
 from core.workflow.generator.prompts.planner_prompts import (
     PLANNER_SYSTEM_PROMPT,
@@ -55,6 +61,7 @@ from core.workflow.generator.types import (
     WorkflowGenerateErrorDict,
     WorkflowGenerateResultDict,
     WorkflowGenerationMode,
+    WorkflowGenerationModeRequest,
 )
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.entities.llm_entities import LLMResult
@@ -96,9 +103,29 @@ _DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
 
 # Token ceiling for the planner call when the caller didn't pin one. The plan
 # is a short JSON node list (a handful of nodes with labels/purposes), so this
-# is generous headroom while still bounding a runaway response. The builder is
-# left on the caller's budget — it emits the full graph and genuinely needs it.
+# is generous headroom while still bounding a runaway response. Builder calls
+# keep the caller's budget so complex node configs are not truncated.
 _PLANNER_DEFAULT_MAX_TOKENS = 4096
+
+
+# Per-node calls trade a larger request count for a shorter critical path.
+# The cap comes from ``WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS`` (default 6,
+# enough to run the planner's recommended 3–6-node plans as a single wave);
+# provider rate-limit bursts are absorbed by ``_invoke_with_retry``'s bounded
+# backoff, and operators can dial the env var back down if their provider is
+# stricter. Read at call time so tests (and live config reloads) can adjust it
+# without re-importing.
+def _node_builder_max_workers() -> int:
+    return dify_config.WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS
+
+
+_MODEL_NODE_TYPES = frozenset(
+    {
+        BuiltinNodeTypes.LLM,
+        BuiltinNodeTypes.QUESTION_CLASSIFIER,
+        BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+    }
+)
 
 
 # Appended as a trailing user message on the SECOND (and only) attempt when
@@ -108,6 +135,12 @@ _PLANNER_DEFAULT_MAX_TOKENS = 4096
 _JSON_RETRY_HINT = (
     "Your previous response was not valid JSON. Return ONLY a single JSON object. "
     "Do not include any prose, markdown code fences, comments, or trailing commas."
+)
+
+_PLANNER_SCHEMA_RETRY_HINT = (
+    "Your plan did not match the required topology schema. Return the complete plan again with "
+    "a unique non-empty id on every node and a non-empty edges array whose source and target "
+    "reference those ids. Return ONLY the JSON object."
 )
 
 
@@ -189,12 +222,56 @@ def _result_with_errors(
 def _with_mode(result: WorkflowGenerateResultDict, mode: WorkflowGenerationMode) -> WorkflowGenerateResultDict:
     """Stamp the resolved concrete ``mode`` onto a result envelope.
 
-    ``mode="auto"`` requests are resolved to a concrete mode before planning;
-    echoing it back lets the frontend pick the right app type to create. It's
-    present for explicit modes too so the response shape stays uniform.
+    ``mode="auto"`` requests are resolved to a concrete mode from the planner
+    output; echoing it back lets the frontend pick the right app type to
+    create. It's present for explicit modes too so the response shape stays
+    uniform.
     """
     result["mode"] = mode
     return result
+
+
+def _fallback_mode(mode: WorkflowGenerationModeRequest) -> WorkflowGenerationMode:
+    """Concrete mode for envelopes emitted before the planner resolved one.
+
+    ``auto`` maps to the conversational default — the same never-fail fallback
+    the old standalone classifier used — so ``result.mode`` never leaks the
+    ``auto`` sentinel to the frontend.
+    """
+    return "advanced-chat" if mode == "auto" else mode
+
+
+def _planner_prompt_mode(mode: WorkflowGenerationModeRequest) -> str:
+    """Mode string interpolated into the planner user prompt.
+
+    For ``auto`` the value is self-describing so the planner knows the choice
+    is delegated to it (system-prompt rule 15).
+    """
+    return "auto (choose workflow or advanced-chat)" if mode == "auto" else mode
+
+
+def _resolve_generation_mode(
+    requested: WorkflowGenerationModeRequest, plan: PlannerResultDict
+) -> WorkflowGenerationMode:
+    """Resolve the request mode into the concrete generation mode.
+
+    An explicit request always wins — a contradictory planner ``mode`` field is
+    ignored. For ``auto``: trust the planner's echoed ``mode``, else infer from
+    the plan's terminal node type (the structural source of truth the graph is
+    validated against), else fall back to the conversational default. Lenient
+    on purpose — a bad ``mode`` value must never fail the plan.
+    """
+    if requested != "auto":
+        return requested
+    planner_mode = str(plan.get("mode") or "").strip().lower()
+    if planner_mode in ("workflow", "advanced-chat"):
+        return cast(WorkflowGenerationMode, planner_mode)
+    node_types = {str(node.get("node_type") or "") for node in plan.get("nodes") or [] if isinstance(node, dict)}
+    if BuiltinNodeTypes.ANSWER in node_types:
+        return "advanced-chat"
+    if BuiltinNodeTypes.END in node_types:
+        return "workflow"
+    return "advanced-chat"
 
 
 def _build_plan_event(
@@ -255,7 +332,7 @@ class WorkflowGenerator:
         provider: str,
         model_name: str,
         model_mode: str,
-        mode: WorkflowGenerationMode,
+        mode: WorkflowGenerationModeRequest,
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
@@ -263,20 +340,26 @@ class WorkflowGenerator:
         current_graph: dict[str, Any] | None = None,
     ) -> WorkflowGenerateResultDict:
         """
-        Run planner → builder → postprocess and return a graph payload.
+        Run planner → node builders → postprocess and return a graph payload.
+
+        ``mode`` accepts the ``"auto"`` sentinel — the planner then chooses the
+        concrete mode itself (echoed in its ``mode`` output field) so no extra
+        classification call is needed; the resolution is stamped onto the
+        result envelope.
 
         ``current_graph`` switches the pipeline from create mode to REFINE
-        mode: the existing draft graph is injected into both the planner
-        (compact node/edge summary) and the builder (full JSON) so the LLM
-        amends the graph the user is editing instead of inventing a new one.
-        ``None`` (the default) is plain create-from-scratch behaviour.
+        mode: the existing draft graph is summarized for the planner. Node
+        builders receive only the config of the node they update, while configs
+        marked ``keep`` are reused without an LLM call. ``None`` (the default)
+        is plain create-from-scratch behaviour.
 
         ``tool_catalogue_text`` is the formatted list of installed tools for
         the calling tenant (see ``tool_catalogue.build_tool_catalogue`` /
         ``format_tool_catalogue``). It's injected into both the planner and
         builder prompts so the LLM can pick concrete ``provider/tool``
-        identifiers instead of inventing names; an empty string skips the
-        section entirely (useful for unit tests).
+        identifiers instead of inventing names; node builders receive it
+        only for tool nodes. An empty string skips the section entirely (useful
+        for unit tests).
 
         ``installed_tools`` is the structural sibling — a set of
         ``(provider_name, tool_name)`` pairs the validator consults to reject
@@ -316,7 +399,7 @@ class WorkflowGenerator:
         # The event generator always emits exactly one result envelope; this
         # fallback only guards against a future refactor that forgets to.
         if result is None:
-            result = _with_mode(_empty_result(), mode)
+            result = _with_mode(_empty_result(), _fallback_mode(mode))
         return result
 
     @classmethod
@@ -328,7 +411,7 @@ class WorkflowGenerator:
         provider: str,
         model_name: str,
         model_mode: str,
-        mode: WorkflowGenerationMode,
+        mode: WorkflowGenerationModeRequest,
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
@@ -368,7 +451,7 @@ class WorkflowGenerator:
         provider: str,
         model_name: str,
         model_mode: str,
-        mode: WorkflowGenerationMode,
+        mode: WorkflowGenerationModeRequest,
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
@@ -376,7 +459,7 @@ class WorkflowGenerator:
         current_graph: dict[str, Any] | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
         """
-        Drive planner → builder → postprocess and yield generation events.
+        Drive planner → node builders → postprocess and yield generation events.
 
         Shared core for both ``generate_workflow_graph`` (keeps only the final
         ``result``) and ``generate_workflow_graph_stream`` (streams every
@@ -402,11 +485,16 @@ class WorkflowGenerator:
             ),
         )
         if plan_err is not None:
-            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [plan_err]), mode))
+            failed = _with_mode(_result_with_errors(_empty_result(), [plan_err]), _fallback_mode(mode))
+            yield "result", cast(dict[str, Any], failed)
             return
 
         # The lambda return is non-None when no error fired — narrow it for type-checkers.
         plan = cast(PlannerResultDict, plan)
+        # ``auto`` requests resolve here — the planner echoed its mode choice
+        # (or we infer it from the plan's terminal node). Explicit modes pass
+        # through unchanged. Everything downstream uses the concrete mode.
+        resolved_mode = _resolve_generation_mode(mode, plan)
         plan_nodes: list[dict[str, Any]] = cast(list[dict[str, Any]], plan.get("nodes", []))
         if not plan_nodes:
             empty_plan = _with_mode(
@@ -414,15 +502,12 @@ class WorkflowGenerator:
                     _empty_result(),
                     [_err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes")],
                 ),
-                mode,
+                resolved_mode,
             )
             yield "result", cast(dict[str, Any], empty_plan)
             return
 
-        # A single LLM cannot select multiple retrieval outputs as context.
-        # Make the required template fan-in explicit in the plan so the
-        # builder receives its schema and assigns stable sequential ids.
-        cls._insert_multi_retrieval_template_plan(plan_nodes)
+        plan_edges = [cast(dict[str, Any], edge) for edge in (plan.get("edges") or []) if isinstance(edge, dict)]
 
         # Planner-supplied user-input declarations. The builder uses these to
         # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
@@ -436,34 +521,48 @@ class WorkflowGenerator:
 
         # First event the stream sees: the high-level plan, before the slower
         # builder call. Non-streaming callers ignore it.
-        yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=mode)
+        yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=resolved_mode)
 
         # ── 2. BUILDER ────────────────────────────────────────────────────
-        graph, build_err = cls._run_stage(
-            stage="Builder",
-            failure_fallback_message="Failed to build workflow graph",
-            run=lambda: cls._run_builder(
+        builder_started_at = time.monotonic()
+
+        def build_graph() -> GraphDict:
+            return cls._run_parallel_node_builders(
                 model_instance=model_instance,
                 model_parameters=model_parameters,
                 provider=provider,
                 model_name=model_name,
                 model_mode=model_mode,
-                mode=mode,
+                mode=resolved_mode,
                 instruction=instruction,
                 ideal_output=ideal_output,
                 plan_nodes=plan_nodes,
+                plan_edges=plan_edges,
                 tool_catalogue_text=tool_catalogue_text,
                 start_inputs=start_inputs,
                 current_graph=current_graph,
-            ),
+            )
+
+        graph, build_err = cls._run_stage(
+            stage="Builder",
+            failure_fallback_message="Failed to build workflow graph",
+            run=build_graph,
+        )
+        logger.info(
+            "Workflow generator: node builders completed nodes=%s elapsed_ms=%.1f",
+            len(plan_nodes),
+            (time.monotonic() - builder_started_at) * 1000,
         )
         if build_err is not None:
-            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [build_err]), mode))
+            yield (
+                "result",
+                cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [build_err]), resolved_mode)),
+            )
             return
         graph = cast(GraphDict, graph)
 
         # ── 3. POSTPROC + VALIDATE ────────────────────────────────────────
-        graph = cls._postprocess_graph(graph=graph, mode=mode)
+        graph = cls._postprocess_graph(graph=graph, mode=resolved_mode)
 
         # ``app_name`` / ``icon`` are planner display metadata; both default
         # to "" when the LLM omits them — the FE owns the fallback.
@@ -475,13 +574,13 @@ class WorkflowGenerator:
             "error": "",
             "errors": [],
         }
-        _with_mode(result, mode)
+        _with_mode(result, resolved_mode)
 
         # Final structural sanity check — fail closed if start/end shape is
         # wrong, container topology is broken, a tool was hallucinated, or a
         # variable reference points at a node that won't expose it. We still
         # return the partial graph so the caller can debug or salvage it.
-        structural_errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
+        structural_errors = cls._validate_structure(graph=graph, mode=resolved_mode, installed_tools=installed_tools)
         if structural_errors:
             logger.warning("Workflow generator: structural validation failed: %s", structural_errors)
             yield "result", cast(dict[str, Any], _result_with_errors(result, structural_errors))
@@ -622,14 +721,14 @@ class WorkflowGenerator:
         *,
         model_instance,
         model_parameters: dict[str, Any],
-        mode: WorkflowGenerationMode,
+        mode: WorkflowGenerationModeRequest,
         instruction: str,
         ideal_output: str,
         tool_catalogue_text: str,
         current_graph: dict[str, Any] | None = None,
     ) -> PlannerResultDict:
         user_prompt = PLANNER_USER_PROMPT.format(
-            mode=mode,
+            mode=_planner_prompt_mode(mode),
             instruction=instruction.strip(),
             existing_graph_section=format_existing_graph_section(current_graph),
             ideal_output_section=format_ideal_output_section(ideal_output),
@@ -639,59 +738,65 @@ class WorkflowGenerator:
             SystemPromptMessage(content=PLANNER_SYSTEM_PROMPT),
             UserPromptMessage(content=user_prompt),
         ]
+        clamped_parameters = _clamp_for_planner(model_parameters)
         parsed = cls._invoke_and_parse_json(
             model_instance=model_instance,
             messages=messages,
-            model_parameters=_clamp_for_planner(model_parameters),
+            model_parameters=clamped_parameters,
             stage="Planner",
         )
+        try:
+            return cls._validate_planner_schema(parsed)
+        except _StageSchemaError:
+            logger.info("Workflow generator: planner schema invalid; retrying once")
+        parsed = cls._invoke_and_parse_json(
+            model_instance=model_instance,
+            messages=[*messages, UserPromptMessage(content=_PLANNER_SCHEMA_RETRY_HINT)],
+            model_parameters=clamped_parameters,
+            stage="Planner",
+        )
+        return cls._validate_planner_schema(parsed)
 
+    @staticmethod
+    def _validate_planner_schema(parsed: dict[str, Any]) -> PlannerResultDict:
+        """Require the single planner contract consumed by node builders."""
         nodes = parsed.get("nodes")
         if not isinstance(nodes, list):
             raise _StageSchemaError("Planner", "missing 'nodes' array")
+        if not nodes:
+            return cast(PlannerResultDict, parsed)
+
+        node_ids: set[str] = set()
         for node in nodes:
-            if not isinstance(node, dict) or "node_type" not in node:
+            if not isinstance(node, dict) or not node.get("node_type"):
                 raise _StageSchemaError("Planner", f"malformed node entry: {node!r}")
+            node_id = node.get("id")
+            if not isinstance(node_id, str) or not node_id.strip():
+                raise _StageSchemaError("Planner", f"node missing non-empty id: {node!r}")
+            if node_id in node_ids:
+                raise _StageSchemaError("Planner", f"duplicate node id: {node_id!r}")
+            node_ids.add(node_id)
+
+        edges = parsed.get("edges")
+        if not isinstance(edges, list) or not edges:
+            raise _StageSchemaError("Planner", "missing non-empty 'edges' array")
+        for edge in edges:
+            if not isinstance(edge, dict):
+                raise _StageSchemaError("Planner", f"malformed edge entry: {edge!r}")
+            source = edge.get("source")
+            target = edge.get("target")
+            if not isinstance(source, str) or not isinstance(target, str):
+                raise _StageSchemaError("Planner", f"edge missing source or target: {edge!r}")
+            if source not in node_ids or target not in node_ids:
+                raise _StageSchemaError("Planner", f"edge references unknown node: {edge!r}")
 
         return cast(PlannerResultDict, parsed)
-
-    # ------------------------------------------------------------------
-    # Plan normalization
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _insert_multi_retrieval_template_plan(plan_nodes: list[dict[str, Any]]) -> None:
-        """Insert the unambiguous multi-retrieval template step when omitted.
-
-        Multiple LLM nodes make ownership ambiguous, so that case remains in
-        the planner's hands. With exactly one LLM, every independent retrieval
-        result can safely fan into one template immediately before that LLM.
-        """
-        node_types = [str(node.get("node_type") or "") for node in plan_nodes]
-        if node_types.count(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL) < 2:
-            return
-        if node_types.count(BuiltinNodeTypes.LLM) != 1:
-            return
-        if BuiltinNodeTypes.TEMPLATE_TRANSFORM in node_types:
-            return
-
-        llm_index = node_types.index(BuiltinNodeTypes.LLM)
-        retrievals_before_llm = node_types[:llm_index].count(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL)
-        if retrievals_before_llm < 2:
-            return
-        plan_nodes.insert(
-            llm_index,
-            {
-                "label": "Combine Knowledge",
-                "node_type": BuiltinNodeTypes.TEMPLATE_TRANSFORM,
-                "purpose": "Combine every knowledge retrieval result into one labelled context for the LLM.",
-            },
-        )
 
     # ------------------------------------------------------------------
     # Builder
     # ------------------------------------------------------------------
     @classmethod
-    def _run_builder(
+    def _run_parallel_node_builders(
         cls,
         *,
         model_instance,
@@ -703,53 +808,275 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str,
         plan_nodes: list[dict[str, Any]],
+        plan_edges: list[dict[str, Any]],
         tool_catalogue_text: str,
-        start_inputs: list[dict[str, Any]] | None = None,
-        current_graph: dict[str, Any] | None = None,
+        start_inputs: list[dict[str, Any]],
+        current_graph: dict[str, Any] | None,
     ) -> GraphDict:
-        user_prompt = BUILDER_USER_PROMPT.format(
+        """Build changed node configs concurrently and expand them into a graph.
+
+        Refine plans can mark existing nodes as ``keep``; those nodes bypass
+        the model entirely and retain their full data config. Every other node
+        gets one compact call, with at most ``_node_builder_max_workers()``
+        calls in flight. Any fragment failure aborts the graph, preserving the
+        generator's existing fail-closed contract.
+        """
+        existing_by_id = {
+            str(node.get("id")): node
+            for node in ((current_graph or {}).get("nodes") or [])
+            if isinstance(node, dict) and node.get("id")
+        }
+        existing_edges = [edge for edge in ((current_graph or {}).get("edges") or []) if isinstance(edge, dict)]
+        nodes_to_build = [
+            node for node in plan_nodes if not (node.get("action") == "keep" and str(node.get("id")) in existing_by_id)
+        ]
+
+        # Shared across every builder call in this request — compute once.
+        plan_json = format_parallel_plan(plan_nodes, plan_edges, start_inputs)
+        mode_section = format_mode_section(mode)
+
+        configs_by_id: dict[str, dict[str, Any]] = {}
+        if nodes_to_build:
+            max_workers = min(_node_builder_max_workers(), len(nodes_to_build))
+            with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="workflow-node-builder") as executor:
+                futures = {
+                    executor.submit(
+                        cls._run_node_builder,
+                        model_instance=model_instance,
+                        model_parameters=model_parameters,
+                        provider=provider,
+                        model_name=model_name,
+                        model_mode=model_mode,
+                        mode_section=mode_section,
+                        instruction=instruction,
+                        ideal_output=ideal_output,
+                        target_node=node,
+                        plan_json=plan_json,
+                        tool_catalogue_text=tool_catalogue_text,
+                        start_inputs=start_inputs,
+                        existing_node=existing_by_id.get(str(node.get("id"))),
+                    ): str(node.get("id"))
+                    for node in nodes_to_build
+                }
+                try:
+                    for future in as_completed(futures):
+                        node_id = futures[future]
+                        configs_by_id[node_id] = future.result()
+                except BaseException:
+                    # Fail fast: one failed fragment aborts the whole graph, so
+                    # queued builder calls would only burn quota and delay the
+                    # error envelope. In-flight calls cannot be interrupted;
+                    # they finish while the pool shuts down.
+                    for pending in futures:
+                        pending.cancel()
+                    raise
+
+        return cls._assemble_parallel_graph(
+            plan_nodes=plan_nodes,
+            plan_edges=plan_edges,
+            configs_by_id=configs_by_id,
+            existing_by_id=existing_by_id,
+            existing_edges=existing_edges,
+        )
+
+    @classmethod
+    def _run_node_builder(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        mode_section: str,
+        instruction: str,
+        ideal_output: str,
+        target_node: dict[str, Any],
+        plan_json: str,
+        tool_catalogue_text: str,
+        start_inputs: list[dict[str, Any]],
+        existing_node: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Generate only the semantic config for one normalized plan node."""
+        node_id = str(target_node.get("id") or "")
+        node_type = str(target_node.get("node_type") or "")
+        model_section = ""
+        if node_type in _MODEL_NODE_TYPES:
+            model_section = (
+                f"# Selected model (copy verbatim)\n\nprovider={provider}, name={model_name}, mode={model_mode}\n\n"
+            )
+        existing_config_section = ""
+        if existing_node:
+            existing_data = existing_node.get("data") if isinstance(existing_node.get("data"), dict) else {}
+            existing_config_section = (
+                "# Existing config to preserve unless the instruction changes it\n\n"
+                f"{json.dumps(existing_data, ensure_ascii=False, separators=(',', ':'))}\n\n"
+            )
+        user_prompt = NODE_BUILDER_USER_PROMPT.format(
+            node_id=node_id,
+            node_type=node_type,
+            label=str(target_node.get("label") or ""),
+            purpose=str(target_node.get("purpose") or ""),
             instruction=instruction.strip(),
             ideal_output_section=format_ideal_output_section(ideal_output),
-            existing_graph_section=format_builder_existing_graph_section(current_graph),
-            provider=provider,
-            name=model_name,
-            mode_label=model_mode,
-            plan_block=format_plan_block(plan_nodes),
-            tool_catalogue_section=format_builder_tool_catalogue_section(tool_catalogue_text),
-            start_inputs_section=format_start_inputs_section(start_inputs or []),
+            mode_section=mode_section,
+            model_section=model_section,
+            tool_catalogue_section=(
+                format_node_tool_catalogue_section(tool_catalogue_text) if node_type == BuiltinNodeTypes.TOOL else ""
+            ),
+            start_inputs_section=(
+                format_start_inputs_section(start_inputs) if node_type == BuiltinNodeTypes.START else ""
+            ),
+            existing_config_section=existing_config_section,
+            plan_json=plan_json,
         )
-        # Scope the builder cheatsheet to exactly the node types the planner
-        # chose, so the prompt carries each type's FULL schema (e.g. a file
-        # start variable's required ``allowed_file_types``) without dragging in
-        # config for unrelated node types.
-        plan_node_types = {
-            str(node.get("node_type") or "").strip() for node in plan_nodes if str(node.get("node_type") or "").strip()
-        }
-        messages = [
-            SystemPromptMessage(content=get_builder_system_prompt(mode, plan_node_types)),
-            UserPromptMessage(content=user_prompt),
-        ]
         parsed = cls._invoke_and_parse_json(
             model_instance=model_instance,
-            messages=messages,
+            messages=[
+                SystemPromptMessage(content=get_node_builder_system_prompt(node_type)),
+                UserPromptMessage(content=user_prompt),
+            ],
             model_parameters=model_parameters,
-            stage="Builder",
+            stage=f"Builder {node_id}",
         )
+        config = parsed.get("config")
+        if not isinstance(config, dict):
+            raise _StageSchemaError(f"Builder {node_id}", "missing 'config' object")
+        return cast(dict[str, Any], config)
 
-        nodes = parsed.get("nodes")
-        edges = parsed.get("edges")
-        if not isinstance(nodes, list) or not isinstance(edges, list):
-            raise _StageSchemaError("Builder", "graph missing 'nodes' or 'edges' arrays")
+    @classmethod
+    def _assemble_parallel_graph(
+        cls,
+        *,
+        plan_nodes: list[dict[str, Any]],
+        plan_edges: list[dict[str, Any]],
+        configs_by_id: dict[str, dict[str, Any]],
+        existing_by_id: dict[str, dict[str, Any]],
+        existing_edges: list[dict[str, Any]] | None = None,
+    ) -> GraphDict:
+        """Expand compact node configs and planner topology into graph JSON.
 
-        viewport = parsed.get("viewport") or _DEFAULT_VIEWPORT
-        return cast(
-            GraphDict,
-            {
-                "nodes": nodes,
-                "edges": edges,
-                "viewport": viewport,
-            },
-        )
+        ``existing_edges`` (refine only) preserves wiring the planner cannot
+        express: the synthetic ``<container>start`` entry edge keeps its
+        existing target instead of being re-pointed at whichever child the
+        planner happened to list first.
+        """
+        label_to_id = {
+            str(node.get("label")): str(node.get("id")) for node in plan_nodes if node.get("label") and node.get("id")
+        }
+        type_by_id = {str(node.get("id")): str(node.get("node_type") or "") for node in plan_nodes}
+        children_by_parent: dict[str, list[str]] = {}
+        nodes: list[dict[str, Any]] = []
+
+        for planned in plan_nodes:
+            node_id = str(planned.get("id") or "")
+            node_type = str(planned.get("node_type") or "")
+            existing = existing_by_id.get(node_id)
+            node: dict[str, Any]
+            if planned.get("action") == "keep" and existing is not None:
+                node = deepcopy(existing)
+            else:
+                config = dict(configs_by_id.get(node_id) or {})
+                for shared_key in ("type", "title", "desc", "selected"):
+                    config.pop(shared_key, None)
+                data: dict[str, Any] = {
+                    "type": node_type,
+                    "title": str(planned.get("label") or node_id),
+                    "desc": str(planned.get("purpose") or ""),
+                    **config,
+                }
+                node = deepcopy(existing) if existing is not None else {"id": node_id}
+                node["id"] = node_id
+                node["data"] = data
+
+            parent_ref = str(planned.get("parent") or "")
+            parent_id = label_to_id.get(parent_ref, parent_ref)
+            if not parent_id and str(node.get("parentId") or "") in type_by_id:
+                # Kept nodes rarely re-state containment — recover the parent
+                # from the deepcopied wrapper so entry-edge synthesis still
+                # counts this child.
+                parent_id = str(node["parentId"])
+            if parent_id:
+                child_index = len(children_by_parent.get(parent_id, []))
+                node["parentId"] = parent_id
+                node.setdefault("position", {"x": 240 + 260 * child_index, "y": 60})
+                node.setdefault("data", {})
+                parent_type = type_by_id.get(parent_id)
+                if parent_type == BuiltinNodeTypes.ITERATION:
+                    node["data"].setdefault("isInIteration", True)
+                    node["data"].setdefault("iteration_id", parent_id)
+                elif parent_type == BuiltinNodeTypes.LOOP:
+                    node["data"].setdefault("isInLoop", True)
+                    node["data"].setdefault("loop_id", parent_id)
+                children_by_parent.setdefault(parent_id, []).append(node_id)
+            elif node.get("parentId"):
+                # The container was dropped from the plan: strip the stale
+                # containment markers so the kept node rejoins the top level
+                # (and its auto-layout) instead of pointing at a deleted parent.
+                for wrapper_key in ("parentId", "extent", "zIndex", "position", "positionAbsolute"):
+                    node.pop(wrapper_key, None)
+                if isinstance(node.get("data"), dict):
+                    for marker_key in ("isInIteration", "iteration_id", "isInLoop", "loop_id"):
+                        node["data"].pop(marker_key, None)
+
+            nodes.append(node)
+            if node_type in cls._CONTAINER_TYPES:
+                start_id = f"{node_id}start"
+                node.setdefault("data", {})["start_node_id"] = start_id
+                node.setdefault("width", 808)
+                node.setdefault("height", 204)
+                node.setdefault("zIndex", 1)
+                is_iteration = node_type == BuiltinNodeTypes.ITERATION
+                nodes.append(
+                    {
+                        "id": start_id,
+                        "type": "custom-iteration-start" if is_iteration else "custom-loop-start",
+                        "parentId": node_id,
+                        "extent": "parent",
+                        "draggable": False,
+                        "selectable": False,
+                        "zIndex": 1002,
+                        "position": {"x": 60, "y": 78},
+                        "data": {
+                            "type": "iteration-start" if is_iteration else "loop-start",
+                            "title": "",
+                            "desc": "",
+                            "selected": False,
+                            "isInIteration" if is_iteration else "isInLoop": True,
+                        },
+                    }
+                )
+
+        edges: list[dict[str, Any]] = []
+        for planned_edge in plan_edges:
+            edge: dict[str, Any] = {
+                "source": str(planned_edge.get("source") or ""),
+                "target": str(planned_edge.get("target") or ""),
+            }
+            source_handle = planned_edge.get("source_handle") or planned_edge.get("sourceHandle")
+            target_handle = planned_edge.get("target_handle") or planned_edge.get("targetHandle")
+            if source_handle:
+                edge["sourceHandle"] = str(source_handle)
+            if target_handle:
+                edge["targetHandle"] = str(target_handle)
+            edges.append(edge)
+
+        # Synthesize each container's entry edge. Refine keeps the existing
+        # entry target when it is still a child — the planner's node listing
+        # order says nothing about execution order inside a kept container.
+        planned_sources = {str(edge.get("source") or "") for edge in edges}
+        existing_entry_targets = {
+            str(edge.get("source") or ""): str(edge.get("target") or "") for edge in (existing_edges or [])
+        }
+        for parent_id, child_ids in children_by_parent.items():
+            start_id = f"{parent_id}start"
+            if not child_ids or start_id in planned_sources:
+                continue
+            preferred = existing_entry_targets.get(start_id, "")
+            entry_target = preferred if preferred in child_ids else child_ids[0]
+            edges.append({"source": start_id, "target": entry_target})
+
+        return cast(GraphDict, {"nodes": nodes, "edges": edges, "viewport": _DEFAULT_VIEWPORT})
 
     # ------------------------------------------------------------------
     # Postprocessing
@@ -1225,6 +1552,11 @@ class WorkflowGenerator:
             return var == "output"
         if node_type == BuiltinNodeTypes.LIST_OPERATOR:
             return var in {"result", "first_record", "last_record"}
+        if node_type == BuiltinNodeTypes.HUMAN_INPUT:
+            return any(
+                isinstance(item, dict) and item.get("output_variable_name") == var
+                for item in (data.get("inputs") or [])
+            )
         # Other node types (if-else, iteration-start, loop-start, ...) don't
         # produce outputs of their own.
         return False
@@ -1247,6 +1579,15 @@ class WorkflowGenerator:
                 if isinstance(parameter, dict) and isinstance(parameter.get("name"), str)
             ]
             return parameters[0] if len(parameters) == 1 else None
+        if node_type == BuiltinNodeTypes.HUMAN_INPUT:
+            human_outputs: list[str] = []
+            for item in data.get("inputs") or []:
+                if not isinstance(item, dict):
+                    continue
+                output_name = item.get("output_variable_name")
+                if isinstance(output_name, str):
+                    human_outputs.append(output_name)
+            return human_outputs[0] if len(human_outputs) == 1 else None
         if not isinstance(node_type, str):
             return None
         single_output_by_type: dict[str, str] = {
@@ -1532,6 +1873,12 @@ class WorkflowGenerator:
                     str(klass["id"])
                     for klass in (data.get("classes") or [])
                     if isinstance(klass, dict) and klass.get("id")
+                ]
+            elif node_type == BuiltinNodeTypes.HUMAN_INPUT:
+                branch_handles = [
+                    str(action["id"])
+                    for action in (data.get("user_actions") or [])
+                    if isinstance(action, dict) and action.get("id")
                 ]
             else:
                 continue
@@ -1941,8 +2288,8 @@ class WorkflowGenerator:
         """
         Validate iteration / loop topology:
 
-          * every container has at least one child whose ``parentId``
-            points at it;
+          * every container has at least one executable child whose
+            ``parentId`` points at it;
           * every non-container node with a ``parentId`` points at a real
             container, not at a non-container node;
           * no cycles in the parent chain (a node cannot be its own
@@ -1959,7 +2306,9 @@ class WorkflowGenerator:
             if not isinstance(parent, str) or not parent:
                 continue
             if parent in container_ids:
-                children_by_parent.setdefault(parent, []).append(n.get("id", ""))
+                node_type = (n.get("data") or {}).get("type")
+                if node_type not in {"iteration-start", "loop-start"}:
+                    children_by_parent.setdefault(parent, []).append(n.get("id", ""))
             elif parent in by_id:
                 # Parent exists but isn't a container — that's a topology bug.
                 out.append(

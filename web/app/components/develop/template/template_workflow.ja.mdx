@@ -1,6 +1,6 @@
 import { CodeGroup } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
-import WorkflowVersionApiUpgradeNotice from '../workflow-version-api-upgrade-notice.tsx'
+import { WorkflowVersionApiContent, WorkflowVersionApiUpgradeNotice } from '../workflow-version-api-upgrade-notice.tsx'
 
 # ワークフローアプリ API
 
@@ -645,6 +645,7 @@ import WorkflowVersionApiUpgradeNotice from '../workflow-version-api-upgrade-not
   name='#Execute-Specific-Workflow'
   titleAction={<WorkflowVersionApiUpgradeNotice />}
 />
+<WorkflowVersionApiContent>
 <Row>
   <Col>
     パスパラメータでワークフローIDを指定して、特定バージョンのワークフローを実行します。
@@ -890,6 +891,7 @@ import WorkflowVersionApiUpgradeNotice from '../workflow-version-api-upgrade-not
     </CodeGroup>
   </Col>
 </Row>
+</WorkflowVersionApiContent>
 
 ---
 

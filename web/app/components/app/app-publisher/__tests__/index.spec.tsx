@@ -1,14 +1,14 @@
 /* oxlint-disable typescript/no-explicit-any */
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { AppPublisher } from '../index'
 
 const render = (ui: React.ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { webapp_auth: { enabled: true } },
   })
 
@@ -107,46 +107,19 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateWorkflowToolDetailByAppID: () => vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -285,7 +258,6 @@ describe('AppPublisher', () => {
         enabled: true,
       })
     })
-    expect(sectionProps.summary?.publishShortcut).toEqual(['Mod', 'Shift', 'P'])
     expect(mockRefetch).not.toHaveBeenCalled()
   })
 
@@ -611,7 +583,7 @@ describe('AppPublisher', () => {
     })
     const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
 
-    renderWithSystemFeatures(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
+    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
       systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true },
     })
 
@@ -632,7 +604,7 @@ describe('AppPublisher', () => {
   it('should show toast error when publish to marketplace fails', async () => {
     mockPublishToCreatorsPlatform.mockRejectedValue(new Error('network error'))
 
-    renderWithSystemFeatures(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
+    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
       systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true },
     })
 
@@ -647,7 +619,7 @@ describe('AppPublisher', () => {
   })
 
   it('should disable marketplace button when not yet published', () => {
-    renderWithSystemFeatures(<AppPublisher onPublish={mockOnPublish} />, {
+    renderWithConsoleQuery(<AppPublisher onPublish={mockOnPublish} />, {
       systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true },
     })
 

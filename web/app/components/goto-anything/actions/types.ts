@@ -1,13 +1,13 @@
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { DatasetListItemResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
 import type { TypeWithI18N } from '../../base/form/types'
 import type { Plugin } from '../../plugins/types'
 import type { CommonNodeType } from '../../workflow/types'
-import type { DataSet } from '@/models/datasets'
-import type { App } from '@/types/app'
 
 type SearchResultType = 'app' | 'knowledge' | 'plugin' | 'workflow-node' | 'command' | 'recent'
 
-type BaseSearchResult<T = any> = {
+type BaseSearchResult<T> = {
   id: string
   title: string
   description?: string
@@ -19,7 +19,7 @@ type BaseSearchResult<T = any> = {
 
 export type AppSearchResult = {
   type: 'app'
-} & BaseSearchResult<App>
+} & BaseSearchResult<AppPartial>
 
 export type PluginSearchResult = {
   type: 'plugin'
@@ -27,7 +27,7 @@ export type PluginSearchResult = {
 
 export type KnowledgeSearchResult = {
   type: 'knowledge'
-} & BaseSearchResult<DataSet>
+} & BaseSearchResult<DatasetListItemResponse>
 
 type WorkflowNodeSearchResult = {
   type: 'workflow-node'
@@ -39,7 +39,7 @@ type WorkflowNodeSearchResult = {
 
 export type CommandSearchResult = {
   type: 'command'
-} & BaseSearchResult<{ command: string; args?: Record<string, any> }>
+} & BaseSearchResult<{ command: string; args?: Record<string, unknown> }>
 
 export type RecentSearchResult = {
   type: 'recent'
@@ -54,16 +54,21 @@ export type SearchResult =
   | CommandSearchResult
   | RecentSearchResult
 
-export type ActionItem = {
+type ActionItemBase = {
   key: '@app' | '@knowledge' | '@plugin' | '@node' | '/'
   shortcut: string
   title: string | TypeWithI18N
   description: string
   action?: (data: SearchResult) => void
-  searchFn?: (searchTerm: string) => SearchResult[]
-  search: (
-    query: string,
-    searchTerm: string,
-    locale?: string,
-  ) => Promise<SearchResult[]> | SearchResult[]
 }
+
+type RemoteActionItem = ActionItemBase & {
+  source: 'remote'
+}
+
+type LocalActionItem = ActionItemBase & {
+  source: 'local'
+  search: (query: string, searchTerm: string, locale?: string) => SearchResult[]
+}
+
+export type ActionItem = RemoteActionItem | LocalActionItem

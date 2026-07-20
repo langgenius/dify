@@ -1,184 +1,212 @@
 'use client'
-import type { InvitationResult } from '@/models/common'
+
+import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactElement } from 'react'
+import type { EmailRecipient } from './email-recipients'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
-import { useBoolean } from 'ahooks'
-import { useCallback, useState } from 'react'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
+import { Form } from '@langgenius/dify-ui/form'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ReactMultiEmail } from 'react-multi-email'
-import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
-import { inviteMember } from '@/service/common'
+import { consoleQuery } from '@/service/client'
 import { commonQueryKeys } from '@/service/use-common'
-import RoleSelector from './role-selector'
-import 'react-multi-email/dist/style.css'
+import { mergeEmailRecipients } from './email-recipients'
+import { EmailRecipientsField } from './email-recipients-field'
+import { getInviteErrorCode } from './invite-error'
+import { RoleSelector } from './role-selector'
 
-type IInviteModalProps = {
+type InviteModalProps = {
+  open: boolean
+  trigger: ReactElement
   isEmailSetup: boolean
-  onCancel: () => void
-  onSend: (invitationResults: InvitationResult[]) => void
+  onOpenChange: (open: boolean) => void
+  onSend: (invitationResults: MemberInviteResponse['invitation_results']) => void
 }
 
-const InviteModal = ({ isEmailSetup, onCancel, onSend }: IInviteModalProps) => {
+type InviteFieldName = 'emails' | 'role'
+type InviteFormValues = {
+  emails: string
+  role: string
+}
+type SubmissionError =
+  | { kind: 'fields'; errors: Partial<Record<InviteFieldName, string>> }
+  | { kind: 'form'; message: string }
+  | null
+
+type InviteFormProps = Omit<InviteModalProps, 'open' | 'trigger'>
+
+function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
-  const licenseLimit = useProviderContextSelector((s) => s.licenseLimit)
-  const refreshLicenseLimit = useProviderContextSelector((s) => s.refreshLicenseLimit)
-  const [emails, setEmails] = useState<string[]>([])
-  const isLimited = licenseLimit.workspace_members.limit > 0
-  const usedSize = emails.length + licenseLimit.workspace_members.size
-  const isLimitExceeded = isLimited && usedSize > licenseLimit.workspace_members.limit
-
   const locale = useLocale()
-  const [role, setRole] = useState<string>('')
+  const queryClient = useQueryClient()
+  const licenseLimit = useProviderContextSelector((state) => state.licenseLimit)
+  const refreshLicenseLimit = useProviderContextSelector((state) => state.refreshLicenseLimit)
+  const [recipients, setRecipients] = useState<EmailRecipient[]>([])
+  const [draft, setDraft] = useState('')
+  const [submissionError, setSubmissionError] = useState<SubmissionError>(null)
+  const fieldErrors = submissionError?.kind === 'fields' ? submissionError.errors : undefined
+  const currentSize = licenseLimit.workspace_members.size ?? 0
+  const memberLimit = licenseLimit.workspace_members.limit
+  const remainingSeats = memberLimit > 0 ? Math.max(memberLimit - currentSize, 0) : null
+  const effectiveRecipients = mergeEmailRecipients(recipients, draft)
+  const validRecipientCount = effectiveRecipients.filter(({ isValid }) => isValid).length
+  const exceedsRemainingSeats = remainingSeats !== null && validRecipientCount > remainingSeats
 
-  const [isSubmitting, { setTrue: setIsSubmitting, setFalse: setIsSubmitted }] = useBoolean(false)
+  const { mutate, isPending } = useMutation(
+    consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
 
-  const handleSend = useCallback(async () => {
-    if (isLimitExceeded || isSubmitting) return
-    setIsSubmitting()
-    if (emails.map((email: string) => emailRegex.test(email)).every(Boolean)) {
-      try {
-        const { result, invitation_results } = await inviteMember({
-          url: '/workspaces/current/members/invite-email',
-          body: { emails, role, language: locale },
-        })
+  const clearEmailSubmissionError = () => {
+    setSubmissionError((error) => (error?.kind === 'fields' && error.errors.emails ? null : error))
+  }
 
-        if (result === 'success') {
+  const handleSubmit = ({ role }: InviteFormValues) => {
+    if (isPending) return
+
+    setRecipients(effectiveRecipients)
+    setDraft('')
+    setSubmissionError(null)
+    mutate(
+      {
+        body: {
+          emails: effectiveRecipients.map(({ value }) => value),
+          role,
+          language: locale,
+        },
+      },
+      {
+        onSuccess: (response) => {
           refreshLicenseLimit()
           void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
-          onCancel()
-          onSend(invitation_results)
-        }
-      } catch {}
-    } else {
-      toast.error(t(($) => $['members.emailInvalid'], { ns: 'common' }))
-    }
-    setIsSubmitted()
-  }, [
-    isLimitExceeded,
-    emails,
-    role,
-    locale,
-    onCancel,
-    onSend,
-    t,
-    isSubmitting,
-    refreshLicenseLimit,
-    queryClient,
-    setIsSubmitted,
-    setIsSubmitting,
-  ])
+          onOpenChange(false)
+          onSend(response.invitation_results)
+        },
+        onError: (error) => {
+          switch (getInviteErrorCode(error)) {
+            case 'limit_exceeded':
+              setSubmissionError({
+                kind: 'fields',
+                errors: {
+                  emails: t(($) => $['members.inviteLimitExceeded'], { ns: 'common' }),
+                },
+              })
+              break
+            case 'invalid_role':
+              setSubmissionError({
+                kind: 'fields',
+                errors: { role: t(($) => $['members.invalidRole'], { ns: 'common' }) },
+              })
+              break
+            default:
+              setSubmissionError({
+                kind: 'form',
+                message: t(($) => $['members.inviteFailed'], { ns: 'common' }),
+              })
+          }
+        },
+      },
+    )
+  }
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onCancel()
-      }}
+    <Form<InviteFormValues>
+      aria-label={t(($) => $['members.inviteTeamMember'], { ns: 'common' })}
+      errors={fieldErrors}
+      className="grid gap-5 pt-5"
+      onFormSubmit={handleSubmit}
     >
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="w-100 overflow-visible px-8 py-6"
+      {!isEmailSetup && (
+        <div className="flex items-start gap-1.5 rounded-lg bg-state-warning-hover p-2 text-text-warning">
+          <span aria-hidden="true" className="i-ri-error-warning-fill size-4 shrink-0" />
+          <span className="system-xs-medium text-text-primary">
+            {t(($) => $['members.emailNotSetup'], { ns: 'common' })}
+          </span>
+        </div>
+      )}
+      <EmailRecipientsField
+        recipients={recipients}
+        draft={draft}
+        onRecipientsChange={setRecipients}
+        onDraftChange={setDraft}
+        onChange={clearEmailSubmissionError}
+        disabled={isPending}
+      />
+      <RoleSelector hasServerError={Boolean(fieldErrors?.role)} disabled={isPending} />
+      {exceedsRemainingSeats && (
+        <div
+          role="status"
+          className="flex items-start gap-1.5 rounded-lg bg-state-warning-hover p-2 body-xs-regular text-text-warning"
+        >
+          <span aria-hidden="true" className="i-ri-error-warning-line size-4 shrink-0" />
+          <span>
+            {t(($) => $['members.seatsRemaining'], {
+              ns: 'common',
+              count: remainingSeats,
+            })}
+            <span aria-hidden="true"> · </span>
+            {t(($) => $['members.recipientCountExceedsSeats'], { ns: 'common' })}
+          </span>
+        </div>
+      )}
+      {submissionError?.kind === 'form' && (
+        <div role="alert" className="body-xs-regular text-text-destructive">
+          {submissionError.message}
+        </div>
+      )}
+      <Button
+        type="submit"
+        variant="primary"
+        className="w-full"
+        loading={isPending}
+        disabled={isPending}
       >
-        <DialogCloseButton className="top-6 right-8" />
-        <div className="mb-2 pr-8">
+        {validRecipientCount > 0
+          ? t(($) => $['members.sendInviteCount'], {
+              ns: 'common',
+              count: validRecipientCount,
+            })
+          : t(($) => $['members.sendInvite'], { ns: 'common' })}
+      </Button>
+    </Form>
+  )
+}
+
+export function InviteModal({
+  open,
+  trigger,
+  isEmailSetup,
+  onOpenChange,
+  onSend,
+}: InviteModalProps) {
+  const { t } = useTranslation()
+
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => onOpenChange(nextOpen)}>
+      <DialogTrigger render={trigger} />
+      <DialogContent backdropProps={{ forceRender: true }}>
+        <div className="grid gap-1 pr-8">
           <DialogTitle className="text-xl font-semibold text-text-primary">
             {t(($) => $['members.inviteTeamMember'], { ns: 'common' })}
           </DialogTitle>
+          <DialogDescription className="text-sm text-text-tertiary">
+            {t(($) => $['members.inviteTeamMemberTip'], { ns: 'common' })}
+          </DialogDescription>
         </div>
-        <div className="mb-3 text-[13px] text-text-tertiary">
-          {t(($) => $['members.inviteTeamMemberTip'], { ns: 'common' })}
-        </div>
-        {!isEmailSetup && (
-          <div className="grow basis-0 overflow-y-auto pb-4">
-            <div className="relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs">
-              <div
-                className="absolute top-0 left-0 size-full rounded-xl opacity-40"
-                style={{
-                  background:
-                    'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)',
-                }}
-              ></div>
-              <div className="relative flex size-full items-start">
-                <div className="mr-0.5 shrink-0 p-0.5">
-                  <div className="i-ri-error-warning-fill size-5 text-text-warning" />
-                </div>
-                <div className="system-xs-medium text-text-primary">
-                  <span>{t(($) => $['members.emailNotSetup'], { ns: 'common' })}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div>
-          <div className="mb-2 text-sm font-medium text-text-primary">
-            {t(($) => $['members.email'], { ns: 'common' })}
-          </div>
-          <div className="mb-8 flex h-36 flex-col items-stretch">
-            <ReactMultiEmail
-              className={cn(
-                'size-full border-components-input-border-active bg-components-input-bg-normal! px-3 pt-2 outline-hidden',
-                'appearance-none overflow-y-auto rounded-lg text-sm text-text-primary!',
-              )}
-              autoFocus
-              emails={emails}
-              inputClassName="bg-transparent"
-              onChange={setEmails}
-              getLabel={(email, index, removeEmail) => (
-                <div data-tag key={index} className={cn('bg-components-button-secondary-bg!')}>
-                  <div data-tag-item>{email}</div>
-                  <button
-                    type="button"
-                    data-tag-handle
-                    aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${email}`}
-                    className="border-none bg-transparent p-0 text-inherit"
-                    onClick={() => removeEmail(index)}
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-              placeholder={t(($) => $['members.emailPlaceholder'], { ns: 'common' }) || ''}
-            />
-            <div
-              className={cn(
-                'flex items-center justify-end system-xs-regular text-text-tertiary',
-                isLimited && usedSize > licenseLimit.workspace_members.limit
-                  ? 'text-text-destructive'
-                  : '',
-              )}
-            >
-              <span>{usedSize}</span>
-              <span>/</span>
-              <span>
-                {isLimited
-                  ? licenseLimit.workspace_members.limit
-                  : t(($) => $['license.unlimited'], { ns: 'common' })}
-              </span>
-            </div>
-          </div>
-          <div className="mb-6">
-            <RoleSelector value={role} onChange={setRole} />
-          </div>
-          <Button
-            tabIndex={0}
-            className="w-full"
-            onClick={handleSend}
-            disabled={!emails.length || !role || isLimitExceeded || isSubmitting}
-            variant="primary"
-          >
-            {t(($) => $['members.sendInvite'], { ns: 'common' })}
-          </Button>
-        </div>
+        <InviteForm isEmailSetup={isEmailSetup} onOpenChange={onOpenChange} onSend={onSend} />
+        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogContent>
     </Dialog>
   )
 }
-
-export default InviteModal

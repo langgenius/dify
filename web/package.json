@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.16.0-rc1",
+  "version": "1.16.0",
   "private": true,
   "type": "module",
   "imports": {
@@ -73,7 +73,6 @@
     "abcjs": "catalog:",
     "ahooks": "catalog:",
     "class-variance-authority": "catalog:",
-    "cmdk": "catalog:",
     "copy-to-clipboard": "catalog:",
     "cron-parser": "catalog:",
     "dayjs": "catalog:",
@@ -124,7 +123,6 @@
     "react-dom": "catalog:",
     "react-easy-crop": "catalog:",
     "react-i18next": "catalog:",
-    "react-multi-email": "catalog:",
     "react-papaparse": "catalog:",
     "react-pdf-highlighter": "catalog:",
     "react-sortablejs": "catalog:",

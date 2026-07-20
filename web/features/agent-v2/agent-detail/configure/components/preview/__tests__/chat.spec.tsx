@@ -1,13 +1,15 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { consoleQuery } from '@/service/client'
+import { render } from '@/test/console/render'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { TransferMethod } from '@/types/app'
 import { AgentChatRuntime } from '../chat-runtime'
 
@@ -43,7 +45,8 @@ vi.mock('@/next/dynamic', async () => {
 
         return (
           <div
-            data-testid="mock-chat"
+            role="region"
+            aria-label="chat"
             data-send-button-label={props.sendButtonLabel ?? ''}
             data-send-button-loading={String(!!props.sendButtonLoading)}
             data-show-prompt-log={String(!!props.showPromptLog)}
@@ -87,7 +90,8 @@ vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
     speechToTextTarget?: SpeechToTextTarget
   }) => (
     <div
-      data-testid="agent-preview-chat-input"
+      role="group"
+      aria-label="voice input"
       data-speech-agent-id={speechToTextTarget?.type === 'agent' ? speechToTextTarget.agentId : ''}
       data-speech-draft-type={
         speechToTextTarget?.type === 'agent' ? speechToTextTarget.draftType : ''
@@ -123,62 +127,14 @@ vi.mock('@/app/components/base/chat/chat/hooks', () => ({
   ),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: {
       avatar_url: '',
       name: 'User',
     },
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -241,6 +197,7 @@ vi.mock('@/service/client', async () => {
 
 function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntime>>) {
   const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -305,6 +262,7 @@ function RuntimeClearCommandHarness({ inputPlaceholder }: { inputPlaceholder: st
 
 function renderPreviewChatWithConversationHarness() {
   const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -329,6 +287,7 @@ function renderPreviewChatWithConversationHarness() {
 
 function renderPreviewChatWithClearCommandHarness() {
   const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -372,16 +331,22 @@ describe('AgentPreviewChat', () => {
       renderEmptyState: ({ inputNode }) => inputNode,
     })
 
-    expect(screen.getByTestId('agent-preview-chat-input')).toHaveAttribute(
+    expect(screen.getByRole('group', { name: 'voice input' })).toHaveAttribute(
       'data-speech-agent-id',
       'agent-1',
     )
-    expect(screen.getByTestId('agent-preview-chat-input')).toHaveAttribute(
+    expect(screen.getByRole('group', { name: 'voice input' })).toHaveAttribute(
       'data-speech-draft-type',
       'draft',
     )
-    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-speech-agent-id', 'agent-1')
-    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-speech-draft-type', 'draft')
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-speech-agent-id',
+      'agent-1',
+    )
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-speech-draft-type',
+      'draft',
+    )
   })
 
   it('should bind Agent build voice input to the account build draft', () => {
@@ -390,11 +355,14 @@ describe('AgentPreviewChat', () => {
       renderEmptyState: ({ inputNode }) => inputNode,
     })
 
-    expect(screen.getByTestId('agent-preview-chat-input')).toHaveAttribute(
+    expect(screen.getByRole('group', { name: 'voice input' })).toHaveAttribute(
       'data-speech-draft-type',
       'debug_build',
     )
-    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-speech-draft-type', 'debug_build')
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-speech-draft-type',
+      'debug_build',
+    )
   })
 
   it('should expose the owning save-before-transcribe callback', () => {
@@ -569,7 +537,10 @@ describe('AgentPreviewChat', () => {
 
     expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1)
     await waitFor(() => {
-      expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-send-button-loading', 'true')
+      expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+        'data-send-button-loading',
+        'true',
+      )
     })
     expect(handleSendMock).not.toHaveBeenCalled()
 
@@ -585,13 +556,16 @@ describe('AgentPreviewChat', () => {
       onSaveDraftBeforeRun: saveDraftBeforeRun,
     })
 
-    await waitFor(() => expect(screen.getByTestId('mock-chat')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('region', { name: 'chat' })).toBeInTheDocument())
 
     fireEvent.click(screen.getByRole('button', { name: 'send' }))
 
     expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1)
     await waitFor(() => {
-      expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-send-button-loading', 'false')
+      expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+        'data-send-button-loading',
+        'false',
+      )
     })
     expect(handleSendMock).not.toHaveBeenCalled()
   })
@@ -622,9 +596,12 @@ describe('AgentPreviewChat', () => {
 
     renderPreviewChat()
 
-    await waitFor(() => expect(screen.getByTestId('mock-chat')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('region', { name: 'chat' })).toBeInTheDocument())
 
-    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-send-button-loading', 'false')
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-send-button-loading',
+      'false',
+    )
   })
 
   it('should use the default send button after the first build message', async () => {
@@ -665,7 +642,10 @@ describe('AgentPreviewChat', () => {
       sendButtonLabel: 'Start build',
     })
 
-    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-send-button-label', '')
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-send-button-label',
+      '',
+    )
   })
 
   it('should sync the completed conversation history into the query cache', async () => {
@@ -775,6 +755,59 @@ describe('AgentPreviewChat', () => {
     })
   })
 
+  it('should preserve tool labels when formatting chat history', async () => {
+    chatMessagesGetMock.mockResolvedValue({
+      data: [
+        {
+          id: 'message-with-tool-label',
+          conversation_id: 'conversation-1',
+          query: 'run pwd',
+          answer: '',
+          inputs: {},
+          message: [],
+          message_files: [],
+          agent_thoughts: [
+            {
+              id: 'thought-with-tool-label',
+              message_id: 'message-with-tool-label',
+              thought: '',
+              answer: '',
+              tool: 'shell_run',
+              tool_input: 'pwd',
+              tool_labels: {
+                shell_run: {
+                  en_US: 'Ran commands',
+                  zh_Hans: '运行了命令',
+                },
+              },
+              observation: '/workspace',
+              position: 1,
+            },
+          ],
+          feedbacks: [],
+          status: 'success',
+          from_source: 'console',
+        },
+      ],
+    })
+
+    renderPreviewChat({ conversationId: 'conversation-1' })
+
+    await waitFor(() => {
+      const formattedTree = useChatMock.mock.calls.find((call) => {
+        const chatTree = call[2]
+        return JSON.stringify(chatTree).includes('thought-with-tool-label')
+      })?.[2]
+
+      expect(formattedTree?.[0]?.children?.[0]?.agent_thoughts?.[0]?.tool_labels).toEqual({
+        shell_run: {
+          en_US: 'Ran commands',
+          zh_Hans: '运行了命令',
+        },
+      })
+    })
+  })
+
   it('should notify the owner when a send settles with an error', async () => {
     const onSendInterrupted = vi.fn()
     renderPreviewChat({
@@ -864,9 +897,12 @@ describe('AgentPreviewChat', () => {
       draftType: 'debug_build',
     })
 
-    await waitFor(() => expect(screen.getByTestId('mock-chat')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('region', { name: 'chat' })).toBeInTheDocument())
 
-    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-show-prompt-log', 'false')
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-show-prompt-log',
+      'false',
+    )
   })
 
   it('should hide the sandbox notice after the first send starts', async () => {

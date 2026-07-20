@@ -1,4 +1,9 @@
-import type { InvitationResult } from '@/models/common'
+import type {
+  MemberInviteAlreadyMemberResponse,
+  MemberInviteFailedResponse,
+  MemberInviteResponse,
+  MemberInviteSuccessResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -6,25 +11,21 @@ import { useTranslation } from 'react-i18next'
 import { IS_CE_EDITION } from '@/config'
 import InvitationLink from './invitation-link'
 
-export type SuccessInvitationResult = Extract<InvitationResult, { status: 'success' }>
-type AlreadyMemberInvitationResult = Extract<InvitationResult, { status: 'already_member' }>
-type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
-
 type IInvitedModalProps = {
-  invitationResults: InvitationResult[]
+  invitationResults: MemberInviteResponse['invitation_results']
   onCancel: () => void
 }
 const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
   const { t } = useTranslation()
 
   const successInvitationResults = invitationResults.filter(
-    (item): item is SuccessInvitationResult => item.status === 'success',
+    (item): item is MemberInviteSuccessResponse => item.status === 'success',
   )
   const alreadyMemberInvitationResults = invitationResults.filter(
-    (item): item is AlreadyMemberInvitationResult => item.status === 'already_member',
+    (item): item is MemberInviteAlreadyMemberResponse => item.status === 'already_member',
   )
   const failedInvitationResults = invitationResults.filter(
-    (item): item is FailedInvitationResult => item.status === 'failed',
+    (item): item is MemberInviteFailedResponse => item.status === 'failed',
   )
   const onlyAlreadyMembers =
     alreadyMemberInvitationResults.length > 0 &&

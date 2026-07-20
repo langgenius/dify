@@ -459,5 +459,6 @@ class TestIndexProcessorParameters:
         assert call_args[0][1] is None
 
         # Verify keyword arguments
+        assert call_args[1]["session"] is mock_db_session.session
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True

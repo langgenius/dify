@@ -3,22 +3,7 @@ import { Field, FieldError, FieldLabel } from '../../field'
 import { Form } from '../../form'
 import { Input } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('Input', () => {
-  it('should render a labelled Base UI input with its value', async () => {
-    const screen = await render(
-      <label>
-        Workspace name
-        <Input name="workspaceName" defaultValue="Dify" />
-      </label>,
-    )
-
-    const input = screen.getByRole('textbox', { name: 'Workspace name' })
-
-    await expect.element(input).toHaveValue('Dify')
-  })
-
   it('should use Field invalid state', async () => {
     const screen = await render(
       <Field name="repositoryUrl" invalid>
@@ -48,7 +33,7 @@ describe('Input', () => {
 
     const input = screen.getByRole('textbox', { name: 'Email' })
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     await vi.waitFor(async () => {
       await expect.element(screen.getByText('Email is required.')).toBeInTheDocument()

@@ -154,7 +154,8 @@ export async function syncAgentV2WorkflowDraft(appId: string, agentId: string): 
 export async function deleteTestApp(id: string): Promise<void> {
   const ctx = await createApiContext()
   try {
-    await ctx.delete(`/console/api/apps/${id}`)
+    const response = await ctx.delete(`/console/api/apps/${id}`)
+    await expectApiResponseOK(response, `Delete app ${id}`)
   } finally {
     await ctx.dispose()
   }

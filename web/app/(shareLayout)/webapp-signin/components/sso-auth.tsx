@@ -1,9 +1,9 @@
 'use client'
-import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useCallback, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { SSOProtocol } from '@/features/system-features/constants'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -12,37 +12,37 @@ import {
   fetchMembersOIDCSSOUrl,
   fetchMembersSAMLSSOUrl,
 } from '@/service/share'
+import { getClientLoginFallback } from '@/utils/login-redirect'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
 
 type SSOAuthProps = {
   protocol: string
 }
 
-const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
+function SSOAuth({ protocol }: SSOAuthProps) {
   const router = useRouter()
   const { t } = useTranslation()
   const searchParams = useSearchParams()
 
   const redirectUrl = searchParams.get('redirect_url')
-  const getAppCodeFromRedirectUrl = useCallback(() => {
-    if (!redirectUrl) return null
-    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
-    const appCode = url.pathname.split('/').pop()
-    if (!appCode) return null
-
-    return appCode
-  }, [redirectUrl])
 
   const [isLoading, setIsLoading] = useState(false)
 
+  useEffect(() => {
+    if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
+  }, [redirectUrl, router])
+
   const handleSSOLogin = () => {
-    const appCode = getAppCodeFromRedirectUrl()
-    if (!redirectUrl || !appCode) {
-      toast.error(t(($) => $['error.invalidRedirectUrlOrAppCode'], { ns: 'login' }))
+    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+    if (!loginRedirect) {
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
     setIsLoading(true)
     if (protocol === SSOProtocol.SAML) {
-      fetchMembersSAMLSSOUrl(appCode, redirectUrl)
+      fetchMembersSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
         .then((res) => {
           router.push(res.url)
         })
@@ -50,7 +50,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           setIsLoading(false)
         })
     } else if (protocol === SSOProtocol.OIDC) {
-      fetchMembersOIDCSSOUrl(appCode, redirectUrl)
+      fetchMembersOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
         .then((res) => {
           router.push(res.url)
         })
@@ -58,7 +58,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           setIsLoading(false)
         })
     } else if (protocol === SSOProtocol.OAuth2) {
-      fetchMembersOAuth2SSOUrl(appCode, redirectUrl)
+      fetchMembersOAuth2SSOUrl(loginRedirect.appCode, loginRedirect.target.href)
         .then((res) => {
           router.push(res.url)
         })

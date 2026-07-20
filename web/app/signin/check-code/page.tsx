@@ -10,11 +10,13 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function CheckCode() {
@@ -59,9 +61,10 @@ export default function CheckCode() {
         if (invite_token) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
-          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-          const redirectUrl = resolvePostLoginRedirect(searchParams)
-          router.replace(redirectUrl || '/')
+          const profileQueryOptions = userProfileQueryOptions()
+          await queryClient.resetQueries({ queryKey: profileQueryOptions.queryKey })
+          await queryClient.fetchQuery(profileQueryOptions)
+          replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       }
     } catch (error) {

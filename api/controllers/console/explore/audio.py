@@ -50,14 +50,19 @@ register_response_schema_models(console_ns, AudioBinaryResponse, AudioTranscript
 class ChatAudioApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     def post(self, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
 
         file = request.files["file"]
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=None,
+            )
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -96,7 +101,7 @@ class ChatTextApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
     def post(self, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         try:
