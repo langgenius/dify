@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { render } from '@/test/console/render'
 import NewMCPCard, { NewMCPButton } from '../create-card'
 
 // Track the mock functions
@@ -46,35 +47,17 @@ vi.mock('../modal', () => ({
   },
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['mcp.manage'] as string[],
-  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
-vi.mock('@/context/account-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/workspace-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/version-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/system-features-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: unknown) => {
-    if (atom === mockAppContextState.workspacePermissionKeysAtom)
-      return mockAppContextState.workspacePermissionKeys
-
-    throw new Error('Unexpected atom')
-  },
-}))
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+  }))
+})
 
 // Mock the plugins service
 vi.mock('@/service/use-plugins', () => ({
@@ -112,7 +95,7 @@ describe('NewMCPCard', () => {
 
   beforeEach(() => {
     mockCreateMCP.mockClear()
-    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
@@ -185,7 +168,7 @@ describe('NewMCPCard', () => {
 
   describe('mcp.manage Permission', () => {
     it('should not render card when user lacks mcp.manage', () => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
@@ -193,7 +176,7 @@ describe('NewMCPCard', () => {
     })
 
     it('should not render toolbar button when user lacks mcp.manage', () => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 

@@ -123,10 +123,7 @@ describe('FeaturedTriggers', () => {
       expect(
         screen.queryByRole('link', { name: 'workflow.tabs.noFeaturedTriggers' }),
       ).not.toBeInTheDocument()
-      expect(globalThis.localStorage.setItem).toHaveBeenCalledWith(
-        'workflow_triggers_featured_collapsed',
-        'true',
-      )
+      expect(globalThis.localStorage.getItem('workflow_triggers_featured_collapsed')).toBe('true')
     })
 
     it('should reveal installed providers in batches and then return to the initial list', async () => {

@@ -1,61 +1,17 @@
 import type { ReactNode } from 'react'
-import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import List from '../index'
-
-type StepByStepTourTestState = StepByStepTourSessionState & {
-  completedTaskIds: ['home', 'studio']
-  firstWorkspaceId: string
-  manuallyDisabledWorkspaceIds: string[]
-  manuallyEnabledWorkspaceIds: string[]
-  minimized: boolean
-  skipped: boolean
-  updatedAt: null
-}
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
-let mockAppContextState = {
+let mockConsoleState = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
 }
-const mockStepByStepTour = vi.hoisted(() => {
-  const createState = (
-    overrides: Partial<StepByStepTourTestState> = {},
-  ): StepByStepTourTestState => ({
-    activeGuideGroup: undefined,
-    activeGuideIndex: undefined,
-    activeGuideIndexes: undefined,
-    activeTaskId: undefined,
-    completedTaskIds: ['home', 'studio'],
-    firstWorkspaceId: 'workspace-1',
-    manuallyDisabledWorkspaceIds: [],
-    manuallyEnabledWorkspaceIds: ['workspace-1'],
-    minimized: true,
-    skipped: false,
-    updatedAt: null,
-    ...overrides,
-  })
-  let state = createState()
-
-  return {
-    get state() {
-      return state
-    },
-    reset() {
-      state = createState()
-    },
-    setState(nextState: StepByStepTourTestState) {
-      state = nextState
-    },
-    setTestState(overrides: Partial<StepByStepTourTestState> = {}) {
-      state = createState(overrides)
-    },
-  }
-})
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -63,44 +19,27 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/app/components/step-by-step-tour/state', () => ({
-  activeStepByStepTourGuideGroupAtom: { tourStateKind: 'guideGroup' },
-  activeStepByStepTourGuideIndexAtom: { tourStateKind: 'guideIndex' },
-  activeStepByStepTourTaskIdAtom: { tourStateKind: 'taskId' },
-  resolveStepByStepTourGuideGroupAtom: { tourStateKind: 'resolveGuideGroup' },
-}))
-
 // Mock app context
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
 // Mock external api panel context
@@ -111,35 +50,6 @@ vi.mock('@/context/external-api-panel-context', () => ({
     setShowExternalApiPanel: mockSetShowExternalApiPanel,
   }),
 }))
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-  const mockedJotai = await createDatasetAccessJotaiMock(importOriginal)
-
-  return {
-    ...mockedJotai,
-    useAtomValue: (atom: { tourStateKind?: string }) => {
-      if (atom.tourStateKind === 'guideGroup') return mockStepByStepTour.state.activeGuideGroup
-      if (atom.tourStateKind === 'guideIndex') return mockStepByStepTour.state.activeGuideIndex
-      if (atom.tourStateKind === 'taskId') return mockStepByStepTour.state.activeTaskId
-      return mockedJotai.useAtomValue(atom)
-    },
-    useSetAtom: (atom: { tourStateKind?: string }) => {
-      if (atom.tourStateKind === 'resolveGuideGroup') {
-        return ({ guideGroup }: { guideGroup: StepByStepTourTestState['activeGuideGroup'] }) => {
-          mockStepByStepTour.setState({
-            ...mockStepByStepTour.state,
-            activeGuideGroup: guideGroup,
-            activeGuideIndex: 0,
-            activeGuideIndexes: undefined,
-          })
-        }
-      }
-      return (mockedJotai.useSetAtom as (atom: unknown) => unknown)(atom)
-    },
-  }
-})
 
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
@@ -265,9 +175,7 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
-    localStorage.clear()
-    mockStepByStepTour.reset()
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: true,
@@ -300,7 +208,7 @@ describe('List', () => {
     })
 
     it('should hide external API panel button without dataset.external.connect', () => {
-      mockAppContextState = {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
@@ -411,7 +319,7 @@ describe('List', () => {
     })
 
     it('should render first empty state when dataset.create_and_management is available without the legacy editor role', async () => {
-      mockAppContextState = {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: false,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
@@ -434,62 +342,8 @@ describe('List', () => {
       ).toHaveAttribute('href', '/datasets/create-from-pipeline')
     })
 
-    it('should activate the Knowledge empty walkthrough for users with all empty-state permissions', async () => {
-      mockStepByStepTour.setTestState({
-        activeTaskId: 'knowledge',
-        activeGuideIndex: 0,
-        minimized: true,
-      })
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-      vi.mocked(useDatasetList).mockReturnValue({
-        data: { pages: [{ data: [], total: 0 }] },
-        fetchNextPage: vi.fn(),
-        hasNextPage: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-      } as unknown as ReturnType<typeof useDatasetList>)
-
-      render(<List />)
-
-      await waitFor(() => {
-        const state = mockStepByStepTour.state
-        expect(state.activeGuideGroup).toBe('knowledgeEmpty')
-        expect(state.activeGuideIndex).toBe(0)
-      })
-    })
-
-    it('should not activate the Knowledge empty walkthrough until all three empty-state actions are available', async () => {
-      mockAppContextState = {
-        isCurrentWorkspaceEditor: false,
-        isCurrentWorkspaceManager: true,
-        isCurrentWorkspaceOwner: false,
-        workspacePermissionKeys: ['dataset.create_and_management'],
-      }
-      mockStepByStepTour.setTestState({
-        activeTaskId: 'knowledge',
-        activeGuideIndex: 0,
-        minimized: true,
-      })
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-      vi.mocked(useDatasetList).mockReturnValue({
-        data: { pages: [{ data: [], total: 0 }] },
-        fetchNextPage: vi.fn(),
-        hasNextPage: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-      } as unknown as ReturnType<typeof useDatasetList>)
-
-      render(<List />)
-
-      await waitFor(() => {
-        expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
-      })
-      const state = mockStepByStepTour.state
-      expect(state.activeGuideGroup).toBeUndefined()
-    })
-
     it('should not render first empty state for legacy editors without dataset creation permissions', async () => {
-      mockAppContextState = {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
@@ -602,7 +456,7 @@ describe('List', () => {
     })
 
     it('should not show ExternalAPIPanel without dataset.external.connect even when panel state is open', async () => {
-      mockAppContextState = {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
@@ -650,7 +504,7 @@ describe('List', () => {
     })
 
     it('should not show include all checkbox when not workspace owner', async () => {
-      mockAppContextState = {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,

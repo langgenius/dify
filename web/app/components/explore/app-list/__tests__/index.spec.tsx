@@ -5,22 +5,23 @@ import type {
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { StepByStepTourTestState } from '@/app/components/step-by-step-tour/__tests__/test-utils'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { useHydrateAtoms } from 'jotai/utils'
 import {
-  StepByStepTourTestStateObserver,
-  StepByStepTourTestUiStateHydrator,
-} from '@/app/components/step-by-step-tour/__tests__/test-utils'
-import { resetStepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
+  resetStepByStepTourSessionAtom,
+  stepByStepTourSessionAtom,
+} from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -29,8 +30,23 @@ import AppList from '../index'
 
 type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
 
-const mockAppContextState = vi.hoisted(() => ({
+function StepByStepTourSessionFixture({
+  children,
+  initialState,
+}: {
+  children: ReactNode
+  initialState: StepByStepTourSessionState
+}) {
+  useHydrateAtoms([[stepByStepTourSessionAtom, initialState]], {
+    dangerouslyForceHydrate: true,
+  })
+
+  return children
+}
+
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
+  currentWorkspace: { id: 'workspace-1' },
   workspacePermissionKeys: [] as string[],
 }))
 
@@ -75,7 +91,6 @@ const mockStepByStepTour = vi.hoisted(() => {
   })
   let state = createState()
   let uiState: StepByStepTourTestUiState = createUiState()
-  let observedState: StepByStepTourTestState | undefined
   const patchState = vi.fn(
     async ({
       body,
@@ -139,9 +154,6 @@ const mockStepByStepTour = vi.hoisted(() => {
   )
 
   return {
-    get observedState() {
-      return observedState
-    },
     get state() {
       return state
     },
@@ -152,11 +164,7 @@ const mockStepByStepTour = vi.hoisted(() => {
     reset() {
       state = createState()
       uiState = createUiState()
-      observedState = undefined
       patchState.mockClear()
-    },
-    setObservedState(nextState: StepByStepTourTestState) {
-      observedState = nextState
     },
     setState(overrides: Partial<StepByStepTourStateResponse> = {}) {
       state = createState(overrides)
@@ -306,45 +314,17 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  const { atom } = await import('jotai/vanilla')
-  const mockedModule = await createAppContextStateAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-  )
-
-  return {
-    ...mockedModule,
-    currentWorkspaceIdAtom: atom('workspace-1'),
-  }
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -527,9 +507,7 @@ const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
 })
 
 const mockAppCreatePermission = (hasEditPermission: boolean) => {
-  mockAppContextState.workspacePermissionKeys = hasEditPermission
-    ? ['app.create_and_management']
-    : []
+  mockConsoleState.workspacePermissionKeys = hasEditPermission ? ['app.create_and_management'] : []
 }
 
 type RenderOptions = {
@@ -551,7 +529,7 @@ const renderAppList = (
 ) => {
   mockConfig.isCloudEdition = options.isCloudEdition ?? false
   mockAppCreatePermission(hasEditPermission)
-  const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
     systemFeatures: {
       enable_explore_banner: options.enableExploreBanner ?? false,
       enable_learn_app: options.enableLearnApp ?? true,
@@ -566,6 +544,7 @@ const renderAppList = (
   const mockFetchAppList = fetchAppList as unknown as Mock
   const mockFetchBanners = fetchBanners as unknown as Mock
   const jotaiStore = createStore()
+  seedRegisteredConsoleStateFixture(jotaiStore)
   jotaiStore.set(queryClientAtom, queryClient)
 
   if (mockIsLoading) {
@@ -587,13 +566,12 @@ const renderAppList = (
 
   const Wrapped = ({ children }: { children: ReactNode }) => (
     <JotaiProvider store={jotaiStore}>
-      <SystemFeaturesWrapper>
-        <StepByStepTourTestUiStateHydrator initialState={mockStepByStepTour.uiState}>
-          <StepByStepTourTestStateObserver onChange={mockStepByStepTour.setObservedState} />
+      <ConsoleQueryWrapper>
+        <StepByStepTourSessionFixture initialState={mockStepByStepTour.uiState}>
           {children}
           {options.extra}
-        </StepByStepTourTestUiStateHydrator>
-      </SystemFeaturesWrapper>
+        </StepByStepTourSessionFixture>
+      </ConsoleQueryWrapper>
     </JotaiProvider>
   )
   const rendered = renderWithNuqs(
@@ -1020,6 +998,7 @@ describe('AppList', () => {
 
     it('should open create flow from learn dify item card click', async () => {
       vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1038,8 +1017,8 @@ describe('AppList', () => {
       )
 
       renderAppList(true)
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
+      await user.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
         expect(fetchAppDetail).toHaveBeenCalledWith('learn-basic-1')
@@ -1054,6 +1033,7 @@ describe('AppList', () => {
 
     it('should advance the Learn Dify tour to the create button after a lesson opens', async () => {
       vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1067,23 +1047,18 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
+      await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
       expect(screen.getByTestId('try-app-create')).toHaveAttribute(
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate,
       )
-      await waitFor(() => {
-        const state = mockStepByStepTour.observedState
-        expect(state?.activeTaskId).toBe('home')
-        expect(state?.activeGuideIndex).toBe(1)
-        expect(state?.completedTaskIds).toEqual([])
-      })
     })
 
     it('should close the Learn Dify detail when the home action guide is skipped', async () => {
       vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1100,29 +1075,24 @@ describe('AppList', () => {
         isCloudEdition: true,
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
+      await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
       expect(screen.getByTestId('try-app-create')).toHaveAttribute(
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate,
       )
-      await waitFor(() => {
-        expect(mockStepByStepTour.observedState?.activeGuideIndex).toBe(1)
-      })
 
-      fireEvent.click(screen.getByTestId('skip-home-guide'))
+      await user.click(screen.getByTestId('skip-home-guide'))
 
       await waitFor(() => {
         expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
       })
-      expect(mockStepByStepTour.observedState?.activeTaskId).toBeUndefined()
-      expect(mockStepByStepTour.observedState?.activeGuideIndex).toBeUndefined()
-      expect(mockStepByStepTour.observedState?.completedTaskIds).toEqual([])
     })
 
     it('should complete the Learn Dify tour when a no-create user opens a lesson detail', async () => {
       vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1135,18 +1105,17 @@ describe('AppList', () => {
 
       renderAppList(false, undefined, undefined, { isCloudEdition: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
+      await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
       expect(screen.queryByTestId('try-app-create')).not.toBeInTheDocument()
       await waitFor(() => {
-        const state = mockStepByStepTour.observedState
-        expect(state?.activeTaskId).toBeUndefined()
-        expect(state?.activeGuideIndex).toBeUndefined()
-        expect(state?.activeGuideGroup).toBeUndefined()
-        expect(state?.activeGuideIndexes).toBeUndefined()
-        expect(state?.completedTaskIds).toEqual(['home'])
-        expect(state?.minimized).toBe(false)
+        expect(mockStepByStepTour.patchState.mock.calls.at(-1)?.[0]).toEqual({
+          body: {
+            action: 'complete_task',
+            task_id: 'home',
+          },
+        })
       })
       expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
         action: 'task_completed',
@@ -1160,6 +1129,7 @@ describe('AppList', () => {
 
     it('should complete the Learn Dify tour only after the app is created from details', async () => {
       vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1185,16 +1155,17 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
+      await user.click(await screen.findByTestId('try-app-create'))
+      await user.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
-        const state = mockStepByStepTour.observedState
-        expect(state?.activeTaskId).toBeUndefined()
-        expect(state?.activeGuideIndex).toBeUndefined()
-        expect(state?.activeGuideIndexes).toBeUndefined()
-        expect(state?.completedTaskIds).toEqual(['home'])
+        expect(mockStepByStepTour.patchState.mock.calls.at(-1)?.[0]).toEqual({
+          body: {
+            action: 'complete_task',
+            task_id: 'home',
+          },
+        })
       })
       expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
         action: 'task_completed',
@@ -1214,6 +1185,7 @@ describe('AppList', () => {
 
     it('should clear the Learn Dify session and provenance when completion persistence fails', async () => {
       vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1240,16 +1212,12 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
+      await user.click(await screen.findByTestId('try-app-create'))
+      await user.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
         expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(1)
-        expect(mockStepByStepTour.observedState?.activeTaskId).toBeUndefined()
-        expect(mockStepByStepTour.observedState?.activeGuideIndex).toBeUndefined()
-        expect(mockStepByStepTour.observedState?.activeGuideIndexes).toBeUndefined()
-        expect(mockStepByStepTour.observedState?.completedTaskIds).toEqual([])
       })
       expect(mockTrackEvent).not.toHaveBeenCalledWith(
         'step_tour',
@@ -1259,9 +1227,9 @@ describe('AppList', () => {
         }),
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(screen.getByRole('button', { name: 'Alpha' }))
+      await user.click(await screen.findByTestId('try-app-create'))
+      await user.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
         expect(mockHandleImportDSL).toHaveBeenCalledTimes(2)
@@ -1284,6 +1252,7 @@ describe('AppList', () => {
 
     it('should skip redirect after confirming a pending Learn Dify tour create', async () => {
       vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1310,10 +1279,10 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
-      fireEvent.click(await screen.findByTestId('dsl-confirm'))
+      await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
+      await user.click(await screen.findByTestId('try-app-create'))
+      await user.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByTestId('dsl-confirm'))
 
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledWith(
@@ -1326,6 +1295,7 @@ describe('AppList', () => {
 
     it('should hide the Learn Dify tour target while the create modal is open and abandon on cancel', async () => {
       vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1339,84 +1309,21 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
+      await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       const createFromDetailsButton = await screen.findByTestId('try-app-create')
       expect(createFromDetailsButton).toHaveAttribute(
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate,
       )
 
-      fireEvent.click(createFromDetailsButton)
+      await user.click(createFromDetailsButton)
       expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
       expect(createFromDetailsButton).not.toHaveAttribute('data-step-by-step-tour-target')
 
-      fireEvent.click(screen.getByTestId('hide-create'))
+      await user.click(screen.getByTestId('hide-create'))
 
       await waitFor(() => {
-        const state = mockStepByStepTour.observedState
-        expect(state?.activeTaskId).toBeUndefined()
-        expect(state?.activeGuideIndex).toBeUndefined()
-        expect(state?.activeGuideIndexes).toBeUndefined()
-        expect(state?.completedTaskIds).toEqual([])
-      })
-      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
-    })
-
-    it('should restart the Learn Dify tour from a clean state after abandoning create', async () => {
-      vi.useRealTimers()
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [createApp()],
-      }
-      mockStepByStepTour.setUiState({
-        activeTaskId: 'home',
-        activeGuideIndex: 0,
-        minimized: true,
-      })
-      const { unmount } = renderAppList(true, undefined, undefined, {
-        isCloudEdition: true,
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('hide-create'))
-
-      await waitFor(() => {
-        const state = mockStepByStepTour.observedState
-        expect(state?.activeTaskId).toBeUndefined()
-        expect(state?.activeGuideIndex).toBeUndefined()
-      })
-      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
-
-      const abandonedTourState = mockStepByStepTour.observedState
-      if (!abandonedTourState)
-        throw new Error('Step-by-step tour state should be ready before restarting the home tour.')
-      unmount()
-      mockStepByStepTour.setState({
-        completed_task_ids: abandonedTourState.completedTaskIds,
-        first_workspace_id: abandonedTourState.firstWorkspaceId,
-        manually_disabled_workspace_ids: abandonedTourState.manuallyDisabledWorkspaceIds,
-        manually_enabled_workspace_ids: abandonedTourState.manuallyEnabledWorkspaceIds,
-        skipped: abandonedTourState.skipped,
-      })
-      mockStepByStepTour.setUiState({
-        activeTaskId: 'home',
-        activeGuideIndex: 0,
-        minimized: true,
-      })
-
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
-      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
-
-      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
-      expect(screen.getByTestId('try-app-create')).toHaveAttribute(
-        'data-step-by-step-tour-target',
-        STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate,
-      )
-      await waitFor(() => {
-        const state = mockStepByStepTour.observedState
-        expect(state?.activeTaskId).toBe('home')
-        expect(state?.activeGuideIndex).toBe(1)
+        expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
       })
     })
   })

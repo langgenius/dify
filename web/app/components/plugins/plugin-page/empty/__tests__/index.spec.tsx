@@ -3,12 +3,12 @@ import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
 import { InstallationScope } from '@/features/system-features/constants'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 // ==================== Imports (after mocks) ====================
 import Empty from '../index'
 
@@ -43,7 +43,7 @@ const { mockSetActiveTab, mockUseInstalledPluginList, mockState } = vi.hoisted((
 })
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: mockState.systemFeatures })
+  renderWithConsoleQuery(ui, { systemFeatures: mockState.systemFeatures })
 
 // Mock plugin page context
 vi.mock('../../context', () => ({

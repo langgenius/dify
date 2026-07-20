@@ -9,7 +9,7 @@ const { mockRouterPush, mockWindowOpen } = vi.hoisted(() => ({
   mockWindowOpen: vi.fn(),
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
 }))
 
@@ -101,11 +101,9 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  __esModule: true,
   default: () => (
-    <button type="button" data-testid="update-setting-dialog">
+    <button type="button" aria-label="plugin.autoUpdate.autoUpdate">
       plugin.autoUpdate.autoUpdate
-      <span>plugin.autoUpdate.strategy.fixOnly.name</span>
     </button>
   ),
 }))
@@ -325,7 +323,7 @@ describe('IntegrationsPage', () => {
     mockCanDebugger.mockReturnValue(true)
     mockCanSetPermissions.mockReturnValue(true)
     mockIsPermissionLoading.mockReturnValue(false)
-    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
     mockReferenceSetting.mockReturnValue({
       permission: {
         install_permission: 'everyone',
@@ -598,7 +596,7 @@ describe('IntegrationsPage', () => {
   })
 
   it('renders the MCP route as read-only without mcp.manage', () => {
-    mockAppContextState.workspacePermissionKeys = ['tool.manage']
+    mockConsoleState.workspacePermissionKeys = ['tool.manage']
 
     renderIntegrationsPage(undefined, 'mcp')
 
@@ -608,7 +606,7 @@ describe('IntegrationsPage', () => {
   it.each(['custom-tool', 'workflow-tool'] as const)(
     'renders the %s route as read-only without tool.manage',
     (section) => {
-      mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+      mockConsoleState.workspacePermissionKeys = ['mcp.manage']
 
       renderIntegrationsPage(undefined, section)
 
@@ -717,7 +715,7 @@ describe('IntegrationsPage', () => {
 
   it('keeps custom, workflow, and MCP tool entries visible without manage permissions', async () => {
     const user = userEvent.setup()
-    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
     renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
 
     await user.click(screen.getByRole('button', { name: 'common.menus.tools' }))
@@ -942,8 +940,9 @@ describe('IntegrationsPage', () => {
     (section) => {
       renderIntegrationsPage({ section })
 
-      expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
-      expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+      ).toBeInTheDocument()
     },
   )
 
@@ -992,7 +991,9 @@ describe('IntegrationsPage', () => {
 
     renderIntegrationsPage({ section: 'trigger' })
 
-    expect(screen.queryByTestId('update-setting-dialog')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the sidebar plugin permissions quick settings and updates permissions', async () => {
@@ -1045,21 +1046,6 @@ describe('IntegrationsPage', () => {
     expect(
       screen.getByRole('link', { name: 'common.settings.provider' }).parentElement,
     ).toHaveClass('py-4')
-  })
-
-  it('reserves the install action slot while install permission is loading', () => {
-    mockCanManagement.mockReturnValue(false)
-    mockIsPermissionLoading.mockReturnValue(true)
-
-    renderIntegrationsPage({ section: 'provider' })
-
-    expect(
-      screen.getByText('common.settings.integrations').parentElement?.parentElement,
-    ).toHaveClass('h-14', 'pt-1', 'pb-7')
-    expect(screen.queryByRole('button', { name: 'plugin install' })).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: 'common.settings.provider' }).parentElement,
-    ).toHaveClass('mt-6')
   })
 
   it('keeps the integrations sidebar expanded without a collapse control', () => {

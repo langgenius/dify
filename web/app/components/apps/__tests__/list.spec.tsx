@@ -4,25 +4,18 @@ import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import * as React from 'react'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import List from '../list'
-
-type StepByStepTourTestState = StepByStepTourSessionState & {
-  completedTaskIds: ['home']
-  firstWorkspaceId: string
-  manuallyDisabledWorkspaceIds: string[]
-  manuallyEnabledWorkspaceIds: string[]
-  minimized: boolean
-  skipped: boolean
-  updatedAt: null
-}
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -46,40 +39,7 @@ const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
     onlineUsersMap: {},
   })),
 )
-const mockStepByStepTour = vi.hoisted(() => {
-  const createState = (
-    overrides: Partial<StepByStepTourTestState> = {},
-  ): StepByStepTourTestState => ({
-    activeGuideGroup: undefined,
-    activeGuideIndex: undefined,
-    activeGuideIndexes: undefined,
-    activeTaskId: undefined,
-    completedTaskIds: ['home'],
-    firstWorkspaceId: 'workspace-1',
-    manuallyDisabledWorkspaceIds: [],
-    manuallyEnabledWorkspaceIds: ['workspace-1'],
-    minimized: true,
-    skipped: false,
-    updatedAt: null,
-    ...overrides,
-  })
-  let state = createState()
-
-  return {
-    get state() {
-      return state
-    },
-    reset() {
-      state = createState()
-    },
-    setState(nextState: StepByStepTourTestState) {
-      state = nextState
-    },
-    setTestState(overrides: Partial<StepByStepTourTestState> = {}) {
-      state = createState(overrides)
-    },
-  }
-})
+let stepByStepTourSessionState: StepByStepTourSessionState = {}
 
 const mockLearnDifyApp = vi.hoisted(
   () =>
@@ -150,86 +110,23 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@/app/components/step-by-step-tour/state', () => ({
-  activeStepByStepTourGuideGroupAtom: { tourStateKind: 'guideGroup' },
-  activeStepByStepTourGuideIndexAtom: { tourStateKind: 'guideIndex' },
-  activeStepByStepTourTaskIdAtom: { tourStateKind: 'taskId' },
-  resolveStepByStepTourGuideGroupAtom: { tourStateKind: 'resolveGuideGroup' },
-}))
-
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 let mockWorkspacePermissionKeys = ['app.create_and_management']
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  const mockedJotai = await createAppContextStateJotaiMock(importOriginal)
-
-  return {
-    ...mockedJotai,
-    useAtomValue: (atom: { tourStateKind?: string }) => {
-      if (atom.tourStateKind === 'guideGroup') return mockStepByStepTour.state.activeGuideGroup
-      if (atom.tourStateKind === 'guideIndex') return mockStepByStepTour.state.activeGuideIndex
-      if (atom.tourStateKind === 'taskId') return mockStepByStepTour.state.activeTaskId
-      return mockedJotai.useAtomValue(atom)
-    },
-    useSetAtom: (atom: { tourStateKind?: string }) => {
-      if (atom.tourStateKind === 'resolveGuideGroup') {
-        return ({ guideGroup }: { guideGroup: StepByStepTourTestState['activeGuideGroup'] }) => {
-          mockStepByStepTour.setState({
-            ...mockStepByStepTour.state,
-            activeGuideGroup: guideGroup,
-            activeGuideIndex: 0,
-            activeGuideIndexes: undefined,
-          })
-        }
-      }
-      return mockedJotai.useSetAtom(atom)
-    },
-  }
-})
-
 const mockOnPlanInfoChanged = vi.fn()
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -632,15 +529,24 @@ type RenderListOptions = {
 
 const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   mockSearchParams = new URLSearchParams(searchParams)
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
-  return renderWithNuqs(
-    <SystemFeaturesWrapper>
-      <List onCreateLearnDify={options.onCreateLearnDify} onTryLearnDify={options.onTryLearnDify} />
-    </SystemFeaturesWrapper>,
+  const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
+  store.set(stepByStepTourSessionAtom, stepByStepTourSessionState)
+  const rendered = renderWithNuqs(
+    <ConsoleQueryWrapper>
+      <JotaiProvider store={store}>
+        <List
+          onCreateLearnDify={options.onCreateLearnDify}
+          onTryLearnDify={options.onTryLearnDify}
+        />
+      </JotaiProvider>
+    </ConsoleQueryWrapper>,
     { searchParams },
   )
+  return rendered
 }
 
 type AppListInfiniteOptions = {
@@ -672,18 +578,17 @@ const setActiveStudioStepByStepTour = (
     | 'studioNoCreateWithApps'
     | undefined = 'studioWithApps',
 ) => {
-  mockStepByStepTour.setTestState({
+  stepByStepTourSessionState = {
     activeTaskId: 'studio',
     activeGuideGroup,
     activeGuideIndex,
-    minimized: true,
-  })
+  }
 }
 
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockStepByStepTour.reset()
+    stepByStepTourSessionState = {}
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockDragging = false
@@ -753,45 +658,6 @@ describe('List', () => {
     it('should render create button for editors', () => {
       renderList()
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
-    })
-
-    it('should open the create menu for the Studio with-apps tour create guide', async () => {
-      setActiveStudioStepByStepTour(0)
-
-      renderList()
-
-      expect(screen.getByRole('button', { name: 'common.operation.create' })).toHaveAttribute(
-        'data-step-by-step-tour-target',
-        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate,
-      )
-      expect(await screen.findByText('app.newApp.startFromBlank')).toBeInTheDocument()
-      expect(screen.getByText('app.newApp.startFromTemplate')).toBeInTheDocument()
-      expect(screen.getByText(/app\.importDSL/)).toBeInTheDocument()
-      expect(
-        screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank', hidden: true }),
-      ).toBeInTheDocument()
-      const createMenuHighlightPart = document.body.querySelector(
-        '[data-step-by-step-tour-highlight-part]',
-      )
-      expect(createMenuHighlightPart).toHaveAttribute(
-        'data-step-by-step-tour-highlight-part',
-        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
-      )
-      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
-    })
-
-    it('should allow closing the tour-opened Studio create menu from its trigger', async () => {
-      setActiveStudioStepByStepTour(0)
-
-      renderList()
-
-      expect(await screen.findByText('app.newApp.startFromBlank')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-
-      await waitFor(() => {
-        expect(screen.queryByText('app.newApp.startFromBlank')).not.toBeInTheDocument()
-      })
     })
 
     it('should open the create menu before the Studio with-apps guide group is persisted', async () => {

@@ -1,7 +1,7 @@
 import type { App } from '@/models/explore'
 import { render, screen } from '@testing-library/react'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import LearnDify from '../index'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../storage'
@@ -50,7 +50,7 @@ const renderLearnDify = ({
   enableLearnApp?: boolean
   forceVisible?: boolean
 } = {}) => {
-  const { wrapper } = createSystemFeaturesWrapper({
+  const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: {
       enable_learn_app: enableLearnApp,
     },

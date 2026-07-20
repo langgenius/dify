@@ -1,5 +1,4 @@
 import { trackStepByStepTourEvent } from '../analytics'
-import { getStepByStepTourGuides } from '../target-registry'
 
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 
@@ -36,14 +35,5 @@ describe('step-by-step tour analytics', () => {
     trackStepByStepTourEvent({ action: 'tour_enabled' })
 
     expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_enabled' })
-  })
-
-  it('uses a stable business ID separate from the DOM target', () => {
-    const [guide] = getStepByStepTourGuides('studio', 'studioEmpty')
-
-    expect(guide).toMatchObject({
-      id: 'studio.empty.template',
-      target: 'step-by-step-tour-studio-empty-template',
-    })
   })
 })

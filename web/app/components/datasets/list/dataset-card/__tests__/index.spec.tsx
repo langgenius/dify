@@ -1,10 +1,11 @@
 import type { DataSet } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { render } from '@/test/console/render'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCardFooter from '../components/dataset-card-footer'
 import Description from '../components/description'
@@ -56,41 +57,31 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
-let mockAppContextState = {
+let mockConsoleState = {
   isCurrentWorkspaceDatasetOperator: false,
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('../hooks/use-dataset-card-state', () => ({
@@ -111,13 +102,6 @@ vi.mock('../hooks/use-dataset-card-state', () => ({
     onConfirmDelete: vi.fn(),
   }),
 }))
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
 
 vi.mock('../components/corner-labels', () => ({
   default: () => <div data-testid="corner-labels" />,
@@ -198,7 +182,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
 describe('DatasetCard Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceDatasetOperator: false,
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
@@ -378,7 +362,7 @@ describe('DatasetCard Integration', () => {
 describe('DatasetCard Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceDatasetOperator: false,
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
@@ -513,7 +497,7 @@ describe('DatasetCard Component', () => {
   })
 
   it('should allow tag binding with workspace dataset tag management permission', () => {
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceDatasetOperator: false,
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['dataset.tag.manage'],

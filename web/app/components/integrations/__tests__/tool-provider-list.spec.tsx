@@ -1,12 +1,12 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
 import { getToolType } from '@/app/components/tools/utils'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { ToolType } from '../../workflow/block-selector/types'
 import ProviderList from '../tool-provider-list'
@@ -98,45 +98,15 @@ vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: (enabled?: boolean) => mockUseAllToolProviders(enabled),
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 let mockCheckedInstalledData: { plugins: { id: string; name: string }[] } | null = null
@@ -188,14 +158,10 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  __esModule: true,
   default: () => (
-    <div data-testid="update-setting-dialog">
-      <button type="button">
-        plugin.autoUpdate.autoUpdate
-        <span>plugin.autoUpdate.strategy.fixOnly.name</span>
-      </button>
-    </div>
+    <button type="button" aria-label="plugin.autoUpdate.autoUpdate">
+      plugin.autoUpdate.autoUpdate
+    </button>
   ),
 }))
 
@@ -394,11 +360,11 @@ const renderProviderList = (
   category?: ComponentProps<typeof ProviderList>['category'],
   contentInset?: ComponentProps<typeof ProviderList>['contentInset'],
 ) => {
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: mockEnableMarketplace },
   })
   const Wrapped = ({ children }: { children: ReactNode }) => (
-    <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
+    <ConsoleQueryWrapper>{children}</ConsoleQueryWrapper>
   )
   return renderWithNuqs(
     <Wrapped>
@@ -414,7 +380,7 @@ describe('ProviderList', () => {
     mockEnableMarketplace = false
     mockCollectionData = createDefaultCollections()
     mockIsLoadingToolProviders = false
-    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
     mockUseAllToolProviders.mockImplementation((enabled = true) => ({
       data: enabled ? mockCollectionData : [],
       isLoading: enabled ? mockIsLoadingToolProviders : false,
@@ -452,7 +418,7 @@ describe('ProviderList', () => {
     })
 
     it('keeps custom and workflow tabs visible without tool.manage', () => {
-      mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+      mockConsoleState.workspacePermissionKeys = ['mcp.manage']
 
       renderProviderList()
 
@@ -463,7 +429,7 @@ describe('ProviderList', () => {
     })
 
     it('keeps MCP tab visible without mcp.manage', () => {
-      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+      mockConsoleState.workspacePermissionKeys = ['tool.manage']
 
       renderProviderList()
 
@@ -477,7 +443,7 @@ describe('ProviderList', () => {
       ['api', 'card-my-api'],
       ['workflow', 'card-wf-tool'],
     ] as const)('renders %s category read-only without tool.manage', (category, cardTestId) => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       renderProviderList({ category })
 
@@ -656,12 +622,12 @@ describe('ProviderList', () => {
       expect(screen.getByRole('searchbox')).toBeInTheDocument()
     })
 
-    it('uses the plugin update settings dialog from the tools toolbar', () => {
+    it('shows the plugin update settings action in the tools toolbar', () => {
       renderProviderList(undefined, 'builtin')
 
-      expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
-      expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
-      expect(screen.getByTestId('update-setting-dialog')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+      ).toBeInTheDocument()
     })
 
     it('hides the tools update settings action when permission management is unavailable', () => {
@@ -669,7 +635,9 @@ describe('ProviderList', () => {
 
       renderProviderList(undefined, 'builtin')
 
-      expect(screen.queryByTestId('update-setting-dialog')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+      ).not.toBeInTheDocument()
     })
 
     it.each([['mcp'], ['api'], ['workflow']] as const)(
@@ -677,9 +645,8 @@ describe('ProviderList', () => {
       (category) => {
         renderProviderList({ category })
 
-        expect(screen.queryByText('plugin.autoUpdate.autoUpdate')).not.toBeInTheDocument()
         expect(
-          screen.queryByText('plugin.autoUpdate.strategy.fixOnly.name'),
+          screen.queryByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
         ).not.toBeInTheDocument()
       },
     )
@@ -969,7 +936,7 @@ describe('ProviderList', () => {
     })
 
     it('renders MCP list read-only without mcp.manage', () => {
-      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+      mockConsoleState.workspacePermissionKeys = ['tool.manage']
 
       renderProviderList({ category: 'mcp' })
 
