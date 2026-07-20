@@ -31,6 +31,7 @@ both the JSON-safe final output or deferred tool call and the session snapshot;
 there are no separate output or snapshot events to correlate.
 """
 
+import asyncio
 from collections.abc import AsyncIterable, Callable, Mapping
 from collections import Counter
 from dataclasses import dataclass
@@ -170,6 +171,7 @@ class AgentRunRunner:
     layer_providers: tuple[LayerProviderInput, ...]
     plugin_daemon_http_client: httpx.AsyncClient
     dify_api_http_client: httpx.AsyncClient
+    is_cancelled: Callable[[], bool]
 
     def __init__(
         self,
@@ -180,6 +182,7 @@ class AgentRunRunner:
         plugin_daemon_http_client: httpx.AsyncClient,
         dify_api_http_client: httpx.AsyncClient,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
+        is_cancelled: Callable[[], bool] | None = None,
     ) -> None:
         self.sink = sink
         self.request = request
@@ -187,20 +190,29 @@ class AgentRunRunner:
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
+        self.is_cancelled = is_cancelled or (lambda: False)
 
     async def run(self) -> None:
         """Execute the run and emit the documented event sequence."""
+        if self.is_cancelled():
+            return
         await self.sink.update_status(self.run_id, "running")
+        if self.is_cancelled():
+            return
         _ = await emit_run_started(self.sink, run_id=self.run_id)
 
         try:
             outcome = await self._run_agent()
         except Exception as exc:
+            if self.is_cancelled():
+                return
             message, reason = _run_failed_error_payload(exc)
             _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
             await self.sink.update_status(self.run_id, "failed", message)
             raise
 
+        if self.is_cancelled():
+            return
         _ = await emit_run_succeeded(
             self.sink,
             run_id=self.run_id,
@@ -309,6 +321,8 @@ class AgentRunRunner:
 
                 async def handle_events(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
                     async for event in events:
+                        if self.is_cancelled():
+                            raise asyncio.CancelledError
                         text_delta = _extract_agent_message_delta(event)
                         _ = await emit_pydantic_ai_event(
                             self.sink,

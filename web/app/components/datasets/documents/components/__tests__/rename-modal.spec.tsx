@@ -37,11 +37,6 @@ describe('RenameModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<RenameModal {...defaultProps} />)
-      expect(screen.getByText(/list\.table\.rename/i)).toBeInTheDocument()
-    })
-
     it('should render modal title', () => {
       render(<RenameModal {...defaultProps} />)
       expect(screen.getByText(/list\.table\.rename/i)).toBeInTheDocument()

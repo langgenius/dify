@@ -89,6 +89,7 @@
   "agentDetail.configure.chatFeatures.title": "Функции чата",
   "agentDetail.configure.clearSessionConfirm.description": "Это очистит текущий сеанс и отменит непримененные изменения конфигурации Agent.",
   "agentDetail.configure.clearSessionConfirm.title": "Очистить сеанс и отменить изменения?",
+  "agentDetail.configure.communityEditionIsolationTip": "Отказ от ответственности: В Community Edition песочница запускается от имени пользователя без прав root с конфигурацией возможностей Docker по умолчанию и обеспечивает лишь ограниченную защиту на основе Landlock для собственных файлов агента и файлов сеанса. Сервер и все дочерние процессы оболочки используют одно и то же пространство имен PID и общую границу возможностей на уровне контейнера, поэтому эту среду не следует считать надежно изолированной многоуровневой песочницей безопасности.",
   "agentDetail.configure.files.add": "Добавить файл",
   "agentDetail.configure.files.buildNote.generated": "Сгенерировано",
   "agentDetail.configure.files.buildNote.richTooltip": "Запись агента о том, что он настроил в режиме Build. Он читает ее в начале каждого разговора вместе с вашим Prompt. <docLink>Подробнее</docLink>",

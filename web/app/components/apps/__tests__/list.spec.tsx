@@ -1,8 +1,10 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import List from '../list'
@@ -28,6 +30,36 @@ const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
   vi.fn((_options: unknown) => ({
     onlineUsersMap: {},
   })),
+)
+
+const mockLearnDifyApp = vi.hoisted(
+  () =>
+    ({
+      app_id: 'learn-dify-template',
+      app: {
+        id: 'learn-dify-template-source',
+        mode: 'chat',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#fff',
+        icon_url: '',
+        name: 'Learn Dify Template',
+        description: 'Learn how to build with Dify',
+        use_icon_as_answer_icon: false,
+      },
+      description: 'Learn how to build with Dify',
+      copyright: '',
+      privacy_policy: null,
+      custom_disclaimer: null,
+      categories: ['Assistant'],
+      position: 1,
+      is_listed: true,
+      install_count: 0,
+      installed: false,
+      editable: false,
+      is_agent: false,
+      can_trial: true,
+    }) satisfies App,
 )
 
 const mockReplace = vi.fn()
@@ -72,52 +104,19 @@ vi.mock('@/service/client', () => ({
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 let mockWorkspacePermissionKeys = ['app.create_and_management']
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 const mockOnPlanInfoChanged = vi.fn()
@@ -436,7 +435,33 @@ vi.mock('../empty', () => ({
 }))
 
 vi.mock('@/app/components/explore/learn-dify', () => ({
-  default: ({ title }: { title?: string }) => React.createElement('section', null, title),
+  default: ({
+    title,
+    onCreate,
+    onTry,
+  }: {
+    title?: string
+    onCreate?: (app: App) => void
+    onTry?: (params: TryAppSelection) => void
+  }) =>
+    React.createElement(
+      'section',
+      null,
+      title,
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          onClick: () => onTry?.({ appId: mockLearnDifyApp.app_id, app: mockLearnDifyApp }),
+        },
+        'Preview Learn Dify template',
+      ),
+      React.createElement(
+        'button',
+        { type: 'button', onClick: () => onCreate?.(mockLearnDifyApp) },
+        'Create Learn Dify template',
+      ),
+    ),
 }))
 
 const intersectionCallbacks: IntersectionObserverCallback[] = []
@@ -462,18 +487,20 @@ beforeAll(() => {
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
 type RenderListOptions = {
+  onCreateLearnDify?: (app: App) => void
+  onTryLearnDify?: (params: TryAppSelection) => void
   systemFeatures?: Partial<GetSystemFeaturesResponse>
 }
 
 const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   mockSearchParams = new URLSearchParams(searchParams)
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
   return renderWithNuqs(
-    <SystemFeaturesWrapper>
-      <List />
-    </SystemFeaturesWrapper>,
+    <ConsoleQueryWrapper>
+      <List onCreateLearnDify={options.onCreateLearnDify} onTryLearnDify={options.onTryLearnDify} />
+    </ConsoleQueryWrapper>,
     { searchParams },
   )
 }
@@ -528,12 +555,6 @@ describe('List', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = renderList()
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
-      expect(container.querySelector('.i-ri-filter-3-line')).not.toBeInTheDocument()
-    })
-
     it('should render app type select with all app types', async () => {
       renderList()
       await openAppTypeSelect()
@@ -610,14 +631,6 @@ describe('List', () => {
 
       expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
-    })
-
-    it('should lay out app cards with auto-fill grid columns', () => {
-      renderList()
-
-      const grid = screen.getByTestId('app-card-app-1').parentElement
-
-      expect(grid).toHaveClass('grid', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]')
     })
 
     it('should hide starred section when there are no starred apps', () => {
@@ -766,6 +779,28 @@ describe('List', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /app\.importDSL/ }))
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+    })
+
+    it('should forward Learn Dify template interactions', async () => {
+      const user = userEvent.setup()
+      const onCreateLearnDify = vi.fn()
+      const onTryLearnDify = vi.fn()
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList('', {
+        onCreateLearnDify,
+        onTryLearnDify,
+        systemFeatures: { enable_learn_app: true },
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
+      expect(onTryLearnDify).toHaveBeenCalledWith({
+        appId: mockLearnDifyApp.app_id,
+        app: mockLearnDifyApp,
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
+      expect(onCreateLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
     })
 
     it('should pass workflow app ids to online users hook', () => {

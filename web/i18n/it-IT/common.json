@@ -332,6 +332,7 @@
   "modelProvider.auth.manageCredentials": "Gestisci credenziali",
   "modelProvider.auth.modelCredential": "Credenziale del modello",
   "modelProvider.auth.modelCredentials": "Credenziali del modello",
+  "modelProvider.auth.openAIResponsesAPITip": "Per GPT-5.6 e modelli successivi, consigliamo di utilizzare la Responses API.",
   "modelProvider.auth.providerManaged": "Fornitore gestito",
   "modelProvider.auth.providerManagedTip": "La configurazione attuale è ospitata dal fornitore.",
   "modelProvider.auth.removeModel": "Rimuovi modello",

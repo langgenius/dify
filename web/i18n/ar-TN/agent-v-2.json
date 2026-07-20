@@ -89,6 +89,7 @@
   "agentDetail.configure.chatFeatures.title": "ميزات الدردشة",
   "agentDetail.configure.clearSessionConfirm.description": "سيؤدي هذا إلى مسح الجلسة الحالية والتخلي عن تغييرات إعدادات Agent التي لم يتم تطبيقها بعد.",
   "agentDetail.configure.clearSessionConfirm.title": "مسح الجلسة والتخلي عن التغييرات؟",
+  "agentDetail.configure.communityEditionIsolationTip": "إخلاء مسؤولية: في Community Edition، تعمل بيئة العزل كمستخدم غير جذر ضمن إعداد الإمكانات الافتراضي لـ Docker، ولا توفر سوى حماية محدودة تعتمد على Landlock لملفات الوكيل الخاصة وملفات الجلسة. يتشارك الخادم وجميع العمليات الفرعية للصدفة مساحة أسماء PID نفسها وحدّ الإمكانات على مستوى الحاوية، لذلك لا ينبغي اعتبارها بيئة عزل أمني متعددة الطبقات ومعزولة بقوة.",
   "agentDetail.configure.files.add": "إضافة ملف",
   "agentDetail.configure.files.buildNote.generated": "تم إنشاؤه",
   "agentDetail.configure.files.buildNote.richTooltip": "سجل الوكيل لما أعدّه في وضع Build. يقرأه في بداية كل محادثة إلى جانب Prompt الخاص بك. <docLink>معرفة المزيد</docLink>",

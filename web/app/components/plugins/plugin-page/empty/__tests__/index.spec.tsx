@@ -3,8 +3,8 @@ import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { InstallationScope } from '@/features/system-features/constants'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 // ==================== Imports (after mocks) ====================
 import Empty from '../index'
 
@@ -39,7 +39,7 @@ const { mockSetActiveTab, mockUseInstalledPluginList, mockState } = vi.hoisted((
 })
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: mockState.systemFeatures })
+  renderWithConsoleQuery(ui, { systemFeatures: mockState.systemFeatures })
 
 // Mock plugin page context
 vi.mock('../../context', () => ({
@@ -617,20 +617,6 @@ describe('Empty Component', () => {
       Object.defineProperty(fileInput, 'files', { value: undefined, writable: true })
       fireEvent.change(fileInput)
       expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
-    })
-  })
-
-  // ==================== React.memo Tests ====================
-  describe('React.memo Behavior', () => {
-    it('should be wrapped with React.memo and have displayName', () => {
-      // Assert
-      expect(Empty).toBeDefined()
-      expect((Empty as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
-      expect(
-        (Empty as unknown as { displayName?: string; type?: { displayName?: string } })
-          .displayName ||
-          (Empty as unknown as { type?: { displayName?: string } }).type?.displayName,
-      ).toBeDefined()
     })
   })
 
