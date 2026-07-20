@@ -147,7 +147,8 @@ describe('CommonLayoutHydrationBoundary', () => {
     )
   })
 
-  it('should default unauthorized refresh redirects to the home path when the pathname header is missing', async () => {
+  it('should use the internal home path when the pathname header is missing', async () => {
+    mocks.basePath = '/workflow'
     mocks.headers.mockResolvedValue(new Headers())
     mocks.profileQueryFn.mockRejectedValue(
       new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),

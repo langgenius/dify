@@ -10,7 +10,6 @@ import {
   resolveServerConsoleApiUrl,
   serverConsoleQuery,
 } from '@/service/server'
-import { basePath } from '@/utils/var'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
@@ -35,7 +34,7 @@ const parseConsoleErrorPayload = async (error: Response): Promise<ConsoleErrorPa
 
 const getCurrentPath = async () => {
   const requestHeaders = await headers()
-  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || `${basePath}/`
+  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || '/'
   const search = requestHeaders.get(CURRENT_SEARCH_HEADER) || ''
   return `${pathname}${search}`
 }
