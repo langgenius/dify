@@ -1,8 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import AgentsAccessGuard from '../agents-access-guard'
 
 const mockReplace = vi.fn()
-const mockAccessState = vi.fn()
+const mockConsoleStateReader = vi.fn()
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -10,53 +12,50 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAccessState())
+  return createWorkspaceStateModuleMock(() => mockConsoleStateReader())
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => mockConsoleStateReader())
 })
 
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => mockAccessState())
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
-
-type AccessStateMock = {
+type ConsoleStateFixture = {
   isLoadingCurrentWorkspace: boolean
   isLoadingWorkspacePermissionKeys: boolean
   workspacePermissionKeys: string[]
-  currentWorkspace: { id: string }
+  currentWorkspace: {
+    id: string
+  }
 }
 
-const baseState: AccessStateMock = {
+const baseContext: ConsoleStateFixture = {
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
   workspacePermissionKeys: ['agent.manage'],
-  currentWorkspace: { id: 'workspace-1' },
+  currentWorkspace: {
+    id: 'workspace-1',
+  },
 }
 
-const setAccessState = (overrides: Partial<AccessStateMock> = {}) => {
-  mockAccessState.mockReturnValue({ ...baseState, ...overrides })
+const setConsoleState = (overrides: Partial<ConsoleStateFixture> = {}) => {
+  mockConsoleStateReader.mockReturnValue({
+    ...baseContext,
+    ...overrides,
+  })
 }
 
 describe('AgentsAccessGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setAccessState()
+    setConsoleState()
   })
 
   it('renders loading while the workspace is loading', () => {
-    setAccessState({ isLoadingCurrentWorkspace: true, currentWorkspace: { id: '' } })
+    setConsoleState({ isLoadingCurrentWorkspace: true, currentWorkspace: { id: '' } })
 
     render(
       <AgentsAccessGuard>
@@ -70,7 +69,7 @@ describe('AgentsAccessGuard', () => {
   })
 
   it('renders loading while workspace permission keys are loading', () => {
-    setAccessState({ isLoadingWorkspacePermissionKeys: true, workspacePermissionKeys: [] })
+    setConsoleState({ isLoadingWorkspacePermissionKeys: true, workspacePermissionKeys: [] })
 
     render(
       <AgentsAccessGuard>
@@ -84,7 +83,7 @@ describe('AgentsAccessGuard', () => {
   })
 
   it('redirects to /apps without agent.manage', async () => {
-    setAccessState({ workspacePermissionKeys: ['dataset.create_and_management'] })
+    setConsoleState({ workspacePermissionKeys: ['dataset.create_and_management'] })
 
     render(
       <AgentsAccessGuard>
