@@ -219,6 +219,20 @@ describe('WebsiteCrawlPreview', () => {
     expect(clientMock.createSource.mock.calls[0]?.[0].body.metadata.crawlOptions.limit).toBe(200)
   })
 
+  it('preserves a replacement crawl page limit after clearing the input', async () => {
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
+    const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    await user.clear(pageLimit)
+    await user.type(pageLimit, '50')
+    expect(pageLimit).toHaveValue(50)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+
+    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
+    expect(clientMock.createSource.mock.calls[0]?.[0].body.metadata.crawlOptions.limit).toBe(50)
+  })
+
   it('confirms dirty cancellation and protects an unfinished draft from page unload', async () => {
     const user = userEvent.setup()
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)

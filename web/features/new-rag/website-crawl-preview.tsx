@@ -309,7 +309,7 @@ export function WebsiteCrawlPreview({
   const [urlTouched, setUrlTouched] = useState(false)
   const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [includeSubpages, setIncludeSubpages] = useState(true)
-  const [pageLimit, setPageLimit] = useState(DEFAULT_PAGE_LIMIT)
+  const [pageLimit, setPageLimit] = useState<number | ''>(DEFAULT_PAGE_LIMIT)
   const [run, setRun] = useState<SourceWorkflowRun>()
   const [pages, setPages] = useState<PreviewPage[]>([])
   const [pagesLoaded, setPagesLoaded] = useState(false)
@@ -380,7 +380,10 @@ export function WebsiteCrawlPreview({
   }, [])
 
   const normalizedURL = useMemo(() => normalizeURL(rootUrl), [rootUrl])
-  const normalizedLimit = Math.min(Math.max(Math.trunc(pageLimit) || 1, 1), MAX_PAGE_LIMIT)
+  const normalizedLimit =
+    typeof pageLimit === 'number'
+      ? Math.min(Math.max(Math.trunc(pageLimit) || 1, 1), MAX_PAGE_LIMIT)
+      : DEFAULT_PAGE_LIMIT
   const configuration = useMemo<CrawlConfiguration | undefined>(
     () =>
       normalizedURL && sourceName.trim() && sourceName.trim().length <= MAX_SOURCE_NAME_LENGTH
@@ -1129,6 +1132,9 @@ export function WebsiteCrawlPreview({
                     min={1}
                     max={MAX_PAGE_LIMIT}
                     value={pageLimit}
+                    onBlur={() => {
+                      if (pageLimit === '') setPageLimit(DEFAULT_PAGE_LIMIT)
+                    }}
                     onChange={(event) =>
                       setPageLimit(
                         Number.isFinite(event.target.valueAsNumber)
@@ -1136,7 +1142,7 @@ export function WebsiteCrawlPreview({
                               Math.max(Math.trunc(event.target.valueAsNumber), 1),
                               MAX_PAGE_LIMIT,
                             )
-                          : 1,
+                          : '',
                       )
                     }
                     className="ml-auto h-8 w-24 rounded-lg border-0 bg-components-input-bg-normal px-2 system-xs-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
