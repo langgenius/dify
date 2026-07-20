@@ -216,7 +216,7 @@ export function NewKnowledgeEmptyState({
   canCreate: boolean
 }) {
   const { t } = useTranslation('dataset')
-  const canStart = canConnect || canCreate
+  const canStart = canCreate
 
   return (
     <div className="relative isolate flex min-h-[calc(100vh-134px)] items-center justify-center overflow-hidden px-4 py-16 text-center sm:px-6">

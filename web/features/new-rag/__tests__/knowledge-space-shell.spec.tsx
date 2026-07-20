@@ -16,6 +16,11 @@ const queryMock = vi.hoisted(() => ({
 }))
 
 const queryOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
+const pathnameMock = vi.hoisted(() => ({ value: '/datasets/new/space-1/sources' }))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => pathnameMock.value,
+}))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
@@ -43,6 +48,7 @@ describe('KnowledgeSpaceShell', () => {
     queryMock.data = undefined
     queryMock.error = null
     queryMock.isPending = false
+    pathnameMock.value = '/datasets/new/space-1/sources'
   })
 
   it('loads the real knowledge space contract by route id', () => {
@@ -63,6 +69,10 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sources' })).toHaveAttribute(
       'href',
       '/datasets/new/space-1/sources',
+    )
+    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sources' })).toHaveAttribute(
+      'aria-current',
+      'page',
     )
     expect(screen.getByRole('link', { name: 'dataset.newKnowledge.documents' })).toHaveAttribute(
       'href',
@@ -86,6 +96,30 @@ describe('KnowledgeSpaceShell', () => {
     render(<KnowledgeSpaceShell knowledgeSpaceId="missing">source content</KnowledgeSpaceShell>)
 
     expect(screen.getByText('dataset.newKnowledge.notFoundTitle')).toBeInTheDocument()
+  })
+
+  it('treats forbidden detail responses as a terminal non-disclosing state', () => {
+    queryMock.error = { data: { status: 403 } }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>)
+
+    expect(screen.getByText('dataset.newKnowledge.notFoundTitle')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
+  })
+
+  it('marks Documents as the only current detail route', () => {
+    pathnameMock.value = '/datasets/new/space-1/documents'
+    queryMock.data = { id: 'space-1', name: 'Support knowledge' }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">document content</KnowledgeSpaceShell>)
+
+    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sources' })).not.toHaveAttribute(
+      'aria-current',
+    )
+    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.documents' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 
   it('offers a real retry for recoverable loading errors', async () => {

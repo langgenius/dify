@@ -270,6 +270,10 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(screen.queryByRole('link', { name: 'common.operation.create' })).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.readOnlyEmpty')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.connectSource' }),
+    ).not.toBeInTheDocument()
   })
 
   it('hides creation entries from read-only users', () => {

@@ -2,6 +2,7 @@
 
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Field,
   FieldControl,
@@ -10,18 +11,20 @@ import {
   FieldLabel,
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
@@ -43,34 +46,75 @@ type CreateKnowledgeValues = {
   visibility: KnowledgeVisibility
 }
 
+class KnowledgeCreationError extends Error {
+  readonly stage: 'create' | 'policy'
+  readonly originalError: unknown
+  readonly createdKnowledge?: KnowledgeSpaceCreationResponse
+
+  constructor(
+    stage: 'create' | 'policy',
+    originalError: unknown,
+    createdKnowledge?: KnowledgeSpaceCreationResponse,
+  ) {
+    super(`Knowledge creation failed during ${stage}`)
+    this.name = 'KnowledgeCreationError'
+    this.stage = stage
+    this.originalError = originalError
+    this.createdKnowledge = createdKnowledge
+  }
+}
+
+function responseStatus(error: unknown) {
+  if (error instanceof Response) return error.status
+  if (error && typeof error === 'object' && 'status' in error) return error.status
+  if (error && typeof error === 'object' && 'data' in error) {
+    const data = error.data
+    if (data && typeof data === 'object' && 'status' in data) return data.status
+  }
+}
+
+function isDefinitiveCreationRejection(error: unknown) {
+  const status = responseStatus(error)
+  return status === 400 || status === 401 || status === 403 || status === 422
+}
+
 async function createKnowledge(
   values: CreateKnowledgeValues,
 ): Promise<KnowledgeSpaceCreationResponse> {
-  const created =
-    values.existingKnowledge ??
-    (await consoleClient.knowledgeFs.createKnowledgeSpace({
-      body: {
-        description: values.description || undefined,
-        idempotencyKey: values.idempotencyKey,
-        name: values.name,
-      },
-    }))
+  let created = values.existingKnowledge
+  if (!created) {
+    try {
+      created = await consoleClient.knowledgeFs.createKnowledgeSpace({
+        body: {
+          description: values.description || undefined,
+          idempotencyKey: values.idempotencyKey,
+          name: values.name,
+        },
+      })
+    } catch (error) {
+      throw new KnowledgeCreationError('create', error)
+    }
+  }
   values.onCreated(created)
 
-  if (values.visibility === 'all_members') {
-    const policy = await consoleClient.knowledgeFs.getKnowledgeSpacesByIdAccessPolicy({
-      params: { id: created.id },
-    })
-    if (policy.visibility !== values.visibility) {
-      await consoleClient.knowledgeFs.patchKnowledgeSpacesByIdAccessPolicy({
-        body: {
-          expectedRevision: policy.revision,
-          partialMemberSubjectIds: [],
-          visibility: values.visibility,
-        },
+  try {
+    if (values.visibility === 'all_members') {
+      const policy = await consoleClient.knowledgeFs.getKnowledgeSpacesByIdAccessPolicy({
         params: { id: created.id },
       })
+      if (policy.visibility !== values.visibility) {
+        await consoleClient.knowledgeFs.patchKnowledgeSpacesByIdAccessPolicy({
+          body: {
+            expectedRevision: policy.revision,
+            partialMemberSubjectIds: [],
+            visibility: values.visibility,
+          },
+          params: { id: created.id },
+        })
+      }
     }
+  } catch (error) {
+    throw new KnowledgeCreationError('policy', error, created)
   }
 
   return created
@@ -80,41 +124,45 @@ function StartMode({
   description,
   disabled = false,
   icon,
-  selected = false,
   title,
+  value,
 }: {
   description: string
   disabled?: boolean
   icon: string
-  selected?: boolean
   title: string
+  value: string
 }) {
   const { t } = useTranslation('dataset')
 
   return (
-    <button
-      type="button"
+    <RadioItem
+      value={value}
+      nativeButton
+      render={<button type="button" />}
       aria-label={title}
-      aria-pressed={selected}
       disabled={disabled}
-      className="relative flex min-h-16 w-full items-center rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg px-3 py-2.5 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:bg-components-input-bg-disabled motion-reduce:transition-none"
+      className={cn(
+        'relative flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-4 py-3.5 text-left outline-hidden transition-colors motion-reduce:transition-none',
+        'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg',
+        'data-disabled:cursor-not-allowed data-disabled:opacity-50',
+      )}
     >
-      <span className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
-        <span aria-hidden className={`${icon} size-4 text-text-tertiary`} />
+      <RadioControl aria-hidden />
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-option-card-option-border bg-background-default">
+        <span aria-hidden className={`${icon} size-[18px] text-text-tertiary`} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block system-sm-semibold text-text-secondary">{title}</span>
+        <span className="block system-sm-medium text-text-primary">{title}</span>
         <span className="mt-0.5 block system-xs-regular text-text-tertiary">{description}</span>
       </span>
-      {selected && (
-        <span aria-hidden className="i-ri-checkbox-circle-fill size-4 text-text-accent" />
-      )}
       {disabled && (
         <span className="ml-3 system-xs-medium text-text-disabled">
           {t(($) => $['cornerLabel.unavailable'])}
         </span>
       )}
-    </button>
+    </RadioItem>
   )
 }
 
@@ -123,6 +171,7 @@ export function CreateKnowledgePage() {
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const queryClient = useQueryClient()
+  const permissionDescriptionId = useId()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canConfigureAccess = hasPermission(
     workspacePermissionKeys,
@@ -164,13 +213,24 @@ export function CreateKnowledgePage() {
         queryKey: consoleQuery.knowledgeFs.listKnowledgeSpaces.key(),
       })
       router.replace(newKnowledgeDetailPath(created.id))
-    } catch {
+    } catch (error) {
+      if (error instanceof KnowledgeCreationError && error.createdKnowledge)
+        setCreatedKnowledge(error.createdKnowledge)
+
+      if (
+        error instanceof KnowledgeCreationError &&
+        error.stage === 'create' &&
+        isDefinitiveCreationRejection(error.originalError)
+      ) {
+        idempotencyKeyRef.current = undefined
+        setSubmissionLocked(false)
+      }
       // The mutation state renders a retryable, localized error without exposing upstream details.
     }
   }
 
   return (
-    <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background-body">
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background-default">
       <header className="flex h-13 shrink-0 items-center border-b border-divider-subtle px-3 sm:px-5">
         <button
           type="button"
@@ -181,7 +241,7 @@ export function CreateKnowledgePage() {
         >
           <span aria-hidden className="i-ri-arrow-left-line size-4" />
         </button>
-        <h1 className="title-lg-semi-bold text-text-primary">
+        <h1 className="system-sm-semibold text-text-primary">
           {t(($) => $['newKnowledge.createTitle'])}
         </h1>
       </header>
@@ -189,10 +249,10 @@ export function CreateKnowledgePage() {
         className="w-full max-w-[800px] px-4 py-8 sm:px-20 sm:py-10"
         onFormSubmit={handleSubmit}
       >
-        <div className="space-y-5">
+        <div className="space-y-4">
           <Field
             name="name"
-            className="gap-2"
+            className="gap-1.5"
             validate={(value) => {
               if (typeof value === 'string' && value.length > 0 && !value.trim())
                 return t(($) => $['newKnowledge.nameRequired'])
@@ -221,7 +281,7 @@ export function CreateKnowledgePage() {
             <FieldError match="valueMissing">{t(($) => $['newKnowledge.nameRequired'])}</FieldError>
             <FieldError match="customError" />
           </Field>
-          <Field name="description" className="gap-2">
+          <Field name="description" className="gap-1.5">
             <FieldLabel>
               {t(($) => $['newKnowledge.description'])}
               <span className="ml-1 system-xs-regular text-text-tertiary">
@@ -230,7 +290,7 @@ export function CreateKnowledgePage() {
             </FieldLabel>
             <Textarea
               autoComplete="off"
-              className="min-h-20 resize-none"
+              className="min-h-20"
               disabled={submissionLocked}
               maxLength={DESCRIPTION_MAX_LENGTH}
               name="description"
@@ -241,24 +301,21 @@ export function CreateKnowledgePage() {
                 resetUnsubmittedError()
               }}
             />
-            <div className="flex items-start justify-between gap-3">
-              <FieldDescription>{t(($) => $['newKnowledge.descriptionHelp'])}</FieldDescription>
-              <span className="shrink-0 py-0.5 system-xs-regular text-text-quaternary">
-                {description.length}/{DESCRIPTION_MAX_LENGTH}
-              </span>
-            </div>
+            <FieldDescription>{t(($) => $['newKnowledge.descriptionHelp'])}</FieldDescription>
           </Field>
-          <Field name="permission" className="gap-2" disabled={!canConfigureAccess}>
-            <FieldLabel>{t(($) => $['newKnowledge.permission'])}</FieldLabel>
+          <div className="space-y-1.5">
             <Select
               name="permission"
               value={visibility}
-              disabled={!canConfigureAccess}
+              disabled={submissionLocked || !canConfigureAccess}
               onValueChange={(value) => {
                 if (value) setVisibility(value)
               }}
             >
-              <SelectTrigger aria-label={t(($) => $['newKnowledge.permission'])}>
+              <SelectLabel>{t(($) => $['newKnowledge.permission'])}</SelectLabel>
+              <SelectTrigger
+                aria-describedby={!canConfigureAccess ? permissionDescriptionId : undefined}
+              >
                 {t(($) =>
                   visibility === 'all_members'
                     ? $['newKnowledge.permissionAllMembers']
@@ -279,35 +336,47 @@ export function CreateKnowledgePage() {
               </SelectContent>
             </Select>
             {!canConfigureAccess && (
-              <FieldDescription>
+              <p id={permissionDescriptionId} className="py-0.5 body-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.permissionRestricted'])}
-              </FieldDescription>
+              </p>
             )}
-          </Field>
+          </div>
         </div>
 
-        <fieldset className="mt-8 space-y-2">
-          <legend className="mb-2 system-xs-medium-uppercase text-text-tertiary">
+        <fieldset className="mt-7">
+          <legend className="system-md-semibold text-text-secondary">
             {t(($) => $['newKnowledge.startWith'])}
           </legend>
-          <StartMode
-            selected
-            icon="i-ri-folder-6-line"
-            title={t(($) => $['newKnowledge.startEmpty'])}
-            description={t(($) => $['newKnowledge.startEmptyDescription'])}
-          />
-          <StartMode
-            disabled
-            icon="i-custom-vender-solid-development-api-connection-mod"
-            title={t(($) => $['newKnowledge.connectSource'])}
-            description={t(($) => $['newKnowledge.connectSourceDescription'])}
-          />
-          <StartMode
-            disabled
-            icon="i-ri-upload-2-line"
-            title={t(($) => $['newKnowledge.uploadFiles'])}
-            description={t(($) => $['newKnowledge.uploadFilesDescription'])}
-          />
+          <p className="pb-0.5 body-xs-regular text-text-tertiary">
+            {t(($) => $['newKnowledge.startWithHelp'])}
+          </p>
+          <RadioGroup
+            value="empty"
+            aria-label={t(($) => $['newKnowledge.startWith'])}
+            className="mt-2 flex-col items-stretch gap-2"
+            onValueChange={() => undefined}
+          >
+            <StartMode
+              value="empty"
+              icon="i-ri-folder-6-line"
+              title={t(($) => $['newKnowledge.startEmpty'])}
+              description={t(($) => $['newKnowledge.startEmptyDescription'])}
+            />
+            <StartMode
+              disabled
+              value="source"
+              icon="i-custom-vender-solid-development-api-connection-mod"
+              title={t(($) => $['newKnowledge.connectSource'])}
+              description={t(($) => $['newKnowledge.connectSourceDescription'])}
+            />
+            <StartMode
+              disabled
+              value="upload"
+              icon="i-ri-file-text-line"
+              title={t(($) => $['newKnowledge.uploadFiles'])}
+              description={t(($) => $['newKnowledge.uploadFilesDescription'])}
+            />
+          </RadioGroup>
         </fieldset>
 
         {createMutation.isError && (
@@ -319,7 +388,7 @@ export function CreateKnowledgePage() {
           </div>
         )}
 
-        <div className="mt-8 flex justify-end gap-2 border-t border-divider-subtle pt-5">
+        <div className="mt-7 flex justify-end gap-2">
           <Button type="button" disabled={createMutation.isPending} onClick={() => router.back()}>
             {tCommon(($) => $['operation.cancel'])}
           </Button>
