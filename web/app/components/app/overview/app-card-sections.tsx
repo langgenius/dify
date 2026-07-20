@@ -1,5 +1,5 @@
 /* oxlint-disable react/only-export-components */
-import type { TFunction } from 'i18next'
+import type { SelectorParam, TFunction } from 'i18next'
 import type { ComponentType, FormEvent, ReactNode } from 'react'
 import type {
   OverviewOperationKey,
@@ -25,19 +25,23 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import {
   RiArrowRightSLine,
   RiBookOpenLine,
+  RiBuildingLine,
   RiExternalLinkLine,
+  RiGlobalLine,
+  RiLockLine,
   RiPaintBrushLine,
   RiPaletteLine,
   RiSettings2Line,
+  RiVerifiedBadgeLine,
   RiWindowLine,
 } from '@remixicon/react'
 import { Trans } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import ShareQRCode from '@/app/components/base/qrcode'
+import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import AccessControl from '../app-access-control'
-import { ACCESS_MODE_ICON_MAP, ACCESS_MODE_LABEL_MAP } from '../app-access-control/constants'
 import CustomizeModal from './customize'
 import EmbeddedModal from './embedded'
 import SettingsModal from './settings'
@@ -68,6 +72,20 @@ const OPERATION_ICON_MAP: Record<OverviewOperationKey, OperationIcon> = {
   customize: RiPaintBrushLine,
   settings: RiPaletteLine,
   develop: RiBookOpenLine,
+}
+
+const ACCESS_MODE_ICON_MAP: Record<AccessMode, OperationIcon> = {
+  [AccessMode.ORGANIZATION]: RiBuildingLine,
+  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: RiLockLine,
+  [AccessMode.PUBLIC]: RiGlobalLine,
+  [AccessMode.EXTERNAL_MEMBERS]: RiVerifiedBadgeLine,
+}
+
+const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
+  [AccessMode.ORGANIZATION]: ($) => $['accessControlDialog.accessItems.organization'],
+  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: ($) => $['accessControlDialog.accessItems.specific'],
+  [AccessMode.PUBLIC]: ($) => $['accessControlDialog.accessItems.anyone'],
+  [AccessMode.EXTERNAL_MEMBERS]: ($) => $['accessControlDialog.accessItems.external'],
 }
 
 const MaybeTooltip = ({
