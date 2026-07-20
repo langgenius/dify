@@ -2,7 +2,7 @@
 
 import { createLocalStorageState } from 'foxact/create-local-storage-state'
 
-export const NEW_KNOWLEDGE_GUIDE_DISMISSED_STORAGE_KEY = 'dify-new-knowledge-guide-dismissed'
+const NEW_KNOWLEDGE_GUIDE_DISMISSED_STORAGE_KEY = 'dify-new-knowledge-guide-dismissed'
 
 const [
   _useNewKnowledgeGuideDismissed,
