@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { getToolType } from '@/app/components/tools/utils'
 import { renderWithNuqs } from '@/test/nuqs-testing'
-import { ToolTypeEnum } from '../../workflow/block-selector/types'
+import { ToolType } from '../../workflow/block-selector/types'
 import ProviderList from '../tool-provider-list'
 
 vi.mock('@/app/components/plugins/hooks', () => ({
@@ -371,12 +371,12 @@ vi.mock('@/app/components/tools/mcp/create-card', () => ({
 
 describe('getToolType', () => {
   it.each([
-    ['builtin', ToolTypeEnum.BuiltIn],
-    ['api', ToolTypeEnum.Custom],
-    ['workflow', ToolTypeEnum.Workflow],
-    ['mcp', ToolTypeEnum.MCP],
-    ['unknown', ToolTypeEnum.BuiltIn],
-  ])('returns correct ToolTypeEnum for "%s"', (input, expected) => {
+    ['builtin', ToolType.BuiltIn],
+    ['api', ToolType.Custom],
+    ['workflow', ToolType.Workflow],
+    ['mcp', ToolType.MCP],
+    ['unknown', ToolType.BuiltIn],
+  ])('returns correct ToolType for "%s"', (input, expected) => {
     expect(getToolType(input)).toBe(expected)
   })
 })

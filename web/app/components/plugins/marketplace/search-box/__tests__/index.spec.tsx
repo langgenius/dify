@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
+import { createRef, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import SearchBox from '../index'
 
@@ -54,5 +54,23 @@ describe('SearchBox', () => {
 
     await user.click(screen.getByRole('button'))
     expect(onShowAddCustomCollectionModal).toHaveBeenCalledOnce()
+  })
+
+  it('exposes the input element through its ref', () => {
+    const ref = createRef<HTMLInputElement>()
+
+    render(
+      <SearchBox
+        ref={ref}
+        search=""
+        onSearchChange={vi.fn()}
+        tags={[]}
+        onTagsChange={vi.fn()}
+        placeholder="Search plugins"
+        showTags={false}
+      />,
+    )
+
+    expect(ref.current).toBe(screen.getByPlaceholderText('Search plugins'))
   })
 })

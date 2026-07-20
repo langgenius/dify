@@ -1,10 +1,12 @@
 import type { InputProps } from '@langgenius/dify-ui/input'
+import type { Ref } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { useRef, useState } from 'react'
+import { useImperativeHandle, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type SearchInputProps = {
+  ref?: Ref<HTMLInputElement>
   value: string
   onValueChange: (value: string) => void
   placeholder?: string
@@ -12,6 +14,7 @@ type SearchInputProps = {
 } & Pick<InputProps, 'aria-label' | 'autoFocus'>
 
 export function SearchInput({
+  ref,
   placeholder,
   className,
   value,
@@ -25,6 +28,7 @@ export function SearchInput({
   const compositionCommitRef = useRef<string | null>(null)
   const [compositionValue, setCompositionValue] = useState('')
   const inputValue = isComposingRef.current ? compositionValue : value
+  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, [])
 
   const handleClear = () => {
     isComposingRef.current = false
