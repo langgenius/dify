@@ -49,32 +49,174 @@ class KnowledgeFSOperation(NamedTuple):
     response_media_types: tuple[str, ...]
 
 
+def _console_operation(
+    operation_id: str,
+    method: KnowledgeFSMethod,
+    path: str,
+    *,
+    max_response_bytes: int = 1_048_576,
+    request_headers: tuple[str, ...] = ("x-trace-id",),
+    response_kind: KnowledgeFSResponseKind = "buffered",
+    response_media_types: tuple[str, ...] = ("application/json",),
+) -> KnowledgeFSOperation:
+    """Declare one contract-pinned operation with the shared Dify dataset policy."""
+    is_read = method == "GET"
+    return KnowledgeFSOperation(
+        operation_id=operation_id,
+        method=method,
+        path=path,
+        response_kind=response_kind,
+        required_scope="knowledge-spaces:read" if is_read else "knowledge-spaces:write",
+        rbac_permission=(RBACPermission.DATASET_READONLY if is_read else RBACPermission.DATASET_CREATE_AND_MANAGEMENT),
+        requires_dataset_editor=not is_read,
+        max_response_bytes=max_response_bytes,
+        request_headers=request_headers,
+        response_headers=("x-trace-id",),
+        response_media_types=response_media_types,
+    )
+
+
 KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
-    KnowledgeFSOperation(
+    _console_operation(
         operation_id="listKnowledgeSpaces",
         method="GET",
         path="knowledge-spaces",
-        response_kind="buffered",
-        required_scope="knowledge-spaces:read",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        requires_dataset_editor=False,
-        max_response_bytes=1_048_576,
-        request_headers=("x-trace-id",),
-        response_headers=("x-trace-id",),
-        response_media_types=("application/json",),
     ),
-    KnowledgeFSOperation(
+    _console_operation(
         operation_id="createKnowledgeSpace",
         method="POST",
         path="knowledge-spaces",
-        response_kind="buffered",
-        required_scope="knowledge-spaces:write",
-        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
-        requires_dataset_editor=True,
-        max_response_bytes=1_048_576,
-        request_headers=("x-trace-id",),
-        response_headers=("x-trace-id",),
-        response_media_types=("application/json",),
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesById",
+        method="GET",
+        path="knowledge-spaces/{id}",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdAccessPolicy",
+        method="GET",
+        path="knowledge-spaces/{id}/access-policy",
+    ),
+    _console_operation(
+        operation_id="patchKnowledgeSpacesByIdAccessPolicy",
+        method="PATCH",
+        path="knowledge-spaces/{id}/access-policy",
+    ),
+    _console_operation(
+        operation_id="getSourceProviders",
+        method="GET",
+        path="source-providers",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdSourceConnections",
+        method="GET",
+        path="knowledge-spaces/{id}/source-connections",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdSourceConnections",
+        method="POST",
+        path="knowledge-spaces/{id}/source-connections",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh",
+        method="POST",
+        path="knowledge-spaces/{id}/source-connections/{connectionId}/refresh",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdSources",
+        method="GET",
+        path="knowledge-spaces/{id}/sources",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdSources",
+        method="POST",
+        path="knowledge-spaces/{id}/sources",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview",
+        method="POST",
+        path="knowledge-spaces/{id}/sources/{sourceId}/crawl-preview",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdSourceWorkflowsByRunId",
+        method="GET",
+        path="knowledge-spaces/{id}/source-workflows/{runId}",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages",
+        method="GET",
+        path="knowledge-spaces/{id}/source-workflows/{runId}/pages",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel",
+        method="POST",
+        path="knowledge-spaces/{id}/source-workflows/{runId}/cancel",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry",
+        method="POST",
+        path="knowledge-spaces/{id}/source-workflows/{runId}/retry",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection",
+        method="POST",
+        path="knowledge-spaces/{id}/source-workflows/{runId}/selection",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
+        method="GET",
+        path="knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
+    ),
+    _console_operation(
+        operation_id="putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
+        method="PUT",
+        path="knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdLogicalDocuments",
+        method="GET",
+        path="knowledge-spaces/{id}/logical-documents",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdLogicalDocumentsByDocumentId",
+        method="GET",
+        path="knowledge-spaces/{id}/logical-documents/{documentId}",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions",
+        method="GET",
+        path="knowledge-spaces/{id}/documents/{documentId}/revisions",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks",
+        method="GET",
+        path="knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdProcessingTasks",
+        method="GET",
+        path="knowledge-spaces/{id}/processing-tasks",
+    ),
+    _console_operation(
+        operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents",
+        method="GET",
+        path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events",
+        max_response_bytes=67_108_864,
+        request_headers=("last-event-id", "x-trace-id"),
+        response_kind="stream",
+        response_media_types=("text/event-stream",),
+    ),
+    _console_operation(
+        operation_id="deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
+        method="DELETE",
+        path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry",
+        method="POST",
+        path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/retry",
     ),
 )
 

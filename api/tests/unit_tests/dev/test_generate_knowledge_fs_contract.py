@@ -111,7 +111,7 @@ def test_contract_script_loads_runtime_registry_outside_api_directory(tmp_path: 
         text=True,
     )
 
-    assert result.stdout.strip() == "2"
+    assert result.stdout.strip() == "27"
 
 
 def test_validate_declarations_accepts_matching_contract() -> None:
@@ -183,42 +183,29 @@ def test_filter_openapi_document_keeps_only_declared_operations_and_referenced_s
 
 
 def test_console_operation_registry_matches_contract() -> None:
-    list_route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
-    create_route = operation("knowledge-spaces:write", "createKnowledgeSpace")
-    for route in (list_route, create_route):
-        route["parameters"] = [{"in": "header", "name": "X-Trace-Id"}]
-        route["responses"] = {
-            "200": {
-                "content": {"application/json": {}},
-                "headers": {"X-Trace-Id": {}},
-            }
-        }
-
     validate_declarations(
-        {
-            "paths": {
-                "/knowledge-spaces": {
-                    "get": list_route,
-                    "post": create_route,
-                }
-            }
-        },
+        console_registry_document(),
         tuple(_contract_declaration(operation) for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS),
     )
 
 
 def console_registry_document() -> dict[str, object]:
-    list_route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
-    create_route = operation("knowledge-spaces:write", "createKnowledgeSpace")
-    for route in (list_route, create_route):
-        route["parameters"] = [{"in": "header", "name": "X-Trace-Id"}]
-        route["responses"] = {
-            "200": {
-                "content": {"application/json": {}},
-                "headers": {"X-Trace-Id": {}},
-            }
-        }
-    return {"paths": {"/knowledge-spaces": {"get": list_route, "post": create_route}}}
+    paths: dict[str, dict[str, object]] = {}
+    for console_operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS:
+        route = operation(
+            console_operation.required_scope,
+            console_operation.operation_id,
+            parameters=[{"in": "header", "name": name} for name in console_operation.request_headers],
+            responses={
+                "200": {
+                    "content": {media_type: {} for media_type in console_operation.response_media_types},
+                    "headers": {name: {} for name in console_operation.response_headers},
+                }
+            },
+        )
+        route["x-knowledge-fs-max-response-bytes"] = console_operation.max_response_bytes
+        paths.setdefault(f"/{console_operation.path}", {})[console_operation.method.lower()] = route
+    return {"paths": paths}
 
 
 @pytest.mark.parametrize(

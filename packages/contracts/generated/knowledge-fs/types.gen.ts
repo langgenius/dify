@@ -74,6 +74,147 @@ export type KnowledgeSpaceList = {
   nextCursor?: string
 }
 
+export type LogicalDocumentRevision = {
+  activatedAt?: string
+  contentHash: string
+  createdAt: string
+  documentAssetId: string
+  documentAssetVersion: number
+  documentId: string
+  knowledgeSpaceId: string
+  mimeType: string
+  revision: number
+  sizeBytes: number
+  state: 'candidate' | 'active' | 'superseded' | 'failed'
+} | null
+
+export type LogicalDocument = {
+  active: LogicalDocumentRevision
+  activeRevision?: number
+  createdAt: string
+  id: string
+  knowledgeSpaceId: string
+  providerItemId?: string
+  rowVersion: number
+  sourceId?: string
+  status: 'pending' | 'ready' | 'failed' | 'deleting'
+  title: string
+  updatedAt: string
+  userMetadata: {
+    [key: string]: unknown
+  }
+}
+
+export type LogicalDocumentList = {
+  items: Array<LogicalDocument>
+  nextCursor?: string
+}
+
+export type DocumentRevisionList = {
+  items: Array<
+    LogicalDocumentRevision & {
+      [key: string]: unknown
+    }
+  >
+  nextCursor?: string
+}
+
+export type DocumentProcessingTask = {
+  completedAt?: string
+  createdAt: string
+  documentId: string
+  documentRevision: number
+  errorCode?: string
+  errorMessage?: string
+  id: string
+  knowledgeSpaceId: string
+  progressPercent: number
+  retryAt?: string
+  stage:
+    | 'queued'
+    | 'parsed'
+    | 'outline_built'
+    | 'nodes_generated'
+    | 'projection_built'
+    | 'smoke_eval_passed'
+    | 'published'
+  state:
+    | 'dispatch_pending'
+    | 'queued'
+    | 'running'
+    | 'retry_wait'
+    | 'succeeded'
+    | 'failed'
+    | 'canceled'
+    | 'superseded'
+  updatedAt: string
+}
+
+export type DocumentRevisionChunk = {
+  createdAt: string
+  documentId: string
+  documentRevision: number
+  enabled: boolean
+  id: string
+  knowledgeSpaceId: string
+  ordinal: number
+  parentChunkId?: string
+  text: string
+  tokenCount: number
+  userMetadata: {
+    [key: string]: unknown
+  }
+}
+
+export type DocumentChunkList = {
+  items: Array<DocumentRevisionChunk>
+  nextCursor?: string
+}
+
+export type DocumentProcessingTaskList = {
+  items: Array<DocumentProcessingTask>
+  nextCursor?: string
+}
+
+export type SourceWorkflowRun = {
+  canceledAt?: string
+  checkpoint: string
+  completedAt?: string
+  createdAt: string
+  cursor?: string
+  executionAttempts: number
+  id: string
+  knowledgeSpaceId: string
+  kind: string
+  lastErrorCode?: string
+  maxExecutionAttempts: number
+  progressCompleted: number
+  progressFailed: number
+  progressSkipped: number
+  progressTotal?: number
+  sourceId?: string
+  state: string
+  updatedAt: string
+}
+
+export type Source = {
+  connectionId?: string
+  createdAt: string
+  id: string
+  knowledgeSpaceId: string
+  metadata: {
+    [key: string]: unknown
+  }
+  name: string
+  permissionScope?: Array<string>
+  status: 'active' | 'syncing' | 'error' | 'disabled'
+  type: 'upload' | 'object-storage' | 'connector' | 'web'
+  updatedAt: string
+  uri: string
+  version?: number
+  credentialConfigured?: boolean
+}
+
 export type ListKnowledgeSpacesData = {
   body?: never
   headers?: {
@@ -136,3 +277,951 @@ export type CreateKnowledgeSpaceResponses = {
 
 export type CreateKnowledgeSpaceResponse =
   CreateKnowledgeSpaceResponses[keyof CreateKnowledgeSpaceResponses]
+
+export type GetKnowledgeSpacesByIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}'
+}
+
+export type GetKnowledgeSpacesByIdErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdError =
+  GetKnowledgeSpacesByIdErrors[keyof GetKnowledgeSpacesByIdErrors]
+
+export type GetKnowledgeSpacesByIdResponses = {
+  200: KnowledgeSpace
+}
+
+export type GetKnowledgeSpacesByIdResponse =
+  GetKnowledgeSpacesByIdResponses[keyof GetKnowledgeSpacesByIdResponses]
+
+export type GetKnowledgeSpacesByIdAccessPolicyData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/access-policy'
+}
+
+export type GetKnowledgeSpacesByIdAccessPolicyErrors = {
+  400: ErrorResponse & {
+    [key: string]: unknown
+  }
+  401: ErrorResponse
+  403: ErrorResponse & {
+    [key: string]: unknown
+  }
+  404: ErrorResponse & {
+    [key: string]: unknown
+  }
+  409: ErrorResponse & {
+    [key: string]: unknown
+  }
+  429: ErrorResponse & {
+    [key: string]: unknown
+  }
+}
+
+export type GetKnowledgeSpacesByIdAccessPolicyError =
+  GetKnowledgeSpacesByIdAccessPolicyErrors[keyof GetKnowledgeSpacesByIdAccessPolicyErrors]
+
+export type GetKnowledgeSpacesByIdAccessPolicyResponses = {
+  200: {
+    id: string
+    ownerSubjectId: string
+    partialMemberSubjectIds: Array<string>
+    revision: number
+    visibility: 'only_me' | 'all_members' | 'partial_members'
+  }
+}
+
+export type GetKnowledgeSpacesByIdAccessPolicyResponse =
+  GetKnowledgeSpacesByIdAccessPolicyResponses[keyof GetKnowledgeSpacesByIdAccessPolicyResponses]
+
+export type PatchKnowledgeSpacesByIdAccessPolicyData = {
+  body: {
+    expectedRevision: number
+    partialMemberSubjectIds?: Array<string>
+    visibility: 'only_me' | 'all_members' | 'partial_members'
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/access-policy'
+}
+
+export type PatchKnowledgeSpacesByIdAccessPolicyErrors = {
+  400: ErrorResponse & {
+    [key: string]: unknown
+  }
+  401: ErrorResponse
+  403: ErrorResponse & {
+    [key: string]: unknown
+  }
+  404: ErrorResponse & {
+    [key: string]: unknown
+  }
+  409: ErrorResponse & {
+    [key: string]: unknown
+  }
+  429: ErrorResponse & {
+    [key: string]: unknown
+  }
+}
+
+export type PatchKnowledgeSpacesByIdAccessPolicyError =
+  PatchKnowledgeSpacesByIdAccessPolicyErrors[keyof PatchKnowledgeSpacesByIdAccessPolicyErrors]
+
+export type PatchKnowledgeSpacesByIdAccessPolicyResponses = {
+  200: {
+    id: string
+    ownerSubjectId: string
+    partialMemberSubjectIds: Array<string>
+    revision: number
+    visibility: 'only_me' | 'all_members' | 'partial_members'
+  }
+}
+
+export type PatchKnowledgeSpacesByIdAccessPolicyResponse =
+  PatchKnowledgeSpacesByIdAccessPolicyResponses[keyof PatchKnowledgeSpacesByIdAccessPolicyResponses]
+
+export type GetSourceProvidersData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path?: never
+  query?: never
+  url: '/knowledge-fs/source-providers'
+}
+
+export type GetSourceProvidersErrors = {
+  401: ErrorResponse
+}
+
+export type GetSourceProvidersError = GetSourceProvidersErrors[keyof GetSourceProvidersErrors]
+
+export type GetSourceProvidersResponses = {
+  200: {
+    items: Array<{
+      authKinds: Array<'api-key' | 'endpoint' | 'oauth2'>
+      available: boolean
+      capabilities: Array<'website-crawl' | 'online-document' | 'online-drive'>
+      configuration: Array<{
+        description?: string
+        format?: 'password' | 'uri'
+        name: string
+        required: boolean
+        secret: boolean
+        type: 'boolean' | 'integer' | 'string'
+      }>
+      displayName: string
+      id: string
+      unavailableReason?: string
+    }>
+  }
+}
+
+export type GetSourceProvidersResponse =
+  GetSourceProvidersResponses[keyof GetSourceProvidersResponses]
+
+export type GetKnowledgeSpacesByIdSourceConnectionsData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-connections'
+}
+
+export type GetKnowledgeSpacesByIdSourceConnectionsErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdSourceConnectionsError =
+  GetKnowledgeSpacesByIdSourceConnectionsErrors[keyof GetKnowledgeSpacesByIdSourceConnectionsErrors]
+
+export type GetKnowledgeSpacesByIdSourceConnectionsResponses = {
+  200: {
+    items: Array<{
+      authKind: 'api-key' | 'endpoint' | 'oauth2'
+      configuration: {
+        [key: string]: boolean | number | string
+      }
+      createdAt: string
+      errorCode?: string
+      expiresAt?: string
+      id: string
+      knowledgeSpaceId: string
+      name: string
+      providerId: string
+      scopes: Array<string>
+      status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked'
+      updatedAt: string
+      version: number
+    }>
+    nextCursor?: string
+  }
+}
+
+export type GetKnowledgeSpacesByIdSourceConnectionsResponse =
+  GetKnowledgeSpacesByIdSourceConnectionsResponses[keyof GetKnowledgeSpacesByIdSourceConnectionsResponses]
+
+export type PostKnowledgeSpacesByIdSourceConnectionsData = {
+  body: {
+    authKind: 'api-key' | 'endpoint'
+    configuration?: {
+      [key: string]: boolean | number | string
+    }
+    credentials: {
+      [key: string]: unknown
+    }
+    name: string
+    providerId: string
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-connections'
+}
+
+export type PostKnowledgeSpacesByIdSourceConnectionsErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ErrorResponse
+  503: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdSourceConnectionsError =
+  PostKnowledgeSpacesByIdSourceConnectionsErrors[keyof PostKnowledgeSpacesByIdSourceConnectionsErrors]
+
+export type PostKnowledgeSpacesByIdSourceConnectionsResponses = {
+  201: {
+    authKind: 'api-key' | 'endpoint' | 'oauth2'
+    configuration: {
+      [key: string]: boolean | number | string
+    }
+    createdAt: string
+    errorCode?: string
+    expiresAt?: string
+    id: string
+    knowledgeSpaceId: string
+    name: string
+    providerId: string
+    scopes: Array<string>
+    status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked'
+    updatedAt: string
+    version: number
+  }
+}
+
+export type PostKnowledgeSpacesByIdSourceConnectionsResponse =
+  PostKnowledgeSpacesByIdSourceConnectionsResponses[keyof PostKnowledgeSpacesByIdSourceConnectionsResponses]
+
+export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshData = {
+  body: {
+    expectedVersion: number
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    connectionId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-connections/{connectionId}/refresh'
+}
+
+export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshError =
+  PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshErrors[keyof PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshErrors]
+
+export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshResponses = {
+  200: {
+    authKind: 'api-key' | 'endpoint' | 'oauth2'
+    configuration: {
+      [key: string]: boolean | number | string
+    }
+    createdAt: string
+    errorCode?: string
+    expiresAt?: string
+    id: string
+    knowledgeSpaceId: string
+    name: string
+    providerId: string
+    scopes: Array<string>
+    status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked'
+    updatedAt: string
+    version: number
+  }
+}
+
+export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshResponse =
+  PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshResponses[keyof PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshResponses]
+
+export type GetKnowledgeSpacesByIdSourcesData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources'
+}
+
+export type GetKnowledgeSpacesByIdSourcesErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: {
+    code: 'CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED'
+    error: 'Candidate visibility scan budget exceeded'
+  }
+}
+
+export type GetKnowledgeSpacesByIdSourcesError =
+  GetKnowledgeSpacesByIdSourcesErrors[keyof GetKnowledgeSpacesByIdSourcesErrors]
+
+export type GetKnowledgeSpacesByIdSourcesResponses = {
+  200: {
+    items: Array<Source>
+    nextCursor?: string
+  }
+}
+
+export type GetKnowledgeSpacesByIdSourcesResponse =
+  GetKnowledgeSpacesByIdSourcesResponses[keyof GetKnowledgeSpacesByIdSourcesResponses]
+
+export type PostKnowledgeSpacesByIdSourcesData = {
+  body: {
+    connectionId?: string
+    credentials?: {
+      [key: string]: unknown
+    }
+    metadata?: {
+      [key: string]: unknown
+    }
+    name: string
+    permissionScope?: Array<string>
+    status?: 'active' | 'syncing' | 'error' | 'disabled'
+    type: 'upload' | 'object-storage' | 'connector' | 'web'
+    uri: string
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources'
+}
+
+export type PostKnowledgeSpacesByIdSourcesErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+  429: ErrorResponse
+  503: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdSourcesError =
+  PostKnowledgeSpacesByIdSourcesErrors[keyof PostKnowledgeSpacesByIdSourcesErrors]
+
+export type PostKnowledgeSpacesByIdSourcesResponses = {
+  201: Source
+}
+
+export type PostKnowledgeSpacesByIdSourcesResponse =
+  PostKnowledgeSpacesByIdSourcesResponses[keyof PostKnowledgeSpacesByIdSourcesResponses]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewData = {
+  body?: never
+  headers: {
+    'Idempotency-Key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/crawl-preview'
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewError =
+  PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewErrors[keyof PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewErrors]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponses = {
+  202: SourceWorkflowRun
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponse =
+  PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponses[keyof PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponses]
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    runId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-workflows/{runId}'
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdError =
+  GetKnowledgeSpacesByIdSourceWorkflowsByRunIdErrors[keyof GetKnowledgeSpacesByIdSourceWorkflowsByRunIdErrors]
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponses = {
+  200: SourceWorkflowRun
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponse =
+  GetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponses[keyof GetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponses]
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    runId: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-workflows/{runId}/pages'
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesError =
+  GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesErrors[keyof GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesErrors]
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponses = {
+  200: {
+    items: Array<{
+      description?: string
+      etag?: string
+      pageId: string
+      sourceUrl: string
+      title?: string
+    }>
+    nextCursor?: string
+  }
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse =
+  GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponses[keyof GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponses]
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelData = {
+  body: {
+    reason?: string
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    runId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-workflows/{runId}/cancel'
+}
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelError =
+  PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelErrors[keyof PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelErrors]
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelResponses = {
+  200: SourceWorkflowRun
+}
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelResponse =
+  PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelResponses[keyof PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelResponses]
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    runId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-workflows/{runId}/retry'
+}
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryError =
+  PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryErrors[keyof PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryErrors]
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryResponses = {
+  200: SourceWorkflowRun
+}
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryResponse =
+  PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryResponses[keyof PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryResponses]
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionData = {
+  body: {
+    pageIds: Array<string>
+  }
+  headers: {
+    'Idempotency-Key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    runId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-workflows/{runId}/selection'
+}
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionError =
+  PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionErrors[keyof PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionErrors]
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionResponses = {
+  202: SourceWorkflowRun
+}
+
+export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionResponse =
+  PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionResponses[keyof PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionResponses]
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/sync-policy'
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyError =
+  GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors[keyof GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors]
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponses = {
+  200: {
+    createdAt: string
+    customIntervalSeconds?: number
+    enabled: boolean
+    expectedSourceVersion: number
+    id: string
+    knowledgeSpaceId: string
+    mode: 'provider' | 'manual' | 'interval' | 'custom'
+    nextRunAt?: string
+    revision: number
+    sourceId: string
+    updatedAt: string
+  }
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse =
+  GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponses[keyof GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponses]
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData = {
+  body: {
+    customIntervalSeconds?: number
+    enabled: boolean
+    expectedRevision: number
+    expectedSourceVersion: number
+    mode: 'provider' | 'manual' | 'interval' | 'custom'
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/sync-policy'
+}
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+}
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyError =
+  PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors[keyof PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors]
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponses = {
+  200: {
+    createdAt: string
+    customIntervalSeconds?: number
+    enabled: boolean
+    expectedSourceVersion: number
+    id: string
+    knowledgeSpaceId: string
+    mode: 'provider' | 'manual' | 'interval' | 'custom'
+    nextRunAt?: string
+    revision: number
+    sourceId: string
+    updatedAt: string
+  }
+}
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse =
+  PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponses[keyof PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponses]
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/logical-documents'
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsError =
+  GetKnowledgeSpacesByIdLogicalDocumentsErrors[keyof GetKnowledgeSpacesByIdLogicalDocumentsErrors]
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsResponses = {
+  200: LogicalDocumentList
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsResponse =
+  GetKnowledgeSpacesByIdLogicalDocumentsResponses[keyof GetKnowledgeSpacesByIdLogicalDocumentsResponses]
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/logical-documents/{documentId}'
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdError =
+  GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors[keyof GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors]
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses = {
+  200: LogicalDocument
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse =
+  GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses[keyof GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/revisions'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponses = {
+  200: DocumentRevisionList
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    revision: number
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+    query?: string
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponses = {
+  200: DocumentChunkList
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponses]
+
+export type GetKnowledgeSpacesByIdProcessingTasksData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/processing-tasks'
+}
+
+export type GetKnowledgeSpacesByIdProcessingTasksErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdProcessingTasksError =
+  GetKnowledgeSpacesByIdProcessingTasksErrors[keyof GetKnowledgeSpacesByIdProcessingTasksErrors]
+
+export type GetKnowledgeSpacesByIdProcessingTasksResponses = {
+  200: DocumentProcessingTaskList
+}
+
+export type GetKnowledgeSpacesByIdProcessingTasksResponse =
+  GetKnowledgeSpacesByIdProcessingTasksResponses[keyof GetKnowledgeSpacesByIdProcessingTasksResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsData = {
+  body?: never
+  headers?: {
+    'last-event-id'?: string
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    taskId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses = {
+  200: string
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses]
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    taskId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}'
+}
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+}
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdError =
+  DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdErrors[keyof DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdErrors]
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses = {
+  200: DocumentProcessingTask
+}
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
+  DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses[keyof DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses]
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    taskId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/retry'
+}
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryError =
+  PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryErrors[keyof PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryErrors]
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponses = {
+  200: DocumentProcessingTask
+}
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponse =
+  PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponses[keyof PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponses]

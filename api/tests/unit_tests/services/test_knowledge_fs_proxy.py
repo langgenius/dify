@@ -15,6 +15,7 @@ from services.knowledge_fs_proxy import (
     KnowledgeFSAccessDeniedError,
     KnowledgeFSConfigurationError,
     KnowledgeFSMethod,
+    KnowledgeFSOperation,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,
@@ -27,6 +28,48 @@ from services.knowledge_fs_proxy import (
 )
 
 _JWT_SECRET = "production-secret-with-at-least-32-bytes"
+
+_HAPPY_PATH_OPERATION_IDS = (
+    "listKnowledgeSpaces",
+    "createKnowledgeSpace",
+    "getKnowledgeSpacesById",
+    "getKnowledgeSpacesByIdAccessPolicy",
+    "patchKnowledgeSpacesByIdAccessPolicy",
+    "getSourceProviders",
+    "getKnowledgeSpacesByIdSourceConnections",
+    "postKnowledgeSpacesByIdSourceConnections",
+    "postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh",
+    "getKnowledgeSpacesByIdSources",
+    "postKnowledgeSpacesByIdSources",
+    "postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview",
+    "getKnowledgeSpacesByIdSourceWorkflowsByRunId",
+    "getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages",
+    "postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel",
+    "postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry",
+    "postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection",
+    "getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
+    "putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
+    "getKnowledgeSpacesByIdLogicalDocuments",
+    "getKnowledgeSpacesByIdLogicalDocumentsByDocumentId",
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions",
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks",
+    "getKnowledgeSpacesByIdProcessingTasks",
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents",
+    "deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
+    "postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry",
+)
+
+
+def _materialized_path(operation: KnowledgeFSOperation) -> str:
+    segments = []
+    for segment in operation.path.split("/"):
+        if segment == "{revision}":
+            segments.append("1")
+        elif segment.startswith("{"):
+            segments.append("00000000-0000-4000-8000-000000000001")
+        else:
+            segments.append(segment)
+    return "/".join(segments)
 
 
 def _set_config(
@@ -45,43 +88,45 @@ def _set_config(
         monkeypatch.setattr(f"services.knowledge_fs_proxy.dify_config.{name}", value, raising=False)
 
 
-def test_console_registry_starts_with_list_and_create_operations() -> None:
-    assert tuple(operation.operation_id for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS) == (
-        "listKnowledgeSpaces",
-        "createKnowledgeSpace",
+def test_console_registry_exposes_only_the_new_rag_happy_path_operations() -> None:
+    assert tuple(operation.operation_id for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS) == _HAPPY_PATH_OPERATION_IDS
+
+
+def test_console_registry_preserves_the_read_and_write_policy_for_every_operation() -> None:
+    for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS:
+        is_read = operation.method == "GET"
+        assert operation.required_scope == f"knowledge-spaces:{'read' if is_read else 'write'}"
+        assert operation.rbac_permission == (
+            RBACPermission.DATASET_READONLY if is_read else RBACPermission.DATASET_CREATE_AND_MANAGEMENT
+        )
+        assert operation.requires_dataset_editor is not is_read
+        assert operation.response_headers == ("x-trace-id",)
+
+
+def test_console_registry_preserves_special_transport_contracts() -> None:
+    crawl_preview = get_knowledge_fs_operation(
+        "POST",
+        "knowledge-spaces/00000000-0000-4000-8000-000000000001/sources/"
+        "00000000-0000-4000-8000-000000000002/crawl-preview",
+    )
+    selection = get_knowledge_fs_operation(
+        "POST",
+        "knowledge-spaces/00000000-0000-4000-8000-000000000001/source-workflows/"
+        "00000000-0000-4000-8000-000000000002/selection",
+    )
+    events = get_knowledge_fs_operation(
+        "GET",
+        "knowledge-spaces/00000000-0000-4000-8000-000000000001/documents/"
+        "00000000-0000-4000-8000-000000000002/processing-tasks/"
+        "00000000-0000-4000-8000-000000000003/events",
     )
 
-
-@pytest.mark.parametrize(
-    ("method", "operation_id", "scope", "permission", "requires_dataset_editor"),
-    [
-        ("GET", "listKnowledgeSpaces", "knowledge-spaces:read", RBACPermission.DATASET_READONLY, False),
-        (
-            "POST",
-            "createKnowledgeSpace",
-            "knowledge-spaces:write",
-            RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
-            True,
-        ),
-    ],
-)
-def test_console_registry_preserves_contract_and_policy(
-    method: KnowledgeFSMethod,
-    operation_id: str,
-    scope: str,
-    permission: RBACPermission,
-    requires_dataset_editor: bool,
-) -> None:
-    operation = get_knowledge_fs_operation(method, "knowledge-spaces")
-
-    assert operation.operation_id == operation_id
-    assert operation.required_scope == scope
-    assert operation.rbac_permission == permission
-    assert operation.requires_dataset_editor is requires_dataset_editor
-    assert operation.max_response_bytes == 1_048_576
-    assert operation.request_headers == ("x-trace-id",)
-    assert operation.response_headers == ("x-trace-id",)
-    assert operation.response_media_types == ("application/json",)
+    assert crawl_preview.request_headers == ("idempotency-key", "x-trace-id")
+    assert selection.request_headers == ("idempotency-key", "x-trace-id")
+    assert events.response_kind == "stream"
+    assert events.max_response_bytes == 67_108_864
+    assert events.request_headers == ("last-event-id", "x-trace-id")
+    assert events.response_media_types == ("text/event-stream",)
 
 
 def test_unconfigured_kfs_is_rejected_before_external_io(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -148,7 +193,11 @@ def test_proxy_forwards_only_registry_declared_headers(monkeypatch: pytest.Monke
     assert forward.call_args.kwargs["request_headers"] == {"x-trace-id": "trace-1"}
 
 
-def test_authorization_rejects_workspace_rbac_denial(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("operation", KNOWLEDGE_FS_CONSOLE_OPERATIONS, ids=lambda operation: operation.operation_id)
+def test_authorization_rejects_workspace_rbac_denial(
+    monkeypatch: pytest.MonkeyPatch,
+    operation: KnowledgeFSOperation,
+) -> None:
     account = MagicMock(id="account-1", is_dataset_editor=True)
     check_access = MagicMock(return_value=False)
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
@@ -157,18 +206,26 @@ def test_authorization_rejects_workspace_rbac_denial(monkeypatch: pytest.MonkeyP
         authorize_knowledge_fs_request(
             account=account,
             tenant_id="tenant-1",
-            operation=get_knowledge_fs_operation("GET", "knowledge-spaces"),
+            operation=operation,
         )
 
     check_access.assert_called_once_with(
         "tenant-1",
         "account-1",
-        scene="dataset_readonly",
+        scene=operation.rbac_permission.value,
         resource_type="dataset",
     )
 
 
-def test_create_rejects_non_dataset_editor_before_rbac(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    "operation",
+    tuple(operation for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS if operation.method != "GET"),
+    ids=lambda operation: operation.operation_id,
+)
+def test_write_operations_reject_non_dataset_editor_before_rbac(
+    monkeypatch: pytest.MonkeyPatch,
+    operation: KnowledgeFSOperation,
+) -> None:
     account = MagicMock(id="account-1", is_dataset_editor=False)
     check_access = MagicMock(return_value=True)
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
@@ -177,7 +234,7 @@ def test_create_rejects_non_dataset_editor_before_rbac(monkeypatch: pytest.Monke
         authorize_knowledge_fs_request(
             account=account,
             tenant_id="tenant-1",
-            operation=get_knowledge_fs_operation("POST", "knowledge-spaces"),
+            operation=operation,
         )
 
     check_access.assert_not_called()
@@ -194,24 +251,24 @@ def test_authorization_uses_the_declared_editor_policy(monkeypatch: pytest.Monke
     check_access.assert_called_once()
 
 
-@pytest.mark.parametrize(
-    ("method", "expected_scope"),
-    [("GET", "knowledge-spaces:read"), ("POST", "knowledge-spaces:write")],
-)
+@pytest.mark.parametrize("operation", KNOWLEDGE_FS_CONSOLE_OPERATIONS, ids=lambda operation: operation.operation_id)
 def test_auth_signs_current_principals_and_declared_scope(
     monkeypatch: pytest.MonkeyPatch,
-    method: KnowledgeFSMethod,
-    expected_scope: str,
+    operation: KnowledgeFSOperation,
 ) -> None:
     _set_config(monkeypatch)
-    response = httpx.Response(200, content=b'{"items":[]}', headers={"Content-Type": "application/json"})
+    response = httpx.Response(
+        200,
+        content=b"data" if operation.response_kind == "stream" else b'{"items":[]}',
+        headers={"Content-Type": operation.response_media_types[0]},
+    )
     request = MagicMock(return_value=response)
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", request)
 
     forward_knowledge_fs_request(
         account_id="account-1",
-        method=method,
-        path="knowledge-spaces",
+        method=operation.method,
+        path=_materialized_path(operation),
         tenant_id="tenant-1",
     )
 
@@ -226,7 +283,7 @@ def test_auth_signs_current_principals_and_declared_scope(
     assert claims["dify_account_id"] == "dify-account:account-1"
     assert claims["sub"] == "dify-workspace:tenant-1"
     assert claims["tenant_id"] == "tenant-1"
-    assert claims["scopes"] == [expected_scope]
+    assert claims["scopes"] == [operation.required_scope]
     assert claims["caller_kind"] == "interactive"
     assert claims["exp"] - claims["iat"] == 60
 
@@ -277,7 +334,7 @@ def test_transport_failures_are_normalized(
     ("method", "path"),
     [
         ("GET", "openapi.json"),
-        ("GET", "knowledge-spaces/space-1"),
+        ("GET", "knowledge-spaces/space-1/manifest"),
         ("PATCH", "knowledge-spaces"),
         ("POST", "queries"),
         ("POST", "knowledge-spaces/space-1/documents"),
