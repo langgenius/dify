@@ -62,7 +62,7 @@ dependencies = [
     "psycogreen~=1.0.2",
     "psycopg2-binary~=2.9.6",
     "pycryptodome==3.23.0",
-    "pydantic~=2.12.5",
+    "pydantic~=2.13.4",
     "pydantic-extra-types~=2.11.0",
     "pydantic-settings>=2.14.2,<3.0.0",
     "pyjwt~=2.13.0",
