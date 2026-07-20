@@ -649,6 +649,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const reconcileConnection = useCallback(async () => {
     if (connection) setConnectionOverride(connection)
     const refreshed = await refetchConnections()
+    if (refreshed.error) throw refreshed.error
     const refreshedConnections = refreshed.data?.pages.flatMap((page) => page.items) ?? []
     const refreshedCurrentConnection = connection
       ? findConnectionById(refreshedConnections, connection.id)

@@ -489,7 +489,10 @@ describe('AddSourcePage', () => {
   it('shows a retryable error when provisioning reconciliation fails', async () => {
     const user = userEvent.setup()
     queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
-    queryState.connections.refetch.mockRejectedValue(new Error('temporary failure'))
+    queryState.connections.refetch.mockResolvedValue({
+      data: queryState.connections.data,
+      error: new Error('temporary failure'),
+    })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
