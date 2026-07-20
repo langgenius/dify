@@ -1,19 +1,19 @@
 ## 1. Version Classification and Baseline Coverage
 
-- [ ] 1.1 Add failing unit tests for legacy classification: only persisted `type: human-input` plus exact string `version: '2'` is v2; missing/`'1'` is migration-eligible and malformed or unknown versions are migration blockers.
-- [ ] 1.2 Add failing policy tests for new, v2-only, legacy-only, mixed, migrated, removed-legacy, and read-only workflow states, including the expected Human Input candidate count and enabled state.
-- [ ] 1.3 Implement shared pure helpers for legacy detection, migration eligibility, and workflow-level Human Input creation policy, then route all new rollout logic through them.
-- [ ] 1.4 Preserve and extend golden import/render/edit/export tests proving an unmigrated legacy node stays on the v1 renderer and retains `delivery_methods` until explicit migration.
+- [x] 1.1 Add failing unit tests for legacy classification: only persisted `type: human-input` plus exact string `version: '2'` is v2; missing/`'1'` is migration-eligible and malformed or unknown versions are migration blockers.
+- [x] 1.2 Add failing policy tests for new, v2-only, legacy-only, mixed, migrated, removed-legacy, and read-only workflow states, including the expected Human Input candidate count and enabled state.
+- [x] 1.3 Implement shared pure helpers for legacy detection, migration eligibility, and workflow-level Human Input creation policy, then route all new rollout logic through them.
+- [x] 1.4 Preserve and extend golden import/render/edit/export tests proving an unmigrated legacy node stays on the v1 renderer and retains `delivery_methods` until explicit migration.
 
 ## 2. Pure Migration Planner
 
-- [ ] 2.1 Create typed legacy migration plan/result/blocker models and a narrow snapshotted member/contact resolver interface without adding API or generated-client code.
-- [ ] 2.2 Add failing converter tests for preserving IDs, positions, common node metadata, shared Human Input fields, compatible extension fields, branch handles, edges, variable references, and array order.
-- [ ] 2.3 Implement supported recipient conversion: enabled WebApp to initiator, external email to `onetime_email`, member to contact or verified-email fallback, and whole-workspace expansion from one stable resolver snapshot.
-- [ ] 2.4 Implement canonical recipient deduplication and deterministic first-occurrence ordering across delivery methods, email items, and whole-workspace expansion.
-- [ ] 2.5 Implement message-template and debug mapping, preserve subject/body verbatim, write exact `version: '2'` and `recpients_spec`, and remove `delivery_methods` only from a complete valid replacement.
-- [ ] 2.6 Add and satisfy blocker tests for malformed/unknown versions, invalid email, unresolved members, configured disabled methods, enabled unsupported/unknown delivery methods, conflicting email templates, and missing valid v2 recipients.
-- [ ] 2.7 Add idempotence and batch-preflight tests proving existing v2 nodes remain unchanged and one invalid legacy node prevents every replacement.
+- [x] 2.1 Create typed legacy migration plan/result/blocker models and a narrow snapshotted member/contact resolver interface without adding API or generated-client code.
+- [x] 2.2 Add failing converter tests for preserving IDs, positions, common node metadata, shared Human Input fields, compatible extension fields, branch handles, edges, variable references, and array order.
+- [x] 2.3 Implement supported recipient conversion: enabled WebApp to initiator, external email to `onetime_email`, member to contact or verified-email fallback, and whole-workspace expansion from one stable resolver snapshot.
+- [x] 2.4 Implement canonical recipient deduplication and deterministic first-occurrence ordering across delivery methods, email items, and whole-workspace expansion.
+- [x] 2.5 Implement message-template and debug mapping, preserve subject/body verbatim, write exact `version: '2'` and `recpients_spec`, and remove `delivery_methods` only from a complete valid replacement.
+- [x] 2.6 Add and satisfy blocker tests for malformed/unknown versions, invalid email, unresolved members, configured disabled methods, enabled unsupported/unknown delivery methods, conflicting email templates, and missing valid v2 recipients.
+- [x] 2.7 Add idempotence and batch-preflight tests proving existing v2 nodes remain unchanged and one invalid legacy node prevents every replacement.
 
 ## 3. V2-Only Catalog and Central Insertion Guard
 
