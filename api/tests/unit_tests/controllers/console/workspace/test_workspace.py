@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Iterator
+from functools import partial
 from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
@@ -10,7 +11,8 @@ from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.local import LocalProxy
 
 import services
 from controllers.common.errors import (
@@ -34,9 +36,16 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionApi,
     WorkspacePermissionResponse,
 )
+from controllers.console.wraps import is_admin_or_owner_required
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
+from models.account import (
+    Account,
+    Tenant,
+    TenantAccountRole,
+    TenantCustomConfigDict,
+    TenantStatus,
+)
 
 
 @pytest.fixture
@@ -594,6 +603,63 @@ class TestWorkspaceInfoApi:
         with app.test_request_context("/workspaces/info", json=payload):
             with pytest.raises(ValueError):
                 method(api, MagicMock(), None)
+
+    @staticmethod
+    def _guarded_post(api: WorkspaceInfoApi, session: MagicMock):
+        """Re-apply only the authorization decorator over the undecorated handler.
+
+        This isolates the allow/deny semantics of the guard from the rest of the
+        decorator stack (setup/login/session), which needs a database to exercise.
+        It deliberately does not assert that the decorator is wired onto the
+        endpoint -- that is the decorator addition visible in ``workspace.py``.
+        """
+        return is_admin_or_owner_required(partial(unwrap(api.post), api, session, "t1"))
+
+    @pytest.mark.parametrize("role", [TenantAccountRole.NORMAL, TenantAccountRole.DATASET_OPERATOR])
+    def test_rename_guard_denies_non_privileged_role(self, app: Flask, role: TenantAccountRole):
+        api = WorkspaceInfoApi()
+        tenant = make_tenant(name="Original Name")
+        account = make_account()
+        account.role = role
+        session = MagicMock()
+        with (
+            app.test_request_context("/workspaces/info", method="POST", json={"name": "New Name"}),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", False),
+            patch("libs.login.current_user", LocalProxy(lambda: account)),
+            patch("controllers.console.workspace.workspace.TenantService.get_tenant_by_id") as mock_get_tenant,
+        ):
+            with pytest.raises(Forbidden):
+                self._guarded_post(api, session)()
+
+        mock_get_tenant.assert_not_called()
+        session.commit.assert_not_called()
+        assert tenant.name == "Original Name"
+
+    @pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN])
+    def test_rename_guard_allows_privileged_role(self, app: Flask, role: TenantAccountRole):
+        api = WorkspaceInfoApi()
+        tenant = make_tenant(name="Original Name")
+        account = make_account()
+        account.role = role
+        session = MagicMock()
+        with (
+            app.test_request_context("/workspaces/info", method="POST", json={"name": "New Name"}),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", False),
+            patch("libs.login.current_user", LocalProxy(lambda: account)),
+            patch(
+                "controllers.console.workspace.workspace.TenantService.get_tenant_by_id",
+                return_value=tenant,
+            ),
+            patch(
+                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
+                return_value={"id": "t1", "name": "New Name"},
+            ),
+        ):
+            result = self._guarded_post(api, session)()
+
+        assert result["result"] == "success"
+        assert tenant.name == "New Name"
+        session.commit.assert_called_once()
 
 
 class TestWorkspacePermissionApi:

@@ -12789,6 +12789,7 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
+| 403 | Admin privileges required |  |
 
 ### [POST] /workspaces/switch
 #### Request Body
