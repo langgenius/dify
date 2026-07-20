@@ -10,6 +10,7 @@ import ExternalAPIPanel from '@/app/components/datasets/external-api/external-ap
 import ServiceApi from '@/app/components/datasets/extra-info/service-api'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
@@ -66,10 +67,8 @@ export function NewKnowledgeList({
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const showCreateAction = canCreate || canConnect
   const filtersUnavailable = t(($) => $['newKnowledge.filtersUnavailable'])
-  const unavailable = t(($) => $['cornerLabel.unavailable'])
   const createLabel = tCommon(($) => $['operation.create'])
   const filtersUnavailableId = useId()
-  const createUnavailableId = useId()
   const knowledgeSpacesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.listKnowledgeSpaces.infiniteOptions({
       input: (pageParam) => ({
@@ -139,8 +138,7 @@ export function NewKnowledgeList({
           {showCreateAction && (
             <div className="flex items-center gap-1">
               <Button
-                disabled
-                aria-describedby={createUnavailableId}
+                render={<Link href="/datasets/new/create" />}
                 variant="primary"
                 size="medium"
                 className="gap-0.5 px-2 shadow-xs"
@@ -148,10 +146,6 @@ export function NewKnowledgeList({
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
                 <span className="pl-1">{createLabel}</span>
               </Button>
-              <span id={createUnavailableId} className="sr-only">
-                {unavailable}
-              </span>
-              <UnavailableReason label={`${createLabel}. ${unavailable}`} reason={unavailable} />
             </div>
           )}
         </div>

@@ -1,9 +1,12 @@
+'use client'
+
 import type { ReactNode } from 'react'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import CornerLabel from '@/app/components/base/corner-label'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
+import Link from '@/next/link'
 
 const LOADING_CARD_IDS = [
   'loading-card-1',
@@ -100,11 +103,13 @@ function EmptyAction({
   iconClassName,
   recommended = false,
   title,
+  href,
 }: {
   description: string
   iconClassName: string
   recommended?: boolean
   title: string
+  href?: string
 }) {
   const { t } = useTranslation('dataset')
   const unavailable = t(($) => $['cornerLabel.unavailable'])
@@ -114,12 +119,11 @@ function EmptyAction({
   const recommendedId = useId()
 
   return (
-    <button
-      type="button"
-      disabled
+    <ButtonOrLink
+      href={href}
       aria-label={title}
-      aria-describedby={`${descriptionId} ${unavailableId}${recommended ? ` ${recommendedId}` : ''}`}
-      className="relative flex min-h-[58px] w-full cursor-not-allowed items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-disabled outline-hidden backdrop-blur-[6px]"
+      aria-describedby={`${descriptionId}${href ? '' : ` ${unavailableId}`}${recommended ? ` ${recommendedId}` : ''}`}
+      className="relative flex min-h-[58px] w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-secondary-bg"
     >
       <span className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-default-subtle">
         <span aria-hidden className={`${iconClassName} size-4 text-text-disabled`} />
@@ -130,9 +134,11 @@ function EmptyAction({
           {description}
         </span>
       </span>
-      <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
-        {unavailable}
-      </span>
+      {!href && (
+        <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
+          {unavailable}
+        </span>
+      )}
       {recommended && (
         <div id={recommendedId}>
           <CornerLabel
@@ -144,6 +150,31 @@ function EmptyAction({
           />
         </div>
       )}
+    </ButtonOrLink>
+  )
+}
+
+function ButtonOrLink({
+  children,
+  href,
+  ...props
+}: {
+  'aria-describedby': string
+  'aria-label': string
+  children: ReactNode
+  className: string
+  href?: string
+}) {
+  if (href)
+    return (
+      <Link href={href} {...props}>
+        {children}
+      </Link>
+    )
+
+  return (
+    <button type="button" disabled {...props}>
+      {children}
     </button>
   )
 }
@@ -232,6 +263,7 @@ export function NewKnowledgeEmptyState({
                   iconClassName="i-ri-folder-6-line"
                   title={t(($) => $['newKnowledge.startEmpty'])}
                   description={t(($) => $['newKnowledge.startEmptyDescription'])}
+                  href="/datasets/new/create"
                 />
               </>
             )}
