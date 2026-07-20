@@ -87,14 +87,6 @@ vi.mock('@/app/components/base/form/types', () => ({
   FormTypeEnum: { textInput: 'text-input' },
 }))
 
-// PermissionSelector (rendered for create mode) calls useMembers via TanStack Query.
-// Stub it so tests don't need a QueryClientProvider wrapper.
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({ data: { accounts: [] } }),
-}))
-
-// PermissionSelector also reads userProfile from app-context.
-
 const basePayload = {
   category: AuthCategory.tool,
   provider: 'test-provider',
@@ -292,9 +284,33 @@ describe('ApiKeyModal', () => {
         expect.objectContaining({
           type: 'api-key',
           name: 'My Key',
+          visibility: 'all_team_members',
         }),
       )
     })
+  })
+
+  it('selects credential visibility through the native trigger', async () => {
+    const user = userEvent.setup()
+    render(<ApiKeyModal pluginPayload={basePayload} />)
+
+    const trigger = screen.getByRole('button', { name: /permissionsAllMember/ })
+    expect(trigger).toHaveAttribute('type', 'button')
+    await user.click(trigger)
+    await user.click(screen.getByRole('button', { name: /permissionsOnlyMe/ }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() => {
+      expect(mockAddPluginCredential).toHaveBeenCalledWith(
+        expect.objectContaining({ visibility: 'only_me' }),
+      )
+    })
+  })
+
+  it('disables the credential visibility trigger with the modal', () => {
+    render(<ApiKeyModal pluginPayload={basePayload} disabled />)
+
+    expect(screen.getByRole('button', { name: /permissionsAllMember/ })).toBeDisabled()
   })
 
   it('should use empty credential name when authorization name is blank in add mode', async () => {
