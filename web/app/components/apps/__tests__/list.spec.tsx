@@ -1,10 +1,18 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import * as React from 'react'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
+import {
+  getStepByStepTourTargetSelector,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import List from '../list'
@@ -31,6 +39,7 @@ const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
     onlineUsersMap: {},
   })),
 )
+let stepByStepTourSessionState: StepByStepTourSessionState = {}
 
 const mockLearnDifyApp = vi.hoisted(
   () =>
@@ -104,54 +113,20 @@ vi.mock('@/service/client', () => ({
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 let mockWorkspacePermissionKeys = ['app.create_and_management']
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
 const mockOnPlanInfoChanged = vi.fn()
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -434,11 +409,34 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('../app-card', () => ({
-  AppCard: ({ app }: { app: { id: string; name: string } }) => {
+  AppCard: ({
+    app,
+    stepByStepTourActionMenuOpen,
+    stepByStepTourActionMenuHighlightPart,
+    stepByStepTourCardTarget,
+    stepByStepTourCardHighlightPart,
+  }: {
+    app: { id: string; name: string }
+    stepByStepTourActionMenuOpen?: boolean
+    stepByStepTourActionMenuHighlightPart?: string
+    stepByStepTourCardTarget?: string
+    stepByStepTourCardHighlightPart?: string
+  }) => {
     return React.createElement(
       'div',
-      { 'data-testid': `app-card-${app.id}`, role: 'article' },
+      {
+        'data-testid': `app-card-${app.id}`,
+        'data-step-by-step-tour-target': stepByStepTourCardTarget,
+        'data-step-by-step-tour-highlight-part': stepByStepTourCardHighlightPart,
+        role: 'article',
+      },
       app.name,
+      React.createElement('button', {
+        'data-testid': `app-card-action-bar-${app.id}`,
+        'data-step-by-step-tour-highlight-part': stepByStepTourActionMenuHighlightPart,
+        'data-step-by-step-tour-menu-open': String(Boolean(stepByStepTourActionMenuOpen)),
+        type: 'button',
+      }),
     )
   },
   AppCardActionBar: ({ app, onRefresh }: { app: { id: string }; onRefresh?: () => void }) => {
@@ -458,10 +456,14 @@ vi.mock('../app-card', () => ({
 }))
 
 vi.mock('../empty', () => ({
-  default: () => {
+  default: ({ stepByStepTourTarget }: { stepByStepTourTarget?: string }) => {
     return React.createElement(
       'div',
-      { 'data-testid': 'empty-state', role: 'status' },
+      {
+        'data-testid': 'empty-state',
+        'data-step-by-step-tour-target': stepByStepTourTarget,
+        role: 'status',
+      },
       'No apps found',
     )
   },
@@ -527,15 +529,24 @@ type RenderListOptions = {
 
 const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   mockSearchParams = new URLSearchParams(searchParams)
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
-  return renderWithNuqs(
-    <SystemFeaturesWrapper>
-      <List onCreateLearnDify={options.onCreateLearnDify} onTryLearnDify={options.onTryLearnDify} />
-    </SystemFeaturesWrapper>,
+  const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
+  store.set(stepByStepTourSessionAtom, stepByStepTourSessionState)
+  const rendered = renderWithNuqs(
+    <ConsoleQueryWrapper>
+      <JotaiProvider store={store}>
+        <List
+          onCreateLearnDify={options.onCreateLearnDify}
+          onTryLearnDify={options.onTryLearnDify}
+        />
+      </JotaiProvider>
+    </ConsoleQueryWrapper>,
     { searchParams },
   )
+  return rendered
 }
 
 type AppListInfiniteOptions = {
@@ -559,9 +570,25 @@ const openAppSortSelect = async (user = userEvent.setup()) => {
   return user
 }
 
+const setActiveStudioStepByStepTour = (
+  activeGuideIndex: number,
+  activeGuideGroup:
+    | 'studioWithApps'
+    | 'studioNoCreateEmpty'
+    | 'studioNoCreateWithApps'
+    | undefined = 'studioWithApps',
+) => {
+  stepByStepTourSessionState = {
+    activeTaskId: 'studio',
+    activeGuideGroup,
+    activeGuideIndex,
+  }
+}
+
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    stepByStepTourSessionState = {}
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockDragging = false
@@ -631,6 +658,29 @@ describe('List', () => {
     it('should render create button for editors', () => {
       renderList()
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
+    })
+
+    it('should open the create menu before the Studio with-apps guide group is persisted', async () => {
+      setActiveStudioStepByStepTour(0, undefined)
+
+      renderList()
+
+      expect(screen.getByRole('button', { name: 'common.operation.create' })).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate,
+      )
+      expect(await screen.findByText('app.newApp.startFromBlank')).toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank', hidden: true }),
+      ).toBeInTheDocument()
+      const createMenuHighlightPart = document.body.querySelector(
+        '[data-step-by-step-tour-highlight-part]',
+      )
+      expect(createMenuHighlightPart).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
+      )
+      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
     })
 
     it('should render filters and search before the right aligned actions', () => {
@@ -723,6 +773,148 @@ describe('List', () => {
       expect(mockRefetchStarredAppList).toHaveBeenCalledTimes(1)
     })
 
+    it('should expose the first workspace app card and open its action menu for the Studio with-apps tour manage guide', () => {
+      setActiveStudioStepByStepTour(1)
+      mockStarredAppData = {
+        data: [
+          {
+            id: 'starred-app-1',
+            name: 'Starred App',
+            description: 'Starred description',
+            mode: AppModeEnum.CHAT,
+            icon: '⭐',
+            icon_type: 'emoji',
+            icon_background: '#FFEAD5',
+            icon_url: null,
+            tags: [],
+            author_name: 'Author 1',
+            created_at: 1704067200,
+            updated_at: 1704153600,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 100,
+        has_more: false,
+      }
+
+      renderList()
+
+      const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
+      const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
+      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const starredActionBar = screen.getByTestId('app-card-action-bar-starred-app-1')
+
+      expect(firstWorkspaceCard).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard,
+      )
+      expect(firstWorkspaceActionBar).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu,
+      )
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-menu-open', 'true')
+      expect(
+        screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'app.newApp.startFromTemplate' }),
+      ).not.toBeInTheDocument()
+      expect(starredCard).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(starredActionBar).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+    })
+
+    it('should highlight the first starred app row for the Studio no-create with-apps tour', () => {
+      mockWorkspacePermissionKeys = []
+      setActiveStudioStepByStepTour(0, 'studioNoCreateWithApps')
+      mockStarredAppData = {
+        data: [
+          {
+            id: 'starred-app-1',
+            name: 'Starred App',
+            description: 'Starred description',
+            mode: AppModeEnum.CHAT,
+            icon: '⭐',
+            icon_type: 'emoji',
+            icon_background: '#FFEAD5',
+            icon_url: null,
+            tags: [],
+            author_name: 'Author 1',
+            created_at: 1704067200,
+            updated_at: 1704153600,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 100,
+        has_more: false,
+      }
+
+      renderList()
+
+      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
+      const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
+
+      expect(starredCard).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard,
+      )
+      expect(starredCard).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard,
+      )
+      expect(firstWorkspaceCard).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(firstWorkspaceCard).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-menu-open', 'false')
+    })
+
+    it('should highlight the first all-apps row for the Studio no-create with-apps tour when there are no starred apps', () => {
+      mockWorkspacePermissionKeys = []
+      setActiveStudioStepByStepTour(0, 'studioNoCreateWithApps')
+
+      renderList()
+
+      const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
+      const secondWorkspaceCard = screen.getByTestId('app-card-app-2')
+      const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
+
+      expect(firstWorkspaceCard).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard,
+      )
+      expect(firstWorkspaceCard).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard,
+      )
+      expect(secondWorkspaceCard).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard,
+      )
+      expect(firstWorkspaceActionBar).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-menu-open', 'false')
+    })
+
+    it('should expose the regular empty state for the Studio no-create empty tour', () => {
+      mockWorkspacePermissionKeys = []
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      setActiveStudioStepByStepTour(0, 'studioNoCreateEmpty')
+
+      renderList()
+
+      const target = document.querySelector(
+        getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty),
+      )
+
+      expect(target).toBeInTheDocument()
+      expect(target).toBe(screen.getByTestId('empty-state'))
+      expect(target).not.toHaveClass('absolute', 'top-1/2', 'left-1/2')
+      expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.create' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should not render new app card in the app grid', () => {
       renderList()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
@@ -744,6 +936,28 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }),
+      ).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate,
+      )
+      expect(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ })).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank,
+      )
+      expect(screen.getByRole('button', { name: /app\.importDSL/ })).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
+      )
+      expect(
+        screen
+          .getByText('app.firstEmpty.learnDifyTitle')
+          .closest('[data-step-by-step-tour-target]'),
+      ).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify,
+      )
     })
 
     it('should lay out first empty state placeholder cards with auto-fill grid columns', () => {

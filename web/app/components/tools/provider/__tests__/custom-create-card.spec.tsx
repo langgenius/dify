@@ -1,38 +1,21 @@
 import type { CustomCollectionBackend } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { AuthType } from '../../types'
 import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['tool.manage'] as string[],
-  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
-vi.mock('@/context/account-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/workspace-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/version-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/system-features-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: unknown) => {
-    if (atom === mockAppContextState.workspacePermissionKeysAtom)
-      return mockAppContextState.workspacePermissionKeys
-
-    throw new Error('Unexpected atom')
-  },
-}))
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+  }))
+})
 
 // Mock useLocale and useDocLink
 vi.mock('@/context/i18n', () => ({
@@ -110,7 +93,7 @@ describe('CustomCreateCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState.workspacePermissionKeys = ['tool.manage']
+    mockConsoleState.workspacePermissionKeys = ['tool.manage']
     mockModalVisible = false
     mockCreateCustomCollection.mockResolvedValue({})
   })
@@ -123,7 +106,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should not render anything when user does not have tool.manage', () => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       const { container } = render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
@@ -179,7 +162,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should not render toolbar add button when user does not have tool.manage', () => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       const { container } = render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
 

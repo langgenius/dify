@@ -14,6 +14,7 @@
   "agentDetail.access.title": "نقطه دسترسی",
   "agentDetail.access.toggleSurface": "تغییر دسترسی {{name}}",
   "agentDetail.access.webApp.accessUrl": "URL دسترسی",
+  "agentDetail.access.webApp.actions.accessControl": "کنترل دسترسی",
   "agentDetail.access.webApp.actions.customize": "فرانت‌اند سفارشی",
   "agentDetail.access.webApp.actions.embedded": "تعبیه‌شده",
   "agentDetail.access.webApp.actions.launch": "راه‌اندازی",

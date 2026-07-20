@@ -1,92 +1,51 @@
 import type { DataSet } from '@/models/datasets'
-import { fireEvent, screen } from '@testing-library/react'
+import { createEvent, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import OperationsDropdown from '../operations-dropdown'
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
 
 let mockIsRbacEnabled = true
+const noopKeyboardHandler = () => {}
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) =>
-  renderWithSystemFeatures(ui, {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, {
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
     },
   })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
+  return createSystemFeaturesStateModuleMock(() => ({
+    ...(() => mockConsoleState)(),
+    datasetRbacEnabled: (() => ({
       isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }),
-  )
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
+    }))().isRbacEnabled,
+  }))
 })
 
 describe('OperationsDropdown', () => {
@@ -129,8 +88,8 @@ describe('OperationsDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState.userProfile = { id: 'user-1' }
-    mockAppContextState.workspacePermissionKeys = []
+    mockConsoleState.userProfile = { id: 'user-1' }
+    mockConsoleState.workspacePermissionKeys = []
     mockIsRbacEnabled = true
   })
 
@@ -259,6 +218,72 @@ describe('OperationsDropdown', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Outside action' }))
 
       expect(onOutsideClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should prevent the card click default behavior when opening the menu', () => {
+      render(<OperationsDropdown {...defaultProps} />)
+
+      const trigger = screen.getByLabelText('Dataset operations')
+      const event = createEvent.click(trigger)
+
+      fireEvent(trigger, event)
+
+      expect(event.defaultPrevented).toBe(true)
+    })
+
+    it('should keep menu item clicks from bubbling to the card while running the item action', async () => {
+      const detectIsUsedByApp = vi.fn()
+      const onCardClick = vi.fn()
+
+      render(
+        <div role="button" tabIndex={0} onClick={onCardClick} onKeyDown={noopKeyboardHandler}>
+          <OperationsDropdown {...defaultProps} detectIsUsedByApp={detectIsUsedByApp} />
+        </div>,
+      )
+
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+
+      expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
+      expect(onCardClick).not.toHaveBeenCalled()
+    })
+
+    it('should keep the tour-opened operations menu open when its trigger is clicked', async () => {
+      render(
+        <OperationsDropdown
+          {...defaultProps}
+          stepByStepTourHighlightPart="knowledge-card-actions-menu"
+          stepByStepTourOpen
+        />,
+      )
+
+      expect(await screen.findByText('common.operation.edit')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
+      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.getByRole('menu', { hidden: true })).toHaveClass('pointer-events-none')
+    })
+
+    it('should keep tour-opened operations menu items from running actions', async () => {
+      const detectIsUsedByApp = vi.fn()
+
+      render(
+        <OperationsDropdown
+          {...defaultProps}
+          detectIsUsedByApp={detectIsUsedByApp}
+          stepByStepTourHighlightPart="knowledge-card-actions-menu"
+          stepByStepTourOpen
+        />,
+      )
+
+      fireEvent.click(
+        await screen.findByRole('menuitem', { name: 'common.operation.delete', hidden: true }),
+      )
+
+      expect(detectIsUsedByApp).not.toHaveBeenCalled()
+      expect(screen.getByRole('menu', { hidden: true })).toBeInTheDocument()
     })
 
     it('should pass openRenameModal to Operations', () => {

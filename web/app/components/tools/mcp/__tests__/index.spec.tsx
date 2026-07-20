@@ -1,5 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import MCPList from '../index'
 
 type MockProvider = {
@@ -15,9 +16,8 @@ const mockRefetch = vi.fn()
 const mockUseAllToolProviders = vi.fn()
 let mockProviders: MockProvider[] = []
 let mockIsLoadingToolProviders = false
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['mcp.manage'] as string[],
-  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -31,30 +31,13 @@ vi.mock('@/service/use-tools', () => ({
   },
 }))
 
-vi.mock('@/context/account-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/workspace-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/version-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/system-features-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: unknown) => {
-    if (atom === mockAppContextState.workspacePermissionKeysAtom)
-      return mockAppContextState.workspacePermissionKeys
-
-    throw new Error('Unexpected atom')
-  },
-}))
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+  }))
+})
 
 vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
   default: ({ variant }: { variant?: string }) => (
@@ -157,7 +140,7 @@ describe('MCPList', () => {
     vi.useFakeTimers()
     mockProviders = []
     mockIsLoadingToolProviders = false
-    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
     mockRefetch.mockResolvedValue(undefined)
   })
 
@@ -173,7 +156,7 @@ describe('MCPList', () => {
     })
 
     it('should render providers read-only when user lacks mcp.manage', () => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
       mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
 
       render(<MCPList searchText="" />)

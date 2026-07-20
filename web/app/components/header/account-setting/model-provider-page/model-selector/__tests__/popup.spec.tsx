@@ -5,7 +5,7 @@ import { Combobox } from '@langgenius/dify-ui/combobox'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -115,9 +115,9 @@ function PopupHarness(props: PopupTestProps) {
 
 const renderPopup = (
   ui: ReactElement<PopupTestProps>,
-  options: Parameters<typeof renderWithSystemFeatures>[1] = {},
+  options: Parameters<typeof renderWithConsoleQuery>[1] = {},
 ) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     ...options,
     systemFeatures:
       options.systemFeatures === null
