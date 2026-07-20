@@ -1,7 +1,7 @@
 import threading
 import time
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -194,8 +194,7 @@ class TestRateLimitEnterExit:
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.return_value": 2,
-                "hset.return_value": True,
+                "register_script.return_value": Mock(return_value=1),
             }
         )
 
@@ -203,7 +202,10 @@ class TestRateLimitEnterExit:
         request_id = rate_limit.enter()
 
         assert request_id != RateLimit._UNLIMITED_REQUEST_ID
-        redis_patch.hset.assert_called_once()
+        rate_limit._admit_script.assert_called_once()
+        call_kwargs = rate_limit._admit_script.call_args.kwargs
+        assert call_kwargs["keys"] == [rate_limit.active_requests_key]
+        assert call_kwargs["args"][2] == 5  # max_active_requests cap
 
     def test_should_generate_request_id_if_not_provided(self, redis_patch):
         """Test auto-generation of request ID."""
@@ -257,7 +259,7 @@ class TestRateLimitEnterExit:
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.return_value": 5,  # At limit
+                "register_script.return_value": Mock(return_value=None),  # Lua script rejects (nil)
             }
         )
 
@@ -485,28 +487,31 @@ class TestRateLimitConcurrency:
 
     def test_should_handle_concurrent_enter_requests(self, redis_patch):
         """Test concurrent enter requests handling."""
-        # Setup mock to simulate realistic Redis behavior
-        request_count = 0
+        # The Lua admit script runs single-threaded inside Redis. We mirror that
+        # atomicity with a lock so the cap is enforced exactly, validating the
+        # race fix this PR introduces (the old hlen/hset pair could overshoot).
+        lock = threading.Lock()
+        count = 0
+        max_active = 3
 
-        def mock_hlen(key):
-            nonlocal request_count
-            return request_count
-
-        def mock_hset(key, field, value):
-            nonlocal request_count
-            request_count += 1
-            return True
+        def admit_script(keys=None, args=None):
+            nonlocal count
+            _request_id, _timestamp, cap = args
+            with lock:
+                if count >= cap:
+                    return None
+                count += 1
+                return 1
 
         redis_patch.configure_mock(
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.side_effect": mock_hlen,
-                "hset.side_effect": mock_hset,
+                "register_script.return_value": admit_script,
             }
         )
 
-        rate_limit = RateLimit("concurrent_client", 3)
+        rate_limit = RateLimit("concurrent_client", max_active)
         results = []
         errors = []
 
@@ -524,9 +529,10 @@ class TestRateLimitConcurrency:
         for t in threads:
             t.join()
 
-        # Should have some successful requests and some quota exceeded
-        assert len(results) + len(errors) == 5
-        assert len(errors) > 0  # Some should be rejected
+        # With atomic admission, exactly max_active requests are admitted and
+        # the rest are rejected — no overshoot from a check-then-act race.
+        assert len(results) == max_active
+        assert len(errors) == 5 - max_active
 
     @patch("time.time")
     def test_should_maintain_accurate_count_under_load(self, mock_time, redis_patch):
