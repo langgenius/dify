@@ -76,7 +76,7 @@ describe('DebugInfo', () => {
       'rounded-2xl',
       'shadow-2xl',
     )
-    expect(screen.getByRole('link')).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'plugin.debugInfo.viewDocs' })).toHaveAttribute(
       'href',
       'https://docs.example.com/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin',
     )
