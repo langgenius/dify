@@ -85,8 +85,33 @@ function configurationKey(configuration: CrawlConfiguration) {
   return JSON.stringify(configuration)
 }
 
-function workflowFingerprint(run: SourceWorkflowRun) {
-  return `${run.id}:${run.executionAttempts}:${run.updatedAt}:${normalizedState(run.state)}`
+function workflowAttemptKey(run: SourceWorkflowRun) {
+  return `${run.id}:${run.executionAttempts}`
+}
+
+function responseStatus(error: unknown) {
+  if (error instanceof Response) return error.status
+  if (!error || typeof error !== 'object') return undefined
+  if ('status' in error && typeof error.status === 'number') return error.status
+  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data) {
+    return typeof error.data.status === 'number' ? error.data.status : undefined
+  }
+}
+
+function isDefinitiveRequestFailure(error: unknown) {
+  return responseStatus(error) !== undefined
+}
+
+function isRetryConfirmed(previous: SourceWorkflowRun, current: SourceWorkflowRun) {
+  return (
+    previous.id === current.id &&
+    (current.executionAttempts > previous.executionAttempts ||
+      (isTerminal(previous.state) && !isTerminal(current.state)))
+  )
+}
+
+function isCancelConfirmed(current: SourceWorkflowRun) {
+  return isTerminal(current.state)
 }
 
 function createRequestId() {
@@ -237,6 +262,14 @@ export function WebsiteCrawlPreview({
   const locked = starting || stopping || active
   const host = normalizedURL?.host ?? ''
   const completedCount = Math.max(run?.progressCompleted ?? 0, pages.length)
+  const crawlingStatusText = t(($) => $['newKnowledge.crawlingPages'], {
+    count: completedCount,
+    host,
+  })
+  const completedStatusText = t(($) => $['newKnowledge.pagesCrawled'], {
+    count: pages.length,
+    host,
+  })
 
   const ensureProvisionalSource = useCallback(
     async (nextConfiguration: CrawlConfiguration) => {
@@ -283,6 +316,10 @@ export function WebsiteCrawlPreview({
           params: { id: knowledgeSpaceId },
         })
       } catch (error) {
+        if (isDefinitiveRequestFailure(error)) {
+          draft.creationAttempted = false
+          throw error
+        }
         const reconciled = await findProvisionalSource(knowledgeSpaceId, draft.clientRequestId)
         if (!reconciled) throw error
         draft.source = reconciled
@@ -323,9 +360,9 @@ export function WebsiteCrawlPreview({
 
   const retryRun = useCallback(async () => {
     if (!run || actionPendingRef.current) return
-    const fingerprint = workflowFingerprint(run)
-    const retryAlreadySent = retryFingerprintRef.current === fingerprint
-    if (!retryAlreadySent) retryFingerprintRef.current = fingerprint
+    const attemptKey = workflowAttemptKey(run)
+    const retryAlreadySent = retryFingerprintRef.current === attemptKey
+    if (!retryAlreadySent) retryFingerprintRef.current = attemptKey
     actionPendingRef.current = true
     setStarting(true)
     setRequestError(undefined)
@@ -338,22 +375,25 @@ export function WebsiteCrawlPreview({
         : await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry({
             params: { id: knowledgeSpaceId, runId: run.id },
           })
-      if (retryAlreadySent && workflowFingerprint(retried) === fingerprint) {
-        retryFingerprintRef.current = undefined
+      if (retryAlreadySent && !isRetryConfirmed(run, retried)) {
         setRequestError('RETRY_FAILED')
         return
       }
       setPages([])
       setPagesLoaded(false)
       setRun(retried)
-    } catch {
+    } catch (error) {
+      if (isDefinitiveRequestFailure(error)) {
+        retryFingerprintRef.current = undefined
+        setRequestError('RETRY_FAILED')
+        return
+      }
       try {
         const reconciled =
           await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
             params: { id: knowledgeSpaceId, runId: run.id },
           })
-        if (workflowFingerprint(reconciled) === fingerprint) {
-          retryFingerprintRef.current = undefined
+        if (!isRetryConfirmed(run, reconciled)) {
           setRequestError('RETRY_FAILED')
         } else {
           setPages([])
@@ -415,9 +455,9 @@ export function WebsiteCrawlPreview({
 
   const stop = async () => {
     if (!run || actionPendingRef.current || !active) return
-    const fingerprint = workflowFingerprint(run)
-    const cancelAlreadySent = cancelFingerprintRef.current === fingerprint
-    if (!cancelAlreadySent) cancelFingerprintRef.current = fingerprint
+    const attemptKey = workflowAttemptKey(run)
+    const cancelAlreadySent = cancelFingerprintRef.current === attemptKey
+    if (!cancelAlreadySent) cancelFingerprintRef.current = attemptKey
     actionPendingRef.current = true
     setStopping(true)
     setRequestError(undefined)
@@ -430,22 +470,27 @@ export function WebsiteCrawlPreview({
             body: { reason: 'user_requested' },
             params: { id: knowledgeSpaceId, runId: run.id },
           })
-      if (cancelAlreadySent && workflowFingerprint(canceled) === fingerprint) {
+      if (cancelAlreadySent && !isCancelConfirmed(canceled)) {
+        setRequestError('CANCEL_FAILED')
+        return
+      }
+      cancelFingerprintRef.current = undefined
+      setRun(canceled)
+    } catch (error) {
+      if (isDefinitiveRequestFailure(error)) {
         cancelFingerprintRef.current = undefined
         setRequestError('CANCEL_FAILED')
         return
       }
-      setRun(canceled)
-    } catch {
       try {
         const reconciled =
           await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
             params: { id: knowledgeSpaceId, runId: run.id },
           })
-        if (workflowFingerprint(reconciled) === fingerprint) {
-          cancelFingerprintRef.current = undefined
+        if (!isCancelConfirmed(reconciled)) {
           setRequestError('CANCEL_FAILED')
         } else {
+          cancelFingerprintRef.current = undefined
           setRun(reconciled)
         }
       } catch {
@@ -638,22 +683,26 @@ export function WebsiteCrawlPreview({
         {!run && !requestError && <EmptyPreview />}
         {run && active && !pollPaused && (
           <div className="overflow-hidden rounded-xl border border-divider-regular">
-            <div className="flex items-center gap-2 px-4 py-3" role="status" aria-live="polite">
+            <div
+              className="flex flex-wrap items-center gap-2 px-4 py-3"
+              role="status"
+              aria-live="polite"
+            >
               <span
                 aria-hidden
                 className="i-ri-loader-4-line size-4 animate-spin text-text-accent"
               />
-              <span className="system-xs-medium text-text-primary">
-                {t(($) => $['newKnowledge.crawlingPages'], {
-                  count: completedCount,
-                  host,
-                })}
+              <span
+                className="min-w-0 flex-1 truncate system-xs-medium text-text-primary"
+                title={crawlingStatusText}
+              >
+                {crawlingStatusText}
               </span>
               <Button
                 type="button"
                 variant="tertiary"
                 size="small"
-                className="ml-auto"
+                className="ml-auto shrink-0"
                 disabled={stopping}
                 onClick={() => void stop()}
               >
@@ -671,30 +720,52 @@ export function WebsiteCrawlPreview({
               <progress
                 max={run.progressTotal}
                 value={Math.min(completedCount, run.progressTotal)}
+                aria-label={t(($) => $['newKnowledge.crawlProgress'], { host })}
                 className="block h-1 w-full accent-state-accent-solid"
               />
             )}
             <CrawlPageList pages={pages} />
-            {!pages.length && (
-              <div className="space-y-3 px-4 pb-4" aria-hidden>
-                <div className="h-8 animate-pulse rounded-md bg-background-section" />
-                <div className="h-8 animate-pulse rounded-md bg-background-section" />
-              </div>
-            )}
+            <div
+              className={cn(
+                'space-y-3 px-4 py-3',
+                pages.length > 0 && 'border-t border-divider-subtle',
+              )}
+              aria-hidden
+            >
+              {[0, 1].map((placeholder) => (
+                <div
+                  key={placeholder}
+                  data-testid="crawl-page-skeleton"
+                  className="flex items-start gap-2.5"
+                >
+                  <span className="size-4 animate-pulse rounded bg-background-section" />
+                  <span className="min-w-0 flex-1 space-y-1.5">
+                    <span className="block h-3 w-2/3 animate-pulse rounded bg-background-section" />
+                    <span className="block h-2.5 w-full animate-pulse rounded bg-background-section" />
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {showSuccess && (
           <div className="overflow-hidden rounded-xl border border-divider-regular">
-            <div className="flex items-center gap-2 px-4 py-3">
-              <p role="status" aria-live="polite" className="system-xs-semibold text-text-primary">
-                {t(($) => $['newKnowledge.pagesCrawled'], { count: pages.length, host })}
+            <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+              <p
+                role="status"
+                aria-live="polite"
+                className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
+                title={completedStatusText}
+              >
+                {completedStatusText}
               </p>
               <Button
                 type="button"
                 variant="tertiary"
                 size="small"
-                className="ml-auto"
-                disabled={!configuration}
+                className="ml-auto shrink-0"
+                disabled={starting || !configuration}
+                loading={starting}
                 onClick={handlePrimaryAction}
               >
                 {t(($) => $['newKnowledge.reCrawl'])}

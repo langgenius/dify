@@ -70,6 +70,14 @@ async function fillValidForm() {
   return user
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve
+  })
+  return { promise, resolve }
+}
+
 describe('WebsiteCrawlPreview', () => {
   beforeEach(() => {
     vi.useRealTimers()
@@ -158,6 +166,25 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
   })
 
+  it('shows pending feedback while a completed crawl is being restarted', async () => {
+    const retryRequest = deferred<SourceWorkflowRun>()
+    clientMock.retry.mockReturnValue(retryRequest.promise)
+
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    const reCrawl = await screen.findByRole('button', { name: 'dataset.newKnowledge.reCrawl' })
+    await user.click(reCrawl)
+
+    expect(reCrawl).toHaveAttribute('aria-disabled', 'true')
+    await act(async () =>
+      retryRequest.resolve(
+        run('running', { executionAttempts: 2, updatedAt: '2026-07-20T10:01:00Z' }),
+      ),
+    )
+    await waitFor(() => expect(clientMock.retry).toHaveBeenCalledOnce())
+  })
+
   it('streams every discovered page cursor while a crawl is running', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     clientMock.getRun
@@ -195,7 +222,12 @@ describe('WebsiteCrawlPreview', () => {
       params: { id: 'space-1', runId: 'run-1' },
       query: { cursor: 'page-2', limit: 200 },
     })
-    expect(screen.getByRole('progressbar')).toHaveValue(2)
+    expect(
+      screen.getByRole('progressbar', {
+        name: 'dataset.newKnowledge.crawlProgress:{"host":"docs.dify.ai"}',
+      }),
+    ).toHaveValue(2)
+    expect(screen.getAllByTestId('crawl-page-skeleton')).toHaveLength(2)
     await act(async () => vi.advanceTimersByTime(1500))
     expect(await screen.findByText('Three')).toBeInTheDocument()
     expect(
@@ -243,6 +275,38 @@ describe('WebsiteCrawlPreview', () => {
       'status',
     )
     expect(clientMock.cancel).toHaveBeenCalledOnce()
+  })
+
+  it('only reconciles Stop while an ambiguous cancel response remains stale', async () => {
+    clientMock.getRun.mockResolvedValue(run('running', { progressCompleted: 1 }))
+    clientMock.cancel.mockRejectedValue(new Error('response lost'))
+
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
+
+    await waitFor(() => expect(clientMock.getRun.mock.calls.length).toBeGreaterThanOrEqual(3))
+    expect(clientMock.cancel).toHaveBeenCalledOnce()
+  })
+
+  it('allows Stop to be retried after a definitive HTTP rejection', async () => {
+    clientMock.getRun.mockResolvedValue(run('running', { progressCompleted: 1 }))
+    clientMock.cancel
+      .mockRejectedValueOnce(Object.assign(new Error('unavailable'), { status: 503 }))
+      .mockResolvedValueOnce(run('canceled', { progressCompleted: 1 }))
+
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
+
+    expect(await screen.findByText('dataset.newKnowledge.crawlStopped')).toBeInTheDocument()
+    expect(clientMock.cancel).toHaveBeenCalledTimes(2)
   })
 
   it('shows provider failures and retries the same workflow without duplicate requests', async () => {
@@ -297,6 +361,43 @@ describe('WebsiteCrawlPreview', () => {
       await screen.findByRole('button', { name: 'dataset.newKnowledge.reCrawl' }),
     ).toBeInTheDocument()
     expect(clientMock.retry).toHaveBeenCalledOnce()
+  })
+
+  it('only reconciles Retry while an ambiguous retry response remains stale', async () => {
+    clientMock.getRun.mockResolvedValue(
+      run('failed', { lastErrorCode: 'PROVIDER_403', progressFailed: 1 }),
+    )
+    clientMock.getPages.mockResolvedValue({ items: [] })
+    clientMock.retry.mockRejectedValue(new Error('response lost'))
+
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByRole('alert')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
+
+    await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(3))
+    expect(clientMock.retry).toHaveBeenCalledOnce()
+  })
+
+  it('allows Retry to be repeated after a definitive HTTP rejection', async () => {
+    clientMock.getRun.mockResolvedValue(
+      run('failed', { lastErrorCode: 'PROVIDER_403', progressFailed: 1 }),
+    )
+    clientMock.getPages.mockResolvedValue({ items: [] })
+    clientMock.retry
+      .mockRejectedValueOnce(Object.assign(new Error('unavailable'), { status: 503 }))
+      .mockResolvedValueOnce(run('running', { executionAttempts: 2 }))
+
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByRole('alert')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
+
+    await waitFor(() => expect(clientMock.retry).toHaveBeenCalledTimes(2))
   })
 
   it.each([
@@ -438,6 +539,22 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.listSources).toHaveBeenCalledTimes(3))
     expect(clientMock.createSource).toHaveBeenCalledOnce()
     expect(clientMock.startPreview).not.toHaveBeenCalled()
+  })
+
+  it('retries source creation after a definitive HTTP rejection', async () => {
+    clientMock.createSource
+      .mockRejectedValueOnce(Object.assign(new Error('unavailable'), { status: 503 }))
+      .mockResolvedValueOnce(source())
+
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByRole('alert')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
+
+    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
+    expect(clientMock.createSource).toHaveBeenCalledTimes(2)
+    expect(clientMock.listSources).not.toHaveBeenCalled()
   })
 
   it('cleans up polling when the component unmounts', async () => {

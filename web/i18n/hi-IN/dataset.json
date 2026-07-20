@@ -162,6 +162,7 @@
   "newKnowledge.crawlFailedProvider": "Firecrawl reported an error. Check the provider connection and try again.",
   "newKnowledge.crawlFailedTimeout": "The crawl timed out. Try a narrower URL or reduce the maximum page count.",
   "newKnowledge.crawlOptions": "Crawl options",
+  "newKnowledge.crawlProgress": "Crawl progress for {{host}}",
   "newKnowledge.crawlSetupUnavailableDescription": "क्रॉल वर्कफ़्लो उपलब्ध होने तक वेबसाइट क्रॉल कॉन्फ़िगरेशन अक्षम है।",
   "newKnowledge.crawlSetupUnavailableTitle": "फायरक्रॉल तैयार है",
   "newKnowledge.crawlStartFailed": "The crawl preview couldn't start. Try again.",

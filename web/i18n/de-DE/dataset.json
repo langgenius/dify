@@ -162,6 +162,7 @@
   "newKnowledge.crawlFailedProvider": "Firecrawl reported an error. Check the provider connection and try again.",
   "newKnowledge.crawlFailedTimeout": "The crawl timed out. Try a narrower URL or reduce the maximum page count.",
   "newKnowledge.crawlOptions": "Crawl options",
+  "newKnowledge.crawlProgress": "Crawl progress for {{host}}",
   "newKnowledge.crawlSetupUnavailableDescription": "Die Website-Crawling-Konfiguration ist deaktiviert, bis der Crawl-Workflow verfügbar ist.",
   "newKnowledge.crawlSetupUnavailableTitle": "Firecrawl ist bereit",
   "newKnowledge.crawlStartFailed": "The crawl preview couldn't start. Try again.",
