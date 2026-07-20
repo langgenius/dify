@@ -65,7 +65,6 @@ export function NewKnowledgeList({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreate = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
-  const showCreateAction = canCreate || canConnect
   const filtersUnavailable = t(($) => $['newKnowledge.filtersUnavailable'])
   const createLabel = tCommon(($) => $['operation.create'])
   const filtersUnavailableId = useId()
@@ -135,7 +134,7 @@ export function NewKnowledgeList({
             </span>
             <UnavailableReason label={filtersUnavailable} reason={filtersUnavailable} />
           </div>
-          {showCreateAction && (
+          {canCreate && (
             <div className="flex items-center gap-1">
               <Button
                 render={<Link href="/datasets/new/create" />}

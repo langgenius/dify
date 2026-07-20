@@ -1,15 +1,32 @@
 'use client'
 
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
-import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { Input } from '@langgenius/dify-ui/input'
+import {
+  Field,
+  FieldControl,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { newKnowledgeDetailPath } from './routes'
 
 const NAME_MAX_LENGTH = 160
@@ -18,22 +35,27 @@ const DESCRIPTION_MAX_LENGTH = 2000
 type KnowledgeVisibility = 'all_members' | 'only_me'
 
 type CreateKnowledgeValues = {
+  existingKnowledge?: KnowledgeSpaceCreationResponse
   description: string
   idempotencyKey: string
   name: string
+  onCreated: (knowledgeSpace: KnowledgeSpaceCreationResponse) => void
   visibility: KnowledgeVisibility
 }
 
 async function createKnowledge(
   values: CreateKnowledgeValues,
 ): Promise<KnowledgeSpaceCreationResponse> {
-  const created = await consoleClient.knowledgeFs.createKnowledgeSpace({
-    body: {
-      description: values.description || undefined,
-      idempotencyKey: values.idempotencyKey,
-      name: values.name,
-    },
-  })
+  const created =
+    values.existingKnowledge ??
+    (await consoleClient.knowledgeFs.createKnowledgeSpace({
+      body: {
+        description: values.description || undefined,
+        idempotencyKey: values.idempotencyKey,
+        name: values.name,
+      },
+    }))
+  values.onCreated(created)
 
   if (values.visibility === 'all_members') {
     const policy = await consoleClient.knowledgeFs.getKnowledgeSpacesByIdAccessPolicy({
@@ -101,36 +123,41 @@ export function CreateKnowledgePage() {
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const queryClient = useQueryClient()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canConfigureAccess = hasPermission(
+    workspacePermissionKeys,
+    DatasetACLPermission.AccessConfig,
+  )
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [visibility, setVisibility] = useState<KnowledgeVisibility>('only_me')
-  const [nameError, setNameError] = useState(false)
+  const [visibility, setVisibility] = useState<KnowledgeVisibility>(() =>
+    canConfigureAccess ? 'all_members' : 'only_me',
+  )
+  const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeSpaceCreationResponse>()
+  const [submissionLocked, setSubmissionLocked] = useState(false)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
 
-  const resetRequestIdentity = () => {
-    idempotencyKeyRef.current = undefined
-    createMutation.reset()
+  const resetUnsubmittedError = () => {
+    if (!submissionLocked) createMutation.reset()
   }
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleSubmit = async () => {
     if (createMutation.isPending) return
 
     const normalizedName = name.trim()
     const normalizedDescription = description.trim()
-    if (!normalizedName) {
-      setNameError(true)
-      return
-    }
+    if (!normalizedName) return
 
-    setNameError(false)
     idempotencyKeyRef.current ??= globalThis.crypto.randomUUID()
+    setSubmissionLocked(true)
     try {
       const created = await createMutation.mutateAsync({
+        existingKnowledge: createdKnowledge,
         description: normalizedDescription,
         idempotencyKey: idempotencyKeyRef.current,
         name: normalizedName,
+        onCreated: setCreatedKnowledge,
         visibility,
       })
       await queryClient.invalidateQueries({
@@ -158,65 +185,105 @@ export function CreateKnowledgePage() {
           {t(($) => $['newKnowledge.createTitle'])}
         </h1>
       </header>
-      <form className="w-full max-w-[720px] px-4 py-8 sm:px-10 sm:py-10" onSubmit={handleSubmit}>
+      <Form
+        className="w-full max-w-[800px] px-4 py-8 sm:px-20 sm:py-10"
+        onFormSubmit={handleSubmit}
+      >
         <div className="space-y-5">
-          <label className="block">
-            <span className="mb-2 block system-xs-medium-uppercase text-text-tertiary">
+          <Field
+            name="name"
+            className="gap-2"
+            validate={(value) => {
+              if (typeof value === 'string' && value.length > 0 && !value.trim())
+                return t(($) => $['newKnowledge.nameRequired'])
+
+              return null
+            }}
+          >
+            <FieldLabel>
               {t(($) => $['newKnowledge.name'])}
-            </span>
-            <Input
-              aria-invalid={nameError}
+              <span aria-hidden className="ml-0.5 text-text-destructive">
+                *
+              </span>
+            </FieldLabel>
+            <FieldControl
+              autoComplete="off"
+              disabled={submissionLocked}
               maxLength={NAME_MAX_LENGTH}
+              placeholder={t(($) => $['newKnowledge.namePlaceholder'])}
+              required
               value={name}
               onValueChange={(value) => {
                 setName(value)
-                setNameError(false)
-                resetRequestIdentity()
+                resetUnsubmittedError()
               }}
             />
-            {nameError && (
-              <span className="mt-1 block system-xs-regular text-text-destructive" role="alert">
-                {t(($) => $['newKnowledge.nameRequired'])}
-              </span>
-            )}
-          </label>
-          <label className="block">
-            <span className="mb-2 flex items-center gap-1 system-xs-medium-uppercase text-text-tertiary">
+            <FieldError match="valueMissing">{t(($) => $['newKnowledge.nameRequired'])}</FieldError>
+            <FieldError match="customError" />
+          </Field>
+          <Field name="description" className="gap-2">
+            <FieldLabel>
               {t(($) => $['newKnowledge.description'])}
-              <span className="system-xs-regular normal-case">
+              <span className="ml-1 system-xs-regular text-text-tertiary">
                 {tCommon(($) => $['label.optional'])}
               </span>
-            </span>
+            </FieldLabel>
             <Textarea
-              aria-label={t(($) => $['newKnowledge.description'])}
+              autoComplete="off"
               className="min-h-20 resize-none"
+              disabled={submissionLocked}
               maxLength={DESCRIPTION_MAX_LENGTH}
+              name="description"
+              placeholder={t(($) => $['newKnowledge.descriptionPlaceholder'])}
               value={description}
               onValueChange={(value) => {
                 setDescription(value)
-                resetRequestIdentity()
+                resetUnsubmittedError()
               }}
             />
-            <span className="mt-1 block text-right system-xs-regular text-text-quaternary">
-              {description.length}/{DESCRIPTION_MAX_LENGTH}
-            </span>
-          </label>
-          <label className="block">
-            <span className="mb-2 block system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['newKnowledge.permission'])}
-            </span>
-            <select
-              aria-label={t(($) => $['newKnowledge.permission'])}
-              className="h-9 w-full appearance-none rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-3 system-sm-regular text-components-input-text-filled outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+            <div className="flex items-start justify-between gap-3">
+              <FieldDescription>{t(($) => $['newKnowledge.descriptionHelp'])}</FieldDescription>
+              <span className="shrink-0 py-0.5 system-xs-regular text-text-quaternary">
+                {description.length}/{DESCRIPTION_MAX_LENGTH}
+              </span>
+            </div>
+          </Field>
+          <Field name="permission" className="gap-2" disabled={!canConfigureAccess}>
+            <FieldLabel>{t(($) => $['newKnowledge.permission'])}</FieldLabel>
+            <Select
+              name="permission"
               value={visibility}
-              onChange={(event) => setVisibility(event.target.value as KnowledgeVisibility)}
+              disabled={!canConfigureAccess}
+              onValueChange={(value) => {
+                if (value) setVisibility(value)
+              }}
             >
-              <option value="only_me">{t(($) => $['newKnowledge.permissionOnlyMe'])}</option>
-              <option value="all_members">
-                {t(($) => $['newKnowledge.permissionAllMembers'])}
-              </option>
-            </select>
-          </label>
+              <SelectTrigger aria-label={t(($) => $['newKnowledge.permission'])}>
+                {t(($) =>
+                  visibility === 'all_members'
+                    ? $['newKnowledge.permissionAllMembers']
+                    : $['newKnowledge.permissionOnlyMe'],
+                )}
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="only_me">
+                  <SelectItemText>{t(($) => $['newKnowledge.permissionOnlyMe'])}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+                <SelectItem value="all_members">
+                  <SelectItemText>
+                    {t(($) => $['newKnowledge.permissionAllMembers'])}
+                  </SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {!canConfigureAccess && (
+              <FieldDescription>
+                {t(($) => $['newKnowledge.permissionRestricted'])}
+              </FieldDescription>
+            )}
+          </Field>
         </div>
 
         <fieldset className="mt-8 space-y-2">
@@ -257,10 +324,10 @@ export function CreateKnowledgePage() {
             {tCommon(($) => $['operation.cancel'])}
           </Button>
           <Button type="submit" variant="primary" loading={createMutation.isPending}>
-            {tCommon(($) => $['operation.create'])}
+            {t(($) => $['newKnowledge.createTitle'])}
           </Button>
         </div>
-      </form>
+      </Form>
     </main>
   )
 }

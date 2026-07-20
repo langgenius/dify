@@ -263,6 +263,15 @@ describe('NewKnowledgeList', () => {
     expect(screen.queryByTestId('empty-knowledge-card')).not.toBeInTheDocument()
   })
 
+  it('does not show the Create route to users with external-connect permission only', () => {
+    permissionStateMock.workspacePermissionKeys = ['dataset.external.connect']
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.queryByRole('link', { name: 'common.operation.create' })).not.toBeInTheDocument()
+  })
+
   it('hides creation entries from read-only users', () => {
     permissionStateMock.workspacePermissionKeys = []
     setResolvedPage()
@@ -273,7 +282,7 @@ describe('NewKnowledgeList', () => {
       screen.queryByRole('link', { name: /^dataset\.newKnowledge\.startEmpty/ }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /common\.operation\.create/ }),
+      screen.queryByRole('link', { name: /common\.operation\.create/ }),
     ).not.toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.readOnlyEmpty')).toBeInTheDocument()
   })

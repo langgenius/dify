@@ -16,9 +16,29 @@ const routerMock = vi.hoisted(() => ({
   replace: vi.fn(),
 }))
 
+const permissionStateMock = vi.hoisted(() => ({
+  atom: Symbol('workspacePermissionKeysAtom'),
+  keys: ['dataset.create_and_management', 'dataset.acl.access_config'],
+}))
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
 }))
+
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: permissionStateMock.atom,
+}))
+
+vi.mock('jotai', async (importOriginal) => {
+  const original = await importOriginal<typeof import('jotai')>()
+  return {
+    ...original,
+    useAtomValue: (atom: unknown) =>
+      atom === permissionStateMock.atom
+        ? permissionStateMock.keys
+        : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
+  }
+})
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
@@ -63,9 +83,14 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
     '  Product handbook  ',
   )
   await user.type(
-    screen.getByRole('textbox', { name: 'dataset.newKnowledge.description' }),
+    screen.getByRole('textbox', { name: /dataset\.newKnowledge\.description/ }),
     '  Internal answers  ',
   )
+}
+
+async function choosePermission(user: ReturnType<typeof userEvent.setup>, optionName: string) {
+  await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.permission' }))
+  await user.click(await screen.findByRole('option', { name: optionName }))
 }
 
 describe('CreateKnowledgePage', () => {
@@ -86,6 +111,7 @@ describe('CreateKnowledgePage', () => {
       revision: 5,
       visibility: 'all_members',
     })
+    permissionStateMock.keys = ['dataset.create_and_management', 'dataset.acl.access_config']
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       'a9c36c57-2d84-44d6-a36d-841f0d92a179',
     )
@@ -100,7 +126,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
 
     await user.type(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }), '   ')
-    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     expect(serviceMock.create).not.toHaveBeenCalled()
     expect(screen.getByText('dataset.newKnowledge.nameRequired')).toBeInTheDocument()
@@ -112,8 +138,9 @@ describe('CreateKnowledgePage', () => {
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     renderPage(queryClient)
     await fillRequiredFields(user)
+    await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => {
       expect(serviceMock.create).toHaveBeenCalledWith({
@@ -133,16 +160,15 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
-  it('updates the revisioned access policy when all members is selected', async () => {
+  it('defaults authorized users to the Figma all-members policy and updates its revision', async () => {
     const user = userEvent.setup()
     renderPage()
     await fillRequiredFields(user)
-    await user.selectOptions(
+    expect(
       screen.getByRole('combobox', { name: 'dataset.newKnowledge.permission' }),
-      'all_members',
-    )
+    ).toHaveTextContent('dataset.newKnowledge.permissionAllMembers')
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => {
       expect(serviceMock.patchPolicy).toHaveBeenCalledWith({
@@ -156,6 +182,24 @@ describe('CreateKnowledgePage', () => {
     })
   })
 
+  it('forces users without access-config permission to create a private space', async () => {
+    const user = userEvent.setup()
+    permissionStateMock.keys = ['dataset.create_and_management']
+    renderPage()
+    await fillRequiredFields(user)
+
+    const permission = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.permission',
+    })
+    expect(permission).toBeDisabled()
+    expect(permission).toHaveTextContent('dataset.newKnowledge.permissionOnlyMe')
+    expect(screen.getByText('dataset.newKnowledge.permissionRestricted')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.getPolicy).not.toHaveBeenCalled()
+  })
+
   it('prevents duplicate pending submissions', async () => {
     const user = userEvent.setup()
     let resolveCreate: (value: typeof createdKnowledge) => void = () => undefined
@@ -167,7 +211,9 @@ describe('CreateKnowledgePage', () => {
     )
     renderPage()
     await fillRequiredFields(user)
-    const createButton = screen.getByRole('button', { name: 'common.operation.create' })
+    const createButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.createTitle',
+    })
 
     await user.dblClick(createButton)
 
@@ -182,9 +228,10 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
-    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
     expect(serviceMock.create.mock.calls[0]?.[0].body.idempotencyKey).toBe(
@@ -197,19 +244,16 @@ describe('CreateKnowledgePage', () => {
     serviceMock.patchPolicy.mockRejectedValueOnce(new Error('policy update unavailable'))
     renderPage()
     await fillRequiredFields(user)
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.permission' }),
-      'all_members',
-    )
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
-    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
+    expect(nameInput).toBeDisabled()
+    await user.type(nameInput, ' changed')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => expect(serviceMock.patchPolicy).toHaveBeenCalledTimes(2))
-    expect(serviceMock.create.mock.calls[0]?.[0].body.idempotencyKey).toBe(
-      serviceMock.create.mock.calls[1]?.[0].body.idempotencyKey,
-    )
+    expect(serviceMock.create).toHaveBeenCalledOnce()
     expect(routerMock.replace).toHaveBeenCalledWith(
       '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources',
     )
@@ -223,5 +267,18 @@ describe('CreateKnowledgePage', () => {
       screen.getByRole('button', { name: 'dataset.newKnowledge.connectSource' }),
     ).toBeDisabled()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.uploadFiles' })).toBeDisabled()
+  })
+
+  it('matches the approved form labels, help, placeholders, and primary action', () => {
+    renderPage()
+
+    expect(screen.getByPlaceholderText('dataset.newKnowledge.namePlaceholder')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('dataset.newKnowledge.descriptionPlaceholder'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.descriptionHelp')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
+    ).toBeInTheDocument()
   })
 })
