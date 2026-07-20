@@ -5756,11 +5756,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/panel/human-input-form-list.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/inputs-panel.tsx": {
     "jsx_a11y/no-autofocus": {
       "count": 1
