@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} tidak dikonfigurasi",
   "newKnowledge.providerNotConfiguredDescription": "Tambahkan kunci API atau URL titik akhir untuk merayapi situs web dengan {{provider}}.",
   "newKnowledge.providerUnavailable": "Penyedia ini tidak tersedia.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Minta editor ruang kerja membuat basis pengetahuan pertama.",
   "newKnowledge.refreshConnectionStatus": "Segarkan status",
   "newKnowledge.refreshingConnection": "Menyegarkan…",

@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} ni konfiguriran",
   "newKnowledge.providerNotConfiguredDescription": "Dodajte ključ API ali URL končne točke za iskanje po spletnih mestih z {{provider}}.",
   "newKnowledge.providerUnavailable": "Ta ponudnik ni dosegljiv.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Prosite urednika delovnega prostora, naj ustvari prvo bazo znanja.",
   "newKnowledge.refreshConnectionStatus": "Osveži stanje",
   "newKnowledge.refreshingConnection": "Osvežitev …",

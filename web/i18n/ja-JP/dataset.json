@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} が構成されていません",
   "newKnowledge.providerNotConfiguredDescription": "{{provider}} を使用して Web サイトをクロールするための API キーまたはエンドポイント URL を追加します。",
   "newKnowledge.providerUnavailable": "このプロバイダーは利用できません。",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "最初のナレッジベースの作成をワークスペース編集者に依頼してください。",
   "newKnowledge.refreshConnectionStatus": "ステータスの更新",
   "newKnowledge.refreshingConnection": "爽やか…",

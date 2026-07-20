@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} nu este configurat",
   "newKnowledge.providerNotConfiguredDescription": "Adăugați o cheie API sau o adresă URL a punctului final pentru a accesa cu crawlere site-urile web cu {{provider}}.",
   "newKnowledge.providerUnavailable": "Acest furnizor nu este disponibil.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Cere unui editor al spațiului de lucru să creeze prima bază de cunoștințe.",
   "newKnowledge.refreshConnectionStatus": "Starea de reîmprospătare",
   "newKnowledge.refreshingConnection": "Înviorare…",

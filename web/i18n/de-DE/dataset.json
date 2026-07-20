@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} ist nicht konfiguriert",
   "newKnowledge.providerNotConfiguredDescription": "Fügen Sie einen API-Schlüssel oder eine Endpunkt-URL hinzu, um Websites mit {{provider}} zu crawlen.",
   "newKnowledge.providerUnavailable": "Dieser Anbieter ist nicht verfügbar.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Bitten Sie einen Arbeitsbereich-Editor, die erste Wissensdatenbank zu erstellen.",
   "newKnowledge.refreshConnectionStatus": "Status aktualisieren",
   "newKnowledge.refreshingConnection": "Erfrischend…",

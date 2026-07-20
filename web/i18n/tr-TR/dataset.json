@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} yapılandırılmadı",
   "newKnowledge.providerNotConfiguredDescription": "{{provider}} ile web sitelerini taramak için bir API anahtarı veya uç nokta URL'si ekleyin.",
   "newKnowledge.providerUnavailable": "Bu sağlayıcı kullanılamıyor.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "İlk bilgi tabanını oluşturması için bir çalışma alanı editörüne başvurun.",
   "newKnowledge.refreshConnectionStatus": "Durumu yenile",
   "newKnowledge.refreshingConnection": "Yenileniyor…",

@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} chưa được định cấu hình",
   "newKnowledge.providerNotConfiguredDescription": "Thêm khóa API hoặc URL điểm cuối để thu thập dữ liệu trang web bằng {{provider}}.",
   "newKnowledge.providerUnavailable": "Nhà cung cấp này không có sẵn.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Yêu cầu biên tập viên không gian làm việc tạo cơ sở kiến thức đầu tiên.",
   "newKnowledge.refreshConnectionStatus": "Trạng thái làm mới",
   "newKnowledge.refreshingConnection": "Đang làm mới…",

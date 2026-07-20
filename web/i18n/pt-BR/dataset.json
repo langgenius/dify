@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} não está configurado",
   "newKnowledge.providerNotConfiguredDescription": "Adicione uma chave de API ou URL de endpoint para rastrear sites com {{provider}}.",
   "newKnowledge.providerUnavailable": "Este provedor não está disponível.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Peça a um editor do espaço de trabalho para criar a primeira base de conhecimento.",
   "newKnowledge.refreshConnectionStatus": "Atualizar status",
   "newKnowledge.refreshingConnection": "Refrescante…",

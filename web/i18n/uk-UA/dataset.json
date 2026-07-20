@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} не налаштовано",
   "newKnowledge.providerNotConfiguredDescription": "Додайте ключ API або URL-адресу кінцевої точки, щоб сканувати веб-сайти за допомогою {{provider}}.",
   "newKnowledge.providerUnavailable": "Цей провайдер недоступний.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Попросіть редактора робочого простору створити першу базу знань.",
   "newKnowledge.refreshConnectionStatus": "Оновити статус",
   "newKnowledge.refreshingConnection": "Оновлення…",

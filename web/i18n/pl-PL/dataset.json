@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} nie jest skonfigurowany",
   "newKnowledge.providerNotConfiguredDescription": "Dodaj klucz API lub adres URL punktu końcowego, aby indeksować strony internetowe za pomocą {{provider}}.",
   "newKnowledge.providerUnavailable": "Ten dostawca jest niedostępny.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Poproś edytora obszaru roboczego o utworzenie pierwszej bazy wiedzy.",
   "newKnowledge.refreshConnectionStatus": "Odśwież status",
   "newKnowledge.refreshingConnection": "Odświeżanie…",

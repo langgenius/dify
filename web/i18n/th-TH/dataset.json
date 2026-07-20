@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} ไม่ได้กำหนดค่า",
   "newKnowledge.providerNotConfiguredDescription": "เพิ่มคีย์ API หรือ URL ปลายทางเพื่อรวบรวมข้อมูลเว็บไซต์ด้วย {{provider}}",
   "newKnowledge.providerUnavailable": "ผู้ให้บริการนี้ไม่พร้อมใช้งาน",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "ขอให้ผู้แก้ไขพื้นที่ทำงานสร้างฐานความรู้แรก",
   "newKnowledge.refreshConnectionStatus": "รีเฟรชสถานะ",
   "newKnowledge.refreshingConnection": "สดชื่น...",

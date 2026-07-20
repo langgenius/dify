@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} कॉन्फ़िगर नहीं है",
   "newKnowledge.providerNotConfiguredDescription": "{{provider}} के साथ वेबसाइटों को क्रॉल करने के लिए एक एपीआई कुंजी या एंडपॉइंट यूआरएल जोड़ें।",
   "newKnowledge.providerUnavailable": "यह प्रदाता अनुपलब्ध है।",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "पहला नॉलेज बेस बनाने के लिए कार्यस्थान संपादक से कहें।",
   "newKnowledge.refreshConnectionStatus": "स्थिति ताज़ा करें",
   "newKnowledge.refreshingConnection": "ताज़ा…",

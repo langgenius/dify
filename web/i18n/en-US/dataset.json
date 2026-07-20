@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} is not configured",
   "newKnowledge.providerNotConfiguredDescription": "Add an API key or endpoint URL to crawl websites with {{provider}}.",
   "newKnowledge.providerUnavailable": "This provider is unavailable.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Ask a workspace editor to create the first knowledge base.",
   "newKnowledge.refreshConnectionStatus": "Refresh status",
   "newKnowledge.refreshingConnection": "Refreshing…",

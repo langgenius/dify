@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} non è configurato",
   "newKnowledge.providerNotConfiguredDescription": "Aggiungi una chiave API o un URL endpoint per eseguire la scansione dei siti web con {{provider}}.",
   "newKnowledge.providerUnavailable": "Questo fornitore non è disponibile.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Chiedi a un editor dello spazio di lavoro di creare la prima knowledge base.",
   "newKnowledge.refreshConnectionStatus": "Aggiorna lo stato",
   "newKnowledge.refreshingConnection": "Aggiornamento…",

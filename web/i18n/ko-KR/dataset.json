@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}}이 구성되지 않았습니다.",
   "newKnowledge.providerNotConfiguredDescription": "{{provider}}을(를) 사용하여 웹사이트를 크롤링하려면 API 키 또는 엔드포인트 URL을 추가하세요.",
   "newKnowledge.providerUnavailable": "이 제공자를 사용할 수 없습니다.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "워크스페이스 편집자에게 첫 번째 지식 베이스 생성을 요청하세요.",
   "newKnowledge.refreshConnectionStatus": "새로 고침 상태",
   "newKnowledge.refreshingConnection": "상쾌하다…",

@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} 未配置",
   "newKnowledge.providerNotConfiguredDescription": "添加 API 密钥或端点 URL 以使用 {{provider}} 抓取网站。",
   "newKnowledge.providerUnavailable": "该提供商不可用。",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "请联系工作区编辑者创建第一个知识库。",
   "newKnowledge.refreshConnectionStatus": "刷新状态",
   "newKnowledge.refreshingConnection": "正在刷新……",

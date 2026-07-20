@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} پیکربندی نشده است",
   "newKnowledge.providerNotConfiguredDescription": "برای خزیدن وب‌سایت‌ها با {{provider}}، یک کلید API یا URL نقطه پایانی اضافه کنید.",
   "newKnowledge.providerUnavailable": "این ارائه دهنده در دسترس نیست.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "از یک ویرایشگر فضای کاری بخواهید اولین پایگاه دانش را ایجاد کند.",
   "newKnowledge.refreshConnectionStatus": "وضعیت بازخوانی",
   "newKnowledge.refreshingConnection": "تازه‌سازی…",

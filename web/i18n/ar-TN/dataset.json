@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} لم يتم تكوينه",
   "newKnowledge.providerNotConfiguredDescription": "أضف مفتاح API أو عنوان URL لنقطة النهاية للزحف إلى مواقع الويب باستخدام {{provider}}.",
   "newKnowledge.providerUnavailable": "هذا الموفر غير متوفر.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "اطلب من محرر مساحة العمل إنشاء أول قاعدة معرفة.",
   "newKnowledge.refreshConnectionStatus": "تحديث الحالة",
   "newKnowledge.refreshingConnection": "منعش…",

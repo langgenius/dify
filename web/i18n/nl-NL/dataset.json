@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} is niet geconfigureerd",
   "newKnowledge.providerNotConfiguredDescription": "Voeg een API-sleutel of eindpunt-URL toe om websites te crawlen met {{provider}}.",
   "newKnowledge.providerUnavailable": "Deze aanbieder is niet beschikbaar.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Vraag een werkruimte-editor om de eerste kennisbank te maken.",
   "newKnowledge.refreshConnectionStatus": "Vernieuwingsstatus",
   "newKnowledge.refreshingConnection": "Verfrissen…",

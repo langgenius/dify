@@ -5,6 +5,7 @@ import type {
   Source,
   SourceWorkflowRun,
 } from '@dify/contracts/knowledge-fs/types.gen'
+import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -38,9 +39,10 @@ const MAX_CURSOR_PAGES = 100
 const POLL_INTERVAL_MS = 1500
 const DEFAULT_PAGE_LIMIT = 100
 const MAX_PAGE_LIMIT = 1000
+const MAX_SOURCE_NAME_LENGTH = 200
 const SUCCESS_STATES = new Set(['complete', 'completed', 'success', 'succeeded'])
 const FAILURE_STATES = new Set(['error', 'exhausted', 'failed', 'timed_out', 'timeout'])
-const CANCELED_STATES = new Set(['canceled', 'cancelled'])
+const CANCELED_STATES = new Set(['canceled', 'cancelled', 'superseded'])
 
 function normalizedState(state: string) {
   return state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
@@ -81,6 +83,10 @@ function normalizeURL(value: string) {
 
 function configurationKey(configuration: CrawlConfiguration) {
   return JSON.stringify(configuration)
+}
+
+function workflowFingerprint(run: SourceWorkflowRun) {
+  return `${run.id}:${run.executionAttempts}:${run.updatedAt}:${normalizedState(run.state)}`
 }
 
 function createRequestId() {
@@ -205,12 +211,15 @@ export function WebsiteCrawlPreview({
   const draftRef = useRef<PreviewDraft | undefined>(undefined)
   const actionPendingRef = useRef(false)
   const retryFingerprintRef = useRef<string | undefined>(undefined)
+  const cancelFingerprintRef = useRef<string | undefined>(undefined)
+  const rootUrlInputRef = useRef<HTMLInputElement>(null)
+  const sourceNameInputRef = useRef<HTMLInputElement>(null)
 
   const normalizedURL = useMemo(() => normalizeURL(rootUrl), [rootUrl])
   const normalizedLimit = Math.min(Math.max(Math.trunc(pageLimit) || 1, 1), MAX_PAGE_LIMIT)
   const configuration = useMemo<CrawlConfiguration | undefined>(
     () =>
-      normalizedURL && sourceName.trim()
+      normalizedURL && sourceName.trim() && sourceName.trim().length <= MAX_SOURCE_NAME_LENGTH
         ? {
             includeSubpages,
             limit: normalizedLimit,
@@ -249,6 +258,7 @@ export function WebsiteCrawlPreview({
           draft.source = reconciled
           return draft
         }
+        throw new Error('Provisional source creation is still reconciling')
       }
 
       draft.creationAttempted = true
@@ -313,24 +323,46 @@ export function WebsiteCrawlPreview({
 
   const retryRun = useCallback(async () => {
     if (!run || actionPendingRef.current) return
-    const fingerprint = `${run.id}:${run.executionAttempts}:${run.updatedAt}`
-    if (retryFingerprintRef.current === fingerprint) return
-    retryFingerprintRef.current = fingerprint
+    const fingerprint = workflowFingerprint(run)
+    const retryAlreadySent = retryFingerprintRef.current === fingerprint
+    if (!retryAlreadySent) retryFingerprintRef.current = fingerprint
     actionPendingRef.current = true
     setStarting(true)
     setRequestError(undefined)
     setPollPaused(false)
-    setPages([])
-    setPagesLoaded(false)
     try {
-      const retried =
-        await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry({
-          params: { id: knowledgeSpaceId, runId: run.id },
-        })
+      const retried = retryAlreadySent
+        ? await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+            params: { id: knowledgeSpaceId, runId: run.id },
+          })
+        : await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry({
+            params: { id: knowledgeSpaceId, runId: run.id },
+          })
+      if (retryAlreadySent && workflowFingerprint(retried) === fingerprint) {
+        retryFingerprintRef.current = undefined
+        setRequestError('RETRY_FAILED')
+        return
+      }
+      setPages([])
+      setPagesLoaded(false)
       setRun(retried)
     } catch {
-      retryFingerprintRef.current = undefined
-      setRequestError('RETRY_FAILED')
+      try {
+        const reconciled =
+          await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+            params: { id: knowledgeSpaceId, runId: run.id },
+          })
+        if (workflowFingerprint(reconciled) === fingerprint) {
+          retryFingerprintRef.current = undefined
+          setRequestError('RETRY_FAILED')
+        } else {
+          setPages([])
+          setPagesLoaded(false)
+          setRun(reconciled)
+        }
+      } catch {
+        setRequestError('RETRY_FAILED')
+      }
     } finally {
       actionPendingRef.current = false
       setStarting(false)
@@ -383,18 +415,42 @@ export function WebsiteCrawlPreview({
 
   const stop = async () => {
     if (!run || actionPendingRef.current || !active) return
+    const fingerprint = workflowFingerprint(run)
+    const cancelAlreadySent = cancelFingerprintRef.current === fingerprint
+    if (!cancelAlreadySent) cancelFingerprintRef.current = fingerprint
     actionPendingRef.current = true
     setStopping(true)
     setRequestError(undefined)
     try {
-      const canceled =
-        await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel({
-          body: { reason: 'user_requested' },
-          params: { id: knowledgeSpaceId, runId: run.id },
-        })
+      const canceled = cancelAlreadySent
+        ? await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+            params: { id: knowledgeSpaceId, runId: run.id },
+          })
+        : await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel({
+            body: { reason: 'user_requested' },
+            params: { id: knowledgeSpaceId, runId: run.id },
+          })
+      if (cancelAlreadySent && workflowFingerprint(canceled) === fingerprint) {
+        cancelFingerprintRef.current = undefined
+        setRequestError('CANCEL_FAILED')
+        return
+      }
       setRun(canceled)
     } catch {
-      setRequestError('CANCEL_FAILED')
+      try {
+        const reconciled =
+          await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+            params: { id: knowledgeSpaceId, runId: run.id },
+          })
+        if (workflowFingerprint(reconciled) === fingerprint) {
+          cancelFingerprintRef.current = undefined
+          setRequestError('CANCEL_FAILED')
+        } else {
+          setRun(reconciled)
+        }
+      } catch {
+        setRequestError('CANCEL_FAILED')
+      }
     } finally {
       actionPendingRef.current = false
       setStopping(false)
@@ -404,6 +460,8 @@ export function WebsiteCrawlPreview({
   const handlePrimaryAction = () => {
     if (!configuration) {
       setUrlTouched(true)
+      if (!normalizedURL) rootUrlInputRef.current?.focus()
+      else sourceNameInputRef.current?.focus()
       return
     }
     if (requestError === 'POLL_FAILED' && run) {
@@ -419,6 +477,11 @@ export function WebsiteCrawlPreview({
       }
     }
     void startPreview(configuration)
+  }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    handlePrimaryAction()
   }
 
   const primaryLabel =
@@ -442,7 +505,9 @@ export function WebsiteCrawlPreview({
   const showCanceled = Boolean(run && isCanceled(run.state))
   const errorCode = run?.lastErrorCode ?? requestError
   const is403 = errorCode?.includes('403')
-  const isTimeout = errorCode?.toUpperCase().includes('TIMEOUT')
+  const isTimeout =
+    errorCode?.toUpperCase().includes('TIMEOUT') ||
+    (run ? ['timed_out', 'timeout'].includes(normalizedState(run.state)) : false)
   const isProviderError = errorCode?.toUpperCase().includes('PROVIDER')
 
   return (
@@ -450,116 +515,124 @@ export function WebsiteCrawlPreview({
       <p role="status" className="sr-only">
         {t(($) => $['newKnowledge.providerConnected'])}
       </p>
-      <fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="system-xs-medium text-text-secondary">
-              {t(($) => $['newKnowledge.rootUrl'])}
-              <span className="ml-0.5 text-text-destructive">*</span>
-            </span>
-            <input
-              type="url"
-              required
-              value={rootUrl}
-              placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
-              aria-invalid={urlTouched && !normalizedURL}
-              aria-describedby={urlTouched && !normalizedURL ? rootUrlErrorId : undefined}
-              onBlur={() => setUrlTouched(true)}
-              onChange={(event) => setRootUrl(event.target.value)}
-              className={cn(
-                'mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid',
-                urlTouched && !normalizedURL && 'ring-1 ring-text-destructive',
-              )}
-            />
-            {urlTouched && !normalizedURL && (
-              <span
-                id={rootUrlErrorId}
-                className="mt-1 block system-xs-regular text-text-destructive"
-              >
-                {t(($) => $['newKnowledge.invalidRootUrl'])}
+      <form onSubmit={handleSubmit}>
+        <fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="system-xs-medium text-text-secondary">
+                {t(($) => $['newKnowledge.rootUrl'])}
+                <span className="ml-0.5 text-text-destructive">*</span>
               </span>
-            )}
-          </label>
-          <label className="block">
-            <span className="system-xs-medium text-text-secondary">
-              {t(($) => $['newKnowledge.sourceName'])}
-              <span className="ml-0.5 text-text-destructive">*</span>
-            </span>
-            <input
-              type="text"
-              required
-              value={sourceName}
-              placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-              onChange={(event) => setSourceName(event.target.value)}
-              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
-            />
-          </label>
-        </div>
-        <div className="overflow-hidden rounded-lg border border-components-option-card-option-border bg-background-default">
-          <button
-            type="button"
-            aria-expanded={optionsExpanded}
-            className="flex h-9 w-full items-center gap-2 px-3 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
-            onClick={() => setOptionsExpanded((expanded) => !expanded)}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                'i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform',
-                optionsExpanded && 'rotate-90',
-              )}
-            />
-            <span className="system-xs-medium text-text-primary">
-              {t(($) => $['newKnowledge.crawlOptions'])}
-            </span>
-            {!optionsExpanded && (
-              <span className="ml-auto system-xs-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.usingDefaults'])}
-              </span>
-            )}
-          </button>
-          {optionsExpanded && (
-            <div className="grid grid-cols-1 gap-3 border-t border-divider-subtle p-3 sm:grid-cols-2">
-              <label className="flex h-9 items-center gap-2 system-xs-regular text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={includeSubpages}
-                  onChange={(event) => setIncludeSubpages(event.target.checked)}
-                />
-                {t(($) => $['newKnowledge.includeSubpages'])}
-              </label>
-              <label className="flex items-center gap-2">
-                <span className="system-xs-regular text-text-secondary">
-                  {t(($) => $['newKnowledge.maxPages'])}
+              <input
+                ref={rootUrlInputRef}
+                type="url"
+                required
+                value={rootUrl}
+                placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
+                aria-invalid={urlTouched && !normalizedURL}
+                aria-describedby={urlTouched && !normalizedURL ? rootUrlErrorId : undefined}
+                onBlur={() => setUrlTouched(true)}
+                onChange={(event) => setRootUrl(event.target.value)}
+                className={cn(
+                  'mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid',
+                  urlTouched && !normalizedURL && 'ring-1 ring-text-destructive',
+                )}
+              />
+              {urlTouched && !normalizedURL && (
+                <span
+                  id={rootUrlErrorId}
+                  className="mt-1 block system-xs-regular text-text-destructive"
+                >
+                  {t(($) => $['newKnowledge.invalidRootUrl'])}
                 </span>
-                <input
-                  type="number"
-                  min={1}
-                  max={MAX_PAGE_LIMIT}
-                  value={pageLimit}
-                  onChange={(event) =>
-                    setPageLimit(
-                      Number.isFinite(event.target.valueAsNumber) ? event.target.valueAsNumber : 1,
-                    )
-                  }
-                  className="ml-auto h-8 w-24 rounded-lg border-0 bg-components-input-bg-normal px-2 system-xs-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
-                />
-              </label>
-            </div>
-          )}
-        </div>
-      </fieldset>
+              )}
+            </label>
+            <label className="block">
+              <span className="system-xs-medium text-text-secondary">
+                {t(($) => $['newKnowledge.sourceName'])}
+                <span className="ml-0.5 text-text-destructive">*</span>
+              </span>
+              <input
+                ref={sourceNameInputRef}
+                type="text"
+                required
+                maxLength={MAX_SOURCE_NAME_LENGTH}
+                value={sourceName}
+                placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+                onChange={(event) => setSourceName(event.target.value)}
+                className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+              />
+            </label>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-components-option-card-option-border bg-background-default">
+            <button
+              type="button"
+              aria-expanded={optionsExpanded}
+              className="flex h-9 w-full items-center gap-2 px-3 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+              onClick={() => setOptionsExpanded((expanded) => !expanded)}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform',
+                  optionsExpanded && 'rotate-90',
+                )}
+              />
+              <span className="system-xs-medium text-text-primary">
+                {t(($) => $['newKnowledge.crawlOptions'])}
+              </span>
+              {!optionsExpanded && (
+                <span className="ml-auto system-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.usingDefaults'])}
+                </span>
+              )}
+            </button>
+            {optionsExpanded && (
+              <div className="grid grid-cols-1 gap-3 border-t border-divider-subtle p-3 sm:grid-cols-2">
+                <label className="flex h-9 items-center gap-2 system-xs-regular text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={includeSubpages}
+                    onChange={(event) => setIncludeSubpages(event.target.checked)}
+                  />
+                  {t(($) => $['newKnowledge.includeSubpages'])}
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="system-xs-regular text-text-secondary">
+                    {t(($) => $['newKnowledge.maxPages'])}
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={MAX_PAGE_LIMIT}
+                    value={pageLimit}
+                    onChange={(event) =>
+                      setPageLimit(
+                        Number.isFinite(event.target.valueAsNumber)
+                          ? event.target.valueAsNumber
+                          : 1,
+                      )
+                    }
+                    className="ml-auto h-8 w-24 rounded-lg border-0 bg-components-input-bg-normal px-2 system-xs-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        </fieldset>
 
-      <Button
-        type="button"
-        variant="primary"
-        className="mt-4 w-full"
-        disabled={!configuration || (locked && requestError !== 'POLL_FAILED')}
-        loading={starting}
-        onClick={handlePrimaryAction}
-      >
-        {primaryLabel}
-      </Button>
+        {!showSuccess && (
+          <Button
+            type="submit"
+            variant="primary"
+            className="mt-4 w-full"
+            disabled={!configuration || (locked && requestError !== 'POLL_FAILED')}
+            loading={starting}
+          >
+            {primaryLabel}
+          </Button>
+        )}
+      </form>
 
       <div className="mt-4">
         {!run && !requestError && <EmptyPreview />}
@@ -612,15 +685,31 @@ export function WebsiteCrawlPreview({
         )}
         {showSuccess && (
           <div className="overflow-hidden rounded-xl border border-divider-regular">
-            <p className="px-4 py-3 system-xs-semibold text-text-primary">
-              {t(($) => $['newKnowledge.pagesCrawled'], { count: pages.length, host })}
-            </p>
+            <div className="flex items-center gap-2 px-4 py-3">
+              <p role="status" aria-live="polite" className="system-xs-semibold text-text-primary">
+                {t(($) => $['newKnowledge.pagesCrawled'], { count: pages.length, host })}
+              </p>
+              <Button
+                type="button"
+                variant="tertiary"
+                size="small"
+                className="ml-auto"
+                disabled={!configuration}
+                onClick={handlePrimaryAction}
+              >
+                {t(($) => $['newKnowledge.reCrawl'])}
+              </Button>
+            </div>
             <CrawlPageList pages={pages} />
           </div>
         )}
         {showCanceled && (
           <div className="overflow-hidden rounded-xl border border-divider-regular">
-            <p className="px-4 py-3 system-xs-semibold text-text-primary">
+            <p
+              role="status"
+              aria-live="polite"
+              className="px-4 py-3 system-xs-semibold text-text-primary"
+            >
               {t(($) => $['newKnowledge.crawlStopped'])}
             </p>
             <CrawlPageList pages={pages} />
@@ -649,7 +738,11 @@ export function WebsiteCrawlPreview({
           </div>
         )}
         {showZero && !showFailure && (
-          <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-divider-regular px-6 text-center">
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-divider-regular px-6 text-center"
+          >
             <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
               <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
             </span>

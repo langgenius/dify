@@ -220,6 +220,7 @@
   "newKnowledge.providerNotConfigured": "{{provider}} n'est pas configuré",
   "newKnowledge.providerNotConfiguredDescription": "Ajoutez une clé API ou une URL de point de terminaison pour explorer les sites Web avec {{provider}}.",
   "newKnowledge.providerUnavailable": "Ce fournisseur n'est pas disponible.",
+  "newKnowledge.reCrawl": "Re-crawl",
   "newKnowledge.readOnlyEmpty": "Demandez à un éditeur de l’espace de travail de créer la première base de connaissances.",
   "newKnowledge.refreshConnectionStatus": "Actualiser l'état",
   "newKnowledge.refreshingConnection": "Rafraîchissant…",
