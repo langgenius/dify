@@ -478,11 +478,12 @@ export function WebsiteCrawlPreview({
           })
         if (disposed) return
         let pageUpdates: Awaited<ReturnType<typeof listWorkflowPageUpdates>>
+        const finalSnapshot = isSuccessful(nextRun.state)
         try {
           pageUpdates = await listWorkflowPageUpdates(
             knowledgeSpaceId,
             runId,
-            pageCursorRef.current,
+            finalSnapshot ? undefined : pageCursorRef.current,
           )
         } catch (error) {
           if (isFailed(nextRun.state) || isCanceled(nextRun.state)) {
@@ -495,11 +496,23 @@ export function WebsiteCrawlPreview({
         }
         if (disposed) return
         let pagesChanged = false
-        for (const page of pageUpdates.items) {
-          const current = pageMapRef.current.get(page.pageId)
-          if (!current || !previewPagesEqual(current, page)) {
-            pageMapRef.current.set(page.pageId, page)
-            pagesChanged = true
+        if (finalSnapshot) {
+          const currentPages = [...pageMapRef.current.values()]
+          const finalPageMap = new Map(pageUpdates.items.map((page) => [page.pageId, page]))
+          pagesChanged =
+            currentPages.length !== pageUpdates.items.length ||
+            pageUpdates.items.some(
+              (page, index) =>
+                !currentPages[index] || !previewPagesEqual(currentPages[index], page),
+            )
+          pageMapRef.current = finalPageMap
+        } else {
+          for (const page of pageUpdates.items) {
+            const current = pageMapRef.current.get(page.pageId)
+            if (!current || !previewPagesEqual(current, page)) {
+              pageMapRef.current.set(page.pageId, page)
+              pagesChanged = true
+            }
           }
         }
         pageCursorRef.current = pageUpdates.resumeCursor

@@ -185,14 +185,14 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.retry).toHaveBeenCalledOnce())
   })
 
-  it('streams every discovered page cursor while a crawl is running', async () => {
+  it('streams page cursors while running and replaces them with the final snapshot', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     clientMock.getRun
       .mockResolvedValueOnce(run('running', { progressCompleted: 2, progressTotal: 4 }))
       .mockResolvedValueOnce(run('succeeded', { progressCompleted: 3, progressTotal: 3 }))
     clientMock.getPages
       .mockResolvedValueOnce({
-        items: [{ pageId: 'page-1', sourceUrl: 'https://docs.dify.ai/one', title: 'One' }],
+        items: [{ pageId: 'page-1', sourceUrl: 'https://docs.dify.ai/one', title: 'Old one' }],
         nextCursor: 'page-2',
       })
       .mockResolvedValueOnce({
@@ -200,8 +200,8 @@ describe('WebsiteCrawlPreview', () => {
       })
       .mockResolvedValueOnce({
         items: [
-          { pageId: 'page-1', sourceUrl: 'https://docs.dify.ai/one', title: 'One' },
-          { pageId: 'page-2', sourceUrl: 'https://docs.dify.ai/two', title: 'Two' },
+          { pageId: 'page-0', sourceUrl: 'https://docs.dify.ai/new', title: 'New first' },
+          { pageId: 'page-1', sourceUrl: 'https://docs.dify.ai/one', title: 'Updated one' },
           { pageId: 'page-3', sourceUrl: 'https://docs.dify.ai/three', title: 'Three' },
         ],
       })
@@ -235,9 +235,13 @@ describe('WebsiteCrawlPreview', () => {
     expect(skeletons[0]?.closest('ul')).toBe(screen.getByRole('list'))
     await act(async () => vi.advanceTimersByTime(1500))
     expect(await screen.findByText('Three')).toBeInTheDocument()
+    expect(screen.getByText('New first')).toBeInTheDocument()
+    expect(screen.getByText('Updated one')).toBeInTheDocument()
+    expect(screen.queryByText('Old one')).not.toBeInTheDocument()
+    expect(screen.queryByText('Two')).not.toBeInTheDocument()
     expect(clientMock.getPages).toHaveBeenNthCalledWith(3, {
       params: { id: 'space-1', runId: 'run-1' },
-      query: { cursor: 'page-2', limit: 200 },
+      query: { limit: 200 },
     })
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }),
