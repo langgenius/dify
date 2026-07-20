@@ -3393,41 +3393,47 @@ class SegmentService:
                     segment_document.word_count += len(args["answer"])
                     segment_document.answer = args["answer"]
 
-            session.add(segment_document)
-            # update document word count
-            assert document.word_count is not None
-            document.word_count += segment_document.word_count
-            session.add(document)
-            session.commit()
+                # Persist the segment and the document word-count update inside
+                # the lock so the read-max-position / insert / commit sequence is
+                # atomic across concurrent requests. Otherwise two callers can
+                # both read the same max_position before either commits, producing
+                # duplicate positions. This matches multi_create_segment, which
+                # keeps session.add()/commit() within its lock block.
+                session.add(segment_document)
+                # update document word count
+                assert document.word_count is not None
+                document.word_count += segment_document.word_count
+                session.add(document)
+                session.commit()
 
-            if args["attachment_ids"]:
-                for attachment_id in args["attachment_ids"]:
-                    binding = SegmentAttachmentBinding(
-                        tenant_id=current_user.current_tenant_id,
-                        dataset_id=document.dataset_id,
-                        document_id=document.id,
-                        segment_id=segment_document.id,
-                        attachment_id=attachment_id,
+                if args["attachment_ids"]:
+                    for attachment_id in args["attachment_ids"]:
+                        binding = SegmentAttachmentBinding(
+                            tenant_id=current_user.current_tenant_id,
+                            dataset_id=document.dataset_id,
+                            document_id=document.id,
+                            segment_id=segment_document.id,
+                            attachment_id=attachment_id,
+                        )
+                        session.add(binding)
+                    session.commit()
+
+                # save vector index
+                try:
+                    keywords = args.get("keywords")
+                    keywords_list = [keywords] if keywords is not None else None
+                    VectorService.create_segments_vector(
+                        keywords_list, [segment_document], dataset, document.doc_form, session=session
                     )
-                    session.add(binding)
-                session.commit()
-
-            # save vector index
-            try:
-                keywords = args.get("keywords")
-                keywords_list = [keywords] if keywords is not None else None
-                VectorService.create_segments_vector(
-                    keywords_list, [segment_document], dataset, document.doc_form, session=session
-                )
-            except Exception as e:
-                logger.exception("create segment index failed")
-                segment_document.enabled = False
-                segment_document.disabled_at = naive_utc_now()
-                segment_document.status = SegmentStatus.ERROR
-                segment_document.error = str(e)
-                session.commit()
-            segment = session.get(DocumentSegment, segment_document.id)
-            return segment
+                except Exception as e:
+                    logger.exception("create segment index failed")
+                    segment_document.enabled = False
+                    segment_document.disabled_at = naive_utc_now()
+                    segment_document.status = SegmentStatus.ERROR
+                    segment_document.error = str(e)
+                    session.commit()
+                segment = session.get(DocumentSegment, segment_document.id)
+                return segment
         except LockNotOwnedError:
             pass
 
