@@ -2,13 +2,13 @@ import type { ReactElement } from 'react'
 import type { TriggerWithProvider } from '../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage, useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
 import { useAvailableNodesMetaData } from '../../../workflow-app/hooks'
 import useNodes from '../../store/workflow/use-nodes'
@@ -115,7 +115,7 @@ const createTriggerProvider = (
 
 let enableMarketplaceForRender = false
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { enable_marketplace: enableMarketplaceForRender },
   })
 

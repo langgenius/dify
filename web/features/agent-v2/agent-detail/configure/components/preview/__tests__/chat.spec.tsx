@@ -1,13 +1,15 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { consoleQuery } from '@/service/client'
+import { render } from '@/test/console/render'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { TransferMethod } from '@/types/app'
 import { AgentChatRuntime } from '../chat-runtime'
 
@@ -125,62 +127,14 @@ vi.mock('@/app/components/base/chat/chat/hooks', () => ({
   ),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: {
       avatar_url: '',
       name: 'User',
     },
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -243,6 +197,7 @@ vi.mock('@/service/client', async () => {
 
 function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntime>>) {
   const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -307,6 +262,7 @@ function RuntimeClearCommandHarness({ inputPlaceholder }: { inputPlaceholder: st
 
 function renderPreviewChatWithConversationHarness() {
   const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -331,6 +287,7 @@ function renderPreviewChatWithConversationHarness() {
 
 function renderPreviewChatWithClearCommandHarness() {
   const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {

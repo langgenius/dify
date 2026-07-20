@@ -2,30 +2,40 @@ import type { ApiKeyModalProps } from '../api-key-modal'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { AuthCategory } from '../../types'
 
-const mockNotify = vi.fn()
-const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'info', message, ...options }),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}
+const { mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  return {
+    mockToast: {
+      success: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'success', message, ...options }),
+      error: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'error', message, ...options }),
+      warning: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'warning', message, ...options }),
+      info: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'info', message, ...options }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  }
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
+
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({ userProfile: {} }))
+})
 const mockAddPluginCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
 const defaultCredentialSchemas = [

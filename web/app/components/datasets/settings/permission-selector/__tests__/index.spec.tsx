@@ -1,14 +1,13 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { Member } from '@/models/common'
-import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createStore, Provider } from 'jotai'
-import { queryClientAtom } from 'jotai-tanstack-query'
+import { Provider } from 'jotai'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { defaultSystemFeatures } from '@/features/system-features/config'
 import { DatasetPermission } from '@/models/datasets'
+import { createQueryAtomTestStore } from '@/test/query-atom'
 import PermissionSelector from '../index'
 
 const currentUser = {
@@ -69,12 +68,7 @@ const renderSelector = (
   props: Partial<ComponentProps<typeof PermissionSelector>> = {},
   options: { rbacEnabled?: boolean } = {},
 ) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, staleTime: Infinity },
-      mutations: { retry: false },
-    },
-  })
+  const { queryClient, store } = createQueryAtomTestStore()
   queryClient.setQueryData(userProfileQueryOptions().queryKey, {
     profile: currentUser,
     meta: { currentVersion: null, currentEnv: null },
@@ -83,8 +77,6 @@ const renderSelector = (
     ...defaultSystemFeatures,
     rbac_enabled: options.rbacEnabled ?? false,
   })
-  const store = createStore()
-  store.set(queryClientAtom, queryClient)
   const wrapper = ({ children }: { children: ReactNode }) => (
     <Provider store={store}>{children}</Provider>
   )
