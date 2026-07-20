@@ -59,7 +59,8 @@ def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, m
         )
     )
     monkeypatch.setattr(contract_validator, "LOCK_PATH", lock_path)
-    monkeypatch.setenv("PATH", f"{executable_directory}{os.pathsep}{os.environ['PATH']}")
+    current_path = os.environ.get("PATH", os.defpath)
+    monkeypatch.setenv("PATH", f"{executable_directory}{os.pathsep}{current_path}")
 
     monkeypatch.setattr(
         sys,
