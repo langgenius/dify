@@ -1,6 +1,7 @@
 import type { Role } from '@/models/access-control'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import RowMenu from '../row-menu'
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
@@ -32,41 +33,11 @@ const membersOfRoleQueryMock = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/service/access-control/use-workspace-roles', () => ({

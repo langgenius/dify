@@ -1,5 +1,6 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { useImportDSL } from './use-import-dsl'
 
@@ -11,10 +12,6 @@ const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 const mockSetNeedRefresh = vi.hoisted(() => vi.fn())
 const mockGetRedirection = vi.hoisted(() => vi.fn())
 const mockResolveImportedAppRedirectionTarget = vi.hoisted(() => vi.fn())
-const mockAtoms = vi.hoisted(() => ({
-  userProfileId: {},
-  workspacePermissionKeys: {},
-}))
 const toastMocks = vi.hoisted(() => ({
   error: vi.fn(),
   success: vi.fn(),
@@ -23,17 +20,6 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMocks,
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useSuspenseQuery: () => ({ data: { rbac_enabled: false } }),
-}))
-
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: object) => {
-    if (atom === mockAtoms.userProfileId) return 'user-1'
-    if (atom === mockAtoms.workspacePermissionKeys) return ['app.create_and_management']
-  },
 }))
 
 vi.mock('@/app/components/apps/storage', () => ({
@@ -46,17 +32,21 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', () => ({
-  userProfileIdAtom: mockAtoms.userProfileId,
-}))
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: mockAtoms.workspacePermissionKeys,
-}))
+  return createAccountStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+  }))
+})
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({}),
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['app.create_and_management'],
+  }))
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -116,7 +106,7 @@ describe('useImportDSL', () => {
     mockImportDSL.mockResolvedValue(pendingResponse)
     mockImportDSLConfirm.mockResolvedValue(completedResponse)
 
-    const { result } = renderHook(() => useImportDSL())
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
 
     await act(async () => {
       await result.current.handleImportDSL(

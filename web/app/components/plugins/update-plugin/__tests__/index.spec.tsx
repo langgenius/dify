@@ -6,9 +6,10 @@ import type {
 } from '../../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '../../types'
 import DowngradeWarningModal from '../downgrade-warning'
 import FromGitHub from '../from-github'
@@ -21,6 +22,13 @@ import PluginVersionPicker from '../plugin-version-picker'
 // Mock app context for useGetIcon
 
 // Mock hooks/use-timestamp
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatDate: (timestamp: number, _format: string) => {

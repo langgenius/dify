@@ -1,8 +1,9 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -43,10 +44,9 @@ vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () =>
   }),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: ['app.acl.edit'],
@@ -61,10 +61,9 @@ vi.mock('@/context/account-state', async (importOriginal) => {
     },
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: ['app.acl.edit'],
@@ -79,10 +78,9 @@ vi.mock('@/context/workspace-state', async (importOriginal) => {
     },
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: ['app.acl.edit'],
@@ -97,10 +95,9 @@ vi.mock('@/context/permission-state', async (importOriginal) => {
     },
   }))
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: ['app.acl.edit'],
@@ -114,31 +111,6 @@ vi.mock('@/context/version-state', async (importOriginal) => {
       can_auto_update: false,
     },
   }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: ['app.acl.edit'],
-    langGeniusVersionInfo: {
-      current_env: 'PRODUCTION',
-      current_version: '',
-      latest_version: '',
-      version: '',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/service/client', () => ({
@@ -255,14 +227,14 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
 }
 
 function renderWithQueryClient(ui: React.ReactElement) {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
 
   render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 
   return queryClient
 }
 
-function createTestQueryClient() {
+function createConsoleQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -561,7 +533,7 @@ describe('Agent access surface cards', () => {
       const agentWithoutSite = createAgent({
         site: null,
       })
-      const queryClient = createTestQueryClient()
+      const queryClient = createConsoleQueryClient()
       const { rerender } = render(
         <QueryClientProvider client={queryClient}>
           <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />
