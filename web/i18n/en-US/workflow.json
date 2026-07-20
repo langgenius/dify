@@ -172,6 +172,7 @@
   "common.currentWorkflow": "Current Workflow",
   "common.debugAndPreview": "Preview",
   "common.disconnect": "Disconnect",
+  "common.draftSaveFailed": "Draft save failed",
   "common.duplicate": "Duplicate",
   "common.editing": "Editing",
   "common.effectVarConfirm.content": "The variable is used in other nodes. Do you still want to remove it?",

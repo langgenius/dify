@@ -172,6 +172,7 @@
   "common.currentWorkflow": "整个工作流",
   "common.debugAndPreview": "预览",
   "common.disconnect": "断开连接",
+  "common.draftSaveFailed": "草稿保存失败",
   "common.duplicate": "复制",
   "common.editing": "编辑中",
   "common.effectVarConfirm.content": "该变量在其他节点中使用。您是否仍要删除它？",
