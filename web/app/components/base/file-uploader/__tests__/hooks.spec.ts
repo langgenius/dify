@@ -9,10 +9,18 @@ const mockNavigationState = vi.hoisted(() => ({
   params: {} as { token?: string },
   pathname: '/chat',
 }))
+const mockFileUploadContext = vi.hoisted(() => ({
+  localUploadUrl: undefined as string | undefined,
+  remoteUploadUrl: undefined as string | undefined,
+}))
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => mockNavigationState.params,
   usePathname: () => mockNavigationState.pathname,
+}))
+
+vi.mock('../upload-context', () => ({
+  useFileUploadContext: () => mockFileUploadContext,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -136,6 +144,8 @@ describe('useFile', () => {
     mockStoreFiles = []
     mockNavigationState.params = {}
     mockNavigationState.pathname = '/chat'
+    mockFileUploadContext.localUploadUrl = undefined
+    mockFileUploadContext.remoteUploadUrl = undefined
     mockIsAllowedFileExtension.mockReturnValue(true)
     mockGetSupportFileType.mockReturnValue('document')
     mockHumanInputV2Transport.requestUploadToken.mockResolvedValue({
@@ -401,6 +411,21 @@ describe('useFile', () => {
 
       expect(mockSetFiles).toHaveBeenCalled()
       expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/file.txt', false)
+    })
+
+    it('should upload a remote file through the configured resource-scoped endpoint', () => {
+      mockFileUploadContext.remoteUploadUrl = '/trial-apps/app-id/remote-files/upload'
+      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLoadFileFromLink('https://example.com/file.txt')
+
+      expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith(
+        'https://example.com/file.txt',
+        false,
+        undefined,
+        '/trial-apps/app-id/remote-files/upload',
+      )
     })
 
     it('should use human input form remote upload on form page', () => {
@@ -834,6 +859,20 @@ describe('useFile', () => {
       expect(mockSetFiles).toHaveBeenCalled()
     })
 
+    it('should upload through the configured resource-scoped endpoint', () => {
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+      mockFileUploadContext.localUploadUrl = '/trial-apps/app-id/files/upload'
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockFileUpload).toHaveBeenCalledWith(
+        expect.any(Object),
+        false,
+        '/trial-apps/app-id/files/upload',
+      )
+    })
+
     it('should use human input form local upload on form page', () => {
       mockNavigationState.params = { token: 'form-token' }
       mockNavigationState.pathname = '/form/form-token'
@@ -875,7 +914,7 @@ describe('useFile', () => {
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleLocalFileUpload(file)
 
-      expect(mockFileUpload).toHaveBeenCalledWith(expect.any(Object), true)
+      expect(mockFileUpload).toHaveBeenCalledWith(expect.any(Object), true, undefined)
       expect(mockHumanInputV2Transport.uploadLocalFile).not.toHaveBeenCalled()
       expect(mockUploadHumanInputFormLocalFile).not.toHaveBeenCalled()
     })

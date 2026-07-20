@@ -28,6 +28,7 @@ import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } fro
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { useFileStore } from './store'
+import { useFileUploadContext } from './upload-context'
 import {
   fileUpload,
   getFileUploadErrorMessage,
@@ -61,6 +62,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const params = useParams()
   const pathname = usePathname()
   const humanInputV2Transport = useHumanInputV2FormTransport()
+  const { localUploadUrl, remoteUploadUrl } = useFileUploadContext()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
@@ -210,7 +212,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             ...uploadParams,
           })
         } else {
-          fileUpload(uploadParams, !!params.token)
+          fileUpload(uploadParams, !!params.token, localUploadUrl)
         }
       }
     },
@@ -222,6 +224,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       formToken,
       humanInputV2Transport,
       params.token,
+      localUploadUrl,
     ],
   )
 
@@ -256,16 +259,18 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       handleAddFile(uploadingFile)
       startProgressTimer(uploadingFile.id)
 
-      const remoteUpload =
-        formRoute.kind === 'legacy'
-          ? uploadHumanInputFormRemoteFileInfo(formToken!, url)
-          : formRoute.kind === 'v2'
-            ? uploadHumanInputV2RemoteFile({
-                transport: humanInputV2Transport,
-                formToken: formToken!,
-                url,
-              })
-            : uploadRemoteFileInfo(url, !!params.token)
+      let remoteUpload
+      if (formRoute.kind === 'legacy')
+        remoteUpload = uploadHumanInputFormRemoteFileInfo(formToken!, url)
+      else if (formRoute.kind === 'v2')
+        remoteUpload = uploadHumanInputV2RemoteFile({
+          transport: humanInputV2Transport,
+          formToken: formToken!,
+          url,
+        })
+      else if (remoteUploadUrl)
+        remoteUpload = uploadRemoteFileInfo(url, !!params.token, undefined, remoteUploadUrl)
+      else remoteUpload = uploadRemoteFileInfo(url, !!params.token)
 
       remoteUpload
         .then((res) => {
@@ -317,6 +322,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       formToken,
       humanInputV2Transport,
       params.token,
+      remoteUploadUrl,
     ],
   )
 
@@ -410,7 +416,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               ...uploadParams,
             })
           } else {
-            fileUpload(uploadParams, !!params.token)
+            fileUpload(uploadParams, !!params.token, localUploadUrl)
           }
         },
         false,
@@ -434,6 +440,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       formToken,
       humanInputV2Transport,
       params.token,
+      localUploadUrl,
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
       fileConfig?.enabled,
