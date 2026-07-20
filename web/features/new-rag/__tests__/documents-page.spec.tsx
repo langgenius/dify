@@ -33,6 +33,7 @@ const tasksQuery = vi.hoisted(() => ({
   data: undefined as
     | { pages: Array<{ items: DocumentProcessingTask[]; nextCursor?: string }> }
     | undefined,
+  dataUpdatedAt: 0,
   error: null as unknown,
   fetchNextPage: vi.fn(),
   hasNextPage: false,
@@ -232,6 +233,7 @@ describe('DocumentsPage', () => {
     documentsQuery.isFetchingNextPage = false
     documentsQuery.isPending = false
     tasksQuery.data = { pages: [{ items: [] }] }
+    tasksQuery.dataUpdatedAt = 1
     tasksQuery.error = null
     tasksQuery.hasNextPage = false
     tasksQuery.isFetchNextPageError = false
@@ -1027,6 +1029,77 @@ describe('DocumentsPage', () => {
         }),
       ).toHaveTextContent('1'),
     )
+  })
+
+  it('accepts an external retry after two fresh active task snapshots', async () => {
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'externally-retried' })] }] }
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) {
+        yield {
+          data: { state: 'succeeded' as const },
+          event: 'terminal' as const,
+          id: 'externally-retried:terminal',
+        }
+        return
+      }
+      await new Promise<void>(() => {})
+    })
+
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
+      ).not.toHaveTextContent('1'),
+    )
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'externally-retried',
+              progressPercent: 0,
+              state: 'queued',
+              updatedAt: '2026-07-20T10:05:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.dataUpdatedAt = 2
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
+    ).not.toHaveTextContent('1')
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'externally-retried',
+              progressPercent: 10,
+              state: 'running',
+              updatedAt: '2026-07-20T10:06:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.dataUpdatedAt = 3
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        }),
+      ).toHaveTextContent('1'),
+    )
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
   })
 
   it('keeps one event stream and its resume cursor when polling updates task versions', async () => {

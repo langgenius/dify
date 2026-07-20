@@ -47,6 +47,10 @@ const uploadExclusionReasonKey = {
 } as const
 
 type TerminalTaskPin = {
+  activeCandidate?: {
+    queryUpdatedAt: number
+    taskUpdatedAt: string
+  }
   confirmedAt?: string
   observedAt: string
 }
@@ -202,25 +206,57 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [baseTasks],
   )
   useEffect(() => {
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A server terminal snapshot confirms the SSE pin and establishes the retry version boundary.
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Query snapshots reconcile an SSE terminal pin with server-confirmed terminal or retry states.
     setTerminalTaskPins((current) => {
       let changed = false
       const next = { ...current }
       for (const task of baseTasks) {
         const pin = current[task.id]
-        if (
-          !pin ||
-          taskIsActive(task) ||
-          taskVersionIsAfter(pin.observedAt, task.updatedAt) ||
-          pin.confirmedAt === task.updatedAt
-        )
+        if (!pin || taskVersionIsAfter(pin.observedAt, task.updatedAt)) continue
+
+        if (!taskIsActive(task)) {
+          if (pin.confirmedAt !== task.updatedAt || pin.activeCandidate) {
+            next[task.id] = {
+              confirmedAt: task.updatedAt,
+              observedAt: pin.observedAt,
+            }
+            changed = true
+          }
           continue
-        next[task.id] = { ...pin, confirmedAt: task.updatedAt }
-        changed = true
+        }
+
+        const retryBoundary = pin.confirmedAt ?? pin.observedAt
+        if (!taskVersionIsAfter(task.updatedAt, retryBoundary)) continue
+        if (pin.confirmedAt) {
+          delete next[task.id]
+          changed = true
+          continue
+        }
+
+        const candidate = pin.activeCandidate
+        if (
+          candidate &&
+          tasksQuery.dataUpdatedAt > candidate.queryUpdatedAt &&
+          !taskVersionIsAfter(candidate.taskUpdatedAt, task.updatedAt)
+        ) {
+          delete next[task.id]
+          changed = true
+          continue
+        }
+        if (!candidate || tasksQuery.dataUpdatedAt > candidate.queryUpdatedAt) {
+          next[task.id] = {
+            ...pin,
+            activeCandidate: {
+              queryUpdatedAt: tasksQuery.dataUpdatedAt,
+              taskUpdatedAt: task.updatedAt,
+            },
+          }
+          changed = true
+        }
       }
       return changed ? next : current
     })
-  }, [baseTasks])
+  }, [baseTasks, tasksQuery.dataUpdatedAt])
   const tasks = useMemo(
     () =>
       baseTasks.map((task) => {
