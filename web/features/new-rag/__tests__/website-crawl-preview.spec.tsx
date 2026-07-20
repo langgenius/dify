@@ -189,7 +189,7 @@ describe('WebsiteCrawlPreview', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     clientMock.getRun
       .mockResolvedValueOnce(run('running', { progressCompleted: 2, progressTotal: 4 }))
-      .mockResolvedValueOnce(run('succeeded', { progressCompleted: 3, progressTotal: 3 }))
+      .mockResolvedValueOnce(run('succeeded', { progressCompleted: 4, progressTotal: 4 }))
     clientMock.getPages
       .mockResolvedValueOnce({
         items: [{ pageId: 'page-1', sourceUrl: 'https://docs.dify.ai/one', title: 'Old one' }],
@@ -207,8 +207,8 @@ describe('WebsiteCrawlPreview', () => {
       })
       .mockResolvedValueOnce({
         items: [
-          { pageId: 'page-2', sourceUrl: 'https://docs.dify.ai/two', title: 'Two' },
           { pageId: 'page-0', sourceUrl: 'https://docs.dify.ai/new', title: 'New first' },
+          { pageId: 'page-2', sourceUrl: 'https://docs.dify.ai/two', title: 'Two' },
         ],
         nextCursor: 'final-page-2',
       })
@@ -262,7 +262,7 @@ describe('WebsiteCrawlPreview', () => {
     })
     expect(
       screen.getAllByRole('checkbox').map((checkbox) => checkbox.getAttribute('aria-label')),
-    ).toEqual(['Two', 'New first', 'Updated one', 'Three'])
+    ).toEqual(['New first', 'Two', 'Updated one', 'Three'])
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }),
     ).not.toBeInTheDocument()
