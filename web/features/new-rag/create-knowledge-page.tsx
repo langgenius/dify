@@ -134,13 +134,17 @@ function StartMode({
   value: string
 }) {
   const { t } = useTranslation('dataset')
+  const titleId = useId()
+  const descriptionId = useId()
+  const unavailableId = useId()
 
   return (
     <RadioItem
       value={value}
       nativeButton
       render={<button type="button" />}
-      aria-label={title}
+      aria-labelledby={titleId}
+      aria-describedby={disabled ? `${descriptionId} ${unavailableId}` : descriptionId}
       disabled={disabled}
       className={cn(
         'relative flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-4 py-3.5 text-left outline-hidden transition-colors motion-reduce:transition-none',
@@ -154,11 +158,15 @@ function StartMode({
         <span aria-hidden className={`${icon} size-[18px] text-text-tertiary`} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block system-sm-medium text-text-primary">{title}</span>
-        <span className="mt-0.5 block system-xs-regular text-text-tertiary">{description}</span>
+        <span id={titleId} className="block system-sm-medium text-text-primary">
+          {title}
+        </span>
+        <span id={descriptionId} className="mt-0.5 block system-xs-regular text-text-tertiary">
+          {description}
+        </span>
       </span>
       {disabled && (
-        <span className="ml-3 system-xs-medium text-text-disabled">
+        <span id={unavailableId} className="ml-3 system-xs-medium text-text-disabled">
           {t(($) => $['cornerLabel.unavailable'])}
         </span>
       )}
@@ -231,11 +239,11 @@ export function CreateKnowledgePage() {
 
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background-default">
-      <header className="flex h-13 shrink-0 items-center border-b border-divider-subtle px-3 sm:px-5">
+      <header className="flex h-13 shrink-0 items-center border-b border-divider-subtle pr-4 pl-2">
         <button
           type="button"
           aria-label={tCommon(($) => $['operation.back'])}
-          className="mr-2 flex size-8 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="mr-1 flex size-8 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={() => router.back()}
           disabled={createMutation.isPending}
         >

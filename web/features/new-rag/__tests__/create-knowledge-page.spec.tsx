@@ -240,32 +240,62 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
-  it('unlocks editable fields and rotates the idempotency key after a definitive rejection', async () => {
-    const user = userEvent.setup()
-    vi.mocked(globalThis.crypto.randomUUID)
-      .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
-      .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
-    serviceMock.create.mockRejectedValueOnce(new Response(null, { status: 422 }))
-    renderPage()
-    await fillRequiredFields(user)
+  it.each([400, 401, 403, 422])(
+    'unlocks editable fields and rotates the idempotency key after a definitive %s rejection',
+    async (status) => {
+      const user = userEvent.setup()
+      vi.mocked(globalThis.crypto.randomUUID)
+        .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
+        .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
+      serviceMock.create.mockRejectedValueOnce({ status })
+      renderPage()
+      await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
-    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
-    expect(nameInput).toBeEnabled()
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Updated handbook')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'dataset.newKnowledge.createFailed',
+      )
+      const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
+      expect(nameInput).toBeEnabled()
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Updated handbook')
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
-    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
-    expect(serviceMock.create.mock.calls[0]?.[0].body.idempotencyKey).toBe(
-      '11111111-1111-4111-8111-111111111111',
-    )
-    expect(serviceMock.create.mock.calls[1]?.[0].body).toMatchObject({
-      idempotencyKey: '22222222-2222-4222-8222-222222222222',
-      name: 'Updated handbook',
-    })
-  })
+      await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
+      expect(serviceMock.create.mock.calls[0]?.[0].body.idempotencyKey).toBe(
+        '11111111-1111-4111-8111-111111111111',
+      )
+      expect(serviceMock.create.mock.calls[1]?.[0].body).toMatchObject({
+        idempotencyKey: '22222222-2222-4222-8222-222222222222',
+        name: 'Updated handbook',
+      })
+    },
+  )
+
+  it.each([409, 429, 503])(
+    'keeps request identity frozen after an ambiguous %s response',
+    async (status) => {
+      const user = userEvent.setup()
+      serviceMock.create.mockRejectedValueOnce({ status })
+      renderPage()
+      await fillRequiredFields(user)
+
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'dataset.newKnowledge.createFailed',
+      )
+      expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })).toBeDisabled()
+      expect(
+        screen.getByRole('combobox', { name: 'dataset.newKnowledge.permission' }),
+      ).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+      await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
+      expect(serviceMock.create.mock.calls[0]?.[0].body.idempotencyKey).toBe(
+        serviceMock.create.mock.calls[1]?.[0].body.idempotencyKey,
+      )
+    },
+  )
 
   it('safely resumes the permission step after a partial failure', async () => {
     const user = userEvent.setup()
@@ -288,11 +318,50 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
+  it('converges after a permission update succeeds but its response is lost', async () => {
+    const user = userEvent.setup()
+    serviceMock.getPolicy
+      .mockResolvedValueOnce({
+        id: 'policy-1',
+        ownerSubjectId: 'user-1',
+        partialMemberSubjectIds: [],
+        revision: 4,
+        visibility: 'only_me',
+      })
+      .mockResolvedValueOnce({
+        id: 'policy-1',
+        ownerSubjectId: 'user-1',
+        partialMemberSubjectIds: [],
+        revision: 5,
+        visibility: 'all_members',
+      })
+    serviceMock.patchPolicy.mockRejectedValueOnce(new Error('response lost'))
+    renderPage()
+    await fillRequiredFields(user)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledOnce()
+    expect(serviceMock.getPolicy).toHaveBeenCalledTimes(2)
+    expect(serviceMock.patchPolicy).toHaveBeenCalledOnce()
+  })
+
   it('keeps unavailable source modes disabled instead of simulating success', () => {
     renderPage()
 
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.startEmpty' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.connectSource' })).toBeDisabled()
+    const startEmpty = screen.getByRole('radio', { name: 'dataset.newKnowledge.startEmpty' })
+    expect(startEmpty).toBeChecked()
+    expect(startEmpty).toHaveAccessibleDescription('dataset.newKnowledge.startEmptyDescription')
+    const connectSource = screen.getByRole('radio', {
+      name: 'dataset.newKnowledge.connectSource',
+    })
+    expect(connectSource).toBeDisabled()
+    expect(connectSource).toHaveAccessibleDescription(
+      'dataset.newKnowledge.connectSourceDescription dataset.cornerLabel.unavailable',
+    )
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })).toBeDisabled()
   })
 
@@ -305,6 +374,8 @@ describe('CreateKnowledgePage', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.descriptionHelp')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.startWithHelp')).toBeInTheDocument()
+    expect(screen.getByRole('banner')).toHaveClass('pl-2', 'pr-4')
+    expect(screen.getByRole('button', { name: 'common.operation.back' })).toHaveClass('mr-1')
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
     ).toBeInTheDocument()
