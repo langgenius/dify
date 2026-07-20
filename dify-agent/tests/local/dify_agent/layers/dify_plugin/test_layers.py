@@ -1,5 +1,6 @@
 import asyncio
 import json
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -19,13 +20,19 @@ from dify_agent.layers.dify_plugin.configs import (
     DifyPluginToolsLayerConfig,
 )
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
-from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer, _PluginToolFileContext
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 
 
 def _execution_context_config() -> DifyExecutionContextLayerConfig:
-    return DifyExecutionContextLayerConfig(tenant_id="tenant-1", user_id="user-1", invoke_from="workflow_run")
+    return DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        user_from="account",
+        agent_mode="workflow_run",
+        invoke_from="service-api",
+    )
 
 
 def _llm_config() -> DifyPluginLLMLayerConfig:
@@ -81,6 +88,17 @@ def _execution_context_provider() -> LayerProvider[DifyExecutionContextLayer]:
             DifyExecutionContextLayerConfig.model_validate(config),
             daemon_url="http://plugin-daemon",
             daemon_api_key="daemon-secret",
+        ),
+    )
+
+
+def _tools_provider() -> LayerProvider[DifyPluginToolsLayer]:
+    return LayerProvider.from_factory(
+        layer_type=DifyPluginToolsLayer,
+        create=lambda config: DifyPluginToolsLayer.from_config_with_settings(
+            DifyPluginToolsLayerConfig.model_validate(config),
+            inner_api_url="http://dify-api",
+            inner_api_key="inner-secret",
         ),
     )
 
@@ -145,6 +163,42 @@ def _llm_only_parameter(*, name: str, description: str, default: JsonValue = Non
     )
 
 
+def _file_parameter(
+    *,
+    name: str = "source",
+    parameter_type: DifyPluginToolParameterType = DifyPluginToolParameterType.FILE,
+) -> DifyPluginToolParameter:
+    return DifyPluginToolParameter(
+        name=name,
+        type=parameter_type,
+        form=DifyPluginToolParameterForm.LLM,
+        required=True,
+        llm_description="Source file",
+    )
+
+
+def _file_tools_config(
+    *,
+    parameter_type: DifyPluginToolParameterType = DifyPluginToolParameterType.FILE,
+) -> DifyPluginToolsLayerConfig:
+    return DifyPluginToolsLayerConfig(
+        tools=[
+            DifyPluginToolConfig(
+                plugin_id="langgenius/tools",
+                provider="search",
+                tool_name="read_file",
+                credential_type="api-key",
+                parameters=[_file_parameter(parameter_type=parameter_type)],
+                parameters_json_schema={
+                    "type": "object",
+                    "properties": {"source": {"type": "string"}},
+                    "required": ["source"],
+                },
+            )
+        ]
+    )
+
+
 def _invoke_stream_response(
     *,
     error_payload: dict[str, object] | None = None,
@@ -198,6 +252,28 @@ def _tool_transport(
     return httpx.MockTransport(handler)
 
 
+def _file_tool_transport(
+    *,
+    expected_source: object,
+    download_response: dict[str, object] | None = None,
+) -> httpx.MockTransport:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/inner/api/download/file/request"):
+            assert download_response is not None
+            payload = json.loads(request.content.decode("utf-8"))
+            assert payload["file"] == {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
+            return httpx.Response(200, json={"data": download_response})
+
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            payload = json.loads(request.content.decode("utf-8"))
+            assert payload["data"]["tool_parameters"]["source"] == expected_source
+            return _invoke_stream_response()
+
+        raise AssertionError(f"Unexpected request path: {request.url.path}")
+
+    return httpx.MockTransport(handler)
+
+
 def test_dify_plugin_type_id_constants_match_implementation_classes() -> None:
     assert DIFY_PLUGIN_LLM_LAYER_TYPE_ID == DifyPluginLLMLayer.type_id
     assert DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID == DifyPluginToolsLayer.type_id
@@ -239,7 +315,7 @@ def test_dify_plugin_tools_layer_uses_prepared_tool_definition_and_invokes_daemo
         compositor = Compositor(
             [
                 LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=_tool_transport()) as client:
@@ -247,7 +323,7 @@ def test_dify_plugin_tools_layer_uses_prepared_tool_definition_and_invokes_daemo
                 configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
             ) as run:
                 tools_layer = run.get_layer("tools", DifyPluginToolsLayer)
-                tool = (await tools_layer.get_tools(http_client=client))[0]
+                tool = (await tools_layer.get_tools(http_client=client, dify_api_http_client=client))[0]
 
                 tool_def = await tool.prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
                 result = await tool.function_schema.call(
@@ -316,14 +392,16 @@ def test_dify_plugin_tools_layer_uses_each_tool_plugin_id_for_transport() -> Non
         compositor = Compositor(
             [
                 LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             async with compositor.enter(
                 configs={"execution_context": _execution_context_config(), "tools": tools_config}
             ) as run:
-                tools = await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client)
+                tools = await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                    http_client=client, dify_api_http_client=client
+                )
 
                 await tools[0].function_schema.call({"query": "first"}, None)  # pyright: ignore[reportArgumentType]
                 await tools[1].function_schema.call({"query": "second"}, None)  # pyright: ignore[reportArgumentType]
@@ -426,14 +504,18 @@ def test_dify_plugin_tools_layer_casts_prepared_parameter_values_before_invocati
         compositor = Compositor(
             [
                 LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             async with compositor.enter(
                 configs={"execution_context": _execution_context_config(), "tools": tools_config}
             ) as run:
-                tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client, dify_api_http_client=client
+                    )
+                )[0]
 
                 result = await tool.function_schema.call(
                     {
@@ -490,14 +572,18 @@ def test_dify_plugin_tools_layer_sends_prepared_parameter_defaults_to_daemon() -
         compositor = Compositor(
             [
                 LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             async with compositor.enter(
                 configs={"execution_context": _execution_context_config(), "tools": tools_config}
             ) as run:
-                tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client, dify_api_http_client=client
+                    )
+                )[0]
 
                 result = await tool.function_schema.call(
                     {"query": "dify"},
@@ -509,12 +595,289 @@ def test_dify_plugin_tools_layer_sends_prepared_parameter_defaults_to_daemon() -
     asyncio.run(scenario())
 
 
+def test_dify_plugin_tools_layer_converts_remote_url_file_string() -> None:
+    async def scenario() -> None:
+        expected_source = {
+            "dify_model_identity": "__dify__file__",
+            "type": "custom",
+            "url": "https://example.com/report.pdf",
+            "filename": "report.pdf",
+            "mime_type": "application/pdf",
+            "extension": ".pdf",
+            "size": -1,
+        }
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with httpx.AsyncClient(transport=_file_tool_transport(expected_source=expected_source)) as client:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _file_tools_config()}
+            ) as run:
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client,
+                        dify_api_http_client=client,
+                    )
+                )[0]
+                result = await tool.function_schema.call(
+                    {"source": "https://example.com/report.pdf"},
+                    None,  # pyright: ignore[reportArgumentType]
+                )
+
+        assert result == 'found {"count": 1}'
+
+    asyncio.run(scenario())
+
+
+def test_dify_plugin_tools_layer_converts_remote_url_file_mapping() -> None:
+    async def scenario() -> None:
+        expected_source = {
+            "dify_model_identity": "__dify__file__",
+            "type": "custom",
+            "url": "https://example.com/report.pdf",
+            "filename": "report.pdf",
+            "mime_type": "application/pdf",
+            "extension": ".pdf",
+            "size": -1,
+        }
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with httpx.AsyncClient(transport=_file_tool_transport(expected_source=expected_source)) as client:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _file_tools_config()}
+            ) as run:
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client,
+                        dify_api_http_client=client,
+                    )
+                )[0]
+                result = await tool.function_schema.call(
+                    {"source": {"transfer_method": "remote_url", "url": "https://example.com/report.pdf"}},
+                    None,  # pyright: ignore[reportArgumentType]
+                )
+
+        assert result == 'found {"count": 1}'
+
+    asyncio.run(scenario())
+
+
+def test_dify_plugin_tools_layer_resolves_tool_file_mapping_before_invocation() -> None:
+    async def scenario() -> None:
+        expected_source = {
+            "dify_model_identity": "__dify__file__",
+            "type": "custom",
+            "url": "https://signed.example/report.pdf",
+            "filename": "report.pdf",
+            "mime_type": "application/pdf",
+            "extension": ".pdf",
+            "size": 42,
+        }
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with httpx.AsyncClient(
+            transport=_file_tool_transport(
+                expected_source=expected_source,
+                download_response={
+                    "filename": "report.pdf",
+                    "mime_type": "application/pdf",
+                    "size": 42,
+                    "download_url": "https://signed.example/report.pdf",
+                },
+            )
+        ) as client:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _file_tools_config()}
+            ) as run:
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client,
+                        dify_api_http_client=client,
+                    )
+                )[0]
+                result = await tool.function_schema.call(
+                    {"source": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}},
+                    None,  # pyright: ignore[reportArgumentType]
+                )
+
+        assert result == 'found {"count": 1}'
+
+    asyncio.run(scenario())
+
+
+def test_dify_plugin_tools_layer_converts_files_parameter_values() -> None:
+    async def scenario() -> None:
+        expected_source = [
+            {
+                "dify_model_identity": "__dify__file__",
+                "type": "custom",
+                "url": "https://example.com/a.txt",
+                "filename": "a.txt",
+                "mime_type": "text/plain",
+                "extension": ".txt",
+                "size": -1,
+            },
+            {
+                "dify_model_identity": "__dify__file__",
+                "type": "custom",
+                "url": "https://example.com/b.txt",
+                "filename": "b.txt",
+                "mime_type": "text/plain",
+                "extension": ".txt",
+                "size": -1,
+            },
+        ]
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with httpx.AsyncClient(transport=_file_tool_transport(expected_source=expected_source)) as client:
+            async with compositor.enter(
+                configs={
+                    "execution_context": _execution_context_config(),
+                    "tools": _file_tools_config(parameter_type=DifyPluginToolParameterType.FILES),
+                }
+            ) as run:
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client,
+                        dify_api_http_client=client,
+                    )
+                )[0]
+                result = await tool.function_schema.call(
+                    {"source": ["https://example.com/a.txt", "https://example.com/b.txt"]},
+                    None,  # pyright: ignore[reportArgumentType]
+                )
+
+        assert result == 'found {"count": 1}'
+
+    asyncio.run(scenario())
+
+
+def test_dify_plugin_tools_layer_rejects_multiple_values_for_single_file() -> None:
+    async def scenario() -> None:
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(500))) as client:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _file_tools_config()}
+            ) as run:
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client,
+                        dify_api_http_client=client,
+                    )
+                )[0]
+                result = await tool.function_schema.call(
+                    {"source": ["https://example.com/a.txt", "https://example.com/b.txt"]},
+                    None,  # pyright: ignore[reportArgumentType]
+                )
+        assert "only accepts one file" in result
+
+    asyncio.run(scenario())
+
+
+def test_dify_plugin_tools_layer_rejects_path_without_shell() -> None:
+    async def scenario() -> None:
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(500))) as client:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _file_tools_config()}
+            ) as run:
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client,
+                        dify_api_http_client=client,
+                    )
+                )[0]
+                result = await tool.function_schema.call(
+                    {"source": "outputs/report.pdf"},
+                    None,  # pyright: ignore[reportArgumentType]
+                )
+        assert "require an active shell layer" in result
+
+    asyncio.run(scenario())
+
+
+def test_plugin_tool_file_context_uploads_sandbox_path_and_resolves_signed_url() -> None:
+    class FakeShell:
+        script: str | None = None
+
+        async def run_remote_script_complete(self, script: str, **_kwargs: object) -> object:
+            self.script = script
+            return SimpleNamespace(
+                exit_code=0,
+                status="done",
+                output_complete=True,
+                output=(
+                    "noise\n"
+                    "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_BEGIN>>>"
+                    '{"transfer_method":"tool_file","reference":"dify-file-ref:file-1"}'
+                    "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_END>>>\n"
+                ),
+            )
+
+    class FakeFileClient:
+        async def request_download(self, **_kwargs: object) -> object:
+            return SimpleNamespace(
+                filename="report.pdf",
+                mime_type="application/pdf",
+                size=42,
+                download_url="https://signed.example/report.pdf",
+            )
+
+    async def scenario() -> None:
+        shell = FakeShell()
+        context = _PluginToolFileContext(
+            file_client=FakeFileClient(),  # type: ignore[arg-type]
+            execution_context=_execution_context_config(),
+            shell=shell,  # type: ignore[arg-type]
+        )
+        result = await context.to_plugin_file_parameter("outputs/report.pdf")
+
+        assert result == {
+            "dify_model_identity": "__dify__file__",
+            "type": "custom",
+            "url": "https://signed.example/report.pdf",
+            "filename": "report.pdf",
+            "mime_type": "application/pdf",
+            "extension": ".pdf",
+            "size": 42,
+        }
+        assert shell.script is not None
+        assert "outputs/report.pdf" in shell.script
+
+    asyncio.run(scenario())
+
+
 def test_dify_plugin_tools_layer_requires_hidden_runtime_parameters_in_prepared_config() -> None:
     async def scenario() -> None:
         compositor = Compositor(
             [
                 LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=_tool_transport()) as client:
@@ -525,7 +888,9 @@ def test_dify_plugin_tools_layer_requires_hidden_runtime_parameters_in_prepared_
                 }
             ) as run:
                 with pytest.raises(ValueError, match="requires non-LLM runtime_parameters for: auth_scope"):
-                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client)
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client, dify_api_http_client=client
+                    )
 
     asyncio.run(scenario())
 
@@ -535,7 +900,7 @@ def test_dify_plugin_tools_layer_returns_agent_friendly_error_text() -> None:
         compositor = Compositor(
             [
                 LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(
@@ -549,7 +914,11 @@ def test_dify_plugin_tools_layer_returns_agent_friendly_error_text() -> None:
             async with compositor.enter(
                 configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
             ) as run:
-                tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client, dify_api_http_client=client
+                    )
+                )[0]
                 result = await tool.function_schema.call(
                     {"query": "dify", "region": "global"},
                     None,  # pyright: ignore[reportArgumentType]
@@ -565,7 +934,7 @@ def test_dify_plugin_tools_layer_propagates_unexpected_transport_errors() -> Non
         compositor = Compositor(
             [
                 LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
 
@@ -579,7 +948,11 @@ def test_dify_plugin_tools_layer_propagates_unexpected_transport_errors() -> Non
             async with compositor.enter(
                 configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
             ) as run:
-                tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client, dify_api_http_client=client
+                    )
+                )[0]
 
                 with pytest.raises(RuntimeError, match="unexpected transport failure"):
                     await tool.function_schema.call(
@@ -627,14 +1000,18 @@ def test_dify_plugin_tools_layer_maps_nested_plugin_invoke_errors_to_agent_text(
         compositor = Compositor(
             [
                 LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=_tool_transport(invoke_error_payload=invoke_error_payload)) as client:
             async with compositor.enter(
                 configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
             ) as run:
-                tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client, dify_api_http_client=client
+                    )
+                )[0]
                 result = await tool.function_schema.call(
                     {"query": "dify", "region": "global"},
                     None,  # pyright: ignore[reportArgumentType]
@@ -650,14 +1027,18 @@ def test_dify_plugin_tools_layer_merges_blob_chunks_before_observation_conversio
         compositor = Compositor(
             [
                 LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=_tool_transport(chunked_blob=True)) as client:
             async with compositor.enter(
                 configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
             ) as run:
-                tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client, dify_api_http_client=client
+                    )
+                )[0]
                 result = await tool.function_schema.call(
                     {"query": "dify", "region": "global"},
                     None,  # pyright: ignore[reportArgumentType]

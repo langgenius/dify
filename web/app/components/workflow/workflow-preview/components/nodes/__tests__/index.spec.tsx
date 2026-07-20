@@ -1,10 +1,16 @@
 import { render } from '@testing-library/react'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import CustomNode from '../index'
 
 vi.mock('reactflow', () => ({
-  Handle: (props: { id: string, type: string, className?: string }) => (
-    <div data-testid="handle" data-handleid={props.id} data-type={props.type} className={props.className} />
+  Handle: (props: { id: string; type: string; className?: string }) => (
+    <div
+      data-testid="handle"
+      data-handleid={props.id}
+      data-type={props.type}
+      className={props.className}
+    />
   ),
   Position: {
     Left: 'left',
@@ -28,17 +34,46 @@ describe('workflow preview custom node', () => {
         type: BlockEnum.QuestionClassifier,
         title: 'Classifier node',
         desc: '',
-        classes: [
-          { id: 'class-a', name: 'Billing' },
-        ],
+        classes: [{ id: 'class-a', name: 'Billing' }],
       } as never,
     }
 
-    const { container, getByText } = render(
-      <CustomNode {...props} />,
-    )
+    const { container, getByText } = render(<CustomNode {...props} />)
 
     expect(getByText('Classifier node')).toBeInTheDocument()
     expect(container.querySelector('[data-handleid="class-a"]')).toBeInTheDocument()
+  })
+
+  it('renders human input output handles from the mapped node component', () => {
+    const props: React.ComponentProps<typeof CustomNode> = {
+      id: 'human-input-1',
+      type: 'custom-node',
+      selected: false,
+      zIndex: 1,
+      isConnectable: true,
+      dragging: false,
+      xPos: 0,
+      yPos: 0,
+      dragHandle: undefined,
+      data: {
+        type: BlockEnum.HumanInput,
+        title: 'Human Input',
+        desc: '',
+        delivery_methods: [],
+        form_content: '',
+        inputs: [],
+        user_actions: [
+          { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
+        ],
+        timeout: 1,
+        timeout_unit: 'hour',
+      } as never,
+    }
+
+    const { container, getByText } = render(<CustomNode {...props} />)
+
+    expect(getByText('Human Input')).toBeInTheDocument()
+    expect(container.querySelector('[data-handleid="approve"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-handleid="__timeout"]')).toBeInTheDocument()
   })
 })

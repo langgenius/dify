@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from dify_trace_mlflow.mlflow_trace import MLflowDataTrace, datetime_to_nanoseconds
+from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -361,6 +362,7 @@ class TestWorkflowTrace:
         assert inputs["query"] == "hello"
 
     def test_workflow_with_llm_node(self, trace_instance, mock_tracing, mock_db):
+        usage = {"prompt_tokens": 5, "completion_tokens": 10, "total_tokens": 15}
         llm_node = _make_node(
             node_type=BuiltinNodeTypes.LLM,
             process_data=json.dumps(
@@ -369,7 +371,7 @@ class TestWorkflowTrace:
                     "model_name": "gpt-4",
                     "model_provider": "openai",
                     "finish_reason": "stop",
-                    "usage": {"prompt_tokens": 5, "completion_tokens": 10, "total_tokens": 15},
+                    "usage": usage,
                 }
             ),
             outputs='{"text": "hello world"}',
@@ -383,6 +385,14 @@ class TestWorkflowTrace:
 
         trace_instance.workflow_trace(_make_workflow_trace_info())
         assert mock_tracing["start"].call_count == 2
+        node_start_call = mock_tracing["start"].call_args_list[1]
+        attrs = node_start_call.kwargs["attributes"]
+        assert attrs[SpanAttributeKey.CHAT_USAGE] == {
+            TokenUsageKey.INPUT_TOKENS: 5,
+            TokenUsageKey.OUTPUT_TOKENS: 10,
+            TokenUsageKey.TOTAL_TOKENS: 15,
+        }
+        assert attrs["usage"] == usage
         node_span.end.assert_called_once()
         workflow_span.end.assert_called_once()
 
@@ -630,6 +640,27 @@ class TestMessageTrace:
         attrs = call_kwargs.kwargs["attributes"]
         assert "http://files.test/path/to/file.png" in attrs["file_list"]
         assert "existing_file.txt" in attrs["file_list"]
+
+    def test_message_trace_preserves_structured_span_attributes(self, trace_instance, mock_tracing, mock_db):
+        span = MagicMock()
+        mock_tracing["start"].return_value = span
+        mock_tracing["set"].return_value = "token"
+
+        trace_info = _make_message_trace_info(
+            metadata={
+                "conversation_id": "c1",
+                "from_account_id": "a1",
+                "routing": {"node": "answer", "score": 0.7},
+            },
+            file_list=["existing_file.txt"],
+        )
+        trace_instance.message_trace(trace_info)
+
+        attrs = mock_tracing["start"].call_args.kwargs["attributes"]
+        assert attrs["message_id"] == "msg-1"
+        assert attrs["total_price"] == 0.01
+        assert attrs["routing"] == {"node": "answer", "score": 0.7}
+        assert attrs["file_list"] == ["existing_file.txt"]
 
     def test_message_trace_file_list_none(self, trace_instance, mock_tracing, mock_db):
         span = MagicMock()

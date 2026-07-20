@@ -21,8 +21,7 @@ describe('Sort component — real portal integration', () => {
     // helper: returns a non-null HTMLElement or throws with a clear message
     const getTriggerWrapper = (): HTMLElement => {
       const wrapper = screen.getByRole('button', { name: /appLog\.filter\.sortBy/i })
-      if (!wrapper)
-        throw new Error('Trigger wrapper element not found for "Sort by" label')
+      if (!wrapper) throw new Error('Trigger wrapper element not found for "Sort by" label')
       return wrapper as HTMLElement
     }
 
@@ -43,7 +42,7 @@ describe('Sort component — real portal integration', () => {
 
     const sortButton = getSortButton()
     expect(sortButton).toBeInstanceOf(HTMLElement)
-    expect(sortButton.querySelector('svg')).toBeInTheDocument()
+    expect(sortButton.querySelector('.i-ri-sort-asc')).toBeInTheDocument()
   })
 
   it('opens and closes the menu', async () => {
@@ -93,21 +92,18 @@ describe('Sort component — real portal integration', () => {
     const statusRow = screen.getAllByText('Status').at(-1)?.closest('.flex')
     const nameRow = screen.getByText('Name').closest('.flex')
 
-    if (!statusRow)
-      throw new Error('Status option row not found in menu')
-    if (!nameRow)
-      throw new Error('Name option row not found in menu')
+    if (!statusRow) throw new Error('Status option row not found in menu')
+    if (!nameRow) throw new Error('Name option row not found in menu')
 
-    expect(statusRow.querySelector('svg')).toBeInTheDocument()
-    expect(nameRow.querySelector('svg')).not.toBeInTheDocument()
+    expect(statusRow.querySelector('.i-ri-check-line')).toBeInTheDocument()
+    expect(nameRow.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
   })
 
   it('shows empty selection label when value is unknown', () => {
     setup({ value: 'unknown_value' })
     const label = screen.getByText('appLog.filter.sortBy')
     const valueNode = label.nextSibling
-    if (!valueNode)
-      throw new Error('Expected a sibling node for the selection text')
+    if (!valueNode) throw new Error('Expected a sibling node for the selection text')
     expect(String(valueNode.textContent || '').trim()).toBe('')
   })
 

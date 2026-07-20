@@ -63,23 +63,19 @@ def test_envelope_uses_pep695_generics():
 
 
 def test_app_info_response_dump_matches_spec():
-    from controllers.openapi._models import AppInfoResponse
+    from controllers.openapi._models import AppInfo
 
-    obj = AppInfoResponse(
+    obj = AppInfo(
         id="app1",
         name="X",
         description="d",
         mode="chat",
-        author="alice",
-        tags=[{"name": "prod"}],
     )
     assert obj.model_dump(mode="json") == {
         "id": "app1",
         "name": "X",
         "description": "d",
         "mode": "chat",
-        "author": "alice",
-        "tags": [{"name": "prod"}],
     }
 
 
@@ -91,8 +87,6 @@ def test_app_describe_response_nests_info_and_parameters():
         name="X",
         mode="chat",
         description=None,
-        tags=[],
-        author=None,
         updated_at="2026-05-05T00:00:00+00:00",
         service_api_enabled=True,
     )

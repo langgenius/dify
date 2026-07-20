@@ -13,12 +13,14 @@ class SchedulerCommand(StrEnum):
     NONE = "none"
 
 
-class CFSPlanScheduler(ABC):
+class CFSPlanScheduler[PlanT: WorkflowScheduleCFSPlanEntity](ABC):
     """
     CFS plan scheduler.
     """
 
-    def __init__(self, plan: WorkflowScheduleCFSPlanEntity):
+    plan: PlanT
+
+    def __init__(self, plan: PlanT):
         """
         Initialize the CFS plan scheduler.
 

@@ -20,7 +20,9 @@ export class CRDTProvider {
     this.doc.subscribe((event: { by?: string }) => {
       if (event.by === 'local') {
         const update = this.doc.export({ mode: 'update' })
-        emitWithAuthGuard(this.socket, 'graph_event', update, { onUnauthorized: this.onUnauthorized })
+        emitWithAuthGuard(this.socket, 'graph_event', update, {
+          onUnauthorized: this.onUnauthorized,
+        })
       }
     })
 
@@ -28,8 +30,7 @@ export class CRDTProvider {
       try {
         const data = new Uint8Array(updateData)
         this.doc.import(data)
-      }
-      catch (error) {
+      } catch (error) {
         console.error('Error importing graph update:', error)
       }
     })

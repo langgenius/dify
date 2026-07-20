@@ -720,7 +720,7 @@ class EnterpriseOtelTrace:
 
         docs: list[dict[str, Any]] = []
         documents_any: Any = info.documents
-        documents_list: list[Any] = cast(list[Any], documents_any) if isinstance(documents_any, list) else []
+        documents_list: list[Any] = documents_any if isinstance(documents_any, list) else []
         for entry in documents_list:
             if isinstance(entry, dict):
                 entry_dict: dict[str, Any] = cast(dict[str, Any], entry)

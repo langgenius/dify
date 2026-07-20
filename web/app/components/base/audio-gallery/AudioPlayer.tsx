@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
-type AudioPlayerProps = {
+type AudioPlayerProps = Readonly<{
   src?: string // Keep backward compatibility
   srcs?: string[] // Support multiple sources
-}
+}>
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const { t } = useTranslation()
   const [isPlaying, setIsPlaying] = useState(false)
@@ -23,12 +23,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const [hoverTime, setHoverTime] = useState(0)
   const [isAudioAvailable, setIsAudioAvailable] = useState(true)
   const { theme } = useTheme()
-  const playPauseLabel = t(isPlaying ? 'operation.pause' : 'operation.play', { ns: 'common' })
+  const playPauseLabel = t(($) => $[isPlaying ? 'operation.pause' : 'operation.play'], {
+    ns: 'common',
+  })
   useEffect(() => {
     const audio = audioRef.current
     /* v8 ignore next 2 - @preserve */
-    if (!audio)
-      return
+    if (!audio) return
     const handleError = () => {
       setIsAudioAvailable(false)
     }
@@ -39,8 +40,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       setCurrentTime(audio.currentTime)
     }
     const handleProgress = () => {
-      if (audio.buffered.length > 0)
-        setBufferedTime(audio.buffered.end(audio.buffered.length - 1))
+      if (audio.buffered.length > 0) setBufferedTime(audio.buffered.end(audio.buffered.length - 1))
     }
     const handleEnded = () => {
       setIsPlaying(false)
@@ -56,7 +56,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     const primarySrc = srcs?.[0] || src
     if (primarySrc) {
       // Delayed generation of waveform data
-      // eslint-disable-next-line ts/no-use-before-define
+      // oxlint-disable-next-line typescript/no-use-before-define
       const timer = setTimeout(generateWaveformData, 1000, primarySrc)
       return () => {
         audio.removeEventListener('loadedmetadata', setAudioData)
@@ -76,7 +76,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     }
     const primarySrc = srcs?.[0] || src
     const url = primarySrc ? new URL(primarySrc) : null
-    const isHttp = url ? (url.protocol === 'http:' || url.protocol === 'https:') : false
+    const isHttp = url ? url.protocol === 'http:' || url.protocol === 'https:' : false
     if (!isHttp) {
       setIsAudioAvailable(false)
       return null
@@ -96,18 +96,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       const waveformData: number[] = []
       for (let i = 0; i < samples; i++) {
         let sum = 0
-        for (let j = 0; j < blockSize; j++)
-          sum += Math.abs(channelData[i * blockSize + j]!)
+        for (let j = 0; j < blockSize; j++) sum += Math.abs(channelData[i * blockSize + j]!)
         // Apply nonlinear scaling to enhance small amplitudes
         waveformData.push((sum / blockSize) * 5)
       }
       // Normalized waveform data
       const maxAmplitude = Math.max(...waveformData)
-      const normalizedWaveform = waveformData.map(amp => amp / maxAmplitude)
+      const normalizedWaveform = waveformData.map((amp) => amp / maxAmplitude)
       setWaveformData(normalizedWaveform)
       setIsAudioAvailable(true)
-    }
-    catch {
+    } catch {
       const waveform: number[] = []
       let prevValue = Math.random()
       for (let i = 0; i < samples; i++) {
@@ -117,11 +115,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
         prevValue = interpolatedValue
       }
       const maxAmplitude = Math.max(...waveform)
-      const randomWaveform = waveform.map(amp => amp / maxAmplitude)
+      const randomWaveform = waveform.map((amp) => amp / maxAmplitude)
       setWaveformData(randomWaveform)
       setIsAudioAvailable(true)
-    }
-    finally {
+    } finally {
       await audioContext.close()
     }
   }
@@ -131,46 +128,45 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       if (isPlaying) {
         setHasStartedPlaying(false)
         audio.pause()
-      }
-      else {
+      } else {
         setHasStartedPlaying(true)
-        audio.play().catch(error => console.error('Error playing audio:', error))
+        audio.play().catch((error) => console.error('Error playing audio:', error))
       }
       setIsPlaying(!isPlaying)
-    }
-    else {
+    } else {
       toast.error('Audio element not found')
       setIsAudioAvailable(false)
     }
   }, [isAudioAvailable, isPlaying])
-  const handleCanvasInteraction = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault()
-    const getClientX = (event: React.MouseEvent | React.TouchEvent): number => {
-      if ('touches' in event)
-        return event.touches[0]!.clientX
-      return event.clientX
-    }
-    const updateProgress = (clientX: number) => {
-      const canvas = canvasRef.current
-      const audio = audioRef.current
-      if (!canvas || !audio)
-        return
-      const rect = canvas.getBoundingClientRect()
-      const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
-      const newTime = percent * duration
-      // Removes the buffer check, allowing drag to any location
-      audio.currentTime = newTime
-      setCurrentTime(newTime)
-      if (!isPlaying) {
-        setIsPlaying(true)
-        audio.play().catch((error) => {
-          toast.error(`Error playing audio: ${error}`)
-          setIsPlaying(false)
-        })
+  const handleCanvasInteraction = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault()
+      const getClientX = (event: React.MouseEvent | React.TouchEvent): number => {
+        if ('touches' in event) return event.touches[0]!.clientX
+        return event.clientX
       }
-    }
-    updateProgress(getClientX(e))
-  }, [duration, isPlaying])
+      const updateProgress = (clientX: number) => {
+        const canvas = canvasRef.current
+        const audio = audioRef.current
+        if (!canvas || !audio) return
+        const rect = canvas.getBoundingClientRect()
+        const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
+        const newTime = percent * duration
+        // Removes the buffer check, allowing drag to any location
+        audio.currentTime = newTime
+        setCurrentTime(newTime)
+        if (!isPlaying) {
+          setIsPlaying(true)
+          audio.play().catch((error) => {
+            toast.error(`Error playing audio: ${error}`)
+            setIsPlaying(false)
+          })
+        }
+      }
+      updateProgress(getClientX(e))
+    },
+    [duration, isPlaying],
+  )
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60)
     const seconds = Math.floor(time % 60)
@@ -179,11 +175,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const drawWaveform = useCallback(() => {
     const canvas = canvasRef.current
     /* v8 ignore next 2 - @preserve */
-    if (!canvas)
-      return
+    if (!canvas) return
     const ctx = canvas.getContext('2d')
-    if (!ctx)
-      return
+    if (!ctx) return
     const width = canvas.width
     const height = canvas.height
     const data = waveformData
@@ -194,12 +188,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     // Draw waveform bars
     data.forEach((value, index) => {
       let color
-      if (index * barWidth <= playedWidth)
-        color = theme === Theme.light ? '#296DFF' : '#84ABFF'
-      else if ((index * barWidth / width) * duration <= hoverTime)
+      if (index * barWidth <= playedWidth) color = theme === Theme.light ? '#296DFF' : '#84ABFF'
+      else if (((index * barWidth) / width) * duration <= hoverTime)
         color = theme === Theme.light ? 'rgba(21,90,239,.40)' : 'rgba(200, 206, 218, 0.28)'
-      else
-        color = theme === Theme.light ? 'rgba(21,90,239,.20)' : 'rgba(200, 206, 218, 0.14)'
+      else color = theme === Theme.light ? 'rgba(21,90,239,.20)' : 'rgba(200, 206, 218, 0.14)'
       const barHeight = value * height
       const rectX = index * barWidth
       const rectY = (height - barHeight) / 2
@@ -211,8 +203,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
         ctx.beginPath()
         ctx.roundRect(rectX, rectY, rectWidth, rectHeight, cornerRadius)
         ctx.fill()
-      }
-      else {
+      } else {
         ctx.fillRect(rectX, rectY, rectWidth, rectHeight)
       }
     })
@@ -220,47 +211,69 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   useEffect(() => {
     drawWaveform()
   }, [drawWaveform, bufferedTime, hasStartedPlaying])
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current
-    const audio = audioRef.current
-    if (!canvas || !audio)
-      return
-    const clientX = 'touches' in e
-      ? e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX
-      : e.clientX
-    if (clientX === undefined)
-      return
-    const rect = canvas.getBoundingClientRect()
-    const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
-    const time = percent * duration
-    // Check if the hovered position is within a buffered range before updating hoverTime
-    for (let i = 0; i < audio.buffered.length; i++) {
-      if (time >= audio.buffered.start(i) && time <= audio.buffered.end(i)) {
-        setHoverTime(time)
-        break
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current
+      const audio = audioRef.current
+      if (!canvas || !audio) return
+      const clientX =
+        'touches' in e ? (e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX) : e.clientX
+      if (clientX === undefined) return
+      const rect = canvas.getBoundingClientRect()
+      const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
+      const time = percent * duration
+      // Check if the hovered position is within a buffered range before updating hoverTime
+      for (let i = 0; i < audio.buffered.length; i++) {
+        if (time >= audio.buffered.start(i) && time <= audio.buffered.end(i)) {
+          setHoverTime(time)
+          break
+        }
       }
-    }
-  }, [duration])
+    },
+    [duration],
+  )
   return (
     <div className="flex h-9 max-w-[420px] min-w-[240px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
       <audio ref={audioRef} src={src} preload="auto" data-testid="audio-player">
         {/* If srcs array is provided, render multiple source elements */}
-        {srcs && srcs.map((srcUrl, index) => (<source key={index} src={srcUrl} />))}
+        {srcs && srcs.map((srcUrl, index) => <source key={index} src={srcUrl} />)}
       </audio>
-      <button type="button" aria-label={playPauseLabel} className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
-        {isPlaying
-          ? (<div className="i-ri-pause-circle-fill size-5" aria-hidden="true" />)
-          : (<div className="i-ri-play-large-fill size-5" aria-hidden="true" />)}
+      <button
+        type="button"
+        aria-label={playPauseLabel}
+        className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled"
+        onClick={togglePlay}
+        disabled={!isAudioAvailable}
+      >
+        {isPlaying ? (
+          <div className="i-ri-pause-circle-fill size-5" aria-hidden="true" />
+        ) : (
+          <div className="i-ri-play-large-fill size-5" aria-hidden="true" />
+        )}
       </button>
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
         <div className="flex h-8 items-center justify-center">
-          <canvas ref={canvasRef} data-testid="waveform-canvas" className="relative flex h-6 w-full grow cursor-pointer items-center justify-center" onClick={handleCanvasInteraction} onMouseMove={handleMouseMove} onMouseDown={handleCanvasInteraction} onTouchMove={handleMouseMove} onTouchStart={handleCanvasInteraction} />
+          <canvas
+            ref={canvasRef}
+            data-testid="waveform-canvas"
+            className="relative flex h-6 w-full grow cursor-pointer items-center justify-center"
+            onClick={handleCanvasInteraction}
+            onMouseMove={handleMouseMove}
+            onMouseDown={handleCanvasInteraction}
+            onTouchMove={handleMouseMove}
+            onTouchStart={handleCanvasInteraction}
+          />
           <div className="inline-flex min-w-[50px] items-center justify-center system-xs-medium text-text-accent-secondary">
             <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>
       </div>
-      <div className="absolute top-0 left-0 flex size-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t('operation.audioSourceUnavailable', { ns: 'common' })}</div>
+      <div
+        className="absolute top-0 left-0 flex size-full items-center justify-center text-text-quaternary"
+        hidden={isAudioAvailable}
+      >
+        {t(($) => $['operation.audioSourceUnavailable'], { ns: 'common' })}
+      </div>
     </div>
   )
 }

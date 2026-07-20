@@ -392,7 +392,7 @@ Here is the extra instruction you need to follow:
             else:
                 if len(messages[-1]) + len(line) < max_tokens * 0.5:
                     messages[-1] += line
-                if get_prompt_tokens(messages[-1] + line) > max_tokens * 0.7:
+                elif get_prompt_tokens(messages[-1] + line) > max_tokens * 0.7:
                     messages.append(line)
                 else:
                     messages[-1] += line

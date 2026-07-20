@@ -1,4 +1,5 @@
 import uuid
+from typing import override
 
 from dify_vdb_qdrant.qdrant_vector import QdrantConfig, QdrantVector
 
@@ -25,6 +26,7 @@ class QdrantVectorTest(AbstractVectorTest):
         self.doc_banana_id = ""
         self.doc_both_id = ""
 
+    @override
     def search_by_vector(self):
         super().search_by_vector()
         # only test for qdrant, may not work on other vector stores
@@ -92,6 +94,7 @@ class QdrantVectorTest(AbstractVectorTest):
         doc_id_list = [doc.metadata["doc_id"] for doc in hits]
         assert len(doc_id_list) == len(set(doc_id_list)), "Search results should not contain duplicates"
 
+    @override
     def run_all_tests(self):
         self.create_vector()
         self.search_by_vector()

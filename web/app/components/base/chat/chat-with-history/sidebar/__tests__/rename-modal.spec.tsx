@@ -2,14 +2,14 @@ import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as ReactI18next from 'react-i18next'
+import { expectLoadingButton } from '@/test/button'
+import { withSelectorKey } from '@/test/i18n-mock'
 import RenameModal from '../rename-modal'
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: ReactNode, open?: boolean }) =>
+  Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
     open === false ? null : <>{children}</>,
-  DialogContent: ({ children }: { children: ReactNode }) => (
-    <div role="dialog">{children}</div>
-  ),
+  DialogContent: ({ children }: { children: ReactNode }) => <div role="dialog">{children}</div>,
   DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
 }))
 
@@ -31,7 +31,9 @@ describe('RenameModal', () => {
 
     expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
     expect(screen.getByText('common.chat.conversationName')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('common.chat.conversationNamePlaceholder')).toHaveValue('Original Name')
+    expect(screen.getByPlaceholderText('common.chat.conversationNamePlaceholder')).toHaveValue(
+      'Original Name',
+    )
     expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
     expect(screen.getByText('common.operation.save')).toBeInTheDocument()
   })
@@ -72,8 +74,7 @@ describe('RenameModal', () => {
   it('shows loading state when saveLoading is true', () => {
     render(<RenameModal {...defaultProps} saveLoading />)
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-    expect(saveButton).toBeDisabled()
-    expect(saveButton).toHaveAttribute('aria-busy', 'true')
+    expectLoadingButton(saveButton)
     expect(saveButton.querySelector('.animate-spin')).toBeInTheDocument()
   })
 
@@ -113,24 +114,24 @@ describe('RenameModal', () => {
 
   it('uses empty placeholder fallback when translation returns empty string', () => {
     const originalUseTranslation = ReactI18next.useTranslation
-    const useTranslationSpy = vi.spyOn(ReactI18next, 'useTranslation').mockImplementation((...args) => {
-      const translation = originalUseTranslation(...args)
-      return {
-        ...translation,
-        t: ((key: string, options?: Record<string, unknown>) => {
-          if (key === 'chat.conversationNamePlaceholder')
-            return ''
-          const ns = options?.ns as string | undefined
-          return ns ? `${ns}.${key}` : key
-        }) as typeof translation.t,
-      }
-    })
+    const useTranslationSpy = vi
+      .spyOn(ReactI18next, 'useTranslation')
+      .mockImplementation((...args) => {
+        const translation = originalUseTranslation(...args)
+        return {
+          ...translation,
+          t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
+            if (key === 'chat.conversationNamePlaceholder') return ''
+            const ns = options?.ns as string | undefined
+            return ns ? `${ns}.${key}` : key
+          }) as typeof translation.t,
+        }
+      })
 
     try {
       render(<RenameModal {...defaultProps} />)
       expect(screen.getByPlaceholderText('')).toBeInTheDocument()
-    }
-    finally {
+    } finally {
       useTranslationSpy.mockRestore()
     }
   })

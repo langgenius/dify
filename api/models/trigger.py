@@ -19,7 +19,7 @@ from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
-from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, PermissionEnum, WorkflowTriggerStatus
 from .model import Account
 from .types import EnumText, LongText, StringUUID
 
@@ -111,6 +111,12 @@ class TriggerSubscription(TypeBase):
     expires_at: Mapped[int] = mapped_column(
         Integer, default=-1, comment="Subscription instance expiration timestamp, -1 for never"
     )
+    visibility: Mapped[PermissionEnum] = mapped_column(
+        EnumText(PermissionEnum, length=40),
+        nullable=False,
+        server_default=sa.text("'all_team_members'"),
+        default=PermissionEnum.ALL_TEAM,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -119,7 +125,7 @@ class TriggerSubscription(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -174,7 +180,7 @@ class TriggerOAuthSystemClient(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -204,7 +210,7 @@ class TriggerOAuthTenantClient(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -364,7 +370,7 @@ class WorkflowWebhookTrigger(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -424,7 +430,7 @@ class WorkflowPluginTrigger(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -473,7 +479,7 @@ class AppTrigger(TypeBase):
         DateTime,
         nullable=False,
         default=naive_utc_now(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=naive_utc_now(),
         init=False,
     )
 

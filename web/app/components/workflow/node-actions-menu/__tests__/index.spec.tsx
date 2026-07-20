@@ -4,11 +4,9 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
-  useNodeDataUpdate,
   useNodeMetaData,
   useNodesInteractions,
   useNodesReadOnly,
-  useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAllWorkflowTools } from '@/service/use-tools'
@@ -18,11 +16,9 @@ vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
   return {
     ...actual,
-    useNodeDataUpdate: vi.fn(),
     useNodeMetaData: vi.fn(),
     useNodesInteractions: vi.fn(),
     useNodesReadOnly: vi.fn(),
-    useNodesSyncDraft: vi.fn(),
   }
 })
 
@@ -34,46 +30,42 @@ vi.mock('../change-block-menu-trigger', () => ({
   ChangeBlockMenuTrigger: () => <div data-testid="node-actions-change-block" />,
 }))
 
-const mockUseNodeDataUpdate = vi.mocked(useNodeDataUpdate)
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseNodesSyncDraft = vi.mocked(useNodesSyncDraft)
 const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
 
-const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> => ({
-  data,
-  error: null,
-  refetch: vi.fn(),
-  isError: false,
-  isPending: false,
-  isLoading: false,
-  isSuccess: true,
-  isFetching: false,
-  isRefetching: false,
-  isLoadingError: false,
-  isRefetchError: false,
-  isInitialLoading: false,
-  isPaused: false,
-  isEnabled: true,
-  status: 'success',
-  fetchStatus: 'idle',
-  dataUpdatedAt: Date.now(),
-  errorUpdatedAt: 0,
-  failureCount: 0,
-  failureReason: null,
-  errorUpdateCount: 0,
-  isFetched: true,
-  isFetchedAfterMount: true,
-  isPlaceholderData: false,
-  isStale: false,
-  promise: Promise.resolve(data),
-} as UseQueryResult<T, Error>)
+const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> =>
+  ({
+    data,
+    error: null,
+    refetch: vi.fn(),
+    isError: false,
+    isPending: false,
+    isLoading: false,
+    isSuccess: true,
+    isFetching: false,
+    isRefetching: false,
+    isLoadingError: false,
+    isRefetchError: false,
+    isInitialLoading: false,
+    isPaused: false,
+    isEnabled: true,
+    status: 'success',
+    fetchStatus: 'idle',
+    dataUpdatedAt: Date.now(),
+    errorUpdatedAt: 0,
+    failureCount: 0,
+    failureReason: null,
+    errorUpdateCount: 0,
+    isFetched: true,
+    isFetchedAfterMount: true,
+    isPlaceholderData: false,
+    isStale: false,
+    promise: Promise.resolve(data),
+  }) as UseQueryResult<T, Error>
 
-const renderComponent = (
-  showHelpLink: boolean = true,
-  onOpenChange?: (open: boolean) => void,
-) =>
+const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boolean) => void) =>
   renderWorkflowFlowComponent(
     <NodeActionsDropdown
       id="node-1"
@@ -94,16 +86,10 @@ const renderComponent = (
 
 describe('NodeActionsDropdown', () => {
   const handleNodeSelect = vi.fn()
-  const handleNodeDataUpdate = vi.fn()
-  const handleSyncWorkflowDraft = vi.fn()
   const handleNodeDelete = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseNodeDataUpdate.mockReturnValue({
-      handleNodeDataUpdate,
-      handleNodeDataUpdateWithSyncDraft: vi.fn(),
-    })
     mockUseNodeMetaData.mockReturnValue({
       isTypeFixed: false,
       isSingleton: false,
@@ -121,18 +107,13 @@ describe('NodeActionsDropdown', () => {
     mockUseNodesReadOnly.mockReturnValue({
       nodesReadOnly: false,
     } as ReturnType<typeof useNodesReadOnly>)
-    mockUseNodesSyncDraft.mockReturnValue({
-      doSyncWorkflowDraft: vi.fn().mockResolvedValue(undefined),
-      handleSyncWorkflowDraft,
-      syncWorkflowDraftWhenPageClose: vi.fn(),
-    })
     mockUseAllWorkflowTools.mockReturnValue(createQueryResult<ToolWithProvider[]>([]))
   })
 
   it('should open the dropdown and trigger single-run actions', async () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
-    renderComponent(true, onOpenChange)
+    const { store } = renderComponent(true, onOpenChange)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
@@ -143,11 +124,21 @@ describe('NodeActionsDropdown', () => {
     await user.click(screen.getByText('workflow.panel.runThisStep'))
 
     expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
-    expect(handleNodeDataUpdate).toHaveBeenCalledWith({
-      id: 'node-1',
-      data: { _isSingleRun: true },
-    })
-    expect(handleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+    expect(store.getState().initShowLastRunTab).toBe(true)
+    expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
+  })
+
+  it('should hide single-run actions when nodes are readonly', async () => {
+    const user = userEvent.setup()
+    mockUseNodesReadOnly.mockReturnValueOnce({
+      nodesReadOnly: true,
+    } as ReturnType<typeof useNodesReadOnly>)
+
+    renderComponent()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+    expect(screen.queryByText('workflow.panel.runThisStep')).not.toBeInTheDocument()
   })
 
   it('should hide the help link when showHelpLink is false', async () => {

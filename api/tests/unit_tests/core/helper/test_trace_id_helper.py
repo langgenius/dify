@@ -1,10 +1,13 @@
 import pytest
+from werkzeug.exceptions import BadRequest
 
 from core.helper.trace_id_helper import (
     ParentTraceContext,
     extract_external_trace_id_from_args,
     extract_parent_trace_context_from_args,
+    extract_trace_session_id_from_args,
     get_external_trace_id,
+    get_trace_session_id,
     is_valid_trace_id,
 )
 
@@ -15,6 +18,90 @@ class DummyRequest:
         self.args = args or {}
         self.json = json
         self.is_json = is_json
+
+
+class _Request:
+    def __init__(self, *, headers=None, args=None, json=None, is_json=True):
+        self.headers = headers or {}
+        self.args = args or {}
+        self.json = json
+        self.is_json = is_json
+
+
+def test_get_trace_session_id_prefers_header_over_query_and_body():
+    request = _Request(
+        headers={"X-Trace-Session-Id": "  header-session  "},
+        args={"trace_session_id": "query-session"},
+        json={"trace_session_id": "body-session"},
+    )
+
+    assert get_trace_session_id(request) == "header-session"
+
+
+def test_get_trace_session_id_prefers_query_over_body():
+    request = _Request(
+        args={"trace_session_id": "  query-session  "},
+        json={"trace_session_id": "body-session"},
+    )
+
+    assert get_trace_session_id(request) == "query-session"
+
+
+def test_get_trace_session_id_reads_body_when_no_higher_priority_input():
+    request = _Request(json={"trace_session_id": "  body/session:123  "})
+
+    assert get_trace_session_id(request) == "body/session:123"
+
+
+def test_get_trace_session_id_ignores_invalid_lower_priority_value():
+    request = _Request(
+        headers={"X-Trace-Session-Id": "header-session"},
+        json={"trace_session_id": "   "},
+    )
+
+    assert get_trace_session_id(request) == "header-session"
+
+
+@pytest.mark.parametrize(
+    "trace_session_request",
+    [
+        _Request(headers={"X-Trace-Session-Id": "   "}, json={"trace_session_id": "body-session"}),
+        _Request(headers={"X-Trace-Session-Id": 123}),
+        _Request(headers={"X-Trace-Session-Id": "x" * 201}),
+    ],
+)
+def test_get_trace_session_id_rejects_invalid_highest_priority_input(trace_session_request):
+    with pytest.raises(BadRequest) as exc_info:
+        get_trace_session_id(trace_session_request)
+
+    assert "trace_session_id" in str(exc_info.value)
+
+
+def test_get_trace_session_id_does_not_read_trace_id_or_traceparent():
+    request = _Request(
+        headers={
+            "X-Trace-Id": "trace-id",
+            "traceparent": "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01",
+        },
+        args={"trace_id": "query-trace-id"},
+        json={"trace_id": "body-trace-id"},
+    )
+
+    assert get_trace_session_id(request) is None
+
+
+def test_extract_trace_session_id_from_args_returns_trimmed_value():
+    args = {"trace_session_id": "  session-1  "}
+
+    assert extract_trace_session_id_from_args(args) == {"trace_session_id": "session-1"}
+
+
+def test_extract_trace_session_id_from_args_returns_empty_dict_when_missing():
+    assert extract_trace_session_id_from_args({}) == {}
+
+
+def test_extract_trace_session_id_from_args_returns_empty_dict_when_blank_after_trim():
+    assert extract_trace_session_id_from_args({"trace_session_id": "   "}) == {}
 
 
 class TestTraceIdHelper:

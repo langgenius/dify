@@ -4,45 +4,29 @@ import { useTranslation } from '#i18n'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import Line from './line'
 
-type Props = {
+type Props = Readonly<{
   text?: string
   lightCard?: boolean
   className?: string
-}
+}>
 
-const Empty = ({
-  text,
-  lightCard,
-  className,
-}: Props) => {
+const Empty = ({ text, lightCard, className }: Props) => {
   const { t } = useTranslation()
 
   return (
-    <div
-      className={cn('relative flex h-0 grow flex-wrap overflow-hidden p-2', className)}
-    >
-      {
-        Array.from({ length: 16 }).map((_, index) => (
-          <div
-            key={index}
-            className={cn(
-              'mr-3 mb-3 h-[144px] w-[calc((100%-36px)/4)] rounded-xl bg-background-section-burn',
-              index % 4 === 3 && 'mr-0',
-              index > 11 && 'mb-0',
-              lightCard && 'bg-background-default-lighter opacity-75',
-            )}
-          >
-          </div>
-        ))
-      }
-      {
-        !lightCard && (
-          <div
-            className="absolute inset-0 z-1 bg-marketplace-plugin-empty"
-          >
-          </div>
-        )
-      }
+    <div className={cn('relative flex h-0 grow flex-wrap overflow-hidden p-2', className)}>
+      {Array.from({ length: 16 }).map((_, index) => (
+        <div
+          key={index}
+          className={cn(
+            'mr-3 mb-3 h-[144px] w-[calc((100%-36px)/4)] rounded-xl bg-background-section-burn',
+            index % 4 === 3 && 'mr-0',
+            index > 11 && 'mb-0',
+            lightCard && 'bg-background-default-lighter opacity-75',
+          )}
+        ></div>
+      ))}
+      {!lightCard && <div className="absolute inset-0 z-1 bg-marketplace-plugin-empty"></div>}
       <div className="absolute top-1/2 left-1/2 z-2 flex -translate-1/2 flex-col items-center">
         <div className="relative mb-3 flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-deep bg-components-card-bg shadow-lg">
           <Group className="size-5 text-text-primary" />
@@ -52,7 +36,7 @@ const Empty = ({
           <Line className="absolute top-full left-1/2 -translate-1/2 rotate-90" />
         </div>
         <div className="text-center system-md-regular text-text-tertiary">
-          {text || t('marketplace.noPluginFound', { ns: 'plugin' })}
+          {text || t(($) => $['marketplace.noPluginFound'], { ns: 'plugin' })}
         </div>
       </div>
     </div>

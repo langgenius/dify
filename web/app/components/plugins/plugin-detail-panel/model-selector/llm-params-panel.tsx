@@ -14,13 +14,13 @@ import { getSupportedPresetConfig } from '@/app/components/header/account-settin
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 
-type Props = {
+type Props = Readonly<{
   isAdvancedMode: boolean
   provider: string
   modelId: string
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
-}
+}>
 
 const LLMParamsPanel = ({
   isAdvancedMode,
@@ -37,7 +37,7 @@ const LLMParamsPanel = ({
     return parameterRulesData?.data || []
   }, [parameterRulesData])
   const supportedPresetParameterNames = useMemo(() => {
-    return parameterRules.map(parameterRule => parameterRule.name)
+    return parameterRules.map((parameterRule) => parameterRule.name)
   }, [parameterRules])
 
   const handleSelectPresetParameter = (toneId: number) => {
@@ -69,37 +69,36 @@ const LLMParamsPanel = ({
 
   if (isRulesLoading) {
     return (
-      <div className="mt-5"><Loading /></div>
+      <div className="mt-5">
+        <Loading />
+      </div>
     )
   }
 
   return (
     <>
       <div className="mb-2 flex items-center justify-between">
-        <div className={cn('flex h-6 items-center system-sm-semibold text-text-secondary')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
-        {
-          PROVIDER_WITH_PRESET_TONE.includes(provider) && (
-            <PresetsParameter
-              onSelect={handleSelectPresetParameter}
-              supportedParameterNames={supportedPresetParameterNames}
-            />
-          )
-        }
+        <div className={cn('flex h-6 items-center system-sm-semibold text-text-secondary')}>
+          {t(($) => $['modelProvider.parameters'], { ns: 'common' })}
+        </div>
+        {PROVIDER_WITH_PRESET_TONE.includes(provider) && (
+          <PresetsParameter
+            onSelect={handleSelectPresetParameter}
+            supportedParameterNames={supportedPresetParameterNames}
+          />
+        )}
       </div>
-      {!!parameterRules.length && (
-        [
-          ...parameterRules,
-          ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
-        ].map(parameter => (
+      {!!parameterRules.length &&
+        [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map((parameter) => (
           <ParameterItem
             key={`${modelId}-${parameter.name}`}
             parameterRule={parameter}
             value={completionParams?.[parameter.name]}
-            onChange={v => handleParamChange(parameter.name, v)}
+            onChange={(v) => handleParamChange(parameter.name, v)}
             onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
             isInWorkflow
           />
-        )))}
+        ))}
     </>
   )
 }

@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { EndNodeType } from './types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -6,6 +7,7 @@ import { genNodeMetaData } from '@/app/components/workflow/utils'
 const metaData = genNodeMetaData({
   sort: 2.1,
   type: BlockEnum.End,
+  helpLinkUri: 'output',
   isRequired: false,
 })
 const nodeDefault: NodeDefault<EndNodeType> = {
@@ -13,14 +15,16 @@ const nodeDefault: NodeDefault<EndNodeType> = {
   defaultValue: {
     outputs: [],
   },
-  checkValid(payload: EndNodeType, t: any) {
+  checkValid(payload: EndNodeType, t: TFunction<'workflow'>) {
     const outputs = payload.outputs || []
 
     let errorMessage = ''
     if (!outputs.length) {
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.end.output.variable', { ns: 'workflow' }) })
-    }
-    else {
+      errorMessage = t(($) => $['errorMsg.fieldRequired'], {
+        ns: 'workflow',
+        field: t(($) => $['nodes.end.output.variable'], { ns: 'workflow' }),
+      })
+    } else {
       const invalidOutput = outputs.find((output) => {
         const variableName = output.variable?.trim()
         const hasSelector = Array.isArray(output.value_selector) && output.value_selector.length > 0
@@ -28,7 +32,10 @@ const nodeDefault: NodeDefault<EndNodeType> = {
       })
 
       if (invalidOutput)
-        errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.end.output.variable', { ns: 'workflow' }) })
+        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
+          ns: 'workflow',
+          field: t(($) => $['nodes.end.output.variable'], { ns: 'workflow' }),
+        })
     }
 
     return {

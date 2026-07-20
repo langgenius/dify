@@ -22,12 +22,6 @@ describe('useHideLogic', () => {
     vi.clearAllMocks()
   })
 
-  it('should return initial state with modalClassName', () => {
-    const { result } = renderHook(() => useHideLogic(mockOnClose))
-
-    expect(result.current.modalClassName).toBe('test-modal-class')
-  })
-
   it('should call onClose directly when not installing', () => {
     const { result } = renderHook(() => useHideLogic(mockOnClose))
 
@@ -48,6 +42,17 @@ describe('useHideLogic', () => {
 
     act(() => {
       result.current.foldAnimInto()
+    })
+
+    expect(mockFoldAnimInto).toHaveBeenCalled()
+    expect(mockOnClose).not.toHaveBeenCalled()
+  })
+
+  it('should fold into task trigger directly', () => {
+    const { result } = renderHook(() => useHideLogic(mockOnClose))
+
+    act(() => {
+      result.current.foldIntoTaskTrigger()
     })
 
     expect(mockFoldAnimInto).toHaveBeenCalled()

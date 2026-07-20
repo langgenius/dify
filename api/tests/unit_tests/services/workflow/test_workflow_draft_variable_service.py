@@ -31,6 +31,7 @@ from services.workflow_draft_variable_service import (
     DraftVariableSaver,
     VariableResetError,
     WorkflowDraftVariableService,
+    _model_to_insertion_dict,
 )
 
 
@@ -343,6 +344,34 @@ class TestWorkflowDraftVariableService:
             rag_pipeline_variables=[],
         )
 
+    def test_list_variables_without_values_excludes_node_ids(self, mock_session):
+        service = WorkflowDraftVariableService(mock_session)
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id="app-1",
+            node_id="node-1",
+            name="output",
+            value=StringSegment(value="value"),
+            node_execution_id="execution-1",
+        )
+        mock_session.scalar.return_value = 1
+        mock_session.scalars.return_value = [variable]
+
+        result = service.list_variables_without_values(
+            app_id="app-1",
+            page=1,
+            limit=20,
+            user_id="user-1",
+            exclude_node_ids={SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID},
+        )
+
+        assert result.total == 1
+        assert result.variables == [variable]
+
+        stmt = mock_session.scalars.call_args.args[0]
+        compiled = stmt.compile()
+        excluded_node_ids = next(value for value in compiled.params.values() if isinstance(value, (list, tuple)))
+        assert set(excluded_node_ids) == {SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID}
+
     def test_reset_conversation_variable(self, mock_session):
         """Test resetting a conversation variable"""
         service = WorkflowDraftVariableService(mock_session)
@@ -615,3 +644,53 @@ class TestWorkflowDraftVariableService:
         assert node_var.visible == True
         assert node_var.editable == True
         assert node_var.node_execution_id == "exec-id"
+
+
+class TestModelToInsertionDict:
+    """Reproduce two production errors in _model_to_insertion_dict / _new()."""
+
+    def test_visible_and_is_default_value_always_present(self):
+        """Problem 1: _new() did not set visible/is_default_value, causing
+        inconsistent dict keys across rows in multi-row INSERT and missing
+        is_default_value in the insertion dict entirely.
+        """
+        conv_var = WorkflowDraftVariable.new_conversation_variable(
+            app_id="app-1",
+            name="counter",
+            value=StringSegment(value="0"),
+        )
+        # _new() should explicitly set these fields so they are not None
+        assert conv_var.visible is not None
+        assert conv_var.is_default_value is not None
+
+        d = _model_to_insertion_dict(conv_var)
+        # visible must appear in every row's dict
+        assert "visible" in d
+        # is_default_value must always be present
+        assert "is_default_value" in d
+
+    def test_description_passthrough(self):
+        """_model_to_insertion_dict passes description as-is;
+        length validation is enforced earlier in build_conversation_variable_from_mapping.
+        """
+        desc = "a" * 200
+        conv_var = WorkflowDraftVariable.new_conversation_variable(
+            app_id="app-1",
+            name="counter",
+            value=StringSegment(value="0"),
+            description=desc,
+        )
+        d = _model_to_insertion_dict(conv_var)
+        assert d["description"] == desc
+
+    def test_is_default_value_omitted_when_none(self):
+        conv_var = WorkflowDraftVariable.new_conversation_variable(
+            app_id="app-1",
+            name="counter",
+            value=StringSegment(value="0"),
+        )
+        conv_var.is_default_value = None
+
+        d = _model_to_insertion_dict(conv_var)
+
+        assert "is_default_value" not in d

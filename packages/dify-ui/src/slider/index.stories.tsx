@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type * as React from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Slider,
   SliderControl,
@@ -51,25 +50,18 @@ function SliderDemo({
   defaultValue: _defaultValue,
   ...args
 }: React.ComponentProps<typeof Slider>) {
-  const [value, setValue] = useState(initialValue)
+  const [value, setValue] = React.useState(initialValue)
 
   return (
     <div className="w-[320px] space-y-3">
-      <Slider
-        {...args}
-        value={value}
-        onValueChange={setValue}
-        aria-label="Demo slider"
-      />
-      <div className="text-center system-sm-medium text-text-secondary">
-        {value}
-      </div>
+      <Slider {...args} value={value} onValueChange={setValue} aria-label="Demo slider" />
+      <div className="text-center system-sm-medium text-text-secondary">{value}</div>
     </div>
   )
 }
 
 export const Default: Story = {
-  render: args => <SliderDemo {...args} />,
+  render: (args) => <SliderDemo {...args} />,
   args: {
     value: 50,
     min: 0,
@@ -79,7 +71,7 @@ export const Default: Story = {
 }
 
 export const Decimal: Story = {
-  render: args => <SliderDemo {...args} />,
+  render: (args) => <SliderDemo {...args} />,
   args: {
     value: 0.5,
     min: 0,
@@ -89,7 +81,7 @@ export const Decimal: Story = {
 }
 
 export const Disabled: Story = {
-  render: args => <SliderDemo {...args} />,
+  render: (args) => <SliderDemo {...args} />,
   args: {
     value: 75,
     min: 0,
@@ -101,7 +93,10 @@ export const Disabled: Story = {
 
 export const ComposedWithLabel: Story = {
   render: () => (
-    <SliderRoot defaultValue={50} className="group/slider relative inline-flex w-[320px] flex-col gap-1 data-disabled:opacity-30">
+    <SliderRoot
+      defaultValue={50}
+      className="group/slider relative inline-flex w-[320px] flex-col gap-1 data-disabled:opacity-30"
+    >
       <SliderLabel>Temperature</SliderLabel>
       <SliderControl>
         <SliderTrack>

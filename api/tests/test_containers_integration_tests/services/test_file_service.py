@@ -11,7 +11,7 @@ from werkzeug.exceptions import NotFound
 from configs import dify_config
 from extensions.storage.storage_type import StorageType
 from models import Account, Tenant
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser, UploadFile
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
@@ -112,7 +112,7 @@ class TestFileService:
 
         end_user = EndUser(
             tenant_id=str(fake.uuid4()),
-            type="web",
+            type=EndUserType.BROWSER,
             name=fake.name(),
             is_anonymous=False,
             session_id=fake.uuid4(),

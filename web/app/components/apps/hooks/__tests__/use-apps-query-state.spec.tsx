@@ -5,7 +5,7 @@ import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useAppsQueryState } from '../use-apps-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
-  // eslint-disable-next-line react/use-state -- renderHook executes a custom hook, not React.useState
+  // oxlint-disable-next-line eslint-react/use-state -- renderHook executes a custom hook, not React.useState
   return renderHookWithNuqs(() => useAppsQueryState(), { searchParams })
 }
 
@@ -20,22 +20,20 @@ describe('useAppsQueryState', () => {
     expect(result.current.query).toEqual({
       category: 'all',
       keywords: '',
-      isCreatedByMe: false,
+      creatorIDs: [],
     })
     expect(typeof result.current.setCategory).toBe('function')
     expect(typeof result.current.setKeywords).toBe('function')
-    expect(typeof result.current.setIsCreatedByMe).toBe('function')
+    expect(typeof result.current.setCreatorIDs).toBe('function')
   })
 
   it('should parse app list filters from URL', () => {
-    const { result } = renderWithAdapter(
-      '?category=workflow&tagIDs=tag1;tag2&keywords=search+term&isCreatedByMe=true',
-    )
+    const { result } = renderWithAdapter('?category=workflow&tagIDs=tag1;tag2&keywords=search+term')
 
     expect(result.current.query).toEqual({
       category: AppModeEnum.WORKFLOW,
       keywords: 'search term',
-      isCreatedByMe: true,
+      creatorIDs: [],
     })
   })
 
@@ -85,8 +83,7 @@ describe('useAppsQueryState', () => {
       expect(onUrlUpdate).toHaveBeenCalled()
       const update = onUrlUpdate.mock.calls.at(-1)![0]
       expect(update.searchParams.get('keywords')).toBe('search')
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })
@@ -109,36 +106,34 @@ describe('useAppsQueryState', () => {
       expect(onUrlUpdate).toHaveBeenCalled()
       const update = onUrlUpdate.mock.calls.at(-1)![0]
       expect(update.searchParams.has('keywords')).toBe(false)
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })
 
-  it('should update created-by-me URL state', async () => {
+  it('should update creator IDs in local state without writing to the URL', () => {
     const { result, onUrlUpdate } = renderWithAdapter()
 
     act(() => {
-      result.current.setIsCreatedByMe(true)
+      result.current.setCreatorIDs(['creator-1', 'creator-2'])
     })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(result.current.query.isCreatedByMe).toBe(true)
-    expect(update.searchParams.get('isCreatedByMe')).toBe('true')
-    expect(update.options.history).toBe('push')
+    expect(result.current.query.creatorIDs).toEqual(['creator-1', 'creator-2'])
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
-  it('should remove isCreatedByMe from URL when disabled', async () => {
-    const { result, onUrlUpdate } = renderWithAdapter('?isCreatedByMe=true')
+  it('should clear creator IDs from local state without writing to the URL', () => {
+    const { result, onUrlUpdate } = renderWithAdapter()
 
     act(() => {
-      result.current.setIsCreatedByMe(false)
+      result.current.setCreatorIDs(['creator-1'])
     })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(result.current.query.isCreatedByMe).toBe(false)
-    expect(update.searchParams.has('isCreatedByMe')).toBe(false)
+    act(() => {
+      result.current.setCreatorIDs([])
+    })
+
+    expect(result.current.query.creatorIDs).toEqual([])
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 })

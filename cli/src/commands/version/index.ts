@@ -1,11 +1,11 @@
-import { Flags } from '../../framework/flags.js'
-import { formatted, OutputFormat, raw, stringifyOutput } from '../../framework/output.js'
-import { colorEnabled } from '../../sys/io/color.js'
-import { realStreams } from '../../sys/io/streams'
-import { versionInfo } from '../../version/info.js'
-import { runVersionProbe } from '../../version/probe.js'
-import { renderVersionText } from '../../version/render.js'
-import { DifyCommand } from '../_shared/dify-command.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { Flags } from '@/framework/flags'
+import { formatted, OutputFormat, raw, stringifyOutput } from '@/framework/output'
+import { colorEnabled } from '@/sys/io/color'
+import { realStreams } from '@/sys/io/streams'
+import { versionInfo } from '@/version/info'
+import { runVersionProbe } from '@/version/probe'
+import { renderVersionText } from '@/version/render'
 
 export const COMPAT_FAIL_EXIT_CODE = 64
 
@@ -20,9 +20,12 @@ export default class Version extends DifyCommand {
   ]
 
   static override flags = {
-    'output': Flags.outputFormat({ options: [OutputFormat.TEXT, OutputFormat.JSON, OutputFormat.YAML], default: '' }),
-    'client': Flags.boolean({ description: 'skip server probe' }),
-    'short': Flags.boolean({ description: 'print only the client semver' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.TEXT, OutputFormat.JSON, OutputFormat.YAML],
+      default: '',
+    }),
+    client: Flags.boolean({ description: 'skip server probe' }),
+    short: Flags.boolean({ description: 'print only the client semver' }),
     'check-compat': Flags.boolean({
       description: `exit ${COMPAT_FAIL_EXIT_CODE} if server is not 'compatible'`,
     }),
@@ -31,8 +34,7 @@ export default class Version extends DifyCommand {
   async run(argv: string[]) {
     const { flags } = this.parse(Version, argv)
 
-    if (flags.short)
-      return raw(`${versionInfo.version}\n`)
+    if (flags.short) return raw(`${versionInfo.version}\n`)
 
     const report = await runVersionProbe({ skipServer: flags.client })
 

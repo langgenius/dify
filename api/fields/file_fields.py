@@ -11,18 +11,19 @@ from libs.helper import to_timestamp
 class UploadConfig(ResponseModel):
     file_size_limit: int
     batch_count_limit: int
-    file_upload_limit: int | None = None
+    file_upload_limit: int
     image_file_size_limit: int
     video_file_size_limit: int
     audio_file_size_limit: int
     workflow_file_upload_limit: int
     image_file_batch_limit: int
     single_chunk_attachment_limit: int
-    attachment_image_file_size_limit: int | None = None
+    attachment_image_file_size_limit: int
 
 
 class FileResponse(ResponseModel):
     id: str
+    reference: str | None = None
     name: str
     size: int
     extension: str | None = None

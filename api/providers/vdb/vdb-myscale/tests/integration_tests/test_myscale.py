@@ -1,3 +1,5 @@
+from typing import override
+
 from dify_vdb_myscale.myscale_vector import MyScaleConfig, MyScaleVector
 
 from core.rag.datasource.vdb.vector_integration_test_support import (
@@ -20,6 +22,7 @@ class MyScaleVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) == 1

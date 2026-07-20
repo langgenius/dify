@@ -6,6 +6,17 @@ import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datas
 import { sleep } from '@/utils'
 import JinaReader from '../index'
 
+const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockSetShowAccountSettingModal: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
+
 vi.mock('@/service/datasets', () => ({
   createJinaReaderTask: vi.fn(),
   checkJinaReaderTaskStatus: vi.fn(),
@@ -16,7 +27,6 @@ vi.mock('@/utils', () => ({
 }))
 
 // Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -70,20 +80,14 @@ describe('JinaReader', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<JinaReader {...props} />)
-
-      expect(screen.getByText('datasetCreation.stepOne.website.jinaReaderTitle'))!.toBeInTheDocument()
-    })
-
     it('should render header with configuration button', () => {
       const props = createDefaultProps()
 
       render(<JinaReader {...props} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.website.configureJinaReader'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('datasetCreation.stepOne.website.configureJinaReader'),
+      )!.toBeInTheDocument()
     })
 
     it('should render URL input field', () => {
@@ -141,7 +145,9 @@ describe('JinaReader', () => {
 
       if (limitLabel) {
         // The limit input is a number input (spinbutton role) within the same container
-        const limitInput = limitLabel.closest('div')?.parentElement?.querySelector('input[type="number"]')
+        const limitInput = limitLabel
+          .closest('div')
+          ?.parentElement?.querySelector('input[type="number"]')
 
         if (limitInput) {
           await user.clear(limitInput)
@@ -149,8 +155,7 @@ describe('JinaReader', () => {
 
           expect(onCrawlOptionsChange).toHaveBeenCalled()
         }
-      }
-      else {
+      } else {
         // Options might not be visible, just verify component renders
         // Options might not be visible, just verify component renders
         expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
@@ -202,7 +207,10 @@ describe('JinaReader', () => {
       const mockCreateTask = createJinaReaderTask as Mock
       let resolvePromise: () => void
       const taskPromise = new Promise((resolve) => {
-        resolvePromise = () => resolve({ data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' } })
+        resolvePromise = () =>
+          resolve({
+            data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' },
+          })
       })
       mockCreateTask.mockImplementation(() => taskPromise)
 
@@ -316,7 +324,9 @@ describe('JinaReader', () => {
 
       // Assert - options should be folded after crawl starts
       await waitFor(() => {
-        expect(screen.queryByText('datasetCreation.stepOne.website.crawlSubPage')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('datasetCreation.stepOne.website.crawlSubPage'),
+        ).not.toBeInTheDocument()
       })
     })
   })
@@ -349,7 +359,10 @@ describe('JinaReader', () => {
       const mockCreateTask = createJinaReaderTask as Mock
       let resolvePromise: () => void
       const taskPromise = new Promise((resolve) => {
-        resolvePromise = () => resolve({ data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' } })
+        resolvePromise = () =>
+          resolve({
+            data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' },
+          })
       })
       mockCreateTask.mockImplementation(() => taskPromise)
 
@@ -388,17 +401,21 @@ describe('JinaReader', () => {
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
+      expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<JinaReader {...props} />)
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
       const mockCreateTask = createJinaReaderTask as Mock
-      mockCreateTask.mockResolvedValue({ data: { title: 'T', content: 'C', description: 'D', url: 'https://a.com' } })
+      mockCreateTask.mockResolvedValue({
+        data: { title: 'T', content: 'C', description: 'D', url: 'https://a.com' },
+      })
 
       const props = createDefaultProps()
 
@@ -429,9 +446,8 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       await userEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should handle URL input and run button click', async () => {
@@ -549,7 +565,9 @@ describe('JinaReader', () => {
       // Assert - options should be hidden
       // Assert - options should be hidden
       // Assert - options should be hidden
-      expect(screen.queryByText('datasetCreation.stepOne.website.crawlSubPage')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetCreation.stepOne.website.crawlSubPage'),
+      ).not.toBeInTheDocument()
 
       await userEvent.click(optionsHeader)
 
@@ -663,7 +681,9 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
 
       expect(screen.getByText('Crawl failed due to network error'))!.toBeInTheDocument()
@@ -686,7 +706,9 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -701,7 +723,8 @@ describe('JinaReader', () => {
         current: 100,
         total: 100,
         data: Array.from({ length: 100 }, (_, i) =>
-          createCrawlResultItem({ source_url: `https://example.com/${i}` })),
+          createCrawlResultItem({ source_url: `https://example.com/${i}` }),
+        ),
       })
 
       const props = createDefaultProps({
@@ -717,15 +740,6 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalled()
       })
-    })
-  })
-
-  // Component Memoization Tests
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert - React.memo components have $$typeof Symbol(react.memo)
-      expect(JinaReader.$$typeof?.toString()).toBe('Symbol(react.memo)')
-      expect((JinaReader as unknown as { type: unknown }).type).toBeDefined()
     })
   })
 
@@ -846,7 +860,9 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
 
       consoleSpy.mockRestore()
@@ -870,7 +886,9 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -892,7 +910,9 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.unknownError'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.unknownError'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -1433,7 +1453,9 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
+        expect(
+          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
+        )!.toBeInTheDocument()
       })
     })
   })

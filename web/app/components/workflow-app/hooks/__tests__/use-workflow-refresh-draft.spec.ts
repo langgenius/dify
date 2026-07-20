@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { BlockEnum } from '@/app/components/workflow/types'
+import { AppModeEnum } from '@/types/app'
 import { useWorkflowRefreshDraft } from '../use-workflow-refresh-draft'
 
 const mockHandleUpdateWorkflowCanvas = vi.fn()
@@ -11,6 +12,11 @@ const mockSetEnvSecrets = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetIsWorkflowDataLoaded = vi.fn()
 const mockCancel = vi.fn()
+let appStoreState: {
+  appDetail: {
+    mode: string
+  }
+}
 
 let workflowStoreState: {
   appId: string
@@ -28,6 +34,10 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => workflowStoreState,
   }),
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({
@@ -59,6 +69,9 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       setEnvSecrets: mockSetEnvSecrets,
       setConversationVariables: mockSetConversationVariables,
       setIsWorkflowDataLoaded: mockSetIsWorkflowDataLoaded,
+    }
+    appStoreState = {
+      appDetail: { mode: AppModeEnum.ADVANCED_CHAT },
     }
     mockFetchWorkflowDraft.mockResolvedValue(draftResponse)
   })
@@ -138,6 +151,70 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
         { id: 'env-plain', value_type: 'text', value: 'visible', name: 'PLAIN' },
       ])
       expect(mockSetConversationVariables).toHaveBeenCalledWith([{ id: 'conversation-1' }])
+    })
+  })
+
+  it('should restore a local start placeholder for workflow drafts without an entry node', async () => {
+    appStoreState = {
+      appDetail: { mode: AppModeEnum.WORKFLOW },
+    }
+    mockFetchWorkflowDraft.mockResolvedValue({
+      hash: 'server-hash',
+      graph: {
+        nodes: [],
+        edges: [],
+      },
+      environment_variables: [],
+      conversation_variables: [],
+    })
+
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+
+    act(() => {
+      result.current.handleRefreshWorkflowDraft()
+    })
+
+    await waitFor(() => {
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
+        nodes: [
+          expect.objectContaining({
+            data: expect.objectContaining({
+              type: BlockEnum.StartPlaceholder,
+              title: 'workflow.blocks.start-placeholder',
+              desc: '',
+              selected: true,
+            }),
+          }),
+        ],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      })
+    })
+  })
+
+  it('should not restore a local start placeholder for non-workflow app modes', async () => {
+    mockFetchWorkflowDraft.mockResolvedValue({
+      hash: 'server-hash',
+      graph: {
+        nodes: [],
+        edges: [],
+      },
+      environment_variables: [],
+      conversation_variables: [],
+    })
+
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+
+    act(() => {
+      result.current.handleRefreshWorkflowDraft()
+    })
+
+    await waitFor(() => {
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      })
     })
   })
 

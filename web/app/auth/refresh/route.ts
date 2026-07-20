@@ -1,54 +1,57 @@
-import { API_PREFIX } from '@/config'
-import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
+import type { LoginRedirectTarget } from '@/utils/login-redirect'
+import { resolveServerConsoleApiUrl } from '@/service/server'
+import { getServerLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 
 const REFRESH_TOKEN_PATH = '/refresh-token'
 const AUTH_REFRESH_PATH = `${basePath}/auth/refresh`
-const DEFAULT_REDIRECT_PATH = `${basePath}/apps`
+const INTERNAL_PATH_PARSE_BASE = 'https://login-redirect.invalid'
 
-const withTrailingSlash = (value: string) => value.endsWith('/') ? value : `${value}/`
-const withoutLeadingSlash = (value: string) => value.startsWith('/') ? value.slice(1) : value
+function normalizeRoutePathname(pathname: string) {
+  let decodedPathname = pathname
+  for (let decodeCount = 0; decodeCount < 2; decodeCount += 1) {
+    try {
+      const nextPathname = decodeURIComponent(decodedPathname)
+      if (nextPathname === decodedPathname) break
+      decodedPathname = nextPathname
+    } catch {
+      break
+    }
+  }
 
-const resolveAbsoluteUrlPrefix = (value: string) => {
-  try {
-    return new URL(value).toString()
-  }
-  catch {
-    return null
-  }
+  const collapsedPathname = decodedPathname.replace(/\/{2,}/g, '/')
+  if (collapsedPathname === '/') return collapsedPathname
+  return collapsedPathname.replace(/\/+$/, '')
 }
 
-const resolveServerConsoleApiUrl = (pathname: string, requestUrl: URL) => {
-  const requestPath = withoutLeadingSlash(pathname)
-  const apiPrefix = SERVER_CONSOLE_API_PREFIX
-    || resolveAbsoluteUrlPrefix(API_PREFIX)
-    || new URL(API_PREFIX, requestUrl.origin).toString()
+const addBasePathToInternalTarget = (target: LoginRedirectTarget): LoginRedirectTarget => {
+  if (!basePath || target.kind !== 'internal') return target
 
-  if (!apiPrefix)
-    return null
+  const targetUrl = new URL(target.href, INTERNAL_PATH_PARSE_BASE)
+  if (targetUrl.pathname === basePath || targetUrl.pathname.startsWith(`${basePath}/`))
+    return target
 
-  return new URL(requestPath, withTrailingSlash(apiPrefix)).toString()
+  return { kind: 'internal', href: `${basePath}${target.href}` }
 }
 
-const resolveSafeRedirectPath = (request: Request) => {
+const resolveSafeRedirectTarget = (request: Request): LoginRedirectTarget => {
   const requestUrl = new URL(request.url)
   const redirectUrl = requestUrl.searchParams.get('redirect_url')
+  const fallback = getServerLoginFallback(basePath)
 
-  if (!redirectUrl)
-    return DEFAULT_REDIRECT_PATH
+  if (!redirectUrl) return fallback
 
-  try {
-    const target = new URL(redirectUrl, requestUrl.origin)
-    if (target.origin !== requestUrl.origin)
-      return DEFAULT_REDIRECT_PATH
-    if (target.pathname === AUTH_REFRESH_PATH)
-      return DEFAULT_REDIRECT_PATH
+  const target = resolveLoginRedirectTarget(redirectUrl, {
+    allowSameOriginAbsolute: false,
+  })
+  if (!target) return fallback
 
-    return `${target.pathname}${target.search}`
-  }
-  catch {
-    return DEFAULT_REDIRECT_PATH
-  }
+  const normalizedTarget = addBasePathToInternalTarget(target)
+  const targetUrl = new URL(normalizedTarget.href, INTERNAL_PATH_PARSE_BASE)
+  if (normalizeRoutePathname(targetUrl.pathname) === normalizeRoutePathname(AUTH_REFRESH_PATH))
+    return fallback
+
+  return normalizedTarget
 }
 
 const getSetCookieHeaders = (headers: Headers) => {
@@ -65,14 +68,13 @@ const getSetCookieHeaders = (headers: Headers) => {
   return setCookie ? [setCookie] : []
 }
 
-const createRedirectResponse = (request: Request, pathname: string, setCookies: string[] = []) => {
+const createRedirectResponse = (pathname: string, setCookies: string[] = []) => {
   const headers = new Headers({
     'Cache-Control': 'no-store',
-    'Location': new URL(pathname, request.url).toString(),
+    Location: pathname,
   })
 
-  for (const cookie of setCookies)
-    headers.append('Set-Cookie', cookie)
+  for (const cookie of setCookies) headers.append('Set-Cookie', cookie)
 
   return new Response(null, {
     status: 303,
@@ -80,17 +82,17 @@ const createRedirectResponse = (request: Request, pathname: string, setCookies: 
   })
 }
 
-const createSigninRedirectResponse = (request: Request, redirectPath: string) =>
-  createRedirectResponse(request, `${basePath}/signin?redirect_url=${encodeURIComponent(redirectPath)}`)
+const createSigninRedirectResponse = (redirectTarget: LoginRedirectTarget) =>
+  createRedirectResponse(
+    `${basePath}/signin?redirect_url=${encodeURIComponent(redirectTarget.href)}`,
+  )
 
 export async function GET(request: Request) {
-  const requestUrl = new URL(request.url)
-  const redirectPath = resolveSafeRedirectPath(request)
-  const refreshUrl = resolveServerConsoleApiUrl(REFRESH_TOKEN_PATH, requestUrl)
+  const redirectTarget = resolveSafeRedirectTarget(request)
+  const refreshUrl = resolveServerConsoleApiUrl(REFRESH_TOKEN_PATH)
   const cookie = request.headers.get('cookie')
 
-  if (!refreshUrl || !cookie)
-    return createSigninRedirectResponse(request, redirectPath)
+  if (!refreshUrl || !cookie) return createSigninRedirectResponse(redirectTarget)
 
   try {
     const response = await fetch(refreshUrl, {
@@ -102,12 +104,10 @@ export async function GET(request: Request) {
       cache: 'no-store',
     })
 
-    if (!response.ok)
-      return createSigninRedirectResponse(request, redirectPath)
+    if (!response.ok) return createSigninRedirectResponse(redirectTarget)
 
-    return createRedirectResponse(request, redirectPath, getSetCookieHeaders(response.headers))
-  }
-  catch {
-    return createSigninRedirectResponse(request, redirectPath)
+    return createRedirectResponse(redirectTarget.href, getSetCookieHeaders(response.headers))
+  } catch {
+    return createSigninRedirectResponse(redirectTarget)
   }
 }

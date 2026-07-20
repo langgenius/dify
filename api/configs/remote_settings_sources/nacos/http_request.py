@@ -20,6 +20,12 @@ class NacosHttpClient:
         self.token: str | None = None
         self.token_ttl = 18000
         self.token_expire_time: float = 0
+        # Bounded timeouts so a slow or unresponsive Nacos server cannot hang the API
+        # service indefinitely during startup or token refresh.
+        self.timeout = httpx.Timeout(
+            float(os.getenv("DIFY_ENV_NACOS_REQUEST_TIMEOUT", "10.0")),
+            connect=float(os.getenv("DIFY_ENV_NACOS_CONNECT_TIMEOUT", "3.0")),
+        )
 
     def http_request(
         self, url: str, method: str = "GET", headers: dict[str, str] | None = None, params: dict[str, str] | None = None
@@ -28,12 +34,17 @@ class NacosHttpClient:
             headers = {}
         if params is None:
             params = {}
+        full_url = "http://" + self.server + url
         try:
             self._inject_auth_info(headers, params)
-            response = httpx.request(method, url="http://" + self.server + url, headers=headers, params=params)
+            response = httpx.request(method, url=full_url, headers=headers, params=params, timeout=self.timeout)
             response.raise_for_status()
             return response.text
+        except httpx.TimeoutException as e:
+            logger.warning("Request to Nacos timed out (url=%s, timeout=%s): %s", full_url, self.timeout, e)
+            return f"Request to Nacos timed out: {e}"
         except httpx.RequestError as e:
+            logger.warning("Request to Nacos failed (url=%s): %s", full_url, e)
             return f"Request to Nacos failed: {e}"
 
     def _inject_auth_info(self, headers: dict[str, str], params: dict[str, str], module: str = "config") -> None:
@@ -78,13 +89,16 @@ class NacosHttpClient:
         params = {"username": self.username, "password": self.password}
         url = "http://" + self.server + "/nacos/v1/auth/login"
         try:
-            resp = httpx.request("POST", url, headers=None, params=params)
+            resp = httpx.request("POST", url, headers=None, params=params, timeout=self.timeout)
             resp.raise_for_status()
             response_data = resp.json()
             self.token = response_data.get("accessToken")
             self.token_ttl = response_data.get("tokenTtl", 18000)
             self.token_expire_time = current_time + self.token_ttl - 10
             return self.token
+        except httpx.TimeoutException:
+            logger.exception("[get-access-token] request to Nacos timed out (url=%s, timeout=%s)", url, self.timeout)
+            raise
         except Exception:
             logger.exception("[get-access-token] exception occur")
             raise

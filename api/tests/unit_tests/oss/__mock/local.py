@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 
 from tests.unit_tests.oss.__mock.base import (
     get_example_data,
@@ -40,7 +39,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
 @pytest.fixture
-def setup_local_fs_mock(monkeypatch: MonkeyPatch):
+def setup_local_fs_mock(monkeypatch: pytest.MonkeyPatch):
     if MOCK:
         monkeypatch.setattr(Path, "write_bytes", MockLocalFSClass.write_bytes)
         monkeypatch.setattr(Path, "read_bytes", MockLocalFSClass.read_bytes)

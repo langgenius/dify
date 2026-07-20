@@ -2,16 +2,13 @@ import type { FC } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { useQuery } from '@tanstack/react-query'
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import {
   BoxGroup,
@@ -28,19 +25,10 @@ import IndexMethod from './components/index-method'
 import RetrievalSetting from './components/retrieval-setting'
 import { useConfig } from './hooks/use-config'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
-import {
-  ChunkStructureEnum,
-  IndexMethodEnum,
-} from './types'
-import {
-  getKnowledgeBaseValidationIssue,
-  KnowledgeBaseValidationIssueCode,
-} from './utils'
+import { ChunkStructureEnum, IndexMethodEnum } from './types'
+import { getKnowledgeBaseValidationIssue, KnowledgeBaseValidationIssueCode } from './utils'
 
-const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
   const { nodesReadOnly } = useNodesReadOnly()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -54,11 +42,11 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   const retrievalRerankingEnable = retrievalModel?.reranking_enable
   const embeddingModelProvider = data.embedding_model_provider
   const { data: embeddingProviderModelList } = useQuery(
-    consoleQuery.modelProviders.models.queryOptions({
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: embeddingModelProvider || '' } },
       enabled: indexingTechnique === IndexMethodEnum.QUALIFIED && !!embeddingModelProvider,
       refetchOnWindowFocus: false,
-      select: response => response.data,
+      select: normalizeModelProviderModelsResponse,
     }),
   )
 
@@ -79,24 +67,31 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleSummaryIndexSettingChange,
   } = useConfig(id)
 
-  const filterVar = useCallback((variable: Var) => {
-    if (!data.chunk_structure)
-      return false
-    switch (data.chunk_structure) {
-      case ChunkStructureEnum.general:
-        return variable.schemaType === 'general_structure' || variable.schemaType === 'multimodal_general_structure'
-      case ChunkStructureEnum.parent_child:
-        return variable.schemaType === 'parent_child_structure' || variable.schemaType === 'multimodal_parent_child_structure'
-      case ChunkStructureEnum.question_answer:
-        return variable.schemaType === 'qa_structure'
-      default:
-        return false
-    }
-  }, [data.chunk_structure])
+  const filterVar = useCallback(
+    (variable: Var) => {
+      if (!data.chunk_structure) return false
+      switch (data.chunk_structure) {
+        case ChunkStructureEnum.general:
+          return (
+            variable.schemaType === 'general_structure' ||
+            variable.schemaType === 'multimodal_general_structure'
+          )
+        case ChunkStructureEnum.parent_child:
+          return (
+            variable.schemaType === 'parent_child_structure' ||
+            variable.schemaType === 'multimodal_parent_child_structure'
+          )
+        case ChunkStructureEnum.question_answer:
+          return variable.schemaType === 'qa_structure'
+        default:
+          return false
+      }
+    },
+    [data.chunk_structure],
+  )
 
   const chunkTypePlaceHolder = useMemo(() => {
-    if (!data.chunk_structure)
-      return ''
+    if (!data.chunk_structure) return ''
     let placeholder = ''
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:
@@ -129,7 +124,15 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
       embeddingModelList,
       rerankModelList,
     })
-  }, [data.embedding_model_provider, data.embedding_model, data.retrieval_model?.reranking_enable, data.retrieval_model?.reranking_model, data.indexing_technique, embeddingModelList, rerankModelList])
+  }, [
+    data.embedding_model_provider,
+    data.embedding_model,
+    data.retrieval_model?.reranking_enable,
+    data.retrieval_model?.reranking_model,
+    data.indexing_technique,
+    embeddingModelList,
+    rerankModelList,
+  ])
 
   const validationPayload = useMemo(() => {
     return {
@@ -170,16 +173,16 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     embeddingModelList,
   })
 
-  const chunkStructureWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.chunkStructureRequired
-  const chunksInputWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.chunksVariableRequired
-  const embeddingModelWarning = indexingTechnique === IndexMethodEnum.QUALIFIED && embeddingModelStatus !== 'active'
+  const chunkStructureWarning =
+    validationIssue?.code === KnowledgeBaseValidationIssueCode.chunkStructureRequired
+  const chunksInputWarning =
+    validationIssue?.code === KnowledgeBaseValidationIssueCode.chunksVariableRequired
+  const embeddingModelWarning =
+    indexingTechnique === IndexMethodEnum.QUALIFIED && embeddingModelStatus !== 'active'
 
   return (
     <div>
-      <Group
-        className="py-3"
-        withBorderBottom={!!data.chunk_structure}
-      >
+      <Group className="py-3" withBorderBottom={!!data.chunk_structure}>
         <ChunkStructure
           chunkStructure={data.chunk_structure}
           onChunkStructureChange={handleChunkStructureChange}
@@ -187,100 +190,96 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
           readonly={nodesReadOnly}
         />
       </Group>
-      {
-        !!data.chunk_structure && (
-          <>
-            <BoxGroupField
-              boxGroupProps={{
-                boxProps: { withBorderBottom: true },
-              }}
-              fieldProps={{
-                fieldTitleProps: {
-                  title: t('nodes.knowledgeBase.chunksInput', { ns: 'workflow' }),
-                  tooltip: t('nodes.knowledgeBase.chunksInputTip', { ns: 'workflow' }),
-                  warningDot: chunksInputWarning,
-                },
-              }}
-            >
-              <VarReferencePicker
-                nodeId={id}
-                isShowNodeName
-                value={data.index_chunk_variable_selector}
-                onChange={handleInputVariableChange}
+      {!!data.chunk_structure && (
+        <>
+          <BoxGroupField
+            boxGroupProps={{
+              boxProps: { withBorderBottom: true },
+            }}
+            fieldProps={{
+              fieldTitleProps: {
+                title: t(($) => $['nodes.knowledgeBase.chunksInput'], { ns: 'workflow' }),
+                tooltip: t(($) => $['nodes.knowledgeBase.chunksInputTip'], { ns: 'workflow' }),
+                warningDot: chunksInputWarning,
+              },
+            }}
+          >
+            <VarReferencePicker
+              nodeId={id}
+              isShowNodeName
+              value={data.index_chunk_variable_selector}
+              onChange={handleInputVariableChange}
+              readonly={nodesReadOnly}
+              filterVar={filterVar}
+              isFilterFileVar
+              isSupportFileVar={false}
+              preferSchemaType
+              typePlaceHolder={chunkTypePlaceHolder}
+            />
+          </BoxGroupField>
+          <BoxGroup>
+            <div className="space-y-3">
+              <IndexMethod
+                chunkStructure={data.chunk_structure}
+                indexMethod={data.indexing_technique}
+                onIndexMethodChange={handleIndexMethodChange}
+                keywordNumber={data.keyword_number}
+                onKeywordNumberChange={handleKeywordNumberChange}
                 readonly={nodesReadOnly}
-                filterVar={filterVar}
-                isFilterFileVar
-                isSupportFileVar={false}
-                preferSchemaType
-                typePlaceHolder={chunkTypePlaceHolder}
               />
-            </BoxGroupField>
-            <BoxGroup>
-              <div className="space-y-3">
-                <IndexMethod
-                  chunkStructure={data.chunk_structure}
-                  indexMethod={data.indexing_technique}
-                  onIndexMethodChange={handleIndexMethodChange}
-                  keywordNumber={data.keyword_number}
-                  onKeywordNumberChange={handleKeywordNumberChange}
+              {data.indexing_technique === IndexMethodEnum.QUALIFIED && (
+                <EmbeddingModel
+                  embeddingModel={data.embedding_model}
+                  embeddingModelProvider={data.embedding_model_provider}
+                  onEmbeddingModelChange={handleEmbeddingModelChange}
+                  warningDot={embeddingModelWarning}
                   readonly={nodesReadOnly}
                 />
-                {
-                  data.indexing_technique === IndexMethodEnum.QUALIFIED && (
-                    <EmbeddingModel
-                      embeddingModel={data.embedding_model}
-                      embeddingModelProvider={data.embedding_model_provider}
-                      onEmbeddingModelChange={handleEmbeddingModelChange}
-                      warningDot={embeddingModelWarning}
+              )}
+              <div className="pt-1">
+                <Split className="h-px" />
+              </div>
+              {data.indexing_technique === IndexMethodEnum.QUALIFIED &&
+                [ChunkStructureEnum.general, ChunkStructureEnum.parent_child].includes(
+                  data.chunk_structure,
+                ) &&
+                IS_CE_EDITION && (
+                  <>
+                    <SummaryIndexSetting
+                      summaryIndexSetting={data.summary_index_setting}
+                      onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
                       readonly={nodesReadOnly}
                     />
-                  )
-                }
-                <div className="pt-1">
-                  <Split className="h-px" />
-                </div>
-                {
-                  data.indexing_technique === IndexMethodEnum.QUALIFIED
-                  && [ChunkStructureEnum.general, ChunkStructureEnum.parent_child].includes(data.chunk_structure)
-                  && IS_CE_EDITION && (
-                    <>
-                      <SummaryIndexSetting
-                        summaryIndexSetting={data.summary_index_setting}
-                        onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
-                        readonly={nodesReadOnly}
-                      />
-                      <div className="pt-1">
-                        <Split className="h-px" />
-                      </div>
-                    </>
-                  )
-                }
-                <RetrievalSetting
-                  indexMethod={data.indexing_technique}
-                  searchMethod={data.retrieval_model.search_method}
-                  onRetrievalSearchMethodChange={handleRetrievalSearchMethodChange}
-                  hybridSearchMode={data.retrieval_model.reranking_mode}
-                  onHybridSearchModeChange={handleHybridSearchModeChange}
-                  weightedScore={data.retrieval_model.weights}
-                  onWeightedScoreChange={handleWeighedScoreChange}
-                  rerankingModelEnabled={data.retrieval_model.reranking_enable}
-                  onRerankingModelEnabledChange={handleRerankingModelEnabledChange}
-                  rerankingModel={data.retrieval_model.reranking_model}
-                  onRerankingModelChange={handleRerankingModelChange}
-                  topK={data.retrieval_model.top_k}
-                  onTopKChange={handleTopKChange}
-                  scoreThreshold={data.retrieval_model.score_threshold}
-                  onScoreThresholdChange={handleScoreThresholdChange}
-                  isScoreThresholdEnabled={data.retrieval_model.score_threshold_enabled}
-                  onScoreThresholdEnabledChange={handleScoreThresholdEnabledChange}
-                  showMultiModalTip={showMultiModalTip}
-                  readonly={nodesReadOnly}
-                />
-              </div>
-            </BoxGroup>
-          </>
-        )
-      }
+                    <div className="pt-1">
+                      <Split className="h-px" />
+                    </div>
+                  </>
+                )}
+              <RetrievalSetting
+                indexMethod={data.indexing_technique}
+                searchMethod={data.retrieval_model.search_method}
+                onRetrievalSearchMethodChange={handleRetrievalSearchMethodChange}
+                hybridSearchMode={data.retrieval_model.reranking_mode}
+                onHybridSearchModeChange={handleHybridSearchModeChange}
+                weightedScore={data.retrieval_model.weights}
+                onWeightedScoreChange={handleWeighedScoreChange}
+                rerankingModelEnabled={data.retrieval_model.reranking_enable}
+                onRerankingModelEnabledChange={handleRerankingModelEnabledChange}
+                rerankingModel={data.retrieval_model.reranking_model}
+                onRerankingModelChange={handleRerankingModelChange}
+                topK={data.retrieval_model.top_k}
+                onTopKChange={handleTopKChange}
+                scoreThreshold={data.retrieval_model.score_threshold}
+                onScoreThresholdChange={handleScoreThresholdChange}
+                isScoreThresholdEnabled={data.retrieval_model.score_threshold_enabled}
+                onScoreThresholdEnabledChange={handleScoreThresholdEnabledChange}
+                showMultiModalTip={showMultiModalTip}
+                readonly={nodesReadOnly}
+              />
+            </div>
+          </BoxGroup>
+        </>
+      )}
     </div>
   )
 }

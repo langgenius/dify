@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from typing import Any, Literal
+from typing import Any, Literal, override
 
 from pydantic import BaseModel, model_validator
 from pyobvector import VECTOR, ObVecClient, cosine_distance, inner_product, l2_distance  # type: ignore
@@ -86,6 +86,7 @@ class OceanBaseVector(BaseVector):
             self._load_collection_fields()
         self._hybrid_search_enabled = self._check_hybrid_search_support()  # Check if hybrid search is supported
 
+    @override
     def get_type(self) -> str:
         return VectorType.OCEANBASE
 
@@ -114,6 +115,7 @@ class OceanBaseVector(BaseVector):
         """
         return field in self._fields
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self._vec_dim = len(embeddings[0])
         self._create_collection()
@@ -237,6 +239,7 @@ class OceanBaseVector(BaseVector):
             logger.warning("Failed to check OceanBase version: %s. Disabling hybrid search.", str(e))
             return False
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         ids = self._get_uuids(documents)
         batch_size = self._config.batch_size
@@ -283,6 +286,7 @@ class OceanBaseVector(BaseVector):
                     self._collection_name,
                 )
 
+    @override
     def text_exists(self, id: str) -> bool:
         try:
             cur = self._client.get(table_name=self._collection_name, ids=id)
@@ -295,6 +299,7 @@ class OceanBaseVector(BaseVector):
             )
             raise Exception(f"Failed to check text existence for id '{id}'") from e
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
@@ -309,6 +314,7 @@ class OceanBaseVector(BaseVector):
             )
             raise Exception(f"Failed to delete documents from collection '{self._collection_name}'") from e
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
         try:
             import re
@@ -343,6 +349,7 @@ class OceanBaseVector(BaseVector):
             )
             raise Exception(f"Failed to query documents by metadata field '{key}'") from e
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
@@ -381,6 +388,7 @@ class OceanBaseVector(BaseVector):
 
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         if not self._hybrid_search_enabled:
             logger.warning(
@@ -438,6 +446,7 @@ class OceanBaseVector(BaseVector):
             )
             raise Exception(f"Full-text search failed for collection '{self._collection_name}'") from e
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from sqlalchemy import text
 
@@ -508,6 +517,7 @@ class OceanBaseVector(BaseVector):
             return -distance
         raise ValueError(f"Unsupported metric_type '{metric}'")
 
+    @override
     def delete(self):
         try:
             self._client.drop_table_if_exist(self._collection_name)
@@ -518,6 +528,7 @@ class OceanBaseVector(BaseVector):
 
 
 class OceanBaseVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(
         self,
         dataset: Dataset,

@@ -1,8 +1,17 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import VersionHistoryButton from '../version-history-button'
+import { VersionHistoryButton } from '../version-history-button'
 
 let mockTheme: 'light' | 'dark' = 'light'
-const workflowShortcutHandlers = vi.hoisted(() => new Map<string, () => void | Promise<void>>())
+const hotkeyRegistrations = vi.hoisted(
+  () =>
+    new Map<
+      string,
+      {
+        callback: () => void
+        options?: { ignoreInputs?: boolean }
+      }
+    >(),
+)
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({
@@ -10,11 +19,15 @@ vi.mock('@/hooks/use-theme', () => ({
   }),
 }))
 
-vi.mock('../../shortcuts/use-workflow-hotkeys', () => ({
-  useWorkflowShortcut: (id: string, callback: () => void | Promise<void>) => {
-    workflowShortcutHandlers.set(id, callback)
-  },
-}))
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (hotkey: string, callback: () => void, options?: { ignoreInputs?: boolean }) => {
+      hotkeyRegistrations.set(hotkey, { callback, options })
+    },
+  }
+})
 
 vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -25,7 +38,7 @@ vi.mock('@langgenius/dify-ui/tooltip', () => ({
 describe('VersionHistoryButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    workflowShortcutHandlers.clear()
+    hotkeyRegistrations.clear()
     mockTheme = 'light'
   })
 
@@ -43,10 +56,13 @@ describe('VersionHistoryButton', () => {
     render(<VersionHistoryButton onClick={onClick} />)
 
     await act(async () => {
-      await workflowShortcutHandlers.get('workflow.version-history')?.()
+      hotkeyRegistrations.get('Mod+Shift+H')?.callback()
     })
 
     expect(onClick).toHaveBeenCalledTimes(1)
+    expect(hotkeyRegistrations.get('Mod+Shift+H')?.options).toEqual(
+      expect.objectContaining({ ignoreInputs: true }),
+    )
   })
 
   it('should render the tooltip popup content on hover', async () => {
@@ -55,12 +71,5 @@ describe('VersionHistoryButton', () => {
     fireEvent.mouseEnter(screen.getByRole('button'))
 
     expect(await screen.findByText('workflow.common.versionHistory')).toBeInTheDocument()
-  })
-
-  it('should apply dark theme styles when the theme is dark', () => {
-    mockTheme = 'dark'
-    render(<VersionHistoryButton onClick={vi.fn()} />)
-
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
   })
 })

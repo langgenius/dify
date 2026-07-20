@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { resolvePlatform, SUBDIR } from './index.js'
+import { resolvePlatform, SUBDIR } from './index'
 
 describe('resolvePlatform', () => {
   it('id matches process.platform', () => {
@@ -12,8 +12,7 @@ describe('resolvePlatform', () => {
     const p = resolvePlatform()
     if (p.id() === 'win32') {
       expect(p.configDir()).toMatch(/difyctl$/)
-    }
-    else {
+    } else {
       expect(p.configDir()).toBe(join(homedir(), '.config', SUBDIR))
     }
   })
@@ -22,11 +21,9 @@ describe('resolvePlatform', () => {
     const p = resolvePlatform()
     if (p.id() === 'win32') {
       expect(p.cacheDir()).toMatch(/difyctl$/)
-    }
-    else if (p.id() === 'darwin') {
+    } else if (p.id() === 'darwin') {
       expect(p.cacheDir()).toBe(join(homedir(), 'Library', 'Caches', SUBDIR))
-    }
-    else {
+    } else {
       expect(p.cacheDir()).toBe(join(homedir(), '.cache', SUBDIR))
     }
   })

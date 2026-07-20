@@ -3,12 +3,48 @@
 import * as z from 'zod'
 
 /**
+ * RecommendedAppDetailResponse
+ */
+export const zRecommendedAppDetailResponse = z.object({
+  can_trial: z.boolean().nullish(),
+  export_data: z.string(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  id: z.string(),
+  mode: z.string(),
+  name: z.string(),
+})
+
+/**
+ * RecommendedAppDetailNullableResponse
+ */
+export const zRecommendedAppDetailNullableResponse = zRecommendedAppDetailResponse.nullable()
+
+/**
+ * BannerResponse
+ */
+export const zBannerResponse = z.object({
+  content: z.unknown(),
+  created_at: z.string().nullish(),
+  id: z.string(),
+  link: z.string().nullish(),
+  sort: z.int(),
+  status: z.string(),
+})
+
+/**
+ * BannerListResponse
+ */
+export const zBannerListResponse = z.array(zBannerResponse)
+
+/**
  * RecommendedAppInfoResponse
  */
 export const zRecommendedAppInfoResponse = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
   id: z.string(),
   mode: z.string().nullish(),
   name: z.string().nullish(),
@@ -18,7 +54,7 @@ export const zRecommendedAppInfoResponse = z.object({
  * RecommendedAppResponse
  */
 export const zRecommendedAppResponse = z.object({
-  app: zRecommendedAppInfoResponse.optional(),
+  app: zRecommendedAppInfoResponse.nullish(),
   app_id: z.string(),
   can_trial: z.boolean().nullish(),
   categories: z.array(z.string()).optional(),
@@ -38,6 +74,56 @@ export const zRecommendedAppListResponse = z.object({
   recommended_apps: z.array(zRecommendedAppResponse),
 })
 
+/**
+ * LearnDifyAppListResponse
+ */
+export const zLearnDifyAppListResponse = z.object({
+  recommended_apps: z.array(zRecommendedAppResponse),
+})
+
+/**
+ * RecommendedAppInfoResponse
+ */
+export const zRecommendedAppInfoResponseWritable = z.object({
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  id: z.string(),
+  mode: z.string().nullish(),
+  name: z.string().nullish(),
+})
+
+/**
+ * RecommendedAppResponse
+ */
+export const zRecommendedAppResponseWritable = z.object({
+  app: zRecommendedAppInfoResponseWritable.nullish(),
+  app_id: z.string(),
+  can_trial: z.boolean().nullish(),
+  categories: z.array(z.string()).optional(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  description: z.string().nullish(),
+  is_listed: z.boolean().nullish(),
+  position: z.int().nullish(),
+  privacy_policy: z.string().nullish(),
+})
+
+/**
+ * RecommendedAppListResponse
+ */
+export const zRecommendedAppListResponseWritable = z.object({
+  categories: z.array(z.string()),
+  recommended_apps: z.array(zRecommendedAppResponseWritable),
+})
+
+/**
+ * LearnDifyAppListResponse
+ */
+export const zLearnDifyAppListResponseWritable = z.object({
+  recommended_apps: z.array(zRecommendedAppResponseWritable),
+})
+
 export const zGetExploreAppsQuery = z.object({
   language: z.string().optional(),
 })
@@ -47,16 +133,29 @@ export const zGetExploreAppsQuery = z.object({
  */
 export const zGetExploreAppsResponse = zRecommendedAppListResponse
 
-export const zGetExploreAppsByAppIdPath = z.object({
-  app_id: z.string(),
+export const zGetExploreAppsLearnDifyQuery = z.object({
+  language: z.string().optional(),
 })
 
 /**
  * Success
  */
-export const zGetExploreAppsByAppIdResponse = z.record(z.string(), z.unknown())
+export const zGetExploreAppsLearnDifyResponse = zLearnDifyAppListResponse
+
+export const zGetExploreAppsByAppIdPath = z.object({
+  app_id: z.uuid(),
+})
 
 /**
  * Success
  */
-export const zGetExploreBannersResponse = z.record(z.string(), z.unknown())
+export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailNullableResponse
+
+export const zGetExploreBannersQuery = z.object({
+  language: z.string().optional().default('en-US'),
+})
+
+/**
+ * Success
+ */
+export const zGetExploreBannersResponse = zBannerListResponse

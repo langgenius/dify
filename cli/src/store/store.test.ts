@@ -12,6 +12,18 @@ describe('YamlStore.doGet', () => {
     expect(store.doGet({ key: 'name', default: 'fallback' })).toBe('fallback')
   })
 
+  it('returns default when content is empty', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('')
+    expect(store.doGet({ key: 'name', default: 'fallback' })).toBe('fallback')
+  })
+
+  it('returns default when content contains only comments', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('# empty configuration\n')
+    expect(store.doGet({ key: 'name', default: 'fallback' })).toBe('fallback')
+  })
+
   it('reads a flat key', () => {
     const store = new YamlStore('/irrelevant')
     store.setRawContent('name: alice\n')
@@ -22,6 +34,53 @@ describe('YamlStore.doGet', () => {
     const store = new YamlStore('/irrelevant')
     store.setRawContent('user:\n  id: 42\n')
     expect(store.doGet({ key: 'user.id', default: 0 })).toBe(42)
+  })
+
+  it('resolves YAML merge keys', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('defaults: &defaults\n  format: json\nselected:\n  <<: *defaults\n')
+    expect(store.doGet({ key: 'selected.format', default: '' })).toBe('json')
+  })
+
+  it('parses timestamp scalars as dates', () => {
+    const store = new YamlStore('/irrelevant')
+    const timestamp = '2026-07-10T03:04:05.000Z'
+    store.setRawContent(`created_at: ${timestamp}\n`)
+    expect(store.doGet<Date | null>({ key: 'created_at', default: null })).toEqual(
+      new Date(timestamp),
+    )
+  })
+
+  it('rejects multiple YAML documents', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('name: alice\n---\nname: bob\n')
+
+    expect(() => store.doGet({ key: 'name', default: '' })).toThrowError(/single document/)
+  })
+
+  it('rejects duplicate mapping keys', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('name: alice\nname: bob\n')
+
+    expect(() => store.doGet({ key: 'name', default: '' })).toThrowError(/duplicated mapping key/)
+  })
+
+  it('rejects complex mapping keys', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('? [name, region]\n: deployment\n')
+
+    expect(() => store.doGet({ key: 'name', default: '' })).toThrowError(
+      /does not support complex keys/,
+    )
+  })
+
+  it('parses explicit YAML sets as JavaScript sets', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('features: !!set\n  workflow:\n  chat:\n')
+
+    expect(store.doGet<Set<string>>({ key: 'features', default: new Set() })).toEqual(
+      new Set(['workflow', 'chat']),
+    )
   })
 
   it('returns default for a missing flat key', () => {
@@ -49,8 +108,7 @@ describe('YamlStore.doGet', () => {
     let caught: unknown
     try {
       store.doGet({ key: 'name', default: '' })
-    }
-    catch (err) {
+    } catch (err) {
       caught = err
     }
     expect(caught).toBeInstanceOf(BadYamlFormatError)
@@ -108,13 +166,13 @@ describe('FileBasedStore.withLock concurrency', () => {
     const s1 = new YamlStore(path)
     const s2 = new YamlStore(path)
 
-    s1.lock()
+    await s1.lock()
 
-    expect(() => s2.get({ key: 'key', default: '' })).toThrow(ConcurrentAccessError)
+    await expect(s2.get({ key: 'key', default: '' })).rejects.toThrow(ConcurrentAccessError)
 
-    s1.unlock()
+    await s1.unlock()
 
-    expect(s2.get({ key: 'key', default: '' })).toBe('value')
+    expect(await s2.get({ key: 'key', default: '' })).toBe('value')
   })
 
   it('second set throws while first holds the lock, succeeds after release', async () => {
@@ -124,14 +182,16 @@ describe('FileBasedStore.withLock concurrency', () => {
     const s1 = new YamlStore(path)
     const s2 = new YamlStore(path)
 
-    s1.lock()
+    await s1.lock()
 
-    expect(() => s2.set({ key: 'key', default: '' }, 'blocked')).toThrow(ConcurrentAccessError)
+    await expect(s2.set({ key: 'key', default: '' }, 'blocked')).rejects.toThrow(
+      ConcurrentAccessError,
+    )
 
-    s1.unlock()
+    await s1.unlock()
 
-    s2.set({ key: 'key', default: '' }, 'written')
-    expect(s2.get({ key: 'key', default: '' })).toBe('written')
+    await s2.set({ key: 'key', default: '' }, 'written')
+    expect(await s2.get({ key: 'key', default: '' })).toBe('written')
   })
 })
 
@@ -199,9 +259,9 @@ describe('YamlStore persistence', () => {
     await writeFile(path, 'existing: value\n')
 
     const store = new YamlStore(path)
-    store.load()
+    await store.load()
     store.doSet({ key: 'token', default: '' }, 'abc-123')
-    store.flush()
+    await store.flush()
 
     const raw = readFileSync(path, 'utf8')
     const store2 = new YamlStore(path)
@@ -210,11 +270,11 @@ describe('YamlStore persistence', () => {
     expect(store2.doGet({ key: 'existing', default: '' })).toBe('value')
   })
 
-  it('flush writes file when dirty (content changed from undefined)', () => {
+  it('flush writes file when dirty (content changed from undefined)', async () => {
     const path = join(dir, 'config.yml')
     const store = new YamlStore(path)
     store.setRawContent('key: value\n')
-    store.flush()
+    await store.flush()
     expect(existsSync(path)).toBe(true)
     expect(readFileSync(path, 'utf8')).toBe('key: value\n')
   })
@@ -223,10 +283,10 @@ describe('YamlStore persistence', () => {
     const path = join(dir, 'config.yml')
     await writeFile(path, 'key: value\n')
     const store = new YamlStore(path)
-    store.load()
+    await store.load()
     const mtime = statSync(path).mtimeMs
     store.setRawContent('key: value\n')
-    store.flush()
+    await store.flush()
     expect(statSync(path).mtimeMs).toBe(mtime)
   })
 })

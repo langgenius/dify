@@ -21,17 +21,18 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
     MemberRecipient,
 )
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FormDefinition,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,
     HumanInputFormRecipient,
     RecipientType,
+    StandaloneWebAppRecipientPayload,
 )
 
 
@@ -288,6 +289,7 @@ class _DummyForm:
     form_definition: str
     rendered_content: str
     expiration_time: datetime
+    conversation_id: str | None = None
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
     created_at: datetime = dataclasses.field(default_factory=naive_utc_now)
     selected_action_id: str | None = None
@@ -306,6 +308,9 @@ class _DummyRecipient:
     recipient_type: RecipientType
     access_token: str
     form: _DummyForm | None = None
+    recipient_payload: str = dataclasses.field(
+        default_factory=lambda: StandaloneWebAppRecipientPayload().model_dump_json()
+    )
 
 
 class _FakeScalarResult:

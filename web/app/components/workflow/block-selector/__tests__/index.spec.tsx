@@ -3,10 +3,11 @@ import { screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import NodeSelectorWrapper from '../index'
-import { BlockClassificationEnum } from '../types'
+import { BlockClassification } from '../types'
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
+)
 
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({
@@ -28,7 +29,7 @@ const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
     type,
     title,
     sort: 0,
-    classification: BlockClassificationEnum.Default,
+    classification: BlockClassification.Default,
     author: 'Dify',
     description: `${title} description`,
   },
@@ -53,18 +54,19 @@ const dataSource: ToolWithProvider = {
 }
 
 describe('NodeSelectorWrapper', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('filters hidden block types from hooks store and forwards data sources', async () => {
     renderWorkflowComponent(
-      <NodeSelectorWrapper
-        open
-        onSelect={vi.fn()}
-        availableBlocksTypes={[BlockEnum.Code]}
-      />,
+      <NodeSelectorWrapper open onSelect={vi.fn()} availableBlocksTypes={[BlockEnum.Code]} />,
       {
         hooksStoreProps: {
           availableNodesMetaData: {
             nodes: [
               createBlock(BlockEnum.Start, 'Start'),
+              createBlock(BlockEnum.StartPlaceholder, 'Start Placeholder'),
               createBlock(BlockEnum.Tool, 'Tool'),
               createBlock(BlockEnum.Code, 'Code'),
               createBlock(BlockEnum.DataSource, 'Data Source'),
@@ -79,6 +81,7 @@ describe('NodeSelectorWrapper', () => {
 
     expect(await screen.findByText('Code')).toBeInTheDocument()
     expect(screen.queryByText('Start')).not.toBeInTheDocument()
+    expect(screen.queryByText('Start Placeholder')).not.toBeInTheDocument()
     expect(screen.queryByText('Tool')).not.toBeInTheDocument()
   })
 })

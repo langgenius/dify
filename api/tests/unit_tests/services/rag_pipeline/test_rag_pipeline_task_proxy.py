@@ -23,7 +23,7 @@ def proxy(mocker: MockerFixture):
 # --- delay ---
 
 
-def test_delay_with_empty_entities_logs_warning_and_returns(mocker) -> None:
+def test_delay_with_empty_entities_logs_warning_and_returns(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue")
     proxy = RagPipelineTaskProxy(
         dataset_tenant_id="tenant-1",
@@ -37,7 +37,7 @@ def test_delay_with_empty_entities_logs_warning_and_returns(mocker) -> None:
     dispatch_mock.assert_not_called()
 
 
-def test_delay_with_entities_calls_dispatch(mocker, proxy) -> None:
+def test_delay_with_entities_calls_dispatch(mocker: MockerFixture, proxy) -> None:
     dispatch_mock = mocker.patch.object(proxy, "_dispatch")
 
     proxy.delay()
@@ -48,7 +48,7 @@ def test_delay_with_entities_calls_dispatch(mocker, proxy) -> None:
 # --- _dispatch ---
 
 
-def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker, proxy) -> None:
+def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker: MockerFixture, proxy) -> None:
     upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
     send_mock = mocker.patch.object(proxy, "_send_to_default_tenant_queue")
 
@@ -65,7 +65,7 @@ def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker, proxy) -> No
     send_mock.assert_called_once_with("file-1")
 
 
-def test_dispatch_billing_non_sandbox_uses_priority_tenant_queue(mocker, proxy) -> None:
+def test_dispatch_billing_non_sandbox_uses_priority_tenant_queue(mocker: MockerFixture, proxy) -> None:
     upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
     send_mock = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
 
@@ -82,7 +82,7 @@ def test_dispatch_billing_non_sandbox_uses_priority_tenant_queue(mocker, proxy) 
     send_mock.assert_called_once_with("file-1")
 
 
-def test_dispatch_no_billing_uses_priority_direct_queue(mocker, proxy) -> None:
+def test_dispatch_no_billing_uses_priority_direct_queue(mocker: MockerFixture, proxy) -> None:
     upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
     send_mock = mocker.patch.object(proxy, "_send_to_priority_direct_queue")
 
@@ -95,7 +95,7 @@ def test_dispatch_no_billing_uses_priority_direct_queue(mocker, proxy) -> None:
     send_mock.assert_called_once_with("file-1")
 
 
-def test_dispatch_raises_on_empty_upload_file_id(mocker, proxy) -> None:
+def test_dispatch_raises_on_empty_upload_file_id(mocker: MockerFixture, proxy) -> None:
     mocker.patch.object(proxy, "_upload_invoke_entities", return_value="")
 
     features = SimpleNamespace(billing=SimpleNamespace(enabled=False, subscription=SimpleNamespace(plan="free")))
@@ -108,7 +108,7 @@ def test_dispatch_raises_on_empty_upload_file_id(mocker, proxy) -> None:
 # --- _send_to_direct_queue ---
 
 
-def test_send_to_direct_queue_calls_task_func_delay(mocker, proxy) -> None:
+def test_send_to_direct_queue_calls_task_func_delay(mocker: MockerFixture, proxy) -> None:
     task_func = Mock()
 
     proxy._send_to_direct_queue("file-1", task_func)
@@ -122,7 +122,7 @@ def test_send_to_direct_queue_calls_task_func_delay(mocker, proxy) -> None:
 # --- _send_to_tenant_queue ---
 
 
-def test_send_to_tenant_queue_pushes_when_task_key_exists(mocker, proxy) -> None:
+def test_send_to_tenant_queue_pushes_when_task_key_exists(mocker: MockerFixture, proxy) -> None:
     proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
     task_func = Mock()
 
@@ -132,7 +132,7 @@ def test_send_to_tenant_queue_pushes_when_task_key_exists(mocker, proxy) -> None
     task_func.delay.assert_not_called()
 
 
-def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker, proxy) -> None:
+def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker: MockerFixture, proxy) -> None:
     proxy._tenant_isolated_task_queue.get_task_key.return_value = None
     task_func = Mock()
 
@@ -148,11 +148,11 @@ def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker, proxy) -
 # --- _upload_invoke_entities ---
 
 
-def test_upload_invoke_entities_returns_file_id(mocker, proxy) -> None:
+def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) -> None:
     upload_file = SimpleNamespace(id="uploaded-file-1")
     file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
     file_service_cls.return_value.upload_text.return_value = upload_file
-    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", mocker.Mock(engine="fake-engine"))
+    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))
 
     result = proxy._upload_invoke_entities()
 

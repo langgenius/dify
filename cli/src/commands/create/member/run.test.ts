@@ -1,31 +1,32 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
-import { bufferStreams } from '../../../sys/io/streams.js'
+import { bufferStreams } from '@/sys/io/streams'
 import { runCreateMember } from './run.js'
 
-function bundle(): HostsBundle {
+function active(): ActiveContext {
   return {
-    current_host: 'cloud.dify.ai',
-    token_storage: 'file',
-    tokens: { bearer: 'dfoa_test' },
-    account: { id: 'acct-1', email: 'inviter@example.com', name: 'Inviter' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [{ id: 'ws-1', name: 'Default', role: 'owner' }],
+    host: 'cloud.dify.ai',
+    email: 'inviter@example.com',
+    ctx: {
+      account: { id: 'acct-1', email: 'inviter@example.com', name: 'Inviter' },
+      workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
+    },
   }
 }
 
 function fakeClient() {
   return {
-    invite: vi.fn((_ws: string, body: { email: string, role: string }) =>
+    invite: vi.fn((_ws: string, body: { email: string; role: string }) =>
       Promise.resolve({
         result: 'success' as const,
         email: body.email.toLowerCase(),
         role: body.role,
         member_id: 'acct-new',
         invite_url: 'https://console.example.com/activate?email=x&token=tok',
-        tenant_id: 'ws-1',
-      })),
+        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+      }),
+    ),
   }
 }
 
@@ -35,13 +36,16 @@ describe('runCreateMember', () => {
     const result = await runCreateMember(
       { email: 'new@example.com', role: 'normal' },
       {
-        bundle: bundle(),
-        http: {} as KyInstance,
+        active: active(),
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
     )
-    expect(client.invite).toHaveBeenCalledWith('ws-1', { email: 'new@example.com', role: 'normal' })
+    expect(client.invite).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440000', {
+      email: 'new@example.com',
+      role: 'normal',
+    })
     expect(result.data.text()).toMatch(/Invited new@example\.com as normal/)
     expect(result.data.name()).toBe('acct-new')
     expect(result.data.json()).toMatchObject({
@@ -49,9 +53,9 @@ describe('runCreateMember', () => {
       role: 'normal',
       member_id: 'acct-new',
       invite_url: 'https://console.example.com/activate?email=x&token=tok',
-      tenant_id: 'ws-1',
+      tenant_id: '550e8400-e29b-41d4-a716-446655440000',
     })
-    expect(result.workspaceId).toBe('ws-1')
+    expect(result.workspaceId).toBe('550e8400-e29b-41d4-a716-446655440000')
   })
 
   it('rejects unknown role before any HTTP call', async () => {
@@ -60,8 +64,8 @@ describe('runCreateMember', () => {
       runCreateMember(
         { email: 'new@example.com', role: 'owner' },
         {
-          bundle: bundle(),
-          http: {} as KyInstance,
+          active: active(),
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -76,8 +80,8 @@ describe('runCreateMember', () => {
       runCreateMember(
         { email: '', role: 'normal' },
         {
-          bundle: bundle(),
-          http: {} as KyInstance,
+          active: active(),
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -89,14 +93,21 @@ describe('runCreateMember', () => {
   it('-w flag overrides resolved workspace', async () => {
     const client = fakeClient()
     await runCreateMember(
-      { email: 'new@example.com', role: 'admin', workspace: 'ws-9' },
       {
-        bundle: bundle(),
-        http: {} as KyInstance,
+        email: 'new@example.com',
+        role: 'admin',
+        workspace: '550e8400-e29b-41d4-a716-446655440008',
+      },
+      {
+        active: active(),
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
     )
-    expect(client.invite).toHaveBeenCalledWith('ws-9', { email: 'new@example.com', role: 'admin' })
+    expect(client.invite).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440008', {
+      email: 'new@example.com',
+      role: 'admin',
+    })
   })
 })

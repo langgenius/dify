@@ -4,7 +4,7 @@
  * @param fallbackText - Text to show when finishedAt is not available (default: 'Running')
  * @returns Formatted string like " (14:30:25)" or " (Running)"
  */
-export const formatWorkflowRunIdentifier = (finishedAt?: number, fallbackText = 'Running'): string => {
+export function formatWorkflowRunIdentifier(finishedAt?: number, fallbackText = 'Running'): string {
   if (!finishedAt) {
     const capitalized = fallbackText.charAt(0).toUpperCase() + fallbackText.slice(1)
     return ` (${capitalized})`

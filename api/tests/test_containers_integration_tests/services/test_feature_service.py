@@ -61,6 +61,7 @@ class TestFeatureService:
                 },
                 "WebAppAuth": {"allowSso": True, "allowEmailCodeLogin": True, "allowEmailPasswordLogin": False},
                 "SSOEnforcedForWebProtocol": "oidc",
+                "EnableAppDeploy": True,
                 "License": {
                     "status": "active",
                     "expiredAt": "2025-12-31",
@@ -291,6 +292,7 @@ class TestFeatureService:
         assert isinstance(result, SystemFeatureModel)
 
         # Verify enterprise features
+        assert result.enable_app_deploy is True
         assert result.branding.enabled is True
         assert result.webapp_auth.enabled is True
         assert result.enable_change_email is False
@@ -377,6 +379,7 @@ class TestFeatureService:
         # Ensure that data required for frontend rendering remains accessible.
 
         # Branding should match the mock data
+        assert result.enable_app_deploy is True
         assert result.branding.enabled is True
         assert result.branding.application_title == "Test Enterprise"
         assert result.branding.login_page_logo == "https://example.com/logo.png"
@@ -424,6 +427,7 @@ class TestFeatureService:
             assert isinstance(result, SystemFeatureModel)
 
             # Verify basic configuration
+            assert result.enable_app_deploy is False
             assert result.branding.enabled is False
             assert result.webapp_auth.enabled is False
             assert result.enable_change_email is True
@@ -625,6 +629,7 @@ class TestFeatureService:
             assert isinstance(result, SystemFeatureModel)
 
             # Verify enterprise features are disabled
+            assert result.enable_app_deploy is False
             assert result.branding.enabled is False
             assert result.webapp_auth.enabled is False
             assert result.enable_change_email is True

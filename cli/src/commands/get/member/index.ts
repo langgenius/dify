@@ -1,8 +1,8 @@
-import { Flags } from '../../../framework/flags.js'
-import { OutputFormat, table } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { runGetMember } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Flags } from '@/framework/flags'
+import { OutputFormat, table } from '@/framework/output'
+import { runGetMember } from './run'
 
 export default class GetMember extends DifyCommand {
   static override description = 'List members of the active (or specified) workspace'
@@ -16,14 +16,17 @@ export default class GetMember extends DifyCommand {
   ]
 
   static override flags = {
-    'workspace': Flags.string({
+    workspace: Flags.string({
       char: 'w',
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
-    'page': Flags.integer({ description: 'page number', default: 1 }),
-    'limit': Flags.string({ description: 'page size [1..200]' }),
+    page: Flags.integer({ description: 'page number', default: 1 }),
+    limit: Flags.string({ description: 'page size [1..200]' }),
     'http-retry': httpRetryFlag,
-    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE], default: '' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE],
+      default: '',
+    }),
   }
 
   async run(argv: string[]) {
@@ -37,7 +40,7 @@ export default class GetMember extends DifyCommand {
         limitRaw: flags.limit,
         format,
       },
-      { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
+      { active: ctx.active, http: ctx.http, io: ctx.io },
     )
     return table({ format, data: result.data })
   }

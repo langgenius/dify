@@ -19,6 +19,7 @@ import {
   useWorkflowTextChunk,
   useWorkflowTextReplace,
 } from '.'
+import { useWorkflowReasoning } from './use-workflow-reasoning'
 
 export const useWorkflowRunEvent = () => {
   const { handleWorkflowStarted } = useWorkflowStarted()
@@ -35,6 +36,7 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowNodeRetry } = useWorkflowNodeRetry()
   const { handleWorkflowTextChunk } = useWorkflowTextChunk()
   const { handleWorkflowTextReplace } = useWorkflowTextReplace()
+  const { handleWorkflowReasoning } = useWorkflowReasoning()
   const { handleWorkflowAgentLog } = useWorkflowAgentLog()
   const { handleWorkflowPaused } = useWorkflowPaused()
   const { handleWorkflowNodeHumanInputRequired } = useWorkflowNodeHumanInputRequired()
@@ -56,6 +58,7 @@ export const useWorkflowRunEvent = () => {
     handleWorkflowNodeRetry,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
+    handleWorkflowReasoning,
     handleWorkflowAgentLog,
     handleWorkflowPaused,
     handleWorkflowNodeHumanInputFormFilled,

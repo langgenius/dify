@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { isBaseError } from '../errors/base.js'
-import { ExitCode } from '../errors/codes.js'
-import { LIMIT_DEFAULT, LIMIT_MAX, LIMIT_MIN, parseLimit } from './limit.js'
+import { isBaseError } from '@/errors/base'
+import { ExitCode } from '@/errors/codes'
+import { LIMIT_DEFAULT, LIMIT_MAX, LIMIT_MIN, parseLimit } from './limit'
 
 describe('limit', () => {
   it('constants match Go original', () => {
@@ -18,8 +18,7 @@ describe('limit', () => {
     let err: unknown
     try {
       parseLimit(String(n), '--limit')
-    }
-    catch (e) {
+    } catch (e) {
       err = e
     }
     expect(isBaseError(err)).toBe(true)
@@ -32,8 +31,7 @@ describe('limit', () => {
     let err: unknown
     try {
       parseLimit('abc', '--limit')
-    }
-    catch (e) {
+    } catch (e) {
       err = e
     }
     expect(isBaseError(err)).toBe(true)
@@ -45,8 +43,7 @@ describe('limit', () => {
     let err: unknown
     try {
       parseLimit('', '--limit')
-    }
-    catch (e) {
+    } catch (e) {
       err = e
     }
     expect(isBaseError(err)).toBe(true)

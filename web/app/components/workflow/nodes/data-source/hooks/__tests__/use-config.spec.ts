@@ -1,6 +1,6 @@
 import type { DataSourceNodeType } from '../../types'
 import { renderHook } from '@testing-library/react'
-import { VarType as VarKindType } from '../../types'
+import { VarType as VarKindType } from '../../../tool/types'
 import { useConfig } from '../use-config'
 
 const mockUseStoreApi = vi.hoisted(() => vi.fn())
@@ -14,7 +14,9 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useNodeDataUpdate: () => mockUseNodeDataUpdate(),
 }))
 
-const createNode = (overrides: Partial<DataSourceNodeType> = {}): { id: string, data: DataSourceNodeType } => ({
+const createNode = (
+  overrides: Partial<DataSourceNodeType> = {},
+): { id: string; data: DataSourceNodeType } => ({
   id: 'data-source-node',
   data: {
     title: 'Datasource',
@@ -89,29 +91,33 @@ describe('data-source/hooks/use-config', () => {
   })
 
   it('should derive output schema metadata and detect object outputs', () => {
-    const dataSourceList = [{
-      plugin_id: 'plugin-1',
-      tools: [{
-        name: 'source-a',
-        output_schema: {
-          properties: {
-            items: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'List of items',
-            },
-            metadata: {
-              type: 'object',
-              description: 'Object field',
-            },
-            count: {
-              type: 'number',
-              description: 'Total count',
+    const dataSourceList = [
+      {
+        plugin_id: 'plugin-1',
+        tools: [
+          {
+            name: 'source-a',
+            output_schema: {
+              properties: {
+                items: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'List of items',
+                },
+                metadata: {
+                  type: 'object',
+                  description: 'Object field',
+                },
+                count: {
+                  type: 'number',
+                  description: 'Total count',
+                },
+              },
             },
           },
-        },
-      }],
-    }]
+        ],
+      },
+    ]
 
     const { result } = renderHook(() => useConfig('data-source-node', dataSourceList))
 

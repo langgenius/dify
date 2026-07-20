@@ -12,13 +12,13 @@ import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { AppModeEnum } from '@/types/app'
 import { useHooksStore } from '../../../hooks-store'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   currentCode?: string
   className?: string
   onGenerated?: (prompt: string) => void
   codeLanguages: CodeLanguage
-}
+}>
 
 const CodeGenerateBtn: FC<Props> = ({
   nodeId,
@@ -27,19 +27,20 @@ const CodeGenerateBtn: FC<Props> = ({
   codeLanguages,
   onGenerated,
 }) => {
-  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
-  const handleAutomaticRes = useCallback((res: GenRes) => {
-    onGenerated?.(res.modified)
-    showAutomaticFalse()
-  }, [onGenerated, showAutomaticFalse])
-  const configsMap = useHooksStore(s => s.configsMap)
+  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] =
+    useBoolean(false)
+  const handleAutomaticRes = useCallback(
+    (res: GenRes) => {
+      onGenerated?.(res.modified)
+      showAutomaticFalse()
+    },
+    [onGenerated, showAutomaticFalse],
+  )
+  const configsMap = useHooksStore((s) => s.configsMap)
 
   return (
     <div className={cn(className)}>
-      <ActionButton
-        className="hover:bg-[#155EFF]/8"
-        onClick={showAutomaticTrue}
-      >
+      <ActionButton className="hover:bg-[#155EFF]/8" onClick={showAutomaticTrue}>
         <Generator className="size-4 text-primary-600" />
       </ActionButton>
       {showAutomatic && (

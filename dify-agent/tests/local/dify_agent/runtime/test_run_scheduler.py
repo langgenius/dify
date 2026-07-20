@@ -11,13 +11,14 @@ from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.protocol import DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
+    CancelRunRequest,
     CreateRunRequest,
     RunComposition,
     RunEvent,
     RunLayerSpec,
     RunStatus,
 )
-from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
+from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.schemas import RunRecord
 
 
@@ -78,6 +79,11 @@ class FakeStore:
         self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
         return event_id
 
+    async def get_run(self, run_id: str) -> RunRecord:
+        return self.records[run_id].model_copy(
+            update={"status": self.statuses[run_id], "error": self.errors.get(run_id)},
+        )
+
     async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
         self.statuses[run_id] = status
         self.errors[run_id] = error
@@ -111,6 +117,23 @@ class ControlledRunner:
         await self.release.wait()
 
 
+class SwallowOneCancellationRunner:
+    started: asyncio.Event
+    first_cancellation: asyncio.Event
+
+    def __init__(self, *, started: asyncio.Event, first_cancellation: asyncio.Event) -> None:
+        self.started = started
+        self.first_cancellation = first_cancellation
+
+    async def run(self) -> None:
+        _ = self.started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            _ = self.first_cancellation.set()
+            await asyncio.Event().wait()
+
+
 def test_create_run_starts_background_task_and_returns_running() -> None:
     async def scenario() -> None:
         store = FakeStore()
@@ -120,6 +143,7 @@ def test_create_run_starts_background_task_and_returns_running() -> None:
             scheduler = RunScheduler(
                 store=store,
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
                 runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
             )
 
@@ -144,6 +168,7 @@ def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
             scheduler = RunScheduler(
                 store=store,
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
                 shutdown_grace_seconds=0,
                 runner_factory=lambda _record, _request: ControlledRunner(started=started, release=asyncio.Event()),
             )
@@ -161,11 +186,90 @@ def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
     asyncio.run(scenario())
 
 
+def test_cancel_run_stops_task_and_persists_cancelled_terminal() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=asyncio.Event()),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            response = await scheduler.cancel_run(
+                record.run_id,
+                CancelRunRequest(reason="workflow_aborted", message="outer workflow stopped"),
+            )
+
+            assert response.status == "cancelled"
+            assert scheduler.active_tasks == {}
+            assert store.statuses[record.run_id] == "cancelled"
+            assert store.errors[record.run_id] == "outer workflow stopped"
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+
+            repeated = await scheduler.cancel_run(record.run_id, CancelRunRequest(reason="duplicate"))
+            assert repeated.status == "cancelled"
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_reinjects_cancellation_without_waiting_for_runner_cleanup() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        first_cancellation = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                runner_factory=lambda _record, _request: SwallowOneCancellationRunner(
+                    started=started,
+                    first_cancellation=first_cancellation,
+                ),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            response = await asyncio.wait_for(
+                scheduler.cancel_run(record.run_id, CancelRunRequest(reason="workflow_aborted")),
+                timeout=1,
+            )
+
+            assert response.status == "cancelled"
+            assert first_cancellation.is_set()
+            assert store.statuses[record.run_id] == "cancelled"
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+            await asyncio.sleep(0)
+            assert scheduler.active_tasks == {}
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_rejects_finished_run() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
+            record = await store.create_run()
+            await store.update_status(record.run_id, "succeeded")
+
+            with pytest.raises(RunCancellationConflictError, match="already finished"):
+                await scheduler.cancel_run(record.run_id, CancelRunRequest())
+
+    asyncio.run(scenario())
+
+
 def test_create_run_accepts_blank_prompt_and_runner_fails_asynchronously() -> None:
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
 
             record = await scheduler.create_run(_request(["", "   "]))
             await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
@@ -182,7 +286,7 @@ def test_create_run_accepts_invalid_output_schema_and_runner_fails_asynchronousl
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
 
             record = await scheduler.create_run(
                 _request(
@@ -205,7 +309,12 @@ def test_create_run_honors_explicit_empty_layer_providers_by_failing_after_persi
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, layer_providers=())
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                layer_providers=(),
+            )
 
             record = await scheduler.create_run(_request())
             await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
@@ -222,7 +331,7 @@ def test_create_run_accepts_closed_session_snapshot_and_runner_fails_asynchronou
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
             request = _request()
             request.session_snapshot = CompositorSessionSnapshot(
                 layers=[
@@ -248,7 +357,7 @@ def test_create_run_accepts_closed_session_snapshot_and_runner_fails_asynchronou
 def test_create_run_rejects_after_shutdown_starts() -> None:
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=FakeStore(), plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=FakeStore(), plugin_daemon_http_client=client, dify_api_http_client=client)
             await scheduler.shutdown()
 
             with pytest.raises(SchedulerStoppingError):
@@ -261,7 +370,7 @@ def test_create_run_rejects_invalid_request_after_shutdown_without_persisting() 
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
             await scheduler.shutdown()
 
             with pytest.raises(SchedulerStoppingError):
@@ -282,6 +391,7 @@ def test_shutdown_waits_for_in_flight_create_to_register_before_cancelling() -> 
             scheduler = RunScheduler(
                 store=store,
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
                 shutdown_grace_seconds=0,
                 runner_factory=lambda _record, _request: ControlledRunner(
                     started=runner_started, release=asyncio.Event()

@@ -20,7 +20,9 @@ class TestObservabilityLayerExtras:
         assert layer._is_disabled is False
         assert layer._tracer is tracer
 
-    def test_init_tracer_disables_when_get_tracer_fails(self, monkeypatch: pytest.MonkeyPatch, caplog):
+    def test_init_tracer_disables_when_get_tracer_fails(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         monkeypatch.setattr("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", True)
         monkeypatch.setattr("core.app.workflow.layers.observability.is_instrument_flag_enabled", lambda: False)
 
@@ -70,7 +72,7 @@ class TestObservabilityLayerExtras:
 
         layer.on_event(object())
 
-    def test_on_graph_end_clears_unfinished_contexts(self, caplog):
+    def test_on_graph_end_clears_unfinished_contexts(self, caplog: pytest.LogCaptureFixture):
         layer = ObservabilityLayer()
         layer._node_contexts["exec"] = SimpleNamespace(span=object(), token="token")
 
@@ -107,7 +109,7 @@ class TestObservabilityLayerExtras:
 
         assert calls == []
 
-    def test_on_node_run_start_logs_warning_when_span_creation_fails(self, caplog):
+    def test_on_node_run_start_logs_warning_when_span_creation_fails(self, caplog: pytest.LogCaptureFixture):
         layer = ObservabilityLayer()
         layer._is_disabled = False
 
@@ -166,7 +168,9 @@ class TestObservabilityLayerExtras:
         assert ended == ["ended"]
         assert "exec" not in layer._node_contexts
 
-    def test_on_node_run_end_logs_detach_failure(self, monkeypatch: pytest.MonkeyPatch, caplog):
+    def test_on_node_run_end_logs_detach_failure(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         layer = ObservabilityLayer()
         layer._is_disabled = False
 

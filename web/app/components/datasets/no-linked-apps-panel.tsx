@@ -12,7 +12,9 @@ const NoLinkedAppsPanel = () => {
       <div className="inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2">
         <RiApps2AddLine className="size-4 text-text-tertiary" />
       </div>
-      <div className="my-2 text-xs text-text-tertiary">{t('datasetMenus.emptyTip', { ns: 'common' })}</div>
+      <div className="my-2 text-xs text-text-tertiary">
+        {t(($) => $['datasetMenus.emptyTip'], { ns: 'common' })}
+      </div>
       <a
         className="mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent"
         href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
@@ -20,7 +22,7 @@ const NoLinkedAppsPanel = () => {
         rel="noopener noreferrer"
       >
         <RiBookOpenLine className="mr-1 size-4 text-text-accent" />
-        {t('datasetMenus.viewDoc', { ns: 'common' })}
+        {t(($) => $['datasetMenus.viewDoc'], { ns: 'common' })}
       </a>
     </div>
   )

@@ -15,7 +15,7 @@
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
             alt="chat on Discord"></a>
-    <a href="https://reddit.com/r/difyai" target="_blank">  
+    <a href="https://reddit.com/r/difyai" target="_blank">
         <img src="https://img.shields.io/reddit/subreddit-subscribers/difyai?style=plastic&logo=reddit&label=r%2Fdifyai&labelColor=white"
             alt="join Reddit"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
@@ -116,7 +116,7 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
 ## Using Dify
 
 - **Cloud <br/>**
-  We host a [Dify Cloud](https://dify.ai) service for anyone to try with zero setup. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls in the sandbox plan.
+  We host a [Dify Cloud](https://dify.ai) service for anyone to try with zero setup. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls in the sandbox plan. If you run into issues with Dify Cloud, [contact our Cloud support team](mailto:cloud@dify.ai?subject=%5BGitHub%5DDify%20Cloud%20Support).
 
 - **Self-hosting Dify Community Edition<br/>**
   Quickly get Dify running in your environment with this [starter guide](#quick-start).
@@ -124,8 +124,6 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
 
 - **Dify for enterprise / organizations<br/>**
   We provide additional enterprise-centric features. [Send us an email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) to discuss your enterprise needs. <br/>
-
-  > For startups and small businesses using AWS, check out [Dify Premium on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one click. It's an affordable AMI offering with the option to create apps with custom logo and branding.
 
 ## Staying ahead
 
@@ -209,9 +207,16 @@ At the same time, please consider supporting Dify by sharing it on social media 
   <img src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Star history
+## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+<!-- GitHub token name: star-history -->
+<a href="https://www.star-history.com/?repos=langgenius%2Fdify&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=langgenius/dify&type=date&theme=dark&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=langgenius/dify&type=date&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=langgenius/dify&type=date&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+ </picture>
+</a>
 
 ## Security disclosure
 

@@ -10,9 +10,22 @@ export type BedrockRetrievalPayload = {
   retrieval_setting: BedrockRetrievalSetting
 }
 
+export type BedrockRetrievalResponse = {
+  records: Array<BedrockRetrievalRecordResponse>
+}
+
 export type BedrockRetrievalSetting = {
   score_threshold?: number
   top_k?: number | null
+}
+
+export type BedrockRetrievalRecordResponse = {
+  content?: string | null
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  score: number
+  title?: string | null
 }
 
 export type PostTestRetrievalData = {
@@ -23,9 +36,7 @@ export type PostTestRetrievalData = {
 }
 
 export type PostTestRetrievalResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BedrockRetrievalResponse
 }
 
 export type PostTestRetrievalResponse = PostTestRetrievalResponses[keyof PostTestRetrievalResponses]

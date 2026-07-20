@@ -3,13 +3,13 @@
 import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiArrowLeftRightLine, RiExternalLinkLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Badge as Badge2, BadgeState } from '@/app/components/base/badge/index'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import PluginMutationModel from '@/app/components/plugins/plugin-mutation-model'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
@@ -29,11 +29,13 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
 
   const [pluginId] = uniqueIdentifier?.split(':') || ['']
   const [isShow, setIsShow] = useState(false)
-  const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] = useBoolean(false)
+  const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] =
+    useBoolean(false)
   const [target, setTarget] = useState<{
     version: string
     pluginUniqueIden: string
   }>()
+  const { canUpdatePlugin } = useWorkspacePluginInstallPermission()
   const pluginDetails = useCheckInstalled({
     pluginIds: [pluginId!],
     enabled: true,
@@ -46,7 +48,9 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     onChange?.(target!.version)
   }, [hideUpdateModal, onChange, pluginDetails, target])
   const { getIconUrl } = useGetIcon()
-  const icon = pluginDetail?.declaration.icon ? getIconUrl(pluginDetail.declaration.icon) : undefined
+  const icon = pluginDetail?.declaration.icon
+    ? getIconUrl(pluginDetail.declaration.icon)
+    : undefined
   const mutation = useUpdatePackageFromMarketPlace()
   const install = () => {
     mutation.mutate(
@@ -64,11 +68,13 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const { t } = useTranslation()
 
   // Guard against null/undefined uniqueIdentifier to prevent app crash
-  if (!uniqueIdentifier || !pluginId)
-    return null
+  if (!uniqueIdentifier || !pluginId || !canUpdatePlugin) return null
 
   const content = (
-    <div className={cn('flex w-fit items-center justify-center', className)} onClick={e => e.stopPropagation()}>
+    <div
+      className={cn('flex w-fit items-center justify-center', className)}
+      onClick={(e) => e.stopPropagation()}
+    >
       {isShowUpdateModal && pluginDetail && (
         <PluginMutationModel
           onCancel={hideUpdateModal}
@@ -78,30 +84,32 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
           })}
           mutation={mutation}
           mutate={install}
-          confirmButtonText={t('nodes.agent.installPlugin.install', { ns: 'workflow' })}
-          cancelButtonText={t('nodes.agent.installPlugin.cancel', { ns: 'workflow' })}
-          modelTitle={t('nodes.agent.installPlugin.title', { ns: 'workflow' })}
-          description={t('nodes.agent.installPlugin.desc', { ns: 'workflow' })}
-          cardTitleLeft={(
+          confirmButtonText={t(($) => $['nodes.agent.installPlugin.install'], { ns: 'workflow' })}
+          cancelButtonText={t(($) => $['nodes.agent.installPlugin.cancel'], { ns: 'workflow' })}
+          modelTitle={t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflow' })}
+          description={t(($) => $['nodes.agent.installPlugin.desc'], { ns: 'workflow' })}
+          cardTitleLeft={
             <>
               <Badge2 className="mx-1" size="s" state={BadgeState.Warning}>
                 {`${pluginDetail.version} -> ${target!.version}`}
               </Badge2>
             </>
-          )}
-          modalBottomLeft={(
+          }
+          modalBottomLeft={
             <Link
               className="flex items-center justify-center gap-1"
-              href={getMarketplaceUrl(`/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`)}
+              href={getMarketplaceUrl(
+                `/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`,
+              )}
               target="_blank"
               rel="noopener noreferrer"
             >
               <span className="system-xs-regular text-xs text-text-accent">
-                {t('nodes.agent.installPlugin.changelog', { ns: 'workflow' })}
+                {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflow' })}
               </span>
-              <RiExternalLinkLine className="size-3 text-text-accent" />
+              <span className="i-ri-external-link-line size-3 text-text-accent" />
             </Link>
-          )}
+          }
         />
       )}
       {pluginDetail && (
@@ -117,36 +125,36 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
             })
             showUpdateModal()
           }}
-          trigger={(
+          trigger={
             <Badge
-              className={cn(
-                'mx-1 flex hover:bg-state-base-hover',
-                isShow && 'bg-state-base-hover',
-              )}
+              className={cn('mx-1 flex hover:bg-state-base-hover', isShow && 'bg-state-base-hover')}
               uppercase={true}
-              text={(
+              text={
                 <>
                   <div>{pluginDetail.version}</div>
-                  <RiArrowLeftRightLine className="ml-1 size-3 text-text-tertiary" />
+                  <span className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary" />
                 </>
-              )}
+              }
               hasRedCornerMark={true}
             />
-          )}
+          }
         />
       )}
     </div>
   )
 
-  if (!tooltip || isShow || isShowUpdateModal)
-    return content
+  if (!tooltip || isShow || isShowUpdateModal) return content
 
   return (
     <Popover>
       <PopoverTrigger
         openOnHover
         nativeButton={false}
-        aria-label={typeof tooltip === 'string' ? tooltip : t('nodes.agent.installPlugin.title', { ns: 'workflow' })}
+        aria-label={
+          typeof tooltip === 'string'
+            ? tooltip
+            : t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflow' })
+        }
         render={content}
       />
       <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">

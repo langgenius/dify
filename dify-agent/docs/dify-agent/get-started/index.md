@@ -51,6 +51,9 @@ DIFY_AGENT_REDIS_PREFIX=dify-agent
 
 DIFY_AGENT_PLUGIN_DAEMON_URL=http://localhost:5002
 DIFY_AGENT_PLUGIN_DAEMON_API_KEY=replace-with-plugin-daemon-server-key
+
+DIFY_AGENT_INNER_API_URL=http://localhost:5001
+DIFY_AGENT_INNER_API_KEY=replace-with-dify-inner-api-key-for-plugin
 EOF
 ```
 
@@ -63,8 +66,18 @@ The minimum settings are:
 - `DIFY_AGENT_PLUGIN_DAEMON_API_KEY`: API key sent by the server to the plugin
   daemon. In a Dify Docker setup this is usually the value previously configured
   as `PLUGIN_DAEMON_KEY`.
+- `DIFY_AGENT_INNER_API_URL`: Dify API service root for `/inner/api/...` calls.
+- `DIFY_AGENT_INNER_API_KEY`: API key sent to Dify API inner plugin endpoints.
+  In Docker this should match `PLUGIN_DIFY_INNER_API_KEY`, which maps to Dify
+  API `INNER_API_KEY_FOR_PLUGIN`.
 
 See `.example.env` for the full server settings template.
+
+If you plan to run `dify.shell`, also configure `DIFY_AGENT_SHELLCTL_ENTRYPOINT`
+and, when shell jobs need to call back with the `dify-agent` command, set
+`DIFY_AGENT_STUB_API_BASE_URL`. The supplied default configs include a
+development `DIFY_AGENT_SERVER_SECRET_KEY`, but production deployments should
+override it with a unique 32-byte base64url value as documented in `.example.env`.
 
 ## Start the Dify Agent server
 

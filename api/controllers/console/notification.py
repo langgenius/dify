@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -14,6 +14,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
+from fields.base import ResponseModel
 from libs.login import login_required
 from models import Account
 from services.billing_service import BillingService
@@ -56,7 +57,23 @@ class DismissNotificationPayload(BaseModel):
     notification_id: str = Field(...)
 
 
-register_response_schema_models(console_ns, SimpleResultResponse)
+class NotificationItemResponse(ResponseModel):
+    notification_id: str | None = None
+    frequency: str | None = None
+    lang: str
+    title: str
+    subtitle: str
+    body: str
+    title_pic_url: str
+
+
+class NotificationResponse(ResponseModel):
+    should_show: bool
+    notifications: list[NotificationItemResponse]
+
+
+register_schema_models(console_ns, DismissNotificationPayload)
+register_response_schema_models(console_ns, SimpleResultResponse, NotificationResponse)
 
 
 @console_ns.route("/notification")
@@ -74,6 +91,7 @@ class NotificationApi(Resource):
             401: "Unauthorized",
         },
     )
+    @console_ns.response(200, "Success", console_ns.models[NotificationResponse.__name__])
     @setup_required
     @login_required
     @with_current_user
@@ -121,6 +139,7 @@ class NotificationDismissApi(Resource):
     @with_current_user
     @account_initialization_required
     @only_edition_cloud
+    @console_ns.expect(console_ns.models[DismissNotificationPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self, current_user: Account):
         payload = DismissNotificationPayload.model_validate(request.get_json())

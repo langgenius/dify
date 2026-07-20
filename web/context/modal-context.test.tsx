@@ -3,8 +3,12 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { renderWithNuqs } from '@/test/nuqs-testing'
+
+const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -15,11 +19,31 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
 vi.mock('@/app/components/billing/pricing', () => ({
   default: () => <div>billing.plansCommon.mostPopular</div>,
+}))
+
+vi.mock('@/app/components/header/account-setting', () => ({
+  default: ({ activeTab, onCancelAction }: { activeTab: string; onCancelAction: () => void }) => (
+    <>
+      <div role="status" aria-label="active account setting tab">
+        {activeTab}
+      </div>
+      <button type="button" onClick={onCancelAction}>
+        cancel account setting
+      </button>
+    </>
+  ),
+}))
+
+vi.mock('@/app/education-apply/storage', () => ({
+  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 const mockUseProviderContext = vi.fn()
@@ -28,9 +52,39 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const mockUseAppContext = vi.fn()
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
-}))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 type DefaultPlanShape = typeof defaultPlan
 type ResetShape = {
@@ -61,16 +115,45 @@ const createPlan = (overrides: PlanOverrides = {}): PlanShape => ({
   },
 })
 
-const renderProvider = () => renderWithNuqs(
-  <ModalContextProvider>
-    <div data-testid="modal-context-test-child" />
-  </ModalContextProvider>,
-)
+const renderProvider = (
+  children: React.ReactNode = <div data-testid="modal-context-test-child" />,
+) => renderWithNuqs(<ModalContextProvider>{children}</ModalContextProvider>)
+
+const AccountSettingOpener = () => {
+  const setShowAccountSettingModal = useModalContextSelector(
+    (state) => state.setShowAccountSettingModal,
+  )
+
+  return (
+    <button
+      type="button"
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })}
+    >
+      open account setting
+    </button>
+  )
+}
+
+const PreferencesOpener = () => {
+  const setShowAccountSettingModal = useModalContextSelector(
+    (state) => state.setShowAccountSettingModal,
+  )
+
+  return (
+    <button
+      type="button"
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
+    >
+      open preferences
+    </button>
+  )
+}
 
 describe('ModalContextProvider trigger events limit modal', () => {
   beforeEach(() => {
     mockUseAppContext.mockReset()
     mockUseProviderContext.mockReset()
+    mockSetEducationVerifying.mockReset()
     window.localStorage.clear()
     mockUseAppContext.mockReturnValue({
       currentWorkspace: {
@@ -113,6 +196,42 @@ describe('ModalContextProvider trigger events limit modal', () => {
     const [key, value] = (setItemSpy.mock.calls[0] ?? []) as [string, string]
     expect(key).toContain('trigger-events-limit-dismissed-workspace-1-professional-3000-')
     expect(value).toBe('1')
+  })
+
+  it('clears the education verifying flag when account settings are canceled', async () => {
+    mockUseProviderContext.mockReturnValue({
+      plan: createPlan(),
+      isFetchedPlan: true,
+    })
+    const user = userEvent.setup()
+
+    renderProvider(<AccountSettingOpener />)
+
+    await user.click(screen.getByRole('button', { name: 'open account setting' }))
+    await user.click(await screen.findByRole('button', { name: 'cancel account setting' }))
+
+    expect(mockSetEducationVerifying).toHaveBeenCalledWith(expect.any(Function))
+    const updater = mockSetEducationVerifying.mock.calls[0]?.[0] as (
+      educationVerifying: string,
+    ) => string | null
+    expect(updater('yes')).toBeNull()
+    expect(updater('no')).toBe('no')
+  })
+
+  it('opens preferences in the account settings shell', async () => {
+    mockUseProviderContext.mockReturnValue({
+      plan: createPlan(),
+      isFetchedPlan: true,
+    })
+    const user = userEvent.setup()
+
+    renderProvider(<PreferencesOpener />)
+
+    await user.click(screen.getByRole('button', { name: 'open preferences' }))
+
+    expect(
+      await screen.findByRole('status', { name: 'active account setting tab' }),
+    ).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {
@@ -186,7 +305,9 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     await user.click(screen.getByText('billing.triggerLimitModal.upgrade'))
 
-    await waitFor(() => expect(screen.getByText('billing.plansCommon.mostPopular')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText('billing.plansCommon.mostPopular')).toBeInTheDocument(),
+    )
     expect(screen.queryByText('400')).not.toBeInTheDocument()
   })
 })

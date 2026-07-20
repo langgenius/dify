@@ -50,32 +50,33 @@ class AdvancedPromptTransform(PromptTransform):
     ) -> list[PromptMessage]:
         prompt_messages = []
 
-        if isinstance(prompt_template, CompletionModelPromptTemplate):
-            prompt_messages = self._get_completion_model_prompt_messages(
-                prompt_template=prompt_template,
-                inputs=inputs,
-                query=query,
-                files=files,
-                context=context,
-                memory_config=memory_config,
-                memory=memory,
-                model_config=model_config,
-                model_instance=model_instance,
-                image_detail_config=image_detail_config,
-            )
-        elif isinstance(prompt_template, list) and all(isinstance(item, ChatModelMessage) for item in prompt_template):
-            prompt_messages = self._get_chat_model_prompt_messages(
-                prompt_template=prompt_template,
-                inputs=inputs,
-                query=query,
-                files=files,
-                context=context,
-                memory_config=memory_config,
-                memory=memory,
-                model_config=model_config,
-                model_instance=model_instance,
-                image_detail_config=image_detail_config,
-            )
+        match prompt_template:
+            case CompletionModelPromptTemplate():
+                prompt_messages = self._get_completion_model_prompt_messages(
+                    prompt_template=prompt_template,
+                    inputs=inputs,
+                    query=query,
+                    files=files,
+                    context=context,
+                    memory_config=memory_config,
+                    memory=memory,
+                    model_config=model_config,
+                    model_instance=model_instance,
+                    image_detail_config=image_detail_config,
+                )
+            case list() if all(isinstance(item, ChatModelMessage) for item in prompt_template):
+                prompt_messages = self._get_chat_model_prompt_messages(
+                    prompt_template=prompt_template,
+                    inputs=inputs,
+                    query=query,
+                    files=files,
+                    context=context,
+                    memory_config=memory_config,
+                    memory=memory,
+                    model_config=model_config,
+                    model_instance=model_instance,
+                    image_detail_config=image_detail_config,
+                )
 
         return prompt_messages
 

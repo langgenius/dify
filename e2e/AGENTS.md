@@ -26,32 +26,47 @@ Install Playwright browsers once:
 ```bash
 pnpm install
 pnpm -C e2e e2e:install
-pnpm -C e2e check
 ```
 
 `pnpm install` is resolved through the repository workspace and uses the shared root lockfile plus `pnpm-workspace.yaml`.
 
-Use `pnpm -C e2e check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs formatting, linting, and type checks for this package.
+Run only one `pnpm -C e2e e2e*` process against a local workspace at a time. Separate runner processes share the frontend port, backend port, auth bootstrap state, and log paths; running them in parallel can create startup or authorization failures that are not scenario failures.
+
+Use root lint plus the package type check as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue:
+
+```bash
+vp lint --fix --quiet
+pnpm -C e2e type-check
+```
 
 Common commands:
 
 ```bash
-# authenticated-only regression (default excludes @fresh)
+# deterministic regression against an initialized instance
 # expects backend API, frontend artifact, and middleware stack to already be running
 pnpm -C e2e e2e
 
-# full reset + fresh install + authenticated scenarios
+# reset, initialize, and run deterministic scenarios
 # starts required middleware/dependencies for you
 pnpm -C e2e e2e:full
 
 # run a tagged subset
 pnpm -C e2e e2e -- --tags @smoke
 
+# prepare external runtime seed resources for opt-in external suites
+pnpm -C e2e e2e:external:prepare
+
+# run scenarios that call real external providers
+pnpm -C e2e e2e:external
+
 # headed browser
 pnpm -C e2e e2e:headed -- --tags @smoke
 
 # slow down browser actions for local debugging
 E2E_SLOW_MO=500 pnpm -C e2e e2e:headed -- --tags @smoke
+
+# focused keyboard and cross-browser smoke coverage
+E2E_BROWSER=webkit pnpm -C e2e e2e -- --tags @browser-smoke
 ```
 
 Frontend artifact behavior:
@@ -68,8 +83,8 @@ flowchart TD
   C --> D["Cucumber loads config, steps, and support modules"]
   D --> E["BeforeAll bootstraps shared auth state via /install"]
   E --> F{"Which command is running?"}
-  F -->|`pnpm -C e2e e2e`| G["Run config default tags: not @fresh and not @skip"]
-  F -->|`pnpm -C e2e e2e:full*`| H["Override tags to not @skip"]
+  F -->|`pnpm -C e2e e2e`| G["Run deterministic scenarios; exclude @prepared and external runtime"]
+  F -->|`pnpm -C e2e e2e:full*`| H["Reset and run deterministic scenarios; exclude @prepared and external runtime"]
   G --> I["Per-scenario BrowserContext from shared browser"]
   H --> I
   I --> J["Failure artifacts written to cucumber-report/artifacts"]
@@ -99,7 +114,7 @@ Behavior depends on instance state:
 - uninitialized instance: completes install and stores authenticated state
 - initialized instance: signs in and reuses authenticated state
 
-Because of that, the `@fresh` install scenario only runs in the `pnpm -C e2e e2e:full*` flows. The default `pnpm -C e2e e2e*` flows exclude `@fresh` via Cucumber config tags so they can be re-run against an already initialized instance.
+The `pnpm -C e2e e2e:full*` flows prove reset and authentication bootstrap by failing setup when initialization cannot complete; they do not model bootstrap state as a Gherkin scenario. Deterministic runs exclude `@prepared`, `@external-model`, and `@external-tool`. Post-merge first seeds required fixtures, then runs prepared and external scenarios.
 
 Reset all persisted E2E state:
 
@@ -115,7 +130,12 @@ This removes:
 - `docker/volumes/plugin_daemon`
 - `e2e/.auth`
 - `e2e/.logs`
+- `e2e/.logs-non-external`
+- `e2e/.logs-webkit`
 - `e2e/cucumber-report`
+- `e2e/cucumber-report-non-external`
+- `e2e/cucumber-report-webkit`
+- `e2e/seed-report`
 
 Start the full middleware stack:
 
@@ -155,10 +175,19 @@ pnpm -C e2e e2e:middleware:down
 Artifacts and diagnostics:
 
 - `cucumber-report/report.html`: HTML report
-- `cucumber-report/report.json`: JSON report
+- `cucumber-report/report.ndjson`: Cucumber Messages report
 - `cucumber-report/artifacts/`: failure screenshots and HTML captures
+- `cucumber-report-non-external/`: Chromium core report preserved before later CI lanes
+- `cucumber-report-webkit/`: focused WebKit keyboard/browser smoke report
 - `.logs/cucumber-api.log`: backend startup log
 - `.logs/cucumber-web.log`: frontend startup log
+- `.logs-non-external/`: non-external logs preserved before an external CI run
+- `.logs-webkit/`: focused WebKit lane logs
+- `seed-report/`: JSON readiness reports emitted by external runtime seed packs
+
+Cucumber's exit status is the behavior gate. The runner also requires at least one
+`testCaseStarted` message so an empty or broken tag selector cannot pass silently. Do not add
+scenario-count baselines or skipped-scenario allowlists.
 
 Open the HTML report locally with:
 
@@ -174,7 +203,7 @@ open cucumber-report/report.html
 1. Add step definitions under `features/step-definitions/<capability>/`
 1. Reuse existing steps from `common/` and other definition files before writing new ones
 1. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
-1. Run `pnpm -C e2e check` before committing
+1. Run `vp lint --fix --quiet` from the repository root and `pnpm -C e2e type-check` before committing
 
 ### Feature file conventions
 
@@ -194,8 +223,16 @@ Feature: Create dataset
   - default behavior — scenarios run with the shared authenticated storageState unless marked otherwise
   - `@unauthenticated` — uses a clean BrowserContext with no cookies or storage
   - `@authenticated` — optional intent tag for readability or selective runs; it does not currently change hook behavior on its own
-- `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
-- `@skip` — excluded from all runs
+- `@prepared` — deterministic user behavior that requires the strict post-merge seed profile
+- `@external-model` — scenario execution can call a real model provider. Use this only for runtime requests, not for scenarios that only require an active model fixture.
+- `@external-tool` — scenario execution can call a real third-party tool provider. Use this only for runtime tool execution, not for plugin installation, discovery, or local deterministic tools.
+- `@microphone` — runs the scenario in an isolated Chromium instance backed by the checked-in fake audio fixture and grants microphone permission only to that scenario context.
+- `@browser-smoke` — focused keyboard and navigation coverage that runs in Chromium with the core suite and again in WebKit on CI.
+  External runtime commands are opt-in. `pnpm -C e2e e2e:external:prepare` prepares the fixed Agent v2 external-runtime seed and `pnpm -C e2e e2e:external` runs every `@external-model` or `@external-tool` scenario. CI uses `e2e:post-merge:prepare` followed by `e2e:post-merge` to run `@prepared` and external scenarios against one strict seed.
+
+The Agent v2 external runtime seed also prepares the workspace default Speech-to-Text model. `E2E_SPEECH_TO_TEXT_MODEL_PROVIDER` and `E2E_SPEECH_TO_TEXT_MODEL_NAME` select an existing model or the model configured through `E2E_MODEL_PROVIDER_CREDENTIALS_JSON`; they default to `openai` and `gpt-4o-mini-transcribe`.
+
+Some external runtime scenarios need feature-owned services in addition to a real model or tool provider. Do not overload `@external-model` or `@external-tool` to mean those services are available. For Agent v2, scenarios that require the standalone `dify-agent` run server use the feature tag `@agent-backend-runtime` plus the explicit step `the Agent v2 runtime backend is available`. Run them with `E2E_START_AGENT_BACKEND=1` to let E2E start `dify-agent` and the shellctl local sandbox required by its `dify.config`/`dify.shell` runtime layers, or set `E2E_AGENT_BACKEND_URL`/`AGENT_BACKEND_BASE_URL` when an existing server should be reused.
 
 Keep scenarios short and declarative. Each step should describe **what** the user does, not **how** the UI works.
 
@@ -278,13 +315,31 @@ When('I fill in the app name in the dialog', async function (this: DifyWorld) {
 
 ### Failure diagnostics
 
-The `After` hook automatically captures on failure:
+The `After` hook automatically captures diagnostics for failed, ambiguous, pending, undefined, or unknown scenarios:
 
 - Full-page screenshot (PNG)
 - Page HTML dump
 - Console errors and page errors
 
 Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML report. No extra code needed in step definitions.
+
+### Seed and fixture contracts
+
+Use `support/naming.ts` for generated test resource names. New app, Agent, dataset, file, or credential seeds should start with `E2E` so local and shared environments can identify disposable resources.
+
+Use `fixtures/test-materials/` for checked-in files that scenarios upload, preview, index, or retrieve. Keep these fixtures small and deterministic, and use `support/test-materials.ts` to resolve their absolute paths.
+
+Seed scripts own long-lived models, plugins, datasets, and fixed apps. Selected scenarios may resolve and verify those fixtures through explicit `Given` steps, but a missing or drifted fixture must fail the scenario. Do not represent environment readiness as Gherkin scenarios and do not conditionally skip behavior.
+
+Keep package-level support limited to broadly reusable primitives such as API clients, naming, fixture path resolution, and cleanup helpers. Feature-specific seed and fixture contracts belong under the owning feature's support folder.
+
+Use generated API contracts for Console/Web/Service API request, response, and payload shapes. Import the concrete type directly from `@dify/contracts/.../types.gen` when it exists, and do not hand-write duplicate response shapes or wrap generated types in local aliases just to preserve an older helper name. Keep local E2E types only for scenario state, fixture registries, helper input options, and intentionally narrowed test view models that are not complete API responses.
+
+Use typed cleanup fields on `DifyWorld` for resource types created by scenarios, and use `DifyWorld.registerCleanup(...)` when a scenario creates any resource type that is not covered by typed cleanup fields. Typed cleanup should remove child or referencing resources before their owners, such as Agent files before Agents and workflow apps before Agents they reference. Cleanup failures should be attached to the report instead of being swallowed silently. Cleanup callbacks run after typed cleanup queues, even when the scenario fails.
+
+Scenario-owned setup may create disposable apps, Agents, files, credentials, drafts, or access toggles when the scenario owns their lifecycle and cleanup. Do not use scenario setup to silently fix a shared fixture; a missing or drifted fixed resource is a seed failure.
+
+Feature-specific seed contracts, resource readiness rules, tags, and scenario ownership can be documented in one scoped `AGENTS.md` at the feature root when a module becomes large enough to need it. Do not add deeper `AGENTS.md` files unless the nested module becomes independently owned.
 
 ## Reusing existing steps
 

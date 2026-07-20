@@ -47,13 +47,12 @@ Examples: `get/app/`, `auth/devices/revoke/`, `describe/app/`.
 
 **3. Optional files — add as needed**
 
-| File               | Purpose                                             |
-| ------------------ | --------------------------------------------------- |
-| `handlers.ts`      | Output format handlers (text, table, etc.)          |
-| `print-flags.ts`   | `--output` flag → printer resolution                |
-| `payload-shape.ts` | Response type narrowing/transformation              |
-| `run.test.ts`      | Behavior tests against `run.ts`                     |
-| `guide.ts`         | Agent onboarding text — exports `agentGuide` string |
+| File               | Purpose                                                            |
+| ------------------ | ------------------------------------------------------------------ |
+| `handlers.ts`      | Output types implementing `FormattedPrintable` or `TablePrintable` |
+| `payload-shape.ts` | Response type narrowing/transformation                             |
+| `run.test.ts`      | Behavior tests against `run.ts`                                    |
+| `guide.ts`         | Agent onboarding text — exports `agentGuide` string                |
 
 **4. Checklist**
 
@@ -79,9 +78,16 @@ export default class MyCommand extends DifyCommand {
     const { args, flags } = this.parse(MyCommand, argv)
 
     // Authed: authedCtx() sets outputFormat + builds context
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format: flags.output })
+    const ctx = await this.authedCtx({ format: flags.output })
 
-    process.stdout.write(await runMyThing({ /* args */ }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io }))
+    process.stdout.write(
+      await runMyThing(
+        {
+          // args
+        },
+        { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
+      ),
+    )
   }
 }
 ```
@@ -103,7 +109,7 @@ import { ErrorCode } from '../../errors/codes.js'
 throw new BaseError({
   code: ErrorCode.UsageMissingArg,
   message: 'workspace id required',
-  hint: 'pass --workspace or run \'difyctl use workspace <id>\'',
+  hint: "pass --workspace or run 'difyctl use workspace <id>'",
 })
 ```
 
@@ -151,10 +157,7 @@ export type IOStreams = {
 `runWithSpinner` wraps async call with animated spinner on stderr. Auto-disables for structured output — no manual `enabled:` flag needed.
 
 ```typescript
-const result = await runWithSpinner(
-  { io, label: 'Fetching apps' },
-  () => client.list(params),
-)
+const result = await runWithSpinner({ io, label: 'Fetching apps' }, () => client.list(params))
 ```
 
 `STRUCTURED_FORMATS = new Set(['json', 'yaml', 'name'])` drives disable check. New structured format = add to this set only — no other callsites change.
@@ -163,21 +166,34 @@ Only override `enabled` for intentional suppression (e.g., tests using `bufferSt
 
 ---
 
-## Printer chain
+## Output protocol
 
-Output rendering separated from data fetching.
+Output rendering separated from data fetching via protocol objects.
 
-1. `run.ts` returns string — rendered result.
-1. `handlers.ts` defines format handlers (`TextHandler`, `TableHandler`, etc.).
-1. `print-flags.ts` maps `--output` value to correct handler.
+- Data classes implement `TablePrintable` or `FormattedPrintable` from `src/framework/output`.
+- Streaming commands implement `StreamPrinter` from `src/framework/stream`.
+- `index.ts` wraps the result with `table({format, data})` or `formatted({format, data})` and returns it; the base class calls `stringifyOutput()`.
+- Commands that write incrementally (streaming) write directly from the strategy via `deps.io.out.write(stringifyOutput(...))`.
 
 ```typescript
-// run.ts
-const printer = new AppPrintFlags().toPrinter(format)
-return printer.print(data)
+// handlers.ts — implement the protocol on the data object
+export class MyListOutput implements TablePrintable {
+  tableColumns() {
+    return COLUMNS
+  }
+  tableRows() {
+    return this.rows.map((r) => r.tableRow())
+  }
+  json() {
+    return { items: this.rows.map((r) => r.json()) }
+  }
+}
+
+// index.ts — wrap and return
+return table({ format: flags.output, data: result })
 ```
 
-New output format: implement handler interface, register in `print-flags.ts`. Never add `if (format === 'json')` branches in `run.ts`.
+New output format: add to `OutputFormat` in `framework/output.ts` and handle in `stringifyOutput`. Never add `if (format === 'json')` branches in `run.ts` or handlers.
 
 ---
 
@@ -190,14 +206,11 @@ export type RunStrategy = {
   execute: (ctx: RunContext) => Promise<void>
 }
 
-const blocking = new BlockingStrategy()
 const streamingText = new StreamingTextStrategy()
 const streamingStructured = new StreamingStructuredStrategy()
 
-export function pickStrategy(useStream: boolean, isText: boolean): RunStrategy {
-  if (!useStream)
-    return blocking
-  return isText ? streamingText : streamingStructured
+export function pickStrategy(isText: boolean, livePrint: boolean): RunStrategy {
+  return isText && livePrint ? streamingText : streamingStructured
 }
 ```
 
@@ -212,10 +225,16 @@ One file per resource under `src/api/`. Each exports class wrapping `KyInstance`
 ```typescript
 export class AppsClient {
   private readonly http: KyInstance
-  constructor(http: KyInstance) { this.http = http }
+  constructor(http: KyInstance) {
+    this.http = http
+  }
 
-  async list(params: ListParams): Promise<ListResponse> { /* ... */ throw new Error('elided') }
-  async describe(id: string, workspaceId: string, fields: string[]): Promise<DescribeResponse> { /* ... */ throw new Error('elided') }
+  async list(params: ListParams): Promise<ListResponse> {
+    /* ... */ throw new Error('elided')
+  }
+  async describe(id: string, workspaceId: string, fields: string[]): Promise<DescribeResponse> {
+    /* ... */ throw new Error('elided')
+  }
 }
 ```
 
@@ -282,18 +301,17 @@ expect(JSON.parse(out).workspaces).toHaveLength(2)
 
 ## Scripts
 
-| Command                 | When to run                                        |
-| ----------------------- | -------------------------------------------------- |
-| `pnpm dev <cmd> [args]` | Run CLI from source during dev                     |
-| `pnpm test`             | Full vitest suite — run before every commit        |
-| `pnpm test:coverage`    | Coverage report                                    |
-| `pnpm type-check`       | `tsc --noEmit` — catches type errors without build |
-| `pnpm lint`             | ESLint check                                       |
-| `pnpm lint:fix`         | ESLint auto-fix (perfectionist sort, chaining)     |
-| `pnpm build`            | Production bundle (`vp pack`)                      |
-| `pnpm tree:gen`         | Regenerate `src/commands/tree.ts` (registry)       |
-| `pnpm tree:check`       | Verify `tree.ts` matches the filesystem            |
-| `pnpm build:bin`        | Cross-compile standalone binaries via Bun (CI)     |
+| Command                 | When to run                                    |
+| ----------------------- | ---------------------------------------------- |
+| `pnpm dev <cmd> [args]` | Run CLI from source during dev                 |
+| `pnpm test`             | Full vitest suite — run before every commit    |
+| `pnpm test:coverage`    | Coverage report                                |
+| `pnpm -w check`         | Repository-wide static check                   |
+| `pnpm -w check:fix`     | Repository-wide static fixes                   |
+| `pnpm build`            | Production bundle (`vp pack`)                  |
+| `pnpm tree:gen`         | Regenerate `src/commands/tree.ts` (registry)   |
+| `pnpm tree:check`       | Verify `tree.ts` matches the filesystem        |
+| `pnpm build:bin`        | Cross-compile standalone binaries via Bun (CI) |
 
 **`pnpm tree:gen` rule:** run after adding, removing, renaming any command. The generated `tree.ts` is the runtime command registry — stale tree causes commands to be invisible at runtime. (Runs implicitly via `prebuild`/`predev`/`pretest`.)
 
@@ -303,7 +321,7 @@ expect(JSON.parse(out).workspaces).toHaveLength(2)
 
 ## Lint rules that catch contributors
 
-Repo runs `@antfu/eslint-config` + perfectionist + unicorn.
+The repository runs Vite+ Oxlint as the primary code-quality linter, an explicit ESLint config for unsupported cases, and Vite+ Oxfmt for formatting. The fallback config does not depend on the Antfu ESLint config.
 
 | Rule                               | What it catches                                    |
 | ---------------------------------- | -------------------------------------------------- |
@@ -313,7 +331,7 @@ Repo runs `@antfu/eslint-config` + perfectionist + unicorn.
 | `unicorn/no-new-array`             | Use `Array.from({ length: n })` not `new Array(n)` |
 | `noUncheckedIndexedAccess` (tsc)   | `arr[i]` is `T \| undefined`; guard before use     |
 
-`pnpm lint:fix` resolves perfectionist + chaining auto.
+Run `pnpm -w check:fix` for Oxlint, ESLint, TypeScript, and Oxfmt fixes and diagnostics.
 
 ---
 
@@ -329,17 +347,17 @@ Repo runs `@antfu/eslint-config` + perfectionist + unicorn.
 
 ## Anti-patterns
 
-| Pattern                                                              | Do instead                                              |
-| -------------------------------------------------------------------- | ------------------------------------------------------- |
-| `if (format === 'json') { ... }` in `run.ts`                         | Printer handler per format                              |
-| `try { ... } catch (e) { if (isBaseError(e)) ... }` in every command | Throw `BaseError`; `DifyCommand.catch()` handles        |
-| Raw string error codes `'not_logged_in'`                             | `ErrorCode.NotLoggedIn`                                 |
-| `enabled: !isHuman` in `runWithSpinner`                              | Set `outputFormat` on `IOStreams`; spinner auto-detects |
-| Long positional arg lists                                            | Options struct                                          |
-| `Record<string, Strategy>` dispatch map                              | Named singletons + picker function                      |
-| `src/framework/` import in `run.ts`                                  | Keep framework imports in `index.ts` only               |
-| `buildAuthedContext(this, opts)` in command body                     | `this.authedCtx(opts)`                                  |
-| `console.log` in `src/`                                              | Return string from `run.ts`; write in `index.ts`        |
-| New dependency without approval                                      | Check first                                             |
+| Pattern                                                              | Do instead                                                                 |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `if (format === 'json') { ... }` in `run.ts`                         | Printer handler per format                                                 |
+| `try { ... } catch (e) { if (isBaseError(e)) ... }` in every command | Throw `BaseError`; `DifyCommand.catch()` handles                           |
+| Raw string error codes `'not_logged_in'`                             | `ErrorCode.NotLoggedIn`                                                    |
+| `enabled: !isHuman` in `runWithSpinner`                              | Set `outputFormat` on `IOStreams`; spinner auto-detects                    |
+| Long positional arg lists                                            | Options struct                                                             |
+| `Record<string, Strategy>` dispatch map                              | Named singletons + picker function                                         |
+| `src/framework/` import in `run.ts`, `api/`, or `auth/`              | Framework imports belong in `index.ts`, `handlers.ts`, and strategies only |
+| `buildAuthedContext(this, opts)` in command body                     | `this.authedCtx(opts)`                                                     |
+| `console.log` in `src/`                                              | Return string from `run.ts`; write in `index.ts`                           |
+| New dependency without approval                                      | Check first                                                                |
 
 [`docs/specs/`]: docs/specs/

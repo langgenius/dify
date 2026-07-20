@@ -10,7 +10,6 @@
   "imageUploader.tip": "Загрузите или перетащите изображения (Макс. {{batchCount}}, {{size}} МБ каждое)",
   "imageUploader.tooltip": "Загрузите изображения (макс. {{batchCount}}, {{size}} МБ каждое)",
   "input.countWarning": "До 200 символов.",
-  "input.indexWarning": "Только база знаний высокого качества.",
   "input.placeholder": "Пожалуйста, введите текст, рекомендуется использовать короткое повествовательное предложение.",
   "input.testing": "Тестирование",
   "input.title": "Исходный текст",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "Содержимое запроса",
   "table.header.source": "Источник",
   "table.header.time": "Время",
-  "title": "Тестирование поиска",
-  "viewChart": "Посмотреть ВЕКТОРНУЮ ДИАГРАММУ",
-  "viewDetail": "Подробнее"
+  "title": "Тестирование поиска"
 }

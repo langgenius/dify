@@ -7,6 +7,10 @@ import pytest
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
 from core.llm_generator.output_parser.errors import OutputParserError
+from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
+from core.plugin.impl.model import PluginModelClient
+from core.plugin.impl.model_runtime import PluginModelRuntime
+from core.plugin.plugin_service import PluginService
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
 from core.workflow.human_input_adapter import (
@@ -21,6 +25,7 @@ from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
     DifyPreparedLLM,
+    DifyPreparedPollingLLM,
     DifyPromptMessageSerializer,
     DifyRetrieverAttachmentLoader,
     DifyToolFileManager,
@@ -29,22 +34,61 @@ from core.workflow.node_runtime import (
     build_dify_llm_file_saver,
     resolve_dify_run_context,
 )
-from graphon.file import FileTransferMethod, FileType
+from core.workflow.nodes.human_input.entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
+from graphon.variables.segments import ArrayFileSegment, FileSegment
 from tests.workflow_test_utils import build_test_run_context
 
 
-def _build_model_schema() -> AIModelEntity:
+def _build_model_schema(*, features: list[ModelFeature] | None = None) -> AIModelEntity:
     return AIModelEntity(
         model="gpt-4o-mini",
         label=I18nObject(en_US="GPT-4o mini"),
         model_type=ModelType.LLM,
         fetch_from=FetchFrom.PREDEFINED_MODEL,
         model_properties={},
+        features=features,
     )
+
+
+class _ModelTypeInstanceStub(LargeLanguageModel):
+    def __init__(
+        self,
+        *,
+        model_schema: AIModelEntity | None,
+        model_runtime: object | None = None,
+    ) -> None:
+        self.model_runtime = model_runtime
+        self.get_model_schema = Mock(return_value=model_schema)
+
+
+class _ModelInstanceStub:
+    def __init__(
+        self,
+        *,
+        model_schema: AIModelEntity | None,
+        model_runtime: object | None = None,
+        invoke_llm_result: object = sentinel.result,
+        get_llm_num_tokens_result: int = 32,
+    ) -> None:
+        self.provider = "langgenius/openai/openai"
+        self.model_name = "gpt-4o-mini"
+        self.parameters = {"temperature": 0.2}
+        self.stop = ("stop",)
+        self.credentials = {"api_key": "secret"}
+        self.model_type_instance = _ModelTypeInstanceStub(
+            model_schema=model_schema,
+            model_runtime=model_runtime,
+        )
+        self.get_llm_num_tokens = Mock(return_value=get_llm_num_tokens_result)
+        self.invoke_llm = Mock(return_value=invoke_llm_result)
 
 
 def _build_run_context(*, invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER) -> dict[str, object]:
@@ -125,18 +169,9 @@ def test_dify_file_reference_factory_passes_tenant_id(monkeypatch: pytest.Monkey
 
 def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
     model_schema = _build_model_schema()
-    model_type_instance = SimpleNamespace(get_model_schema=Mock(return_value=model_schema))
-    model_instance = SimpleNamespace(
-        provider="langgenius/openai/openai",
-        model_name="gpt-4o-mini",
-        parameters={"temperature": 0.2},
-        stop=("stop",),
-        credentials={"api_key": "secret"},
-        model_type_instance=model_type_instance,
-        get_llm_num_tokens=Mock(return_value=32),
-        invoke_llm=Mock(return_value=sentinel.result),
-    )
-    prepared = DifyPreparedLLM(model_instance)
+    model_instance = _ModelInstanceStub(model_schema=model_schema)
+    model_type_instance = model_instance.model_type_instance
+    prepared = DifyPreparedLLM(model_instance, request_metadata={"app_id": "app-id"})
 
     assert prepared.provider == "langgenius/openai/openai"
     assert prepared.model_name == "gpt-4o-mini"
@@ -162,15 +197,13 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
         tools=[],
         stop=[],
         stream=False,
+        request_metadata={"app_id": "app-id"},
     )
 
 
 def test_dify_prepared_llm_requires_model_schema() -> None:
-    model_instance = SimpleNamespace(
-        model_name="gpt-4o-mini",
-        credentials={},
-        model_type_instance=SimpleNamespace(get_model_schema=Mock(return_value=None)),
-    )
+    model_instance = _ModelInstanceStub(model_schema=None)
+    model_instance.credentials = {}
     prepared = DifyPreparedLLM(model_instance)
 
     with pytest.raises(ValueError, match="Model schema not found"):
@@ -178,12 +211,7 @@ def test_dify_prepared_llm_requires_model_schema() -> None:
 
 
 def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytest.MonkeyPatch) -> None:
-    model_instance = SimpleNamespace(
-        provider="langgenius/openai/openai",
-        model_name="gpt-4o-mini",
-        credentials={"api_key": "secret"},
-        model_type_instance=SimpleNamespace(get_model_schema=Mock(return_value=_build_model_schema())),
-    )
+    model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
     prepared = DifyPreparedLLM(model_instance)
     invoke_structured = MagicMock(return_value=sentinel.structured)
     monkeypatch.setattr(node_runtime, "invoke_llm_with_structured_output", invoke_structured)
@@ -214,6 +242,94 @@ def test_dify_prepared_llm_identifies_structured_output_errors() -> None:
 
     assert prepared.is_structured_output_parse_error(OutputParserError("bad json")) is True
     assert prepared.is_structured_output_parse_error(ValueError("other")) is False
+
+
+def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
+    polling_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+        next_check_after_seconds=2,
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(spec=PluginModelClient),
+        plugin_service=PluginService,
+    )
+    plugin_runtime.start_llm_polling = Mock(return_value=polling_result)  # type: ignore[method-assign]
+    plugin_runtime.check_llm_polling = Mock(return_value=polling_result)  # type: ignore[method-assign]
+    model_instance = _ModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+    )
+
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    assert isinstance(prepared, LLMPollingCapableProtocol)
+    assert (
+        prepared.start_llm_polling(
+            prompt_messages=[],
+            model_parameters={"temperature": 0.1},
+            tools=[],
+            stop=("END",),
+            json_schema={"type": "object"},
+        )
+        == polling_result
+    )
+    assert (
+        prepared.check_llm_polling(
+            plugin_state={"task_id": "poll-1"},
+        )
+        == polling_result
+    )
+    plugin_runtime.start_llm_polling.assert_called_once_with(
+        provider="langgenius/openai/openai",
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+        prompt_messages=[],
+        model_parameters={"temperature": 0.1},
+        tools=[],
+        stop=("END",),
+        json_schema={"type": "object"},
+    )
+    plugin_runtime.check_llm_polling.assert_called_once_with(
+        provider="langgenius/openai/openai",
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+        plugin_state={"task_id": "poll-1"},
+    )
+
+
+def test_dify_prepared_polling_llm_raise_exception_when_polling_is_unsupported() -> None:
+    llm_result = node_runtime.LLMResult(
+        model="gpt-4o-mini",
+        prompt_messages=[],
+        message=AssistantPromptMessage(content="sync-result"),
+        usage=node_runtime.LLMUsage.empty_usage(),
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(),
+        plugin_service=Mock(),
+    )
+    plugin_runtime.start_llm_polling = Mock(side_effect=PluginLLMPollingUnsupportedError("Polling unsupported"))  # type: ignore[method-assign]
+    model_instance = _ModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+        invoke_llm_result=llm_result,
+    )
+
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    with pytest.raises(PluginLLMPollingUnsupportedError):
+        prepared.start_llm_polling(
+            prompt_messages=[],
+            model_parameters={"temperature": 0.1},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
 
 
 def test_dify_prompt_message_serializer_delegates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -469,6 +585,46 @@ def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools
     get_runtime.assert_called_once()
 
 
+def test_dify_tool_node_runtime_stores_trace_session_id_for_workflow_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
+    get_runtime = MagicMock(return_value=runtime_tool)
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    monkeypatch.setattr(
+        node_runtime,
+        "get_system_text",
+        lambda _pool, key: (
+            "outer-workflow-run-id" if key == node_runtime.SystemVariableKey.WORKFLOW_EXECUTION_ID else None
+        ),
+    )
+
+    run_context = _build_run_context()
+    run_context[DIFY_RUN_CONTEXT_KEY].trace_session_id = "session-1"
+    runtime = node_runtime.DifyToolNodeRuntime(run_context)
+    node_data = ToolNodeData(
+        title="Workflow Tool Node",
+        desc=None,
+        provider_id="workflow-provider-id",
+        provider_type=ToolProviderType.WORKFLOW,
+        provider_name="workflow-provider",
+        tool_name="workflow-tool",
+        tool_label="Workflow Tool",
+        tool_configurations={},
+        tool_parameters={},
+    )
+
+    handle = runtime.get_runtime(
+        node_id="tool-node",
+        node_data=node_data,
+        variable_pool=object(),
+        node_execution_id="node-execution-id",
+    )
+
+    assert handle.raw.trace_session_id == "session-1"
+    assert runtime_tool.runtime.runtime_parameters == {}
+
+
 def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_workflow_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -584,10 +740,41 @@ def test_dify_human_input_runtime_create_form_filters_debugger_delivery_methods(
     params = repository.create_form.call_args.args[0]
     assert params.node_id == "human-input-node"
     assert params.workflow_execution_id == "workflow-execution-id"
+    # No conversation_id_getter wired -> a pure workflow run leaves it None.
+    assert params.conversation_id is None
     assert params.display_in_ui is True
     assert len(params.delivery_methods) == 1
     assert params.delivery_methods[0].type == DeliveryMethodType.EMAIL
     assert params.delivery_methods[0].config.recipients.items[0].reference_id == "user-id"
+
+
+def test_dify_human_input_runtime_create_form_tags_conversation_id_for_chatflow() -> None:
+    # ENG-635 (review): a chatflow (advanced-chat) run carries a conversation, so its
+    # Human Input form is tagged with BOTH its workflow run and its conversation —
+    # making the form queryable per conversation without changing resume routing.
+    repository = MagicMock()
+    repository.create_form.return_value = sentinel.form
+    node_data = HumanInputNodeData(
+        title="Human Input",
+        delivery_methods=[WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())],
+    )
+    runtime = DifyHumanInputNodeRuntime(
+        _build_run_context(),
+        workflow_execution_id_getter=lambda: "workflow-execution-id",
+        conversation_id_getter=lambda: "conversation-id",
+        form_repository=repository,
+    )
+
+    runtime.create_form(
+        node_id="human-input-node",
+        node_data=node_data,
+        rendered_content="<p>Rendered</p>",
+        resolved_default_values={},
+    )
+
+    params = repository.create_form.call_args.args[0]
+    assert params.workflow_execution_id == "workflow-execution-id"
+    assert params.conversation_id == "conversation-id"
 
 
 def test_dify_human_input_runtime_preserves_webapp_delivery_for_web_invocations() -> None:
@@ -619,6 +806,70 @@ def test_dify_human_input_runtime_preserves_webapp_delivery_for_web_invocations(
         DeliveryMethodType.EMAIL,
     ]
     assert params.delivery_methods[1].config.recipients.include_bound_group is True
+
+
+def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files() -> None:
+    runtime = DifyHumanInputNodeRuntime(_build_run_context())
+    file_value = File(
+        file_id="file-1",
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="upload-1",
+        filename="resume.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=128,
+    )
+    file_list_value = [
+        File(
+            file_id="file-2",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="upload-2",
+            filename="first.pdf",
+            extension=".pdf",
+            mime_type="application/pdf",
+            size=64,
+        ),
+        File(
+            file_id="file-3",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/second.pdf",
+            filename="second.pdf",
+            extension=".pdf",
+            mime_type="application/pdf",
+            size=96,
+        ),
+    ]
+    runtime._file_reference_factory.build_from_mapping = MagicMock(side_effect=[file_value, *file_list_value])  # type: ignore[method-assign]
+    node_data = HumanInputNodeData(
+        title="Human Input",
+        inputs=[
+            FileInputConfig(output_variable_name="attachment"),
+            FileListInputConfig(output_variable_name="attachments", number_limits=2),
+        ],
+    )
+
+    restored = runtime.restore_submitted_data(
+        node_data=node_data,
+        submitted_data={
+            "attachment": {"upload_file_id": "upload-1", "type": "document", "transfer_method": "local_file"},
+            "attachments": [
+                {"upload_file_id": "upload-2", "type": "document", "transfer_method": "local_file"},
+                {
+                    "url": "https://example.com/second.pdf",
+                    "type": "document",
+                    "transfer_method": "remote_url",
+                },
+            ],
+        },
+    )
+
+    assert restored["attachment"] is file_value
+    assert restored["attachments"] == file_list_value
+    assert isinstance(FileSegment(value=restored["attachment"]), FileSegment)
+    assert isinstance(ArrayFileSegment(value=restored["attachments"]), ArrayFileSegment)
 
 
 def test_build_dify_llm_file_saver_wires_runtime_adapters(monkeypatch: pytest.MonkeyPatch) -> None:

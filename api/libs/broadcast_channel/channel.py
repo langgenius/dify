@@ -8,7 +8,7 @@ import types
 from abc import abstractmethod
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
-from typing import Protocol, Self
+from typing import Protocol, Self, override
 
 
 class Subscription(AbstractContextManager["Subscription"], Protocol):
@@ -37,10 +37,12 @@ class Subscription(AbstractContextManager["Subscription"], Protocol):
         """close closes the subscription, releases any resources associated with it."""
         ...
 
+    @override
     def __enter__(self) -> Self:
         """`__enter__` does the setup logic of the subscription (if any), and return itself."""
         return self
 
+    @override
     def __exit__(
         self,
         exc_type: type[BaseException] | None,

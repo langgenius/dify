@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from graphon.nodes.human_input.entities import ParagraphInputConfig
-from graphon.nodes.human_input.enums import TimeoutUnit
+from core.workflow.nodes.human_input.entities import FormInputConfig
+from core.workflow.nodes.human_input.enums import TimeoutUnit
 from libs.datetime_utils import naive_utc_now
 
 
@@ -45,7 +45,7 @@ class HumanInputForm:
     tenant_id: str
     app_id: str | None
     form_content: str
-    inputs: list[ParagraphInputConfig]
+    inputs: list[FormInputConfig]
     user_actions: list[dict[str, Any]]
     timeout: int
     timeout_unit: TimeoutUnit
@@ -88,7 +88,7 @@ class HumanInputForm:
     def to_response_dict(self, *, include_site_info: bool) -> dict[str, Any]:
         inputs_response = [
             {
-                "type": form_input.type.name.lower().replace("_", "-"),
+                "type": form_input.type.value,
                 "output_variable_name": form_input.output_variable_name,
             }
             for form_input in self.inputs

@@ -12,24 +12,20 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   onConfirm: () => void
   onCancel: () => void
-}
+}>
 const i18nPrefix = 'common.effectVarConfirm'
 
-const RemoveVarConfirm: FC<Props> = ({
-  isShow,
-  onConfirm,
-  onCancel,
-}) => {
+const RemoveVarConfirm: FC<Props> = ({ isShow, onConfirm, onCancel }) => {
   const { t } = useTranslation()
-  const title = t(`${i18nPrefix}.title`, { ns: 'workflow' })
-  const content = t(`${i18nPrefix}.content`, { ns: 'workflow' })
+  const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })
+  const content = t(($) => $[`${i18nPrefix}.content`], { ns: 'workflow' })
 
   return (
-    <AlertDialog open={isShow} onOpenChange={open => !open && onCancel()}>
+    <AlertDialog open={isShow} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
@@ -41,10 +37,10 @@ const RemoveVarConfirm: FC<Props> = ({
         </div>
         <AlertDialogActions>
           <AlertDialogCancelButton>
-            {t('operation.cancel', { ns: 'common' })}
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm}>
-            {t('operation.confirm', { ns: 'common' })}
+            {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

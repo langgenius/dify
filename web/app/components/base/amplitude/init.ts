@@ -16,13 +16,13 @@ const getEnglishPageName = (pathname: string): string => {
 
   const pageNameMap: Record<string, string> = {
     '': 'Home',
-    'apps': 'Studio',
-    'datasets': 'Knowledge',
-    'explore': 'Explore',
-    'tools': 'Tools',
-    'account': 'Account',
-    'signin': 'Sign In',
-    'signup': 'Sign Up',
+    apps: 'Studio',
+    datasets: 'Knowledge',
+    explore: 'Explore',
+    tools: 'Tools',
+    account: 'Account',
+    signin: 'Sign In',
+    signup: 'Sign Up',
   }
 
   return pageNameMap[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
@@ -49,8 +49,7 @@ const createPageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
 export const ensureAmplitudeInitialized = ({
   sessionReplaySampleRate = 0.5,
 }: AmplitudeInitializationOptions = {}) => {
-  if (!isAmplitudeEnabled || isAmplitudeInitialized)
-    return
+  if (!isAmplitudeEnabled || isAmplitudeInitialized) return
 
   isAmplitudeInitialized = true
 
@@ -66,17 +65,13 @@ export const ensureAmplitudeInitialized = ({
     })
 
     amplitude.add(createPageNameEnrichmentPlugin())
-    amplitude.add(sessionReplayPlugin({
-      sampleRate: sessionReplaySampleRate,
-    }))
-  }
-  catch (error) {
+    amplitude.add(
+      sessionReplayPlugin({
+        sampleRate: sessionReplaySampleRate,
+      }),
+    )
+  } catch (error) {
     isAmplitudeInitialized = false
     throw error
   }
-}
-
-// Only used by unit tests to reset module-scoped initialization state.
-export const resetAmplitudeInitializationForTests = () => {
-  isAmplitudeInitialized = false
 }

@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Journaux d’actions",
   "circularInvocationTip": "Il y a un appel circulaire d’outils/nœuds dans le flux de travail actuel.",
   "detail": "DÉTAIL",
   "input": "ENTRÉE",
@@ -10,7 +9,6 @@
   "meta.time": "Temps écoulé",
   "meta.title": "MÉTADONNÉES",
   "meta.tokens": "Total des jetons",
-  "meta.version": "Version",
   "result": "RÉSULTAT",
   "resultEmpty.link": "panneau de détail",
   "resultEmpty.tipLeft": "veuillez aller à ",

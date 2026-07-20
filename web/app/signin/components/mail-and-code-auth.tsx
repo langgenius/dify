@@ -1,10 +1,10 @@
-import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -20,55 +20,68 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const searchParams = useSearchParams()
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
-  const [loading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const locale = useLocale()
+  const setCountdownLeftTime = useSetCountdownLeftTime()
 
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        toast.error(t('error.emailEmpty', { ns: 'login' }))
+        toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
         return
       }
 
       if (!emailRegex.test(email)) {
-        toast.error(t('error.emailInValid', { ns: 'login' }))
+        toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
         return
       }
-      setIsLoading(true)
+      setLoading(true)
       const ret = await sendEMailLoginCode(email, locale)
       if (ret.result === 'success') {
-        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
         router.push(`/signin/check-code?${params.toString()}`)
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error)
+    } finally {
+      setLoading(false)
     }
-    finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    handleGetEMailVerificationCode()
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input type="text" className="hidden" />
-      <div className="mb-2">
-        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">{t('email', { ns: 'login' })}</label>
-        <div className="mt-1">
-          <Input id="email" type="email" disabled={isInvite} value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
-        </div>
+    <Form
+      onFormSubmit={() => {
+        void handleGetEMailVerificationCode()
+      }}
+    >
+      <Field name="email" disabled={isInvite} className="mb-2">
+        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
+          {t(($) => $.email, { ns: 'login' })}
+        </FieldLabel>
+        <FieldControl
+          type="email"
+          autoComplete="email"
+          spellCheck={false}
+          disabled={isInvite}
+          value={email}
+          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
+          onValueChange={setEmail}
+        />
         <div className="mt-3">
-          <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t('signup.verifyMail', { ns: 'login' })}</Button>
+          <Button
+            type="submit"
+            loading={loading}
+            disabled={loading || !email}
+            variant="primary"
+            className="w-full"
+          >
+            {t(($) => $['signup.verifyMail'], { ns: 'login' })}
+          </Button>
         </div>
-      </div>
-    </form>
+      </Field>
+    </Form>
   )
 }

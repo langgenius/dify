@@ -1,15 +1,10 @@
 import type { ContentItemProps } from './type'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { Markdown } from '@/app/components/base/markdown'
+import HumanInputFieldRenderer from './field-renderer'
 
-const ContentItem = ({
-  content,
-  formInputFields,
-  inputs,
-  onInputChange,
-}: ContentItemProps) => {
+const ContentItem = ({ content, formInputFields, inputs, onInputChange }: ContentItemProps) => {
   const isInputField = (field: string) => {
     const outputVarRegex = /\{\{#\$output\.[^#]+#\}\}/
     return outputVarRegex.test(field)
@@ -26,29 +21,22 @@ const ContentItem = ({
   }, [content])
 
   const formInputField = useMemo(() => {
-    return formInputFields.find(field => field.output_variable_name === fieldName)
+    return formInputFields.find((field) => field.output_variable_name === fieldName)
   }, [formInputFields, fieldName])
 
   if (!isInputField(content)) {
-    return (
-      <Markdown content={content} />
-    )
+    return <Markdown content={content} />
   }
 
-  if (!formInputField)
-    return null
+  if (!formInputField) return null
 
   return (
     <div className="py-3">
-      {formInputField.type === 'paragraph' && (
-        <Textarea
-          aria-label={fieldName}
-          className="h-[104px] sm:text-xs"
-          value={inputs[fieldName]!}
-          onValueChange={(value) => { onInputChange(fieldName, value) }}
-          data-testid="content-item-textarea"
-        />
-      )}
+      <HumanInputFieldRenderer
+        field={formInputField}
+        value={inputs[fieldName]}
+        onChange={(value) => onInputChange(fieldName, value)}
+      />
     </div>
   )
 }

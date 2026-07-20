@@ -14,41 +14,46 @@ type RuleDetailProps = {
   retrievalMethod?: RETRIEVE_METHOD
 }
 
-const RuleDetail = ({
-  sourceData,
-  indexingType,
-  retrievalMethod,
-}: RuleDetailProps) => {
+const RuleDetail = ({ sourceData, indexingType, retrievalMethod }: RuleDetailProps) => {
   const { t } = useTranslation()
 
-  const getValue = useCallback((field: string) => {
-    let value = '-'
-    switch (field) {
-      case 'mode':
-        value = !sourceData?.mode
-          ? value
-
-          : sourceData.mode === ProcessMode.general
-            ? (t('embedding.custom', { ns: 'datasetDocuments' }) as string)
-
-            : `${t('embedding.hierarchical', { ns: 'datasetDocuments' })} · ${sourceData?.rules?.parent_mode === 'paragraph'
-              ? t('parentMode.paragraph', { ns: 'dataset' })
-              : t('parentMode.fullDoc', { ns: 'dataset' })}`
-        break
-    }
-    return value
-  }, [sourceData, t])
+  const getValue = useCallback(
+    (field: string) => {
+      let value = '-'
+      switch (field) {
+        case 'mode':
+          value = !sourceData?.mode
+            ? value
+            : sourceData.mode === ProcessMode.general
+              ? (t(($) => $['embedding.custom'], { ns: 'datasetDocuments' }) as string)
+              : `${t(($) => $['embedding.hierarchical'], { ns: 'datasetDocuments' })} · ${
+                  sourceData?.rules?.parent_mode === 'paragraph'
+                    ? t(($) => $['parentMode.paragraph'], { ns: 'dataset' })
+                    : t(($) => $['parentMode.fullDoc'], { ns: 'dataset' })
+                }`
+          break
+      }
+      return value
+    },
+    [sourceData, t],
+  )
 
   return (
     <div className="flex flex-col gap-1" data-testid="rule-detail">
       <FieldInfo
-        label={t('embedding.mode', { ns: 'datasetDocuments' })}
+        label={t(($) => $['embedding.mode'], { ns: 'datasetDocuments' })}
         displayedValue={getValue('mode')}
       />
       <FieldInfo
-        label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
-        displayedValue={t(`stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`, { ns: 'datasetCreation' }) as string}
-        valueIcon={(
+        label={t(($) => $['stepTwo.indexMode'], { ns: 'datasetCreation' })}
+        displayedValue={
+          t(
+            ($) =>
+              $[`stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`],
+            { ns: 'datasetCreation' },
+          ) as string
+        }
+        valueIcon={
           <img
             className="size-4"
             src={
@@ -58,25 +63,30 @@ const RuleDetail = ({
             }
             alt=""
           />
-        )}
+        }
       />
       <FieldInfo
-        label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
-        displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`, { ns: 'dataset' })}
-        valueIcon={(
+        label={t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+        displayedValue={t(
+          ($) =>
+            $[
+              `retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : (retrievalMethod ?? 'semantic_search')}.title`
+            ],
+          { ns: 'dataset' },
+        )}
+        valueIcon={
           <img
             className="size-4"
             src={
               retrievalMethod === RETRIEVE_METHOD.fullText
                 ? retrievalIcon.fullText
-
                 : retrievalMethod === RETRIEVE_METHOD.hybrid
                   ? retrievalIcon.hybrid
                   : retrievalIcon.vector
             }
             alt=""
           />
-        )}
+        }
       />
     </div>
   )

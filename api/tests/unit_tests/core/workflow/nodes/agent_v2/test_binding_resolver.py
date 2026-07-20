@@ -4,7 +4,7 @@ from core.workflow.nodes.agent_v2.binding_resolver import (
     WorkflowAgentBindingError,
     WorkflowAgentBindingResolver,
 )
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 
 
@@ -83,6 +83,25 @@ def test_binding_resolver_returns_detached_binding_bundle(monkeypatch: pytest.Mo
     assert bundle.agent.id == "agent-1"
     assert bundle.snapshot.id == "snapshot-1"
     assert fake_session.expunge_calls == [bundle.binding, bundle.agent, bundle.snapshot]
+
+
+def test_binding_resolver_uses_active_snapshot_for_roster_agent(monkeypatch: pytest.MonkeyPatch):
+    binding = _binding()
+    binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+    binding.current_snapshot_id = "old-snapshot"
+    agent = _agent()
+    agent.active_config_snapshot_id = "active-snapshot"
+    snapshot = _snapshot()
+    snapshot.id = "active-snapshot"
+    fake_session = FakeSession([binding, agent, snapshot])
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.binding_resolver.session_factory.create_session",
+        lambda: fake_session,
+    )
+
+    bundle = WorkflowAgentBindingResolver().resolve(**_resolve())
+
+    assert bundle.snapshot.id == "active-snapshot"
 
 
 def test_binding_resolver_raises_when_binding_missing(monkeypatch: pytest.MonkeyPatch):

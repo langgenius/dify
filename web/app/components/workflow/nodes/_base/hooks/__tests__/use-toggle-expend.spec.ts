@@ -27,21 +27,9 @@ function useHarness({ hasFooter, isInNode, clientHeight = 400 }: HookProps) {
 }
 
 describe('useToggleExpend', () => {
-  describe('collapsed state', () => {
-    it('returns empty wrapClassName and zero expand height when collapsed', () => {
-      const { result } = renderHook(() => useHarness({ clientHeight: 400 }))
-
-      expect(result.current.isExpand).toBe(false)
-      expect(result.current.wrapClassName).toBe('')
-      expect(result.current.editorExpandHeight).toBe(0)
-    })
-  })
-
   describe('expanded state (node context)', () => {
     it('uses fixed positioning inside a workflow node panel', () => {
-      const { result } = renderHook(() =>
-        useHarness({ isInNode: true, clientHeight: 400 }),
-      )
+      const { result } = renderHook(() => useHarness({ isInNode: true, clientHeight: 400 }))
 
       act(() => {
         result.current.setIsExpand(true)
@@ -58,9 +46,7 @@ describe('useToggleExpend', () => {
 
   describe('expanded state (execution-log / webapp context)', () => {
     it('fills its positioned ancestor edge-to-edge without hardcoded offsets', () => {
-      const { result } = renderHook(() =>
-        useHarness({ isInNode: false, clientHeight: 400 }),
-      )
+      const { result } = renderHook(() => useHarness({ isInNode: false, clientHeight: 400 }))
 
       act(() => {
         result.current.setIsExpand(true)
@@ -82,9 +68,7 @@ describe('useToggleExpend', () => {
 
   describe('expanded state height math', () => {
     it('subtracts the 29px chrome when hasFooter is false', () => {
-      const { result } = renderHook(() =>
-        useHarness({ hasFooter: false, clientHeight: 400 }),
-      )
+      const { result } = renderHook(() => useHarness({ hasFooter: false, clientHeight: 400 }))
 
       act(() => {
         result.current.setIsExpand(true)
@@ -95,9 +79,7 @@ describe('useToggleExpend', () => {
     })
 
     it('subtracts the 56px chrome when hasFooter is true', () => {
-      const { result } = renderHook(() =>
-        useHarness({ hasFooter: true, clientHeight: 400 }),
-      )
+      const { result } = renderHook(() => useHarness({ hasFooter: true, clientHeight: 400 }))
 
       act(() => {
         result.current.setIsExpand(true)
@@ -108,9 +90,7 @@ describe('useToggleExpend', () => {
     })
 
     it('never returns a negative height even if chrome exceeds wrap', () => {
-      const { result } = renderHook(() =>
-        useHarness({ hasFooter: true, clientHeight: 20 }),
-      )
+      const { result } = renderHook(() => useHarness({ hasFooter: true, clientHeight: 20 }))
 
       act(() => {
         result.current.setIsExpand(true)

@@ -64,7 +64,7 @@ class TestMCPToolInvoke:
         result = CallToolResult(content=[content])
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            messages = list(tool._invoke(user_id="test_user", tool_parameters={}))
+            messages = list(tool._invoke(session=Mock(), user_id="test_user", tool_parameters={}))
 
         assert len(messages) == 1
         msg = messages[0]
@@ -80,7 +80,7 @@ class TestMCPToolInvoke:
         result = CallToolResult(content=[content])
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            messages = list(tool._invoke(user_id="test_user", tool_parameters={}))
+            messages = list(tool._invoke(session=Mock(), user_id="test_user", tool_parameters={}))
 
         assert len(messages) == 1
         msg = messages[0]
@@ -101,7 +101,7 @@ class TestMCPToolInvoke:
         result = CallToolResult(content=[content])
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            messages = list(tool._invoke(user_id="test_user", tool_parameters={}))
+            messages = list(tool._invoke(session=Mock(), user_id="test_user", tool_parameters={}))
 
         assert len(messages) == 1
         msg = messages[0]
@@ -115,7 +115,7 @@ class TestMCPToolInvoke:
         result = CallToolResult(content=[], structuredContent={"a": 1, "b": "x"})
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            messages = list(tool._invoke(user_id="test_user", tool_parameters={}))
+            messages = list(tool._invoke(session=Mock(), user_id="test_user", tool_parameters={}))
 
         # Expect two variable messages corresponding to keys a and b
         assert len(messages) == 2
@@ -281,7 +281,7 @@ class TestMCPToolUsageExtraction:
         result = CallToolResult(content=[TextContent(type="text", text="test")], _meta=meta)
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            list(tool._invoke(user_id="test_user", tool_parameters={}))
+            list(tool._invoke(session=Mock(), user_id="test_user", tool_parameters={}))
 
         # Verify latest_usage was set correctly
         assert tool.latest_usage.prompt_tokens == 200
@@ -295,7 +295,7 @@ class TestMCPToolUsageExtraction:
         result = CallToolResult(content=[TextContent(type="text", text="test")], _meta=None)
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            list(tool._invoke(user_id="test_user", tool_parameters={}))
+            list(tool._invoke(session=Mock(), user_id="test_user", tool_parameters={}))
 
         # Verify latest_usage is empty
         assert tool.latest_usage.total_tokens == 0

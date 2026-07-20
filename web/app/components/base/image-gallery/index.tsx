@@ -6,9 +6,9 @@ import { useState } from 'react'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import s from './style.module.css'
 
-type Props = {
+type Props = Readonly<{
   srcs: string[]
-}
+}>
 
 const getWidthStyle = (imgNum: number) => {
   if (imgNum === 1) {
@@ -28,63 +28,32 @@ const getWidthStyle = (imgNum: number) => {
   }
 }
 
-const ImageGallery: FC<Props> = ({
-  srcs,
-}) => {
+const ImageGallery: FC<Props> = ({ srcs }) => {
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)
   return (
     <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')} data-testid="image-gallery">
-      {srcs.map((src, index) => (
-        !src
-          ? null
-          : (
-              <img
-                key={index}
-                className={s.item}
-                style={imgStyle}
-                src={src}
-                alt=""
-                data-testid="gallery-image" // Added for testing
-                onClick={() => setImagePreviewUrl(src)}
-                onError={e => e.currentTarget.remove()}
-              />
-            )
-      ))}
-      {
-        imagePreviewUrl && (
-          <ImagePreview
-            url={imagePreviewUrl}
-            onCancel={() => setImagePreviewUrl('')}
-            title=""
+      {srcs.map((src, index) =>
+        !src ? null : (
+          <img
+            key={index}
+            className={s.item}
+            style={imgStyle}
+            src={src}
+            alt=""
+            data-testid="gallery-image" // Added for testing
+            onClick={() => setImagePreviewUrl(src)}
+            onError={(e) => e.currentTarget.remove()}
           />
-        )
-      }
+        ),
+      )}
+      {imagePreviewUrl && (
+        <ImagePreview url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} title="" />
+      )}
     </div>
   )
 }
 
 export default React.memo(ImageGallery)
-
-export const ImageGalleryTest = () => {
-  const imgGallerySrcs = (() => {
-    const srcs = []
-    for (let i = 0; i < 6; i++)
-      // srcs.push('https://placekitten.com/640/360')
-      // srcs.push('https://placekitten.com/360/640')
-      srcs.push('https://placekitten.com/360/360')
-
-    return srcs
-  })()
-  return (
-    <div className="space-y-2">
-      {imgGallerySrcs.map((_, index) => (
-        <div key={index} className="rounded-lg bg-[#D1E9FF80] p-4 pb-2">
-          <ImageGallery srcs={imgGallerySrcs.slice(0, index + 1)} />
-        </div>
-      ))}
-    </div>
-  )
-}

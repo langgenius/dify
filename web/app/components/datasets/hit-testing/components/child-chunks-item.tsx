@@ -6,19 +6,14 @@ import { SliceContent } from '../../formatted-text/flavours/shared'
 import Score from './score'
 
 type Props = {
-  payload: HitTestingChildChunk
-  isShowAll: boolean
+  readonly payload: HitTestingChildChunk
+  readonly isShowAll: boolean
 }
 
-const ChildChunks: FC<Props> = ({
-  payload,
-  isShowAll,
-}) => {
+const ChildChunks: FC<Props> = ({ payload, isShowAll }) => {
   const { score, content, position } = payload
   return (
-    <div
-      className={!isShowAll ? 'line-clamp-2 break-all' : ''}
-    >
+    <div className={!isShowAll ? 'line-clamp-2 break-all' : ''}>
       <div className="relative top-[-2px] inline-flex items-center">
         <div className="flex h-[20.5px] items-center bg-state-accent-solid px-1 system-2xs-semibold-uppercase text-text-primary-on-surface">
           C-
@@ -26,7 +21,9 @@ const ChildChunks: FC<Props> = ({
         </div>
         <Score value={score} besideChunkName />
       </div>
-      <SliceContent className="bg-state-accent-hover py-0.5 text-sm font-normal text-text-secondary group-hover:bg-state-accent-hover">{content}</SliceContent>
+      <SliceContent className="bg-state-accent-hover py-0.5 text-sm font-normal text-text-secondary group-hover:bg-state-accent-hover">
+        {content}
+      </SliceContent>
     </div>
   )
 }

@@ -1,7 +1,6 @@
-/* eslint-disable ts/no-explicit-any */
 import type { App } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
-import { screen, within } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -9,44 +8,32 @@ import AppListContext from '@/context/app-list-context'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
-vi.mock('@heroicons/react/20/solid', () => ({
-  PlusIcon: ({ className }: any) => <div data-testid="plus-icon" className={className} aria-label="Add icon">+</div>,
+vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
+
+const mockConfig = vi.hoisted(() => ({ isCloudEdition: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get IS_CLOUD_EDITION() {
+    return mockConfig.isCloudEdition
+  },
 }))
 
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: vi.fn(),
-}))
-
-const mockConfig = vi.hoisted(() => ({
-  isCloudEdition: true,
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
-  }
-})
-
-const mockApp: App = {
+const app: App = {
   can_trial: true,
   app: {
-    id: 'test-app-id',
+    id: 'app-1',
     mode: AppModeEnum.CHAT,
     icon_type: 'emoji' as AppIconType,
     icon: '🤖',
     icon_background: '#FFEAD5',
     icon_url: '',
-    name: 'Test Chat App',
-    description: 'A test chat application for demonstration purposes',
+    name: 'Chat template',
+    description: 'Template description',
     use_icon_as_answer_icon: false,
   },
-  app_id: 'test-app-id',
-  description: 'A comprehensive chat application template',
-  copyright: 'Test Corp',
+  app_id: 'app-1',
+  description: 'Template description',
+  copyright: 'Dify',
   privacy_policy: null,
   custom_disclaimer: null,
   categories: ['Assistant'],
@@ -59,357 +46,70 @@ const mockApp: App = {
 }
 
 describe('AppCard', () => {
-  const mockSetShowTryAppPanel = vi.fn()
-  const mockTrackEvent = vi.mocked(trackEvent)
-  const defaultProps = {
-    app: mockApp,
-    canCreate: true,
-    onCreate: vi.fn(),
-  }
-
-  const renderWithProvider = (ui: React.ReactElement) => {
-    return render(
-      // eslint-disable-next-line react/no-context-provider
-      <AppListContext.Provider
-        value={{
-          currentApp: undefined,
-          isShowTryAppPanel: false,
-          setShowTryAppPanel: mockSetShowTryAppPanel,
-          controlHideCreateFromTemplatePanel: 0,
-        }}
-      >
-        {ui}
-      </AppListContext.Provider>,
-    )
-  }
-
   beforeEach(() => {
     mockConfig.isCloudEdition = true
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<AppCard {...defaultProps} />)
+  it('exposes template creation only when creation is allowed', () => {
+    const { rerender } = render(<AppCard app={app} canCreate onCreate={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'app.newApp.useTemplate' })).toBeInTheDocument()
 
-      expect(container.querySelector('em-emoji')).toBeInTheDocument()
-      expect(screen.getByText('Test Chat App')).toBeInTheDocument()
-      expect(screen.getByText(mockApp.description)).toBeInTheDocument()
-    })
-
-    it('should render app type icon and label', () => {
-      const { container } = render(<AppCard {...defaultProps} />)
-
-      expect(container.querySelector('svg')).toBeInTheDocument()
-      expect(screen.getByText('app.typeSelector.chatbot')).toBeInTheDocument()
-    })
+    rerender(<AppCard app={app} canCreate={false} onCreate={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'app.newApp.useTemplate' })).not.toBeInTheDocument()
   })
 
-  describe('Props', () => {
-    describe('canCreate behavior', () => {
-      it('should show create button when canCreate is true', () => {
-        render(<AppCard {...defaultProps} canCreate={true} />)
-
-        const button = screen.getByRole('button', { name: /app\.newApp\.useTemplate/ })
-        expect(button).toBeInTheDocument()
-      })
-
-      it('should hide create button when canCreate is false', () => {
-        render(<AppCard {...defaultProps} canCreate={false} />)
-
-        const button = screen.queryByRole('button', { name: /app\.newApp\.useTemplate/ })
-        expect(button).not.toBeInTheDocument()
-      })
-    })
-
-    it('should display app name from appBasicInfo', () => {
-      const customApp = {
-        ...mockApp,
-        app: {
-          ...mockApp.app,
-          name: 'Custom App Name',
-        },
-      }
-      render(<AppCard {...defaultProps} app={customApp} />)
-
-      expect(screen.getByText('Custom App Name')).toBeInTheDocument()
-    })
-
-    it('should display app description from app level', () => {
-      const customApp = {
-        ...mockApp,
-        description: 'Custom description for the app',
-      }
-      render(<AppCard {...defaultProps} app={customApp} />)
-
-      expect(screen.getByText('Custom description for the app')).toBeInTheDocument()
-    })
-
-    it('should truncate long app names', () => {
-      const longNameApp = {
-        ...mockApp,
-        app: {
-          ...mockApp.app,
-          name: 'This is a very long app name that should be truncated with line-clamp-1',
-        },
-      }
-      render(<AppCard {...defaultProps} app={longNameApp} />)
-
-      const nameElement = screen.getByTitle('This is a very long app name that should be truncated with line-clamp-1')
-      expect(nameElement).toBeInTheDocument()
-    })
+  it('creates the template from the primary action', async () => {
+    const onCreate = vi.fn()
+    render(<AppCard app={app} canCreate onCreate={onCreate} />)
+    await userEvent.click(screen.getByRole('button', { name: 'app.newApp.useTemplate' }))
+    expect(onCreate).toHaveBeenCalledOnce()
   })
 
-  describe('App Modes - Data Driven Tests', () => {
-    const testCases = [
-      {
-        mode: AppModeEnum.CHAT,
-        expectedLabel: 'app.typeSelector.chatbot',
-        description: 'Chat application mode',
-      },
-      {
-        mode: AppModeEnum.AGENT_CHAT,
-        expectedLabel: 'app.typeSelector.agent',
-        description: 'Agent chat mode',
-      },
-      {
-        mode: AppModeEnum.COMPLETION,
-        expectedLabel: 'app.typeSelector.completion',
-        description: 'Completion mode',
-      },
-      {
-        mode: AppModeEnum.ADVANCED_CHAT,
-        expectedLabel: 'app.typeSelector.advanced',
-        description: 'Advanced chat mode',
-      },
-      {
-        mode: AppModeEnum.WORKFLOW,
-        expectedLabel: 'app.typeSelector.workflow',
-        description: 'Workflow mode',
-      },
-    ]
-
-    testCases.forEach(({ mode, expectedLabel, description }) => {
-      it(`should display correct type label for ${description}`, () => {
-        const appWithMode = {
-          ...mockApp,
+  it('uses the remote image URL for image icons', () => {
+    render(
+      <AppCard
+        app={{
+          ...app,
           app: {
-            ...mockApp.app,
-            mode,
+            ...app.app,
+            icon_type: 'image',
+            icon: 'local.png',
+            icon_url: 'https://example.com/remote.png',
           },
-        }
-        render(<AppCard {...defaultProps} app={appWithMode} />)
-
-        expect(screen.getByText(expectedLabel)).toBeInTheDocument()
-      })
-    })
+        }}
+        canCreate
+        onCreate={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute(
+      'src',
+      'https://example.com/remote.png',
+    )
   })
 
-  describe('Icon Type Tests', () => {
-    it('should render emoji icon without image element', () => {
-      const appWithIcon = {
-        ...mockApp,
-        app: {
-          ...mockApp.app,
-          icon_type: 'emoji' as AppIconType,
-          icon: '🤖',
-        },
-      }
-      const { container } = render(<AppCard {...defaultProps} app={appWithIcon} />)
+  it('tracks and opens template preview in Cloud edition', async () => {
+    const openPreview = vi.fn()
+    render(
+      // oxlint-disable-next-line eslint-react/no-context-provider
+      <AppListContext.Provider
+        value={{
+          currentApp: undefined,
+          isShowTryAppPanel: false,
+          setShowTryAppPanel: openPreview,
+          controlHideCreateFromTemplatePanel: 0,
+        }}
+      >
+        <AppCard app={app} canCreate onCreate={vi.fn()} />
+      </AppListContext.Provider>,
+    )
 
-      const card = container.firstElementChild as HTMLElement
-      expect(within(card).queryByRole('img', { name: 'app icon' })).not.toBeInTheDocument()
-      expect(card.querySelector('em-emoji')).toBeInTheDocument()
-    })
+    await userEvent.click(screen.getByRole('button', { name: 'explore.appCard.try' }))
 
-    it('should prioritize icon_url when both icon and icon_url are provided', () => {
-      const appWithImageUrl = {
-        ...mockApp,
-        app: {
-          ...mockApp.app,
-          icon_type: 'image' as AppIconType,
-          icon: 'local-icon.png',
-          icon_url: 'https://example.com/remote-icon.png',
-        },
-      }
-      render(<AppCard {...defaultProps} app={appWithImageUrl} />)
-
-      expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute('src', 'https://example.com/remote-icon.png')
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onCreate when create button is clicked', async () => {
-      const mockOnCreate = vi.fn()
-      render(<AppCard {...defaultProps} onCreate={mockOnCreate} />)
-
-      const button = screen.getByRole('button', { name: /app\.newApp\.useTemplate/ })
-      await userEvent.click(button)
-      expect(mockOnCreate).toHaveBeenCalledTimes(1)
-    })
-
-    it('should handle click on card itself', async () => {
-      const mockOnCreate = vi.fn()
-      const { container } = render(<AppCard {...defaultProps} onCreate={mockOnCreate} />)
-
-      const card = container.firstElementChild as HTMLElement
-      await userEvent.click(card)
-      // Note: Card click doesn't trigger onCreate, only the button does
-      expect(mockOnCreate).not.toHaveBeenCalled()
-    })
-
-    it('should track preview event and open try app panel when detail button is clicked', async () => {
-      renderWithProvider(<AppCard {...defaultProps} />)
-
-      const button = screen.getByRole('button', { name: /explore\.appCard\.try/ })
-      await userEvent.click(button)
-
-      expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
-        template_id: mockApp.app_id,
-        template_name: mockApp.app.name,
-        template_mode: mockApp.app.mode,
-        template_categories: mockApp.categories,
-        page: 'studio',
-      })
-      expect(mockSetShowTryAppPanel).toHaveBeenCalledWith(true, {
-        appId: mockApp.app_id,
-        app: mockApp,
-      })
-    })
-
-    it('should hide try button outside cloud edition', () => {
-      mockConfig.isCloudEdition = false
-      renderWithProvider(<AppCard {...defaultProps} />)
-
-      expect(screen.queryByRole('button', { name: /explore\.appCard\.try/ })).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Keyboard Accessibility', () => {
-    it('should allow the create button to be focused', async () => {
-      const mockOnCreate = vi.fn()
-      render(<AppCard {...defaultProps} onCreate={mockOnCreate} />)
-
-      await userEvent.tab()
-      const button = screen.getByRole('button', { name: /app\.newApp\.useTemplate/ }) as HTMLButtonElement
-
-      // Test that button can be focused
-      expect(button).toHaveFocus()
-
-      // Test click event works (keyboard events on buttons typically trigger click)
-      await userEvent.click(button)
-      expect(mockOnCreate).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle app with null icon_type', () => {
-      const appWithNullIcon = {
-        ...mockApp,
-        app: {
-          ...mockApp.app,
-          icon_type: null,
-        },
-      }
-      const { container } = render(<AppCard {...defaultProps} app={appWithNullIcon} />)
-
-      const appIcon = container.querySelector('em-emoji')
-      expect(appIcon).toBeInTheDocument()
-      // AppIcon component should handle null icon_type gracefully
-    })
-
-    it('should handle app with empty description', () => {
-      const appWithEmptyDesc = {
-        ...mockApp,
-        description: '',
-      }
-      const { container } = render(<AppCard {...defaultProps} app={appWithEmptyDesc} />)
-
-      const descriptionContainer = container.querySelector('.line-clamp-3')
-      expect(descriptionContainer).toBeInTheDocument()
-      expect(descriptionContainer).toHaveTextContent('')
-    })
-
-    it('should handle app with very long description', () => {
-      const longDescription = 'This is a very long description that should be truncated with line-clamp-3. '.repeat(5)
-      const appWithLongDesc = {
-        ...mockApp,
-        description: longDescription,
-      }
-      render(<AppCard {...defaultProps} app={appWithLongDesc} />)
-
-      expect(screen.getByText(/This is a very long description/)).toBeInTheDocument()
-    })
-
-    it('should handle app with special characters in name', () => {
-      const appWithSpecialChars = {
-        ...mockApp,
-        app: {
-          ...mockApp.app,
-          name: 'App <script>alert("test")</script> & Special "Chars"',
-        },
-      }
-      render(<AppCard {...defaultProps} app={appWithSpecialChars} />)
-
-      expect(screen.getByText('App <script>alert("test")</script> & Special "Chars"')).toBeInTheDocument()
-    })
-
-    it('should handle onCreate function throwing error', async () => {
-      const errorOnCreate = vi.fn(() => {
-        return Promise.reject(new Error('Create failed'))
-      })
-
-      // Mock console.error to avoid test output noise
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn())
-
-      render(<AppCard {...defaultProps} onCreate={errorOnCreate} />)
-
-      const button = screen.getByRole('button', { name: /app\.newApp\.useTemplate/ })
-      let capturedError: unknown
-      try {
-        await userEvent.click(button)
-      }
-      catch (err) {
-        capturedError = err
-      }
-      expect(errorOnCreate).toHaveBeenCalledTimes(1)
-      // expect(consoleSpy).toHaveBeenCalled()
-      if (capturedError instanceof Error)
-        expect(capturedError.message).toContain('Create failed')
-
-      consoleSpy.mockRestore()
-    })
-  })
-
-  describe('Accessibility', () => {
-    it('should have proper elements for accessibility', () => {
-      const { container } = render(<AppCard {...defaultProps} />)
-
-      expect(container.querySelector('em-emoji')).toBeInTheDocument()
-      expect(container.querySelector('svg')).toBeInTheDocument()
-    })
-
-    it('should have title attribute for app name when truncated', () => {
-      render(<AppCard {...defaultProps} />)
-
-      const nameElement = screen.getByText('Test Chat App')
-      expect(nameElement).toHaveAttribute('title', 'Test Chat App')
-    })
-
-    it('should have accessible button with proper label', () => {
-      render(<AppCard {...defaultProps} />)
-
-      const button = screen.getByRole('button', { name: /app\.newApp\.useTemplate/ })
-      expect(button).toBeEnabled()
-      expect(button).toHaveTextContent('app.newApp.useTemplate')
-    })
-  })
-
-  describe('User-Visible Behavior Tests', () => {
-    it('should show plus icon in create button', () => {
-      render(<AppCard {...defaultProps} />)
-
-      expect(screen.getByTestId('plus-icon')).toBeInTheDocument()
-    })
+    expect(trackEvent).toHaveBeenCalledWith(
+      'preview_template',
+      expect.objectContaining({ template_id: 'app-1', page: 'studio' }),
+    )
+    expect(openPreview).toHaveBeenCalledWith(true, { appId: 'app-1', app })
   })
 })

@@ -4,7 +4,7 @@ import json
 import logging
 import urllib.parse
 from dataclasses import dataclass
-from typing import NotRequired, TypedDict
+from typing import NotRequired, TypedDict, override
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
@@ -34,6 +34,7 @@ class OAuthState(TypedDict, total=False):
     invite_token: str
     timezone: str
     language: str
+    redirect_url: str
 
 
 class GitHubEmailRecord(TypedDict, total=False):
@@ -72,6 +73,7 @@ def encode_oauth_state(
     invite_token: str | None = None,
     timezone: str | None = None,
     language: str | None = None,
+    redirect_url: str | None = None,
 ) -> str | None:
     state: OAuthState = {}
     if invite_token:
@@ -80,6 +82,8 @@ def encode_oauth_state(
         state["timezone"] = timezone
     if language:
         state["language"] = language
+    if redirect_url:
+        state["redirect_url"] = redirect_url
     if not state:
         return None
 
@@ -122,6 +126,7 @@ class OAuth:
         invite_token: str | None = None,
         timezone: str | None = None,
         language: str | None = None,
+        redirect_url: str | None = None,
     ) -> str:
         raise NotImplementedError()
 
@@ -145,22 +150,30 @@ class GitHubOAuth(OAuth):
     _USER_INFO_URL = "https://api.github.com/user"
     _EMAIL_INFO_URL = "https://api.github.com/user/emails"
 
+    @override
     def get_authorization_url(
         self,
         invite_token: str | None = None,
         timezone: str | None = None,
         language: str | None = None,
+        redirect_url: str | None = None,
     ) -> str:
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
             "scope": "user:email",  # Request only basic user information
         }
-        state = encode_oauth_state(invite_token=invite_token, timezone=timezone, language=language)
+        state = encode_oauth_state(
+            invite_token=invite_token,
+            timezone=timezone,
+            language=language,
+            redirect_url=redirect_url,
+        )
         if state:
             params["state"] = state
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
 
+    @override
     def get_access_token(self, code: str) -> str:
         data = {
             "client_id": self.client_id,
@@ -179,6 +192,7 @@ class GitHubOAuth(OAuth):
 
         return access_token
 
+    @override
     def get_raw_user_info(self, token: str) -> JsonObject:
         headers = {"Authorization": f"token {token}"}
         response = _http_client.get(self._USER_INFO_URL, headers=headers)
@@ -219,6 +233,7 @@ class GitHubOAuth(OAuth):
 
         return ""
 
+    @override
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
         email = payload.get("email") or ""
@@ -238,11 +253,13 @@ class GoogleOAuth(OAuth):
     _TOKEN_URL = "https://oauth2.googleapis.com/token"
     _USER_INFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
+    @override
     def get_authorization_url(
         self,
         invite_token: str | None = None,
         timezone: str | None = None,
         language: str | None = None,
+        redirect_url: str | None = None,
     ) -> str:
         params = {
             "client_id": self.client_id,
@@ -250,11 +267,17 @@ class GoogleOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
             "scope": "openid email",
         }
-        state = encode_oauth_state(invite_token=invite_token, timezone=timezone, language=language)
+        state = encode_oauth_state(
+            invite_token=invite_token,
+            timezone=timezone,
+            language=language,
+            redirect_url=redirect_url,
+        )
         if state:
             params["state"] = state
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
 
+    @override
     def get_access_token(self, code: str) -> str:
         data = {
             "client_id": self.client_id,
@@ -274,12 +297,14 @@ class GoogleOAuth(OAuth):
 
         return access_token
 
+    @override
     def get_raw_user_info(self, token: str) -> JsonObject:
         headers = {"Authorization": f"Bearer {token}"}
         response = _http_client.get(self._USER_INFO_URL, headers=headers)
         response.raise_for_status()
         return _json_object(response)
 
+    @override
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = GOOGLE_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
         return OAuthUserInfo(id=str(payload["sub"]), name="", email=payload["email"])

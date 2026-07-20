@@ -1,23 +1,17 @@
 import type { PluginPayload } from '../types'
-import type {
-  FormRefObject,
-  FormSchema,
-} from '@/app/components/base/form/types'
+import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
+import PermissionSelector from '@/app/components/base/permission-selector'
+import { PermissionLevel } from '@/models/permission'
+import { useMembers } from '@/service/use-common'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useAddPluginCredentialHook,
@@ -55,10 +49,21 @@ const ApiKeyModal = ({
     doingActionRef.current = value
     setDoingAction(value)
   }, [])
-  const { data = [], isLoading } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
+  const { data = [], isLoading } = useGetPluginCredentialSchemaHook(
+    pluginPayload,
+    CredentialTypeEnum.API_KEY,
+  )
+  const [permission, setPermission] = useState<PermissionLevel | undefined>(
+    (editValues?.__visibility__ as PermissionLevel) ?? PermissionLevel.allTeamMembers,
+  )
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
+    (editValues?.__partial_member_list__ as string[]) ?? [],
+  )
+  // Only need member list when creating (the permission selector is hidden on edit).
+  const { data: membersData } = useMembers()
+  const memberList = membersData?.accounts ?? []
   const mergedData = useMemo(() => {
-    if (formSchemasFromProps?.length)
-      return formSchemasFromProps
+    if (formSchemasFromProps?.length) return formSchemasFromProps
 
     return data
   }, [formSchemasFromProps, data])
@@ -67,146 +72,163 @@ const ApiKeyModal = ({
       {
         type: FormTypeEnum.textInput,
         name: '__name__',
-        label: t('auth.authorizationName', { ns: 'plugin' }),
+        label: t(($) => $['auth.authorizationName'], { ns: 'plugin' }),
         required: false,
       },
       ...mergedData,
     ]
   }, [mergedData, t])
-  const defaultValues = formSchemas.reduce((acc, schema) => {
-    if (schema.default)
-      acc[schema.name] = schema.default
-    return acc
-  }, {} as Record<string, unknown>)
+  const defaultValues = formSchemas.reduce(
+    (acc, schema) => {
+      if (schema.default) acc[schema.name] = schema.default
+      return acc
+    },
+    {} as Record<string, unknown>,
+  )
   const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
-    if (doingActionRef.current)
-      return
-    const {
-      isCheckValidated,
-      values,
-    } = formRef.current?.getFormValues({
+    if (doingActionRef.current) return
+    const { isCheckValidated, values } = formRef.current?.getFormValues({
       needCheckValidatedValues: true,
       needTransformWhenSecretFieldIsPristine: true,
     }) || { isCheckValidated: false, values: {} }
-    if (!isCheckValidated)
-      return
+    if (!isCheckValidated) return
 
     try {
       const {
         __name__,
         __credential_id__,
+        __visibility__,
+        __partial_member_list__,
+        __created_by__,
         ...restValues
       } = values
 
       handleSetDoingAction(true)
+      // Visibility is settable only at creation. On edit we don't send it.
       if (editValues) {
         await updatePluginCredential({
           credentials: restValues,
           credential_id: __credential_id__,
           name: __name__ || '',
         })
-      }
-      else {
+      } else {
+        const permissionPayload = {
+          visibility: permission,
+          ...(permission === PermissionLevel.partialMembers
+            ? { partial_member_list: selectedMemberIDs.map((id) => ({ user_id: id })) }
+            : {}),
+        }
         await addPluginCredential({
           credentials: restValues,
           type: CredentialTypeEnum.API_KEY,
           name: __name__ || '',
+          ...permissionPayload,
         })
       }
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
 
       onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
-    }
-    finally {
+    } finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, onOpenChange, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction])
+  }, [
+    addPluginCredential,
+    onClose,
+    onOpenChange,
+    onUpdate,
+    updatePluginCredential,
+    t,
+    editValues,
+    handleSetDoingAction,
+    permission,
+    selectedMemberIDs,
+  ])
 
   const isDisabled = disabled || isLoading || doingAction
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    onOpenChange?.(nextOpen)
-    if (!nextOpen)
-      onClose?.()
-  }, [onClose, onOpenChange])
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      onOpenChange?.(nextOpen)
+      if (!nextOpen) onClose?.()
+    },
+    [onClose, onOpenChange],
+  )
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
         className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0!"
       >
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
-              {t('auth.useApiAuth', { ns: 'plugin' })}
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(($) => $['auth.useApiAuth'], { ns: 'plugin' })}
             </DialogTitle>
             <div className="mt-1 system-xs-regular text-text-tertiary">
-              {t('auth.useApiAuthDesc', { ns: 'plugin' })}
+              {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
             </div>
-            <DialogCloseButton
-              className="top-5 right-5 size-8 rounded-lg"
-            />
+            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginPayload.detail && (
               <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
             )}
-            {
-              isLoading && (
-                <div className="flex h-40 items-center justify-center">
-                  <Loading />
+            {isLoading && (
+              <div className="flex h-40 items-center justify-center">
+                <Loading />
+              </div>
+            )}
+            {!isLoading && !!mergedData.length && (
+              <AuthForm
+                ref={formRef}
+                formSchemas={formSchemas}
+                defaultValues={editValues || defaultValues}
+                disabled={disabled}
+              />
+            )}
+            {!isLoading && !editValues && (
+              <div className="mt-4 px-1">
+                <div className="mb-1 system-sm-semibold text-text-secondary">
+                  {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
                 </div>
-              )
-            }
-            {
-              !isLoading && !!mergedData.length && (
-                <AuthForm
-                  ref={formRef}
-                  formSchemas={formSchemas}
-                  defaultValues={editValues || defaultValues}
+                <PermissionSelector
                   disabled={disabled}
+                  permission={permission}
+                  value={selectedMemberIDs}
+                  memberList={memberList}
+                  onChange={(v) => setPermission(v)}
+                  onMemberSelect={setSelectedMemberIDs}
+                  hidePartialMembers
                 />
-              )
-            }
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 justify-between p-6 pt-5">
             <div />
             <div className="flex items-center">
               {editValues && (
                 <>
-                  <Button
-                    data-testid="modal-extra"
-                    variant="primary"
-                    onClick={onRemove}
-                    disabled={isDisabled}
-                  >
-                    {t('operation.remove', { ns: 'common' })}
+                  <Button variant="primary" onClick={onRemove} disabled={isDisabled}>
+                    {t(($) => $['operation.remove'], { ns: 'common' })}
                   </Button>
                   <div className="mx-3 h-4 w-px bg-divider-regular"></div>
                 </>
               )}
-              <Button
-                onClick={() => handleOpenChange(false)}
-                disabled={isDisabled}
-              >
-                {t('operation.cancel', { ns: 'common' })}
+              <Button onClick={() => handleOpenChange(false)} disabled={isDisabled}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
-                data-testid="modal-confirm"
                 className="ml-2"
                 variant="primary"
                 onClick={handleConfirm}
                 disabled={isDisabled}
               >
-                {t('operation.save', { ns: 'common' })}
+                {t(($) => $['operation.save'], { ns: 'common' })}
               </Button>
             </div>
           </div>

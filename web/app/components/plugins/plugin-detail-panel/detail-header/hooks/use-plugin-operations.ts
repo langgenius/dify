@@ -6,15 +6,16 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
-import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { checkForUpdates, fetchReleases } from '../../../install-plugin/hooks'
-import { PluginCategoryEnum, PluginSource } from '../../../types'
+import { PluginSource } from '../../../types'
 
 type UsePluginOperationsParams = {
+  canDeletePlugin?: boolean
+  canUpdatePlugin?: boolean
   detail: PluginDetail
   modalStates: ModalStates
   versionPicker: {
@@ -32,6 +33,8 @@ type UsePluginOperationsReturn = {
 }
 
 export const usePluginOperations = ({
+  canDeletePlugin = true,
+  canUpdatePlugin = true,
   detail,
   modalStates,
   versionPicker,
@@ -40,71 +43,76 @@ export const usePluginOperations = ({
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
   const { t } = useTranslation()
   const { setShowUpdatePluginModal } = useModalContext()
-  const { refreshModelProviders } = useProviderContext()
+  const { refreshPluginList } = useRefreshPluginList()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
-  const invalidateAllToolProviders = useInvalidateAllToolProviders()
 
   const { id, meta, plugin_id } = detail
   const { author, category, name } = detail.declaration || detail
-  const handlePluginUpdated = useCallback((isDelete?: boolean) => {
-    invalidateCheckInstalled()
-    onUpdate?.(isDelete)
-  }, [invalidateCheckInstalled, onUpdate])
+  const handlePluginUpdated = useCallback(
+    (isDelete?: boolean) => {
+      invalidateCheckInstalled()
+      onUpdate?.(isDelete)
+    },
+    [invalidateCheckInstalled, onUpdate],
+  )
 
-  const handleUpdate = useCallback(async (isDowngrade?: boolean) => {
-    if (isFromMarketplace) {
-      versionPicker.setIsDowngrade(!!isDowngrade)
-      modalStates.showUpdateModal()
-      return
-    }
+  const handleUpdate = useCallback(
+    async (isDowngrade?: boolean) => {
+      if (!canUpdatePlugin) return
 
-    if (!meta?.repo || !meta?.version || !meta?.package) {
-      toast.error('Missing plugin metadata for GitHub update')
-      return
-    }
+      if (isFromMarketplace) {
+        versionPicker.setIsDowngrade(!!isDowngrade)
+        modalStates.showUpdateModal()
+        return
+      }
 
-    const owner = meta.repo.split('/')[0] || author
-    const repo = meta.repo.split('/')[1] || name
-    const fetchedReleases = await fetchReleases(owner, repo)
-    if (fetchedReleases.length === 0)
-      return
+      if (!meta?.repo || !meta?.version || !meta?.package) {
+        toast.error('Missing plugin metadata for GitHub update')
+        return
+      }
 
-    const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta.version)
-    toast(toastProps.message, { type: toastProps.type })
+      const owner = meta.repo.split('/')[0] || author
+      const repo = meta.repo.split('/')[1] || name
+      const fetchedReleases = await fetchReleases(owner, repo)
+      if (fetchedReleases.length === 0) return
 
-    if (needUpdate) {
-      setShowUpdatePluginModal({
-        onSaveCallback: () => {
-          handlePluginUpdated()
-        },
-        payload: {
-          type: PluginSource.github,
-          category,
-          github: {
-            originalPackageInfo: {
-              id: detail.plugin_unique_identifier,
-              repo: meta.repo,
-              version: meta.version,
-              package: meta.package,
-              releases: fetchedReleases,
+      const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta.version)
+      toast(toastProps.message, { type: toastProps.type })
+
+      if (needUpdate) {
+        setShowUpdatePluginModal({
+          onSaveCallback: () => {
+            handlePluginUpdated()
+          },
+          payload: {
+            type: PluginSource.github,
+            category,
+            github: {
+              originalPackageInfo: {
+                id: detail.plugin_unique_identifier,
+                repo: meta.repo,
+                version: meta.version,
+                package: meta.package,
+                releases: fetchedReleases,
+              },
             },
           },
-        },
-      })
-    }
-  }, [
-    isFromMarketplace,
-    meta,
-    author,
-    name,
-    fetchReleases,
-    checkForUpdates,
-    setShowUpdatePluginModal,
-    detail,
-    handlePluginUpdated,
-    modalStates,
-    versionPicker,
-  ])
+        })
+      }
+    },
+    [
+      canUpdatePlugin,
+      isFromMarketplace,
+      meta,
+      author,
+      name,
+      setShowUpdatePluginModal,
+      detail,
+      handlePluginUpdated,
+      modalStates,
+      versionPicker,
+    ],
+  )
 
   const handleUpdatedFromMarketplace = useCallback(() => {
     handlePluginUpdated()
@@ -112,32 +120,29 @@ export const usePluginOperations = ({
   }, [handlePluginUpdated, modalStates])
 
   const handleDelete = useCallback(async () => {
+    if (!canDeletePlugin) return
+
     modalStates.showDeleting()
     const res = await uninstallPlugin(id)
     modalStates.hideDeleting()
 
     if (res.success) {
       modalStates.hideDeleteConfirm()
-      toast.success(t('action.deleteSuccess', { ns: 'plugin' }))
+      toast.success(t(($) => $['action.deleteSuccess'], { ns: 'plugin' }))
       handlePluginUpdated(true)
-
-      if (PluginCategoryEnum.model.includes(category))
-        refreshModelProviders()
-
-      if (PluginCategoryEnum.tool.includes(category))
-        invalidateAllToolProviders()
+      refreshPluginList({ category })
 
       trackEvent('plugin_uninstalled', { plugin_id, plugin_name: name })
     }
   }, [
+    canDeletePlugin,
     id,
     category,
     plugin_id,
     name,
     modalStates,
     handlePluginUpdated,
-    refreshModelProviders,
-    invalidateAllToolProviders,
+    refreshPluginList,
   ])
 
   return {

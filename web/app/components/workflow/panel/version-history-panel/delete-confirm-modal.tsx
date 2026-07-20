@@ -31,17 +31,16 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
     <AlertDialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <AlertDialogContent className="overflow-hidden! border-none text-left align-middle shadow-xl">
         <div className="flex flex-col gap-y-2 p-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {`${t('operation.delete', { ns: 'common' })} ${versionInfo.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}`}
+            {`${t(($) => $['operation.delete'], { ns: 'common' })} ${versionInfo.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })}`}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-md-regular text-text-secondary">
-            {t('versionHistory.deletionTip', { ns: 'workflow' })}
+            {t(($) => $['versionHistory.deletionTip'], { ns: 'workflow' })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
@@ -50,10 +49,13 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
             variant="secondary"
             closeProps={{ nativeButton: false }}
           >
-            {t('operation.cancel', { ns: 'common' })}
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton nativeButton={false} onClick={onDelete.bind(null, versionInfo.id)}>
-            {t('operation.delete', { ns: 'common' })}
+          <AlertDialogConfirmButton
+            nativeButton={false}
+            onClick={onDelete.bind(null, versionInfo.id)}
+          >
+            {t(($) => $['operation.delete'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

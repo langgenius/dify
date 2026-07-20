@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from extensions.ext_database import db
 from libs.login import current_user
 from models.account import Tenant
+from models.enums import EndUserType
 from models.model import DefaultEndUserSessionID, EndUser
 
 
@@ -45,6 +46,15 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                     .limit(1)
                 )
             else:
+                # Try id first (preserves the original "explicit end-user
+                # id → that specific user" semantics for callers that pass
+                # a known EndUser.id). Fall back to session_id so daemon-
+                # supplied session UUIDs dedup against the row created on
+                # the first Reverse Invocation call — without this, an
+                # id-only lookup never matched (create writes user_id to
+                # session_id, id is auto-generated) and a fresh EndUser
+                # was created per call, breaking multi-turn chat
+                # continuation (see #36736).
                 user_model = session.scalar(
                     select(EndUser)
                     .where(
@@ -53,11 +63,20 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                     )
                     .limit(1)
                 )
+                if user_model is None:
+                    user_model = session.scalar(
+                        select(EndUser)
+                        .where(
+                            EndUser.session_id == user_id,
+                            EndUser.tenant_id == tenant_id,
+                        )
+                        .limit(1)
+                    )
 
             if not user_model:
                 user_model = EndUser(
                     tenant_id=tenant_id,
-                    type="service_api",
+                    type=EndUserType.SERVICE_API,
                     is_anonymous=is_anonymous,
                     session_id=user_id,
                 )

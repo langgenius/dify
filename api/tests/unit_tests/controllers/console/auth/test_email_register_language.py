@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -25,6 +25,7 @@ def test_create_new_account_uses_requested_language(mock_create_account):
         password="ValidPass123!",
         interface_language="zh-Hans",
         timezone="Asia/Shanghai",
+        session=ANY,
     )
 
 

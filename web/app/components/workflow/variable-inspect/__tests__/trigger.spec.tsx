@@ -12,10 +12,7 @@ type InspectVarsState = {
   nodesWithInspectVars: NodeWithVar[]
 }
 
-const {
-  mockDeleteAllInspectorVars,
-  mockEmit,
-} = vi.hoisted(() => ({
+const { mockDeleteAllInspectorVars, mockEmit } = vi.hoisted(() => ({
   mockDeleteAllInspectorVars: vi.fn(),
   mockEmit: vi.fn(),
 }))
@@ -62,7 +59,11 @@ const renderTrigger = ({
   nodes?: Array<ReturnType<typeof createNode>>
   initialStoreState?: Record<string, unknown>
 } = {}) => {
-  return renderWorkflowFlowComponent(<VariableInspectTrigger />, { nodes, edges: [], initialStoreState })
+  return renderWorkflowFlowComponent(<VariableInspectTrigger />, {
+    nodes,
+    edges: [],
+    initialStoreState,
+  })
 }
 
 describe('VariableInspectTrigger', () => {
@@ -82,7 +83,9 @@ describe('VariableInspectTrigger', () => {
       },
     })
 
-    expect(screen.queryByText('workflow.debug.variableInspect.trigger.normal')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('workflow.debug.variableInspect.trigger.normal'),
+    ).not.toBeInTheDocument()
   })
 
   it('should open the panel from the normal trigger state', () => {
@@ -107,10 +110,12 @@ describe('VariableInspectTrigger', () => {
 
   it('should clear cached variables and reset the focused node', () => {
     inspectVarsState = {
-      conversationVars: [createVariable({
-        id: 'conversation-var',
-        type: VarInInspectType.conversation,
-      })],
+      conversationVars: [
+        createVariable({
+          id: 'conversation-var',
+          type: VarInInspectType.conversation,
+        }),
+      ],
       systemVars: [],
       nodesWithInspectVars: [],
     }
@@ -130,14 +135,16 @@ describe('VariableInspectTrigger', () => {
 
   it('should show the running state and open the panel while running', () => {
     const { store } = renderTrigger({
-      nodes: [createNode({
-        data: {
-          type: BlockEnum.Code,
-          title: 'Code',
-          desc: '',
-          _singleRunningStatus: NodeRunningStatus.Running,
-        },
-      })],
+      nodes: [
+        createNode({
+          data: {
+            type: BlockEnum.Code,
+            title: 'Code',
+            desc: '',
+            _singleRunningStatus: NodeRunningStatus.Running,
+          },
+        }),
+      ],
       initialStoreState: {
         workflowRunningData: baseRunningData({
           result: { status: WorkflowRunningStatus.Running },
@@ -147,7 +154,9 @@ describe('VariableInspectTrigger', () => {
 
     fireEvent.click(screen.getByText('workflow.debug.variableInspect.trigger.running'))
 
-    expect(screen.queryByText('workflow.debug.variableInspect.trigger.clear')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('workflow.debug.variableInspect.trigger.clear'),
+    ).not.toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(true)
   })
 })

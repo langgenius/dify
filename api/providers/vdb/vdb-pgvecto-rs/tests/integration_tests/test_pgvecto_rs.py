@@ -1,3 +1,5 @@
+from typing import override
+
 from dify_vdb_pgvecto_rs.pgvecto_rs import PGVectoRS, PgvectoRSConfig
 
 from core.rag.datasource.vdb.vector_integration_test_support import (
@@ -21,11 +23,13 @@ class PGVectoRSVectorTest(AbstractVectorTest):
             dim=128,
         )
 
+    @override
     def search_by_full_text(self):
         # pgvecto rs only support english text search, So it’s not open for now
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) == 1

@@ -4,7 +4,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { TriggerEventsLimitModalPayload } from './hooks/use-trigger-events-limit-modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import type { SettingsTab } from '@/app/components/header/account-setting/constants'
 import type {
   ConfigurationMethodEnum,
   Credential,
@@ -17,22 +17,21 @@ import type { ModelLoadBalancingModalProps } from '@/app/components/header/accou
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
-import type {
-  ExternalDataTool,
-} from '@/models/common'
+import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 
 export type ModalState<T> = {
   payload: T
+  source?: 'agent'
   onCancelCallback?: () => void
   onSaveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
   onRemoveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
   onEditCallback?: (newPayload: T) => void
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
   isEditMode?: boolean
-  datasetBindings?: { id: string, name: string }[]
+  datasetBindings?: { id: string; name: string }[]
 }
 
 export type ModelModalType = {
@@ -46,22 +45,32 @@ export type ModelModalType = {
 }
 
 export type ModalContextState = {
-  setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<AccountSettingTab> | null>>
+  setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<SettingsTab> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
   setShowPricingModal: () => void
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
-  setShowExternalKnowledgeAPIModal: Dispatch<SetStateAction<ModalState<CreateExternalAPIReq> | null>>
+  setShowExternalKnowledgeAPIModal: Dispatch<
+    SetStateAction<ModalState<CreateExternalAPIReq> | null>
+  >
   setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
-  setShowOpeningModal: Dispatch<SetStateAction<ModalState<OpeningStatement & {
-    promptVariables?: PromptVariable[]
-    workflowVariables?: InputVar[]
-    onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
-  }> | null>>
+  setShowOpeningModal: Dispatch<
+    SetStateAction<ModalState<
+      OpeningStatement & {
+        promptVariables?: PromptVariable[]
+        workflowVariables?: InputVar[]
+        onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
+      }
+    > | null>
+  >
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
-  setShowEducationExpireNoticeModal: Dispatch<SetStateAction<ModalState<ExpireNoticeModalPayloadProps> | null>>
-  setShowTriggerEventsLimitModal: Dispatch<SetStateAction<ModalState<TriggerEventsLimitModalPayload> | null>>
+  setShowEducationExpireNoticeModal: Dispatch<
+    SetStateAction<ModalState<ExpireNoticeModalPayloadProps> | null>
+  >
+  setShowTriggerEventsLimitModal: Dispatch<
+    SetStateAction<ModalState<TriggerEventsLimitModalPayload> | null>
+  >
 }
 
 export const ModalContext = createContext<ModalContextState>({

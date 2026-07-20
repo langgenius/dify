@@ -16,7 +16,6 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, setup_required
-from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password
@@ -82,7 +81,7 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        account = AccountService.get_account_by_email_with_case_fallback(args.email)
+        account = AccountService.get_account_by_email_with_case_fallback(args.email, session=db.session())
 
         token = AccountService.send_reset_password_email(
             account=account,
@@ -180,7 +179,7 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(args.new_password, salt)
 
         email = reset_data.get("email", "")
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
 
         if account:
             account = db.session.merge(account)
@@ -198,10 +197,7 @@ class ForgotPasswordResetApi(Resource):
 
         # Create workspace if needed
         if (
-            not TenantService.get_join_tenants(account)
+            not TenantService.get_join_tenants(account, session=db.session())
             and FeatureService.get_system_features().is_allow_create_workspace
         ):
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-            TenantService.create_tenant_member(tenant, account, role="owner")
-            account.current_tenant = tenant
-            tenant_was_created.send(tenant)
+            TenantService.create_owner_tenant(account, session=db.session())

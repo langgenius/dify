@@ -5,3 +5,14 @@ node_modules/
 .vitest-cache/
 docs/specs/
 context/
+# E2E test env (contains tokens/credentials — use .env.e2e.example instead)
+.env.e2e
+# Generated / runtime artifacts
+oclif.manifest.json
+npm-shrinkwrap.json
+tmp/
+test/**/*.ts.map
+test/**/*.js.map
+test/**/*.js
+test/**/*.d.ts
+.token-cache.json

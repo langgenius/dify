@@ -1,40 +1,31 @@
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import type {
-  MouseEventHandler,
-} from 'react'
+import type { Placement } from '@langgenius/dify-ui/popover'
+import type { MouseEventHandler } from 'react'
 import type {
   CommonNodeType,
   NodeDefault,
+  OnNodeAdd,
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
+import type { TabType } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Plus02,
-} from '@/app/components/base/icons/src/vender/line/general'
-import Input from '@/app/components/base/input'
-import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { FlowType } from '@/types/common'
 import { BlockEnum, isTriggerNode } from '../types'
 import { useTabs } from './hooks'
-import Tabs from './tabs'
-import { TabsEnum } from './types'
+import { SelectorContent } from './tabs'
+
+type NodeSelectorOffset =
+  | number
+  | {
+      mainAxis?: number
+      crossAxis?: number
+    }
 
 export type NodeSelectorProps = {
   open?: boolean
@@ -42,7 +33,7 @@ export type NodeSelectorProps = {
   onSelect: OnSelectBlock
   trigger?: (open: boolean) => React.ReactNode
   placement?: Placement
-  offset?: OffsetOptions
+  offset?: NodeSelectorOffset
   triggerStyle?: React.CSSProperties
   triggerClassName?: (open: boolean) => string
   triggerInnerClassName?: string
@@ -55,11 +46,12 @@ export type NodeSelectorProps = {
   noBlocks?: boolean
   noTools?: boolean
   showStartTab?: boolean
-  defaultActiveTab?: TabsEnum
-  forceShowStartContent?: boolean
+  defaultActiveTab?: TabType
   ignoreNodeIds?: string[]
   forceEnableStartTab?: boolean // Force enabling Start tab regardless of existing trigger/user input nodes (e.g., when changing Start node type).
   allowUserInputSelection?: boolean // Override user-input availability; default logic blocks it when triggers exist.
+  snippetInsertPayload?: Parameters<OnNodeAdd>[1]
+  isolateKeyboardEvents?: boolean
 }
 function NodeSelector({
   open: openFromProps,
@@ -81,103 +73,91 @@ function NodeSelector({
   noTools = false,
   showStartTab = false,
   defaultActiveTab,
-  forceShowStartContent = false,
   ignoreNodeIds = [],
   forceEnableStartTab = false,
   allowUserInputSelection,
+  snippetInsertPayload,
+  isolateKeyboardEvents = false,
 }: NodeSelectorProps) {
   const { t } = useTranslation()
   const nodes = useNodes()
-  const [searchText, setSearchText] = useState('')
-  const [tags, setTags] = useState<string[]>([])
+  const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const [localOpen, setLocalOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   // Exclude nodes explicitly ignored (such as the node currently being edited) when checking canvas state.
   const filteredNodes = useMemo(() => {
-    if (!ignoreNodeIds.length)
-      return nodes
+    if (!ignoreNodeIds.length) return nodes
     const ignoreSet = new Set(ignoreNodeIds)
-    return nodes.filter(node => !ignoreSet.has(node.id))
+    return nodes.filter((node) => !ignoreSet.has(node.id))
   }, [nodes, ignoreNodeIds])
 
-  const { hasTriggerNode, hasUserInputNode } = useMemo(() => {
+  const { hasTriggerNode, hasUserInputNode, hasStartPlaceholderNode } = useMemo(() => {
     const result = {
       hasTriggerNode: false,
       hasUserInputNode: false,
+      hasStartPlaceholderNode: false,
     }
     for (const node of filteredNodes) {
       const nodeType = (node.data as CommonNodeType | undefined)?.type
-      if (!nodeType)
-        continue
-      if (nodeType === BlockEnum.Start)
-        result.hasUserInputNode = true
-      if (isTriggerNode(nodeType))
-        result.hasTriggerNode = true
-      if (result.hasTriggerNode && result.hasUserInputNode)
-        break
+      if (!nodeType) continue
+      if (nodeType === BlockEnum.Start) result.hasUserInputNode = true
+      if (nodeType === BlockEnum.StartPlaceholder) result.hasStartPlaceholderNode = true
+      if (isTriggerNode(nodeType)) result.hasTriggerNode = true
+      if (result.hasTriggerNode && result.hasUserInputNode && result.hasStartPlaceholderNode) break
     }
     return result
   }, [filteredNodes])
   // Default rule: user input option is only available when no Start node nor Trigger node exists on canvas.
   const defaultAllowUserInputSelection = !hasUserInputNode && !hasTriggerNode
   const canSelectUserInput = allowUserInputSelection ?? defaultAllowUserInputSelection
-  const open = openFromProps === undefined ? localOpen : openFromProps
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    if (disabled)
-      return
-
-    setLocalOpen(newOpen)
-
-    if (!newOpen)
-      setSearchText('')
-
-    if (onOpenChange)
-      onOpenChange(newOpen)
-  }, [disabled, onOpenChange])
-  const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
-    e.stopPropagation()
-  }, [])
-
-  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
-    handleOpenChange(false)
-    onSelect(type, pluginDefaultValue)
-  }, [handleOpenChange, onSelect])
-
-  const {
-    activeTab,
-    setActiveTab,
-    tabs,
-  } = useTabs({
+  const disableStartTab = flowType === FlowType.snippet
+  const disableSnippetsTab = flowType === FlowType.snippet
+  const { initialTab, tabs } = useTabs({
     noBlocks,
     noSources: !dataSources.length,
     noTools,
+    noSnippets: disableSnippetsTab,
     noStart: !showStartTab,
     defaultActiveTab,
-    hasUserInputNode,
+    hasStartPlaceholderNode,
+    disableStartTab,
     forceEnableStartTab,
   })
+  const open = openFromProps === undefined ? localOpen : openFromProps
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if (disabled) return
 
-  const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
-    setActiveTab(newActiveTab)
-  }, [setActiveTab])
+      setLocalOpen(newOpen)
+      if (onOpenChange) onOpenChange(newOpen)
+    },
+    [disabled, onOpenChange],
+  )
+  const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
+    e.stopPropagation()
+  }, [])
+  const handlePopupClick = useCallback<MouseEventHandler<HTMLDivElement>>((event) => {
+    event.stopPropagation()
+  }, [])
 
-  const searchPlaceholder = useMemo(() => {
-    if (activeTab === TabsEnum.Start)
-      return t('tabs.searchTrigger', { ns: 'workflow' })
+  const handleSelect = useCallback<OnSelectBlock>(
+    (type, pluginDefaultValue) => {
+      handleOpenChange(false)
+      onSelect(type, pluginDefaultValue)
+    },
+    [handleOpenChange, onSelect],
+  )
 
-    if (activeTab === TabsEnum.Blocks)
-      return t('tabs.searchBlock', { ns: 'workflow' })
-
-    if (activeTab === TabsEnum.Tools)
-      return t('tabs.searchTool', { ns: 'workflow' })
-
-    if (activeTab === TabsEnum.Sources)
-      return t('tabs.searchDataSource', { ns: 'workflow' })
-    return ''
-  }, [activeTab, t])
+  const handlePopupKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (isolateKeyboardEvents) event.stopPropagation()
+    },
+    [isolateKeyboardEvents],
+  )
 
   const defaultTriggerElement = (
     <PopoverTrigger
-      aria-label={t('common.addBlock', { ns: 'workflow' })}
+      aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
       className={cn(
         'z-10 flex size-4 cursor-pointer items-center justify-center rounded-full border-0 bg-components-button-primary-bg p-0 text-text-primary-on-surface hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
         triggerClassName?.(open),
@@ -185,108 +165,66 @@ function NodeSelector({
       style={triggerStyle}
       onClick={handleTrigger}
     >
-      <Plus02 aria-hidden className="size-2.5" />
+      <span aria-hidden className="i-custom-vender-line-general-plus-02 size-2.5" />
     </PopoverTrigger>
   )
   const triggerElement = trigger?.(open)
   const isValidTriggerElement = React.isValidElement(triggerElement)
   const isNativeButtonTrigger = isValidTriggerElement && triggerElement.type === 'button'
-  const shouldRenderTriggerAsButtonRoot = isValidTriggerElement && (renderTriggerAsButtonRoot || isNativeButtonTrigger)
-  const resolvedTriggerElement = shouldRenderTriggerAsButtonRoot
-    ? triggerElement
-    : (
-        <div className={triggerInnerClassName}>
-          {triggerElement}
-        </div>
-      )
-  const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
+  const shouldRenderTriggerAsButtonRoot =
+    isValidTriggerElement && (renderTriggerAsButtonRoot || isNativeButtonTrigger)
+  const resolvedTriggerElement = shouldRenderTriggerAsButtonRoot ? (
+    triggerElement
+  ) : (
+    <div className={triggerInnerClassName}>{triggerElement}</div>
+  )
+  const resolvedOffset = typeof offset === 'number' ? undefined : offset
   const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
   const alignOffset = typeof offset === 'number' ? 0 : (resolvedOffset?.crossAxis ?? 0)
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
-      {trigger
-        ? (
-            <PopoverTrigger
-              nativeButton={shouldRenderTriggerAsButtonRoot}
-              onClick={handleTrigger}
-              render={resolvedTriggerElement as React.ReactElement}
-            />
-          )
-        : defaultTriggerElement}
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      {trigger ? (
+        <PopoverTrigger
+          nativeButton={shouldRenderTriggerAsButtonRoot}
+          onClick={handleTrigger}
+          render={resolvedTriggerElement as React.ReactElement}
+        />
+      ) : (
+        defaultTriggerElement
+      )}
       <PopoverContent
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
+        positionerProps={{ positionMethod: 'fixed' }}
         popupClassName="border-none bg-transparent shadow-none"
+        popupProps={{
+          initialFocus: searchInputRef,
+          onClick: handlePopupClick,
+          ...(isolateKeyboardEvents ? { onKeyDown: handlePopupKeyDown } : {}),
+        }}
       >
-        <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
-          <Tabs
+        <div
+          className={cn(
+            'w-[400px] min-w-0 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            popupClassName,
+          )}
+        >
+          <SelectorContent
             tabs={tabs}
-            activeTab={activeTab}
+            defaultTab={initialTab}
+            standalonePanel={noBlocks ? initialTab : undefined}
+            searchInputRef={searchInputRef}
             blocks={blocks}
             allowStartNodeSelection={canSelectUserInput}
-            onActiveTabChange={handleActiveTabChange}
-            filterElem={(
-              <div className="relative m-2" onClick={e => e.stopPropagation()}>
-                {activeTab === TabsEnum.Start && (
-                  <SearchBox
-                    autoFocus
-                    search={searchText}
-                    onSearchChange={setSearchText}
-                    tags={tags}
-                    onTagsChange={setTags}
-                    placeholder={searchPlaceholder}
-                    inputClassName="grow"
-                  />
-                )}
-                {activeTab === TabsEnum.Blocks && (
-                  <Input
-                    showLeftIcon
-                    showClearIcon
-                    autoFocus
-                    value={searchText}
-                    placeholder={searchPlaceholder}
-                    onChange={e => setSearchText(e.target.value)}
-                    onClear={() => setSearchText('')}
-                  />
-                )}
-                {activeTab === TabsEnum.Sources && (
-                  <Input
-                    showLeftIcon
-                    showClearIcon
-                    autoFocus
-                    value={searchText}
-                    placeholder={searchPlaceholder}
-                    onChange={e => setSearchText(e.target.value)}
-                    onClear={() => setSearchText('')}
-                  />
-                )}
-                {activeTab === TabsEnum.Tools && (
-                  <SearchBox
-                    autoFocus
-                    search={searchText}
-                    onSearchChange={setSearchText}
-                    tags={tags}
-                    onTagsChange={setTags}
-                    placeholder={t('searchTools', { ns: 'plugin' })!}
-                    inputClassName="grow"
-                  />
-                )}
-              </div>
-            )}
+            hasUserInputNode={hasUserInputNode}
+            hasTriggerNode={hasTriggerNode}
             onSelect={handleSelect}
-            searchText={searchText}
-            tags={tags}
+            onRequestClose={() => handleOpenChange(false)}
             availableBlocksTypes={availableBlocksTypes}
-            noBlocks={noBlocks}
             dataSources={dataSources}
-            noTools={noTools}
-            onTagsChange={setTags}
-            forceShowStartContent={forceShowStartContent}
+            snippetInsertPayload={snippetInsertPayload}
           />
         </div>
       </PopoverContent>

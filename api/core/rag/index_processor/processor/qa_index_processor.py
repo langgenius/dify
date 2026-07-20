@@ -4,19 +4,17 @@ import logging
 import re
 import threading
 import uuid
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 import pandas as pd
 from flask import Flask, current_app
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
-from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict
-from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.entities import Rule
@@ -25,7 +23,6 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, QAStructureChunk
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.account import Account
@@ -43,16 +40,21 @@ class QAFormatPreviewDict(TypedDict):
 
 
 class QAIndexProcessor(BaseIndexProcessor):
-    def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
+    @override
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
             extract_setting=extract_setting,
             is_automatic=(
                 kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
             ),
+            session=session,
         )
         return text_docs
 
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    @override
+    def transform(
+        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+    ) -> list[Document]:
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
         if not process_rule:
@@ -139,21 +141,27 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError(str(e))
         return text_docs
 
+    @override
     def load(
         self,
         dataset: Dataset,
         documents: list[Document],
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
+        *,
+        session: Session,
         **kwargs,
     ) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            vector = Vector(dataset)
+            vector = Vector(dataset, session=session)
             vector.create(documents)
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
+    @override
+    def clean(
+        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+    ) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
@@ -163,55 +171,27 @@ class QAIndexProcessor(BaseIndexProcessor):
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id
-                with session_factory.create_session() as session:
-                    segments = session.scalars(
-                        select(DocumentSegment).where(
-                            DocumentSegment.dataset_id == dataset.id,
-                            DocumentSegment.index_node_id.in_(node_ids),
-                        )
-                    ).all()
-                    segment_ids = [segment.id for segment in segments]
-                    if segment_ids:
-                        SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+                segments = session.scalars(
+                    select(DocumentSegment).where(
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.index_node_id.in_(node_ids),
+                    )
+                ).all()
+                segment_ids = [segment.id for segment in segments]
+                if segment_ids:
+                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
 
-        vector = Vector(dataset)
+        vector = Vector(dataset, session=session)
         if node_ids:
             vector.delete_by_ids(node_ids)
         else:
             vector.delete()
 
-    def retrieve(
-        self,
-        retrieval_method: RetrievalMethod,
-        query: str,
-        dataset: Dataset,
-        top_k: int,
-        score_threshold: float,
-        reranking_model: RerankingModelDict,
-    ):
-        # Set search parameters.
-        results = RetrievalService.retrieve(
-            retrieval_method=retrieval_method,
-            dataset_id=dataset.id,
-            query=query,
-            top_k=top_k,
-            score_threshold=score_threshold,
-            reranking_model=reranking_model,
-        )
-        # Organize results.
-        docs = []
-        for result in results:
-            metadata = result.metadata
-            metadata["score"] = result.score
-            if result.score >= score_threshold:
-                doc = Document(page_content=result.page_content, metadata=metadata)
-                docs.append(doc)
-        return docs
-
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
+    @override
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
         qa_chunks = QAStructureChunk.model_validate(chunks)
         documents = []
         for qa_chunk in qa_chunks.qa_chunks:
@@ -227,13 +207,15 @@ class QAIndexProcessor(BaseIndexProcessor):
         if documents:
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
-            doc_store.add_documents(docs=documents, save_child=False)
+            doc_store.add_documents(docs=documents, save_child=False, session=session)
+            session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                vector = Vector(dataset)
+                vector = Vector(dataset, session=session)
                 vector.create(documents)
             else:
                 raise ValueError("Indexing technique must be high quality.")
 
+    @override
     def format_preview(self, chunks: Any) -> QAFormatPreviewDict:
         qa_chunks = QAStructureChunk.model_validate(chunks)
         preview = []
@@ -246,12 +228,15 @@ class QAIndexProcessor(BaseIndexProcessor):
         }
         return result
 
+    @override
     def generate_summary_preview(
         self,
         tenant_id: str,
         preview_texts: list[PreviewDetail],
         summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
+        *,
+        session: Session,
     ) -> list[PreviewDetail]:
         """
         QA model doesn't generate summaries, so this method returns preview_texts unchanged.

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Any, override
 from uuid import uuid4
 
 from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
@@ -100,14 +100,17 @@ class OpenSearchVector(BaseVector):
         self._client_config = config
         self._client = OpenSearch(**config.to_opensearch_params())
 
+    @override
     def get_type(self) -> str:
         return VectorType.OPENSEARCH
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas)
         self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         actions = []
         for i in range(len(documents)):
@@ -132,6 +135,7 @@ class OpenSearchVector(BaseVector):
             max_retries=3,
         )
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         query = {"query": {"term": {f"{Field.METADATA_KEY}.{key}": value}}}
         response = self._client.search(index=self._collection_name.lower(), body=query)
@@ -140,11 +144,13 @@ class OpenSearchVector(BaseVector):
         else:
             return None
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             self.delete_by_ids(ids)
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         index_name = self._collection_name.lower()
         if not self._client.indices.exists(index=index_name):
@@ -176,9 +182,11 @@ class OpenSearchVector(BaseVector):
                     else:
                         logger.exception("Error deleting document: %s", error)
 
+    @override
     def delete(self):
         self._client.indices.delete(index=self._collection_name.lower(), ignore_unavailable=True)
 
+    @override
     def text_exists(self, id: str) -> bool:
         try:
             self._client.get(index=self._collection_name.lower(), id=id)
@@ -186,6 +194,7 @@ class OpenSearchVector(BaseVector):
         except:
             return False
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         # Make sure query_vector is a list
         if not isinstance(query_vector, list):
@@ -234,6 +243,7 @@ class OpenSearchVector(BaseVector):
 
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         full_text_query = {"query": {"bool": {"must": [{"match": {Field.CONTENT_KEY.value: query}}]}}}
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -299,6 +309,7 @@ class OpenSearchVector(BaseVector):
 
 
 class OpenSearchVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> OpenSearchVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

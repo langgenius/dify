@@ -19,6 +19,8 @@ from controllers.web.wraps import (
     decode_jwt_token,
 )
 
+pytestmark = pytest.mark.usefixtures("db_session_with_containers")
+
 
 class TestValidateWebappToken:
     def test_enterprise_enabled_and_app_auth_requires_webapp_source(self) -> None:
@@ -187,6 +189,7 @@ class TestDecodeJwtToken:
         return flask_app_with_containers
 
     def _create_app_site_enduser(self, db_session: Session, *, enable_site: bool = True):
+        from models.enums import EndUserType
         from models.model import App, AppMode, CustomizeTokenStrategy, EndUser, Site
 
         tenant_id = str(uuid4())
@@ -215,7 +218,7 @@ class TestDecodeJwtToken:
         end_user = EndUser(
             tenant_id=tenant_id,
             app_id=app_model.id,
-            type="browser",
+            type=EndUserType.BROWSER,
             session_id="sess-1",
         )
         db_session.add(end_user)

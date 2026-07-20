@@ -15,6 +15,7 @@ type ItemValue = number | string
 export type Item<T extends ItemValue = ItemValue> = {
   value: T
   name: string
+  triggerName?: string
 } & Record<string, unknown>
 
 type Props<T extends ItemValue> = {
@@ -22,6 +23,7 @@ type Props<T extends ItemValue> = {
   panelClassName?: string
   showLeftIcon?: boolean
   leftIcon?: ReactNode
+  showItemIndicator?: boolean
   value: T
   items: Item<T>[]
   onSelect: (item: Item<T>) => void
@@ -33,62 +35,86 @@ function Chip<T extends ItemValue>({
   panelClassName,
   showLeftIcon = true,
   leftIcon,
+  showItemIndicator = true,
   value,
   items,
   onSelect,
   onClear,
 }: Props<T>) {
   const { t } = useTranslation()
-  const selectedItem = items.find(item => Object.is(item.value, value))
-  const triggerContent = selectedItem?.name || ''
+  const selectedItem = items.find((item) => Object.is(item.value, value))
+  const triggerContent = selectedItem?.triggerName || selectedItem?.name || ''
   const hasValue = selectedItem !== undefined && value !== ''
+  const clearLabel = triggerContent
+    ? `${t(($) => $['operation.clear'], { ns: 'common' })} ${triggerContent}`
+    : t(($) => $['operation.clear'], { ns: 'common' })
 
   return (
     <Select
       value={selectedItem?.value ?? null}
-      itemToStringLabel={(itemValue: T) => items.find(item => Object.is(item.value, itemValue))?.name ?? ''}
-      itemToStringValue={itemValue => String(itemValue)}
+      itemToStringLabel={(itemValue: T) =>
+        items.find((item) => Object.is(item.value, itemValue))?.name ?? ''
+      }
+      itemToStringValue={(itemValue) => String(itemValue)}
       onValueChange={(nextValue) => {
-        if (nextValue === null)
-          return
-        const selected = items.find(item => Object.is(item.value, nextValue))
-        if (selected)
-          onSelect(selected)
+        if (nextValue === null) return
+        const selected = items.find((item) => Object.is(item.value, nextValue))
+        if (selected) onSelect(selected)
       }}
     >
       <div className="relative w-fit max-w-full">
         <SelectTrigger
-          aria-label={triggerContent || t('placeholder.select', { ns: 'common' })}
+          aria-label={triggerContent || t(($) => $['placeholder.select'], { ns: 'common' })}
           className={cn(
-            'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
-            hasValue && 'border-components-button-secondary-border! bg-components-button-secondary-bg! pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover!',
+            'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
+            hasValue &&
+              'border-components-button-secondary-border! bg-components-button-secondary-bg! pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover!',
             className,
           )}
         >
-          <span className="flex min-w-0 grow items-center gap-0 text-left">
+          <span className="flex min-w-0 grow items-center gap-1 text-left">
             {showLeftIcon && (
-              <span className="p-0.5">
+              <span aria-hidden="true" className="p-0.5">
                 {leftIcon || (
-                  <span aria-hidden className={cn('i-ri-filter-3-line block size-4 text-text-tertiary', hasValue && 'text-text-secondary')} />
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'i-ri-filter-3-line block size-4 text-text-tertiary',
+                      hasValue && 'text-text-secondary',
+                    )}
+                  />
                 )}
               </span>
             )}
             <span className="flex grow items-center gap-0.5 first-line:p-1">
-              <span className={cn('system-sm-regular text-text-tertiary', hasValue && 'text-text-secondary')}>
+              <span
+                className={cn(
+                  'system-sm-regular text-text-tertiary',
+                  hasValue && 'text-text-secondary',
+                )}
+              >
                 {triggerContent}
               </span>
             </span>
-            {!hasValue && <span aria-hidden className="i-ri-arrow-down-s-line block size-4 text-text-tertiary" />}
+            {!hasValue && (
+              <span
+                aria-hidden
+                className="i-ri-arrow-down-s-line block size-4 text-text-tertiary"
+              />
+            )}
           </span>
         </SelectTrigger>
         {hasValue && (
           <button
             type="button"
-            aria-label={t('operation.clear', { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-px"
+            aria-label={clearLabel}
+            className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
             onClick={onClear}
           >
-            <span aria-hidden className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
+            <span
+              aria-hidden
+              className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
+            />
           </button>
         )}
         <SelectContent
@@ -100,19 +126,15 @@ function Chip<T extends ItemValue>({
           )}
           listClassName="max-h-72 p-1"
         >
-          {items.map(item => (
-            <SelectItem
-              key={item.value}
-              value={item.value}
-            >
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
               <SelectItemText title={item.name}>{item.name}</SelectItemText>
-              <SelectItemIndicator />
+              {showItemIndicator && <SelectItemIndicator />}
             </SelectItem>
           ))}
         </SelectContent>
       </div>
     </Select>
-
   )
 }
 

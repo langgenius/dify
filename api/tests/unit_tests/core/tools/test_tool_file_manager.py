@@ -1,8 +1,8 @@
 """Unit tests for `ToolFileManager` behavior.
 
-Covers signing/verification, file persistence flows, and retrieval APIs with
-mocked storage/session boundaries (httpx, SimpleNamespace, Mock/patch) to
-avoid real IO.
+Covers signing, file persistence flows, and retrieval APIs with mocked
+storage/session boundaries (httpx, SimpleNamespace, Mock/patch) to avoid real
+IO.
 """
 
 from __future__ import annotations
@@ -17,18 +17,6 @@ from core.tools.tool_file_manager import ToolFileManager
 from graphon.file import FileTransferMethod
 
 
-def _setup_tool_file_signing(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
-    monkeypatch.setattr("core.tools.tool_file_manager.time.time", lambda: 1700000000)
-    monkeypatch.setattr("core.tools.tool_file_manager.os.urandom", lambda _: b"\x01" * 16)
-    monkeypatch.setattr("core.tools.tool_file_manager.dify_config.SECRET_KEY", "secret")
-    monkeypatch.setattr("core.tools.tool_file_manager.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr("core.tools.tool_file_manager.dify_config.INTERNAL_FILES_URL", "https://internal.example.com")
-    monkeypatch.setattr("core.tools.tool_file_manager.dify_config.FILES_ACCESS_TIMEOUT", 100)
-
-    url = ToolFileManager.sign_file("tf-1", ".png")
-    return dict(part.split("=", 1) for part in url.split("?", 1)[1].split("&"))
-
-
 def _patch_session_factory(session: Mock):
     session_cm = MagicMock()
     session_cm.__enter__.return_value = session
@@ -36,26 +24,9 @@ def _patch_session_factory(session: Mock):
     return patch("core.tools.tool_file_manager.session_factory.create_session", return_value=session_cm)
 
 
-def test_tool_file_manager_sign_verify_valid(monkeypatch: pytest.MonkeyPatch) -> None:
-    query = _setup_tool_file_signing(monkeypatch)
+def test_tool_file_manager_sign_file_builds_url() -> None:
     url = ToolFileManager.sign_file("tf-1", ".png")
     assert "/files/tools/tf-1.png" in url
-
-    assert ToolFileManager.verify_file("tf-1", query["timestamp"], query["nonce"], query["sign"]) is True
-
-
-def test_tool_file_manager_sign_verify_bad_signature(monkeypatch: pytest.MonkeyPatch) -> None:
-    query = _setup_tool_file_signing(monkeypatch)
-
-    assert ToolFileManager.verify_file("tf-1", query["timestamp"], query["nonce"], "bad") is False
-
-
-def test_tool_file_manager_sign_verify_expired_timestamp(monkeypatch: pytest.MonkeyPatch) -> None:
-    query = _setup_tool_file_signing(monkeypatch)
-    monkeypatch.setattr("core.tools.tool_file_manager.dify_config.FILES_ACCESS_TIMEOUT", 0)
-    monkeypatch.setattr("core.tools.tool_file_manager.time.time", lambda: 1700000100)
-
-    assert ToolFileManager.verify_file("tf-1", query["timestamp"], query["nonce"], query["sign"]) is False
 
 
 def test_create_file_by_raw_stores_file_and_persists_record() -> None:
@@ -89,6 +60,37 @@ def test_create_file_by_raw_stores_file_and_persists_record() -> None:
     session.refresh.assert_called_once_with(file_model)
 
 
+def test_create_file_by_raw_prefers_filename_extension_over_mimetype() -> None:
+    manager = ToolFileManager()
+    session = Mock()
+    session.refresh.side_effect = lambda model: setattr(model, "id", "tf-docx")
+
+    def tool_file_factory(**kwargs):
+        return SimpleNamespace(**kwargs)
+
+    with (
+        patch("core.tools.tool_file_manager.storage") as storage,
+        patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
+        patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="abc")),
+        _patch_session_factory(session),
+    ):
+        file_model = manager.create_file_by_raw(
+            user_id="u1",
+            tenant_id="t1",
+            conversation_id="c1",
+            file_binary=b"docx",
+            mimetype="application/octet-stream",
+            filename="report.docx",
+        )
+
+    assert file_model.name == "report.docx"
+    assert file_model.file_key == "tools/t1/abc.docx"
+    storage.save.assert_called_once_with("tools/t1/abc.docx", b"docx")
+    session.add.assert_called_once_with(file_model)
+    session.commit.assert_called_once()
+    session.refresh.assert_called_once_with(file_model)
+
+
 def test_create_file_by_url_downloads_and_persists_record() -> None:
     manager = ToolFileManager()
     response = Mock()
@@ -106,7 +108,7 @@ def test_create_file_by_url_downloads_and_persists_record() -> None:
         patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
         patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="def")),
         _patch_session_factory(session),
-        patch("core.tools.tool_file_manager.ssrf_proxy.get", return_value=response),
+        patch("core.tools.tool_file_manager.remote_fetcher.make_request", return_value=response),
     ):
         file_model = manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
 
@@ -117,10 +119,39 @@ def test_create_file_by_url_downloads_and_persists_record() -> None:
     session.refresh.assert_called_once_with(file_model)
 
 
+def test_create_file_by_url_prefers_url_extension_over_mimetype() -> None:
+    manager = ToolFileManager()
+    response = Mock()
+    response.content = b"docx"
+    response.headers = {"Content-Type": "application/octet-stream"}
+    response.raise_for_status.return_value = None
+    session = Mock()
+
+    def tool_file_factory(**kwargs):
+        return SimpleNamespace(**kwargs)
+
+    session.refresh.side_effect = lambda model: setattr(model, "id", "tf-docx")
+    with (
+        patch("core.tools.tool_file_manager.storage") as storage,
+        patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
+        patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="urlabc")),
+        _patch_session_factory(session),
+        patch("core.tools.tool_file_manager.remote_fetcher.make_request", return_value=response),
+    ):
+        file_model = manager.create_file_by_url("u1", "t1", "https://example.com/report.docx?download=1", "c1")
+
+    assert file_model.file_key == "tools/t1/urlabc.docx"
+    assert file_model.name == "urlabc.docx"
+    storage.save.assert_called_once_with("tools/t1/urlabc.docx", b"docx")
+
+
 def test_create_file_by_url_raises_on_timeout() -> None:
     manager = ToolFileManager()
 
-    with patch("core.tools.tool_file_manager.ssrf_proxy.get", side_effect=httpx.TimeoutException("timeout")):
+    with patch(
+        "core.tools.tool_file_manager.remote_fetcher.make_request",
+        side_effect=httpx.TimeoutException("timeout"),
+    ):
         with pytest.raises(ValueError, match="timeout when downloading file"):
             manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
 

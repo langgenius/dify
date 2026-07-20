@@ -166,12 +166,13 @@ def invoke_llm_with_structured_output(
                     prompt_messages = event.prompt_messages
                     system_fingerprint = event.system_fingerprint
 
-                    if isinstance(event.delta.message.content, str):
-                        result_text += event.delta.message.content
-                    elif isinstance(event.delta.message.content, list):
-                        for item in event.delta.message.content:
-                            if isinstance(item, TextPromptMessageContent):
-                                result_text += item.data
+                    match event.delta.message.content:
+                        case str():
+                            result_text += event.delta.message.content
+                        case list():
+                            for item in event.delta.message.content:
+                                if isinstance(item, TextPromptMessageContent):
+                                    result_text += item.data
 
                 yield LLMResultChunkWithStructuredOutput(
                     model=model_schema.model,

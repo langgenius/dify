@@ -1,5 +1,6 @@
 """Unit tests for the message cycle manager optimization."""
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -10,7 +11,14 @@ from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRet
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.rag.entities import RetrievalSourceMetadata
-from models.model import AppMode
+from models.model import App, AppMode
+
+
+def _patch_create_session(mock_session):
+    session_cm = Mock()
+    session_cm.__enter__ = Mock(return_value=mock_session)
+    session_cm.__exit__ = Mock(return_value=False)
+    return patch("core.app.task_pipeline.message_cycle_manager.session_factory.create_session", return_value=session_cm)
 
 
 class TestMessageCycleManagerOptimization:
@@ -267,12 +275,10 @@ class TestMessageCycleManagerOptimization:
         db_session = Mock()
         db_session.scalar.return_value = None
 
-        with patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db:
-            mock_db.session = db_session
+        with _patch_create_session(db_session):
             message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-missing", "hello")
 
         db_session.commit.assert_not_called()
-        db_session.close.assert_not_called()
 
     def test_generate_conversation_name_worker_returns_when_app_missing(self, message_cycle_manager):
         """Return early when non-completion conversation has no app relation."""
@@ -280,39 +286,45 @@ class TestMessageCycleManagerOptimization:
         conversation = SimpleNamespace(mode=AppMode.CHAT, app=None, app_id="app-id")
         db_session = Mock()
         db_session.scalar.return_value = conversation
+        db_session.get.return_value = None
 
-        with patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db:
-            mock_db.session = db_session
+        with _patch_create_session(db_session):
             message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "hello")
 
         db_session.commit.assert_not_called()
-        db_session.close.assert_not_called()
 
     def test_generate_conversation_name_worker_uses_cached_name(self, message_cycle_manager):
         """Use cached conversation name when present and avoid LLM call."""
         flask_app = Flask(__name__)
-        conversation = SimpleNamespace(
-            mode=AppMode.CHAT,
-            app=SimpleNamespace(tenant_id="tenant-1"),
-            app_id="app-id",
-            name="",
-        )
+
+        class ConversationWithPoisonedApp:
+            mode = AppMode.CHAT
+            app_id = "app-id"
+            name = ""
+
+            @property
+            def app(self):
+                raise AssertionError("conversation.app must not open an implicit session")
+
+        conversation = ConversationWithPoisonedApp()
+        app_model = SimpleNamespace(tenant_id="tenant-1")
         db_session = Mock()
         db_session.scalar.return_value = conversation
+        db_session.get.return_value = app_model
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
+            _patch_create_session(db_session) as create_session,
             patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
             patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
         ):
-            mock_db.session = db_session
             mock_redis.get.return_value = b"cached-title"
 
             message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "hello")
 
         assert conversation.name == "cached-title"
+        create_session.assert_called_once_with()
+        db_session.get.assert_called_once_with(App, "app-id")
         db_session.commit.assert_called_once()
-        db_session.close.assert_called_once()
         mock_llm_generator.generate_conversation_name.assert_not_called()
         mock_redis.setex.assert_not_called()
 
@@ -329,11 +341,10 @@ class TestMessageCycleManagerOptimization:
         db_session.scalar.return_value = conversation
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
+            _patch_create_session(db_session),
             patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
             patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
         ):
-            mock_db.session = db_session
             mock_redis.get.return_value = None
             mock_llm_generator.generate_conversation_name.return_value = "generated-title"
 
@@ -341,10 +352,11 @@ class TestMessageCycleManagerOptimization:
 
         assert conversation.name == "generated-title"
         db_session.commit.assert_called_once()
-        db_session.close.assert_called_once()
         mock_redis.setex.assert_called_once()
 
-    def test_generate_conversation_name_worker_falls_back_when_generation_fails(self, message_cycle_manager):
+    def test_generate_conversation_name_worker_falls_back_when_generation_fails(
+        self, message_cycle_manager, caplog: pytest.LogCaptureFixture
+    ):
         """Fallback to truncated query when LLM generation fails."""
         flask_app = Flask(__name__)
         conversation = SimpleNamespace(
@@ -358,23 +370,21 @@ class TestMessageCycleManagerOptimization:
         long_query = "q" * 60
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
+            _patch_create_session(db_session),
             patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
             patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
             patch("core.app.task_pipeline.message_cycle_manager.dify_config") as mock_dify_config,
-            patch("core.app.task_pipeline.message_cycle_manager.logger") as mock_logger,
         ):
-            mock_db.session = db_session
             mock_redis.get.return_value = None
             mock_llm_generator.generate_conversation_name.side_effect = RuntimeError("generation failed")
             mock_dify_config.DEBUG = True
 
-            message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", long_query)
+            with caplog.at_level(logging.ERROR, logger="core.app.task_pipeline.message_cycle_manager"):
+                message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", long_query)
 
         assert conversation.name == (long_query[:47] + "...")
         db_session.commit.assert_called_once()
-        db_session.close.assert_called_once()
-        mock_logger.exception.assert_called_once()
+        assert any(record.levelno == logging.ERROR for record in caplog.records)
 
     def test_handle_annotation_reply_sets_metadata(self, message_cycle_manager):
         """Populate task metadata from annotation reply events.
@@ -388,19 +398,24 @@ class TestMessageCycleManagerOptimization:
         annotation = SimpleNamespace(
             id="ann-1",
             account_id="acct-1",
-            account=SimpleNamespace(name="Alice"),
         )
+        session = Mock()
 
-        with patch("core.app.task_pipeline.message_cycle_manager.AppAnnotationService") as mock_service:
+        with (
+            patch("core.app.task_pipeline.message_cycle_manager.AppAnnotationService") as mock_service,
+            patch("core.app.task_pipeline.message_cycle_manager.AccountService") as account_service,
+        ):
             mock_service.get_annotation_by_id.return_value = annotation
+            account_service.get_account_by_id.return_value = SimpleNamespace(name="Alice")
 
             result = message_cycle_manager.handle_annotation_reply(
-                QueueAnnotationReplyEvent(message_annotation_id="ann-1")
+                QueueAnnotationReplyEvent(message_annotation_id="ann-1"), session
             )
 
         assert result == annotation
         assert message_cycle_manager._task_state.metadata.annotation_reply.id == "ann-1"
         assert message_cycle_manager._task_state.metadata.annotation_reply.account.name == "Alice"
+        account_service.get_account_by_id.assert_called_once_with("acct-1", session=session)
 
     def test_handle_annotation_reply_returns_none_when_missing(self, message_cycle_manager):
         """Return None and keep metadata unchanged when annotation is not found."""
@@ -410,7 +425,7 @@ class TestMessageCycleManagerOptimization:
             mock_service.get_annotation_by_id.return_value = None
 
             result = message_cycle_manager.handle_annotation_reply(
-                QueueAnnotationReplyEvent(message_annotation_id="missing")
+                QueueAnnotationReplyEvent(message_annotation_id="missing"), Mock()
             )
 
         assert result is None

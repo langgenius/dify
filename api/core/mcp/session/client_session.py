@@ -41,10 +41,11 @@ class MessageHandlerFnT(Protocol):
 def _default_message_handler(
     message: RequestResponder[types.ServerRequest, types.ClientResult] | types.ServerNotification | Exception,
 ):
-    if isinstance(message, Exception):
-        raise ValueError(str(message))
-    elif isinstance(message, (types.ServerNotification | RequestResponder)):
-        pass
+    match message:
+        case Exception():
+            raise ValueError(str(message))
+        case types.ServerNotification() | RequestResponder():
+            pass
 
 
 def _default_sampling_callback(

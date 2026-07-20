@@ -1,4 +1,6 @@
 from types import SimpleNamespace
+from typing import override
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -7,23 +9,29 @@ from core.rag.models.document import Document
 
 
 class _KeywordThatRaises(BaseKeyword):
-    def create(self, texts: list[Document], **kwargs):
-        return super().create(texts, **kwargs)
+    @override
+    def create(self, texts: list[Document], session, **kwargs):
+        return super().create(texts, session, **kwargs)
 
-    def add_texts(self, texts: list[Document], **kwargs):
-        return super().add_texts(texts, **kwargs)
+    @override
+    def add_texts(self, texts: list[Document], session, **kwargs):
+        return super().add_texts(texts, session, **kwargs)
 
-    def text_exists(self, id: str) -> bool:
-        return super().text_exists(id)
+    @override
+    def text_exists(self, id: str, *, session) -> bool:
+        return super().text_exists(id, session=session)
 
-    def delete_by_ids(self, ids: list[str]):
-        return super().delete_by_ids(ids)
+    @override
+    def delete_by_ids(self, ids: list[str], session, **kwargs):
+        return super().delete_by_ids(ids, session, **kwargs)
 
-    def delete(self):
-        return super().delete()
+    @override
+    def delete(self, *, session):
+        return super().delete(session=session)
 
-    def search(self, query: str, **kwargs):
-        return super().search(query, **kwargs)
+    @override
+    def search(self, query: str, *, session, **kwargs):
+        return super().search(query, session=session, **kwargs)
 
 
 class _KeywordForHelpers(BaseKeyword):
@@ -31,45 +39,52 @@ class _KeywordForHelpers(BaseKeyword):
         super().__init__(dataset)
         self._existing_ids = existing_ids or set()
 
-    def create(self, texts: list[Document], **kwargs):
+    @override
+    def create(self, texts: list[Document], session, **kwargs):
         return self
 
-    def add_texts(self, texts: list[Document], **kwargs):
+    @override
+    def add_texts(self, texts: list[Document], session, **kwargs):
         return None
 
-    def text_exists(self, id: str) -> bool:
+    @override
+    def text_exists(self, id: str, *, session) -> bool:
         return id in self._existing_ids
 
-    def delete_by_ids(self, ids: list[str]):
+    @override
+    def delete_by_ids(self, ids: list[str], session, **kwargs):
         return None
 
-    def delete(self):
+    @override
+    def delete(self, *, session):
         return None
 
-    def search(self, query: str, **kwargs):
+    @override
+    def search(self, query: str, *, session, **kwargs):
         return []
 
 
 def test_abstract_methods_raise_not_implemented():
     keyword = _KeywordThatRaises(SimpleNamespace(id="dataset-1"))
+    session = MagicMock()
 
     with pytest.raises(NotImplementedError):
-        keyword.create([])
+        keyword.create([], session)
 
     with pytest.raises(NotImplementedError):
-        keyword.add_texts([])
+        keyword.add_texts([], session)
 
     with pytest.raises(NotImplementedError):
-        keyword.text_exists("doc-1")
+        keyword.text_exists("doc-1", session=session)
 
     with pytest.raises(NotImplementedError):
-        keyword.delete_by_ids(["doc-1"])
+        keyword.delete_by_ids(["doc-1"], session)
 
     with pytest.raises(NotImplementedError):
-        keyword.delete()
+        keyword.delete(session=session)
 
     with pytest.raises(NotImplementedError):
-        keyword.search("query")
+        keyword.search("query", session=session)
 
 
 def test_filter_duplicate_texts_removes_existing_doc_ids():
@@ -80,7 +95,7 @@ def test_filter_duplicate_texts_removes_existing_doc_ids():
         SimpleNamespace(page_content="without-metadata", metadata=None),
     ]
 
-    filtered = keyword._filter_duplicate_texts(texts)
+    filtered = keyword._filter_duplicate_texts(texts, session=MagicMock())
 
     assert [text.metadata["doc_id"] for text in filtered if text.metadata] == ["keep"]
     assert any(text.metadata is None for text in filtered)

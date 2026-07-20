@@ -6,11 +6,6 @@ import Header from '../_header'
 vi.mock('@tanstack/react-query', () => ({
   useSuspenseQuery: vi.fn(),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/i18n-config', () => ({
   setLocaleOnClient: vi.fn(),
 }))
@@ -19,7 +14,7 @@ vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
 
-vi.mock('@/service/system-features', () => ({
+vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({}),
 }))
 

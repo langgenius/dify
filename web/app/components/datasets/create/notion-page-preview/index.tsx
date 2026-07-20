@@ -16,18 +16,13 @@ type IProps = {
   hidePreview: () => void
 }
 
-const NotionPagePreview = ({
-  currentPage,
-  notionCredentialId,
-  hidePreview,
-}: IProps) => {
+const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IProps) => {
   const { t } = useTranslation()
   const [previewContent, setPreviewContent] = useState('')
   const [loading, setLoading] = useState(true)
 
   const getPreviewContent = async () => {
-    if (!currentPage)
-      return
+    if (!currentPage) return
     try {
       const res = await fetchNotionPagePreview({
         pageID: currentPage.page_id,
@@ -36,8 +31,7 @@ const NotionPagePreview = ({
       })
       setPreviewContent(res.content)
       setLoading(false)
-    }
-    catch { }
+    } catch {}
   }
 
   useEffect(() => {
@@ -51,30 +45,24 @@ const NotionPagePreview = ({
     <div className={cn(s.filePreview, 'h-full')}>
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title, 'title-md-semi-bold')}>
-          <span>{t('stepOne.pagePreview', { ns: 'datasetCreation' })}</span>
+          <span>{t(($) => $['stepOne.pagePreview'], { ns: 'datasetCreation' })}</span>
           <button
             type="button"
             className="flex size-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={hidePreview}
           >
             <XMarkIcon className="size-4" aria-hidden="true"></XMarkIcon>
           </button>
         </div>
         <div className={cn(s.fileName, 'system-xs-medium')}>
-          <NotionIcon
-            className="mr-1 shrink-0"
-            type="page"
-            src={currentPage?.page_icon}
-          />
+          <NotionIcon className="mr-1 shrink-0" type="page" src={currentPage?.page_icon} />
           {currentPage?.page_name}
         </div>
       </div>
       <div className={cn(s.previewContent, 'body-md-regular')}>
         {loading && <Loading type="area" />}
-        {!loading && (
-          <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>
-        )}
+        {!loading && <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>}
       </div>
     </div>
   )

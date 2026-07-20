@@ -1,4 +1,4 @@
-import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { NodeKey, SerializedLexicalNode } from 'lexical'
 import type { GetVarType, WorkflowVariableBlockType } from '../../types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { DecoratorNode } from 'lexical'
@@ -93,8 +93,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
       workflowNodesMap: this.getWorkflowNodesMap(),
       getVarType: this.getVarType(),
     }
-    if (this.getAvailableVariables())
-      json.availableVariables = this.getAvailableVariables()
+    if (this.getAvailableVariables()) json.availableVariables = this.getAvailableVariables()
 
     return json
   }
@@ -136,10 +135,4 @@ export function $createWorkflowVariableBlockNode(
     undefined,
     availableVariables,
   )
-}
-
-export function $isWorkflowVariableBlockNode(
-  node: WorkflowVariableBlockNode | LexicalNode | null | undefined,
-): node is WorkflowVariableBlockNode {
-  return node instanceof WorkflowVariableBlockNode
 }

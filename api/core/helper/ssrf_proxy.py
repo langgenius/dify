@@ -1,5 +1,13 @@
-"""
-Proxy requests to avoid SSRF
+"""SSRF-protected HTTP client for generic outbound requests.
+
+Use this module when the URL represents a normal external HTTP interaction that
+must go through network/proxy policy exactly as requested, such as HTTP Request
+nodes, provider/API integrations, auth discovery, or custom tool calls.
+
+Do not use this directly for "remote file" retrieval. File downloads, probes,
+and metadata checks should use `core.file.remote_fetcher` instead so Dify-signed
+file URLs can be resolved through DB + storage before falling back to this SSRF
+client.
 """
 
 import logging
@@ -192,7 +200,7 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
                         f"The URL may point to a private or local network address. "
                     )
 
-            if response.status_code not in STATUS_FORCELIST:
+            if response.status_code not in STATUS_FORCELIST or max_retries == 0:
                 return response
             else:
                 logger.warning(

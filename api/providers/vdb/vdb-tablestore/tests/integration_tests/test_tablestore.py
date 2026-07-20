@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from typing import override
 
 import tablestore
 from _pytest.python_api import approx
@@ -32,12 +33,14 @@ class TableStoreVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="doc_id", value=self.example_doc_id)
         assert ids is not None
         assert len(ids) == 1
         assert ids[0] == self.example_doc_id
 
+    @override
     def create_vector(self):
         self.vector.create(
             texts=[get_example_document(doc_id=self.example_doc_id)],
@@ -53,6 +56,7 @@ class TableStoreVectorTest(AbstractVectorTest):
             if search_response.total_count == 1:
                 break
 
+    @override
     def search_by_vector(self):
         super().search_by_vector()
         docs = self.vector.search_by_vector(self.example_embedding, document_ids_filter=[self.example_doc_id])
@@ -63,6 +67,7 @@ class TableStoreVectorTest(AbstractVectorTest):
         docs = self.vector.search_by_vector(self.example_embedding, document_ids_filter=[str(uuid.uuid4())])
         assert len(docs) == 0
 
+    @override
     def search_by_full_text(self):
         super().search_by_full_text()
         docs = self.vector.search_by_full_text(get_example_text(), document_ids_filter=[self.example_doc_id])
@@ -87,6 +92,7 @@ class TableStoreVectorTest(AbstractVectorTest):
         docs = self.vector.search_by_full_text(get_example_text(), document_ids_filter=[str(uuid.uuid4())])
         assert len(docs) == 0
 
+    @override
     def run_all_tests(self):
         try:
             self.vector.delete()

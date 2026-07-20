@@ -5,13 +5,22 @@ import DatePicker from '../index'
 
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, className }: {
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    className,
+  }: {
     children?: React.ReactNode
     onClick?: () => void
     disabled?: boolean
     className?: string
   }) => (
-    <button onClick={onClick as (() => void) | undefined} disabled={disabled as boolean | undefined} className={className as string | undefined}>
+    <button
+      onClick={onClick as (() => void) | undefined}
+      disabled={disabled as boolean | undefined}
+      className={className as string | undefined}
+    >
       {children}
     </button>
   ),
@@ -188,7 +197,10 @@ describe('DatePicker', () => {
     })
 
     it('should render time picker options in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -203,7 +215,10 @@ describe('DatePicker', () => {
     })
 
     it('should update selected time when hour is selected in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -222,7 +237,10 @@ describe('DatePicker', () => {
     })
 
     it('should update selected time when minute is selected in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -239,7 +257,10 @@ describe('DatePicker', () => {
     })
 
     it('should update selected time when period is changed in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()

@@ -12,7 +12,7 @@ const Form = () => {
   const {
     // Context values
     currentDataset,
-    isCurrentWorkspaceDatasetOperator,
+    canEditSettings,
 
     // Loading state
     loading,
@@ -66,12 +66,12 @@ const Form = () => {
   } = useFormState()
 
   const isExternalProvider = currentDataset?.provider === 'external'
+  const readonly = !canEditSettings
 
   return (
     <div className="flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]">
       <BasicInfoSection
         currentDataset={currentDataset}
-        isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
         name={name}
         setName={setName}
         description={description}
@@ -86,35 +86,36 @@ const Form = () => {
         selectedMemberIDs={selectedMemberIDs}
         setSelectedMemberIDs={setSelectedMemberIDs}
         memberList={memberList}
+        readonly={readonly}
       />
 
-      {isExternalProvider
-        ? (
-            <ExternalKnowledgeSection
-              currentDataset={currentDataset}
-              topK={topK}
-              scoreThreshold={scoreThreshold}
-              scoreThresholdEnabled={scoreThresholdEnabled}
-              handleSettingsChange={handleSettingsChange}
-            />
-          )
-        : (
-            <IndexingSection
-              currentDataset={currentDataset}
-              indexMethod={indexMethod}
-              setIndexMethod={setIndexMethod}
-              keywordNumber={keywordNumber}
-              setKeywordNumber={setKeywordNumber}
-              embeddingModel={embeddingModel}
-              setEmbeddingModel={setEmbeddingModel}
-              embeddingModelList={embeddingModelList}
-              retrievalConfig={retrievalConfig}
-              setRetrievalConfig={setRetrievalConfig}
-              summaryIndexSetting={summaryIndexSetting}
-              handleSummaryIndexSettingChange={handleSummaryIndexSettingChange}
-              showMultiModalTip={showMultiModalTip}
-            />
-          )}
+      {isExternalProvider ? (
+        <ExternalKnowledgeSection
+          currentDataset={currentDataset}
+          topK={topK}
+          scoreThreshold={scoreThreshold}
+          scoreThresholdEnabled={scoreThresholdEnabled}
+          handleSettingsChange={handleSettingsChange}
+          readonly={readonly}
+        />
+      ) : (
+        <IndexingSection
+          currentDataset={currentDataset}
+          indexMethod={indexMethod}
+          setIndexMethod={setIndexMethod}
+          keywordNumber={keywordNumber}
+          setKeywordNumber={setKeywordNumber}
+          embeddingModel={embeddingModel}
+          setEmbeddingModel={setEmbeddingModel}
+          embeddingModelList={embeddingModelList}
+          retrievalConfig={retrievalConfig}
+          setRetrievalConfig={setRetrievalConfig}
+          summaryIndexSetting={summaryIndexSetting}
+          handleSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+          showMultiModalTip={showMultiModalTip}
+          readonly={readonly}
+        />
+      )}
 
       <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
 
@@ -126,10 +127,10 @@ const Form = () => {
             className="min-w-24"
             variant="primary"
             loading={loading}
-            disabled={loading}
+            disabled={loading || readonly}
             onClick={handleSave}
           >
-            {t('form.save', { ns: 'datasetSettings' })}
+            {t(($) => $['form.save'], { ns: 'datasetSettings' })}
           </Button>
         </div>
       </div>

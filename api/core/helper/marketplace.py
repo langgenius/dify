@@ -1,5 +1,7 @@
 import logging
 from collections.abc import Sequence
+from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 from yarl import URL
@@ -12,12 +14,15 @@ from extensions.ext_redis import redis_client
 marketplace_api_url = URL(str(dify_config.MARKETPLACE_API_URL))
 logger = logging.getLogger(__name__)
 
+MARKETPLACE_TIMEOUT = 30
+
 
 def get_plugin_pkg_url(plugin_unique_identifier: str) -> str:
-    return str((marketplace_api_url / "api/v1/plugins/download").with_query(unique_identifier=plugin_unique_identifier))
+    query = urlencode({"unique_identifier": plugin_unique_identifier})
+    return f"{marketplace_api_url / 'api/v1/plugins/download'}?{query}"
 
 
-def download_plugin_pkg(plugin_unique_identifier: str):
+def download_plugin_pkg(plugin_unique_identifier: str) -> bytes:
     return download_with_size_limit(get_plugin_pkg_url(plugin_unique_identifier), dify_config.PLUGIN_MAX_PACKAGE_SIZE)
 
 
@@ -26,27 +31,46 @@ def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplaceP
         return []
 
     url = str(marketplace_api_url / "api/v1/plugins/batch")
-    response = httpx.post(url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version})
+    response = httpx.post(
+        url,
+        json={"plugin_ids": plugin_ids},
+        headers={"X-Dify-Version": dify_config.project.version},
+        timeout=MARKETPLACE_TIMEOUT,
+    )
     response.raise_for_status()
 
     return [MarketplacePluginDeclaration.model_validate(plugin) for plugin in response.json()["data"]["plugins"]]
 
 
-def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
+def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict[str, Any]]:
     if not plugin_ids:
         return []
 
     url = str(marketplace_api_url / "api/v1/plugins/batch")
-    response = httpx.post(url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version})
+    response = httpx.post(
+        url,
+        json={"plugin_ids": plugin_ids},
+        headers={"X-Dify-Version": dify_config.project.version},
+        timeout=MARKETPLACE_TIMEOUT,
+    )
     response.raise_for_status()
 
     data = response.json()
-    return data.get("data", {}).get("plugins", [])
+    plugins = data.get("data", {}).get("plugins", [])
+    if not isinstance(plugins, list):
+        raise ValueError("Marketplace did not return a valid plugins list")
+
+    result: list[dict[str, Any]] = []
+    for plugin in plugins:
+        if not isinstance(plugin, dict) or not all(isinstance(key, str) for key in plugin):
+            raise ValueError("Marketplace did not return a valid plugins list")
+        result.append(plugin)
+    return result
 
 
-def record_install_plugin_event(plugin_unique_identifier: str):
+def record_install_plugin_event(plugin_unique_identifier: str) -> None:
     url = str(marketplace_api_url / "api/v1/stats/plugins/install_count")
-    response = httpx.post(url, json={"unique_identifier": plugin_unique_identifier})
+    response = httpx.post(url, json={"unique_identifier": plugin_unique_identifier}, timeout=MARKETPLACE_TIMEOUT)
     response.raise_for_status()
 
 
@@ -64,7 +88,7 @@ def fetch_global_plugin_manifest(cache_key_prefix: str, cache_ttl: int) -> None:
         Exception: If any other error occurs during fetching or caching
     """
     url = str(marketplace_api_url / "api/v1/dist/plugins/manifest.json")
-    response = httpx.get(url, headers={"X-Dify-Version": dify_config.project.version}, timeout=30)
+    response = httpx.get(url, headers={"X-Dify-Version": dify_config.project.version}, timeout=MARKETPLACE_TIMEOUT)
     response.raise_for_status()
 
     raw_json = response.json()

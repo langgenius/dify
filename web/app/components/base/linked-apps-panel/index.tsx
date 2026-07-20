@@ -8,11 +8,11 @@ import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
 
-type ILikedItemProps = {
+type ILikedItemProps = Readonly<{
   appStatus?: boolean
   detail: RelatedApp
   isMobile: boolean
-}
+}>
 
 const appTypeMap = {
   [AppModeEnum.CHAT]: 'Chatbot',
@@ -22,33 +22,45 @@ const appTypeMap = {
   [AppModeEnum.WORKFLOW]: 'Workflow',
 }
 
-const LikedItem = ({
-  detail,
-  isMobile,
-}: ILikedItemProps) => {
+const LikedItem = ({ detail, isMobile }: ILikedItemProps) => {
   return (
-    <Link className={cn('group/link-item flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-2 hover:bg-state-base-hover', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
+    <Link
+      className={cn(
+        'group/link-item flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-2 hover:bg-state-base-hover',
+        isMobile && 'justify-center',
+      )}
+      href={`/app/${detail?.id}/overview`}
+    >
       <div className="flex items-center">
         <div className={cn('relative size-6 rounded-md')}>
-          <AppIcon size="tiny" iconType={detail.icon_type} icon={detail.icon} background={detail.icon_background} imageUrl={detail.icon_url} />
+          <AppIcon
+            size="tiny"
+            iconType={detail.icon_type}
+            icon={detail.icon}
+            background={detail.icon_background}
+            imageUrl={detail.icon_url}
+          />
         </div>
-        {!isMobile && <div className={cn('ml-2 truncate system-sm-medium text-text-primary')}>{detail?.name || '--'}</div>}
+        {!isMobile && (
+          <div className={cn('ml-2 truncate system-sm-medium text-text-primary')}>
+            {detail?.name || '--'}
+          </div>
+        )}
       </div>
-      <div className="shrink-0 system-2xs-medium-uppercase text-text-tertiary group-hover/link-item:hidden">{appTypeMap[detail.mode]}</div>
+      <div className="shrink-0 system-2xs-medium-uppercase text-text-tertiary group-hover/link-item:hidden">
+        {appTypeMap[detail.mode]}
+      </div>
       <RiArrowRightUpLine className="hidden size-4 text-text-tertiary group-hover/link-item:block" />
     </Link>
   )
 }
 
-type Props = {
+type Props = Readonly<{
   relatedApps: RelatedApp[]
   isMobile: boolean
-}
+}>
 
-const LinkedAppsPanel: FC<Props> = ({
-  relatedApps,
-  isMobile,
-}) => {
+const LinkedAppsPanel: FC<Props> = ({ relatedApps, isMobile }) => {
   return (
     <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
       {relatedApps.map((item, index) => (

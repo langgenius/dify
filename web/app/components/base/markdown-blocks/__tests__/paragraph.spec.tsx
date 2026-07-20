@@ -98,10 +98,7 @@ describe('Paragraph', () => {
   it('should render div instead of p when image is not the first child', () => {
     renderParagraph({
       node: {
-        children: [
-          { tagName: 'span' },
-          { tagName: 'img', properties: { src: 'test.png' } },
-        ],
+        children: [{ tagName: 'span' }, { tagName: 'img', properties: { src: 'test.png' } }],
       },
       children: [<span key="0">Text before</span>, <img key="1" src="test.png" alt="" />],
     })
@@ -121,7 +118,11 @@ describe('Paragraph', () => {
           },
         ],
       },
-      children: <a href="#"><img src="nested.png" alt="" /></a>,
+      children: (
+        <a href="#">
+          <img src="nested.png" alt="" />
+        </a>
+      ),
     })
 
     const wrapper = screen.getByRole('link').closest('.markdown-p')

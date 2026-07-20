@@ -5,7 +5,7 @@ import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   height: number
   minHeight: number
@@ -13,7 +13,7 @@ type Props = {
   children: React.JSX.Element
   footer?: React.JSX.Element
   hideResize?: boolean
-}
+}>
 
 const PromptEditorHeightResizeWrap: FC<Props> = ({
   className,
@@ -26,34 +26,40 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
 }) => {
   const [clientY, setClientY] = useState(0)
   const [isResizing, setIsResizing] = useState(false)
-  const [prevUserSelectStyle, setPrevUserSelectStyle] = useState(() => getComputedStyle(document.body).userSelect)
+  const [prevUserSelectStyle, setPrevUserSelectStyle] = useState(
+    () => getComputedStyle(document.body).userSelect,
+  )
   const [oldHeight, setOldHeight] = useState(height)
 
-  const handleStartResize = useCallback((e: React.MouseEvent<HTMLElement>) => {
-    setClientY(e.clientY)
-    setIsResizing(true)
-    setOldHeight(height)
-    setPrevUserSelectStyle(getComputedStyle(document.body).userSelect)
-    document.body.style.userSelect = 'none'
-  }, [height])
+  const handleStartResize = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      setClientY(e.clientY)
+      setIsResizing(true)
+      setOldHeight(height)
+      setPrevUserSelectStyle(getComputedStyle(document.body).userSelect)
+      document.body.style.userSelect = 'none'
+    },
+    [height],
+  )
 
   const handleStopResize = useCallback(() => {
     setIsResizing(false)
     document.body.style.userSelect = prevUserSelectStyle
   }, [prevUserSelectStyle])
 
-  const { run: didHandleResize } = useDebounceFn((e) => {
-    if (!isResizing)
-      return
+  const { run: didHandleResize } = useDebounceFn(
+    (e) => {
+      if (!isResizing) return
 
-    const offset = e.clientY - clientY
-    let newHeight = oldHeight + offset
-    if (newHeight < minHeight)
-      newHeight = minHeight
-    onHeightChange(newHeight)
-  }, {
-    wait: 0,
-  })
+      const offset = e.clientY - clientY
+      let newHeight = oldHeight + offset
+      if (newHeight < minHeight) newHeight = minHeight
+      onHeightChange(newHeight)
+    },
+    {
+      wait: 0,
+    },
+  )
 
   const handleResize = useCallback(didHandleResize, [isResizing, height, minHeight, clientY])
 
@@ -72,9 +78,7 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
   }, [handleStopResize])
 
   return (
-    <div
-      className="relative"
-    >
+    <div className="relative">
       <div
         className={cn(className, 'overflow-y-auto')}
         style={{

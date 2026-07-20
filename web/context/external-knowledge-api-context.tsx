@@ -2,7 +2,7 @@
 
 import type { FC, ReactNode } from 'react'
 import type { ExternalAPIItem, ExternalAPIListResponse } from '@/models/datasets'
-import { createContext, useCallback, useContext, useMemo } from 'react'
+import { createContext, use, useCallback, useMemo } from 'react'
 import { useExternalKnowledgeApiList } from '@/service/knowledge/use-dataset'
 
 type ExternalKnowledgeApiContextType = {
@@ -11,24 +11,35 @@ type ExternalKnowledgeApiContextType = {
   isLoading: boolean
 }
 
-const ExternalKnowledgeApiContext = createContext<ExternalKnowledgeApiContextType | undefined>(undefined)
+const ExternalKnowledgeApiContext = createContext<ExternalKnowledgeApiContextType | undefined>(
+  undefined,
+)
 
 type ExternalKnowledgeApiProviderProps = {
   children: ReactNode
+  enabled?: boolean
 }
 
-export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({ children }) => {
-  const { data, refetch, isLoading } = useExternalKnowledgeApiList()
+export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({
+  children,
+  enabled = true,
+}) => {
+  const { data, refetch, isLoading } = useExternalKnowledgeApiList({ enabled })
 
   const mutateExternalKnowledgeApis = useCallback(() => {
-    return refetch().then(res => res.data)
-  }, [refetch])
+    if (!enabled) return Promise.resolve(undefined)
 
-  const contextValue = useMemo<ExternalKnowledgeApiContextType>(() => ({
-    externalKnowledgeApiList: data?.data || [],
-    mutateExternalKnowledgeApis,
-    isLoading,
-  }), [data, mutateExternalKnowledgeApis, isLoading])
+    return refetch().then((res) => res.data)
+  }, [enabled, refetch])
+
+  const contextValue = useMemo<ExternalKnowledgeApiContextType>(
+    () => ({
+      externalKnowledgeApiList: data?.data || [],
+      mutateExternalKnowledgeApis,
+      isLoading,
+    }),
+    [data, mutateExternalKnowledgeApis, isLoading],
+  )
 
   return (
     <ExternalKnowledgeApiContext.Provider value={contextValue}>
@@ -38,7 +49,7 @@ export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps>
 }
 
 export const useExternalKnowledgeApi = () => {
-  const context = useContext(ExternalKnowledgeApiContext)
+  const context = use(ExternalKnowledgeApiContext)
   if (context === undefined)
     throw new Error('useExternalKnowledgeApi must be used within a ExternalKnowledgeApiProvider')
 

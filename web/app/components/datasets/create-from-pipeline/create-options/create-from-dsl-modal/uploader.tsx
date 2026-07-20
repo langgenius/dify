@@ -9,11 +9,11 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { formatFileSize } from '@/utils/format'
 
-type Props = {
+type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
   className?: string
-}
+}>
 const Uploader: FC<Props> = ({ file, updateFile, className }) => {
   const { t } = useTranslation()
   const [dragging, setDragging] = useState(false)
@@ -23,8 +23,7 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.target !== dragRef.current)
-      setDragging(true)
+    if (e.target !== dragRef.current) setDragging(true)
   }
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault()
@@ -33,18 +32,16 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
   const handleDragLeave = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.target === dragRef.current)
-      setDragging(false)
+    if (e.target === dragRef.current) setDragging(false)
   }
   const handleDrop = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragging(false)
-    if (!e.dataTransfer)
-      return
+    if (!e.dataTransfer) return
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
-      toast.error(t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }))
+      toast.error(t(($) => $['stepOne.uploader.validation.count'], { ns: 'datasetCreation' }))
       return
     }
     updateFile(files[0])
@@ -59,8 +56,7 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
     }
   }
   const removeFile = () => {
-    if (fileUploader.current)
-      fileUploader.current.value = ''
+    if (fileUploader.current) fileUploader.current.value = ''
     updateFile()
   }
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,20 +78,33 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
   }, [])
   return (
     <div className={cn('mt-6', className)}>
-      <input ref={fileUploader} style={{ display: 'none' }} type="file" id="fileUploader" accept=".pipeline" onChange={fileChangeHandle} />
+      <input
+        ref={fileUploader}
+        style={{ display: 'none' }}
+        type="file"
+        id="fileUploader"
+        accept=".pipeline"
+        onChange={fileChangeHandle}
+      />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
+          <div
+            className={cn(
+              'flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal',
+              dragging &&
+                'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
+            )}
+          >
             <div className="flex w-full items-center justify-center space-x-2">
               <RiUploadCloud2Line className="size-6 text-text-tertiary" />
               <div className="text-text-tertiary">
-                {t('dslUploader.button', { ns: 'app' })}
+                {t(($) => $['dslUploader.button'], { ns: 'app' })}
                 <button
                   type="button"
                   className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={selectHandle}
                 >
-                  {t('dslUploader.browse', { ns: 'app' })}
+                  {t(($) => $['dslUploader.browse'], { ns: 'app' })}
                 </button>
               </div>
             </div>

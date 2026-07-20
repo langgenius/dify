@@ -240,30 +240,31 @@ class BaseSession[
                     self.check_receiver_status()
                     continue
 
-            if response_or_error is None:
-                raise MCPConnectionError(
-                    ErrorData(
-                        code=500,
-                        message="No response received",
-                    )
-                )
-            elif isinstance(response_or_error, HTTPStatusError):
-                # HTTPStatusError from streamable_client with preserved response object
-                if response_or_error.response.status_code == 401:
-                    raise MCPAuthError(response=response_or_error.response)
-                else:
+            match response_or_error:
+                case None:
                     raise MCPConnectionError(
-                        ErrorData(code=response_or_error.response.status_code, message=str(response_or_error))
+                        ErrorData(
+                            code=500,
+                            message="No response received",
+                        )
                     )
-            elif isinstance(response_or_error, JSONRPCError):
-                if response_or_error.error.code == 401:
-                    raise MCPAuthError(message=response_or_error.error.message)
-                else:
-                    raise MCPConnectionError(
-                        ErrorData(code=response_or_error.error.code, message=response_or_error.error.message)
-                    )
-            else:
-                return result_type.model_validate(response_or_error.result)
+                case HTTPStatusError():
+                    # HTTPStatusError from streamable_client with preserved response object
+                    if response_or_error.response.status_code == 401:
+                        raise MCPAuthError(response=response_or_error.response)
+                    else:
+                        raise MCPConnectionError(
+                            ErrorData(code=response_or_error.response.status_code, message=str(response_or_error))
+                        )
+                case JSONRPCError():
+                    if response_or_error.error.code == 401:
+                        raise MCPAuthError(message=response_or_error.error.message)
+                    else:
+                        raise MCPConnectionError(
+                            ErrorData(code=response_or_error.error.code, message=response_or_error.error.message)
+                        )
+                case _:
+                    return result_type.model_validate(response_or_error.result)
 
         finally:
             self._response_streams.pop(request_id, None)
@@ -316,65 +317,79 @@ class BaseSession[
                 message = self._read_stream.get(timeout=DEFAULT_RESPONSE_READ_TIMEOUT)
                 if message is None:
                     break
-                if isinstance(message, HTTPStatusError):
-                    response_queue = self._response_streams.get(self._request_id - 1)
-                    if response_queue is not None:
-                        # For 401 errors, pass the HTTPStatusError directly to preserve response object
-                        if message.response.status_code == 401:
-                            response_queue.put(message)
-                        else:
-                            response_queue.put(
-                                JSONRPCError(
-                                    jsonrpc="2.0",
-                                    id=self._request_id - 1,
-                                    error=ErrorData(code=message.response.status_code, message=message.args[0]),
+                match message:
+                    case HTTPStatusError():
+                        response_queue = self._response_streams.get(self._request_id - 1)
+                        if response_queue is not None:
+                            # For 401 errors, pass the HTTPStatusError directly to preserve response object
+                            if message.response.status_code == 401:
+                                response_queue.put(message)
+                            else:
+                                response_queue.put(
+                                    JSONRPCError(
+                                        jsonrpc="2.0",
+                                        id=self._request_id - 1,
+                                        error=ErrorData(code=message.response.status_code, message=message.args[0]),
+                                    )
                                 )
-                            )
-                    else:
-                        self._handle_incoming(RuntimeError(f"Received response with an unknown request ID: {message}"))
-                elif isinstance(message, Exception):
-                    self._handle_incoming(message)
-                elif isinstance(message.message.root, JSONRPCRequest):
-                    validated_request = self._receive_request_type.model_validate(
-                        message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
-                    )
-
-                    responder = RequestResponder[ReceiveRequestT, SendResultT](
-                        request_id=message.message.root.id,
-                        request_meta=validated_request.root.params.meta if validated_request.root.params else None,
-                        request=validated_request,  # type: ignore[arg-type]  # mypy can't narrow constrained TypeVar from model_validate
-                        session=self,
-                        on_complete=lambda r: self._in_flight.pop(r.request_id, None),
-                    )
-
-                    self._in_flight[responder.request_id] = responder
-                    self._received_request(responder)
-
-                    if not responder.completed:
-                        self._handle_incoming(responder)
-
-                elif isinstance(message.message.root, JSONRPCNotification):
-                    try:
-                        notification = self._receive_notification_type.model_validate(
-                            message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
-                        )
-                        # Handle cancellation notifications
-                        if isinstance(notification.root, CancelledNotification):
-                            cancelled_id = notification.root.params.requestId
-                            if cancelled_id in self._in_flight:
-                                self._in_flight[cancelled_id].cancel()
                         else:
-                            self._received_notification(notification)  # type: ignore[arg-type]
-                            self._handle_incoming(notification)  # type: ignore[arg-type]
-                    except Exception as e:
-                        # For other validation errors, log and continue
-                        logger.warning("Failed to validate notification: %s. Message was: %s", e, message.message.root)
-                else:  # Response or error
-                    response_queue = self._response_streams.get(message.message.root.id)
-                    if response_queue is not None:
-                        response_queue.put(message.message.root)
-                    else:
-                        self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            self._handle_incoming(
+                                RuntimeError(f"Received response with an unknown request ID: {message}")
+                            )
+                    case Exception():
+                        self._handle_incoming(message)
+                    case SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest())):
+                        request_root = message.message.root
+                        if not isinstance(request_root, JSONRPCRequest):
+                            continue
+
+                        validated_request = self._receive_request_type.model_validate(
+                            request_root.model_dump(by_alias=True, mode="json", exclude_none=True)
+                        )
+
+                        responder = RequestResponder[ReceiveRequestT, SendResultT](
+                            request_id=request_root.id,
+                            request_meta=validated_request.root.params.meta if validated_request.root.params else None,
+                            request=validated_request,  # type: ignore[arg-type]  # mypy can't narrow constrained TypeVar from model_validate
+                            session=self,
+                            on_complete=lambda r: self._in_flight.pop(r.request_id, None),
+                        )
+
+                        self._in_flight[responder.request_id] = responder
+                        self._received_request(responder)
+
+                        if not responder.completed:
+                            self._handle_incoming(responder)
+
+                    case SessionMessage(message=JSONRPCMessage(root=JSONRPCNotification())):
+                        try:
+                            notification = self._receive_notification_type.model_validate(
+                                message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
+                            )
+                            # Handle cancellation notifications
+                            if isinstance(notification.root, CancelledNotification):
+                                cancelled_id = notification.root.params.requestId
+                                if cancelled_id in self._in_flight:
+                                    self._in_flight[cancelled_id].cancel()
+                            else:
+                                self._received_notification(notification)  # type: ignore[arg-type]
+                                self._handle_incoming(notification)  # type: ignore[arg-type]
+                        except Exception as e:
+                            # For other validation errors, log and continue
+                            logger.warning(
+                                "Failed to validate notification: %s. Message was: %s", e, message.message.root
+                            )
+                    case _:  # Response or error
+                        response_root = message.message.root
+                        if not isinstance(response_root, (JSONRPCResponse, JSONRPCError)):
+                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            continue
+
+                        response_queue = self._response_streams.get(response_root.id)
+                        if response_queue is not None:
+                            response_queue.put(response_root)
+                        else:
+                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
             except queue.Empty:
                 continue
             except Exception:

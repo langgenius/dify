@@ -456,16 +456,17 @@ class ToolTransformService:
             if depth >= ToolTransformService._MCP_SCHEMA_TYPE_RESOLUTION_MAX_DEPTH:
                 return "string"
             prop_type = prop.get("type")
-            if isinstance(prop_type, list):
-                non_null_types = [type_name for type_name in prop_type if type_name != "null"]
-                if non_null_types:
-                    return non_null_types[0]
-                if prop_type:
-                    return "string"
-            elif isinstance(prop_type, str):
-                if prop_type == "null":
-                    return "string"
-                return prop_type
+            match prop_type:
+                case list():
+                    non_null_types = [type_name for type_name in prop_type if type_name != "null"]
+                    if non_null_types:
+                        return non_null_types[0]
+                    if prop_type:
+                        return "string"
+                case str():
+                    if prop_type == "null":
+                        return "string"
+                    return prop_type
 
             for union_key in ("anyOf", "oneOf"):
                 union_schemas = prop.get(union_key)

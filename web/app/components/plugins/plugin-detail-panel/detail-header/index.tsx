@@ -4,16 +4,19 @@ import type { PluginDetail } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
-import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
+import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { API_PREFIX } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { useGetLanguage, useLocale } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTheme from '@/hooks/use-theme'
 import { useAllToolProviders } from '@/service/use-tools'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -25,22 +28,31 @@ import Description from '../../card/base/description'
 import OrgInfo from '../../card/base/org-info'
 import Title from '../../card/base/title'
 import useReferenceSetting from '../../plugin-page/use-reference-setting'
-import { convertUTCDaySecondsToLocalSeconds, timeOfDayToDayjs } from '../../reference-setting-modal/auto-update-setting/utils'
+import {
+  convertUTCDaySecondsToLocalSeconds,
+  timeOfDayToDayjs,
+} from '../../reference-setting-modal/auto-update-setting/utils'
 import { PluginCategoryEnum, PluginSource } from '../../types'
 import { HeaderModals, PluginSourceBadge } from './components'
 import { useDetailHeaderState, usePluginOperations } from './hooks'
 
-type Props = {
+type Props = Readonly<{
+  canDeletePlugin?: boolean
+  canUpdatePlugin?: boolean
   detail: PluginDetail
   isReadmeView?: boolean
   onHide?: () => void
   onUpdate?: (isDelete?: boolean) => void
-}
+}>
 
-const getIconSrc = (icon: string | undefined, iconDark: string | undefined, theme: string, tenantId: string): string => {
+const getIconSrc = (
+  icon: string | undefined,
+  iconDark: string | undefined,
+  theme: string,
+  tenantId: string,
+): string => {
   const iconFileName = theme === 'dark' && iconDark ? iconDark : icon
-  if (!iconFileName)
-    return ''
+  if (!iconFileName) return ''
   return iconFileName.startsWith('http')
     ? iconFileName
     : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${iconFileName}`
@@ -56,8 +68,7 @@ const getDetailUrl = (
 ): string => {
   if (source === PluginSource.github) {
     const repo = meta?.repo
-    if (!repo)
-      return ''
+    if (!repo) return ''
     return `https://github.com/${repo}`
   }
   if (source === PluginSource.marketplace)
@@ -66,17 +77,24 @@ const getDetailUrl = (
 }
 
 const DetailHeader = ({
+  canDeletePlugin = true,
+  canUpdatePlugin = true,
   detail,
   isReadmeView = false,
   onHide,
   onUpdate,
 }: Props) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone ?? undefined,
+  })
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const currentLocale = useLocale()
-  const { referenceSetting } = useReferenceSetting()
+  const detailCategory = detail.declaration?.category ?? PluginCategoryEnum.tool
+  const { referenceSetting } = useReferenceSetting(detailCategory)
 
   const {
     source,
@@ -91,7 +109,8 @@ const DetailHeader = ({
     alternative_plugin_id,
   } = detail
 
-  const { author, category, name, label, description, icon, icon_dark, verified, tool } = detail.declaration || detail
+  const { author, category, name, label, description, icon, icon_dark, verified, tool } =
+    detail.declaration || detail
 
   const {
     modalStates,
@@ -102,15 +121,13 @@ const DetailHeader = ({
     isFromMarketplace,
   } = useDetailHeaderState(detail)
 
-  const {
-    handleUpdate,
-    handleUpdatedFromMarketplace,
-    handleDelete,
-  } = usePluginOperations({
+  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete } = usePluginOperations({
     detail,
     modalStates,
     versionPicker,
     isFromMarketplace,
+    canDeletePlugin,
+    canUpdatePlugin,
     onUpdate,
   })
 
@@ -119,14 +136,26 @@ const DetailHeader = ({
   const providerKey = `${plugin_id}/${providerBriefInfo?.name}`
   const { data: collectionList = [] } = useAllToolProviders(isTool)
   const provider = useMemo(() => {
-    return collectionList.find(collection => collection.name === providerKey)
+    return collectionList.find((collection) => collection.name === providerKey)
   }, [collectionList, providerKey])
 
   const iconSrc = getIconSrc(icon, icon_dark, theme, tenant_id)
   const detailUrl = getDetailUrl(source, meta, author, name, currentLocale, theme)
+  const canViewReadme =
+    !!detail.plugin_unique_identifier && !BUILTIN_TOOLS_ARRAY.includes(detail.id)
   const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
+  const handleViewReadme = useCallback(() => {
+    openReadmePanel({
+      detail,
+      presentation: 'drawer',
+    })
+  }, [detail, openReadmePanel])
 
-  const handleVersionSelect = (state: { version: string, unique_identifier: string, isDowngrade?: boolean }) => {
+  const handleVersionSelect = (state: {
+    version: string
+    unique_identifier: string
+    isDowngrade?: boolean
+  }) => {
     versionPicker.setTargetVersion(state)
     handleUpdate(state.isDowngrade)
   }
@@ -142,10 +171,20 @@ const DetailHeader = ({
   }
 
   return (
-    <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3', isReadmeView && 'border-b-0 bg-transparent p-0')}>
+    <div
+      className={cn(
+        'shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3',
+        isReadmeView && 'border-b-0 bg-transparent p-0',
+      )}
+    >
       <div className="flex">
         {/* Plugin Icon */}
-        <div className={cn('overflow-hidden rounded-xl border border-components-panel-border-subtle', isReadmeView && 'bg-components-panel-bg')}>
+        <div
+          className={cn(
+            'overflow-hidden rounded-xl border border-components-panel-border-subtle',
+            isReadmeView && 'bg-components-panel-bg',
+          )}
+        >
           <Icon src={iconSrc} />
         </div>
 
@@ -154,34 +193,45 @@ const DetailHeader = ({
           {/* Title Row */}
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
-            {verified && !isReadmeView && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+            {verified && !isReadmeView && (
+              <Verified
+                className="ml-0.5 size-4"
+                text={t(($) => $['marketplace.verifiedTip'], { ns: 'plugin' })}
+              />
+            )}
 
             {/* Version Picker */}
             {!!version && (
               <PluginVersionPicker
-                disabled={!isFromMarketplace || isReadmeView}
+                disabled={!canUpdatePlugin || !isFromMarketplace || isReadmeView}
                 isShow={versionPicker.isShow}
                 onShowChange={versionPicker.setIsShow}
                 pluginID={plugin_id}
                 currentVersion={version}
                 onSelect={handleVersionSelect}
-                trigger={(
+                trigger={
                   <Badge
                     className={cn(
                       'mx-1',
                       versionPicker.isShow && 'bg-state-base-hover',
-                      (versionPicker.isShow || isFromMarketplace) && 'hover:bg-state-base-hover',
+                      (versionPicker.isShow || (canUpdatePlugin && isFromMarketplace)) &&
+                        'hover:bg-state-base-hover',
                     )}
                     uppercase={false}
-                    text={(
+                    text={
                       <>
                         <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary" />}
+                        {canUpdatePlugin && isFromMarketplace && !isReadmeView && (
+                          <span
+                            aria-hidden
+                            className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary"
+                          />
+                        )}
                       </>
-                    )}
+                    }
                     hasRedCornerMark={hasNewVersion}
                   />
-                )}
+                }
               />
             )}
 
@@ -189,38 +239,46 @@ const DetailHeader = ({
             {isAutoUpgradeEnabled && !isReadmeView && (
               <Tooltip>
                 <TooltipTrigger
-                  render={(
+                  render={
                     <div>
                       <Badge className="mr-1 cursor-pointer px-1">
                         <AutoUpdateLine className="size-3" />
                       </Badge>
                     </div>
-                  )}
+                  }
                 />
                 <TooltipContent>
-                  {t('autoUpdate.nextUpdateTime', { ns: 'plugin', time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}
+                  {t(($) => $['autoUpdate.nextUpdateTime'], {
+                    ns: 'plugin',
+                    time: timeOfDayToDayjs(
+                      convertUTCDaySecondsToLocalSeconds(
+                        autoUpgradeInfo?.upgrade_time_of_day || 0,
+                        timezone!,
+                      ),
+                    ).format('hh:mm A'),
+                  })}
                 </TooltipContent>
               </Tooltip>
             )}
 
             {/* Update Button */}
-            {(hasNewVersion || isFromGitHub) && (
+            {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (
               <Tooltip>
                 <TooltipTrigger
                   delay={300}
-                  render={(
+                  render={
                     <Button
                       variant="secondary-accent"
                       size="small"
                       className="h-5!"
                       onClick={handleTriggerLatestUpdate}
                     >
-                      {t('detailPanel.operation.update', { ns: 'plugin' })}
+                      {t(($) => $['detailPanel.operation.update'], { ns: 'plugin' })}
                     </Button>
-                  )}
+                  }
                 />
                 <TooltipContent>
-                  {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+                  {t(($) => $['detailPanel.operation.updateTooltip'], { ns: 'plugin' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -232,7 +290,7 @@ const DetailHeader = ({
               <OrgInfo
                 packageNameClassName="w-auto"
                 orgName={author}
-                packageName={name?.includes('/') ? (name.split('/').pop() || '') : name}
+                packageName={name?.includes('/') ? name.split('/').pop() || '' : name}
               />
               {!!source && <PluginSourceBadge source={source} />}
             </div>
@@ -247,7 +305,10 @@ const DetailHeader = ({
               onInfo={modalStates.showPluginInfo}
               onCheckVersion={handleUpdate}
               onRemove={modalStates.showDeleteConfirm}
+              onViewReadme={canViewReadme ? handleViewReadme : undefined}
               detailUrl={detailUrl}
+              showCheckVersion={canUpdatePlugin}
+              showRemove={canDeletePlugin}
             />
             <ActionButton onClick={onHide}>
               <span aria-hidden className="i-ri-close-line size-4" />
@@ -262,13 +323,22 @@ const DetailHeader = ({
           status={status}
           deprecatedReason={deprecated_reason}
           alternativePluginId={alternative_plugin_id}
-          alternativePluginURL={getMarketplaceUrl(`/plugins/${alternative_plugin_id}`, { language: currentLocale, theme })}
+          alternativePluginURL={getMarketplaceUrl(`/plugins/${alternative_plugin_id}`, {
+            language: currentLocale,
+            theme,
+          })}
           className="mt-3"
         />
       )}
 
       {/* Description */}
-      {!isReadmeView && <Description className="mt-3 mb-2 h-auto" text={description[locale]} descriptionLineRows={2} />}
+      {!isReadmeView && (
+        <Description
+          className="mt-3 mb-2 h-auto"
+          text={description[locale]}
+          descriptionLineRows={2}
+        />
+      )}
 
       {/* Plugin Auth for Tools */}
       {category === PluginCategoryEnum.tool && !isReadmeView && (

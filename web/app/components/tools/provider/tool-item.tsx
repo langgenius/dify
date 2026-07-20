@@ -7,21 +7,15 @@ import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/
 import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   collection: Collection
   tool: Tool
   isBuiltIn: boolean
   isModel: boolean
-}
+}>
 
-const ToolItem = ({
-  disabled,
-  collection,
-  tool,
-  isBuiltIn,
-  isModel,
-}: Props) => {
+const ToolItem = ({ disabled, collection, tool, isBuiltIn, isModel }: Props) => {
   const locale = useLocale()
   const language = getLanguage(locale)
   const [showDetail, setShowDetail] = useState(false)
@@ -29,11 +23,19 @@ const ToolItem = ({
   return (
     <>
       <div
-        className={cn('bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover', disabled && 'cursor-not-allowed! opacity-50')}
+        className={cn(
+          'bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+          disabled && 'cursor-not-allowed! opacity-50',
+        )}
         onClick={() => !disabled && setShowDetail(true)}
       >
         <div className="pb-0.5 system-md-semibold text-text-secondary">{tool.label[language]}</div>
-        <div className="line-clamp-2 system-xs-regular text-text-tertiary" title={tool.description[language]}>{tool.description[language]}</div>
+        <div
+          className="line-clamp-2 system-xs-regular text-text-tertiary"
+          title={tool.description[language]}
+        >
+          {tool.description[language]}
+        </div>
       </div>
       {showDetail && (
         <SettingBuiltInTool

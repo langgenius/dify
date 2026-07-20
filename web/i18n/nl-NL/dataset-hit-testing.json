@@ -10,7 +10,6 @@
   "imageUploader.tip": "Upload or drop images (Max {{batchCount}}, {{size}}MB each)",
   "imageUploader.tooltip": "Upload images (Max {{batchCount}}, {{size}}MB each)",
   "input.countWarning": "Up to 200 characters.",
-  "input.indexWarning": "High quality Knowledge only.",
   "input.placeholder": "Please enter a text, a short declarative sentence is recommended.",
   "input.testing": "Test",
   "input.title": "Source text",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "Query Content",
   "table.header.source": "Source",
   "table.header.time": "Time",
-  "title": "Retrieval Test",
-  "viewChart": "View VECTOR CHART",
-  "viewDetail": "View Detail"
+  "title": "Retrieval Test"
 }

@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import {
-  Tabs,
-  TabsList,
-  TabsPanel,
-  TabsTab,
-} from '.'
+import { expect } from 'storybook/test'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '.'
 
 const meta = {
   title: 'Base/UI/Tabs',
@@ -13,7 +9,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Composable tabs built on Base UI. Use this when a tab controls a corresponding tab panel.',
+        component:
+          'Composable tabs built on Base UI. Use this when a tab controls a corresponding tab panel.',
       },
     },
   },
@@ -26,19 +23,9 @@ type Story = StoryObj<typeof meta>
 export const Basic: Story = {
   render: () => (
     <Tabs defaultValue="overview" className="w-96">
-      <TabsList className="gap-4 border-b border-divider-subtle">
-        <TabsTab
-          value="overview"
-          className="border-b border-transparent px-0 py-2 system-sm-medium text-text-tertiary data-active:border-text-accent data-active:text-text-primary"
-        >
-          Overview
-        </TabsTab>
-        <TabsTab
-          value="activity"
-          className="border-b border-transparent px-0 py-2 system-sm-medium text-text-tertiary data-active:border-text-accent data-active:text-text-primary"
-        >
-          Activity
-        </TabsTab>
+      <TabsList>
+        <TabsTab value="overview">Overview</TabsTab>
+        <TabsTab value="activity">Activity</TabsTab>
       </TabsList>
       <TabsPanel value="overview" className="py-3 system-sm-regular text-text-secondary">
         Overview panel
@@ -48,4 +35,16 @@ export const Basic: Story = {
       </TabsPanel>
     </Tabs>
   ),
+  play: async ({ canvas, userEvent }) => {
+    const overviewTab = canvas.getByRole('tab', { name: 'Overview' })
+    const activityTab = canvas.getByRole('tab', { name: 'Activity' })
+
+    await expect(overviewTab).toHaveAttribute('aria-selected', 'true')
+    await expect(canvas.getByRole('tabpanel', { name: 'Overview' })).toBeVisible()
+
+    await userEvent.click(activityTab)
+
+    await expect(activityTab).toHaveAttribute('aria-selected', 'true')
+    await expect(canvas.getByRole('tabpanel', { name: 'Activity' })).toBeVisible()
+  },
 }

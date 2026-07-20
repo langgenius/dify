@@ -2,7 +2,12 @@ import type { PropsWithChildren } from 'react'
 import type { Edge, Node, Viewport } from 'reactflow'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DatasetACLPermission } from '@/utils/permission'
 import RagPipelineMain from '../rag-pipeline-main'
+
+const mockPermissionState = vi.hoisted(() => ({
+  permissionKeys: ['dataset.acl.edit'] as string[],
+}))
 
 vi.mock('../../hooks', () => ({
   useAvailableNodesMetaData: () => ({ nodes: [], nodesMap: {} }),
@@ -10,10 +15,18 @@ vi.mock('../../hooks', () => ({
     exportCheck: vi.fn(),
     handleExportDSL: vi.fn(),
   }),
+  useDSLByCanEdit: () => ({
+    exportCheck: vi.fn(),
+    handleExportDSL: vi.fn(),
+  }),
   useGetRunAndTraceUrl: () => ({
     getWorkflowRunAndTraceUrl: vi.fn(),
   }),
   useNodesSyncDraft: () => ({
+    doSyncWorkflowDraft: vi.fn(),
+    syncWorkflowDraftWhenPageClose: vi.fn(),
+  }),
+  useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: vi.fn(),
     syncWorkflowDraftWhenPageClose: vi.fn(),
   }),
@@ -27,7 +40,18 @@ vi.mock('../../hooks', () => ({
     handleRun: vi.fn(),
     handleStopRun: vi.fn(),
   }),
+  usePipelineRunByCanEdit: () => ({
+    handleBackupDraft: vi.fn(),
+    handleLoadBackupDraft: vi.fn(),
+    handleRestoreFromPublishedWorkflow: vi.fn(),
+    handleRun: vi.fn(),
+    handleStopRun: vi.fn(),
+  }),
   usePipelineStartRun: () => ({
+    handleStartWorkflowRun: vi.fn(),
+    handleWorkflowStartRunInWorkflow: vi.fn(),
+  }),
+  usePipelineStartRunByCanEdit: () => ({
     handleStartWorkflowRun: vi.fn(),
     handleWorkflowStartRunInWorkflow: vi.fn(),
   }),
@@ -77,24 +101,42 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
   }),
 }))
 
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: { permission_keys: string[] } }) => unknown,
+  ) => selector({ dataset: { permission_keys: mockPermissionState.permissionKeys } }),
+}))
+
 vi.mock('@/app/components/workflow', () => ({
-  WorkflowWithInnerContext: ({ children, onWorkflowDataUpdate }: PropsWithChildren<{ onWorkflowDataUpdate?: (payload: unknown) => void }>) => (
+  WorkflowWithInnerContext: ({
+    children,
+    onWorkflowDataUpdate,
+    hooksStore,
+  }: PropsWithChildren<{
+    onWorkflowDataUpdate?: (payload: unknown) => void
+    hooksStore?: { accessControl?: { canEdit?: boolean } }
+  }>) => (
     <div data-testid="workflow-inner-context">
+      <div data-testid="can-edit">{String(hooksStore?.accessControl?.canEdit)}</div>
       {children}
       <button
         data-testid="trigger-update"
-        onClick={() => onWorkflowDataUpdate?.({
-          rag_pipeline_variables: [{ id: '1', name: 'var1' }],
-          environment_variables: [{ id: '2', name: 'env1' }],
-        })}
+        onClick={() =>
+          onWorkflowDataUpdate?.({
+            rag_pipeline_variables: [{ id: '1', name: 'var1' }],
+            environment_variables: [{ id: '2', name: 'env1' }],
+          })
+        }
       >
         Trigger Update
       </button>
       <button
         data-testid="trigger-update-partial"
-        onClick={() => onWorkflowDataUpdate?.({
-          rag_pipeline_variables: [{ id: '3', name: 'var2' }],
-        })}
+        onClick={() =>
+          onWorkflowDataUpdate?.({
+            rag_pipeline_variables: [{ id: '3', name: 'var2' }],
+          })
+        }
       >
         Trigger Partial Update
       </button>
@@ -120,15 +162,10 @@ describe('RagPipelineMain', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPermissionState.permissionKeys = [DatasetACLPermission.Edit]
   })
 
   describe('rendering', () => {
-    it('should render without crashing', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
     it('should render RagPipelineChildren', () => {
       render(<RagPipelineMain {...defaultProps} />)
 

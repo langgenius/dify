@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -10,15 +11,6 @@ from flask import Flask
 
 from controllers.console.app import app_import as app_import_module
 from services.app_dsl_service import ImportStatus
-
-
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
 
 
 class _Result:
@@ -42,7 +34,7 @@ class TestAppImportApi:
 
     def test_import_post_returns_failed_status(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -50,17 +42,16 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED, app_id=None),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
 
     def test_import_post_returns_pending_status(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -68,17 +59,16 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.PENDING),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         assert status == 202
         assert response["status"] == ImportStatus.PENDING
 
     def test_import_post_updates_webapp_auth_when_enabled(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=True)
         monkeypatch.setattr(
@@ -88,10 +78,9 @@ class TestAppImportApi:
         )
         update_access = MagicMock()
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         update_access.assert_called_once_with("app-123", "private")
         assert status == 200
@@ -99,7 +88,7 @@ class TestAppImportApi:
 
     def test_import_post_commits_session_on_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -107,7 +96,6 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.COMPLETED, app_id="app-123"),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         fake_session = MagicMock()
         fake_session.__enter__.return_value = fake_session
@@ -115,7 +103,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module, "Session", lambda *_args, **_kwargs: fake_session)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         fake_session.commit.assert_called_once_with()
         fake_session.rollback.assert_not_called()
@@ -124,7 +112,7 @@ class TestAppImportApi:
 
     def test_import_post_rolls_back_session_on_failure(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -132,7 +120,6 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED, app_id=None),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         fake_session = MagicMock()
         fake_session.__enter__.return_value = fake_session
@@ -140,7 +127,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module, "Session", lambda *_args, **_kwargs: fake_session)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         fake_session.rollback.assert_called_once_with()
         fake_session.commit.assert_not_called()
@@ -155,17 +142,16 @@ class TestAppImportConfirmApi:
 
     def test_import_confirm_returns_failed_status(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportConfirmApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         monkeypatch.setattr(
             app_import_module.AppDslService,
             "confirm_import",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(import_id="import-1")
+            response, status = method(api, SimpleNamespace(id="u1"), import_id="import-1")
 
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
@@ -178,7 +164,7 @@ class TestAppImportCheckDependenciesApi:
 
     def test_import_check_dependencies_returns_result(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportCheckDependenciesApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
         monkeypatch.setattr(
             app_import_module.AppDslService,
@@ -187,7 +173,7 @@ class TestAppImportCheckDependenciesApi:
         )
 
         with app.test_request_context("/console/api/apps/imports/app-1/check-dependencies", method="GET"):
-            response, status = method(app_model=SimpleNamespace(id="app-1"))
+            response, status = method(api, app_model=SimpleNamespace(id="app-1"))
 
         assert status == 200
         assert response["leaked_dependencies"] == []

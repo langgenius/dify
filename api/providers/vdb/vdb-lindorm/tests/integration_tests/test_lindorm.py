@@ -1,4 +1,5 @@
 import os
+from typing import override
 
 from dify_vdb_lindorm.lindorm_vector import LindormVectorStore, LindormVectorStoreConfig
 
@@ -26,6 +27,7 @@ class TestLindormVectorStore(AbstractVectorTest):
             ),
         )
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="doc_id", value=self.example_doc_id)
         assert ids is not None
@@ -47,6 +49,7 @@ class TestLindormVectorStoreUGC(AbstractVectorTest):
             routing_value=self.collection_name,
         )
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="doc_id", value=self.example_doc_id)
         assert ids is not None

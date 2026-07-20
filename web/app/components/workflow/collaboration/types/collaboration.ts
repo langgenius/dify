@@ -35,21 +35,21 @@ export type CollaborationState = {
   error?: string
 }
 
-type CollaborationEventType
-  = | 'mouse_move'
-    | 'vars_and_features_update'
-    | 'sync_request'
-    | 'app_state_update'
-    | 'app_meta_update'
-    | 'mcp_server_update'
-    | 'workflow_update'
-    | 'comments_update'
-    | 'node_panel_presence'
-    | 'app_publish_update'
-    | 'graph_resync_request'
-    | 'workflow_restore_intent'
-    | 'workflow_restore_complete'
-    | 'workflow_history_action'
+type CollaborationEventType =
+  | 'mouse_move'
+  | 'vars_and_features_update'
+  | 'sync_request'
+  | 'app_state_update'
+  | 'app_meta_update'
+  | 'mcp_server_update'
+  | 'workflow_update'
+  | 'comments_update'
+  | 'node_panel_presence'
+  | 'app_publish_update'
+  | 'graph_resync_request'
+  | 'workflow_restore_intent'
+  | 'workflow_restore_complete'
+  | 'workflow_history_action'
 
 export type CollaborationUpdate = {
   type: CollaborationEventType

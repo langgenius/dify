@@ -275,6 +275,42 @@ class PluginConfig(BaseSettings):
         default=50 * 1024 * 1024,
     )
 
+    NEW_USER_DEFAULT_PLUGIN_IDS: str = Field(
+        description="Comma-separated marketplace plugin IDs whose latest versions are installed for new users",
+        default="",
+    )
+
+    @property
+    def NEW_USER_DEFAULT_PLUGIN_ID_LIST(self) -> list[str]:
+        return [item.strip() for item in self.NEW_USER_DEFAULT_PLUGIN_IDS.split(",") if item.strip()]
+
+    NEW_USER_DEFAULT_MODELS: str = Field(
+        description=("Comma-separated default models for new users in 'model_type:provider:model' format"),
+        default="",
+    )
+
+    @property
+    def NEW_USER_DEFAULT_MODEL_LIST(self) -> list[tuple[str, str, str]]:
+        default_models: list[tuple[str, str, str]] = []
+        configured_model_types: set[str] = set()
+
+        for item in self.NEW_USER_DEFAULT_MODELS.split(","):
+            if not item.strip():
+                continue
+
+            parts = tuple(part.strip() for part in item.split(":", 2))
+            if len(parts) != 3 or not all(parts):
+                raise ValueError("NEW_USER_DEFAULT_MODELS entries must use 'model_type:provider:model' format")
+
+            model_type, provider, model = parts
+            if model_type in configured_model_types:
+                raise ValueError(f"NEW_USER_DEFAULT_MODELS contains duplicate model type: {model_type}")
+
+            configured_model_types.add(model_type)
+            default_models.append((model_type, provider, model))
+
+        return default_models
+
 
 class MarketplaceConfig(BaseSettings):
     """
@@ -363,7 +399,10 @@ class FileAccessConfig(BaseSettings):
     INTERNAL_FILES_URL: str = Field(
         description="Internal base URL for file access within Docker network,"
         " used for plugin daemon and internal service communication."
-        " Falls back to FILES_URL if not specified.",
+        " Explicit INTERNAL_FILES_URL takes precedence; otherwise SERVER_CONSOLE_API_URL is used,"
+        " then FILES_URL.",
+        validation_alias=AliasChoices("INTERNAL_FILES_URL", "SERVER_CONSOLE_API_URL"),
+        alias_priority=1,
         default="",
     )
 
@@ -781,6 +820,11 @@ class WorkflowConfig(BaseSettings):
         default=500,
     )
 
+    WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS: PositiveInt = Field(
+        description="Maximum concurrent node-builder LLM calls per workflow generation request",
+        default=6,
+    )
+
     WORKFLOW_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum execution time in seconds for a single workflow",
         default=1200,
@@ -943,10 +987,16 @@ class AuthConfig(BaseSettings):
         default=True,
     )
 
-    OPENAPI_RATE_LIMIT_PER_TOKEN: PositiveInt = Field(
+    OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
-        "Bucket keyed on sha256(token), shared across api replicas via Redis.",
+        "Bucket keyed on sha256(token), shared across api replicas via Redis. "
+        "Set to 0 to disable the per-token limit entirely.",
         default=60,
+    )
+
+    DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
+        description="Max device-flow approve requests per session per hour on /openapi/oauth/device/approve.",
+        default=10,
     )
 
 
@@ -1067,6 +1117,12 @@ class MailConfig(BaseSettings):
         default=None,
     )
 
+
+class HomepageConfig(BaseSettings):
+    """
+    Configuration for homepage feature toggles exposed through system features.
+    """
+
     ENABLE_TRIAL_APP: bool = Field(
         description="Enable trial app",
         default=False,
@@ -1075,6 +1131,11 @@ class MailConfig(BaseSettings):
     ENABLE_EXPLORE_BANNER: bool = Field(
         description="Enable explore banner",
         default=False,
+    )
+
+    ENABLE_LEARN_APP: bool = Field(
+        description="Enable Learn App",
+        default=True,
     )
 
 
@@ -1483,6 +1544,7 @@ class FeatureConfig(
     EndpointConfig,
     FileAccessConfig,
     FileUploadConfig,
+    HomepageConfig,
     HttpConfig,
     InnerAPIConfig,
     IndexingConfig,

@@ -29,8 +29,18 @@ export type Credential = {
   provider: string
   credential_type?: CredentialTypeEnum
   is_default: boolean
-  credentials?: Record<string, any>
+  credentials?: Record<string, unknown>
   isWorkspaceDefault?: boolean
   from_enterprise?: boolean
   not_allowed_to_use?: boolean
+  visibility?: string
+  created_by?: string
+  partial_member_list?: string[]
+  /**
+   * True when the backend returned this credential only because the current node
+   * still references it, but the visibility filter would normally hide it
+   * (another member's `only_me` credential). The row renders the "切换后不可再选回"
+   * hint and locks rename/edit/delete/set-default actions.
+   */
+  from_other_member?: boolean
 }

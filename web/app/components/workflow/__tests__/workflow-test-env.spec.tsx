@@ -21,8 +21,12 @@ import {
 // ---------------------------------------------------------------------------
 
 function StoreReader() {
-  const showConfirm = useStore(s => s.showConfirm)
-  return React.createElement('div', { 'data-testid': 'store-reader' }, showConfirm ? 'has-confirm' : 'no-confirm')
+  const showConfirm = useStore((s) => s.showConfirm)
+  return React.createElement(
+    'div',
+    { 'data-testid': 'store-reader' },
+    showConfirm ? 'has-confirm' : 'no-confirm',
+  )
 }
 
 function StoreWriter() {
@@ -31,18 +35,19 @@ function StoreWriter() {
     'button',
     {
       'data-testid': 'store-writer',
-      'onClick': () => store.setState({ showConfirm: { title: 'Test', onConfirm: () => {} } } as Partial<Shape>),
+      onClick: () =>
+        store.setState({ showConfirm: { title: 'Test', onConfirm: () => {} } } as Partial<Shape>),
     },
     'Write',
   )
 }
 
 function HooksStoreReader() {
-  const flowId = useHooksStore(s => s.configsMap?.flowId ?? 'none')
+  const flowId = useHooksStore((s) => s.configsMap?.flowId ?? 'none')
   return React.createElement('div', { 'data-testid': 'hooks-reader' }, flowId)
 }
 
-function NodeRenderer(props: { id: string, data: { title: string }, selected?: boolean }) {
+function NodeRenderer(props: { id: string; data: { title: string }; selected?: boolean }) {
   return React.createElement(
     'div',
     { 'data-testid': 'node-render' },
@@ -52,8 +57,12 @@ function NodeRenderer(props: { id: string, data: { title: string }, selected?: b
 
 function FlowReader() {
   const nodes = useNodes()
-  const showConfirm = useStore(s => s.showConfirm)
-  return React.createElement('div', { 'data-testid': 'flow-reader' }, `${nodes.length}:${showConfirm ? 'confirm' : 'clear'}`)
+  const showConfirm = useStore((s) => s.showConfirm)
+  return React.createElement(
+    'div',
+    { 'data-testid': 'flow-reader' },
+    `${nodes.length}:${showConfirm ? 'confirm' : 'clear'}`,
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -75,7 +84,12 @@ describe('renderWorkflowComponent', () => {
 
   it('should return a live store that components can mutate', () => {
     const { store } = renderWorkflowComponent(
-      React.createElement(React.Fragment, null, React.createElement(StoreReader), React.createElement(StoreWriter)),
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement(StoreReader),
+        React.createElement(StoreWriter),
+      ),
     )
 
     expect(store.getState().showConfirm).toBeUndefined()
@@ -90,21 +104,16 @@ describe('renderWorkflowComponent', () => {
 
   it('should provide HooksStoreContext when hooksStoreProps given', () => {
     renderWorkflowComponent(React.createElement(HooksStoreReader), {
-      hooksStoreProps: { configsMap: { flowId: 'test-123', flowType: FlowType.appFlow, fileSettings: {} } },
+      hooksStoreProps: {
+        configsMap: { flowId: 'test-123', flowType: FlowType.appFlow, fileSettings: {} },
+      },
     })
     expect(screen.getByTestId('hooks-reader'))!.toHaveTextContent('test-123')
   })
 
-  it('should throw when HooksStoreContext is not provided', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      expect(() => {
-        renderWorkflowComponent(React.createElement(HooksStoreReader))
-      }).toThrow('Missing HooksStoreContext.Provider')
-    }
-    finally {
-      consoleSpy.mockRestore()
-    }
+  it('should provide HooksStoreContext with default store', () => {
+    renderWorkflowComponent(React.createElement(HooksStoreReader))
+    expect(screen.getByTestId('hooks-reader'))!.toHaveTextContent('none')
   })
 
   it('should forward extra render options (container)', () => {
@@ -114,8 +123,7 @@ describe('renderWorkflowComponent', () => {
     try {
       renderWorkflowComponent(React.createElement(StoreReader), { container })
       expect(container.querySelector('[data-testid="store-reader"]')).toBeTruthy()
-    }
-    finally {
+    } finally {
       document.body.removeChild(container)
     }
   })
@@ -128,22 +136,34 @@ describe('renderNodeComponent', () => {
   })
 
   it('should accept custom nodeId and selected', () => {
-    renderNodeComponent(NodeRenderer, { title: 'World' }, {
-      nodeId: 'custom-42',
-      selected: true,
-    })
+    renderNodeComponent(
+      NodeRenderer,
+      { title: 'World' },
+      {
+        nodeId: 'custom-42',
+        selected: true,
+      },
+    )
     expect(screen.getByTestId('node-render'))!.toHaveTextContent('custom-42:World:sel')
   })
 
   it('should provide WorkflowContext to node components', () => {
-    function NodeWithStore(props: { id: string, data: Record<string, unknown> }) {
-      const controlMode = useStore(s => s.controlMode)
-      return React.createElement('div', { 'data-testid': 'node-store' }, `${props.id}:${controlMode}`)
+    function NodeWithStore(props: { id: string; data: Record<string, unknown> }) {
+      const controlMode = useStore((s) => s.controlMode)
+      return React.createElement(
+        'div',
+        { 'data-testid': 'node-store' },
+        `${props.id}:${controlMode}`,
+      )
     }
 
-    renderNodeComponent(NodeWithStore, {}, {
-      initialStoreState: { controlMode: 'hand' as Shape['controlMode'] },
-    })
+    renderNodeComponent(
+      NodeWithStore,
+      {},
+      {
+        initialStoreState: { controlMode: 'hand' as Shape['controlMode'] },
+      },
+    )
     expect(screen.getByTestId('node-store'))!.toHaveTextContent('test-node-1:hand')
   })
 })
@@ -151,10 +171,7 @@ describe('renderNodeComponent', () => {
 describe('renderWorkflowFlowComponent', () => {
   it('should provide both ReactFlow and Workflow contexts', () => {
     renderWorkflowFlowComponent(React.createElement(FlowReader), {
-      nodes: [
-        createNode({ id: 'n-1' }),
-        createNode({ id: 'n-2' }),
-      ],
+      nodes: [createNode({ id: 'n-1' }), createNode({ id: 'n-2' })],
       initialStoreState: { showConfirm: { title: 'Hey', onConfirm: () => {} } },
     })
 
@@ -165,9 +182,7 @@ describe('renderWorkflowFlowComponent', () => {
 describe('renderWorkflowFlowHook', () => {
   it('should render hooks inside a real ReactFlow provider', () => {
     const { result } = renderWorkflowFlowHook(() => useNodes(), {
-      nodes: [
-        createNode({ id: 'flow-1' }),
-      ],
+      nodes: [createNode({ id: 'flow-1' })],
     })
 
     expect(result.current).toHaveLength(1)

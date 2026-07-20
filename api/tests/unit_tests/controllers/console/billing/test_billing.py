@@ -65,7 +65,7 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
+                    "controllers.console.wraps.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
@@ -92,7 +92,7 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
+                    "controllers.console.wraps.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
@@ -116,7 +116,7 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
+                    "controllers.console.wraps.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
@@ -158,7 +158,7 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
+                    "controllers.console.wraps.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
@@ -189,7 +189,7 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
+                    "controllers.console.wraps.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
@@ -215,7 +215,7 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
+                    "controllers.console.wraps.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
@@ -241,7 +241,7 @@ class TestPartnerTenants:
         ):
             with (
                 patch(
-                    "controllers.console.billing.billing.current_account_with_tenant",
+                    "controllers.console.wraps.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),

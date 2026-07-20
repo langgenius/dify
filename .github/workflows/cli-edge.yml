@@ -1,0 +1,74 @@
+name: CLI Edge Publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cli/**'
+      - 'packages/contracts/generated/api/openapi/**'
+  workflow_dispatch:
+
+concurrency:
+  group: difyctl-edge-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: build + publish edge to R2
+    runs-on: ${{ github.repository == 'langgenius/dify' && 'depot-ubuntu-24.04' || 'ubuntu-24.04' }}
+    if: vars.DIFYCTL_R2_BUCKET != ''
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Enable cross-arch native prebuilds
+        working-directory: ./
+        run: cat cli/scripts/cross-arch.pnpm.yaml >> pnpm-workspace.yaml
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
+        with:
+          bun-version-file: cli/.bun-version
+
+      - name: Compute edge version
+        id: ver
+        run: echo "version=$(node scripts/release-naming.mjs edge-version "$(git rev-parse --short HEAD)")" >> "$GITHUB_OUTPUT"
+
+      - name: Compile standalone binaries (all targets, all-or-nothing)
+        run: |
+          CLI_VERSION="${{ steps.ver.outputs.version }}" \
+          DIFYCTL_CHANNEL=edge \
+          DIFYCTL_COMMIT="$(git rev-parse HEAD)" \
+          DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
+            pnpm build:bin
+
+      - name: Generate sha256 checksums
+        run: CLI_VERSION="${{ steps.ver.outputs.version }}" scripts/release-write-checksums.sh
+
+      - name: Smoke the runner-arch binary
+        run: ./dist/bin/difyctl-v${{ steps.ver.outputs.version }}-linux-x64 version
+
+      - name: Publish to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.DIFYCTL_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DIFYCTL_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
+          AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+          DIFYCTL_R2_S3_ENDPOINT: ${{ vars.DIFYCTL_R2_S3_ENDPOINT }}
+          DIFYCTL_R2_BUCKET: ${{ vars.DIFYCTL_R2_BUCKET }}
+          DIFYCTL_R2_PUBLIC_BASE: ${{ vars.DIFYCTL_R2_PUBLIC_BASE }}
+          DIFYCTL_COMMIT: ${{ github.sha }}
+        run: |
+          DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
+            scripts/release-r2-publish.sh edge "${{ steps.ver.outputs.version }}"

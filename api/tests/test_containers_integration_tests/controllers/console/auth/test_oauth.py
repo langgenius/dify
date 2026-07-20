@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -105,6 +105,7 @@ class TestOAuthLogin:
             invite_token=expected_token,
             timezone=None,
             language=None,
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -127,6 +128,7 @@ class TestOAuthLogin:
             invite_token=None,
             timezone="Asia/Shanghai",
             language=None,
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -149,6 +151,7 @@ class TestOAuthLogin:
             invite_token=None,
             timezone=None,
             language="zh-Hans",
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -494,10 +497,7 @@ class TestAccountGeneration:
         second_result.scalar_one_or_none.return_value = expected_account
         mock_session.execute.side_effect = [first_result, second_result]
 
-        with patch("services.account_service.session_factory") as mock_factory:
-            mock_factory.create_session.return_value.__enter__ = MagicMock(return_value=mock_session)
-            mock_factory.create_session.return_value.__exit__ = MagicMock(return_value=False)
-            result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com")
+        result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
 
         assert result is expected_account
         assert mock_session.execute.call_count == 2
@@ -517,11 +517,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_handle_account_generation_scenarios(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
         user_info: OAuthUserInfo,
         mock_account,
@@ -551,6 +551,7 @@ class TestAccountGeneration:
                         provider="github",
                         language="en-US",
                         timezone=None,
+                        session=ANY,
                     )
                 else:
                     mock_register_service.register.assert_not_called()
@@ -562,11 +563,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_register_with_lowercase_email(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
     ):
         user_info = OAuthUserInfo(id="123", name="Test User", email="Upper@Example.com")
@@ -584,6 +585,7 @@ class TestAccountGeneration:
             provider="github",
             language="en-US",
             timezone=None,
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -593,11 +595,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_register_with_browser_timezone(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
         user_info: OAuthUserInfo,
     ):
@@ -615,6 +617,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone="Asia/Shanghai",
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -624,11 +627,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_register_with_state_language(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
         user_info: OAuthUserInfo,
     ):
@@ -646,20 +649,19 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone=None,
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
     @patch("controllers.console.auth.oauth.TenantService")
     @patch("controllers.console.auth.oauth.FeatureService")
     @patch("controllers.console.auth.oauth.AccountService")
-    @patch("controllers.console.auth.oauth.tenant_was_created")
     def test_should_create_workspace_for_account_without_tenant(
         self,
-        mock_event,
-        mock_account_service,
-        mock_feature_service,
-        mock_tenant_service,
-        mock_get_account,
+        mock_account_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_tenant_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
         user_info: OAuthUserInfo,
         mock_account,
@@ -668,16 +670,9 @@ class TestAccountGeneration:
         mock_tenant_service.get_join_tenants.return_value = []
         mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
 
-        mock_new_tenant = MagicMock()
-        mock_tenant_service.create_tenant.return_value = mock_new_tenant
-
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
             result, oauth_new_user = _generate_account("github", user_info)
 
             assert result == mock_account
             assert oauth_new_user is False
-            mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace")
-            mock_tenant_service.create_tenant_member.assert_called_once_with(
-                mock_new_tenant, mock_account, role="owner"
-            )
-            mock_event.send.assert_called_once_with(mock_new_tenant)
+            mock_tenant_service.create_owner_tenant.assert_called_once_with(mock_account, session=ANY)

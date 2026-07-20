@@ -25,6 +25,15 @@ MINIMAL_GRAPH = {
 }
 
 
+def _patch_create_session(mock_session: MagicMock):
+    session_context = MagicMock()
+    session_context.__enter__.return_value = mock_session
+    session_context.__exit__.return_value = False
+    mock_session.begin.return_value.__enter__.return_value = mock_session
+    mock_session.begin.return_value.__exit__.return_value = False
+    return patch("core.app.apps.advanced_chat.app_runner.create_session", return_value=session_context)
+
+
 class TestAdvancedChatAppRunnerConversationVariables:
     """Test that AdvancedChatAppRunner correctly handles conversation variables."""
 
@@ -99,6 +108,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_app_generate_entity.call_depth = 0
         mock_app_generate_entity.single_iteration_run = None
         mock_app_generate_entity.single_loop_run = None
+        mock_app_generate_entity.extras = {}
         mock_app_generate_entity.trace_manager = None
 
         # Create runner
@@ -134,10 +144,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
 
         # Patch the necessary components
         with (
-            patch("core.app.apps.advanced_chat.app_runner.sessionmaker") as mock_sessionmaker,
-            patch("core.app.apps.advanced_chat.app_runner.Session") as mock_session_class,
+            _patch_create_session(mock_session),
             patch("core.app.apps.advanced_chat.app_runner.select") as mock_select,
-            patch("core.app.apps.advanced_chat.app_runner.db") as mock_db,
             patch.object(runner, "_init_graph") as mock_init_graph,
             patch.object(
                 runner,
@@ -150,12 +158,6 @@ class TestAdvancedChatAppRunnerConversationVariables:
             patch("core.app.apps.advanced_chat.app_runner.redis_client") as mock_redis_client,
             patch("core.app.apps.advanced_chat.app_runner.RedisChannel") as mock_redis_channel_class,
         ):
-            # Setup mocks
-            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-            mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
-            mock_session_class.return_value.__enter__.return_value = MagicMock()
-            mock_db.engine = MagicMock()
-
             # Mock GraphRuntimeState to accept the variable pool
             mock_graph_runtime_state_class.return_value = MagicMock()
 
@@ -244,6 +246,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_app_generate_entity.call_depth = 0
         mock_app_generate_entity.single_iteration_run = None
         mock_app_generate_entity.single_loop_run = None
+        mock_app_generate_entity.extras = {}
         mock_app_generate_entity.trace_manager = None
 
         # Create runner
@@ -279,10 +282,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
 
         # Patch the necessary components
         with (
-            patch("core.app.apps.advanced_chat.app_runner.sessionmaker") as mock_sessionmaker,
-            patch("core.app.apps.advanced_chat.app_runner.Session") as mock_session_class,
+            _patch_create_session(mock_session),
             patch("core.app.apps.advanced_chat.app_runner.select") as mock_select,
-            patch("core.app.apps.advanced_chat.app_runner.db") as mock_db,
             patch.object(runner, "_init_graph") as mock_init_graph,
             patch.object(
                 runner,
@@ -296,12 +297,6 @@ class TestAdvancedChatAppRunnerConversationVariables:
             patch("core.app.apps.advanced_chat.app_runner.redis_client") as mock_redis_client,
             patch("core.app.apps.advanced_chat.app_runner.RedisChannel") as mock_redis_channel_class,
         ):
-            # Setup mocks
-            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-            mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
-            mock_session_class.return_value.__enter__.return_value = MagicMock()
-            mock_db.engine = MagicMock()
-
             # Mock ConversationVariable.from_variable to return mock objects
             mock_conv_vars = []
             for var in workflow_vars:
@@ -404,6 +399,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_app_generate_entity.call_depth = 0
         mock_app_generate_entity.single_iteration_run = None
         mock_app_generate_entity.single_loop_run = None
+        mock_app_generate_entity.extras = {}
         mock_app_generate_entity.trace_manager = None
 
         # Create runner
@@ -431,10 +427,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
 
         # Patch the necessary components
         with (
-            patch("core.app.apps.advanced_chat.app_runner.sessionmaker") as mock_sessionmaker,
-            patch("core.app.apps.advanced_chat.app_runner.Session") as mock_session_class,
+            _patch_create_session(mock_session),
             patch("core.app.apps.advanced_chat.app_runner.select") as mock_select,
-            patch("core.app.apps.advanced_chat.app_runner.db") as mock_db,
             patch.object(runner, "_init_graph") as mock_init_graph,
             patch.object(
                 runner,
@@ -447,12 +441,6 @@ class TestAdvancedChatAppRunnerConversationVariables:
             patch("core.app.apps.advanced_chat.app_runner.redis_client") as mock_redis_client,
             patch("core.app.apps.advanced_chat.app_runner.RedisChannel") as mock_redis_channel_class,
         ):
-            # Setup mocks
-            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-            mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
-            mock_session_class.return_value.__enter__.return_value = MagicMock()
-            mock_db.engine = MagicMock()
-
             # Mock GraphRuntimeState to accept the variable pool
             mock_graph_runtime_state_class.return_value = MagicMock()
 

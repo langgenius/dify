@@ -1,8 +1,10 @@
 'use client'
-import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  DefaultModel,
+  Model,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { RiAlertFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
@@ -33,6 +35,7 @@ type IndexingSectionProps = {
   summaryIndexSetting: SummaryIndexSettingType | undefined
   handleSummaryIndexSettingChange: (payload: SummaryIndexSettingType) => void
   showMultiModalTip: boolean
+  readonly?: boolean
 }
 
 const IndexingSection = ({
@@ -49,21 +52,27 @@ const IndexingSection = ({
   summaryIndexSetting,
   handleSummaryIndexSettingChange,
   showMultiModalTip,
+  readonly = false,
 }: IndexingSectionProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
 
-  const isShowIndexMethod = currentDataset
-    && currentDataset.doc_form !== ChunkingMode.parentChild
-    && currentDataset.indexing_technique
-    && indexMethod
+  const isShowIndexMethod =
+    currentDataset &&
+    currentDataset.doc_form !== ChunkingMode.parentChild &&
+    currentDataset.indexing_technique &&
+    indexMethod
 
-  const showUpgradeWarning = currentDataset?.indexing_technique === IndexingType.ECONOMICAL
-    && indexMethod === IndexingType.QUALIFIED
+  const showUpgradeWarning =
+    currentDataset?.indexing_technique === IndexingType.ECONOMICAL &&
+    indexMethod === IndexingType.QUALIFIED
 
-  const showSummaryIndexSetting = indexMethod === IndexingType.QUALIFIED
-    && [ChunkingMode.text, ChunkingMode.parentChild].includes(currentDataset?.doc_form as ChunkingMode)
-    && IS_CE_EDITION
+  const showSummaryIndexSetting =
+    indexMethod === IndexingType.QUALIFIED &&
+    [ChunkingMode.text, ChunkingMode.parentChild].includes(
+      currentDataset?.doc_form as ChunkingMode,
+    ) &&
+    IS_CE_EDITION
 
   return (
     <>
@@ -74,7 +83,7 @@ const IndexingSection = ({
           <div className={rowClass}>
             <div className="flex w-[180px] shrink-0 flex-col">
               <div className="flex h-8 items-center system-sm-semibold text-text-secondary">
-                {t('form.chunkStructure.title', { ns: 'datasetSettings' })}
+                {t(($) => $['form.chunkStructure.title'], { ns: 'datasetSettings' })}
               </div>
               <div className="body-xs-regular text-text-tertiary">
                 <a
@@ -83,9 +92,9 @@ const IndexingSection = ({
                   href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
                   className="text-text-accent"
                 >
-                  {t('form.chunkStructure.learnMore', { ns: 'datasetSettings' })}
+                  {t(($) => $['form.chunkStructure.learnMore'], { ns: 'datasetSettings' })}
                 </a>
-                {t('form.chunkStructure.description', { ns: 'datasetSettings' })}
+                {t(($) => $['form.chunkStructure.description'], { ns: 'datasetSettings' })}
               </div>
             </div>
             <div className="grow">
@@ -103,12 +112,14 @@ const IndexingSection = ({
       {!!isShowIndexMethod && (
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">
+              {t(($) => $['form.indexMethod'], { ns: 'datasetSettings' })}
+            </div>
           </div>
           <div className="grow">
             <IndexMethod
               value={indexMethod!}
-              disabled={!currentDataset?.embedding_available}
+              disabled={!currentDataset?.embedding_available || readonly}
               onChange={setIndexMethod}
               currentValue={currentDataset.indexing_technique}
               keywordNumber={keywordNumber}
@@ -118,10 +129,10 @@ const IndexingSection = ({
               <div className="relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3">
                 <div className="absolute top-0 left-0 flex size-full items-center bg-toast-warning-bg opacity-40" />
                 <div className="p-1">
-                  <RiAlertFill className="size-4 text-text-warning-secondary" />
+                  <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
                 </div>
                 <span className="system-xs-medium text-text-primary">
-                  {t('form.upgradeHighQualityTip', { ns: 'datasetSettings' })}
+                  {t(($) => $['form.upgradeHighQualityTip'], { ns: 'datasetSettings' })}
                 </span>
               </div>
             )}
@@ -134,7 +145,7 @@ const IndexingSection = ({
         <div className={rowClass}>
           <div className={labelClass}>
             <div className="system-sm-semibold text-text-secondary">
-              {t('form.embeddingModel', { ns: 'datasetSettings' })}
+              {t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
             </div>
           </div>
           <div className="grow">
@@ -142,6 +153,7 @@ const IndexingSection = ({
               defaultModel={embeddingModel}
               modelList={embeddingModelList}
               onSelect={setEmbeddingModel}
+              readonly={readonly}
             />
           </div>
         </div>
@@ -155,6 +167,7 @@ const IndexingSection = ({
             entry="dataset-settings"
             summaryIndexSetting={summaryIndexSetting}
             onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+            readonly={readonly}
           />
         </>
       )}
@@ -167,7 +180,7 @@ const IndexingSection = ({
             <div className={labelClass}>
               <div className="flex w-[180px] shrink-0 flex-col">
                 <div className="flex h-7 items-center pt-1 system-sm-semibold text-text-secondary">
-                  {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
+                  {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
                 </div>
                 <div className="body-xs-regular text-text-tertiary">
                   <a
@@ -176,27 +189,27 @@ const IndexingSection = ({
                     href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
                     className="text-text-accent"
                   >
-                    {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
+                    {t(($) => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
                   </a>
-                  {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
+                  {t(($) => $['form.retrievalSetting.description'], { ns: 'datasetSettings' })}
                 </div>
               </div>
             </div>
             <div className="grow">
-              {indexMethod === IndexingType.QUALIFIED
-                ? (
-                    <RetrievalMethodConfig
-                      value={retrievalConfig}
-                      onChange={setRetrievalConfig}
-                      showMultiModalTip={showMultiModalTip}
-                    />
-                  )
-                : (
-                    <EconomicalRetrievalMethodConfig
-                      value={retrievalConfig}
-                      onChange={setRetrievalConfig}
-                    />
-                  )}
+              {indexMethod === IndexingType.QUALIFIED ? (
+                <RetrievalMethodConfig
+                  value={retrievalConfig}
+                  onChange={setRetrievalConfig}
+                  showMultiModalTip={showMultiModalTip}
+                  disabled={readonly}
+                />
+              ) : (
+                <EconomicalRetrievalMethodConfig
+                  value={retrievalConfig}
+                  onChange={setRetrievalConfig}
+                  disabled={readonly}
+                />
+              )}
             </div>
           </div>
         </>

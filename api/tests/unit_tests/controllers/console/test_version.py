@@ -1,4 +1,7 @@
+import logging
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 import controllers.console.version as version_module
 
@@ -18,15 +21,15 @@ class TestHasNewVersion:
         )
         assert result is False
 
-    def test_has_new_version_invalid_version(self):
-        with patch.object(version_module.logger, "warning") as log_warning:
+    def test_has_new_version_invalid_version(self, caplog: pytest.LogCaptureFixture):
+        with caplog.at_level(logging.WARNING, logger="controllers.console.version"):
             result = version_module._has_new_version(
                 latest_version="invalid",
                 current_version="1.0.0",
             )
 
         assert result is False
-        log_warning.assert_called_once()
+        assert "Invalid version format" in caplog.text
 
 
 class TestCheckVersionUpdate:
@@ -62,7 +65,7 @@ class TestCheckVersionUpdate:
         assert result.features.can_replace_logo is True
         assert result.features.model_load_balancing_enabled is False
 
-    def test_http_error_fallback(self):
+    def test_http_error_fallback(self, caplog: pytest.LogCaptureFixture):
         query = version_module.VersionQuery(current_version="1.0.0")
 
         with (
@@ -76,15 +79,12 @@ class TestCheckVersionUpdate:
                 "get",
                 side_effect=Exception("boom"),
             ),
-            patch.object(
-                version_module.logger,
-                "warning",
-            ) as log_warning,
+            caplog.at_level(logging.WARNING, logger="controllers.console.version"),
         ):
             result = version_module.check_version_update(query)
 
         assert result.version == "1.0.0"
-        log_warning.assert_called_once()
+        assert "Check update version error" in caplog.text
 
     def test_new_version_available(self):
         query = version_module.VersionQuery(current_version="1.0.0")

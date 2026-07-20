@@ -5,26 +5,23 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from './field'
 
-type Props = {
+type Props = Readonly<{
   payload: StructuredOutput
   rootClassName?: string
-}
+}>
 
-const ShowPanel: FC<Props> = ({
-  payload,
-  rootClassName,
-}) => {
+const ShowPanel: FC<Props> = ({ payload, rootClassName }) => {
   const { t } = useTranslation()
   const schema = {
     ...payload,
     schema: {
       ...payload.schema,
-      description: t('structOutput.LLMResponse', { ns: 'app' }),
+      description: t(($) => $['structOutput.LLMResponse'], { ns: 'app' }),
     },
   }
   return (
     <div className="relative left-[-7px]">
-      {Object.keys(schema.schema.properties!).map(name => (
+      {Object.keys(schema.schema.properties!).map((name) => (
         <Field
           key={name}
           name={name}

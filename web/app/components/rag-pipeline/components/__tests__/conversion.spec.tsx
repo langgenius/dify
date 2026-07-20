@@ -1,12 +1,23 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import Conversion from '../conversion'
 
 const mockConvert = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
+}))
+
+let mockDatasetDetailState = {
+  dataset: {
+    permission_keys: ['dataset.acl.edit'],
+    maintainer: 'maintainer-id',
+  },
+}
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (
+    selector: (state: typeof mockDatasetDetailState) => unknown,
+  ) => selector(mockDatasetDetailState),
 }))
 
 vi.mock('@/service/use-pipeline', () => ({
@@ -43,7 +54,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, onClick, ...props }: Record<string, unknown>) => (
-    <button onClick={onClick as () => void} {...props}>{children as string}</button>
+    <button onClick={onClick as () => void} {...props}>
+      {children as string}
+    </button>
   ),
 }))
 
@@ -54,6 +67,12 @@ vi.mock('../screenshot', () => ({
 describe('Conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDatasetDetailState = {
+      dataset: {
+        permission_keys: ['dataset.acl.edit'],
+        maintainer: 'maintainer-id',
+      },
+    }
   })
 
   afterEach(() => {
@@ -72,6 +91,25 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     expect(screen.getByText('datasetPipeline.operations.convert')).toBeInTheDocument()
+  })
+
+  it('should disable convert button when dataset lacks edit ACL', () => {
+    mockDatasetDetailState = {
+      dataset: {
+        permission_keys: ['dataset.acl.readonly'],
+        maintainer: 'maintainer-id',
+      },
+    }
+
+    render(<Conversion />)
+
+    const convertButton = screen.getByRole('button', { name: 'datasetPipeline.operations.convert' })
+    expect(convertButton).toBeDisabled()
+
+    fireEvent.click(convertButton)
+
+    expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+    expect(mockConvert).not.toHaveBeenCalled()
   })
 
   it('should render warning text', () => {
@@ -114,16 +152,21 @@ describe('Conversion', () => {
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(mockConvert).toHaveBeenCalledWith('ds-123', expect.objectContaining({
-      onSuccess: expect.any(Function),
-      onError: expect.any(Function),
-    }))
+    expect(mockConvert).toHaveBeenCalledWith(
+      'ds-123',
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      }),
+    )
   })
 
   it('should handle successful conversion', async () => {
-    mockConvert.mockImplementation((_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
-      opts.onSuccess({ status: 'success' })
-    })
+    mockConvert.mockImplementation(
+      (_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
+        opts.onSuccess({ status: 'success' })
+      },
+    )
 
     render(<Conversion />)
 
@@ -135,9 +178,11 @@ describe('Conversion', () => {
   })
 
   it('should handle failed conversion', async () => {
-    mockConvert.mockImplementation((_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
-      opts.onSuccess({ status: 'failed' })
-    })
+    mockConvert.mockImplementation(
+      (_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
+        opts.onSuccess({ status: 'failed' })
+      },
+    )
 
     render(<Conversion />)
 

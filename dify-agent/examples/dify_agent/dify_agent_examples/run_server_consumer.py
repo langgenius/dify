@@ -53,7 +53,9 @@ async def main() -> None:
                             type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
                             config=DifyExecutionContextLayerConfig(
                                 tenant_id=TENANT_ID,
-                                invoke_from="workflow_run",
+                                user_from="account",
+                                agent_mode="workflow_run",
+                                invoke_from="service-api",
                             ),
                         ),
                         RunLayerSpec(

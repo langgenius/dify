@@ -3,22 +3,20 @@
 import logging
 import re
 import uuid
-from typing import Any, TypedDict, cast
-
-logger = logging.getLogger(__name__)
+from typing import Any, TypedDict, cast, override
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
 from core.app.llm import deduct_llm_quota
+from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.cleaner.clean_processor import CleanProcessor
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.keyword.keyword_factory import Keyword
-from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.entities import Rule
@@ -28,10 +26,8 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.workflow.file_reference import build_file_reference
-from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -51,6 +47,9 @@ from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
 from services.summary_index_service import SummaryIndexService
 
+logger = logging.getLogger(__name__)
+
+
 _file_access_controller = DatabaseFileAccessController()
 
 
@@ -61,17 +60,22 @@ class ParagraphFormatPreviewDict(TypedDict):
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
-    def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
+    @override
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
             extract_setting=extract_setting,
             is_automatic=(
                 kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
             ),
+            session=session,
         )
 
         return text_docs
 
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    @override
+    def transform(
+        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+    ) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
@@ -108,7 +112,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         document_node.metadata["doc_id"] = doc_id
                         document_node.metadata["doc_hash"] = hash
                     multimodal_documents = (
-                        self._get_content_files(document_node, current_user) if document_node.metadata else None
+                        self._get_content_files(document_node, current_user, session=session)
+                        if document_node.metadata
+                        else None
                     )
                     if multimodal_documents:
                         document_node.attachments = multimodal_documents
@@ -120,16 +126,19 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         return all_documents
 
+    @override
     def load(
         self,
         dataset: Dataset,
         documents: list[Document],
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
+        *,
+        session: Session,
         **kwargs,
     ) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            vector = Vector(dataset)
+            vector = Vector(dataset, session=session)
             vector.create(documents)
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
@@ -138,11 +147,14 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             keywords_list = kwargs.get("keywords_list")
             keyword = Keyword(dataset)
             if keywords_list and len(keywords_list) > 0:
-                keyword.add_texts(documents, keywords_list=keywords_list)
+                keyword.add_texts(documents, session, keywords_list=keywords_list)
             else:
-                keyword.add_texts(documents)
+                keyword.add_texts(documents, session)
 
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
+    @override
+    def clean(
+        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+    ) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
@@ -151,7 +163,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id
-                segments = db.session.scalars(
+                segments = session.scalars(
                     select(DocumentSegment).where(
                         DocumentSegment.dataset_id == dataset.id,
                         DocumentSegment.index_node_id.in_(node_ids),
@@ -159,13 +171,13 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 ).all()
                 segment_ids = [segment.id for segment in segments]
                 if segment_ids:
-                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            vector = Vector(dataset)
+            vector = Vector(dataset, session=session)
             if node_ids:
                 vector.delete_by_ids(node_ids)
             else:
@@ -174,39 +186,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if with_keywords:
             keyword = Keyword(dataset)
             if node_ids:
-                keyword.delete_by_ids(node_ids)
+                keyword.delete_by_ids(node_ids, session)
             else:
-                keyword.delete()
+                keyword.delete(session=session)
 
-    def retrieve(
-        self,
-        retrieval_method: RetrievalMethod,
-        query: str,
-        dataset: Dataset,
-        top_k: int,
-        score_threshold: float,
-        reranking_model: RerankingModelDict,
-    ) -> list[Document]:
-        # Set search parameters.
-        results = RetrievalService.retrieve(
-            retrieval_method=retrieval_method,
-            dataset_id=dataset.id,
-            query=query,
-            top_k=top_k,
-            score_threshold=score_threshold,
-            reranking_model=reranking_model,
-        )
-        # Organize results.
-        docs = []
-        for result in results:
-            metadata = result.metadata
-            metadata["score"] = result.score
-            if result.score >= score_threshold:
-                doc = Document(page_content=result.page_content, metadata=metadata)
-                docs.append(doc)
-        return docs
-
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
+    @override
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
         documents: list[Any] = []
         all_multimodal_documents: list[Any] = []
         if isinstance(chunks, list):
@@ -218,7 +203,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     "doc_hash": helper.generate_text_hash(content),
                 }
                 doc = Document(page_content=content, metadata=metadata)
-                attachments = self._get_content_files(doc)
+                attachments = self._get_content_files(doc, session=session)
                 if attachments:
                     doc.attachments = attachments
                     all_multimodal_documents.extend(attachments)
@@ -250,10 +235,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         all_multimodal_documents.append(file_document)
                     doc.attachments = attachments
                 else:
-                    account = AccountService.load_user(document.created_by)
+                    with session_factory.create_session() as account_session:
+                        account = AccountService.load_user(document.created_by, account_session)
                     if not account:
                         raise ValueError("Invalid account")
-                    doc.attachments = self._get_content_files(doc, current_user=account)
+                    doc.attachments = self._get_content_files(doc, current_user=account, session=session)
                     if doc.attachments:
                         all_multimodal_documents.extend(doc.attachments)
                 documents.append(doc)
@@ -261,16 +247,18 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
-            doc_store.add_documents(docs=documents, save_child=False)
+            doc_store.add_documents(docs=documents, save_child=False, session=session)
+            session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                vector = Vector(dataset)
+                vector = Vector(dataset, session=session)
                 vector.create(documents)
                 if all_multimodal_documents and dataset.is_multimodal:
                     vector.create_multimodal(all_multimodal_documents)
             elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 keyword = Keyword(dataset)
-                keyword.add_texts(documents)
+                keyword.add_texts(documents, session)
 
+    @override
     def format_preview(self, chunks: Any) -> ParagraphFormatPreviewDict:
         if isinstance(chunks, list):
             preview = []
@@ -285,12 +273,15 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         else:
             raise ValueError("Chunks is not a list")
 
+    @override
     def generate_summary_preview(
         self,
         tenant_id: str,
         preview_texts: list[PreviewDetail],
         summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
+        *,
+        session: Session,
     ) -> list[PreviewDetail]:
         """
         For each segment, concurrently call generate_summary to generate a summary
@@ -313,15 +304,25 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
-                    summary, _ = self.generate_summary(
-                        tenant_id, preview.content, summary_index_setting, document_language=doc_language
-                    )
+                    with session_factory.create_session() as worker_session:
+                        summary, _ = self.generate_summary(
+                            tenant_id,
+                            preview.content,
+                            summary_index_setting,
+                            document_language=doc_language,
+                            session=worker_session,
+                        )
                     preview.summary = summary
             else:
                 # Fallback: try without app context (may fail)
-                summary, _ = self.generate_summary(
-                    tenant_id, preview.content, summary_index_setting, document_language=doc_language
-                )
+                with session_factory.create_session() as worker_session:
+                    summary, _ = self.generate_summary(
+                        tenant_id,
+                        preview.content,
+                        summary_index_setting,
+                        document_language=doc_language,
+                        session=worker_session,
+                    )
                 preview.summary = summary
 
         # Generate summaries concurrently using ThreadPoolExecutor
@@ -376,6 +377,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         summary_index_setting: SummaryIndexSettingDict | None = None,
         segment_id: str | None = None,
         document_language: str | None = None,
+        *,
+        session: Session,
     ) -> tuple[str, LLMUsage]:
         """
         Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt,
@@ -388,6 +391,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             segment_id: Optional segment ID to fetch attachments from SegmentAttachmentBinding table
             document_language: Optional document language (e.g., "Chinese", "English")
                 to ensure summary is generated in the correct language
+            session: SQLAlchemy session used for summary image lookups
 
         Returns:
             Tuple of (summary_content, llm_usage) where llm_usage is LLMUsage object
@@ -435,11 +439,13 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if supports_vision:
             # First, try to get images from SegmentAttachmentBinding (preferred method)
             if segment_id:
-                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(tenant_id, segment_id)
+                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(
+                    tenant_id, segment_id, session
+                )
 
             # If no images from attachments, fall back to extracting from text
             if not image_files:
-                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text)
+                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text, session)
 
         # Build prompt messages
         prompt_messages = []
@@ -493,7 +499,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return summary_content, usage
 
     @staticmethod
-    def _extract_images_from_text(tenant_id: str, text: str) -> list[File]:
+    def _extract_images_from_text(tenant_id: str, text: str, session: Session) -> list[File]:
         """
         Extract images from markdown text and convert them to File objects.
 
@@ -542,7 +548,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = db.session.scalars(
+        upload_files = session.scalars(
             select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids), UploadFile.tenant_id == tenant_id)
         ).all()
 
@@ -573,7 +579,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return file_objects
 
     @staticmethod
-    def _extract_images_from_segment_attachments(tenant_id: str, segment_id: str) -> list[File]:
+    def _extract_images_from_segment_attachments(tenant_id: str, segment_id: str, session: Session) -> list[File]:
         """
         Extract images from SegmentAttachmentBinding table (preferred method).
         This matches how DatasetRetrieval gets segment attachments.
@@ -588,7 +594,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         from sqlalchemy import select
 
         # Query attachments from SegmentAttachmentBinding table
-        attachments_with_bindings = db.session.execute(
+        attachments_with_bindings = session.execute(
             select(SegmentAttachmentBinding, UploadFile)
             .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
             .where(

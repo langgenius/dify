@@ -1,10 +1,11 @@
 import type { App } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { Plan } from '@/app/components/billing/type'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import SwitchAppModal from '../index'
 
@@ -25,19 +26,6 @@ const mockDeleteApp = vi.fn()
 vi.mock('@/service/apps', () => ({
   switchApp: (...args: unknown[]) => mockSwitchApp(...args),
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
-}))
-
-let mockIsEditor = true
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsEditor,
-    userProfile: {
-      email: 'user@example.com',
-    },
-    langGeniusVersionInfo: {
-      current_version: '1.0.0',
-    },
-  }),
 }))
 
 let mockEnableBilling = false
@@ -123,10 +111,14 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
-    success: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'success', message, ...options }),
-    error: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'error', message, ...options }),
-    warning: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'warning', message, ...options }),
-    info: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'info', message, ...options }),
+    success: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'info', message, ...options }),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -146,7 +138,6 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
       onSuccess={onSuccess}
       {...overrides}
     />,
-
   )
 
   return {
@@ -171,7 +162,6 @@ describe('SwitchAppModal', () => {
       originalSetAppDetail(...args)
     })
     useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
-    mockIsEditor = true
     mockEnableBilling = false
     mockPlan = {
       type: Plan.sandbox,
@@ -274,7 +264,10 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       // Arrange
       const { appDetail, notify, onClose, onSuccess } = renderComponent()
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-001' })
+      mockSwitchApp.mockResolvedValueOnce({
+        new_app_id: 'new-app-001',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
       // Act
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
@@ -300,7 +293,10 @@ describe('SwitchAppModal', () => {
     it('should update the icon through the picker before switching apps', async () => {
       const user = userEvent.setup()
       const { appDetail } = renderComponent()
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-003' })
+      mockSwitchApp.mockResolvedValueOnce({
+        new_app_id: 'new-app-003',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
       await user.click(screen.getByText('open-icon-picker'))
       await waitFor(() => {
@@ -315,12 +311,14 @@ describe('SwitchAppModal', () => {
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
       await waitFor(() => {
-        expect(mockSwitchApp).toHaveBeenCalledWith(expect.objectContaining({
-          appID: appDetail.id,
-          icon_type: 'emoji',
-          icon: '🚀',
-          icon_background: '#E4FBCC',
-        }))
+        expect(mockSwitchApp).toHaveBeenCalledWith(
+          expect.objectContaining({
+            appID: appDetail.id,
+            icon_type: 'emoji',
+            icon: '🚀',
+            icon_background: '#E4FBCC',
+          }),
+        )
       })
     })
 
@@ -342,7 +340,9 @@ describe('SwitchAppModal', () => {
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.confirm' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('checkbox')).not.toBeChecked()
     })
 
@@ -359,7 +359,10 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       // Arrange
       const { appDetail } = renderComponent({ inAppDetail: true })
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-002' })
+      mockSwitchApp.mockResolvedValueOnce({
+        new_app_id: 'new-app-002',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
       // Act
       await user.click(screen.getByText('app.removeOriginal'))
@@ -387,7 +390,10 @@ describe('SwitchAppModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+        expect(notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'app.newApp.appCreateFailed',
+        })
       })
       expect(onClose).not.toHaveBeenCalled()
       expect(onSuccess).not.toHaveBeenCalled()

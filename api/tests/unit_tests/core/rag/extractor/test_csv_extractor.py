@@ -1,6 +1,8 @@
 import csv
 import io
+from pathlib import Path
 from types import SimpleNamespace
+from typing import override
 
 import pandas as pd
 import pytest
@@ -10,16 +12,17 @@ from core.rag.extractor.csv_extractor import CSVExtractor
 
 
 class _ManagedStringIO(io.StringIO):
+    @override
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    @override
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-        return False
 
 
 class TestCSVExtractor:
-    def test_extract_success_with_source_column(self, tmp_path):
+    def test_extract_success_with_source_column(self, tmp_path: Path):
         file_path = tmp_path / "data.csv"
         file_path.write_text("id,body\nsource-1,hello\n", encoding="utf-8")
 
@@ -30,7 +33,7 @@ class TestCSVExtractor:
         assert docs[0].page_content == "id: source-1;body: hello"
         assert docs[0].metadata == {"source": "source-1", "row": 0}
 
-    def test_extract_raises_when_source_column_missing(self, tmp_path):
+    def test_extract_raises_when_source_column_missing(self, tmp_path: Path):
         file_path = tmp_path / "data.csv"
         file_path.write_text("id,body\nsource-1,hello\n", encoding="utf-8")
 

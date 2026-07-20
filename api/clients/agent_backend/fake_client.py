@@ -7,7 +7,7 @@ separate ``agent-backend.v1`` event stream.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from enum import StrEnum
 
@@ -17,11 +17,10 @@ from dify_agent.protocol import (
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
+    DeferredToolCallPayload,
     RunEvent,
     RunFailedEvent,
     RunFailedEventData,
-    RunPausedEvent,
-    RunPausedEventData,
     RunStartedEvent,
     RunStatusResponse,
     RunSucceededEvent,
@@ -32,7 +31,11 @@ _FIXED_TIME = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 class FakeAgentBackendScenario(StrEnum):
-    """Deterministic fake scenarios for API-side integration tests."""
+    """Deterministic fake scenarios for API-side integration tests.
+
+    ``PAUSED`` represents the API workflow effect. On the Dify Agent wire
+    protocol it is a succeeded run carrying a deferred external tool call.
+    """
 
     SUCCESS = "success"
     FAILED = "failed"
@@ -66,9 +69,17 @@ class FakeAgentBackendRunClient:
         del request
         return CancelRunResponse(run_id=run_id, status="cancelled")
 
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
         """Yield the deterministic public ``RunEvent`` sequence for ``run_id``."""
         for event in self._events(run_id):
+            if should_stop is not None and should_stop():
+                return
             if after is not None and event.id is not None and event.id <= after:
                 continue
             yield event
@@ -95,7 +106,7 @@ class FakeAgentBackendRunClient:
             case FakeAgentBackendScenario.PAUSED:
                 return RunStatusResponse(
                     run_id=run_id,
-                    status="paused",
+                    status="succeeded",
                     created_at=_FIXED_TIME,
                     updated_at=_FIXED_TIME,
                 )
@@ -128,13 +139,17 @@ class FakeAgentBackendRunClient:
             case FakeAgentBackendScenario.PAUSED:
                 return (
                     RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
-                    RunPausedEvent(
+                    RunSucceededEvent(
                         id="2-0",
                         run_id=run_id,
                         created_at=_FIXED_TIME,
-                        data=RunPausedEventData(
-                            reason="human_input_required",
-                            message="Agent requested human input.",
+                        data=RunSucceededEventData(
+                            deferred_tool_call=DeferredToolCallPayload(
+                                tool_call_id="fake-ask-human-1",
+                                tool_name="ask_human",
+                                args={"question": "Agent requested human input."},
+                                metadata={"layer_type": "dify.ask_human", "schema_version": 1},
+                            ),
                             session_snapshot=CompositorSessionSnapshot(layers=[]),
                         ),
                     ),

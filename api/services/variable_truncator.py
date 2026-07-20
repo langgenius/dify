@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import dataclasses
-from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Any, overload
+from typing import Any, Protocol, overload, override
 
 from configs import dify_config
 from graphon.file import File
@@ -66,14 +65,12 @@ class TruncationResult:
     truncated: bool
 
 
-class BaseTruncator(ABC):
-    @abstractmethod
-    def truncate(self, segment: Segment) -> TruncationResult:
-        pass
+class BaseTruncator(Protocol):
+    """Protocol for variable truncation strategies."""
 
-    @abstractmethod
-    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
-        pass
+    def truncate(self, segment: Segment) -> TruncationResult: ...
+
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]: ...
 
 
 class VariableTruncator(BaseTruncator):
@@ -112,6 +109,7 @@ class VariableTruncator(BaseTruncator):
             string_length_limit=dify_config.WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH,
         )
 
+    @override
     def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
         """
         `truncate_variable_mapping` is responsible for truncating variable mappings
@@ -157,6 +155,7 @@ class VariableTruncator(BaseTruncator):
             return False
         return True
 
+    @override
     def truncate(self, segment: Segment) -> TruncationResult:
         if isinstance(segment, StringSegment):
             result = self._truncate_segment(segment, self._string_length_limit)
@@ -448,6 +447,7 @@ class DummyVariableTruncator(BaseTruncator):
     to maintain backward compatibility and provide complete data.
     """
 
+    @override
     def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
         """
         Return original mapping without truncation.
@@ -460,6 +460,7 @@ class DummyVariableTruncator(BaseTruncator):
         """
         return v, False
 
+    @override
     def truncate(self, segment: Segment) -> TruncationResult:
         """
         Return original segment without truncation.

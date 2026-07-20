@@ -1,23 +1,25 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EndpointList from '../endpoint-list'
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 
 const mockEndpoints = [
-  { id: 'ep-1', name: 'Endpoint 1', url: 'https://api.example.com', declaration: { settings: [], endpoints: [] } },
+  {
+    id: 'ep-1',
+    name: 'Endpoint 1',
+    url: 'https://api.example.com',
+    declaration: { settings: [], endpoints: [] },
+  },
 ]
 
 let mockEndpointListData: { endpoints: typeof mockEndpoints } | undefined
 
 const mockInvalidateEndpointList = vi.fn()
+const mockInvalidateInstalledPluginList = vi.fn()
 const mockCreateEndpoint = vi.fn()
 
 vi.mock('@/service/use-endpoints', () => ({
@@ -31,6 +33,10 @@ vi.mock('@/service/use-endpoints', () => ({
   }),
 }))
 
+vi.mock('@/service/use-plugins', () => ({
+  useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
+}))
+
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   toolCredentialToFormSchemas: (schemas: unknown[]) => schemas,
 }))
@@ -42,10 +48,14 @@ vi.mock('../endpoint-card', () => ({
 }))
 
 vi.mock('../endpoint-modal', () => ({
-  default: ({ onCancel, onSaved }: { onCancel: () => void, onSaved: (state: unknown) => void }) => (
+  default: ({ onCancel, onSaved }: { onCancel: () => void; onSaved: (state: unknown) => void }) => (
     <div data-testid="endpoint-modal">
-      <button data-testid="modal-cancel" onClick={onCancel}>Cancel</button>
-      <button data-testid="modal-save" onClick={() => onSaved({ name: 'New Endpoint' })}>Save</button>
+      <button data-testid="modal-cancel" onClick={onCancel}>
+        Cancel
+      </button>
+      <button data-testid="modal-save" onClick={() => onSaved({ name: 'New Endpoint' })}>
+        Save
+      </button>
     </div>
   ),
 }))
@@ -76,7 +86,8 @@ const createPluginDetail = (): PluginDetail => ({
 })
 
 describe('EndpointList', () => {
-  const getAddButton = () => screen.getByRole('button', { name: 'plugin.detailPanel.endpointModalTitle' })
+  const getAddButton = () =>
+    screen.getByRole('button', { name: 'plugin.detailPanel.endpointModalTitle' })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -161,8 +172,18 @@ describe('EndpointList', () => {
     it('should render multiple endpoint cards', () => {
       mockEndpointListData = {
         endpoints: [
-          { id: 'ep-1', name: 'Endpoint 1', url: 'https://api1.example.com', declaration: { settings: [], endpoints: [] } },
-          { id: 'ep-2', name: 'Endpoint 2', url: 'https://api2.example.com', declaration: { settings: [], endpoints: [] } },
+          {
+            id: 'ep-1',
+            name: 'Endpoint 1',
+            url: 'https://api1.example.com',
+            declaration: { settings: [], endpoints: [] },
+          },
+          {
+            id: 'ep-2',
+            name: 'Endpoint 2',
+            url: 'https://api2.example.com',
+            declaration: { settings: [], endpoints: [] },
+          },
         ],
       }
       render(<EndpointList detail={createPluginDetail()} />)
@@ -178,7 +199,10 @@ describe('EndpointList', () => {
       fireEvent.click(getAddButton())
       fireEvent.click(screen.getByTestId('modal-save'))
 
-      expect(mockInvalidateEndpointList).toHaveBeenCalledWith('test-plugin')
+      return waitFor(() => {
+        expect(mockInvalidateEndpointList).toHaveBeenCalledWith('test-plugin')
+        expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
+      })
     })
 
     it('should pass correct params to createEndpoint', () => {

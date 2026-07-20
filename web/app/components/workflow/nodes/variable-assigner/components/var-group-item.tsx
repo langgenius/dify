@@ -3,9 +3,7 @@ import type { ChangeEvent, FC } from 'react'
 import type { VarGroupItem as VarGroupItemType } from '../types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
+import { RiDeleteBinLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -25,7 +23,7 @@ type Payload = VarGroupItemType & {
   group_name?: string
 }
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   payload: Payload
@@ -35,7 +33,7 @@ type Props = {
   canRemove?: boolean
   onRemove?: () => void
   availableVars: NodeOutPutVar[]
-}
+}>
 
 const VarGroupItem: FC<Props> = ({
   readOnly,
@@ -50,124 +48,135 @@ const VarGroupItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const handleAddVariable = useCallback((value: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
-    const chosenVariables = payload.variables
-    if (chosenVariables.some(item => item.join('.') === (value as ValueSelector).join('.')))
-      return
-
-    const newPayload = produce(payload, (draft: Payload) => {
-      draft.variables.push(value as ValueSelector)
-      if (varInfo && varInfo.type !== VarType.any)
-        draft.output_type = varInfo.type
-    })
-    onChange(newPayload)
-  }, [onChange, payload])
-
-  const handleListChange = useCallback((newList: ValueSelector[], changedItem?: ValueSelector) => {
-    if (changedItem) {
+  const handleAddVariable = useCallback(
+    (value: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
       const chosenVariables = payload.variables
-      if (chosenVariables.some(item => item.join('.') === (changedItem as ValueSelector).join('.')))
+      if (chosenVariables.some((item) => item.join('.') === (value as ValueSelector).join('.')))
         return
-    }
 
-    const newPayload = produce(payload, (draft) => {
-      draft.variables = newList
-      if (newList.length === 0)
-        draft.output_type = VarType.any
-    })
-    onChange(newPayload)
-  }, [onChange, payload])
+      const newPayload = produce(payload, (draft: Payload) => {
+        draft.variables.push(value as ValueSelector)
+        if (varInfo && varInfo.type !== VarType.any) draft.output_type = varInfo.type
+      })
+      onChange(newPayload)
+    },
+    [onChange, payload],
+  )
 
-  const filterVar = useCallback((varPayload: Var) => {
-    if (payload.output_type === VarType.any)
-      return true
-    return varPayload.type === payload.output_type
-  }, [payload.output_type])
+  const handleListChange = useCallback(
+    (newList: ValueSelector[], changedItem?: ValueSelector) => {
+      if (changedItem) {
+        const chosenVariables = payload.variables
+        if (
+          chosenVariables.some(
+            (item) => item.join('.') === (changedItem as ValueSelector).join('.'),
+          )
+        )
+          return
+      }
 
-  const [isEditGroupName, {
-    setTrue: setEditGroupName,
-    setFalse: setNotEditGroupName,
-  }] = useBoolean(false)
+      const newPayload = produce(payload, (draft) => {
+        draft.variables = newList
+        if (newList.length === 0) draft.output_type = VarType.any
+      })
+      onChange(newPayload)
+    },
+    [onChange, payload],
+  )
 
-  const handleGroupNameChange = useCallback((e: ChangeEvent<any>) => {
-    replaceSpaceWithUnderscoreInVarNameInput(e.target)
-    const value = e.target.value
-    const { isValid, errorKey, errorMessageKey } = checkKeys([value], false)
-    if (!isValid) {
-      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }))
-      return
-    }
-    onGroupNameChange?.(value)
-  }, [onGroupNameChange, t])
+  const filterVar = useCallback(
+    (varPayload: Var) => {
+      if (payload.output_type === VarType.any) return true
+      return varPayload.type === payload.output_type
+    },
+    [payload.output_type],
+  )
+
+  const [isEditGroupName, { setTrue: setEditGroupName, setFalse: setNotEditGroupName }] =
+    useBoolean(false)
+
+  const handleGroupNameChange = useCallback(
+    (e: ChangeEvent<any>) => {
+      replaceSpaceWithUnderscoreInVarNameInput(e.target)
+      const value = e.target.value
+      const { isValid, errorKey, errorMessageKey } = checkKeys([value], false)
+      if (!isValid) {
+        toast.error(
+          t(($) => $[`varKeyError.${errorMessageKey}`], { ns: 'appDebug', key: errorKey }),
+        )
+        return
+      }
+      onGroupNameChange?.(value)
+    },
+    [onGroupNameChange, t],
+  )
 
   return (
     <Field
       className="group"
-      title={groupEnabled
-        ? (
-            <div className="flex items-center">
-              <div className="flex items-center normal-case!">
-                <Folder className="mr-0.5 size-3.5" />
-                {(!isEditGroupName)
-                  ? (
-                      <div className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100" onClick={setEditGroupName}>
-                        {payload.group_name}
-                      </div>
-                    )
-                  : (
-                      <input
-                        type="text"
-                        className="h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-hidden"
-                        // style={{
-                        //   width: `${((payload.group_name?.length || 0) + 1) / 2}em`,
-                        // }}
-                        size={payload.group_name?.length} // to fit the input width
-                        autoFocus
-                        value={payload.group_name}
-                        onChange={handleGroupNameChange}
-                        onBlur={setNotEditGroupName}
-                        maxLength={30}
-                      />
-                    )}
-
-              </div>
-              {canRemove && (
+      title={
+        groupEnabled ? (
+          <div className="flex items-center">
+            <div className="flex items-center normal-case!">
+              <Folder className="mr-0.5 size-3.5" />
+              {!isEditGroupName ? (
                 <div
-                  className="ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary group-hover:block hover:bg-state-destructive-hover hover:text-text-destructive"
-                  onClick={onRemove}
+                  className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100"
+                  onClick={setEditGroupName}
                 >
-                  <RiDeleteBinLine
-                    className="size-4"
-                  />
+                  {payload.group_name}
                 </div>
+              ) : (
+                <input
+                  type="text"
+                  className="h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-hidden"
+                  // style={{
+                  //   width: `${((payload.group_name?.length || 0) + 1) / 2}em`,
+                  // }}
+                  size={payload.group_name?.length} // to fit the input width
+                  autoFocus
+                  value={payload.group_name}
+                  onChange={handleGroupNameChange}
+                  onBlur={setNotEditGroupName}
+                  maxLength={30}
+                />
               )}
             </div>
-          )
-        : t(`${i18nPrefix}.title`, { ns: 'workflow' })!}
-      operations={(
+            {canRemove && (
+              <div
+                className="ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary group-hover:block hover:bg-state-destructive-hover hover:text-text-destructive"
+                onClick={onRemove}
+              >
+                <RiDeleteBinLine className="size-4" />
+              </div>
+            )}
+          </div>
+        ) : (
+          t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })!
+        )
+      }
+      operations={
         <div className="flex h-6 items-center space-x-2">
           {payload.variables.length > 0 && (
-            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">{payload.output_type}</div>
+            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">
+              {payload.output_type}
+            </div>
           )}
-          {
-            !readOnly
-              ? (
-                  <VarReferencePicker
-                    isAddBtnTrigger
-                    readonly={false}
-                    nodeId={nodeId}
-                    isShowNodeName
-                    value={[]}
-                    onChange={handleAddVariable}
-                    defaultVarKindType={VarKindType.variable}
-                    filterVar={filterVar}
-                    availableVars={availableVars}
-                  />
-                )
-              : undefined
-          }
+          {!readOnly ? (
+            <VarReferencePicker
+              isAddBtnTrigger
+              readonly={false}
+              nodeId={nodeId}
+              isShowNodeName
+              value={[]}
+              onChange={handleAddVariable}
+              defaultVarKindType={VarKindType.variable}
+              filterVar={filterVar}
+              availableVars={availableVars}
+            />
+          ) : undefined}
         </div>
-      )}
+      }
     >
       <VarList
         readonly={readOnly}

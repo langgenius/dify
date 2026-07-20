@@ -1,0 +1,431 @@
+import type { FormData } from '../form'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
+import { act, render, renderHook, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
+import FormContent from '../form'
+import { useFormSubmit } from '../use-form-submit'
+
+const mockSubmitForm = vi.hoisted(() => vi.fn())
+const mockUseGetHumanInputForm = vi.hoisted(() => vi.fn())
+const mockContentItemState = vi.hoisted(() => ({
+  staleAttachmentInputChange: undefined as ((name: string, value: unknown) => void) | undefined,
+  uploadedFile: {
+    id: 'file-1',
+    name: 'review.pdf',
+    size: 128,
+    type: 'document',
+    progress: 100,
+    transferMethod: 'local_file',
+    supportFileType: 'document',
+    uploadedId: 'upload-file-1',
+  },
+  uploadingFile: {
+    id: 'file-1',
+    name: 'review.pdf',
+    size: 128,
+    type: 'document',
+    progress: 50,
+    transferMethod: 'local_file',
+    supportFileType: 'document',
+    uploadedId: undefined,
+  },
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({ token: 'token-123' }),
+}))
+
+vi.mock('@/service/use-share', () => ({
+  useGetHumanInputForm: (...args: unknown[]) => mockUseGetHumanInputForm(...args),
+  useSubmitHumanInputForm: () => ({
+    mutate: mockSubmitForm,
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/hooks/use-document-title', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item', () => ({
+  __esModule: true,
+  default: ({
+    content,
+    onInputChange,
+  }: {
+    content: string
+    onInputChange: (name: string, value: unknown) => void
+  }) => {
+    const isSummaryField = content.includes('summary')
+    const isAttachmentField = content.includes('attachments')
+
+    if (isAttachmentField && !mockContentItemState.staleAttachmentInputChange)
+      mockContentItemState.staleAttachmentInputChange = onInputChange
+
+    return (
+      <div data-testid="share-form-content-item">
+        {content}
+        {isSummaryField && (
+          <>
+            <button type="button" onClick={() => onInputChange('summary', '')}>
+              share-clear-summary
+            </button>
+            <button type="button" onClick={() => onInputChange('summary', 'updated summary')}>
+              share-update-summary
+            </button>
+          </>
+        )}
+        {isAttachmentField && (
+          <>
+            <button
+              type="button"
+              onClick={() =>
+                mockContentItemState.staleAttachmentInputChange?.('attachments', [
+                  mockContentItemState.uploadingFile,
+                ])
+              }
+            >
+              share-uploading-attachments
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                mockContentItemState.staleAttachmentInputChange?.('attachments', [
+                  mockContentItemState.uploadedFile,
+                ])
+              }
+            >
+              share-update-attachments
+            </button>
+          </>
+        )}
+      </div>
+    )
+  },
+}))
+
+vi.mock('@/app/components/base/chat/chat/answer/human-input-content/expiration-time', () => ({
+  __esModule: true,
+  default: () => <div>expiration-time</div>,
+}))
+
+vi.mock('@/app/components/base/loading', () => ({
+  __esModule: true,
+  default: () => <div>loading</div>,
+}))
+
+vi.mock('@/app/components/base/logo/dify-logo', () => ({
+  __esModule: true,
+  default: () => <div>dify-logo</div>,
+}))
+
+vi.mock('@/app/components/base/app-icon', () => ({
+  __esModule: true,
+  default: () => <div>app-icon</div>,
+}))
+
+describe('Human input share form', () => {
+  const formData: FormData = {
+    site: {
+      site: {
+        title: 'Review App',
+        icon_type: 'emoji',
+        icon: 'R',
+        icon_background: '#fff',
+        icon_url: '',
+        default_language: 'en-US',
+        description: '',
+        copyright: '',
+        privacy_policy: '',
+        custom_disclaimer: '',
+        prompt_public: false,
+        use_icon_as_answer_icon: false,
+      },
+    },
+    form_content: '{{#$output.summary#}} {{#$output.attachments#}}',
+    inputs: [
+      {
+        type: InputVarType.paragraph,
+        output_variable_name: 'summary',
+        default: {
+          type: 'constant',
+          value: 'initial summary',
+          selector: [],
+        },
+      },
+      {
+        type: InputVarType.multiFiles,
+        output_variable_name: 'attachments',
+        allowed_file_extensions: ['.pdf'],
+        allowed_file_types: [SupportUploadFileTypes.document],
+        allowed_file_upload_methods: [TransferMethod.local_file],
+        number_limits: 3,
+      },
+    ],
+    resolved_default_values: {},
+    user_actions: [
+      {
+        id: 'approve',
+        title: 'Approve',
+        button_style: UserActionButtonType.Primary,
+      },
+    ],
+    expiration_time: 60,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockContentItemState.staleAttachmentInputChange = undefined
+    mockUseGetHumanInputForm.mockReturnValue({
+      data: formData,
+      isLoading: false,
+      error: null,
+    })
+  })
+
+  it('should render the loading state while the form is being fetched', () => {
+    mockUseGetHumanInputForm.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    })
+
+    render(<FormContent />)
+
+    expect(screen.getByText('loading')).toBeInTheDocument()
+  })
+
+  it('should render status cards for terminal fetch states', () => {
+    const cases = [
+      {
+        error: { code: 'human_input_form_expired' },
+        title: 'share.humanInput.sorry',
+        subtitle: 'share.humanInput.expired',
+        submissionID: true,
+      },
+      {
+        error: { code: 'human_input_form_submitted' },
+        title: 'share.humanInput.sorry',
+        subtitle: 'share.humanInput.completed',
+        submissionID: true,
+      },
+      {
+        error: { code: 'web_form_rate_limit_exceeded' },
+        title: 'share.humanInput.rateLimitExceeded',
+        subtitle: undefined,
+        submissionID: false,
+      },
+      {
+        error: null,
+        title: 'share.humanInput.formNotFound',
+        subtitle: undefined,
+        submissionID: false,
+      },
+    ]
+
+    cases.forEach(({ error, title, subtitle, submissionID }) => {
+      mockUseGetHumanInputForm.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error,
+      })
+      const { unmount } = render(<FormContent />)
+
+      expect(screen.getByText(title)).toBeInTheDocument()
+      if (subtitle) expect(screen.getByText(subtitle)).toBeInTheDocument()
+      else expect(screen.queryByText('share.humanInput.expired')).not.toBeInTheDocument()
+
+      if (submissionID)
+        expect(
+          screen.getByText('share.humanInput.submissionID:{"id":"token-123"}'),
+        ).toBeInTheDocument()
+      else expect(screen.queryByText(/share\.humanInput\.submissionID/)).not.toBeInTheDocument()
+
+      expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
+      expect(screen.getByText('dify-logo')).toBeInTheDocument()
+      unmount()
+    })
+  })
+
+  it('submits typed human input values through the share form mutation', async () => {
+    const user = userEvent.setup()
+
+    render(<FormContent />)
+
+    await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
+    await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+
+    expect(mockSubmitForm).toHaveBeenCalledWith(
+      {
+        token: 'token-123',
+        data: {
+          action: 'approve',
+          inputs: {
+            summary: 'updated summary',
+            attachments: [
+              {
+                type: 'document',
+                transfer_method: TransferMethod.local_file,
+                url: '',
+                upload_file_id: 'upload-file-1',
+              },
+            ],
+          },
+        },
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
+  })
+
+  it('should show the success status after the submit mutation succeeds', async () => {
+    const user = userEvent.setup()
+
+    render(<FormContent />)
+
+    await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
+    await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+
+    const options = mockSubmitForm.mock.calls[0]![1] as { onSuccess: () => void }
+    act(() => {
+      options.onSuccess()
+    })
+
+    expect(screen.getByText('share.humanInput.thanks')).toBeInTheDocument()
+    expect(screen.getByText('share.humanInput.recorded')).toBeInTheDocument()
+    expect(screen.getByText('share.humanInput.submissionID:{"id":"token-123"}')).toBeInTheDocument()
+  })
+
+  it('should submit empty inputs when there are no form values to process', () => {
+    const { result } = renderHook(() => useFormSubmit('token-empty'))
+
+    act(() => {
+      result.current.submit(
+        undefined as unknown as Record<string, HumanInputFieldValue>,
+        'reject',
+        [],
+      )
+    })
+
+    expect(mockSubmitForm).toHaveBeenCalledWith(
+      {
+        token: 'token-empty',
+        data: {
+          action: 'reject',
+          inputs: {},
+        },
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
+  })
+
+  it('should keep initialized defaults when file upload uses the initial change callback', async () => {
+    const user = userEvent.setup()
+
+    render(<FormContent />)
+
+    await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+
+    expect(mockSubmitForm).toHaveBeenCalledWith(
+      {
+        token: 'token-123',
+        data: {
+          action: 'approve',
+          inputs: {
+            summary: 'initial summary',
+            attachments: [
+              {
+                type: 'document',
+                transfer_method: TransferMethod.local_file,
+                url: '',
+                upload_file_id: 'upload-file-1',
+              },
+            ],
+          },
+        },
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
+  })
+
+  it('should disable action buttons until every required field is filled and files are uploaded', async () => {
+    const user = userEvent.setup()
+
+    render(<FormContent />)
+
+    const approveButton = screen.getByRole('button', { name: 'Approve' })
+    expect(approveButton).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'share-uploading-attachments' }))
+    expect(approveButton).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
+    expect(approveButton).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: 'share-clear-summary' }))
+    expect(approveButton).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
+    expect(approveButton).toBeEnabled()
+  })
+
+  it('should hide branding when remove_webapp_brand is enabled', () => {
+    mockUseGetHumanInputForm.mockReturnValue({
+      data: {
+        ...formData,
+        site: {
+          ...formData.site,
+          custom_config: {
+            remove_webapp_brand: true,
+            replace_webapp_logo: null,
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<FormContent />)
+
+    expect(screen.queryByText('share.chat.poweredBy')).not.toBeInTheDocument()
+    expect(screen.queryByText('dify-logo')).not.toBeInTheDocument()
+  })
+
+  it('should render the custom branding logo when replace_webapp_logo is provided', () => {
+    mockUseGetHumanInputForm.mockReturnValue({
+      data: {
+        ...formData,
+        site: {
+          ...formData.site,
+          custom_config: {
+            remove_webapp_brand: false,
+            replace_webapp_logo: 'https://example.com/custom-logo.png',
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<FormContent />)
+
+    expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'logo' })).toHaveAttribute(
+      'src',
+      'https://example.com/custom-logo.png',
+    )
+    expect(screen.queryByText('dify-logo')).not.toBeInTheDocument()
+  })
+})

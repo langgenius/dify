@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
 import { ImageIndentLeft } from '@/app/components/base/icons/src/vender/line/editor'
@@ -34,25 +35,23 @@ const ResultText: FC<ResultTextProps> = ({
       )}
       {!isRunning && error && (
         <div className="px-4 py-2">
-          <StatusContainer status="failed">
-            {error}
-          </StatusContainer>
+          <StatusContainer status="failed">{error}</StatusContainer>
         </div>
       )}
       {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
         <div className="mt-[120px] flex flex-col items-center px-4 py-2 text-[13px] leading-[18px] text-gray-500">
           <ImageIndentLeft className="size-6 text-gray-400" />
-          <div className="mr-2">{t('resultEmpty.title', { ns: 'runLog' })}</div>
+          <div className="mr-2">{t(($) => $['resultEmpty.title'], { ns: 'runLog' })}</div>
           <div>
-            {t('resultEmpty.tipLeft', { ns: 'runLog' })}
+            {t(($) => $['resultEmpty.tipLeft'], { ns: 'runLog' })}
             <button
               type="button"
               onClick={onClick}
               className="inline cursor-pointer border-none bg-transparent p-0 text-left text-primary-600"
             >
-              {t('resultEmpty.link', { ns: 'runLog' })}
+              {t(($) => $['resultEmpty.link'], { ns: 'runLog' })}
             </button>
-            {t('resultEmpty.tipRight', { ns: 'runLog' })}
+            {t(($) => $['resultEmpty.tipRight'], { ns: 'runLog' })}
           </div>
         </div>
       )}
@@ -60,20 +59,24 @@ const ResultText: FC<ResultTextProps> = ({
         <>
           {outputs && (
             <div className="px-4 py-2">
-              <Markdown content={outputs} />
+              {/* ThinkBlock's timer reads isResponding from ChatContext, which the run panel otherwise lacks. */}
+              <ChatContextProvider chatList={[]} isResponding={!!isRunning}>
+                <Markdown content={outputs} />
+              </ChatContextProvider>
             </div>
           )}
-          {!!allFiles?.length && allFiles.map(item => (
-            <div key={item.varName} className="flex flex-col gap-1 px-4 py-2 system-xs-regular">
-              <div className="py-1 text-text-tertiary">{item.varName}</div>
-              <FileList
-                files={item.list}
-                showDeleteAction={false}
-                showDownloadAction
-                canPreview
-              />
-            </div>
-          ))}
+          {!!allFiles?.length &&
+            allFiles.map((item) => (
+              <div key={item.varName} className="flex flex-col gap-1 px-4 py-2 system-xs-regular">
+                <div className="py-1 text-text-tertiary">{item.varName}</div>
+                <FileList
+                  files={item.list}
+                  showDeleteAction={false}
+                  showDownloadAction
+                  canPreview
+                />
+              </div>
+            ))}
         </>
       )}
     </div>

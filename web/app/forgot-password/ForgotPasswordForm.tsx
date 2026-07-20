@@ -1,9 +1,7 @@
 'use client'
 import type { InitValidateStatusResponse } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
-
 import { useStore } from '@tanstack/react-form'
-
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,15 +15,13 @@ import {
   sendForgotPasswordEmail,
 } from '@/service/common'
 import { basePath } from '@/utils/var'
-
 import Input from '../components/base/input'
 import Loading from '../components/base/loading'
 
 const accountFormSchema = z.object({
-  email: z.email('error.emailInValid')
-    .min(1, {
-      error: 'error.emailInValid',
-    }),
+  email: z.email('error.emailInValid').min(1, {
+    error: 'error.emailInValid',
+  }),
 })
 
 const ForgotPasswordForm = () => {
@@ -45,27 +41,23 @@ const ForgotPasswordForm = () => {
           url: '/forgot-password',
           body: { email: value.email },
         })
-        if (res.result === 'success')
-          setIsEmailSent(true)
+        if (res.result === 'success') setIsEmailSent(true)
         else console.error('Email verification failed')
-      }
-      catch (error) {
+      } catch (error) {
         console.error('Request failed:', error)
       }
     },
   })
 
-  const isSubmitting = useStore(form.store, state => state.isSubmitting)
-  const emailErrors = useStore(form.store, state => state.fieldMeta.email?.errors)
+  const isSubmitting = useStore(form.store, (state) => state.isSubmitting)
+  const emailErrors = useStore(form.store, (state) => state.fieldMeta.email?.errors)
 
   const handleSendResetPasswordClick = async () => {
-    if (isSubmitting)
-      return
+    if (isSubmitting) return
 
     if (isEmailSent) {
       router.push('/signin')
-    }
-    else {
+    } else {
       form.handleSubmit()
     }
   }
@@ -73,78 +65,84 @@ const ForgotPasswordForm = () => {
   useEffect(() => {
     fetchSetupStatus().then(() => {
       fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-        if (res.status === 'not_started')
-          window.location.href = `${basePath}/init`
+        if (res.status === 'not_started') window.location.href = `${basePath}/init`
       })
 
       setLoading(false)
     })
   }, [])
 
-  return (
-    loading
-      ? <Loading />
-      : (
-          <>
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-              <h2 className="text-[32px] font-bold text-text-primary">
-                {isEmailSent ? t('resetLinkSent', { ns: 'login' }) : t('forgotPassword', { ns: 'login' })}
-              </h2>
-              <p className="mt-1 text-sm text-text-secondary">
-                {isEmailSent ? t('checkEmailForResetLink', { ns: 'login' }) : t('forgotPasswordDesc', { ns: 'login' })}
-              </p>
-            </div>
-            <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
-              <div className="relative">
-                <formContext.Provider value={form}>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      form.handleSubmit()
-                    }}
+  return loading ? (
+    <Loading />
+  ) : (
+    <>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="text-[32px] font-bold text-text-primary">
+          {isEmailSent
+            ? t(($) => $.resetLinkSent, { ns: 'login' })
+            : t(($) => $.forgotPassword, { ns: 'login' })}
+        </h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          {isEmailSent
+            ? t(($) => $.checkEmailForResetLink, { ns: 'login' })
+            : t(($) => $.forgotPasswordDesc, { ns: 'login' })}
+        </p>
+      </div>
+      <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="relative">
+          <formContext.Provider value={form}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                form.handleSubmit()
+              }}
+            >
+              {!isEmailSent && (
+                <div className="mb-5">
+                  <label
+                    htmlFor="email"
+                    className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
                   >
-                    {!isEmailSent && (
-                      <div className="mb-5">
-                        <label
-                          htmlFor="email"
-                          className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
-                        >
-                          {t('email', { ns: 'login' })}
-                        </label>
-                        <div className="mt-1">
-                          <form.AppField
-                            name="email"
-                          >
-                            {field => (
-                              <Input
-                                id="email"
-                                value={field.state.value}
-                                onChange={e => field.handleChange(e.target.value)}
-                                onBlur={field.handleBlur}
-                                placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
-                              />
-                            )}
-                          </form.AppField>
-                          {emailErrors && emailErrors.length > 0 && (
-                            <span className="text-sm text-red-400">
-                              {t(`${emailErrors[0]}` as 'error.emailInValid', { ns: 'login' })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                    {t(($) => $.email, { ns: 'login' })}
+                  </label>
+                  <div className="mt-1">
+                    <form.AppField name="email">
+                      {(field) => (
+                        <Input
+                          id="email"
+                          value={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          onBlur={field.handleBlur}
+                          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+                        />
+                      )}
+                    </form.AppField>
+                    {emailErrors && emailErrors.length > 0 && (
+                      <span className="text-sm text-red-400">
+                        {t(($) => $[`${emailErrors[0]}` as 'error.emailInValid'], { ns: 'login' })}
+                      </span>
                     )}
-                    <div>
-                      <Button variant="primary" className="w-full" disabled={isSubmitting} onClick={handleSendResetPasswordClick}>
-                        {isEmailSent ? t('backToSignIn', { ns: 'login' }) : t('sendResetLink', { ns: 'login' })}
-                      </Button>
-                    </div>
-                  </form>
-                </formContext.Provider>
+                  </div>
+                </div>
+              )}
+              <div>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  disabled={isSubmitting}
+                  onClick={handleSendResetPasswordClick}
+                >
+                  {isEmailSent
+                    ? t(($) => $.backToSignIn, { ns: 'login' })
+                    : t(($) => $.sendResetLink, { ns: 'login' })}
+                </Button>
               </div>
-            </div>
-          </>
-        )
+            </form>
+          </formContext.Provider>
+        </div>
+      </div>
+    </>
   )
 }
 

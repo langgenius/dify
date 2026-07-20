@@ -19,11 +19,17 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     WorkflowAppGenerateEntity,
 )
+from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
+from graphon.filters import ResponseStreamFilter
 from graphon.runtime import GraphRuntimeState
+from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
+from libs.helper import to_timestamp
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
@@ -52,20 +58,21 @@ class _EndUser(BaseModel):
 
 
 def _get_user_type_descriminator(value: Any):
-    if isinstance(value, (_Account, _EndUser)):
-        return value.TYPE
-    elif isinstance(value, dict):
-        user_type_str = value.get("TYPE")
-        if user_type_str is None:
+    match value:
+        case _Account() | _EndUser():
+            return value.TYPE
+        case dict():
+            user_type_str = value.get("TYPE")
+            if user_type_str is None:
+                return None
+            try:
+                user_type = _UserType(user_type_str)
+            except ValueError:
+                return None
+            return user_type
+        case _:
+            # return None if the discriminator value isn't found
             return None
-        try:
-            user_type = _UserType(user_type_str)
-        except ValueError:
-            return None
-        return user_type
-    else:
-        # return None if the discriminator value isn't found
-        return None
 
 
 type User = Annotated[
@@ -162,24 +169,35 @@ class _AppRunner:
 
         user = self._resolve_user()
 
-        with self._setup_flask_context(user):
+        with self._setup_flask_context(user), self._session_factory(expire_on_commit=False) as session:
             try:
                 response = self._run_app(
                     app=app,
                     workflow=workflow,
                     user=user,
                     pause_state_config=pause_config,
+                    session=session,
                 )
             except Exception as exc:
                 if exec_params.streaming:
-                    _publish_error_event(exc, exec_params.workflow_run_id, exec_params.app_mode)
+                    _publish_failed_workflow_terminal_events(
+                        exc=exc,
+                        exec_params=exec_params,
+                    )
                 raise
 
             if not exec_params.streaming:
                 return response
 
             assert isinstance(response, Generator)
-            _publish_streaming_response(response, exec_params.workflow_run_id, exec_params.app_mode)
+            _publish_streaming_response(
+                response,
+                exec_params.workflow_run_id,
+                exec_params.app_mode,
+                exec_params.workflow_id,
+                exec_params.args.get("inputs", {}),
+                WorkflowStartReason.INITIAL,
+            )
 
     def _run_app(
         self,
@@ -188,6 +206,7 @@ class _AppRunner:
         workflow: Workflow,
         user: Account | EndUser,
         pause_state_config: PauseStateLayerConfig,
+        session: Session,
     ):
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
@@ -200,6 +219,7 @@ class _AppRunner:
                 streaming=exec_params.streaming,
                 workflow_run_id=exec_params.workflow_run_id,
                 pause_state_config=pause_state_config,
+                session=session,
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
             return WorkflowAppGenerator().generate(
@@ -221,53 +241,217 @@ class _AppRunner:
     def _resolve_user(self) -> Account | EndUser:
         user_params = self._exec_params.user
 
-        if isinstance(user_params, _EndUser):
-            with self._session() as session:
-                return session.get(EndUser, user_params.end_user_id)
-        elif not isinstance(user_params, _Account):
-            raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
-
-        with self._session() as session:
-            user: Account = session.get(Account, user_params.user_id)
-            user.set_tenant_id(self._exec_params.tenant_id)
-
-        return user
+        match user_params:
+            case _EndUser():
+                with self._session() as session:
+                    return session.get(EndUser, user_params.end_user_id)
+            case _Account():
+                with self._session() as session:
+                    user: Account = session.get(Account, user_params.user_id)
+                return user
+            case _:
+                raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
 
 
 def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Account | EndUser | None:
     role = CreatorUserRole(workflow_run.created_by_role)
     if role == CreatorUserRole.ACCOUNT:
-        user = session.get(Account, workflow_run.created_by)
-        if user:
-            user.set_tenant_id(workflow_run.tenant_id)
-        return user
+        return session.get(Account, workflow_run.created_by)
 
     return session.get(EndUser, workflow_run.created_by)
 
 
-def _publish_error_event(exc: Exception, workflow_run_id: str, app_mode: AppMode) -> None:
-    topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
-    payload = json.dumps({"event": "error", "message": str(exc), "status": 500})
-    topic.publish(payload.encode())
+def _publish_failed_workflow_terminal_events(exc: Exception, exec_params: AppExecutionParams) -> None:
+    """Publish synthetic workflow lifecycle events for pre-runtime failures.
+
+    Early failures can happen before the app generator creates a task entity or
+    emits any workflow queue events. In that window SSE consumers still need a
+    normal terminal event to close their state machines, so we synthesize a
+    minimal `workflow_started -> workflow_finished(failed)` sequence here.
+
+    `workflow_run_id` is reused as a synthetic `task_id` because no application
+    task id exists yet on this failure path.
+    """
+    timestamp = to_timestamp(naive_utc_now())
+    assert timestamp is not None
+
+    topic = MessageBasedAppGenerator.get_response_topic(exec_params.app_mode, exec_params.workflow_run_id)
+    started_payload = WorkflowStartStreamResponse(
+        task_id=exec_params.workflow_run_id,
+        workflow_run_id=exec_params.workflow_run_id,
+        data=WorkflowStartStreamResponse.Data(
+            id=exec_params.workflow_run_id,
+            workflow_id=exec_params.workflow_id,
+            inputs=exec_params.args.get("inputs", {}),
+            created_at=timestamp,
+            reason=WorkflowStartReason.INITIAL,
+        ),
+    )
+    topic.publish(json.dumps(started_payload.model_dump(mode="json"), ensure_ascii=False).encode())
+
+    finished_payload = WorkflowFinishStreamResponse(
+        task_id=exec_params.workflow_run_id,
+        workflow_run_id=exec_params.workflow_run_id,
+        data=WorkflowFinishStreamResponse.Data(
+            id=exec_params.workflow_run_id,
+            workflow_id=exec_params.workflow_id,
+            status=WorkflowExecutionStatus.FAILED,
+            outputs=None,
+            error=str(exc),
+            elapsed_time=0.0,
+            total_tokens=0,
+            total_steps=0,
+            created_by={},
+            created_at=timestamp,
+            finished_at=timestamp,
+            exceptions_count=1,
+            files=[],
+        ),
+    )
+    topic.publish(json.dumps(finished_payload.model_dump(mode="json"), ensure_ascii=False).encode())
+
+
+def _get_event_name(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    if isinstance(event, BaseModel):
+        # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
+        # str / Mapping responses.
+        event_name = getattr(event, "event", None)
+    elif isinstance(event, Mapping):
+        event_name = event.get("event")
+    else:
+        return None
+
+    if event_name is None:
+        return None
+    return str(event_name)
+
+
+def _get_task_id(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    if isinstance(event, BaseModel):
+        # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
+        # str / Mapping responses.
+        task_id = getattr(event, "task_id", None)
+    elif isinstance(event, Mapping):
+        task_id = event.get("task_id")
+    else:
+        return None
+
+    return task_id if isinstance(task_id, str) and task_id else None
 
 
 def _publish_streaming_response(
     response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
-    workflow_run_id: str,
+    workflow_run_id: str | uuid.UUID,
     app_mode: AppMode,
+    workflow_id: str,
+    inputs: Mapping[str, Any],
+    started_reason: WorkflowStartReason,
 ) -> None:
-    topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
-    for event in response_stream:
-        try:
-            if isinstance(event, BaseModel):
-                payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
-            else:
-                payload = json.dumps(event, ensure_ascii=False, default=str)
-        except (TypeError, ValueError):
-            logger.exception("error while encoding event")
-            continue
+    """Publish workflow stream events and close broken streams with a failed terminal event.
 
-        topic.publish(payload.encode())
+    `_AppRunner.run()` only handles failures before the generator is returned.
+    Once we start iterating the runtime stream, this helper becomes the last
+    place that can guarantee SSE consumers eventually see a terminal workflow
+    lifecycle event.
+    """
+    normalized_workflow_run_id = str(workflow_run_id)
+
+    def _publish_failed_terminal_event(error_message: str, task_id: str, publish_started: bool) -> None:
+        timestamp = to_timestamp(naive_utc_now())
+        assert timestamp is not None
+
+        if publish_started:
+            started_payload = WorkflowStartStreamResponse(
+                task_id=task_id,
+                workflow_run_id=normalized_workflow_run_id,
+                data=WorkflowStartStreamResponse.Data(
+                    id=normalized_workflow_run_id,
+                    workflow_id=workflow_id,
+                    inputs=inputs,
+                    created_at=timestamp,
+                    reason=started_reason,
+                ),
+            )
+            topic.publish(
+                json.dumps(
+                    started_payload.model_dump(mode="json", fallback=str),
+                    ensure_ascii=False,
+                ).encode()
+            )
+
+        finished_payload = WorkflowFinishStreamResponse(
+            task_id=task_id,
+            workflow_run_id=normalized_workflow_run_id,
+            data=WorkflowFinishStreamResponse.Data(
+                id=normalized_workflow_run_id,
+                workflow_id=workflow_id,
+                status=WorkflowExecutionStatus.FAILED,
+                outputs=None,
+                error=error_message,
+                elapsed_time=0.0,
+                total_tokens=0,
+                total_steps=0,
+                created_by={},
+                created_at=timestamp,
+                finished_at=timestamp,
+                exceptions_count=1,
+                files=[],
+            ),
+        )
+        topic.publish(json.dumps(finished_payload.model_dump(mode="json"), ensure_ascii=False).encode())
+
+    terminal_events = {"workflow_finished", "workflow_paused"}
+    unexpected_stream_end_message = "Workflow stream ended without a terminal event"
+    topic = MessageBasedAppGenerator.get_response_topic(app_mode, normalized_workflow_run_id)
+    started_published = False
+    terminal_published = False
+    last_task_id = normalized_workflow_run_id
+
+    try:
+        for event in response_stream:
+            event_name = _get_event_name(event)
+            task_id = _get_task_id(event)
+            if task_id is not None:
+                last_task_id = task_id
+
+            try:
+                if isinstance(event, BaseModel):
+                    payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
+                else:
+                    payload = json.dumps(event, ensure_ascii=False, default=str)
+            except (TypeError, ValueError):
+                logger.exception("error while encoding event")
+                continue
+
+            topic.publish(payload.encode())
+
+            if event_name == "workflow_started":
+                started_published = True
+            elif event_name in terminal_events:
+                terminal_published = True
+    except Exception as exc:
+        if not terminal_published:
+            logger.exception(
+                "Workflow stream for run %s failed before terminal event; publishing fallback terminal event",
+                normalized_workflow_run_id,
+            )
+            _publish_failed_terminal_event(
+                error_message=str(exc) or exc.__class__.__name__,
+                task_id=last_task_id,
+                publish_started=not started_published,
+            )
+        raise
+
+    if not terminal_published:
+        logger.warning(
+            "Workflow stream for run %s ended without a terminal event; publishing fallback terminal event",
+            normalized_workflow_run_id,
+        )
+        _publish_failed_terminal_event(
+            error_message=unexpected_stream_end_message,
+            task_id=last_task_id,
+            publish_started=not started_published,
+        )
 
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
@@ -302,6 +486,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     generate_entity = resumption_context.get_generate_entity()
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    response_stream_filter = resumption_context.get_response_stream_filter()
 
     conversation = None
     message = None
@@ -370,19 +555,22 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         case AdvancedChatAppGenerateEntity():
             assert conversation is not None
             assert message is not None
-            _resume_advanced_chat(
-                app_model=app_model,
-                workflow=workflow,
-                user=user,
-                conversation=conversation,
-                message=message,
-                generate_entity=generate_entity,
-                graph_runtime_state=graph_runtime_state,
-                session_factory=session_factory,
-                pause_state_config=pause_config,
-                workflow_run_id=workflow_run_id,
-                workflow_run=workflow_run,
-            )
+            with session_factory() as session:
+                _resume_advanced_chat(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    conversation=conversation,
+                    message=message,
+                    generate_entity=generate_entity,
+                    graph_runtime_state=graph_runtime_state,
+                    response_stream_filter=response_stream_filter,
+                    session_factory=session_factory,
+                    pause_state_config=pause_config,
+                    workflow_run_id=workflow_run_id,
+                    workflow_run=workflow_run,
+                    session=session,
+                )
         case WorkflowAppGenerateEntity():
             _resume_workflow(
                 app_model=app_model,
@@ -390,6 +578,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 user=user,
                 generate_entity=generate_entity,
                 graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
                 session_factory=session_factory,
                 pause_state_config=pause_config,
                 workflow_run_id=workflow_run_id,
@@ -408,10 +597,12 @@ def _resume_advanced_chat(
     message: Message,
     generate_entity: AdvancedChatAppGenerateEntity,
     graph_runtime_state: GraphRuntimeState,
+    response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
     workflow_run: WorkflowRun,
+    session: Session,
 ) -> None:
     resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
 
@@ -422,12 +613,14 @@ def _resume_advanced_chat(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -447,13 +640,22 @@ def _resume_advanced_chat(
             workflow_node_execution_repository=workflow_node_execution_repository,
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
+            session=session,
         )
     except Exception:
         logger.exception("Failed to resume chatflow execution for workflow run %s", workflow_run_id)
         raise
 
     assert isinstance(response, Generator)
-    _publish_streaming_response(response, workflow_run_id, AppMode.ADVANCED_CHAT)
+    _publish_streaming_response(
+        response,
+        workflow_run_id,
+        AppMode.ADVANCED_CHAT,
+        workflow.id,
+        generate_entity.inputs,
+        WorkflowStartReason.RESUMPTION,
+    )
 
 
 def _resume_workflow(
@@ -463,6 +665,7 @@ def _resume_workflow(
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
     graph_runtime_state: GraphRuntimeState,
+    response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
@@ -479,12 +682,14 @@ def _resume_workflow(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -502,13 +707,21 @@ def _resume_workflow(
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
         )
     except Exception:
         logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)
         raise
 
     assert isinstance(response, Generator)
-    _publish_streaming_response(response, workflow_run_id, AppMode.WORKFLOW)
+    _publish_streaming_response(
+        response,
+        workflow_run_id,
+        AppMode.WORKFLOW,
+        workflow.id,
+        generate_entity.inputs,
+        WorkflowStartReason.RESUMPTION,
+    )
 
     try:
         workflow_run_repo.delete_workflow_pause(pause_entity)

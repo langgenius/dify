@@ -1,13 +1,18 @@
 import type { ZodSchema } from 'zod'
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import type { PipelineProcessingParamsResponse, RAGPipelineVariable, RAGPipelineVariables } from '@/models/pipeline'
+import type {
+  PipelineProcessingParamsResponse,
+  RAGPipelineVariable,
+  RAGPipelineVariables,
+} from '@/models/pipeline'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { expectLoadingButton } from '@/test/button'
 import Actions from '../actions'
 import DocumentProcessing from '../index'
 import Options from '../options'
@@ -69,7 +74,10 @@ const mockFormStore = {
 }
 
 vi.mock('@/app/components/base/form', () => ({
-  useAppForm: ({ onSubmit, validators }: {
+  useAppForm: ({
+    onSubmit,
+    validators,
+  }: {
     onSubmit: (params: { value: Record<string, unknown> }) => void
     validators?: {
       onSubmit?: (params: { value: Record<string, unknown> }) => string | undefined
@@ -85,8 +93,14 @@ vi.mock('@/app/components/base/form', () => ({
         mockHandleSubmit()
       },
       store: mockFormStore,
-      AppForm: ({ children }: { children: React.ReactNode }) => <div data-testid="app-form">{children}</div>,
-      Actions: ({ CustomActions }: { CustomActions: (props: CustomActionsProps) => React.ReactNode }) => (
+      AppForm: ({ children }: { children: React.ReactNode }) => (
+        <div data-testid="app-form">{children}</div>
+      ),
+      Actions: ({
+        CustomActions,
+      }: {
+        CustomActions: (props: CustomActionsProps) => React.ReactNode
+      }) => (
         <div data-testid="form-actions">
           {CustomActions({
             form: {
@@ -103,7 +117,7 @@ vi.mock('@/app/components/base/form', () => ({
 }))
 
 vi.mock('@/app/components/base/form/form-scenarios/base/field', () => ({
-  default: ({ config }: { initialData: Record<string, unknown>, config: BaseConfiguration }) => {
+  default: ({ config }: { initialData: Record<string, unknown>; config: BaseConfiguration }) => {
     return () => (
       <div data-testid={`field-${config.variable}`}>
         <span data-testid={`field-label-${config.variable}`}>{config.label}</span>
@@ -114,7 +128,9 @@ vi.mock('@/app/components/base/form/form-scenarios/base/field', () => ({
   },
 }))
 
-const createRAGPipelineVariable = (overrides?: Partial<RAGPipelineVariable>): RAGPipelineVariable => ({
+const createRAGPipelineVariable = (
+  overrides?: Partial<RAGPipelineVariable>,
+): RAGPipelineVariable => ({
   belong_to_node_id: 'test-node',
   type: PipelineInputVarType.textInput,
   label: 'Test Label',
@@ -144,9 +160,10 @@ const createBaseConfiguration = (overrides?: Partial<BaseConfiguration>): BaseCo
   ...overrides,
 })
 
-const createMockSchema = (): ZodSchema => ({
-  safeParse: vi.fn().mockReturnValue({ success: true }),
-}) as unknown as ZodSchema
+const createMockSchema = (): ZodSchema =>
+  ({
+    safeParse: vi.fn().mockReturnValue({ success: true }),
+  }) as unknown as ZodSchema
 
 const setupMocks = (options?: {
   pipelineId?: string | null
@@ -165,21 +182,18 @@ const setupMocks = (options?: {
   mockGenerateZodSchema.mockReturnValue(createMockSchema())
 }
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const renderWithQueryClient = (component: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {component}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>)
 }
 
 describe('DocumentProcessing', () => {
@@ -195,16 +209,6 @@ describe('DocumentProcessing', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      setupMocks({
-        configurations: [createBaseConfiguration()],
-      })
-
-      renderWithQueryClient(<DocumentProcessing {...defaultProps} />)
-
-      expect(screen.getByTestId('form-actions')).toBeInTheDocument()
-    })
-
     it('should render Options component with form elements', () => {
       const configurations = [
         createBaseConfiguration({ variable: 'field1', label: 'Field 1' }),
@@ -264,10 +268,7 @@ describe('DocumentProcessing', () => {
       setupMocks()
 
       renderWithQueryClient(
-        <DocumentProcessing
-          {...defaultProps}
-          dataSourceNodeId={customNodeId}
-        />,
+        <DocumentProcessing {...defaultProps} dataSourceNodeId={customNodeId} />,
       )
 
       expect(screen.getByTestId('form-actions')).toBeInTheDocument()
@@ -278,10 +279,7 @@ describe('DocumentProcessing', () => {
       setupMocks({ configurations: [] })
 
       const { container } = renderWithQueryClient(
-        <DocumentProcessing
-          {...defaultProps}
-          onProcess={mockOnProcess}
-        />,
+        <DocumentProcessing {...defaultProps} onProcess={mockOnProcess} />,
       )
 
       expect(container.querySelector('form')).toBeInTheDocument()
@@ -291,31 +289,13 @@ describe('DocumentProcessing', () => {
       const mockOnBack = vi.fn()
       setupMocks()
 
-      renderWithQueryClient(
-        <DocumentProcessing
-          {...defaultProps}
-          onBack={mockOnBack}
-        />,
-      )
+      renderWithQueryClient(<DocumentProcessing {...defaultProps} onBack={mockOnBack} />)
 
       expect(screen.getByTestId('form-actions')).toBeInTheDocument()
     })
   })
 
   describe('Callback Stability and Memoization', () => {
-    it('should memoize renderCustomActions callback', () => {
-      setupMocks()
-      const { rerender } = renderWithQueryClient(<DocumentProcessing {...defaultProps} />)
-
-      rerender(
-        <QueryClientProvider client={createQueryClient()}>
-          <DocumentProcessing {...defaultProps} />
-        </QueryClientProvider>,
-      )
-
-      expect(screen.getByTestId('form-actions')).toBeInTheDocument()
-    })
-
     it('should update renderCustomActions when isFetchingParams changes', () => {
       setupMocks({ isFetchingParams: false })
       const { rerender } = renderWithQueryClient(<DocumentProcessing {...defaultProps} />)
@@ -353,12 +333,7 @@ describe('DocumentProcessing', () => {
       const mockOnBack = vi.fn()
       setupMocks()
 
-      renderWithQueryClient(
-        <DocumentProcessing
-          {...defaultProps}
-          onBack={mockOnBack}
-        />,
-      )
+      renderWithQueryClient(<DocumentProcessing {...defaultProps} onBack={mockOnBack} />)
       const backButton = screen.getByText('datasetPipeline.operations.backToDataSource')
       fireEvent.click(backButton)
 
@@ -369,12 +344,7 @@ describe('DocumentProcessing', () => {
       const mockOnProcess = vi.fn()
       setupMocks()
 
-      renderWithQueryClient(
-        <DocumentProcessing
-          {...defaultProps}
-          onProcess={mockOnProcess}
-        />,
-      )
+      renderWithQueryClient(<DocumentProcessing {...defaultProps} onProcess={mockOnProcess} />)
       const processButton = screen.getByText('datasetPipeline.operations.process')
       fireEvent.click(processButton)
 
@@ -383,19 +353,6 @@ describe('DocumentProcessing', () => {
   })
 
   describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      setupMocks()
-      const { rerender } = renderWithQueryClient(<DocumentProcessing {...defaultProps} />)
-
-      rerender(
-        <QueryClientProvider client={createQueryClient()}>
-          <DocumentProcessing {...defaultProps} />
-        </QueryClientProvider>,
-      )
-
-      expect(screen.getByTestId('form-actions')).toBeInTheDocument()
-    })
-
     it('should not break when re-rendering with different props', () => {
       const initialProps = {
         ...defaultProps,
@@ -447,9 +404,11 @@ describe('DocumentProcessing', () => {
 
     it('should handle large number of variables', () => {
       const variables = Array.from({ length: 50 }, (_, i) =>
-        createRAGPipelineVariable({ variable: `var_${i}` }))
+        createRAGPipelineVariable({ variable: `var_${i}` }),
+      )
       const configurations = Array.from({ length: 50 }, (_, i) =>
-        createBaseConfiguration({ variable: `var_${i}`, label: `Field ${i}` }))
+        createBaseConfiguration({ variable: `var_${i}`, label: `Field ${i}` }),
+      )
       setupMocks({
         paramsConfig: { variables },
         configurations,
@@ -464,10 +423,7 @@ describe('DocumentProcessing', () => {
       setupMocks()
 
       renderWithQueryClient(
-        <DocumentProcessing
-          {...defaultProps}
-          dataSourceNodeId="node-with-special_chars.123"
-        />,
+        <DocumentProcessing {...defaultProps} dataSourceNodeId="node-with-special_chars.123" />,
       )
 
       expect(screen.getByTestId('form-actions')).toBeInTheDocument()
@@ -495,12 +451,16 @@ describe('DocumentProcessing', () => {
   })
 })
 
-const createMockFormParams = (overrides?: Partial<{
-  handleSubmit: ReturnType<typeof vi.fn>
-  isSubmitting: boolean
-  canSubmit: boolean
-}>): CustomActionsProps => ({
-  form: { handleSubmit: overrides?.handleSubmit ?? vi.fn() } as unknown as CustomActionsProps['form'],
+const createMockFormParams = (
+  overrides?: Partial<{
+    handleSubmit: ReturnType<typeof vi.fn>
+    isSubmitting: boolean
+    canSubmit: boolean
+  }>,
+): CustomActionsProps => ({
+  form: {
+    handleSubmit: overrides?.handleSubmit ?? vi.fn(),
+  } as unknown as CustomActionsProps['form'],
   isSubmitting: overrides?.isSubmitting ?? false,
   canSubmit: overrides?.canSubmit ?? true,
 })
@@ -515,12 +475,7 @@ describe('Actions', () => {
     it('should render back button', () => {
       const mockFormParams = createMockFormParams()
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
 
       expect(screen.getByText('datasetPipeline.operations.backToDataSource')).toBeInTheDocument()
     })
@@ -528,12 +483,7 @@ describe('Actions', () => {
     it('should render process button', () => {
       const mockFormParams = createMockFormParams()
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
 
       expect(screen.getByText('datasetPipeline.operations.process')).toBeInTheDocument()
     })
@@ -543,13 +493,7 @@ describe('Actions', () => {
     it('should disable process button when runDisabled is true', () => {
       const mockFormParams = createMockFormParams()
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          runDisabled={true}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} runDisabled={true} onBack={vi.fn()} />)
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).toBeDisabled()
@@ -558,26 +502,16 @@ describe('Actions', () => {
     it('should disable process button when isSubmitting is true', () => {
       const mockFormParams = createMockFormParams({ isSubmitting: true })
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
+      expectLoadingButton(processButton)
     })
 
     it('should disable process button when canSubmit is false', () => {
       const mockFormParams = createMockFormParams({ canSubmit: false })
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).toBeDisabled()
@@ -589,15 +523,10 @@ describe('Actions', () => {
       }
       const mockFormParams = createMockFormParams()
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
+      expectLoadingButton(processButton)
     })
 
     it('should enable process button when all conditions are met', () => {
@@ -606,13 +535,7 @@ describe('Actions', () => {
       }
       const mockFormParams = createMockFormParams()
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          runDisabled={false}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} runDisabled={false} onBack={vi.fn()} />)
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).not.toBeDisabled()
@@ -624,12 +547,7 @@ describe('Actions', () => {
       const mockOnBack = vi.fn()
       const mockFormParams = createMockFormParams()
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={mockOnBack}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} onBack={mockOnBack} />)
 
       fireEvent.click(screen.getByText('datasetPipeline.operations.backToDataSource'))
 
@@ -640,12 +558,7 @@ describe('Actions', () => {
       const mockSubmit = vi.fn()
       const mockFormParams = createMockFormParams({ handleSubmit: mockSubmit })
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
 
       fireEvent.click(screen.getByText('datasetPipeline.operations.process'))
 
@@ -653,49 +566,11 @@ describe('Actions', () => {
     })
   })
 
-  describe('Loading State', () => {
-    it('should show loading state when isSubmitting', () => {
-      const mockFormParams = createMockFormParams({ isSubmitting: true })
-
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
-
-      const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
-    })
-
-    it('should show loading state when workflow is running', () => {
-      mockWorkflowRunningData = {
-        result: { status: WorkflowRunningStatus.Running },
-      }
-      const mockFormParams = createMockFormParams()
-
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
-
-      const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
-    })
-  })
-
   describe('Edge Cases', () => {
     it('should handle undefined runDisabled prop', () => {
       const mockFormParams = createMockFormParams()
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).not.toBeDisabled()
@@ -705,37 +580,10 @@ describe('Actions', () => {
       mockWorkflowRunningData = undefined
       const mockFormParams = createMockFormParams()
 
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).not.toBeDisabled()
-    })
-  })
-
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      const mockFormParams = createMockFormParams()
-      const mockOnBack = vi.fn()
-      const { rerender } = render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={mockOnBack}
-        />,
-      )
-
-      rerender(
-        <Actions
-          formParams={mockFormParams}
-          onBack={mockOnBack}
-        />,
-      )
-
-      expect(screen.getByText('datasetPipeline.operations.backToDataSource')).toBeInTheDocument()
     })
   })
 })
@@ -785,30 +633,13 @@ describe('Options', () => {
         initialData: {},
         configurations: [],
         schema: createMockSchema(),
-        CustomActions: () => (
-          <button data-testid="custom-action">Custom Submit</button>
-        ),
+        CustomActions: () => <button data-testid="custom-action">Custom Submit</button>,
         onSubmit: vi.fn(),
       }
 
       render(<Options {...props} />)
 
       expect(screen.getByTestId('custom-action')).toBeInTheDocument()
-    })
-
-    it('should render with correct class name', () => {
-      const props = {
-        initialData: {},
-        configurations: [],
-        schema: createMockSchema(),
-        CustomActions: () => <button>Submit</button>,
-        onSubmit: vi.fn(),
-      }
-
-      const { container } = render(<Options {...props} />)
-
-      const form = container.querySelector('form')
-      expect(form).toHaveClass('w-full')
     })
   })
 
@@ -876,9 +707,7 @@ describe('Options', () => {
         safeParse: vi.fn().mockReturnValue({
           success: false,
           error: {
-            issues: [
-              { path: ['name'], message: 'Name is required' },
-            ],
+            issues: [{ path: ['name'], message: 'Name is required' }],
           },
         }),
       } as unknown as ZodSchema
@@ -902,9 +731,7 @@ describe('Options', () => {
         safeParse: vi.fn().mockReturnValue({
           success: false,
           error: {
-            issues: [
-              { path: ['name'], message: 'Name is required' },
-            ],
+            issues: [{ path: ['name'], message: 'Name is required' }],
           },
         }),
       } as unknown as ZodSchema
@@ -931,9 +758,7 @@ describe('Options', () => {
         safeParse: vi.fn().mockReturnValue({
           success: false,
           error: {
-            issues: [
-              { path: ['user', 'profile', 'email'], message: 'Invalid email format' },
-            ],
+            issues: [{ path: ['user', 'profile', 'email'], message: 'Invalid email format' }],
           },
         }),
       } as unknown as ZodSchema
@@ -992,9 +817,7 @@ describe('Options', () => {
         safeParse: vi.fn().mockReturnValue({
           success: false,
           error: {
-            issues: [
-              { path: [], message: 'Form validation failed' },
-            ],
+            issues: [{ path: [], message: 'Form validation failed' }],
           },
         }),
       } as unknown as ZodSchema
@@ -1130,7 +953,8 @@ describe('Options', () => {
 
     it('should handle large number of configurations', () => {
       const configurations = Array.from({ length: 20 }, (_, i) =>
-        createBaseConfiguration({ variable: `field_${i}`, label: `Field ${i}` }))
+        createBaseConfiguration({ variable: `field_${i}`, label: `Field ${i}` }),
+      )
       const props = {
         initialData: {},
         configurations,
@@ -1161,11 +985,12 @@ describe('useInputVariables Hook', () => {
       setupMocks({ isFetchingParams: true })
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 
@@ -1178,11 +1003,12 @@ describe('useInputVariables Hook', () => {
       setupMocks({ paramsConfig: { variables } })
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 
@@ -1196,11 +1022,12 @@ describe('useInputVariables Hook', () => {
       setupMocks()
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 
@@ -1212,11 +1039,12 @@ describe('useInputVariables Hook', () => {
       setupMocks({ pipelineId: null })
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 
@@ -1248,11 +1076,12 @@ describe('DocumentProcessing Integration', () => {
       })
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 
@@ -1288,27 +1117,29 @@ describe('DocumentProcessing Integration', () => {
       })
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
+      expectLoadingButton(processButton)
     })
 
     it('should update when fetching params status changes', () => {
       setupMocks({ isFetchingParams: true })
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 
@@ -1333,11 +1164,7 @@ describe('Prop Variations', () => {
       ['very-long-node-id-that-could-potentially-cause-issues-if-not-handled-properly'],
     ])('should handle dataSourceNodeId: %s', (nodeId) => {
       renderWithQueryClient(
-        <DocumentProcessing
-          dataSourceNodeId={nodeId}
-          onProcess={vi.fn()}
-          onBack={vi.fn()}
-        />,
+        <DocumentProcessing dataSourceNodeId={nodeId} onProcess={vi.fn()} onBack={vi.fn()} />,
       )
 
       expect(screen.getByTestId('form-actions')).toBeInTheDocument()
@@ -1378,17 +1205,16 @@ describe('Prop Variations', () => {
 
   describe('Configuration Variations', () => {
     it('should handle required fields', () => {
-      const configurations = [
-        createBaseConfiguration({ variable: 'required', required: true }),
-      ]
+      const configurations = [createBaseConfiguration({ variable: 'required', required: true })]
       setupMocks({ configurations })
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 
@@ -1396,17 +1222,16 @@ describe('Prop Variations', () => {
     })
 
     it('should handle optional fields', () => {
-      const configurations = [
-        createBaseConfiguration({ variable: 'optional', required: false }),
-      ]
+      const configurations = [createBaseConfiguration({ variable: 'optional', required: false })]
       setupMocks({ configurations })
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 
@@ -1422,11 +1247,12 @@ describe('Prop Variations', () => {
       setupMocks({ configurations })
 
       renderWithQueryClient(
-        <DocumentProcessing {...{
-          dataSourceNodeId: 'test-node',
-          onProcess: vi.fn(),
-          onBack: vi.fn(),
-        }}
+        <DocumentProcessing
+          {...{
+            dataSourceNodeId: 'test-node',
+            onProcess: vi.fn(),
+            onBack: vi.fn(),
+          }}
         />,
       )
 

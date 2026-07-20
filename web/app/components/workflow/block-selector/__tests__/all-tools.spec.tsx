@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
+import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
@@ -27,9 +28,17 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
-vi.mock('@/utils/var', async importOriginal => ({
+vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
-  getMarketplaceUrl: () => 'https://marketplace.test/tools',
+  getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
+}))
+
+vi.mock('../rag-tool-recommendations', () => ({
+  RAGToolRecommendations: ({ onLoadMore }: { onLoadMore: () => void }) => (
+    <button type="button" onClick={onLoadMore}>
+      Load more RAG tools
+    </button>
+  ),
 }))
 
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
@@ -69,15 +78,19 @@ describe('AllTools', () => {
         searchText=""
         tags={[]}
         onSelect={vi.fn()}
-        buildInTools={[createToolProvider({
-          id: 'provider-built-in',
-          label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
-        })]}
-        customTools={[createToolProvider({
-          id: 'provider-custom',
-          type: 'custom',
-          label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
-        })]}
+        buildInTools={[
+          createToolProvider({
+            id: 'provider-built-in',
+            label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
+          }),
+        ]}
+        customTools={[
+          createToolProvider({
+            id: 'provider-custom',
+            type: 'custom',
+            label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
+          }),
+        ]}
         workflowTools={[]}
         mcpTools={[]}
       />,
@@ -90,6 +103,59 @@ describe('AllTools', () => {
 
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
     expect(screen.queryByText('Built In Provider')).not.toBeInTheDocument()
+  })
+
+  it('updates the tools list title by the active tab', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AllTools
+        searchText=""
+        tags={[]}
+        onSelect={vi.fn()}
+        buildInTools={[
+          createToolProvider({
+            id: 'provider-built-in',
+            label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
+          }),
+        ]}
+        customTools={[
+          createToolProvider({
+            id: 'provider-custom',
+            type: CollectionType.custom,
+            label: { en_US: 'Swagger Provider', zh_Hans: 'Swagger Provider' },
+          }),
+        ]}
+        workflowTools={[
+          createToolProvider({
+            id: 'provider-workflow',
+            type: CollectionType.workflow,
+            label: { en_US: 'Workflow Provider', zh_Hans: 'Workflow Provider' },
+          }),
+        ]}
+        mcpTools={[
+          createToolProvider({
+            id: 'provider-mcp',
+            type: CollectionType.mcp,
+            label: { en_US: 'MCP Provider', zh_Hans: 'MCP Provider' },
+          }),
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('tools.allTools')).toBeInTheDocument()
+
+    await user.click(screen.getByText('workflow.tabs.plugin'))
+    expect(screen.getByText('tools.allToolPlugins')).toBeInTheDocument()
+
+    await user.click(screen.getByText('workflow.tabs.customTool'))
+    expect(screen.getByText('tools.allSwaggerAPIAsTool')).toBeInTheDocument()
+
+    await user.click(screen.getByText('workflow.tabs.workflowTool'))
+    expect(screen.getByText('tools.allWorkflowAsTool')).toBeInTheDocument()
+
+    await user.click(screen.getByText('MCP'))
+    expect(screen.getByText('tools.allMCP')).toBeInTheDocument()
   })
 
   it('filters the rendered tools by the search text', () => {
@@ -134,5 +200,28 @@ describe('AllTools', () => {
     await waitFor(() => {
       expect(screen.getByText('workflow.tabs.noPluginsFound')).toBeInTheDocument()
     })
+  })
+
+  it('returns the next tag value when loading more RAG tools', async () => {
+    const user = userEvent.setup()
+    const onTagsChange = vi.fn()
+
+    render(
+      <AllTools
+        searchText=""
+        tags={[]}
+        onTagsChange={onTagsChange}
+        onSelect={vi.fn()}
+        buildInTools={[createToolProvider({ id: 'provider-built-in' })]}
+        customTools={[]}
+        workflowTools={[]}
+        mcpTools={[]}
+        isInRAGPipeline
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Load more RAG tools' }))
+
+    expect(onTagsChange).toHaveBeenCalledWith(['rag'])
   })
 })

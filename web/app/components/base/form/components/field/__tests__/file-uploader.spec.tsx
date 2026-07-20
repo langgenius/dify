@@ -29,6 +29,7 @@ vi.mock('../../..', () => ({
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: 'test-token' }),
+  usePathname: () => '/',
 }))
 
 describe('FileUploaderField', () => {

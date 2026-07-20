@@ -6,7 +6,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Any
+from typing import Any, override
 
 from pydantic import BaseModel
 
@@ -62,6 +62,7 @@ class TriggerDebugEventPoller(ABC):
 
 
 class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
+    @override
     def poll(self) -> TriggerDebugEvent | None:
         from services.trigger.trigger_service import TriggerService
 
@@ -103,6 +104,7 @@ class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
 
 
 class WebhookTriggerDebugEventPoller(TriggerDebugEventPoller):
+    @override
     def poll(self) -> TriggerDebugEvent | None:
         pool_key = build_webhook_pool_key(
             tenant_id=self.tenant_id,
@@ -190,6 +192,7 @@ class ScheduleTriggerDebugEventPoller(TriggerDebugEventPoller):
             inputs={},
         )
 
+    @override
     def poll(self) -> TriggerDebugEvent | None:
         schedule_debug_runtime = self.get_or_create_schedule_debug_runtime()
         if schedule_debug_runtime.next_run_at > naive_utc_now():

@@ -10,10 +10,14 @@ import { AuthCategory } from '../../types'
 
 const mockNotify = vi.fn()
 const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  success: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'info', message, ...options }),
   dismiss: vi.fn(),
   update: vi.fn(),
   promise: vi.fn(),
@@ -32,7 +36,10 @@ type MockFormValues = {
   values: Record<string, unknown>
 }
 
-const defaultFormValues: MockFormValues = { isCheckValidated: true, values: { __name__: 'My Key', api_key: 'sk-123' } }
+const defaultFormValues: MockFormValues = {
+  isCheckValidated: true,
+  values: { __name__: 'My Key', api_key: 'sk-123' },
+}
 let mockCredentialSchemas = defaultCredentialSchemas
 let mockIsSchemaLoading = false
 let mockFormValues = defaultFormValues
@@ -60,7 +67,10 @@ vi.mock('@/app/components/base/encrypted-bottom', () => ({
 }))
 
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
-  const MockAuthForm = ({ ref, ...props }: { ref?: React.Ref<unknown> } & Record<string, unknown>) => {
+  const MockAuthForm = ({
+    ref,
+    ...props
+  }: { ref?: React.Ref<unknown> } & Record<string, unknown>) => {
     mockAuthFormProps(props)
     React.useImperativeHandle(ref, () => ({
       getFormValues: () => mockFormValues,
@@ -76,6 +86,14 @@ vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
 vi.mock('@/app/components/base/form/types', () => ({
   FormTypeEnum: { textInput: 'text-input' },
 }))
+
+// PermissionSelector (rendered for create mode) calls useMembers via TanStack Query.
+// Stub it so tests don't need a QueryClientProvider wrapper.
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({ data: { accounts: [] } }),
+}))
+
+// PermissionSelector also reads userProfile from app-context.
 
 const basePayload = {
   category: AuthCategory.tool,
@@ -98,8 +116,7 @@ const PopoverModalHarness = ({
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
-        if (!nextOpen)
-          onPopoverClose()
+        if (!nextOpen) onPopoverClose()
       }}
     >
       <PopoverTrigger render={<button type="button">Credentials</button>} />
@@ -156,7 +173,7 @@ describe('ApiKeyModal', () => {
   it('should render modal with correct title', () => {
     render(<ApiKeyModal pluginPayload={basePayload} />)
 
-    expect(screen.getByTestId('modal-title')).toHaveTextContent('plugin.auth.useApiAuth')
+    expect(screen.getByRole('heading', { name: 'plugin.auth.useApiAuth' })).toBeInTheDocument()
   })
 
   it('should render auth form when data is loaded', () => {
@@ -178,14 +195,14 @@ describe('ApiKeyModal', () => {
 
     render(<ApiKeyModal pluginPayload={basePayload} formSchemas={customSchemas} />)
 
-    expect(mockAuthFormProps).toHaveBeenCalledWith(expect.objectContaining({
-      formSchemas: expect.arrayContaining([
-        expect.objectContaining({ name: 'custom_api_key' }),
-      ]),
-      defaultValues: expect.objectContaining({
-        custom_api_key: 'default-key',
+    expect(mockAuthFormProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formSchemas: expect.arrayContaining([expect.objectContaining({ name: 'custom_api_key' })]),
+        defaultValues: expect.objectContaining({
+          custom_api_key: 'default-key',
+        }),
       }),
-    }))
+    )
   })
 
   it('should not render auth form when credential schema is empty', () => {
@@ -201,7 +218,7 @@ describe('ApiKeyModal', () => {
 
     render(<ApiKeyModal pluginPayload={basePayload} />)
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(mockAddPluginCredential).not.toHaveBeenCalled()
   })
@@ -212,19 +229,21 @@ describe('ApiKeyModal', () => {
     render(<ApiKeyModal pluginPayload={basePayload} />)
 
     expect(screen.queryByTestId('auth-form')).not.toBeInTheDocument()
-    expect(screen.getByTestId('modal-confirm')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
   })
 
   it('should show remove button when editValues is provided', () => {
     render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing' }} />)
 
-    expect(screen.getByTestId('modal-extra')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeInTheDocument()
   })
 
   it('should not show remove button in add mode', () => {
     render(<ApiKeyModal pluginPayload={basePayload} />)
 
-    expect(screen.queryByTestId('modal-extra')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.remove' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should call onClose when close button clicked', () => {
@@ -232,6 +251,18 @@ describe('ApiKeyModal', () => {
     render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} />)
 
     fireEvent.click(screen.getByRole('button', { name: /Close|operation.close/ }))
+    expect(mockOnClose).toHaveBeenCalled()
+  })
+
+  it('should call onClose after controlled cancel closes the modal', async () => {
+    const mockOnClose = vi.fn()
+    render(<ControlledModalHarness ApiKeyModal={ApiKeyModal} onClose={mockOnClose} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')
+    })
     expect(mockOnClose).toHaveBeenCalled()
   })
 
@@ -250,15 +281,19 @@ describe('ApiKeyModal', () => {
   it('should call addPluginCredential on confirm in add mode', async () => {
     const mockOnClose = vi.fn()
     const mockOnUpdate = vi.fn()
-    render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} onUpdate={mockOnUpdate} />)
+    render(
+      <ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} onUpdate={mockOnUpdate} />,
+    )
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
-      expect(mockAddPluginCredential).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'api-key',
-        name: 'My Key',
-      }))
+      expect(mockAddPluginCredential).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'api-key',
+          name: 'My Key',
+        }),
+      )
     })
   })
 
@@ -267,12 +302,14 @@ describe('ApiKeyModal', () => {
 
     render(<ApiKeyModal pluginPayload={basePayload} />)
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
-      expect(mockAddPluginCredential).toHaveBeenCalledWith(expect.objectContaining({
-        name: '',
-      }))
+      expect(mockAddPluginCredential).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: '',
+        }),
+      )
     })
   })
 
@@ -281,7 +318,7 @@ describe('ApiKeyModal', () => {
 
     render(<ApiKeyModal pluginPayload={basePayload} />)
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(mockAddPluginCredential).not.toHaveBeenCalled()
     expect(mockUpdatePluginCredential).not.toHaveBeenCalled()
@@ -292,14 +329,14 @@ describe('ApiKeyModal', () => {
     mockAddPluginCredential.mockImplementationOnce(async () => {
       if (!repeatedClickTriggered) {
         repeatedClickTriggered = true
-        fireEvent.click(screen.getByTestId('modal-confirm'))
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
       }
       return {}
     })
 
     render(<ApiKeyModal pluginPayload={basePayload} />)
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
       expect(mockAddPluginCredential).toHaveBeenCalledTimes(1)
@@ -307,9 +344,14 @@ describe('ApiKeyModal', () => {
   })
 
   it('should call updatePluginCredential on confirm in edit mode', async () => {
-    render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing', __credential_id__: 'cred-1' }} />)
+    render(
+      <ApiKeyModal
+        pluginPayload={basePayload}
+        editValues={{ api_key: 'existing', __credential_id__: 'cred-1' }}
+      />,
+    )
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
       expect(mockUpdatePluginCredential).toHaveBeenCalled()
@@ -317,24 +359,40 @@ describe('ApiKeyModal', () => {
   })
 
   it('should use empty credential name when authorization name is blank in edit mode', async () => {
-    mockFormValues = { isCheckValidated: true, values: { api_key: 'updated', __credential_id__: 'cred-1' } }
+    mockFormValues = {
+      isCheckValidated: true,
+      values: { api_key: 'updated', __credential_id__: 'cred-1' },
+    }
 
-    render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing', __credential_id__: 'cred-1' }} />)
+    render(
+      <ApiKeyModal
+        pluginPayload={basePayload}
+        editValues={{ api_key: 'existing', __credential_id__: 'cred-1' }}
+      />,
+    )
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
-      expect(mockUpdatePluginCredential).toHaveBeenCalledWith(expect.objectContaining({
-        name: '',
-      }))
+      expect(mockUpdatePluginCredential).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: '',
+        }),
+      )
     })
   })
 
   it('should call onRemove when remove button clicked', () => {
     const mockOnRemove = vi.fn()
-    render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing' }} onRemove={mockOnRemove} />)
+    render(
+      <ApiKeyModal
+        pluginPayload={basePayload}
+        editValues={{ api_key: 'existing' }}
+        onRemove={mockOnRemove}
+      />,
+    )
 
-    fireEvent.click(screen.getByTestId('modal-extra'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     expect(mockOnRemove).toHaveBeenCalled()
   })
 
@@ -360,7 +418,7 @@ describe('ApiKeyModal', () => {
 
     expect(mockOnClose).not.toHaveBeenCalled()
     expect(mockOnPopoverClose).not.toHaveBeenCalled()
-    expect(screen.getByTestId('modal')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('should close on backdrop click through controlled open state', async () => {
@@ -368,8 +426,7 @@ describe('ApiKeyModal', () => {
     render(<ControlledModalHarness ApiKeyModal={ApiKeyModal} onClose={mockOnClose} />)
 
     const backdrop = document.querySelector('.bg-background-overlay')
-    if (!backdrop)
-      throw new Error('Expected dialog backdrop to render')
+    if (!backdrop) throw new Error('Expected dialog backdrop to render')
 
     fireEvent.pointerDown(backdrop)
     fireEvent.mouseDown(backdrop)

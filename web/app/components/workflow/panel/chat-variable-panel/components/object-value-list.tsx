@@ -4,31 +4,29 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ObjectValueItem from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
 
-type Props = {
+type Props = Readonly<{
   list: any[]
   onChange: (list: any[]) => void
-}
+}>
 
-const ObjectValueList: FC<Props> = ({
-  list,
-  onChange,
-}) => {
+const ObjectValueList: FC<Props> = ({ list, onChange }) => {
   const { t } = useTranslation()
 
   return (
     <div className="w-full overflow-hidden rounded-lg border border-gray-200">
       <div className="flex h-7 items-center system-xs-medium-uppercase text-text-tertiary">
-        <div className="flex h-full w-[120px] items-center border-r border-gray-200 pl-2">{t('chatVariable.modal.objectKey', { ns: 'workflow' })}</div>
-        <div className="flex h-full w-[96px] items-center border-r border-gray-200 pl-2">{t('chatVariable.modal.objectType', { ns: 'workflow' })}</div>
-        <div className="flex h-full w-[230px] items-center pr-1 pl-2">{t('chatVariable.modal.objectValue', { ns: 'workflow' })}</div>
+        <div className="flex h-full w-[120px] items-center border-r border-gray-200 pl-2">
+          {t(($) => $['chatVariable.modal.objectKey'], { ns: 'workflow' })}
+        </div>
+        <div className="flex h-full w-[96px] items-center border-r border-gray-200 pl-2">
+          {t(($) => $['chatVariable.modal.objectType'], { ns: 'workflow' })}
+        </div>
+        <div className="flex h-full w-[230px] items-center pr-1 pl-2">
+          {t(($) => $['chatVariable.modal.objectValue'], { ns: 'workflow' })}
+        </div>
       </div>
       {list.map((item, index) => (
-        <ObjectValueItem
-          key={index}
-          index={index}
-          list={list}
-          onChange={onChange}
-        />
+        <ObjectValueItem key={index} index={index} list={list} onChange={onChange} />
       ))}
     </div>
   )

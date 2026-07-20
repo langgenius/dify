@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook } from '@testing-library/react'
 import { useChat } from '../../hooks'
 
@@ -11,6 +11,9 @@ const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
 const mockGetNodes = vi.fn((): any[] => [])
+const mockHooksStoreState = vi.hoisted(() => ({
+  canRun: true,
+}))
 
 let mockWorkflowRunningData: any = null
 
@@ -49,7 +52,15 @@ vi.mock('../../../../hooks', () => ({
 }))
 
 vi.mock('../../../../hooks-store', () => ({
-  useHooksStore: () => null,
+  useHooksStore: (
+    selector: (state: { configsMap: null; accessControl: { canRun: boolean } }) => unknown,
+  ) =>
+    selector({
+      configsMap: null,
+      accessControl: {
+        canRun: mockHooksStoreState.canRun,
+      },
+    }),
 }))
 
 vi.mock('../../../../store', () => ({
@@ -67,6 +78,7 @@ vi.mock('../../../../store', () => ({
 const resetMocksAndWorkflowState = () => {
   vi.clearAllMocks()
   mockWorkflowRunningData = null
+  mockHooksStoreState.canRun = true
 }
 
 describe('useChat – handleSend', () => {
@@ -85,6 +97,20 @@ describe('useChat – handleSend', () => {
     expect(mockHandleRun).toHaveBeenCalledTimes(1)
     const [bodyParams] = (mockHandleRun.mock.calls[0] ?? []) as [any]
     expect(bodyParams.query).toBe('hello')
+  })
+
+  it('should return false and skip handleRun when test/run permission is missing', () => {
+    mockHooksStoreState.canRun = false
+    const { result } = renderHook(() => useChat({}))
+
+    let returned: unknown
+    act(() => {
+      returned = result.current.handleSend({ query: 'hello', inputs: {} }, {})
+    })
+
+    expect(returned).toBe(false)
+    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(result.current.chatList).toHaveLength(0)
   })
 
   it('should show notification and return false when already responding', () => {
@@ -119,12 +145,12 @@ describe('useChat – handleSend', () => {
       result.current.handleSend({ query: 'test question' }, {})
     })
 
-    const questionItem = result.current.chatList.find(item => item.content === 'test question')
+    const questionItem = result.current.chatList.find((item) => item.content === 'test question')
     expect(questionItem).toBeDefined()
     expect(questionItem!.isAnswer).toBe(false)
 
     const answerPlaceholder = result.current.chatList.find(
-      item => item.isAnswer && !item.isOpeningStatement && item.content === '',
+      (item) => item.isAnswer && !item.isOpeningStatement && item.content === '',
     )
     expect(answerPlaceholder).toBeDefined()
   })

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import NewMCPCard from '../create-card'
+import NewMCPCard, { NewMCPButton } from '../create-card'
 
 // Track the mock functions
 const mockCreateMCP = vi.fn().mockResolvedValue({ id: 'new-mcp-id', name: 'New MCP' })
@@ -18,18 +18,20 @@ vi.mock('@/service/use-tools', () => ({
 // Mock the MCP Modal
 type MockMCPModalProps = {
   show: boolean
-  onConfirm: (info: { name: string, server_url: string }) => void
+  onConfirm: (info: { name: string; server_url: string }) => void
   onHide: () => void
 }
 
 vi.mock('../modal', () => ({
   default: ({ show, onConfirm, onHide }: MockMCPModalProps) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="mcp-modal">
         <span>tools.mcp.modal.title</span>
-        <button data-testid="confirm-btn" onClick={() => onConfirm({ name: 'Test MCP', server_url: 'https://test.com' })}>
+        <button
+          data-testid="confirm-btn"
+          onClick={() => onConfirm({ name: 'Test MCP', server_url: 'https://test.com' })}
+        >
           Confirm
         </button>
         <button data-testid="close-btn" onClick={onHide}>
@@ -40,15 +42,34 @@ vi.mock('../modal', () => ({
   },
 }))
 
-// Mutable workspace manager state
-let mockIsCurrentWorkspaceManager = true
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['mcp.manage'] as string[],
+  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
+}))
 
-// Mock the app context
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-    isCurrentWorkspaceEditor: true,
-  }),
+vi.mock('@/context/account-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockAppContextState.workspacePermissionKeysAtom)
+      return mockAppContextState.workspacePermissionKeys
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 // Mock the plugins service
@@ -87,15 +108,10 @@ describe('NewMCPCard', () => {
 
   beforeEach(() => {
     mockCreateMCP.mockClear()
-    mockIsCurrentWorkspaceManager = true
+    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.create.cardTitle')).toBeInTheDocument()
-    })
-
     it('should render card title', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.create.cardTitle')).toBeInTheDocument()
@@ -106,10 +122,12 @@ describe('NewMCPCard', () => {
       expect(screen.getByText('tools.mcp.create.cardLink')).toBeInTheDocument()
     })
 
-    it('should render add icon', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      const svgElements = document.querySelectorAll('svg')
-      expect(svgElements.length).toBeGreaterThan(0)
+    it('should render toolbar button', () => {
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(
+        screen.getByRole('button', { name: /tools\.mcp\.create\.cardTitle/i }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -136,31 +154,33 @@ describe('NewMCPCard', () => {
       expect(docLink).toHaveAttribute('target', '_blank')
       expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     })
+
+    it('should open modal when toolbar button is clicked', async () => {
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
+
+      fireEvent.click(screen.getByRole('button', { name: /tools\.mcp\.create\.cardTitle/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('tools.mcp.modal.title')).toBeInTheDocument()
+      })
+    })
   })
 
-  describe('Non-Manager User', () => {
-    it('should not render card when user is not workspace manager', () => {
-      mockIsCurrentWorkspaceManager = false
+  describe('mcp.manage Permission', () => {
+    it('should not render card when user lacks mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = []
 
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
     })
-  })
 
-  describe('Styling', () => {
-    it('should have correct card structure', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
+    it('should not render toolbar button when user lacks mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = []
 
-      const card = document.querySelector('.rounded-xl')
-      expect(card).toBeInTheDocument()
-    })
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 
-    it('should have clickable cursor style', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      const card = document.querySelector('.cursor-pointer')
-      expect(card).toBeInTheDocument()
+      expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
     })
   })
 

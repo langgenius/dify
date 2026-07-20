@@ -4,6 +4,7 @@ import hmac
 import logging
 import os
 import time
+import urllib.parse
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
 from uuid import uuid4
@@ -13,7 +14,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_storage import storage
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 class ToolFileManager:
     @staticmethod
     def _build_graph_file_reference(tool_file: ToolFile) -> File:
-        extension = guess_extension(tool_file.mimetype) or ".bin"
+        extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
         return File(
             file_type=get_file_type_by_mime_type(tool_file.mimetype),
             transfer_method=FileTransferMethod.TOOL_FILE,
@@ -60,26 +61,6 @@ class ToolFileManager:
 
         return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
 
-    @staticmethod
-    def verify_file(file_id: str, timestamp: str, nonce: str, sign: str) -> bool:
-        """
-        verify signature
-        """
-        data_to_sign = f"file-preview|{file_id}|{timestamp}|{nonce}"
-        recalculated_sign = hmac.new(
-            dify_config.SECRET_KEY.encode(),
-            data_to_sign.encode(),
-            hashlib.sha256,
-        ).digest()
-        recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
-
-        # verify signature
-        if sign != recalculated_encoded_sign:
-            return False
-
-        current_time = int(time.time())
-        return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
-
     def create_file_by_raw(
         self,
         *,
@@ -90,7 +71,7 @@ class ToolFileManager:
         mimetype: str,
         filename: str | None = None,
     ) -> ToolFile:
-        extension = guess_extension(mimetype) or ".bin"
+        extension = resolve_extension(filename=filename, mimetype=mimetype)
         unique_name = uuid4().hex
         unique_filename = f"{unique_name}{extension}"
         # default just as before
@@ -129,7 +110,7 @@ class ToolFileManager:
     ) -> ToolFile:
         # try to download image
         try:
-            response = ssrf_proxy.get(file_url)
+            response = remote_fetcher.make_request("GET", file_url)
             response.raise_for_status()
             blob = response.content
         except httpx.TimeoutException:
@@ -140,7 +121,8 @@ class ToolFileManager:
             or response.headers.get("Content-Type", "").split(";")[0].strip()
             or "application/octet-stream"
         )
-        extension = guess_extension(mimetype) or ".bin"
+        url_filename = os.path.basename(urllib.parse.urlparse(file_url).path)
+        extension = resolve_extension(filename=url_filename, mimetype=mimetype)
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
@@ -238,6 +220,13 @@ from graphon.file.tool_file_parser import set_tool_file_manager_factory
 
 def _factory() -> ToolFileManager:
     return ToolFileManager()
+
+
+def resolve_extension(*, filename: str | None, mimetype: str) -> str:
+    filename_extension = os.path.splitext(filename or "")[1].lower()
+    if filename_extension:
+        return filename_extension
+    return guess_extension(mimetype) or ".bin"
 
 
 set_tool_file_manager_factory(_factory)

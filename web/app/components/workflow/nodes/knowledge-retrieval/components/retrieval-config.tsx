@@ -7,11 +7,7 @@ import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -20,7 +16,7 @@ import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-c
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
 
-type Props = {
+type Props = Readonly<{
   payload: {
     retrieval_mode: RETRIEVE_TYPE
     multiple_retrieval_config?: MultipleRetrievalConfig
@@ -32,10 +28,11 @@ type Props = {
   onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
   onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
   readonly?: boolean
+  modal?: boolean
   rerankModalOpen: boolean
   onRerankModelOpenChange: (open: boolean) => void
   selectedDatasets: DataSet[]
-}
+}>
 
 const RetrievalConfig: FC<Props> = ({
   payload,
@@ -45,6 +42,7 @@ const RetrievalConfig: FC<Props> = ({
   onSingleRetrievalModelChange,
   onSingleRetrievalModelParamsChange,
   readonly,
+  modal,
   rerankModalOpen,
   onRerankModelOpenChange,
   selectedDatasets,
@@ -52,31 +50,29 @@ const RetrievalConfig: FC<Props> = ({
   const { t } = useTranslation()
   const { retrieval_mode, multiple_retrieval_config } = payload
 
-  const handleOpen = useCallback((newOpen: boolean) => {
-    onRerankModelOpenChange(newOpen)
-  }, [onRerankModelOpenChange])
+  const handleOpen = useCallback(
+    (newOpen: boolean) => {
+      onRerankModelOpenChange(newOpen)
+    },
+    [onRerankModelOpenChange],
+  )
 
   const datasetConfigs = useMemo(() => {
-    const {
-      reranking_model,
-      top_k,
-      score_threshold,
-      reranking_mode,
-      weights,
-      reranking_enable,
-    } = multiple_retrieval_config || {}
+    const { reranking_model, top_k, score_threshold, reranking_mode, weights, reranking_enable } =
+      multiple_retrieval_config || {}
 
     return {
       retrieval_model: retrieval_mode,
-      reranking_model: (reranking_model?.provider && reranking_model?.model)
-        ? {
-            reranking_provider_name: reranking_model?.provider,
-            reranking_model_name: reranking_model?.model,
-          }
-        : {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
+      reranking_model:
+        reranking_model?.provider && reranking_model?.model
+          ? {
+              reranking_provider_name: reranking_model?.provider,
+              reranking_model_name: reranking_model?.model,
+            }
+          : {
+              reranking_provider_name: '',
+              reranking_model_name: '',
+            },
       top_k: top_k || DATASET_DEFAULT.top_k,
       score_threshold_enabled: !(score_threshold === undefined || score_threshold === null),
       score_threshold,
@@ -89,41 +85,46 @@ const RetrievalConfig: FC<Props> = ({
     }
   }, [retrieval_mode, multiple_retrieval_config])
 
-  const handleChange = useCallback((configs: DatasetConfigs, isRetrievalModeChange?: boolean) => {
-    // Legacy code, for compatibility, have to keep it
-    if (isRetrievalModeChange) {
-      onRetrievalModeChange(configs.retrieval_model)
-      return
-    }
-    onMultipleRetrievalConfigChange({
-      top_k: configs.top_k,
-      score_threshold: configs.score_threshold_enabled ? (configs.score_threshold ?? DATASET_DEFAULT.score_threshold) : null,
-      reranking_model: retrieval_mode === RETRIEVE_TYPE.oneWay
-        ? undefined
-
-        : (!configs.reranking_model?.reranking_provider_name
+  const handleChange = useCallback(
+    (configs: DatasetConfigs, isRetrievalModeChange?: boolean) => {
+      // Legacy code, for compatibility, have to keep it
+      if (isRetrievalModeChange) {
+        onRetrievalModeChange(configs.retrieval_model)
+        return
+      }
+      onMultipleRetrievalConfigChange({
+        top_k: configs.top_k,
+        score_threshold: configs.score_threshold_enabled
+          ? (configs.score_threshold ?? DATASET_DEFAULT.score_threshold)
+          : null,
+        reranking_model:
+          retrieval_mode === RETRIEVE_TYPE.oneWay
             ? undefined
-            : {
-                provider: configs.reranking_model?.reranking_provider_name,
-                model: configs.reranking_model?.reranking_model_name,
-              }),
-      reranking_mode: configs.reranking_mode,
-      weights: configs.weights,
-      reranking_enable: configs.reranking_enable,
-    })
-  }, [onMultipleRetrievalConfigChange, retrieval_mode, onRetrievalModeChange])
+            : !configs.reranking_model?.reranking_provider_name
+              ? undefined
+              : {
+                  provider: configs.reranking_model?.reranking_provider_name,
+                  model: configs.reranking_model?.reranking_model_name,
+                },
+        reranking_mode: configs.reranking_mode,
+        weights: configs.weights,
+        reranking_enable: configs.reranking_enable,
+      })
+    },
+    [onMultipleRetrievalConfigChange, retrieval_mode, onRetrievalModeChange],
+  )
 
   return (
     <Popover
+      modal={modal}
       open={rerankModalOpen}
       onOpenChange={(nextOpen) => {
-        if (readonly)
-          return
+        if (readonly) return
         handleOpen(nextOpen)
       }}
     >
       <PopoverTrigger
-        render={(
+        render={
           <Button
             variant="ghost"
             size="small"
@@ -131,9 +132,9 @@ const RetrievalConfig: FC<Props> = ({
             className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
           >
             <RiEqualizer2Line className="mr-1 size-3.5" />
-            {t('retrievalSettings', { ns: 'dataset' })}
+            {t(($) => $.retrievalSettings, { ns: 'dataset' })}
           </Button>
-        )}
+        }
       />
       <PopoverContent
         placement="bottom-end"

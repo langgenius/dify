@@ -3,7 +3,6 @@ import Sidebar, { AppCategories } from '../sidebar'
 
 vi.mock('@remixicon/react', () => ({
   RiStickyNoteAddLine: () => <span>sticky</span>,
-  RiThumbUpLine: () => <span>thumb</span>,
 }))
 describe('Sidebar', () => {
   it('renders recommended and custom categories', () => {

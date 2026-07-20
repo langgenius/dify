@@ -2,11 +2,7 @@ import type { FC } from 'react'
 import type { DebugWithMultipleModelContextType } from './context'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useFeatures } from '@/app/components/base/features/hooks'
@@ -23,29 +19,32 @@ const DebugWithMultipleModel = () => {
     mode,
     inputs,
     modelConfig,
+    appId,
+    readonly,
+    canTestAndRun = false,
   } = useDebugConfigurationContext()
-  const speech2text = useFeatures(s => s.features.speech2text)
-  const file = useFeatures(s => s.features.file)
-  const {
-    multipleModelConfigs,
-    checkCanSend,
-  } = useDebugWithMultipleModelContext()
+  const speech2text = useFeatures((s) => s.features.speech2text)
+  const file = useFeatures((s) => s.features.file)
+  const { multipleModelConfigs, checkCanSend } = useDebugWithMultipleModelContext()
 
   const { eventEmitter } = useEventEmitterContextContext()
   const isChatMode = mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT
 
-  const handleSend = useCallback((message: string, files?: FileEntity[]) => {
-    if (checkCanSend && !checkCanSend())
-      return
+  const handleSend = useCallback(
+    (message: string, files?: FileEntity[]) => {
+      if (!canTestAndRun) return
+      if (checkCanSend && !checkCanSend()) return
 
-    eventEmitter?.emit({
-      type: APP_CHAT_WITH_MULTIPLE_MODEL,
-      payload: {
-        message,
-        files,
-      },
-    } as any)
-  }, [eventEmitter, checkCanSend])
+      eventEmitter?.emit({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        payload: {
+          message,
+          files,
+        },
+      } as any)
+    },
+    [canTestAndRun, eventEmitter, checkCanSend],
+  )
 
   const twoLine = multipleModelConfigs.length === 2
   const threeLine = multipleModelConfigs.length === 3
@@ -72,35 +71,33 @@ const DebugWithMultipleModel = () => {
       height,
     }
   }, [twoLine, threeLine, fourLine])
-  const position = useCallback((idx: number) => {
-    let translateX = '0'
-    let translateY = '0'
+  const position = useCallback(
+    (idx: number) => {
+      let translateX = '0'
+      let translateY = '0'
 
-    if (twoLine && idx === 1)
-      translateX = 'calc(100% + 8px)'
-    if (threeLine && idx === 1)
-      translateX = 'calc(100% + 8px)'
-    if (threeLine && idx === 2)
-      translateX = 'calc(200% + 16px)'
-    if (fourLine && idx === 1)
-      translateX = 'calc(100% + 8px)'
-    if (fourLine && idx === 2)
-      translateY = 'calc(100% + 8px)'
-    if (fourLine && idx === 3) {
-      translateX = 'calc(100% + 8px)'
-      translateY = 'calc(100% + 8px)'
-    }
+      if (twoLine && idx === 1) translateX = 'calc(100% + 8px)'
+      if (threeLine && idx === 1) translateX = 'calc(100% + 8px)'
+      if (threeLine && idx === 2) translateX = 'calc(200% + 16px)'
+      if (fourLine && idx === 1) translateX = 'calc(100% + 8px)'
+      if (fourLine && idx === 2) translateY = 'calc(100% + 8px)'
+      if (fourLine && idx === 3) {
+        translateX = 'calc(100% + 8px)'
+        translateY = 'calc(100% + 8px)'
+      }
 
-    return {
-      translateX,
-      translateY,
-    }
-  }, [twoLine, threeLine, fourLine])
+      return {
+        translateX,
+        translateY,
+      }
+    },
+    [twoLine, threeLine, fourLine],
+  )
 
-  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
+  const setShowAppConfigureFeaturesModal = useAppStore((s) => s.setShowAppConfigureFeaturesModal)
   const inputsForm = modelConfig.configs.prompt_variables
-    .filter(item => item.type !== 'api')
-    .map(item => ({
+    .filter((item) => item.type !== 'api')
+    .map((item) => ({
       ...item,
       label: item.name,
       variable: item.key,
@@ -111,41 +108,35 @@ const DebugWithMultipleModel = () => {
   return (
     <div className="flex h-full flex-col">
       <div
-        className={`
-          relative mb-3 grow overflow-auto px-6
-        `}
+        className={`relative mb-3 grow overflow-auto px-6`}
         style={{ height: isChatMode ? 'calc(100% - 60px)' : '100%' }}
       >
-        {
-          multipleModelConfigs.map((modelConfig, index) => (
-            <DebugItem
-              key={modelConfig.id}
-              modelAndParameter={modelConfig}
-              className={`
-                absolute top-0 left-6 min-h-[200px]
-                ${twoLine && index === 0 && 'mr-2'}
-                ${threeLine && (index === 0 || index === 1) && 'mr-2'}
-                ${fourLine && (index === 0 || index === 2) && 'mr-2'}
-                ${fourLine && (index === 0 || index === 1) && 'mb-2'}
-              `}
-              style={{
-                width: size.width,
-                height: size.height,
-                transform: `translateX(${position(index).translateX}) translateY(${position(index).translateY})`,
-              }}
-            />
-          ))
-        }
+        {multipleModelConfigs.map((modelConfig, index) => (
+          <DebugItem
+            key={modelConfig.id}
+            modelAndParameter={modelConfig}
+            className={`absolute top-0 left-6 min-h-[200px] ${twoLine && index === 0 && 'mr-2'} ${threeLine && (index === 0 || index === 1) && 'mr-2'} ${fourLine && (index === 0 || index === 2) && 'mr-2'} ${fourLine && (index === 0 || index === 1) && 'mb-2'} `}
+            style={{
+              width: size.width,
+              height: size.height,
+              transform: `translateX(${position(index).translateX}) translateY(${position(index).translateY})`,
+            }}
+          />
+        ))}
       </div>
       {isChatMode && (
         <div className="shrink-0 px-6 pb-0">
           <ChatInputArea
             botName="Bot"
+            readonly={!canTestAndRun}
+            disabled={!canTestAndRun}
             showFeatureBar
+            featureBarReadonly={readonly}
             showFileUpload={false}
             onFeatureBarClick={setShowAppConfigureFeaturesModal}
             onSend={handleSend}
             speechToTextConfig={speech2text as any}
+            speechToTextTarget={{ type: 'consoleApp', appId }}
             visionConfig={file}
             inputs={inputs}
             inputsForm={inputsForm}

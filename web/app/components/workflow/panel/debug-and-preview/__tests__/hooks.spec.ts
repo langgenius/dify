@@ -10,7 +10,9 @@ const mockSetIterTimes = vi.hoisted(() => vi.fn())
 const mockSetLoopTimes = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputForm = vi.hoisted(() => vi.fn())
 const mockSseGet = vi.hoisted(() => vi.fn())
-const mockGetNodes = vi.hoisted(() => vi.fn(() => [] as Array<{ id: string, type: string, data: Record<string, unknown> }>))
+const mockGetNodes = vi.hoisted(() =>
+  vi.fn(() => [] as Array<{ id: string; type: string; data: Record<string, unknown> }>),
+)
 
 let mockWorkflowRunningData: unknown = null
 
@@ -80,8 +82,13 @@ describe('useChat', () => {
 
   it('resumes the workflow event stream when switching to a sibling with pending human input', async () => {
     let sendCallbacks: {
-      onWorkflowStarted: (payload: { workflow_run_id: string, task_id: string, conversation_id: string | null, message_id: string }) => void
-      onHumanInputRequired: (payload: { data: { node_id: string, form_token: string } }) => void
+      onWorkflowStarted: (payload: {
+        workflow_run_id: string
+        task_id: string
+        conversation_id: string | null
+        message_id: string
+      }) => void
+      onHumanInputRequired: (payload: { data: { node_id: string; form_token: string } }) => void
       onCompleted: (payload: boolean) => Promise<void>
     }
 
@@ -126,19 +133,22 @@ describe('useChat', () => {
     const { result } = renderHook(() => useChat({}))
 
     await act(async () => {
-      await result.current.handleSubmitHumanInputForm('token-123', { field: 'value' })
+      await result.current.handleSubmitHumanInputForm('token-123', {
+        inputs: { field: 'value' },
+        action: 'approve',
+      })
     })
 
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-123', { field: 'value' })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-123', {
+      inputs: { field: 'value' },
+      action: 'approve',
+    })
     expect(submitHumanInputForm).toBeDefined()
   })
 
   it('returns the matching custom node for a human input request', () => {
     const node = { id: 'node-1', type: 'custom', data: { title: 'Human Input' } }
-    mockGetNodes.mockReturnValue([
-      node,
-      { id: 'node-2', type: 'custom', data: { title: 'Other' } },
-    ])
+    mockGetNodes.mockReturnValue([node, { id: 'node-2', type: 'custom', data: { title: 'Other' } }])
 
     const { result } = renderHook(() => useChat({}))
 

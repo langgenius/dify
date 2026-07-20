@@ -84,6 +84,27 @@ class TestFileService:
         mock_db_session.add.assert_called_once_with(result)
         mock_db_session.commit.assert_called_once()
 
+    def test_upload_file_uses_explicit_resource_tenant(self, file_service: FileService):
+        user = MagicMock(spec=Account)
+        user.id = "user-id"
+
+        with (
+            patch("services.file_service.storage") as mock_storage,
+            patch("services.file_service.extract_tenant_id") as mock_extract_tenant_id,
+            patch("services.file_service.file_helpers.get_signed_file_url"),
+        ):
+            result = file_service.upload_file(
+                filename="test.txt",
+                content=b"test",
+                mimetype="text/plain",
+                user=user,
+                tenant_id="resource-tenant-id",
+            )
+
+        assert result.tenant_id == "resource-tenant-id"
+        assert mock_storage.save.call_args.args[0].startswith("upload_files/resource-tenant-id/")
+        mock_extract_tenant_id.assert_not_called()
+
     def test_upload_file_invalid_characters(self, file_service):
         with pytest.raises(ValueError, match="Filename contains invalid characters"):
             file_service.upload_file(filename="invalid/file.txt", content=b"", mimetype="text/plain", user=MagicMock())
@@ -375,19 +396,21 @@ class TestFileService:
         file_service.delete_file("file_id")
         # Should return without doing anything
 
-    @patch("services.file_service.db")
-    def test_get_upload_files_by_ids_empty(self, mock_db):
-        result = FileService.get_upload_files_by_ids("tenant_id", [])
+    def test_get_upload_files_by_ids_empty(self):
+        session = MagicMock()
+        result = FileService.get_upload_files_by_ids("tenant_id", [], session=session)
         assert result == {}
 
-    @patch("services.file_service.db")
-    def test_get_upload_files_by_ids(self, mock_db):
+    def test_get_upload_files_by_ids(self):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "550e8400-e29b-41d4-a716-446655440000"
         upload_file.tenant_id = "tenant_id"
-        mock_db.session.scalars().all.return_value = [upload_file]
+        session = MagicMock()
+        session.scalars().all.return_value = [upload_file]
 
-        result = FileService.get_upload_files_by_ids("tenant_id", ["550e8400-e29b-41d4-a716-446655440000"])
+        result = FileService.get_upload_files_by_ids(
+            "tenant_id", ["550e8400-e29b-41d4-a716-446655440000"], session=session
+        )
         assert result["550e8400-e29b-41d4-a716-446655440000"] == upload_file
 
     def test_sanitize_zip_entry_name(self):

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 
 
 class WorkflowAgentBindingError(Exception):
@@ -52,11 +52,6 @@ class WorkflowAgentBindingResolver:
                 )
             if binding.agent_id is None:
                 raise WorkflowAgentBindingError("agent_not_available", "Workflow Agent binding has no agent.")
-            if binding.current_snapshot_id is None:
-                raise WorkflowAgentBindingError(
-                    "agent_config_snapshot_not_found",
-                    "Workflow Agent binding has no current config snapshot.",
-                )
 
             agent = session.scalar(
                 select(Agent)
@@ -72,19 +67,30 @@ class WorkflowAgentBindingResolver:
                     f"Agent {binding.agent_id} is not available.",
                 )
 
+            snapshot_id = (
+                agent.active_config_snapshot_id
+                if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+                else binding.current_snapshot_id
+            )
+            if snapshot_id is None:
+                raise WorkflowAgentBindingError(
+                    "agent_config_snapshot_not_found",
+                    "Workflow Agent binding has no current config snapshot.",
+                )
+
             snapshot = session.scalar(
                 select(AgentConfigSnapshot)
                 .where(
                     AgentConfigSnapshot.tenant_id == tenant_id,
                     AgentConfigSnapshot.agent_id == agent.id,
-                    AgentConfigSnapshot.id == binding.current_snapshot_id,
+                    AgentConfigSnapshot.id == snapshot_id,
                 )
                 .limit(1)
             )
             if snapshot is None:
                 raise WorkflowAgentBindingError(
                     "agent_config_snapshot_not_found",
-                    f"Agent config snapshot {binding.current_snapshot_id} not found.",
+                    f"Agent config snapshot {snapshot_id} not found.",
                 )
 
             session.expunge(binding)

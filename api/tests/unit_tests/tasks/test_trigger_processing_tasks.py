@@ -98,7 +98,7 @@ class TestDispatchTriggeredWorkflow:
             ),
             patch.object(
                 trigger_processing_tasks_module,
-                "_get_latest_workflows_by_app_ids",
+                "_get_published_workflows_by_app_ids",
             ) as get_workflows,
             patch.object(
                 trigger_processing_tasks_module.EndUserService,

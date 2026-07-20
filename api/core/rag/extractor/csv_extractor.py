@@ -1,7 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 import csv
-from typing import Any
+from typing import Any, override
 
 import pandas as pd
 
@@ -33,6 +33,7 @@ class CSVExtractor(BaseExtractor):
         self.source_column = source_column
         self.csv_args = csv_args or {}
 
+    @override
     def extract(self) -> list[Document]:
         """Load data into document objects."""
         docs = []

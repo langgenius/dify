@@ -47,26 +47,9 @@ describe('Filter', () => {
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
-
-      // Should render status chip, period chip, and search input
-      // Should render status chip, period chip, and search input
-      expect(screen.getByText('All'))!.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
-    })
-
     it('should render all filter components', () => {
       render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
       // Status chip
@@ -102,10 +85,7 @@ describe('Filter', () => {
       const user = userEvent.setup()
 
       render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
       await user.click(screen.getByText('All'))
@@ -123,12 +103,7 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
 
       await user.click(screen.getByText('All'))
       await user.click(await screen.findByText('Success'))
@@ -143,19 +118,15 @@ describe('Filter', () => {
       const user = userEvent.setup()
 
       render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
       await user.click(screen.getByText('All'))
       await user.click(await screen.findByText('Fail'))
 
-      expect(mockTrackEvent).toHaveBeenCalledWith(
-        'workflow_log_filter_status_selected',
-        { workflow_log_filter_status: 'failed' },
-      )
+      expect(mockTrackEvent).toHaveBeenCalledWith('workflow_log_filter_status_selected', {
+        workflow_log_filter_status: 'failed',
+      })
     })
 
     it('should reset to all when status is cleared', async () => {
@@ -171,7 +142,9 @@ describe('Filter', () => {
 
       const statusTrigger = screen.getByRole('combobox', { name: 'Success' })
       const statusChip = statusTrigger.parentElement!
-      const clearButton = within(statusChip).getByRole('button', { name: 'common.operation.clear' })
+      const clearButton = within(statusChip).getByRole('button', {
+        name: /common\.operation\.clear Success/,
+      })
 
       await user.click(clearButton)
 
@@ -218,10 +191,7 @@ describe('Filter', () => {
       const user = userEvent.setup()
 
       render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
       await user.click(screen.getByText('appLog.filter.period.last7days'))
@@ -235,34 +205,11 @@ describe('Filter', () => {
       })
     })
 
-    it('should apply period chip sizing classes to trigger and panel', async () => {
-      const user = userEvent.setup()
-
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
-
-      const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
-      expect(periodTrigger).toHaveClass('min-w-[150px]')
-
-      await user.click(periodTrigger)
-      const listbox = await screen.findByRole('listbox')
-      expect(listbox.parentElement).toHaveClass('w-[270px]')
-    })
-
     it('should call setQueryParams when period is selected', async () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
 
       await user.click(screen.getByText('appLog.filter.period.last7days'))
       await user.click(await screen.findByText('appLog.filter.period.allTime'))
@@ -286,7 +233,9 @@ describe('Filter', () => {
 
       const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
       const periodChip = periodTrigger.parentElement!
-      const clearButton = within(periodChip).getByRole('button', { name: 'common.operation.clear' })
+      const clearButton = within(periodChip).getByRole('button', {
+        name: /common\.operation\.clear appLog\.filter\.period\.last7days/,
+      })
 
       await user.click(clearButton)
       expect(setQueryParams).toHaveBeenCalledWith({
@@ -321,12 +270,7 @@ describe('Filter', () => {
           setQueryParams(next)
           onSetQueryParams(next)
         }
-        return (
-          <Filter
-            queryParams={queryParams}
-            setQueryParams={handleSetQueryParams}
-          />
-        )
+        return <Filter queryParams={queryParams} setQueryParams={handleSetQueryParams} />
       }
 
       render(<Wrapper />)
@@ -365,12 +309,7 @@ describe('Filter', () => {
     it('should update on direct input change', () => {
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'new search' } })
@@ -412,14 +351,15 @@ describe('Filter', () => {
       ['2', 'last7days', 7],
       ['3', 'last4weeks', 28],
       ['9', 'allTime', -1],
-    ])('TIME_PERIOD_MAPPING[%s] should have name=%s and correct value', (key, name, expectedValue) => {
-      const mapping = TIME_PERIOD_MAPPING[key]
-      expect(mapping!.name).toBe(name)
-      if (expectedValue >= 0)
-        expect(mapping!.value).toBe(expectedValue)
-      else
-        expect(mapping!.value).toBe(-1)
-    })
+    ])(
+      'TIME_PERIOD_MAPPING[%s] should have name=%s and correct value',
+      (key, name, expectedValue) => {
+        const mapping = TIME_PERIOD_MAPPING[key]
+        expect(mapping!.name).toBe(name)
+        if (expectedValue >= 0) expect(mapping!.value).toBe(expectedValue)
+        else expect(mapping!.value).toBe(-1)
+      },
+    )
   })
 
   // --------------------------------------------------------------------------
@@ -537,10 +477,7 @@ describe('Filter', () => {
 
     it('should have proper layout with flex and gap', () => {
       const { container } = render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
       const filterContainer = container.firstChild as HTMLElement

@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ReactNode } from 'react'
-import {
-  SegmentedControl,
-  SegmentedControlDivider,
-  SegmentedControlItem,
-} from '.'
+import * as React from 'react'
+import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '.'
 
 const meta = {
   title: 'Base/UI/SegmentedControl',
@@ -13,7 +9,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Segmented control built on Base UI ToggleGroup and Toggle. Use it for mode, filter, and view selection that does not need tabpanel semantics.',
+        component:
+          'Segmented control built on Base UI ToggleGroup and Toggle. Use it for mode, filter, and view selection that does not need tabpanel semantics.',
       },
     },
   },
@@ -30,15 +27,13 @@ type SegmentedControlProps = {
   noPadding?: boolean
 }
 
-const Icon = () => (
-  <i className="i-ri-information-line size-4 shrink-0" aria-hidden="true" />
-)
+const Icon = () => <i className="i-ri-information-line size-4 shrink-0" aria-hidden="true" />
 
 const Item = () => (
-  <>
+  <React.Fragment>
     <Icon />
     <span className="px-0.5">Item</span>
-  </>
+  </React.Fragment>
 )
 
 function SegmentedControlExample({
@@ -60,12 +55,13 @@ function SegmentedControlExample({
             aria-label={iconOnly ? `Item ${index + 1}` : undefined}
           >
             <Icon />
-            {!iconOnly && (
-              <span className="px-0.5">Item</span>
-            )}
+            {!iconOnly && <span className="px-0.5">Item</span>}
           </SegmentedControlItem>
           {index === 1 && (
-            <span className="pointer-events-none absolute top-0 -right-px flex h-full items-center" aria-hidden="true">
+            <span
+              className="pointer-events-none absolute top-0 -right-px flex h-full items-center"
+              aria-hidden="true"
+            >
               <SegmentedControlDivider />
             </span>
           )}
@@ -88,18 +84,10 @@ function SpecColumn() {
   )
 }
 
-function SpecPanel({
-  className,
-  children,
-}: {
-  className?: string
-  children: ReactNode
-}) {
+function SpecPanel({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
     <div className={className}>
-      <div className="flex min-h-105 items-center justify-center">
-        {children}
-      </div>
+      <div className="flex min-h-105 items-center justify-center">{children}</div>
     </div>
   )
 }
@@ -115,7 +103,8 @@ export const DesignSpec: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Figma node 2473:9851: segmented control examples with text+icon and icon-only rows, with and without outer padding.',
+        story:
+          'Figma node 2473:9851: segmented control examples with text+icon and icon-only rows, with and without outer padding.',
       },
     },
   },
@@ -140,10 +129,7 @@ export const DataAttributeStates: Story = {
         <SegmentedControlItem value="accent-light">
           <Item />
         </SegmentedControlItem>
-        <SegmentedControlItem
-          value="neutral"
-          className="data-pressed:text-text-primary"
-        >
+        <SegmentedControlItem value="neutral" className="data-pressed:text-text-primary">
           <Item />
         </SegmentedControlItem>
         <SegmentedControlItem
@@ -170,7 +156,8 @@ export const DataAttributeStates: Story = {
   parameters: {
     docs: {
       description: {
-        story: '`SegmentedControlItem` gets `data-pressed` and `data-disabled` from Base UI Toggle. Accent, neutral, and multiple-selection examples are composed through props and className.',
+        story:
+          '`SegmentedControlItem` gets `data-pressed` and `data-disabled` from Base UI Toggle. Accent, neutral, and multiple-selection examples are composed through props and className.',
       },
     },
   },

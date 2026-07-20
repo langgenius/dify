@@ -32,7 +32,7 @@ def base_config(valid_uuid):
 
 
 @pytest.fixture
-def mock_dataset_service(mocker, valid_uuid):
+def mock_dataset_service(mocker: MockerFixture, valid_uuid):
     mock_dataset = MagicMock()
     mock_dataset.tenant_id = "tenant1"
 
@@ -208,7 +208,7 @@ class TestDatasetConfigManagerConvert:
 class TestValidateAndSetDefaults:
     def test_validate_sets_defaults(self):
         config = {}
-        updated, fields = DatasetConfigManager.validate_and_set_defaults("tenant1", AppMode.CHAT, config)
+        updated, fields = DatasetConfigManager.validate_and_set_defaults("tenant1", AppMode.CHAT, config, MagicMock())
         assert "dataset_configs" in updated
         assert updated["dataset_configs"]["retrieval_model"] == "single"
         assert isinstance(fields, list)
@@ -216,7 +216,7 @@ class TestValidateAndSetDefaults:
     def test_validate_raises_when_dataset_configs_not_dict(self):
         config = {"dataset_configs": "invalid"}
         with pytest.raises(AttributeError):
-            DatasetConfigManager.validate_and_set_defaults("tenant1", AppMode.CHAT, config)
+            DatasetConfigManager.validate_and_set_defaults("tenant1", AppMode.CHAT, config, MagicMock())
 
     def test_validate_requires_query_variable_in_completion_mode(self, valid_uuid):
         config = {
@@ -228,7 +228,7 @@ class TestValidateAndSetDefaults:
             }
         }
         with pytest.raises(ValueError):
-            DatasetConfigManager.validate_and_set_defaults("tenant1", AppMode.COMPLETION, config)
+            DatasetConfigManager.validate_and_set_defaults("tenant1", AppMode.COMPLETION, config, MagicMock())
 
 
 # ==============================
@@ -239,7 +239,9 @@ class TestValidateAndSetDefaults:
 class TestExtractDatasetConfig:
     def test_extract_sets_defaults(self):
         config = {}
-        result = DatasetConfigManager.extract_dataset_config_for_legacy_compatibility("tenant1", AppMode.CHAT, config)
+        result = DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
+            "tenant1", AppMode.CHAT, config, MagicMock()
+        )
         assert "agent_mode" in result
         assert result["agent_mode"]["enabled"] is False
         assert result["agent_mode"]["tools"] == []
@@ -247,17 +249,23 @@ class TestExtractDatasetConfig:
     def test_extract_invalid_agent_mode_type(self):
         config = {"agent_mode": "invalid"}
         with pytest.raises(ValueError):
-            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility("tenant1", AppMode.CHAT, config)
+            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
+                "tenant1", AppMode.CHAT, config, MagicMock()
+            )
 
     def test_extract_invalid_enabled_type(self):
         config = {"agent_mode": {"enabled": "yes"}}
         with pytest.raises(ValueError):
-            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility("tenant1", AppMode.CHAT, config)
+            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
+                "tenant1", AppMode.CHAT, config, MagicMock()
+            )
 
     def test_extract_invalid_tools_type(self):
         config = {"agent_mode": {"enabled": True, "tools": "invalid"}}
         with pytest.raises(ValueError):
-            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility("tenant1", AppMode.CHAT, config)
+            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
+                "tenant1", AppMode.CHAT, config, MagicMock()
+            )
 
     def test_extract_invalid_uuid(self, mocker: MockerFixture):
         invalid_uuid = "not-a-uuid"
@@ -269,7 +277,9 @@ class TestExtractDatasetConfig:
             }
         }
         with pytest.raises(ValueError):
-            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility("tenant1", AppMode.CHAT, config)
+            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
+                "tenant1", AppMode.CHAT, config, MagicMock()
+            )
 
     def test_extract_dataset_not_exists(self, valid_uuid, mocker: MockerFixture):
         mocker.patch(
@@ -284,7 +294,9 @@ class TestExtractDatasetConfig:
             }
         }
         with pytest.raises(ValueError):
-            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility("tenant1", AppMode.CHAT, config)
+            DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
+                "tenant1", AppMode.CHAT, config, MagicMock()
+            )
 
 
 # ==============================
@@ -301,14 +313,14 @@ class TestIsDatasetExists:
             return_value=mock_dataset,
         )
 
-        assert DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid)
+        assert DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid, MagicMock())
 
     def test_dataset_exists_false_when_not_found(self, mocker: MockerFixture, valid_uuid):
         mocker.patch(
             "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetService.get_dataset",
             return_value=None,
         )
-        assert not DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid)
+        assert not DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid, MagicMock())
 
     def test_dataset_exists_false_when_tenant_mismatch(self, mocker: MockerFixture, valid_uuid):
         mock_dataset = MagicMock()
@@ -317,4 +329,29 @@ class TestIsDatasetExists:
             "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetService.get_dataset",
             return_value=mock_dataset,
         )
-        assert not DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid)
+        assert not DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid, MagicMock())
+
+
+# ==============================
+# extract_dataset_config_for_legacy_compatibility tests
+# ==============================
+
+
+class TestExtractDatasetConfigForLegacyCompatibility:
+    def test_skips_empty_tool_entry(self):
+        # A malformed empty tool dict in agent_mode.tools must be skipped, not
+        # crash with `IndexError` on `list(tool.keys())[0]`. The sibling
+        # convert() already guards this with `if len(tool) == 1`.
+        config = {
+            "agent_mode": {
+                "enabled": True,
+                "strategy": PlanningStrategy.ROUTER,
+                "tools": [{}],
+            }
+        }
+
+        result = DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
+            "tenant1", AppMode.CHAT, config, MagicMock()
+        )
+
+        assert result["agent_mode"]["tools"] == [{}]

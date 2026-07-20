@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict, cast, override
 
 from packaging import version
 from pydantic import BaseModel, model_validator
@@ -120,12 +120,14 @@ class MilvusVector(BaseVector):
             logger.warning("Failed to check Milvus version: %s. Disabling hybrid search.", str(e))
             return False
 
+    @override
     def get_type(self) -> str:
         """
         Get the type of vector storage (Milvus).
         """
         return VectorType.MILVUS
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         """
         Create a collection and add texts with embeddings.
@@ -135,6 +137,7 @@ class MilvusVector(BaseVector):
         self.create_collection(embeddings, metadatas, index_params)
         self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         """
         Add texts and their embeddings to the collection.
@@ -164,6 +167,7 @@ class MilvusVector(BaseVector):
                 raise e
         return pks
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         """
         Get document IDs by metadata field key and value.
@@ -176,6 +180,7 @@ class MilvusVector(BaseVector):
         else:
             return None
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         """
         Delete documents by metadata field key and value.
@@ -185,6 +190,7 @@ class MilvusVector(BaseVector):
             if ids:
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         """
         Delete documents by their IDs.
@@ -197,6 +203,7 @@ class MilvusVector(BaseVector):
                 ids = [item["id"] for item in result]
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
+    @override
     def delete(self):
         """
         Delete the entire collection.
@@ -204,6 +211,7 @@ class MilvusVector(BaseVector):
         if self._client.has_collection(self._collection_name):
             self._client.drop_collection(self._collection_name, None)
 
+    @override
     def text_exists(self, id: str) -> bool:
         """
         Check if a text with the given ID exists in the collection.
@@ -245,6 +253,7 @@ class MilvusVector(BaseVector):
 
         return docs
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
         Search for documents by vector similarity.
@@ -269,6 +278,7 @@ class MilvusVector(BaseVector):
             score_threshold=float(kwargs.get("score_threshold") or 0.0),
         )
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """
         Search for documents by full-text search (if hybrid search is enabled).
@@ -411,6 +421,7 @@ class MilvusVectorFactory(AbstractVectorFactory):
     Factory class for creating MilvusVector instances.
     """
 
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MilvusVector:
         """
         Initialize a MilvusVector instance for the given dataset.

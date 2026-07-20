@@ -11,6 +11,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueStopEvent,
 )
+from models.model import AppMode
 
 
 class MessageBasedAppQueueManager(AppQueueManager):
@@ -44,7 +45,9 @@ class MessageBasedAppQueueManager(AppQueueManager):
         if isinstance(
             event, QueueStopEvent | QueueErrorEvent | QueueMessageEndEvent | QueueAdvancedChatMessageEndEvent
         ):
-            self.stop_listen()
+            self.stop_listen(execution_terminal=True)
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
+            if self._app_mode == AppMode.ADVANCED_CHAT.value:
+                return
             raise GenerateTaskStoppedError()

@@ -1,9 +1,6 @@
 {
   "dateFormats.display": "MMMM D, YYYY",
   "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
-  "dateFormats.input": "ГГГГ-ММ-ДД",
-  "dateFormats.output": "ГГГГ-ММ-ДД",
-  "dateFormats.outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ",
   "daysInWeek.Fri": "Свободно",
   "daysInWeek.Mon": "Мой",
   "daysInWeek.Sat": "Суббота",

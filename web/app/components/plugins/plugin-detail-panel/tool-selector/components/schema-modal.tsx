@@ -1,45 +1,36 @@
 'use client'
 import type { FC } from 'react'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'
-import { MittProvider, VisualEditorContextProvider } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
+import {
+  MittProvider,
+  VisualEditorContextProvider,
+} from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   schema: SchemaRoot
   rootName: string
   onClose: () => void
-}
+}>
 
-const SchemaModal: FC<Props> = ({
-  isShow,
-  schema,
-  rootName,
-  onClose,
-}) => {
+const SchemaModal: FC<Props> = ({ isShow, schema, rootName, onClose }) => {
   const { t } = useTranslation()
   return (
-    <Dialog
-      open={isShow}
-      onOpenChange={open => !open && onClose()}
-    >
+    <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-full max-w-[960px] p-0">
         <div className="pb-6">
           {/* Header */}
           <div className="relative flex p-6 pr-14 pb-3">
             <DialogTitle className="grow truncate title-2xl-semi-bold text-text-primary">
-              {t('nodes.agent.parameterSchema', { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.parameterSchema'], { ns: 'workflow' })}
             </DialogTitle>
             <button
               type="button"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               className="absolute top-5 right-5 flex size-8 items-center justify-center p-1.5"
               onClick={onClose}
             >
@@ -55,8 +46,7 @@ const SchemaModal: FC<Props> = ({
                   schema={schema}
                   rootName={rootName}
                   readOnly
-                >
-                </VisualEditor>
+                ></VisualEditor>
               </VisualEditorContextProvider>
             </MittProvider>
           </div>

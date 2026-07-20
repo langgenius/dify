@@ -4,7 +4,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 import httpx
 import qdrant_client
@@ -41,7 +41,6 @@ from models.enums import TidbAuthBindingStatus
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
     from qdrant_client.conversions import common_types
-    from qdrant_client.http import models as rest
 
     type DictFilter = dict[str, str | int | bool | dict | list]
     type MetadataFilter = DictFilter | common_types.Filter
@@ -91,6 +90,7 @@ class TidbOnQdrantVector(BaseVector):
         self._distance_func = distance_func.upper()
         self._group_id = group_id
 
+    @override
     def get_type(self) -> str:
         return VectorType.TIDB_ON_QDRANT
 
@@ -101,6 +101,7 @@ class TidbOnQdrantVector(BaseVector):
         }
         return result
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if texts:
             # get embedding vector size
@@ -168,6 +169,7 @@ class TidbOnQdrantVector(BaseVector):
                 self._client.create_payload_index(collection_name, Field.CONTENT_KEY, field_schema=text_index_params)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
@@ -247,6 +249,7 @@ class TidbOnQdrantVector(BaseVector):
 
         return payloads
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
@@ -275,6 +278,7 @@ class TidbOnQdrantVector(BaseVector):
             else:
                 raise e
 
+    @override
     def delete(self):
         from qdrant_client.http.exceptions import UnexpectedResponse
 
@@ -288,6 +292,7 @@ class TidbOnQdrantVector(BaseVector):
             else:
                 raise e
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
@@ -317,6 +322,7 @@ class TidbOnQdrantVector(BaseVector):
                 if e.status_code != 404:
                     raise e
 
+    @override
     def text_exists(self, id: str) -> bool:
         all_collection_name = []
         collections_response = self._client.get_collections()
@@ -329,6 +335,7 @@ class TidbOnQdrantVector(BaseVector):
 
         return len(response) > 0
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from qdrant_client.http import models
 
@@ -370,6 +377,7 @@ class TidbOnQdrantVector(BaseVector):
         docs = sorted(docs, key=lambda x: x.metadata["score"] if x.metadata is not None else 0, reverse=True)
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """Return docs most similar by bm25.
         Returns:
@@ -423,6 +431,7 @@ class TidbOnQdrantVector(BaseVector):
 
 
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
         logger.info("init_vector: tenant_id=%s, dataset_id=%s", dataset.tenant_id, dataset.id)
         stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)

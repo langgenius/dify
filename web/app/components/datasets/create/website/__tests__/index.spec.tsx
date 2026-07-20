@@ -5,7 +5,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Website from '../index'
 
-const mockSetShowAccountSettingModal = vi.fn()
+const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockSetShowAccountSettingModal: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -21,21 +30,29 @@ vi.mock('../index.module.css', () => ({
 }))
 
 vi.mock('../firecrawl', () => ({
-  default: (props: Record<string, unknown>) => <div data-testid="firecrawl-component" data-props={JSON.stringify(props)} />,
+  default: (props: Record<string, unknown>) => (
+    <div data-testid="firecrawl-component" data-props={JSON.stringify(props)} />
+  ),
 }))
 
 vi.mock('../jina-reader', () => ({
-  default: (props: Record<string, unknown>) => <div data-testid="jina-reader-component" data-props={JSON.stringify(props)} />,
+  default: (props: Record<string, unknown>) => (
+    <div data-testid="jina-reader-component" data-props={JSON.stringify(props)} />
+  ),
 }))
 
 vi.mock('../watercrawl', () => ({
-  default: (props: Record<string, unknown>) => <div data-testid="watercrawl-component" data-props={JSON.stringify(props)} />,
+  default: (props: Record<string, unknown>) => (
+    <div data-testid="watercrawl-component" data-props={JSON.stringify(props)} />
+  ),
 }))
 
 vi.mock('../no-data', () => ({
-  default: ({ onConfig, provider }: { onConfig: () => void, provider: string }) => (
+  default: ({ onConfig, provider }: { onConfig: () => void; provider: string }) => (
     <div data-testid="no-data-component" data-provider={provider}>
-      <button onClick={onConfig} data-testid="no-data-config-button">Configure</button>
+      <button onClick={onConfig} data-testid="no-data-config-button">
+        Configure
+      </button>
     </div>
   ),
 }))
@@ -45,9 +62,15 @@ let mockEnableFirecrawl = true
 let mockEnableWatercrawl = true
 
 vi.mock('@/config', () => ({
-  get ENABLE_WEBSITE_JINAREADER() { return mockEnableJinaReader },
-  get ENABLE_WEBSITE_FIRECRAWL() { return mockEnableFirecrawl },
-  get ENABLE_WEBSITE_WATERCRAWL() { return mockEnableWatercrawl },
+  get ENABLE_WEBSITE_JINAREADER() {
+    return mockEnableJinaReader
+  },
+  get ENABLE_WEBSITE_FIRECRAWL() {
+    return mockEnableFirecrawl
+  },
+  get ENABLE_WEBSITE_WATERCRAWL() {
+    return mockEnableWatercrawl
+  },
 }))
 
 const createMockCrawlOptions = (overrides: Partial<CrawlOptions> = {}): CrawlOptions => ({
@@ -61,10 +84,7 @@ const createMockCrawlOptions = (overrides: Partial<CrawlOptions> = {}): CrawlOpt
   ...overrides,
 })
 
-const createMockDataSourceAuth = (
-  provider: string,
-  credentialsCount = 1,
-): DataSourceAuth => ({
+const createMockDataSourceAuth = (provider: string, credentialsCount = 1): DataSourceAuth => ({
   author: 'test',
   provider,
   plugin_id: `${provider}-plugin`,
@@ -246,15 +266,14 @@ describe('Website', () => {
   })
 
   describe('NoData Config', () => {
-    it('should call setShowAccountSettingModal when NoData onConfig is triggered', () => {
+    it('should navigate to data source settings when NoData onConfig is triggered', () => {
       renderWebsite({ authedDataSourceList: [] })
 
       const configButton = screen.getByTestId('no-data-config-button')
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })
 

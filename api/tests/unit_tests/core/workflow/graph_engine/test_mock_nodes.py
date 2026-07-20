@@ -81,7 +81,7 @@ class MockNodeMixin:
         if isinstance(self, TemplateTransformNode):
             kwargs.setdefault("jinja2_template_renderer", _TestJinja2Renderer())
 
-        # Provide default ToolNode dependencies for ToolNode subclasses.
+        # Provide default tool_file_manager for ToolNode subclasses
         from graphon.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
 
         if isinstance(self, _ToolNode):

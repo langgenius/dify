@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -252,27 +253,28 @@ def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached
     mock_session: MagicMock,
     provider_id: TriggerProviderID,
     provider_controller: MagicMock,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Arrange
     _patch_redis_lock(mocker)
     mock_session.scalar.return_value = TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__
     _mock_get_trigger_provider(mocker, provider_controller)
-    mock_logger = mocker.patch("services.trigger.trigger_provider_service.logger")
 
     # Act + Assert
-    with pytest.raises(ValueError, match="Maximum number of providers"):
-        TriggerProviderService.add_trigger_subscription(
-            tenant_id="tenant-1",
-            user_id="user-1",
-            name="main",
-            provider_id=provider_id,
-            endpoint_id="endpoint-1",
-            credential_type=CredentialType.API_KEY,
-            parameters={},
-            properties={},
-            credentials={},
-        )
-    mock_logger.exception.assert_called_once()
+    with caplog.at_level(logging.ERROR, logger="services.trigger.trigger_provider_service"):
+        with pytest.raises(ValueError, match="Maximum number of providers"):
+            TriggerProviderService.add_trigger_subscription(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                name="main",
+                provider_id=provider_id,
+                endpoint_id="endpoint-1",
+                credential_type=CredentialType.API_KEY,
+                parameters={},
+                properties={},
+                credentials={},
+            )
+        assert any(r.levelno >= logging.ERROR for r in caplog.records)
 
 
 def test_add_trigger_subscription_should_raise_error_when_name_exists(
@@ -442,7 +444,7 @@ def test_delete_trigger_provider_should_raise_error_when_subscription_missing(
 
     # Act + Assert
     with pytest.raises(ValueError, match="not found"):
-        TriggerProviderService.delete_trigger_provider(mock_session, "tenant-1", "sub-1")
+        TriggerProviderService.delete_trigger_provider("tenant-1", "sub-1", session=mock_session)
 
 
 def test_delete_trigger_provider_should_delete_and_clear_cache_even_if_unsubscribe_fails(
@@ -474,7 +476,7 @@ def test_delete_trigger_provider_should_delete_and_clear_cache_even_if_unsubscri
     mock_delete_cache = mocker.patch("services.trigger.trigger_provider_service.delete_cache_for_subscription")
 
     # Act
-    TriggerProviderService.delete_trigger_provider(mock_session, "tenant-1", "sub-1")
+    TriggerProviderService.delete_trigger_provider("tenant-1", "sub-1", session=mock_session)
 
     # Assert
     mock_session.delete.assert_called_once_with(subscription)
@@ -505,7 +507,7 @@ def test_delete_trigger_provider_should_skip_unsubscribe_for_unauthorized(
     )
 
     # Act
-    TriggerProviderService.delete_trigger_provider(mock_session, "tenant-1", "sub-2")
+    TriggerProviderService.delete_trigger_provider("tenant-1", "sub-2", session=mock_session)
 
     # Assert
     mock_unsubscribe.assert_not_called()
@@ -558,6 +560,7 @@ def test_refresh_oauth_token_should_refresh_and_persist_new_credentials(
         return_value=(cred_enc, cache),
     )
     mocker.patch.object(TriggerProviderService, "get_oauth_client", return_value={"client_id": "id"})
+    mock_delete_cache = mocker.patch("services.trigger.trigger_provider_service.delete_cache_for_subscription")
     refreshed = SimpleNamespace(credentials={"access_token": "new"}, expires_at=12345)
     oauth_handler = MagicMock()
     oauth_handler.refresh_credentials.return_value = refreshed
@@ -571,7 +574,12 @@ def test_refresh_oauth_token_should_refresh_and_persist_new_credentials(
     assert subscription.credentials == {"access_token": "new"}
     assert subscription.credential_expires_at == 12345
 
-    cache.delete.assert_called_once()
+    cache.delete.assert_not_called()
+    mock_delete_cache.assert_called_once_with(
+        tenant_id="tenant-1",
+        provider_id=str(provider_id),
+        subscription_id="sub-1",
+    )
 
 
 def test_refresh_subscription_should_raise_error_when_subscription_missing(

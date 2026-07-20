@@ -61,7 +61,7 @@ describe('IndexBar', () => {
         }),
       ]
 
-      const result = groupItems(items, item => item.label.zh_Hans[0] || item.label.en_US[0] || '')
+      const result = groupItems(items, (item) => item.label.zh_Hans[0] || item.label.en_US[0] || '')
 
       expect(result.letters).toEqual(['J', 'S', 'Z', '#'])
       expect(result.groups.J!.Builtin).toHaveLength(1)
@@ -82,12 +82,7 @@ describe('IndexBar', () => {
         },
       }
 
-      render(
-        <IndexBar
-          letters={['A']}
-          itemRefs={itemRefs}
-        />,
-      )
+      render(<IndexBar letters={['A']} itemRefs={itemRefs} />)
 
       await user.click(screen.getByRole('button', { name: 'A' }))
 

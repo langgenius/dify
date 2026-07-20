@@ -2,8 +2,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useFavicon, useTitle } from 'ahooks'
 import { useEffect } from 'react'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { defaultSystemFeatures } from '@/types/feature'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { defaultSystemFeatures } from '@/features/system-features/config'
 import { basePath } from '@/utils/var'
 
 export default function useDocumentTitle(title: string) {
@@ -16,8 +16,7 @@ export default function useDocumentTitle(title: string) {
     if (systemFeatures.branding.enabled) {
       titleStr = `${prefix}${systemFeatures.branding.application_title}`
       favicon = systemFeatures.branding.favicon
-    }
-    else {
+    } else {
       titleStr = `${prefix}Dify`
       favicon = `${basePath}/favicon.ico`
     }
@@ -28,9 +27,9 @@ export default function useDocumentTitle(title: string) {
     if (systemFeatures.branding.favicon) {
       document
         .querySelectorAll(
-          'link[rel=\'icon\'], link[rel=\'shortcut icon\'], link[rel=\'apple-touch-icon\'], link[rel=\'mask-icon\']',
+          "link[rel='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon'], link[rel='mask-icon']",
         )
-        .forEach(n => n.parentNode?.removeChild(n))
+        .forEach((n) => n.parentNode?.removeChild(n))
 
       apple = document.createElement('link')
       apple.rel = 'apple-touch-icon'

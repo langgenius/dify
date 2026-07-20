@@ -51,7 +51,7 @@ def enable_annotation_reply_task(
         try:
             documents = []
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name, embedding_model_name, CollectionBindingType.ANNOTATION
+                embedding_provider_name, embedding_model_name, session, CollectionBindingType.ANNOTATION
             )
             annotation_setting = session.scalar(
                 select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
@@ -60,7 +60,7 @@ def enable_annotation_reply_task(
                 if dataset_collection_binding.id != annotation_setting.collection_binding_id:
                     old_dataset_collection_binding = (
                         DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            annotation_setting.collection_binding_id, CollectionBindingType.ANNOTATION
+                            annotation_setting.collection_binding_id, session, CollectionBindingType.ANNOTATION
                         )
                     )
                     if old_dataset_collection_binding and annotations:
@@ -73,7 +73,11 @@ def enable_annotation_reply_task(
                             collection_binding_id=old_dataset_collection_binding.id,
                         )
 
-                        old_vector = Vector(old_dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                        old_vector = Vector(
+                            old_dataset,
+                            attributes=["doc_id", "annotation_id", "app_id"],
+                            session=session,
+                        )
                         try:
                             old_vector.delete()
                         except Exception as e:
@@ -109,7 +113,7 @@ def enable_annotation_reply_task(
                     )
                     documents.append(document)
 
-                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                 try:
                     vector.delete_by_metadata_field("app_id", app_id)
                 except Exception as e:

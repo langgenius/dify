@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../index-bar'
 import Item from './item'
 
-type Props = {
+type Props = Readonly<{
   payload: Record<string, ToolWithProvider[]>
   previewCardHandle: ToolActionPreviewCardHandle
   hasSearchText: boolean
@@ -17,7 +17,7 @@ type Props = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-}
+}>
 
 const ToolListTreeView: FC<Props> = ({
   payload,
@@ -29,25 +29,24 @@ const ToolListTreeView: FC<Props> = ({
   selectedTools,
 }) => {
   const { t } = useTranslation()
-  const getI18nGroupName = useCallback((name: string) => {
-    if (name === CUSTOM_GROUP_NAME)
-      return t('tabs.customTool', { ns: 'workflow' })
+  const getI18nGroupName = useCallback(
+    (name: string) => {
+      if (name === CUSTOM_GROUP_NAME) return t(($) => $['tabs.customTool'], { ns: 'workflow' })
 
-    if (name === WORKFLOW_GROUP_NAME)
-      return t('tabs.workflowTool', { ns: 'workflow' })
+      if (name === WORKFLOW_GROUP_NAME) return t(($) => $['tabs.workflowTool'], { ns: 'workflow' })
 
-    if (name === AGENT_GROUP_NAME)
-      return t('tabs.agent', { ns: 'workflow' })
+      if (name === AGENT_GROUP_NAME) return t(($) => $['tabs.agent'], { ns: 'workflow' })
 
-    return name
-  }, [t])
+      return name
+    },
+    [t],
+  )
 
-  if (!payload)
-    return null
+  if (!payload) return null
 
   return (
     <div>
-      {Object.keys(payload).map(groupName => (
+      {Object.keys(payload).map((groupName) => (
         <Item
           key={groupName}
           groupName={getI18nGroupName(groupName)}

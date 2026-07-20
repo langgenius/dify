@@ -7,43 +7,45 @@ from hmac import new as hmac_new
 from flask import abort, request
 
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
+from libs.exception import BaseHTTPException
 from models.model import EndUser
 
 
-def billing_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+class InnerApiUnauthorizedError(BaseHTTPException):
+    error_code = "inner_api_unauthorized"
+    description = "Unauthorized."
+    code = 401
+
+
+def inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Restrict access to callers authenticated with the shared inner API key."""
+
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.INNER_API:
             abort(404)
 
-        # get header 'X-Inner-Api-Key'
         inner_api_key = request.headers.get("X-Inner-Api-Key")
         if not inner_api_key or inner_api_key != dify_config.INNER_API_KEY:
-            abort(401)
+            raise InnerApiUnauthorizedError()
 
         return view(*args, **kwargs)
 
     return decorated
+
+
+def billing_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    return inner_api_only(view)
 
 
 def enterprise_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-        if not dify_config.INNER_API:
-            abort(404)
-
-        # get header 'X-Inner-Api-Key'
-        inner_api_key = request.headers.get("X-Inner-Api-Key")
-        if not inner_api_key or inner_api_key != dify_config.INNER_API_KEY:
-            abort(401)
-
-        return view(*args, **kwargs)
-
-    return decorated
+    return inner_api_only(view)
 
 
 def enterprise_inner_api_user_auth[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Inject an EndUser for valid inner API HMAC auth, otherwise pass the request through unchanged."""
+
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.INNER_API:
@@ -72,9 +74,9 @@ def enterprise_inner_api_user_auth[**P, R](view: Callable[P, R]) -> Callable[P, 
         if signature_base64 != token:
             return view(*args, **kwargs)
 
-        kwargs["user"] = db.session.get(EndUser, user_id)
-
-        return view(*args, **kwargs)
+        with session_factory.create_session() as session:
+            kwargs["user"] = session.get(EndUser, user_id)
+            return view(*args, **kwargs)
 
     return decorated
 
@@ -93,3 +95,15 @@ def plugin_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         return view(*args, **kwargs)
 
     return decorated
+
+
+def agent_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Temporary alias for agent-backend inner API callers.
+
+    Agent tool and knowledge calls currently share the same trusted
+    `dify-agent -> Dify API` transport credentials as the plugin inner bridge.
+    Keep the wrapper name agent-specific so the controller surface does not grow
+    more plugin-only semantics while auth settings stay shared.
+    """
+
+    return plugin_inner_api_only(view)

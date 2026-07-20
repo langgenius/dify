@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Concatenate, cast, overload
 
 from flask import Response, current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS
+from werkzeug.exceptions import Unauthorized
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
@@ -48,7 +49,64 @@ def current_account_with_tenant() -> tuple[Account, str]:
     return user, user.current_tenant_id
 
 
-def login_required[**P, R](func: Callable[P, R]) -> Callable[P, R | Response]:
+def current_account_with_tenant_optional() -> tuple[Account | None, str | None]:
+    try:
+        user = _resolve_current_user()
+    except Unauthorized:
+        return None, None
+
+    if not isinstance(user, Account):
+        return None, None
+    if not bool(getattr(user, "is_authenticated", False)):
+        return None, None
+    return user, user.current_tenant_id
+
+
+def resolve_account_fallback(
+    current_user: Account | None = None,
+    current_tenant_id: str | None = None,
+    *,
+    fallback_tenant_id: str | None = None,
+) -> tuple[Account, str]:
+    """
+    If the provided current user and tenant ID is None, fallback to current_account_with_tenant.
+    This is useful for those service layers whose controllers are not migrated to use DI for
+    resolving current user yet.
+
+    TODO: this should be removed after all ctrls (especially service API) are migrated
+    """
+    if current_user is not None:
+        tenant_id = current_tenant_id or fallback_tenant_id
+        if tenant_id is None:
+            raise ValueError("current_tenant_id is required when current_user is provided.")
+        return current_user, tenant_id
+    return current_account_with_tenant()
+
+
+def resolve_tenant_id_fallback(current_tenant_id: str | None = None) -> str:
+    """
+    If the provided tenant ID is None, fallback to the tenant resolved from current_account_with_tenant.
+    This is useful for tenant-only service paths whose controllers are not all migrated to tenant injection yet.
+
+    TODO: this should be removed after all ctrls (especially service API) are migrated
+    """
+    if current_tenant_id is not None:
+        return current_tenant_id
+    _, tenant_id = current_account_with_tenant()
+    return tenant_id
+
+
+@overload
+def login_required[T, **P, R](
+    func: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R | Response]: ...
+
+
+@overload
+def login_required[**P, R](func: Callable[P, R]) -> Callable[P, R | Response]: ...
+
+
+def login_required[R](func: Callable[..., R]) -> Callable[..., R | Response]:
     """
     If you decorate a view with this, it will ensure that the current user is
     logged in and authenticated before calling the actual view. (If they are
@@ -83,7 +141,9 @@ def login_required[**P, R](func: Callable[P, R]) -> Callable[P, R | Response]:
     """
 
     @wraps(func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R | Response:
+    def decorated_view(*args: Any, **kwargs: Any) -> R | Response:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain Flask view functions.
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             return current_app.ensure_sync(func)(*args, **kwargs)
 

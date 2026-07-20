@@ -3,11 +3,19 @@
 import * as z from 'zod'
 
 /**
+ * WorkspaceCustomConfigResponse
+ */
+export const zWorkspaceCustomConfigResponse = z.object({
+  remove_webapp_brand: z.boolean().nullish(),
+  replace_webapp_logo: z.string().nullish(),
+})
+
+/**
  * TenantInfoResponse
  */
 export const zTenantInfoResponse = z.object({
   created_at: z.int().nullish(),
-  custom_config: z.record(z.string(), z.unknown()).nullish(),
+  custom_config: zWorkspaceCustomConfigResponse.nullish(),
   id: z.string(),
   in_trial: z.boolean().nullish(),
   name: z.string().nullish(),
@@ -16,6 +24,7 @@ export const zTenantInfoResponse = z.object({
   role: z.string().nullish(),
   status: z.string().nullish(),
   trial_credits: z.int().nullish(),
+  trial_credits_exhausted_at: z.int().nullish(),
   trial_credits_used: z.int().nullish(),
   trial_end_reason: z.string().nullish(),
 })

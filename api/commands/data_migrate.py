@@ -7,6 +7,7 @@ from typing import cast
 
 import click
 
+from commands.rbac import migrate_dataset_permissions_to_rbac
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from services.legacy_model_type_migration import (
@@ -145,7 +146,7 @@ def legacy_model_types(
         option_name="--model-types",
     )
     selected_model_types = (
-        tuple(ModelType.value_of(model_type) for model_type in normalized_model_types)
+        tuple(ModelType(model_type) for model_type in normalized_model_types)
         if normalized_model_types
         else (
             ModelType.LLM,
@@ -177,3 +178,4 @@ def legacy_model_types(
 
 
 data_migrate.add_command(legacy_model_types)
+data_migrate.add_command(migrate_dataset_permissions_to_rbac)

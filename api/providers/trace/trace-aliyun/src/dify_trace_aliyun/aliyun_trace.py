@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Sequence
+from typing import override
 
 from opentelemetry.trace import SpanKind
 from sqlalchemy.orm import sessionmaker
@@ -74,21 +75,25 @@ class AliyunDataTrace(BaseTraceInstance):
         endpoint = build_endpoint(aliyun_config.endpoint, aliyun_config.license_key)
         self.trace_client = TraceClient(service_name=aliyun_config.app_name, endpoint=endpoint)
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self.workflow_trace(trace_info)
-        if isinstance(trace_info, MessageTraceInfo):
-            self.message_trace(trace_info)
-        if isinstance(trace_info, ModerationTraceInfo):
-            pass
-        if isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self.suggested_question_trace(trace_info)
-        if isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self.dataset_retrieval_trace(trace_info)
-        if isinstance(trace_info, ToolTraceInfo):
-            self.tool_trace(trace_info)
-        if isinstance(trace_info, GenerateNameTraceInfo):
-            pass
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case ModerationTraceInfo():
+                pass
+            case SuggestedQuestionTraceInfo():
+                self.suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case GenerateNameTraceInfo():
+                pass
+            case _:
+                pass
 
     def api_check(self):
         return self.trace_client.api_check()
@@ -291,6 +296,7 @@ class AliyunDataTrace(BaseTraceInstance):
         session_factory = sessionmaker(bind=db.engine)
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=trace_info.tenant_id,
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

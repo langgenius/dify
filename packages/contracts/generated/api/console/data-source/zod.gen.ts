@@ -10,9 +10,60 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * DataSourceIntegrateIconResponse
+ */
+export const zDataSourceIntegrateIconResponse = z.object({
+  emoji: z.string().nullish(),
+  type: z.string().nullish(),
+  url: z.string().nullish(),
+})
+
+/**
+ * DataSourceIntegratePageResponse
+ */
+export const zDataSourceIntegratePageResponse = z.object({
+  page_icon: zDataSourceIntegrateIconResponse.nullable(),
+  page_id: z.string(),
+  page_name: z.string(),
+  parent_id: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DataSourceIntegrateWorkspaceResponse
+ */
+export const zDataSourceIntegrateWorkspaceResponse = z.object({
+  pages: z.array(zDataSourceIntegratePageResponse),
+  total: z.int(),
+  workspace_icon: z.string().nullable(),
+  workspace_id: z.string().nullable(),
+  workspace_name: z.string().nullable(),
+})
+
+/**
+ * DataSourceIntegrateResponse
+ */
+export const zDataSourceIntegrateResponse = z.object({
+  created_at: z.int().nullable(),
+  disabled: z.boolean().nullable(),
+  id: z.string().nullable(),
+  is_bound: z.boolean(),
+  link: z.string(),
+  provider: z.string(),
+  source_info: zDataSourceIntegrateWorkspaceResponse.nullable(),
+})
+
+/**
+ * DataSourceIntegrateListResponse
+ */
+export const zDataSourceIntegrateListResponse = z.object({
+  data: z.array(zDataSourceIntegrateResponse),
+})
+
+/**
  * Success
  */
-export const zGetDataSourceIntegratesResponse = z.record(z.string(), z.unknown())
+export const zGetDataSourceIntegratesResponse = zDataSourceIntegrateListResponse
 
 /**
  * Success
@@ -21,17 +72,17 @@ export const zPatchDataSourceIntegratesResponse = zSimpleResultResponse
 
 export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetDataSourceIntegratesByBindingIdByActionResponse = z.record(z.string(), z.unknown())
+export const zGetDataSourceIntegratesByBindingIdByActionResponse = zDataSourceIntegrateListResponse
 
 export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**

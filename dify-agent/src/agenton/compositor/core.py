@@ -4,7 +4,8 @@
 transformers. Each ``enter(...)`` call validates node-name keyed configs before
 any provider factory runs, optionally validates and hydrates a session snapshot,
 creates fresh layer instances, binds direct dependencies, and returns a new
-``CompositorRun`` for that invocation only.
+``CompositorRun`` for that invocation only. Dependency targets must point to
+preceding graph nodes so resource scopes can nest in dependency order.
 
 ``Compositor.from_config(...)`` resolves serializable provider type ids rather
 than import paths. Named ``node_providers`` override type-id providers for the
@@ -49,8 +50,9 @@ class LayerNode:
 
     ``implementation`` may be a layer class or an explicit ``LayerProvider``.
     ``deps`` maps dependency field names on this node's layer class to other
-    compositor node names. ``metadata`` is graph description data only; it is
-    not passed to provider factories and is never included in session snapshots.
+    preceding compositor node names. ``metadata`` is graph description data
+    only; it is not passed to provider factories and is never included in
+    session snapshots.
     """
 
     name: str
@@ -89,7 +91,8 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
     ``tool_transformer`` are post-aggregation hooks on each run. Use two type
     arguments for identity aggregation, four when prompt/tool layer item types
     differ from exposed item types, or all six when user prompt item types also
-    differ.
+    differ. Graph order is meaningful for lifecycle nesting, so dependency edges
+    must point only to earlier nodes.
     """
 
     __slots__ = ("_nodes", "prompt_transformer", "tool_transformer", "user_prompt_transformer")
@@ -188,10 +191,14 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
         """
         run = self._create_run(configs=configs, session_snapshot=session_snapshot)
         await run._enter_layers()
+        body_error: BaseException | None = None
         try:
             yield run
+        except BaseException as exc:
+            body_error = exc
+            raise
         finally:
-            await run._exit_layers()
+            await run._exit_layers(body_error)
 
     def _create_run(
         self,
@@ -254,6 +261,8 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
                 raise ValueError(f"Duplicate layer name '{node.name}'.")
             layer_names.add(node.name)
 
+        layer_index_by_name = {node.name: index for index, node in enumerate(self._nodes)}
+
         for node in self._nodes:
             declared_deps = node.provider.layer_type.dependency_names()
             unknown_dep_keys = set(node.deps) - declared_deps
@@ -264,6 +273,20 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
             if missing_targets:
                 names = ", ".join(sorted(missing_targets))
                 raise ValueError(f"Layer '{node.name}' depends on undefined layer names: {names}.")
+
+            non_preceding_targets = {
+                dep_name: target_name
+                for dep_name, target_name in node.deps.items()
+                if layer_index_by_name[target_name] >= layer_index_by_name[node.name]
+            }
+            if non_preceding_targets:
+                targets = ", ".join(
+                    f"{dep_name}->{target_name}" for dep_name, target_name in sorted(non_preceding_targets.items())
+                )
+                raise ValueError(
+                    f"Layer '{node.name}' dependencies must target preceding layer nodes in compositor order: "
+                    f"{targets}."
+                )
 
     def _validate_run_configs(self, configs: Mapping[str, LayerConfigInput] | None) -> dict[str, LayerConfigInput]:
         config_by_name = dict(configs or {})
