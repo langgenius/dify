@@ -33,7 +33,6 @@ const tasksQuery = vi.hoisted(() => ({
   data: undefined as
     | { pages: Array<{ items: DocumentProcessingTask[]; nextCursor?: string }> }
     | undefined,
-  dataUpdatedAt: 0,
   error: null as unknown,
   fetchNextPage: vi.fn(),
   hasNextPage: false,
@@ -233,7 +232,6 @@ describe('DocumentsPage', () => {
     documentsQuery.isFetchingNextPage = false
     documentsQuery.isPending = false
     tasksQuery.data = { pages: [{ items: [] }] }
-    tasksQuery.dataUpdatedAt = 1
     tasksQuery.error = null
     tasksQuery.hasNextPage = false
     tasksQuery.isFetchNextPageError = false
@@ -333,12 +331,14 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
-  it('renders revisions, sources, stable newest-first rows, and every designed status', () => {
+  it('renders revisions, sources, stable cursor-ordered rows, and every designed status', () => {
     documentsQuery.data = {
       pages: [
         {
+          items: [document({ id: 'ready', title: 'Ready.pdf', userMetadata: {} })],
+        },
+        {
           items: [
-            document({ id: 'ready', title: 'Ready.pdf', userMetadata: {} }),
             document({
               active: null,
               activeRevision: undefined,
@@ -380,7 +380,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const rows = screen.getAllByRole('row').slice(1)
-    expect(within(rows[0]!).getByText('Queued.docx')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('Ready.pdf')).toBeInTheDocument()
     expect(screen.getAllByText('Notion support SOP').length).toBeGreaterThan(0)
     expect(screen.getAllByText('v2').length).toBeGreaterThan(0)
     for (const status of ['ready', 'queued', 'processing', 'failed', 'disabled'])
@@ -942,9 +942,14 @@ describe('DocumentsPage', () => {
       streamCount += 1
       if (streamCount === 1) {
         yield {
-          data: { state: 'succeeded' as const },
-          event: 'terminal' as const,
-          id: 'running:terminal',
+          data: {
+            progressPercent: 100,
+            stage: 'published' as const,
+            state: 'succeeded' as const,
+            updatedAt: '2026-07-20T10:06:00Z',
+          },
+          event: 'progress' as const,
+          id: 'running:2026-07-20T10:06:00Z',
         }
         return
       }
@@ -1031,7 +1036,7 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('accepts an external retry after two fresh active task snapshots', async () => {
+  it('accepts an external retry newer than the terminal event version', async () => {
     documentsQuery.data = { pages: [{ items: [document({})] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'externally-retried' })] }] }
     let streamCount = 0
@@ -1039,9 +1044,14 @@ describe('DocumentsPage', () => {
       streamCount += 1
       if (streamCount === 1) {
         yield {
-          data: { state: 'succeeded' as const },
-          event: 'terminal' as const,
-          id: 'externally-retried:terminal',
+          data: {
+            progressPercent: 100,
+            stage: 'published' as const,
+            state: 'succeeded' as const,
+            updatedAt: '2026-07-20T10:04:00Z',
+          },
+          event: 'progress' as const,
+          id: 'externally-retried:2026-07-20T10:04:00Z',
         }
         return
       }
@@ -1070,27 +1080,6 @@ describe('DocumentsPage', () => {
         },
       ],
     }
-    tasksQuery.dataUpdatedAt = 2
-    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
-    ).not.toHaveTextContent('1')
-
-    tasksQuery.data = {
-      pages: [
-        {
-          items: [
-            task({
-              id: 'externally-retried',
-              progressPercent: 10,
-              state: 'running',
-              updatedAt: '2026-07-20T10:06:00Z',
-            }),
-          ],
-        },
-      ],
-    }
-    tasksQuery.dataUpdatedAt = 3
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(
@@ -1099,7 +1088,72 @@ describe('DocumentsPage', () => {
         }),
       ).toHaveTextContent('1'),
     )
-    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2), {
+      timeout: 2000,
+    })
+  })
+
+  it('ignores a stale terminal event after polling observes an external retry', async () => {
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'retry-race' })] }] }
+    let releaseTerminal: (() => void) | undefined
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) {
+        await new Promise<void>((resolve) => {
+          releaseTerminal = resolve
+        })
+        yield {
+          data: {
+            progressPercent: 100,
+            stage: 'published' as const,
+            state: 'succeeded' as const,
+            updatedAt: '2026-07-20T10:03:00Z',
+          },
+          event: 'progress' as const,
+          id: 'retry-race:progress',
+        }
+        yield {
+          data: { state: 'succeeded' as const },
+          event: 'terminal' as const,
+          id: 'retry-race:terminal',
+        }
+        return
+      }
+      await new Promise<void>(() => {})
+    })
+
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(releaseTerminal).toBeTypeOf('function'))
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'retry-race',
+              progressPercent: 0,
+              state: 'queued',
+              updatedAt: '2026-07-20T10:05:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await act(async () => releaseTerminal?.())
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        }),
+      ).toHaveTextContent('1'),
+    )
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2), {
+      timeout: 2000,
+    })
   })
 
   it('keeps one event stream and its resume cursor when polling updates task versions', async () => {

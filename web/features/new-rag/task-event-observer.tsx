@@ -2,6 +2,7 @@
 
 import type { ProcessingTaskEvent } from './services/processing-task-events'
 import { useEffect, useRef } from 'react'
+import { ACTIVE_TASK_STATES } from './document-model'
 import { streamProcessingTaskEvents } from './services/processing-task-events'
 
 const TASK_EVENT_RECONNECT_DELAY = 1000
@@ -30,18 +31,20 @@ export function TaskEventObserver({
   documentId: string
   knowledgeSpaceId: string
   onError: () => void
-  onEvent: (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => void
+  onEvent: (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => boolean
   taskId: string
   taskVersion: string
 }) {
   const lastEventIdRef = useRef<string | undefined>(undefined)
-  const taskVersionRef = useRef(taskVersion)
-  taskVersionRef.current = taskVersion
+  const latestTaskVersionRef = useRef(taskVersion)
+  const streamTaskVersionRef = useRef(taskVersion)
+  latestTaskVersionRef.current = taskVersion
 
   useEffect(() => {
     const controller = new AbortController()
     void (async () => {
       while (!controller.signal.aborted) {
+        let restartForNewerTask = false
         try {
           for await (const event of streamProcessingTaskEvents({
             documentId,
@@ -52,13 +55,20 @@ export function TaskEventObserver({
           })) {
             if (controller.signal.aborted) return
             lastEventIdRef.current = event.id
-            onEvent(taskId, taskVersionRef.current, event)
-            if (event.event === 'terminal') return
+            if (event.event === 'progress') streamTaskVersionRef.current = event.data.updatedAt
+            const accepted = onEvent(taskId, streamTaskVersionRef.current, event)
+            if (!accepted) {
+              lastEventIdRef.current = undefined
+              streamTaskVersionRef.current = latestTaskVersionRef.current
+              restartForNewerTask = true
+              break
+            }
+            if (event.event === 'terminal' || !ACTIVE_TASK_STATES.has(event.data.state)) return
           }
         } catch {
           if (controller.signal.aborted) return
         }
-        onError()
+        if (!restartForNewerTask) onError()
         await waitForTaskEventReconnect(controller.signal)
       }
     })()

@@ -20,6 +20,7 @@ import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
 import {
+  ACTIVE_TASK_STATES,
   documentDisplayStatus,
   newestTaskByDocument,
   sourceName,
@@ -47,11 +48,6 @@ const uploadExclusionReasonKey = {
 } as const
 
 type TerminalTaskPin = {
-  activeCandidate?: {
-    queryUpdatedAt: number
-    taskUpdatedAt: string
-  }
-  confirmedAt?: string
   observedAt: string
 }
 
@@ -169,13 +165,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   } = sourcesQuery
 
   const documents = useMemo(
-    () =>
-      documentsQuery.data?.pages
-        .flatMap((page) => page.items)
-        .sort(
-          (left, right) =>
-            right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
-        ) ?? [],
+    () => documentsQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [documentsQuery.data],
   )
   const baseTasks = useMemo(
@@ -205,58 +195,27 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () => new Map(baseTasks.map((task) => [task.id, task.updatedAt])),
     [baseTasks],
   )
+  const baseTaskUpdatedAtRef = useRef(baseTaskUpdatedAt)
+  baseTaskUpdatedAtRef.current = baseTaskUpdatedAt
   useEffect(() => {
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Query snapshots reconcile an SSE terminal pin with server-confirmed terminal or retry states.
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Server snapshots release a terminal pin after confirming the terminal state or a newer retry.
     setTerminalTaskPins((current) => {
       let changed = false
       const next = { ...current }
       for (const task of baseTasks) {
         const pin = current[task.id]
-        if (!pin || taskVersionIsAfter(pin.observedAt, task.updatedAt)) continue
-
-        if (!taskIsActive(task)) {
-          if (pin.confirmedAt !== task.updatedAt || pin.activeCandidate) {
-            next[task.id] = {
-              confirmedAt: task.updatedAt,
-              observedAt: pin.observedAt,
-            }
-            changed = true
-          }
-          continue
-        }
-
-        const retryBoundary = pin.confirmedAt ?? pin.observedAt
-        if (!taskVersionIsAfter(task.updatedAt, retryBoundary)) continue
-        if (pin.confirmedAt) {
-          delete next[task.id]
-          changed = true
-          continue
-        }
-
-        const candidate = pin.activeCandidate
-        if (
-          candidate &&
-          tasksQuery.dataUpdatedAt > candidate.queryUpdatedAt &&
-          !taskVersionIsAfter(candidate.taskUpdatedAt, task.updatedAt)
-        ) {
-          delete next[task.id]
-          changed = true
-          continue
-        }
-        if (!candidate || tasksQuery.dataUpdatedAt > candidate.queryUpdatedAt) {
-          next[task.id] = {
-            ...pin,
-            activeCandidate: {
-              queryUpdatedAt: tasksQuery.dataUpdatedAt,
-              taskUpdatedAt: task.updatedAt,
-            },
-          }
-          changed = true
-        }
+        if (!pin) continue
+        const retryObserved =
+          taskIsActive(task) && taskVersionIsAfter(task.updatedAt, pin.observedAt)
+        const terminalConfirmed =
+          !taskIsActive(task) && !taskVersionIsAfter(pin.observedAt, task.updatedAt)
+        if (!retryObserved && !terminalConfirmed) continue
+        delete next[task.id]
+        changed = true
       }
       return changed ? next : current
     })
-  }, [baseTasks, tasksQuery.dataUpdatedAt])
+  }, [baseTasks])
   const tasks = useMemo(
     () =>
       baseTasks.map((task) => {
@@ -266,8 +225,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           terminalTaskPin &&
           override &&
           taskIsActive(task) &&
-          (!terminalTaskPin.confirmedAt ||
-            !taskVersionIsAfter(task.updatedAt, terminalTaskPin.confirmedAt))
+          !taskVersionIsAfter(task.updatedAt, terminalTaskPin.observedAt)
         )
           return { ...task, ...override }
         if (!override?.updatedAt) return override ? { ...task, ...override } : task
@@ -545,6 +503,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const handleTaskEvent = useCallback(
     (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => {
+      const eventVersion = event.event === 'progress' ? event.data.updatedAt : taskVersion
+      const terminalSnapshot = !ACTIVE_TASK_STATES.has(event.data.state)
+      const serverVersion = baseTaskUpdatedAtRef.current.get(taskId)
+      if (terminalSnapshot && serverVersion && taskVersionIsAfter(serverVersion, eventVersion))
+        return false
+
       setTaskOverrides((current) => {
         const previous = current[taskId]
         if (
@@ -567,19 +531,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   errorCode: event.data.errorCode,
                   ...(event.data.state === 'failed' ? {} : { errorMessage: undefined }),
                   state: event.data.state,
-                  updatedAt: previous?.updatedAt ?? taskVersion,
+                  updatedAt: previous?.updatedAt ?? eventVersion,
                 },
         }
       })
-      if (event.event === 'terminal') {
+      if (terminalSnapshot) {
         setTerminalTaskPins((current) => ({
           ...current,
-          [taskId]: { observedAt: taskVersion },
+          [taskId]: { observedAt: eventVersion },
         }))
         if (event.data.state === 'failed')
           toast.error(t(($) => $['newKnowledge.taskFailedNotification']))
         refreshDocumentsAndTasks()
       }
+      return true
     },
     [refreshDocumentsAndTasks, t],
   )
