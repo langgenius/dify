@@ -2,7 +2,7 @@
 
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
@@ -20,13 +20,16 @@ export function WebAppAccessControlButton({
   const appId = agent?.backing_app_id
   const rawAccessMode = agent?.access_mode
   const accessMode = isAccessMode(rawAccessMode) ? rawAccessMode : undefined
-  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
+  const { data: webAppAuthEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (systemFeatures) => systemFeatures.webapp_auth.enabled,
+  })
   const { canReleaseAndVersion: canManageWebAppAccessControl } = useAppACLCapabilities(
     agent?.permission_keys,
     agent?.maintainer,
   )
 
-  if (!systemFeatures?.webapp_auth.enabled || !canManageWebAppAccessControl || !appId || !accessMode)
+  if (!webAppAuthEnabled || !canManageWebAppAccessControl || !appId || !accessMode)
     return null
 
   return (
