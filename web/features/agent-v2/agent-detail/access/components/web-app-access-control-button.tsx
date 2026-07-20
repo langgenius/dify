@@ -19,7 +19,7 @@ export function WebAppAccessControlButton({
 }) {
   const { t } = useTranslation('agentV2')
   const [showAccessControl, setShowAccessControl] = useState(false)
-  const appId = agent?.app_id
+  const appId = agent?.backing_app_id
   const rawAccessMode = agent?.access_mode
   const accessMode = isAccessMode(rawAccessMode) ? rawAccessMode : undefined
   const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())

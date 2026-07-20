@@ -264,6 +264,7 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
     mode: 'agent',
     name: 'Support Agent',
     app_id: 'app-1',
+    backing_app_id: 'app-1',
     api_base_url: 'https://api.example.test/v1',
     access_mode: 'sso_verified',
     site: {
@@ -829,13 +830,23 @@ describe('Agent access surface cards', () => {
       const user = userEvent.setup()
 
       renderWithQueryClient(
-        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+        <WebAppAccessCard
+          agent={createAgent({
+            access_mode: 'private',
+            app_id: 'source-app-1',
+            backing_app_id: 'backing-app-1',
+            maintainer: 'user-1',
+            permission_keys: ['app.acl.release_and_version'],
+          })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
       )
 
       await user.click(await screen.findByRole('button', { name: accessControlButtonName }))
 
       const modal = screen.getByTestId('access-control-modal')
-      expect(modal).toHaveAttribute('data-app-id', 'app-1')
+      expect(modal).toHaveAttribute('data-app-id', 'backing-app-1')
       expect(modal).toHaveAttribute('data-access-mode', 'private')
     })
 
