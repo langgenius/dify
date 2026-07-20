@@ -11,7 +11,7 @@ import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -128,6 +128,7 @@ function ReadyCrawlSelectionForm({
   const router = useRouter()
   const queryClient = useQueryClient()
   const customIntervalErrorId = 'crawl-custom-interval-error'
+  const pageDescriptionPrefixId = useId()
   const pageSkipReasons = useMemo(
     () => new Map(pages.map((page) => [page.pageId, pageSkipReason(page, rootUrl)])),
     [pages, rootUrl],
@@ -327,30 +328,38 @@ function ReadyCrawlSelectionForm({
             {t(($) => $['newKnowledge.selectAll'])}
           </label>
           <ul className="max-h-[280px] divide-y divide-divider-subtle overflow-y-auto">
-            {pages.map((page) => {
+            {pages.map((page, index) => {
               const skipReason = pageSkipReasons.get(page.pageId)
               const selectable = !skipReason
+              const titleId = `${pageDescriptionPrefixId}-title-${index}`
+              const urlId = `${pageDescriptionPrefixId}-url-${index}`
+              const reasonId = `${pageDescriptionPrefixId}-reason-${index}`
               return (
                 <li key={page.pageId}>
                   <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5">
                     <Checkbox
                       checked={selectedPageIds.has(page.pageId)}
                       disabled={!selectable || selectionLocked}
+                      aria-labelledby={titleId}
+                      aria-describedby={`${urlId}${skipReason ? ` ${reasonId}` : ''}`}
                       onCheckedChange={() => togglePage(page.pageId)}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate system-xs-medium text-text-primary">
+                      <span
+                        id={titleId}
+                        className="block truncate system-xs-medium text-text-primary"
+                      >
                         {page.title || page.sourceUrl}
                       </span>
                       <span
-                        aria-hidden
+                        id={urlId}
                         className="block truncate system-2xs-regular text-text-tertiary"
                       >
                         {page.sourceUrl}
                       </span>
                     </span>
                     {!selectable && (
-                      <span aria-hidden className="shrink-0 system-xs-medium text-text-tertiary">
+                      <span id={reasonId} className="shrink-0 system-xs-medium text-text-tertiary">
                         {skipReason === 'off-domain'
                           ? t(($) => $['newKnowledge.skippedOffDomain'])
                           : t(($) => $['newKnowledge.skippedFailed'])}

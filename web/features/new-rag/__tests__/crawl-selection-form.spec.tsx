@@ -183,9 +183,10 @@ describe('CrawlSelectionForm', () => {
       name: 'dataset.newKnowledge.addSource',
     })
     expect(addSource).toBeDisabled()
-    expect(screen.getByRole('checkbox', { name: 'Edit this page' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
+    const offDomainPage = screen.getByRole('checkbox', { name: 'Edit this page' })
+    expect(offDomainPage).toHaveAttribute('aria-disabled', 'true')
+    expect(offDomainPage).toHaveAccessibleDescription(
+      'https://github.com/langgenius/dify/edit/main/docs.md dataset.newKnowledge.skippedOffDomain',
     )
     expect(screen.getByText('dataset.newKnowledge.skippedOffDomain')).toBeInTheDocument()
     expect(screen.getByText(/dataset\.newKnowledge\.skippedFailed/)).toBeInTheDocument()
