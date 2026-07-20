@@ -14,7 +14,7 @@ concurrency:
 jobs:
   check-changes:
     name: Check Changed Files
-    runs-on: depot-ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     outputs:
       external-e2e-changed: ${{ steps.changes.outputs.external_e2e }}
     steps:
