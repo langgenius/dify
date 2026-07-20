@@ -27,6 +27,9 @@ import {
   zPostTrialAppsByAppIdFilesUploadBody,
   zPostTrialAppsByAppIdFilesUploadPath,
   zPostTrialAppsByAppIdFilesUploadResponse,
+  zPostTrialAppsByAppIdRemoteFilesUploadBody,
+  zPostTrialAppsByAppIdRemoteFilesUploadPath,
+  zPostTrialAppsByAppIdRemoteFilesUploadResponse,
   zPostTrialAppsByAppIdTextToAudioBody,
   zPostTrialAppsByAppIdTextToAudioPath,
   zPostTrialAppsByAppIdTextToAudioResponse,
@@ -184,6 +187,35 @@ export const parameters = {
 }
 
 /**
+ * Upload a remote file into the tenant that owns the trial app
+ */
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdRemoteFilesUpload',
+    path: '/trial-apps/{app_id}/remote-files/upload',
+    successStatus: 201,
+    summary: 'Upload a remote file into the tenant that owns the trial app',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdRemoteFilesUploadBody,
+      params: zPostTrialAppsByAppIdRemoteFilesUploadPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdRemoteFilesUploadResponse)
+
+export const upload2 = {
+  post: post5,
+}
+
+export const remoteFiles = {
+  upload: upload2,
+}
+
+/**
  * Retrieve app site info
  *
  * Returns the site configuration for the application including theme, icons, and text.
@@ -206,7 +238,7 @@ export const site = {
   get: get4,
 }
 
-export const post5 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -223,13 +255,13 @@ export const post5 = oc
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
-  post: post5,
+  post: post6,
 }
 
 /**
  * Run workflow
  */
-export const post6 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -247,13 +279,13 @@ export const post6 = oc
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
 
 export const run = {
-  post: post6,
+  post: post7,
 }
 
 /**
  * Stop workflow task
  */
-export const post7 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -266,7 +298,7 @@ export const post7 = oc
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
 
 export const stop = {
-  post: post7,
+  post: post8,
 }
 
 export const byTaskId = {
@@ -322,6 +354,7 @@ export const byAppId = {
   files,
   messages,
   parameters,
+  remoteFiles,
   site,
   textToAudio,
   workflows,

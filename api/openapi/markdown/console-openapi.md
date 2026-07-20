@@ -9689,6 +9689,27 @@ Bedrock retrieval test (internal use only)
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Parameters](#parameters)<br> |
 
+### [POST] /trial-apps/{app_id}/remote-files/upload
+**Upload a remote file into the tenant that owns the trial app**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RemoteFileUploadPayload](#remotefileuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+
 ### [GET] /trial-apps/{app_id}/site
 **Retrieve app site info**
 

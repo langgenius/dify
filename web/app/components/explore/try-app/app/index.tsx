@@ -19,7 +19,12 @@ function TryApp({ appId, appDetail }: Props) {
 
   useDocumentTitle(appDetail?.site?.title || '')
   return (
-    <FileUploadContext value={{ uploadUrl: `/trial-apps/${appId}/files/upload` }}>
+    <FileUploadContext
+      value={{
+        localUploadUrl: `/trial-apps/${appId}/files/upload`,
+        remoteUploadUrl: `/trial-apps/${appId}/remote-files/upload`,
+      }}
+    >
       <div className="flex size-full">
         {isChat && <Chat appId={appId} appDetail={appDetail} className="h-full grow" />}
         {isCompletion && (

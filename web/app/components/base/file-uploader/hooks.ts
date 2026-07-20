@@ -55,7 +55,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const fileStore = useFileStore()
   const params = useParams()
   const pathname = usePathname()
-  const { uploadUrl } = useFileUploadContext()
+  const { localUploadUrl, remoteUploadUrl } = useFileUploadContext()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
@@ -198,11 +198,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             ...uploadParams,
           })
         } else {
-          fileUpload(uploadParams, !!params.token, uploadUrl)
+          fileUpload(uploadParams, !!params.token, localUploadUrl)
         }
       }
     },
-    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token, uploadUrl],
+    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token, localUploadUrl],
   )
 
   const startProgressTimer = useCallback(
@@ -238,7 +238,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
 
       const remoteUpload = isHumanInputFormPage
         ? uploadHumanInputFormRemoteFileInfo(formToken!, url)
-        : uploadRemoteFileInfo(url, !!params.token)
+        : uploadRemoteFileInfo(url, !!params.token, undefined, remoteUploadUrl)
 
       remoteUpload
         .then((res) => {
@@ -289,6 +289,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       isHumanInputFormPage,
       formToken,
       params.token,
+      remoteUploadUrl,
     ],
   )
 
@@ -376,7 +377,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               ...uploadParams,
             })
           } else {
-            fileUpload(uploadParams, !!params.token, uploadUrl)
+            fileUpload(uploadParams, !!params.token, localUploadUrl)
           }
         },
         false,
@@ -399,7 +400,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       isHumanInputFormPage,
       formToken,
       params.token,
-      uploadUrl,
+      localUploadUrl,
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
       fileConfig?.enabled,

@@ -208,6 +208,25 @@ class TestTrialAppFileUploadApi:
         upload.assert_called_once_with(current_user=account, resource_tenant_id="app-tenant-id")
 
 
+class TestTrialAppRemoteFileUploadApi:
+    def test_upload_uses_trial_app_tenant(self, app: Flask, account: Account) -> None:
+        api = module.TrialAppRemoteFileUploadApi()
+        method = unwrap(api.post)
+        app_model = SimpleNamespace(tenant_id="app-tenant-id")
+        remote_file = MagicMock()
+        remote_file.model_dump.return_value = {"id": "upload-file-id"}
+
+        with (
+            app.test_request_context("/", method="POST", json={"url": "https://example.com/file.txt"}),
+            patch.object(module, "upload_remote_file_from_request", return_value=remote_file) as upload,
+        ):
+            response, status = method(api, account, app_model)
+
+        assert status == 201
+        assert response == {"id": "upload-file-id"}
+        upload.assert_called_once_with(current_user=account, resource_tenant_id="app-tenant-id")
+
+
 class TestTrialAppWorkflowRunApi:
     def test_not_workflow_app(self, app: Flask, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()

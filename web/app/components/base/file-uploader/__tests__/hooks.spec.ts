@@ -9,7 +9,10 @@ const mockNavigationState = vi.hoisted(() => ({
   params: {} as { token?: string },
   pathname: '/chat',
 }))
-const mockFileUploadContext = vi.hoisted(() => ({ uploadUrl: undefined as string | undefined }))
+const mockFileUploadContext = vi.hoisted(() => ({
+  localUploadUrl: undefined as string | undefined,
+  remoteUploadUrl: undefined as string | undefined,
+}))
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => mockNavigationState.params,
@@ -129,7 +132,8 @@ describe('useFile', () => {
     mockStoreFiles = []
     mockNavigationState.params = {}
     mockNavigationState.pathname = '/chat'
-    mockFileUploadContext.uploadUrl = undefined
+    mockFileUploadContext.localUploadUrl = undefined
+    mockFileUploadContext.remoteUploadUrl = undefined
     mockIsAllowedFileExtension.mockReturnValue(true)
     mockGetSupportFileType.mockReturnValue('document')
   })
@@ -372,7 +376,27 @@ describe('useFile', () => {
       result.current.handleLoadFileFromLink('https://example.com/file.txt')
 
       expect(mockSetFiles).toHaveBeenCalled()
-      expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/file.txt', false)
+      expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith(
+        'https://example.com/file.txt',
+        false,
+        undefined,
+        undefined,
+      )
+    })
+
+    it('should upload a remote file through the configured resource-scoped endpoint', () => {
+      mockFileUploadContext.remoteUploadUrl = '/trial-apps/app-id/remote-files/upload'
+      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLoadFileFromLink('https://example.com/file.txt')
+
+      expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith(
+        'https://example.com/file.txt',
+        false,
+        undefined,
+        '/trial-apps/app-id/remote-files/upload',
+      )
     })
 
     it('should use human input form remote upload on form page', () => {
@@ -790,7 +814,7 @@ describe('useFile', () => {
 
     it('should upload through the configured resource-scoped endpoint', () => {
       const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockFileUploadContext.uploadUrl = '/trial-apps/app-id/files/upload'
+      mockFileUploadContext.localUploadUrl = '/trial-apps/app-id/files/upload'
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleLocalFileUpload(file)

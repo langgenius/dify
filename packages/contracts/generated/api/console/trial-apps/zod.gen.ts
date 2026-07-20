@@ -61,6 +61,27 @@ export const zSuggestedQuestionsResponse = z.object({
 })
 
 /**
+ * RemoteFileUploadPayload
+ */
+export const zRemoteFileUploadPayload = z.object({
+  url: z.string(),
+})
+
+/**
+ * FileWithSignedUrl
+ */
+export const zFileWithSignedUrl = z.object({
+  created_at: z.int().nullable(),
+  created_by: z.string().nullable(),
+  extension: z.string().nullable(),
+  id: z.string(),
+  mime_type: z.string().nullable(),
+  name: z.string(),
+  size: z.int(),
+  url: z.string().nullable(),
+})
+
+/**
  * Site
  */
 export const zSite = z.object({
@@ -468,6 +489,17 @@ export const zGetTrialAppsByAppIdParametersPath = z.object({
  * Success
  */
 export const zGetTrialAppsByAppIdParametersResponse = zParameters
+
+export const zPostTrialAppsByAppIdRemoteFilesUploadBody = zRemoteFileUploadPayload
+
+export const zPostTrialAppsByAppIdRemoteFilesUploadPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * File uploaded successfully
+ */
+export const zPostTrialAppsByAppIdRemoteFilesUploadResponse = zFileWithSignedUrl
 
 export const zGetTrialAppsByAppIdSitePath = z.object({
   app_id: z.uuid(),

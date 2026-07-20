@@ -101,6 +101,21 @@ export type Parameters = {
   user_input_form: Array<JsonObject>
 }
 
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type FileWithSignedUrl = {
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  url: string | null
+}
+
 export type Site = {
   chat_color_theme?: string | null
   chat_color_theme_inverted: boolean
@@ -447,6 +462,22 @@ export type GetTrialAppsByAppIdParametersResponses = {
 
 export type GetTrialAppsByAppIdParametersResponse =
   GetTrialAppsByAppIdParametersResponses[keyof GetTrialAppsByAppIdParametersResponses]
+
+export type PostTrialAppsByAppIdRemoteFilesUploadData = {
+  body: RemoteFileUploadPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/remote-files/upload'
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponse =
+  PostTrialAppsByAppIdRemoteFilesUploadResponses[keyof PostTrialAppsByAppIdRemoteFilesUploadResponses]
 
 export type GetTrialAppsByAppIdSiteData = {
   body?: never
