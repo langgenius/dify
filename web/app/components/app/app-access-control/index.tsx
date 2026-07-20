@@ -24,6 +24,7 @@ type AccessControlProps = {
 
 export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
+  const { id: appId, access_mode: appAccessMode } = app
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const setAppId = useAccessControlStore((s) => s.setAppId)
@@ -38,9 +39,9 @@ export default function AccessControl(props: AccessControlProps) {
       systemFeatures.webapp_auth.allow_email_code_login)
 
   useEffect(() => {
-    setAppId(app.id)
-    setCurrentMenu(app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS)
-  }, [app, setAppId, setCurrentMenu])
+    setAppId(appId)
+    setCurrentMenu(appAccessMode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  }, [appAccessMode, appId, setAppId, setCurrentMenu])
 
   const { isPending, mutateAsync: updateAccessMode } = useMutation(
     consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
@@ -50,7 +51,7 @@ export default function AccessControl(props: AccessControlProps) {
       appId: string
       accessMode: AccessMode
       subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
-    } = { appId: app.id, accessMode: currentMenu }
+    } = { appId, accessMode: currentMenu }
     if (currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
       const subjects: Pick<Subject, 'subjectId' | 'subjectType'>[] = []
       specificGroups.forEach((group) => {
@@ -67,7 +68,7 @@ export default function AccessControl(props: AccessControlProps) {
     await updateAccessMode({ body: submitData })
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm?.()
-  }, [updateAccessMode, app, specificGroups, specificMembers, t, onConfirm, currentMenu])
+  }, [updateAccessMode, appId, specificGroups, specificMembers, t, onConfirm, currentMenu])
   return (
     <AccessControlDialog show onClose={onClose}>
       <div className="flex flex-col gap-y-3">
