@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "Модель Rerank необхідна для поєднання внутрішніх і зовнішніх знань.",
   "multimodal": "Мультимодальний",
   "newKnowledge.appsUnavailable": "— застосунків",
-  "newKnowledge.cardType": "Простір знань · RAG",
+  "newKnowledge.cardType": "Простір знань",
   "newKnowledge.connectSource": "Підключити джерело",
   "newKnowledge.connectSourceDescription": "Вміст залишається синхронізованим із Notion, вебсайтами та іншими сервісами.",
   "newKnowledge.creators": "Автори",

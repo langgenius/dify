@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "مطلوب نموذج إعادة الترتيب لخلط المعرفة الداخلية والخارجية.",
   "multimodal": "متعدد الوسائط",
   "newKnowledge.appsUnavailable": "— تطبيقات",
-  "newKnowledge.cardType": "مساحة معرفة · RAG",
+  "newKnowledge.cardType": "مساحة معرفة",
   "newKnowledge.connectSource": "ربط مصدر",
   "newKnowledge.connectSourceDescription": "يبقى المحتوى متزامنًا مع Notion والمواقع الإلكترونية والخدمات الأخرى.",
   "newKnowledge.creators": "المنشئون",

@@ -16,8 +16,10 @@ const LOADING_CARD_IDS = [
   'loading-card-8',
 ] as const
 
+const EMPTY_GHOST_CARD_IDS = Array.from({ length: 16 }, (_, index) => `empty-ghost-card-${index}`)
+
 export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
-  'grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+  'grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))] gap-2.5'
 
 export function UnavailableReason({ label, reason }: { label: string; reason: string }) {
   return (
@@ -146,6 +148,35 @@ function EmptyAction({
   )
 }
 
+function EmptyGhostGrid() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)]"
+    >
+      <div className="absolute top-0 left-1/2 grid w-[1200px] -translate-x-1/2 grid-cols-4 gap-2.5 opacity-35">
+        {EMPTY_GHOST_CARD_IDS.map((id) => (
+          <div
+            key={id}
+            className="h-[209px] rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
+          >
+            <div className="flex items-center gap-3">
+              <div className="size-10 shrink-0 rounded-[10px] bg-background-section" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-3 w-2/3 rounded-sm bg-background-section" />
+                <div className="h-2.5 w-1/3 rounded-sm bg-background-section" />
+              </div>
+            </div>
+            <div className="mt-4 h-2.5 w-full rounded-sm bg-background-section" />
+            <div className="mt-2 h-2.5 w-4/5 rounded-sm bg-background-section" />
+            <div className="mt-5 h-5 w-16 rounded-md bg-background-section" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function NewKnowledgeEmptyState({
   canConnect,
   canCreate,
@@ -157,8 +188,9 @@ export function NewKnowledgeEmptyState({
   const canStart = canConnect || canCreate
 
   return (
-    <div className="flex min-h-[calc(100vh-134px)] items-center justify-center px-4 py-16 text-center sm:px-6">
-      <div className="flex w-full max-w-[520px] flex-col items-center gap-6">
+    <div className="relative isolate flex min-h-[calc(100vh-134px)] items-center justify-center overflow-hidden px-4 py-16 text-center sm:px-6">
+      <EmptyGhostGrid />
+      <div className="relative z-10 flex w-full max-w-[520px] flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-3">
           <div className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-[6px]">
             <span aria-hidden className="i-ri-book-open-line size-6 text-text-accent" />

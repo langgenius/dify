@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "The Rerank model is required for mixture of internal and  external knowledge.",
   "multimodal": "Multimodal",
   "newKnowledge.appsUnavailable": "— apps",
-  "newKnowledge.cardType": "Kennisruimte · RAG",
+  "newKnowledge.cardType": "Kennisruimte",
   "newKnowledge.connectSource": "Bron verbinden",
   "newKnowledge.connectSourceDescription": "Inhoud blijft gesynchroniseerd met Notion, websites en andere diensten.",
   "newKnowledge.creators": "Makers",

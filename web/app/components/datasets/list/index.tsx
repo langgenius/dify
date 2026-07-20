@@ -1,7 +1,7 @@
 'use client'
 
+import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
 // Libraries
-import type { ReactNode } from 'react'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
@@ -37,11 +37,14 @@ import ExternalAPIPanel from '../external-api/external-api-panel'
 import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
-import { KnowledgeViewSwitcher } from './knowledge-view-switcher'
 
 const knowledgeViewParser = parseAsStringLiteral(['legacy', 'new']).withDefault('legacy')
 
-function LegacyList({ viewSwitcher }: { viewSwitcher?: ReactNode }) {
+function LegacyList({
+  knowledgeViewSwitcherProps,
+}: {
+  knowledgeViewSwitcherProps?: KnowledgeViewSwitcherProps
+}) {
   const { t } = useTranslation()
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
@@ -165,7 +168,7 @@ function LegacyList({ viewSwitcher }: { viewSwitcher?: ReactNode }) {
         stepByStepTourCreateMenuHighlightPart={
           STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
         }
-        viewSwitcher={viewSwitcher}
+        knowledgeViewSwitcherProps={knowledgeViewSwitcherProps}
       />
       {showEmptyDataList ? (
         <DatasetFirstEmptyState
@@ -212,18 +215,20 @@ function LegacyList({ viewSwitcher }: { viewSwitcher?: ReactNode }) {
 
 function KnowledgeFsList() {
   const [view, setView] = useQueryState('view', knowledgeViewParser)
-  const viewSwitcher = (
-    <KnowledgeViewSwitcher
-      value={view}
-      onChange={(nextView) => {
-        void setView(nextView)
+  const onViewChange = (nextView: 'legacy' | 'new') => {
+    void setView(nextView)
+  }
+
+  if (view === 'new') return <NewKnowledgeList view={view} onViewChange={onViewChange} />
+
+  return (
+    <LegacyList
+      knowledgeViewSwitcherProps={{
+        value: view,
+        onChange: onViewChange,
       }}
     />
   )
-
-  if (view === 'new') return <NewKnowledgeList viewSwitcher={viewSwitcher} />
-
-  return <LegacyList viewSwitcher={viewSwitcher} />
 }
 
 function List() {

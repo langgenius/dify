@@ -54,7 +54,7 @@ export function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: Knowled
             </div>
           </div>
         </div>
-        <p className="line-clamp-2 w-full px-4 py-0.5 body-xs-regular text-text-tertiary">
+        <p className="line-clamp-2 min-h-8 w-full px-4 py-0.5 body-xs-regular text-text-tertiary">
           {knowledgeSpace.description || t(($) => $['newKnowledge.noDescription'])}
         </p>
         <div

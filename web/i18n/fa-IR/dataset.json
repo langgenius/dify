@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "مدل Rerank برای آمیختگی دانش درونی و بیرونی مورد نیاز است.",
   "multimodal": "چندوجهی",
   "newKnowledge.appsUnavailable": "— برنامه",
-  "newKnowledge.cardType": "فضای دانش · RAG",
+  "newKnowledge.cardType": "فضای دانش",
   "newKnowledge.connectSource": "اتصال منبع",
   "newKnowledge.connectSourceDescription": "محتوا با Notion، وب‌سایت‌ها و سرویس‌های دیگر همگام می‌ماند.",
   "newKnowledge.creators": "ایجادکنندگان",

@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "Model Rerank diperlukan untuk campuran pengetahuan internal dan eksternal.",
   "multimodal": "Multimodal",
   "newKnowledge.appsUnavailable": "— aplikasi",
-  "newKnowledge.cardType": "Ruang pengetahuan · RAG",
+  "newKnowledge.cardType": "Ruang pengetahuan",
   "newKnowledge.connectSource": "Hubungkan sumber",
   "newKnowledge.connectSourceDescription": "Konten tetap tersinkronisasi dengan Notion, situs web, dan layanan lainnya.",
   "newKnowledge.creators": "Pembuat",

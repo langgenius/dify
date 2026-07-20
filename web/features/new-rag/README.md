@@ -5,6 +5,7 @@ Renders the KnowledgeFS-backed knowledge list, creation entry points, and first-
 ## Internal Modules
 
 - `components/knowledge-space-card`
+- `components/knowledge-view-switcher`
 - `components/new-knowledge-list-states`
 - `storage`
 

@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "内部と外部のナレッジベースを混在させる場合、Rerank モデルが必要です。",
   "multimodal": "マルチモーダル",
   "newKnowledge.appsUnavailable": "— 個のアプリ",
-  "newKnowledge.cardType": "ナレッジスペース · RAG",
+  "newKnowledge.cardType": "ナレッジスペース",
   "newKnowledge.connectSource": "ソースを接続",
   "newKnowledge.connectSourceDescription": "コンテンツは Notion、Web サイト、その他のサービスと同期され続けます。",
   "newKnowledge.creators": "作成者",

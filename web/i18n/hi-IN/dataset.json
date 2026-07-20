@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "आंतरिक और बाहरी ज्ञान के मिश्रण के लिए रीरैंक मॉडल की आवश्यकता होती है।",
   "multimodal": "बहु-मोडल",
   "newKnowledge.appsUnavailable": "— ऐप",
-  "newKnowledge.cardType": "नॉलेज स्पेस · RAG",
+  "newKnowledge.cardType": "नॉलेज स्पेस",
   "newKnowledge.connectSource": "स्रोत कनेक्ट करें",
   "newKnowledge.connectSourceDescription": "कंटेंट Notion, वेबसाइटों और अन्य सेवाओं के साथ सिंक रहता है।",
   "newKnowledge.creators": "निर्माता",

@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "Модель Rerank необходима для смешивания внутренних и внешних знаний.",
   "multimodal": "Мультимодальный",
   "newKnowledge.appsUnavailable": "— приложений",
-  "newKnowledge.cardType": "Пространство знаний · RAG",
+  "newKnowledge.cardType": "Пространство знаний",
   "newKnowledge.connectSource": "Подключить источник",
   "newKnowledge.connectSourceDescription": "Контент остаётся синхронизированным с Notion, веб-сайтами и другими сервисами.",
   "newKnowledge.creators": "Создатели",

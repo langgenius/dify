@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "리랭크 모델은 내부 및 외부 지식의 혼합에 필요합니다.",
   "multimodal": "멀티모달",
   "newKnowledge.appsUnavailable": "앱 —개",
-  "newKnowledge.cardType": "지식 공간 · RAG",
+  "newKnowledge.cardType": "지식 공간",
   "newKnowledge.connectSource": "소스 연결",
   "newKnowledge.connectSourceDescription": "콘텐츠가 Notion, 웹사이트 및 기타 서비스와 계속 동기화됩니다.",
   "newKnowledge.creators": "생성자",

@@ -14,13 +14,12 @@ import {
   useSetNewKnowledgeGuideDismissed,
 } from '@/features/new-rag/storage'
 
-export function KnowledgeViewSwitcher({
-  value,
-  onChange,
-}: {
+export type KnowledgeViewSwitcherProps = {
   value: 'legacy' | 'new'
   onChange: (value: 'legacy' | 'new') => void
-}) {
+}
+
+export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcherProps) {
   const { t } = useTranslation('dataset')
   const guideDismissed = useNewKnowledgeGuideDismissedValue()
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()

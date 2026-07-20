@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "Mô hình Rerank là cần thiết cho sự kết hợp giữa kiến thức bên trong và bên ngoài.",
   "multimodal": "Đa phương thức",
   "newKnowledge.appsUnavailable": "— ứng dụng",
-  "newKnowledge.cardType": "Không gian kiến thức · RAG",
+  "newKnowledge.cardType": "Không gian kiến thức",
   "newKnowledge.connectSource": "Kết nối nguồn",
   "newKnowledge.connectSourceDescription": "Nội dung luôn được đồng bộ với Notion, trang web và các dịch vụ khác.",
   "newKnowledge.creators": "Người tạo",

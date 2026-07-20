@@ -120,7 +120,7 @@ describe('NewKnowledgeList', () => {
   it('shows a scoped loading state', () => {
     queryMock.isPending = true
 
-    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
   })
@@ -128,7 +128,7 @@ describe('NewKnowledgeList', () => {
   it('requests the generated KnowledgeFS collection contract with cursor pagination', () => {
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
     expect(options).toBeDefined()
@@ -165,7 +165,7 @@ describe('NewKnowledgeList', () => {
       },
     ])
 
-    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
     const list = screen.getByRole('list', { name: 'dataset.knowledge' })
     const supportCard = within(list).getByRole('article', {
       name: 'Support knowledge. dataset.cornerLabel.unavailable',
@@ -201,7 +201,7 @@ describe('NewKnowledgeList', () => {
       },
     ])
 
-    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
     expect(externalApiPanelMock.setOpen).toHaveBeenCalledWith(true)
@@ -235,7 +235,7 @@ describe('NewKnowledgeList', () => {
   it('shows unavailable empty-state creation entries to authorized users', () => {
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     const connectSource = screen.getByRole('button', {
       name: 'dataset.newKnowledge.connectSource',
@@ -270,7 +270,7 @@ describe('NewKnowledgeList', () => {
     permissionStateMock.workspacePermissionKeys = []
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(
       screen.queryByRole('button', { name: /^dataset\.newKnowledge\.startEmpty/ }),
@@ -281,15 +281,18 @@ describe('NewKnowledgeList', () => {
     expect(screen.getByText('dataset.newKnowledge.readOnlyEmpty')).toBeInTheDocument()
   })
 
-  it('distinguishes an unavailable integration from a retryable list error', async () => {
-    const user = userEvent.setup()
-    queryMock.error = { data: { status: 503 } }
-    const { rerender } = renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+  it.each([404, 503])('shows an unavailable state for a %s response', (status) => {
+    queryMock.error = { status }
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('dataset.newKnowledge.unavailableTitle')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
+  })
 
+  it('shows a retryable error state for other failures', async () => {
+    const user = userEvent.setup()
     queryMock.error = new Error('request failed')
-    rerender(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('dataset.newKnowledge.errorTitle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -311,7 +314,7 @@ describe('NewKnowledgeList', () => {
     ])
     queryMock.isFetchNextPageError = true
 
-    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
@@ -332,7 +335,7 @@ describe('NewKnowledgeList', () => {
     ])
     queryMock.hasNextPage = true
 
-    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />, {
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
       searchParams: '?q=missing',
     })
 

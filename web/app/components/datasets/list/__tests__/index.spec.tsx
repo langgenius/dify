@@ -11,6 +11,38 @@ import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { createNuqsTestWrapper, renderWithNuqs } from '@/test/nuqs-testing'
 import List from '../index'
 
+const knowledgeFsInfiniteOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
+const useInfiniteQueryMock = vi.hoisted(() =>
+  vi.fn(() => ({
+    data: { pageParams: [null], pages: [{ items: [] }] },
+    error: null,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+    isPending: false,
+    refetch: vi.fn(),
+  })),
+)
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useInfiniteQuery: useInfiniteQueryMock,
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    knowledgeFs: {
+      listKnowledgeSpaces: {
+        infiniteOptions: knowledgeFsInfiniteOptionsMock,
+      },
+    },
+  },
+}))
+
 function NewKnowledgeGuideDismissedProbe() {
   const dismissed = useNewKnowledgeGuideDismissedValue()
 
@@ -96,12 +128,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetApiBaseUrl: () => ({
     data: { api_base_url: 'https://api.example.com' },
   }),
-}))
-
-vi.mock('@/features/new-rag/new-knowledge-list', () => ({
-  NewKnowledgeList: ({ viewSwitcher }: { viewSwitcher: ReactNode }) => (
-    <section aria-label="New knowledge view">{viewSwitcher}</section>
-  ),
 }))
 
 // Mock Datasets component
@@ -240,14 +266,21 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
     })
 
-    it('should hide the New Knowledge surface when KnowledgeFS is disabled', () => {
+    it('should keep the legacy query active without requesting KnowledgeFS when disabled', async () => {
       renderWithNuqs(<List />, { searchParams: '?view=new' })
 
       expect(
         screen.queryByRole('button', { name: 'dataset.newKnowledge.new' }),
       ).not.toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'New knowledge view' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('region', { name: 'dataset.newKnowledge.new' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      expect(knowledgeFsInfiniteOptionsMock).not.toHaveBeenCalled()
+      expect(useInfiniteQueryMock).not.toHaveBeenCalled()
+
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      expect(useDatasetList).toHaveBeenCalled()
     })
 
     it('should switch to New Knowledge and persist the selected view in the URL', async () => {
@@ -257,7 +290,9 @@ describe('List', () => {
 
       await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.new' }))
 
-      expect(await screen.findByRole('region', { name: 'New knowledge view' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'dataset.newKnowledge.new' }),
+      ).toBeInTheDocument()
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('new')
@@ -268,7 +303,7 @@ describe('List', () => {
 
       renderWithNuqs(<List />, { searchParams: '?view=new' })
 
-      expect(screen.getByRole('region', { name: 'New knowledge view' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'dataset.newKnowledge.new' })).toHaveAttribute(
         'aria-pressed',
         'true',

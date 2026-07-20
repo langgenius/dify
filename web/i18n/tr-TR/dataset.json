@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "Yeniden Sıralama modeli, iç ve dış bilgilerin karışımı için gereklidir.",
   "multimodal": "Çok Modlu",
   "newKnowledge.appsUnavailable": "— uygulama",
-  "newKnowledge.cardType": "Bilgi alanı · RAG",
+  "newKnowledge.cardType": "Bilgi alanı",
   "newKnowledge.connectSource": "Kaynak bağla",
   "newKnowledge.connectSourceDescription": "İçerik Notion, web siteleri ve diğer hizmetlerle senkronize kalır.",
   "newKnowledge.creators": "Oluşturanlar",

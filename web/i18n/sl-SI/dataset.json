@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "Model za ponovno razvrščanje je potreben za mešanico notranjega in zunanjega znanja.",
   "multimodal": "Multimodalen",
   "newKnowledge.appsUnavailable": "— aplikacij",
-  "newKnowledge.cardType": "Prostor znanja · RAG",
+  "newKnowledge.cardType": "Prostor znanja",
   "newKnowledge.connectSource": "Poveži vir",
   "newKnowledge.connectSourceDescription": "Vsebina ostaja sinhronizirana z Notionom, spletnimi mesti in drugimi storitvami.",
   "newKnowledge.creators": "Ustvarjalci",

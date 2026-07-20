@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "Modelul Rerank este necesar pentru amestecul de cunoștințe interne și externe.",
   "multimodal": "Multimodal",
   "newKnowledge.appsUnavailable": "— aplicații",
-  "newKnowledge.cardType": "Spațiu de cunoștințe · RAG",
+  "newKnowledge.cardType": "Spațiu de cunoștințe",
   "newKnowledge.connectSource": "Conectează o sursă",
   "newKnowledge.connectSourceDescription": "Conținutul rămâne sincronizat cu Notion, site-uri web și alte servicii.",
   "newKnowledge.creators": "Creatori",

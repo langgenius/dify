@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "O modelo de Reclassificação é necessário para a mistura de conhecimento interno e externo.",
   "multimodal": "Multimodal",
   "newKnowledge.appsUnavailable": "— apps",
-  "newKnowledge.cardType": "Espaço de conhecimento · RAG",
+  "newKnowledge.cardType": "Espaço de conhecimento",
   "newKnowledge.connectSource": "Conectar uma fonte",
   "newKnowledge.connectSourceDescription": "O conteúdo permanece sincronizado com Notion, sites e outros serviços.",
   "newKnowledge.creators": "Criadores",

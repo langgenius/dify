@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -15,6 +14,7 @@ import { consoleQuery } from '@/service/client'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeSpaceCard } from './components/knowledge-space-card'
+import { KnowledgeViewSwitcher } from './components/knowledge-view-switcher'
 import {
   KNOWLEDGE_SPACE_GRID_CLASS_NAME,
   NewKnowledgeEmptyState,
@@ -50,7 +50,13 @@ function DisabledMetadataFilter({ label, reasonId }: { label: string; reasonId: 
   )
 }
 
-export function NewKnowledgeList({ viewSwitcher }: { viewSwitcher: ReactNode }) {
+export function NewKnowledgeList({
+  view,
+  onViewChange,
+}: {
+  view: 'legacy' | 'new'
+  onViewChange: (value: 'legacy' | 'new') => void
+}) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
@@ -79,14 +85,17 @@ export function NewKnowledgeList({ viewSwitcher }: { viewSwitcher: ReactNode }) 
   const knowledgeSpaces = knowledgeSpacesQuery.data?.pages.flatMap((page) => page.items) ?? []
 
   return (
-    <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
+    <section
+      aria-label={t(($) => $['newKnowledge.new'])}
+      className="relative flex grow flex-col overflow-y-auto bg-background-body"
+    >
       <header className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-4 pt-4 pb-2 sm:px-8">
         <div className="flex min-h-6 flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
               {t(($) => $.knowledge)}
             </h1>
-            {viewSwitcher}
+            <KnowledgeViewSwitcher value={view} onChange={onViewChange} />
           </div>
           <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
             {canConnect && (
@@ -202,6 +211,6 @@ export function NewKnowledgeList({ viewSwitcher }: { viewSwitcher: ReactNode }) 
           onClose={() => setShowExternalApiPanel(false)}
         />
       )}
-    </div>
+    </section>
   )
 }

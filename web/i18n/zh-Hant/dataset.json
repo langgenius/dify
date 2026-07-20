@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "Rerank 模型是內部和外部知識的混合所必需的。",
   "multimodal": "多模態",
   "newKnowledge.appsUnavailable": "— 個應用程式",
-  "newKnowledge.cardType": "知識空間 · RAG",
+  "newKnowledge.cardType": "知識空間",
   "newKnowledge.connectSource": "連接資料來源",
   "newKnowledge.connectSourceDescription": "內容會與 Notion、網站及其他服務保持同步。",
   "newKnowledge.creators": "建立者",

@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "Le modèle Rerank est nécessaire pour mélanger les connaissances internes et externes.",
   "multimodal": "Multimodal",
   "newKnowledge.appsUnavailable": "— applications",
-  "newKnowledge.cardType": "Espace de connaissances · RAG",
+  "newKnowledge.cardType": "Espace de connaissances",
   "newKnowledge.connectSource": "Connecter une source",
   "newKnowledge.connectSourceDescription": "Le contenu reste synchronisé avec Notion, les sites web et d’autres services.",
   "newKnowledge.creators": "Créateurs",

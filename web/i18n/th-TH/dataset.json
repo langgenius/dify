@@ -131,7 +131,7 @@
   "mixtureInternalAndExternalTip": "โมเดล Rerank จําเป็นสําหรับการผสมผสานระหว่างความรู้ภายในและภายนอก",
   "multimodal": "หลายรูปแบบ",
   "newKnowledge.appsUnavailable": "— แอป",
-  "newKnowledge.cardType": "พื้นที่ความรู้ · RAG",
+  "newKnowledge.cardType": "พื้นที่ความรู้",
   "newKnowledge.connectSource": "เชื่อมต่อแหล่งข้อมูล",
   "newKnowledge.connectSourceDescription": "เนื้อหาจะซิงค์กับ Notion เว็บไซต์ และบริการอื่น ๆ อยู่เสมอ",
   "newKnowledge.creators": "ผู้สร้าง",

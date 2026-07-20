@@ -127,6 +127,7 @@ def test_proxy_options_does_not_require_an_authenticated_account(app: Flask) -> 
     with app.test_request_context(
         "/console/api/knowledge-fs/knowledge-spaces",
         method="OPTIONS",
+        headers={"Access-Control-Request-Method": "GET"},
     ):
         response = app.make_response(proxy_knowledge_fs_options("knowledge-spaces"))
 
@@ -142,8 +143,33 @@ def test_proxy_options_is_hidden_when_knowledge_fs_is_disabled(
     with app.test_request_context(
         "/console/api/knowledge-fs/knowledge-spaces",
         method="OPTIONS",
+        headers={"Access-Control-Request-Method": "GET"},
     ):
         response = app.make_response(proxy_knowledge_fs_options("knowledge-spaces"))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("upstream_path", "requested_method"),
+    [
+        ("unregistered", "GET"),
+        ("knowledge-spaces", "DELETE"),
+        ("knowledge-spaces", ""),
+    ],
+)
+def test_proxy_options_hides_unregistered_operations(
+    app: Flask,
+    upstream_path: str,
+    requested_method: str,
+) -> None:
+    headers = {"Access-Control-Request-Method": requested_method} if requested_method else None
+    with app.test_request_context(
+        f"/console/api/knowledge-fs/{upstream_path}",
+        method="OPTIONS",
+        headers=headers,
+    ):
+        response = app.make_response(proxy_knowledge_fs_options(upstream_path))
 
     assert response.status_code == 404
 
