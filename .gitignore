@@ -30,6 +30,11 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# KnowledgeFS is an independently rooted TypeScript workspace. Its admin `lib`
+# directory contains source files rather than Python build output.
+!/knowledge-fs/apps/admin/lib/
+!/knowledge-fs/apps/admin/lib/**
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.

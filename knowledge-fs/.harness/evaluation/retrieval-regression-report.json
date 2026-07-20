@@ -1,0 +1,32 @@
+{
+  "baseline": {
+    "citationAccuracy": 0.91,
+    "citationHitRate": 0.9,
+    "faithfulnessScore": 0.93,
+    "noAnswerRate": 0.05,
+    "recallAtK": 0.9,
+    "totalQuestions": 10
+  },
+  "current": {
+    "citationAccuracy": 0.89,
+    "citationHitRate": 0.88,
+    "faithfulnessScore": 0.91,
+    "noAnswerRate": 0.06,
+    "recallAtK": 0.89,
+    "totalQuestions": 10
+  },
+  "thresholds": {
+    "maxCitationAccuracyDrop": 0.05,
+    "maxCitationHitRateDrop": 0.05,
+    "maxFaithfulnessScoreDrop": 0.05,
+    "maxFailures": 20,
+    "maxNoAnswerRate": 0.2,
+    "maxNoAnswerRateIncrease": 0.05,
+    "maxRecallAtKDrop": 0.05,
+    "minCitationAccuracy": 0.85,
+    "minCitationHitRate": 0.8,
+    "minFaithfulnessScore": 0.85,
+    "minQuestions": 3,
+    "minRecallAtK": 0.85
+  }
+}

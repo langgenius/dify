@@ -1,0 +1,32 @@
+{
+  "name": "@knowledge/api",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^0.18.4",
+    "@knowledge/compute": "workspace:*",
+    "@knowledge/core": "workspace:*",
+    "@knowledge/embeddings": "workspace:*",
+    "@knowledge/parsers": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "hono": "^4.6.14",
+    "jose": "^5.10.0",
+    "sharp": "^0.34.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@knowledge/adapters": "workspace:*",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

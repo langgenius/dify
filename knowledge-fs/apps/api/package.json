@@ -1,0 +1,31 @@
+{
+  "name": "@knowledge/api-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "build:prod": "esbuild src/server.ts --bundle --platform=node --format=esm --target=node22 --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\" --outfile=dist/server.mjs",
+    "dev": "node --env-file-if-exists=../../infra/local/.env --import tsx --watch src/server.ts",
+    "start": "node dist/server.mjs",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@knowledge/adapters": "workspace:*",
+    "@knowledge/api": "workspace:*",
+    "@knowledge/compute": "workspace:*",
+    "@knowledge/embeddings": "workspace:*",
+    "@knowledge/generation": "workspace:*",
+    "@knowledge/parsers": "workspace:*",
+    "@knowledge/plugin-daemon-client": "workspace:*",
+    "hono": "^4.6.14"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.25.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

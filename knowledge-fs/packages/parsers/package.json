@@ -1,0 +1,28 @@
+{
+  "name": "@knowledge/parsers",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@knowledge/core": "workspace:*",
+    "csv-parse": "^6.2.1",
+    "fast-xml-parser": "^5.8.0",
+    "htmlparser2": "^12.0.0",
+    "marked": "^18.0.3",
+    "yaml": "^2.9.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

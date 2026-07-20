@@ -1,0 +1,58 @@
+name: knowledge-fs-middleware
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-knowledge_fs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-knowledge_fs}
+      POSTGRES_USER: ${POSTGRES_USER:-knowledge_fs}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-knowledge-secret}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-knowledge}
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+
+  minio-bootstrap:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-lc"]
+    command:
+      - mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" && mc mb --ignore-existing "local/$${MINIO_BUCKET}"
+    environment:
+      MINIO_BUCKET: ${MINIO_BUCKET:-knowledge-fs}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-knowledge-secret}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-knowledge}
+
+  unstructured:
+    image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
+    ports:
+      - "${UNSTRUCTURED_PORT:-8000}:8000"
+
+volumes:
+  minio-data:
+  postgres-data:

@@ -1,0 +1,1715 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KnowledgeFS Product Experience Mock</title>
+    <style>
+      :root {
+        --bg: #f7f8f5;
+        --surface: #ffffff;
+        --surface-2: #f0f5f8;
+        --ink: #18211d;
+        --muted: #5e6c64;
+        --line: #d8dfd7;
+        --green: #28795d;
+        --green-2: #e5f3ec;
+        --blue: #326ca8;
+        --blue-2: #e7f0fa;
+        --amber: #9a6c16;
+        --amber-2: #fff3cf;
+        --red: #aa4634;
+        --red-2: #fde9e3;
+        --violet: #6c58a8;
+        --violet-2: #eeeaf8;
+        --shadow: 0 18px 46px rgba(24, 33, 29, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        background:
+          linear-gradient(180deg, rgba(240, 245, 248, 0.9), rgba(247, 248, 245, 0) 360px),
+          var(--bg);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 248px minmax(0, 1fr) 360px;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        background: rgba(255, 255, 255, 0.78);
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        padding: 22px 16px;
+      }
+
+      .brand {
+        display: grid;
+        gap: 5px;
+        padding: 0 6px;
+      }
+
+      .brand strong {
+        font-size: 18px;
+        line-height: 1.1;
+      }
+
+      .brand span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .workspace-select {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .workspace-select label,
+      .field label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      select,
+      input,
+      textarea {
+        background: #fff;
+        border: 1px solid #ccd7d0;
+        border-radius: 7px;
+        color: var(--ink);
+        min-width: 0;
+        padding: 9px 10px;
+      }
+
+      textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+
+      .nav {
+        display: grid;
+        gap: 6px;
+      }
+
+      .nav button {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-left: 3px solid transparent;
+        color: #344139;
+        display: flex;
+        gap: 10px;
+        min-height: 40px;
+        padding: 8px 10px;
+        text-align: left;
+      }
+
+      .nav button.active {
+        background: var(--green-2);
+        border-color: var(--green);
+        color: #123a2d;
+        font-weight: 700;
+      }
+
+      .nav svg,
+      .button svg,
+      .icon-button svg {
+        flex: 0 0 auto;
+        height: 17px;
+        width: 17px;
+      }
+
+      .sidebar-note {
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+        margin-top: auto;
+        padding: 16px 8px 0;
+      }
+
+      .main {
+        min-width: 0;
+        padding: 22px 24px 34px;
+      }
+
+      .topbar {
+        align-items: center;
+        display: flex;
+        gap: 18px;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+
+      .topbar h1 {
+        font-size: 25px;
+        line-height: 1.18;
+        margin: 0 0 6px;
+      }
+
+      .topbar p {
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .top-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .button,
+      .icon-button {
+        align-items: center;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        display: inline-flex;
+        font-weight: 700;
+        gap: 8px;
+        justify-content: center;
+        min-height: 38px;
+        padding: 9px 12px;
+        text-decoration: none;
+      }
+
+      .button.primary {
+        background: var(--green);
+        color: white;
+      }
+
+      .button.secondary {
+        background: var(--surface);
+        border-color: var(--line);
+        color: #26352d;
+      }
+
+      .button.ghost {
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .icon-button {
+        background: var(--surface);
+        border-color: var(--line);
+        color: #26352d;
+        min-width: 38px;
+        padding: 8px;
+      }
+
+      .journey {
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-bottom: 18px;
+        padding: 12px;
+      }
+
+      .step {
+        align-items: center;
+        display: flex;
+        gap: 11px;
+        min-width: 0;
+      }
+
+      .step-mark {
+        align-items: center;
+        background: #e8ede9;
+        border-radius: 50%;
+        color: #526059;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 800;
+        height: 28px;
+        justify-content: center;
+        width: 28px;
+      }
+
+      .step.done .step-mark {
+        background: var(--green);
+        color: white;
+      }
+
+      .step.active .step-mark {
+        background: var(--blue);
+        color: white;
+      }
+
+      .step strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .step span {
+        color: var(--muted);
+        display: block;
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .screen {
+        display: none;
+      }
+
+      .screen.active {
+        display: block;
+      }
+
+      .first-minute-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(310px, 0.75fr) minmax(420px, 1.25fr);
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 1px 0 rgba(24, 33, 29, 0.02);
+        min-width: 0;
+        padding: 16px;
+      }
+
+      .panel.flush {
+        padding: 0;
+      }
+
+      .panel-header {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .panel h2,
+      .panel h3,
+      .panel h4 {
+        margin: 0;
+      }
+
+      .panel h2 {
+        font-size: 18px;
+      }
+
+      .panel h3 {
+        font-size: 15px;
+      }
+
+      .panel h4 {
+        font-size: 13px;
+      }
+
+      .panel small,
+      .muted {
+        color: var(--muted);
+      }
+
+      .badge {
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+        padding: 6px 8px;
+        white-space: nowrap;
+      }
+
+      .badge.ok {
+        background: var(--green-2);
+        color: #236245;
+      }
+
+      .badge.info {
+        background: var(--blue-2);
+        color: #245780;
+      }
+
+      .badge.warn {
+        background: var(--amber-2);
+        color: var(--amber);
+      }
+
+      .badge.fail {
+        background: var(--red-2);
+        color: var(--red);
+      }
+
+      .badge.trace {
+        background: var(--violet-2);
+        color: var(--violet);
+      }
+
+      .intake-card {
+        border: 1px dashed #aab8b0;
+        border-radius: 8px;
+        display: grid;
+        gap: 12px;
+        min-height: 212px;
+        padding: 18px;
+        place-items: center;
+        text-align: center;
+      }
+
+      .intake-card.ready {
+        background: #f7fbf8;
+        border-color: #8bb5a2;
+      }
+
+      .intake-card svg {
+        color: var(--green);
+        height: 34px;
+        width: 34px;
+      }
+
+      .intake-card p {
+        color: var(--muted);
+        line-height: 1.5;
+        margin: 0;
+        max-width: 320px;
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .source-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .source-row,
+      .evidence-row,
+      .quality-row,
+      .trace-row {
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        min-width: 0;
+        padding: 10px;
+      }
+
+      .source-row {
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+      }
+
+      .file-icon {
+        align-items: center;
+        background: var(--blue-2);
+        border-radius: 7px;
+        color: var(--blue);
+        display: inline-flex;
+        height: 34px;
+        justify-content: center;
+        width: 34px;
+      }
+
+      .file-icon svg {
+        height: 18px;
+        width: 18px;
+      }
+
+      .source-row strong,
+      .evidence-row strong,
+      .quality-row strong {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .source-row span,
+      .evidence-row span,
+      .quality-row span {
+        color: var(--muted);
+        display: block;
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .ask-panel {
+        display: grid;
+        gap: 14px;
+      }
+
+      .suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .suggestions button {
+        background: #f6f8f6;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: #26352d;
+        padding: 8px 11px;
+      }
+
+      .query-box {
+        display: grid;
+        gap: 10px;
+      }
+
+      .query-compose {
+        align-items: end;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+      }
+
+      .query-compose input {
+        min-height: 44px;
+      }
+
+      .answer {
+        background: #fbfcfb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 14px;
+        padding: 14px;
+      }
+
+      .answer p {
+        line-height: 1.62;
+        margin: 0;
+      }
+
+      .answer sup {
+        background: var(--blue-2);
+        border-radius: 999px;
+        color: var(--blue);
+        font-size: 11px;
+        font-weight: 800;
+        padding: 2px 5px;
+      }
+
+      .answer-meta {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .meta-box {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .meta-box span {
+        color: var(--muted);
+        display: block;
+        font-size: 12px;
+      }
+
+      .meta-box strong {
+        display: block;
+        font-size: 14px;
+        margin-top: 5px;
+      }
+
+      .evidence-strip {
+        display: grid;
+        gap: 8px;
+      }
+
+      .evidence-row {
+        background: var(--surface);
+        grid-template-columns: minmax(0, 1fr) auto;
+        text-align: left;
+        width: 100%;
+      }
+
+      button.evidence-row {
+        color: inherit;
+      }
+
+      .evidence-row.active {
+        border-color: #7ca894;
+        box-shadow: 0 0 0 3px rgba(40, 121, 93, 0.11);
+      }
+
+      .right-rail {
+        background: rgba(255, 255, 255, 0.84);
+        border-left: 1px solid var(--line);
+        min-width: 0;
+        padding: 22px 16px;
+      }
+
+      .rail-section {
+        display: grid;
+        gap: 12px;
+      }
+
+      .rail-section + .rail-section {
+        border-top: 1px solid var(--line);
+        margin-top: 16px;
+        padding-top: 16px;
+      }
+
+      .rail-header {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .rail-header h2 {
+        font-size: 16px;
+        margin: 0;
+      }
+
+      .source-preview {
+        background: #fbfcfb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 12px;
+        padding: 13px;
+      }
+
+      .source-preview code {
+        color: var(--muted);
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
+      .source-preview p {
+        line-height: 1.58;
+        margin: 0;
+      }
+
+      mark {
+        background: #fff1b8;
+        border-radius: 3px;
+        color: inherit;
+        padding: 1px 2px;
+      }
+
+      .trace-toggle {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        color: var(--violet);
+        display: inline-flex;
+        font-weight: 800;
+        gap: 7px;
+        padding: 0;
+      }
+
+      .trace-detail {
+        display: none;
+        gap: 8px;
+      }
+
+      .trace-detail.open {
+        display: grid;
+      }
+
+      .trace-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .trace-row code {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .grid-2 {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+      }
+
+      .metric-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .metric {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-height: 96px;
+        padding: 13px;
+      }
+
+      .metric span {
+        color: var(--muted);
+        display: block;
+        font-size: 12px;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 25px;
+        margin-top: 8px;
+      }
+
+      .table {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .table-row {
+        align-items: center;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1.2fr 0.7fr 0.7fr 0.7fr auto;
+        padding: 11px 12px;
+      }
+
+      .table-row + .table-row {
+        border-top: 1px solid var(--line);
+      }
+
+      .table-row.header {
+        background: #f3f6f3;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .status-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .status-item {
+        align-items: center;
+        border-bottom: 1px solid #e5ebe6;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        padding: 8px 0;
+      }
+
+      .status-item:last-child {
+        border-bottom: 0;
+      }
+
+      .status-item span {
+        color: var(--muted);
+      }
+
+      .status-item strong {
+        text-align: right;
+      }
+
+      .semantic-map {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 12px;
+        min-height: 320px;
+        padding: 16px;
+        position: relative;
+      }
+
+      .map-node {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        padding: 12px;
+        position: absolute;
+        width: 180px;
+      }
+
+      .map-node strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .map-node span {
+        color: var(--muted);
+        display: block;
+        font-size: 12px;
+        margin-top: 5px;
+      }
+
+      .map-node.a {
+        left: 28px;
+        top: 38px;
+      }
+
+      .map-node.b {
+        right: 34px;
+        top: 54px;
+      }
+
+      .map-node.c {
+        left: 42%;
+        top: 156px;
+      }
+
+      .map-node.d {
+        bottom: 34px;
+        left: 94px;
+      }
+
+      .map-node.e {
+        bottom: 42px;
+        right: 74px;
+      }
+
+      .semantic-map svg {
+        height: 100%;
+        inset: 0;
+        position: absolute;
+        width: 100%;
+      }
+
+      .empty-callout {
+        background: #fbfcfb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--muted);
+        line-height: 1.5;
+        padding: 12px;
+      }
+
+      .drawer {
+        background: rgba(24, 33, 29, 0.34);
+        display: none;
+        inset: 0;
+        position: fixed;
+        z-index: 10;
+      }
+
+      .drawer.open {
+        display: block;
+      }
+
+      .drawer-panel {
+        background: var(--surface);
+        box-shadow: -18px 0 46px rgba(24, 33, 29, 0.18);
+        display: grid;
+        gap: 14px;
+        height: 100%;
+        margin-left: auto;
+        max-width: 640px;
+        overflow: auto;
+        padding: 22px;
+        width: min(92vw, 640px);
+      }
+
+      .command-line {
+        background: #17201b;
+        border-radius: 8px;
+        color: #d5efe1;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          monospace;
+        font-size: 13px;
+        line-height: 1.55;
+        overflow-x: auto;
+        padding: 14px;
+      }
+
+      .mobile-only {
+        display: none;
+      }
+
+      @media (max-width: 1180px) {
+        .app-shell {
+          grid-template-columns: 220px minmax(0, 1fr);
+        }
+
+        .right-rail {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 880px) {
+        .app-shell,
+        .first-minute-grid,
+        .grid-2,
+        .journey,
+        .metric-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          border-bottom: 1px solid var(--line);
+          border-right: 0;
+        }
+
+        .topbar,
+        .query-compose {
+          align-items: stretch;
+          flex-direction: column;
+          grid-template-columns: 1fr;
+        }
+
+        .top-actions,
+        .button-row {
+          width: 100%;
+        }
+
+        .button {
+          flex: 1;
+        }
+
+        .answer-meta {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .table-row {
+          grid-template-columns: 1fr;
+        }
+
+        .desktop-only {
+          display: none;
+        }
+
+        .mobile-only {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <div class="brand">
+          <strong>KnowledgeFS</strong>
+          <span>Verifiable knowledge layer</span>
+        </div>
+
+        <div class="workspace-select">
+          <label for="workspace">Workspace</label>
+          <select id="workspace">
+            <option>Acme Security Review</option>
+            <option>Product Docs</option>
+            <option>Board Pack Q2</option>
+          </select>
+        </div>
+
+        <nav class="nav" aria-label="Product sections">
+          <button class="active" data-screen="first">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3v18M3 12h18" />
+            </svg>
+            First minute
+          </button>
+          <button data-screen="evidence">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 7h16M4 12h10M4 17h16" />
+            </svg>
+            Evidence browser
+          </button>
+          <button data-screen="quality">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+            Quality
+          </button>
+          <button data-screen="ops">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6V20a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1H4a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.2.35.4.68.6 1H20a2 2 0 1 1 0 4h-.1c-.2.32-.4.65-.5 1Z" />
+            </svg>
+            Ops
+          </button>
+        </nav>
+
+        <div class="sidebar-note">
+          Product principle: first screen proves value; diagnostics stay one click away.
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="page-title">Get to a cited answer in under a minute</h1>
+            <p id="page-subtitle">Upload or load a sample workspace, ask a real question, then verify the answer from source evidence.</p>
+          </div>
+          <div class="top-actions">
+            <button class="button secondary" id="openTrace">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3v18h18" />
+                <path d="m7 14 3-3 3 2 5-6" />
+              </svg>
+              Trace
+            </button>
+            <button class="button primary" id="loadSample">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z" />
+                <path d="M8 7h6M8 11h8M8 15h5" />
+              </svg>
+              Sample workspace
+            </button>
+          </div>
+        </header>
+
+        <section class="journey" aria-label="First minute journey">
+          <div class="step active" id="step-add">
+            <span class="step-mark">1</span>
+            <div>
+              <strong>Add knowledge</strong>
+              <span id="step-add-text">Start with sample or upload</span>
+            </div>
+          </div>
+          <div class="step" id="step-ask">
+            <span class="step-mark">2</span>
+            <div>
+              <strong>Ask</strong>
+              <span id="step-ask-text">Recommended questions appear</span>
+            </div>
+          </div>
+          <div class="step" id="step-verify">
+            <span class="step-mark">3</span>
+            <div>
+              <strong>Verify</strong>
+              <span id="step-verify-text">Citations link to source</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen active" id="screen-first">
+          <div class="first-minute-grid">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Knowledge intake</h2>
+                  <small id="intake-subtitle">No setup required for the demo path</small>
+                </div>
+                <span class="badge info" id="intake-badge">Empty</span>
+              </div>
+
+              <div class="intake-card" id="intake-card">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <path d="m17 8-5-5-5 5" />
+                  <path d="M12 3v12" />
+                </svg>
+                <div>
+                  <h3>Drop a document, or skip with sample data</h3>
+                  <p>Mock upload simulates parsing, chunking, indexing, and recommendation generation.</p>
+                </div>
+                <div class="button-row">
+                  <button class="button primary" id="mockUpload">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 3v12" />
+                      <path d="m17 8-5-5-5 5" />
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    </svg>
+                    Mock upload
+                  </button>
+                  <button class="button secondary" id="sampleInCard">Use sample</button>
+                </div>
+              </div>
+
+              <div class="source-list" id="source-list">
+                <div class="empty-callout">After intake, this area becomes a compact source inventory with readiness, parse quality, and semantic coverage.</div>
+              </div>
+            </article>
+
+            <article class="panel ask-panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Ask with evidence</h2>
+                  <small id="ask-subtitle">Start from a recommended question</small>
+                </div>
+                <span class="badge ok">Hybrid retrieval</span>
+              </div>
+
+              <div class="suggestions" id="suggestions">
+                <button data-question="这份安全审查最主要的风险是什么？">主要风险</button>
+                <button data-question="哪些控制项已经满足，哪些还缺口？">控制项缺口</button>
+                <button data-question="如果下周上线，必须先完成什么？">上线前任务</button>
+              </div>
+
+              <div class="query-box">
+                <label class="muted" for="question">Question</label>
+                <div class="query-compose">
+                  <input id="question" value="这份安全审查最主要的风险是什么？" />
+                  <select id="mode" aria-label="Retrieval mode">
+                    <option>Fast</option>
+                    <option>Deep</option>
+                    <option>Research</option>
+                  </select>
+                  <button class="button primary" id="runQuery">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="m5 12 14-8-4 16-3-7-7-1Z" />
+                    </svg>
+                    Run
+                  </button>
+                </div>
+              </div>
+
+              <section class="answer" aria-label="Answer preview">
+                <div class="panel-header">
+                  <div>
+                    <h3 id="answer-title">Preview answer</h3>
+                    <small id="answer-subtitle">Mock response waits for intake or query</small>
+                  </div>
+                  <span class="badge warn" id="answer-badge">Draft</span>
+                </div>
+                <p id="answer-text">Load the sample workspace or mock an upload, then run a question. The product should make the answer, citations, and source verification visible in the same flow.</p>
+                <div class="answer-meta">
+                  <div class="meta-box">
+                    <span>Confidence</span>
+                    <strong id="confidence">--</strong>
+                  </div>
+                  <div class="meta-box">
+                    <span>Citations</span>
+                    <strong id="citation-count">--</strong>
+                  </div>
+                  <div class="meta-box">
+                    <span>Freshness</span>
+                    <strong id="freshness">--</strong>
+                  </div>
+                  <div class="meta-box">
+                    <span>Trace</span>
+                    <strong id="trace-id">--</strong>
+                  </div>
+                </div>
+                <div class="evidence-strip" id="inline-evidence"></div>
+              </section>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-evidence">
+          <div class="grid-2">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Evidence browser</h2>
+                  <small>Filesystem-like paths turn evidence into inspectable resources</small>
+                </div>
+                <span class="badge info">KnowledgeFS</span>
+              </div>
+              <div class="status-list">
+                <div class="status-item">
+                  <span>Current path</span>
+                  <strong>/knowledge/docs/security-review/evidence</strong>
+                </div>
+                <div class="status-item">
+                  <span>Commands surfaced</span>
+                  <strong>ls, grep, cat, diff, open_node</strong>
+                </div>
+                <div class="status-item">
+                  <span>Permission scope</span>
+                  <strong>tenant:acme / workspace:security</strong>
+                </div>
+              </div>
+              <div class="evidence-strip" id="evidence-browser-list" style="margin-top: 14px"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Semantic map</h2>
+                  <small>Entities, topics, and risks extracted from the same source nodes</small>
+                </div>
+                <span class="badge trace">Graph</span>
+              </div>
+              <div class="semantic-map" aria-label="Semantic relationship mock">
+                <svg viewBox="0 0 640 340" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M118 78 C250 30 392 38 520 92" fill="none" stroke="#ccd7d0" stroke-width="2" />
+                  <path d="M142 86 C250 170 280 190 360 204" fill="none" stroke="#ccd7d0" stroke-width="2" />
+                  <path d="M498 106 C460 162 438 184 392 206" fill="none" stroke="#ccd7d0" stroke-width="2" />
+                  <path d="M226 270 C304 224 334 220 374 212" fill="none" stroke="#ccd7d0" stroke-width="2" />
+                  <path d="M516 268 C462 232 428 218 394 210" fill="none" stroke="#ccd7d0" stroke-width="2" />
+                </svg>
+                <div class="map-node a">
+                  <strong>OIDC rollout</strong>
+                  <span>identity control</span>
+                </div>
+                <div class="map-node b">
+                  <strong>Parser isolation</strong>
+                  <span>runtime risk</span>
+                </div>
+                <div class="map-node c">
+                  <strong>Launch gate</strong>
+                  <span>decision topic</span>
+                </div>
+                <div class="map-node d">
+                  <strong>Audit retention</strong>
+                  <span>compliance evidence</span>
+                </div>
+                <div class="map-node e">
+                  <strong>Tenant scope</strong>
+                  <span>security invariant</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-quality">
+          <div class="metric-grid">
+            <div class="metric">
+              <span>Golden questions</span>
+              <strong>42</strong>
+            </div>
+            <div class="metric">
+              <span>Recall</span>
+              <strong>94%</strong>
+            </div>
+            <div class="metric">
+              <span>Citation faithfulness</span>
+              <strong>97%</strong>
+            </div>
+            <div class="metric">
+              <span>No-answer accuracy</span>
+              <strong>91%</strong>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top: 16px">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Quality queue</h2>
+                  <small>Turns bad answers into regression tests</small>
+                </div>
+                <span class="badge warn">3 need review</span>
+              </div>
+              <div class="table">
+                <div class="table-row header">
+                  <span>Question</span>
+                  <span>Status</span>
+                  <span>Evidence</span>
+                  <span>Owner</span>
+                  <span>Action</span>
+                </div>
+                <div class="table-row">
+                  <strong>上线前必须完成什么？</strong>
+                  <span class="badge ok">Pass</span>
+                  <span>3/3</span>
+                  <span>Security</span>
+                  <button class="button secondary">Inspect</button>
+                </div>
+                <div class="table-row">
+                  <strong>哪些控制项缺少 owner？</strong>
+                  <span class="badge warn">Review</span>
+                  <span>2/4</span>
+                  <span>Platform</span>
+                  <button class="button secondary">Annotate</button>
+                </div>
+                <div class="table-row">
+                  <strong>是否可以跳过 parser sandbox？</strong>
+                  <span class="badge fail">Fail</span>
+                  <span>1/3</span>
+                  <span>Infra</span>
+                  <button class="button secondary">Capture</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Release gate</h2>
+                  <small>Quality is product correctness, not only observability</small>
+                </div>
+                <span class="badge ok">Ready</span>
+              </div>
+              <div class="status-list">
+                <div class="status-item">
+                  <span>Regression suite</span>
+                  <strong>Passed in 3m 12s</strong>
+                </div>
+                <div class="status-item">
+                  <span>Lowest citation score</span>
+                  <strong>0.89</strong>
+                </div>
+                <div class="status-item">
+                  <span>Drift since previous index</span>
+                  <strong>+1.8% recall</strong>
+                </div>
+                <div class="status-item">
+                  <span>Recommended action</span>
+                  <strong>Publish projection v18</strong>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-ops">
+          <div class="metric-grid">
+            <div class="metric">
+              <span>API</span>
+              <strong>OK</strong>
+            </div>
+            <div class="metric">
+              <span>Parser</span>
+              <strong>OK</strong>
+            </div>
+            <div class="metric">
+              <span>Index</span>
+              <strong>v18</strong>
+            </div>
+            <div class="metric">
+              <span>GC candidates</span>
+              <strong>0</strong>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top: 16px">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Diagnostics</h2>
+                  <small>Advanced panels are grouped away from the first minute journey</small>
+                </div>
+                <span class="badge info">Operator</span>
+              </div>
+              <div class="status-list">
+                <div class="status-item">
+                  <span>Manifest version</span>
+                  <strong>2026.06.04-18</strong>
+                </div>
+                <div class="status-item">
+                  <span>Storage provider</span>
+                  <strong>S3-compatible</strong>
+                </div>
+                <div class="status-item">
+                  <span>FSCK dry run</span>
+                  <strong>No issues</strong>
+                </div>
+                <div class="status-item">
+                  <span>Active leases</span>
+                  <strong>1 indexing lease</strong>
+                </div>
+                <div class="status-item">
+                  <span>Failed commits</span>
+                  <strong>0</strong>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Virtual commands</h2>
+                  <small>Developer-facing power without exposing host shell behavior</small>
+                </div>
+                <span class="badge trace">Bounded</span>
+              </div>
+              <pre class="command-line">knowledgefs ls /knowledge/docs --limit 20
+knowledgefs grep "parser sandbox" /knowledge/docs
+knowledgefs open_node knode_9f18
+knowledgefs diff /knowledge/docs/v17 /knowledge/docs/v18</pre>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <aside class="right-rail" aria-label="Evidence and source rail">
+        <section class="rail-section">
+          <div class="rail-header">
+            <h2>Selected evidence</h2>
+            <span class="badge info" id="selected-score">score --</span>
+          </div>
+          <div class="source-preview" id="source-preview">
+            <code>/knowledge/docs/security-review/overview.md#node-12</code>
+            <p>Select an evidence card after running a query. This rail stays visible so verification does not become a separate workflow.</p>
+          </div>
+        </section>
+
+        <section class="rail-section">
+          <div class="rail-header">
+            <h2>Why this matched</h2>
+            <span class="badge ok">Explainable</span>
+          </div>
+          <div class="status-list">
+            <div class="status-item">
+              <span>Dense rank</span>
+              <strong id="dense-rank">--</strong>
+            </div>
+            <div class="status-item">
+              <span>Full-text rank</span>
+              <strong id="fts-rank">--</strong>
+            </div>
+            <div class="status-item">
+              <span>Reranker score</span>
+              <strong id="reranker-score">--</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="rail-section">
+          <button class="trace-toggle" id="inlineTraceToggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
+              <path d="M3 3v18h18" />
+              <path d="m7 14 3-3 3 2 5-6" />
+            </svg>
+            Retrieval trace
+          </button>
+          <div class="trace-detail" id="inlineTrace">
+            <div class="trace-row">
+              <span>Generated queries</span>
+              <code>3</code>
+            </div>
+            <div class="trace-row">
+              <span>Candidates fused</span>
+              <code>48</code>
+            </div>
+            <div class="trace-row">
+              <span>Evidence packed</span>
+              <code>6 nodes</code>
+            </div>
+            <div class="trace-row">
+              <span>Answer trace</span>
+              <code>trace_4b92</code>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <div class="drawer" id="traceDrawer" aria-label="Trace drawer">
+      <section class="drawer-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Trace detail</h2>
+            <small>Gradual disclosure for debugging without stealing the first-minute flow</small>
+          </div>
+          <button class="icon-button" id="closeTrace" aria-label="Close trace drawer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="metric-grid">
+          <div class="metric">
+            <span>Latency</span>
+            <strong>812ms</strong>
+          </div>
+          <div class="metric">
+            <span>Candidate nodes</span>
+            <strong>48</strong>
+          </div>
+          <div class="metric">
+            <span>Packed tokens</span>
+            <strong>5.7k</strong>
+          </div>
+          <div class="metric">
+            <span>Cost</span>
+            <strong>$0.03</strong>
+          </div>
+        </div>
+        <div class="table">
+          <div class="table-row header">
+            <span>Stage</span>
+            <span>Status</span>
+            <span>Time</span>
+            <span>Output</span>
+            <span>Detail</span>
+          </div>
+          <div class="table-row">
+            <strong>Query planning</strong>
+            <span class="badge ok">OK</span>
+            <span>38ms</span>
+            <span>3 subqueries</span>
+            <button class="button secondary">Open</button>
+          </div>
+          <div class="table-row">
+            <strong>Hybrid retrieval</strong>
+            <span class="badge ok">OK</span>
+            <span>294ms</span>
+            <span>48 candidates</span>
+            <button class="button secondary">Open</button>
+          </div>
+          <div class="table-row">
+            <strong>Rerank and pack</strong>
+            <span class="badge ok">OK</span>
+            <span>166ms</span>
+            <span>6 evidence nodes</span>
+            <button class="button secondary">Open</button>
+          </div>
+          <div class="table-row">
+            <strong>Generate answer</strong>
+            <span class="badge ok">OK</span>
+            <span>314ms</span>
+            <span>4 citations</span>
+            <button class="button secondary">Open</button>
+          </div>
+        </div>
+        <pre class="command-line">{
+  "traceId": "trace_4b92",
+  "space": "acme-security-review",
+  "mode": "fast",
+  "bounds": { "maxCandidates": 50, "maxEvidenceTokens": 6000 },
+  "quality": { "citationFaithfulness": 0.97, "answerConfidence": 0.86 }
+}</pre>
+      </section>
+    </div>
+
+    <script>
+      const mockSources = [
+        {
+          name: "security-review-q2.md",
+          meta: "Parsed: 42 nodes / 18 entities / 6 control gaps",
+          badge: "Ready",
+        },
+        {
+          name: "launch-checklist.pdf",
+          meta: "Parsed: 28 nodes / freshness checked 4h ago",
+          badge: "Ready",
+        },
+        {
+          name: "identity-controls.html",
+          meta: "Parsed: 19 nodes / OIDC rollout references",
+          badge: "Ready",
+        },
+      ];
+
+      const mockEvidence = [
+        {
+          id: "E1",
+          title: "Parser sandbox remains a launch blocker",
+          path: "/knowledge/docs/security-review-q2.md#node-12",
+          score: "0.92",
+          dense: "#2",
+          fts: "#1",
+          rerank: "0.88",
+          excerpt:
+            "The review marks parser isolation as a launch gate because untrusted files can trigger expensive OCR and malformed document paths. The recommended mitigation is a bounded worker pool with timeout and memory limits.",
+          highlight: "parser isolation as a launch gate",
+        },
+        {
+          id: "E2",
+          title: "OIDC/JWKS is required before external tenant rollout",
+          path: "/knowledge/docs/identity-controls.html#node-8",
+          score: "0.87",
+          dense: "#4",
+          fts: "#2",
+          rerank: "0.82",
+          excerpt:
+            "The deployment notes require OIDC/JWKS validation before opening the workspace to external tenant admins. Static admin tokens are acceptable only for private preview.",
+          highlight: "OIDC/JWKS validation",
+        },
+        {
+          id: "E3",
+          title: "Retention policy needs publish defaults",
+          path: "/knowledge/docs/launch-checklist.pdf#page-4-node-31",
+          score: "0.81",
+          dense: "#7",
+          fts: "#5",
+          rerank: "0.74",
+          excerpt:
+            "Trace history, old parse artifacts, terminal jobs, and inactive projections need bounded retention defaults before the workspace is marked production ready.",
+          highlight: "bounded retention defaults",
+        },
+      ];
+
+      const titles = {
+        first: [
+          "Get to a cited answer in under a minute",
+          "Upload or load a sample workspace, ask a real question, then verify the answer from source evidence.",
+        ],
+        evidence: [
+          "Evidence is a first-class product surface",
+          "Every answer can be opened as source, path, node, semantic context, and trace.",
+        ],
+        quality: [
+          "Quality turns retrieval from a demo into a production system",
+          "Golden questions, annotations, and regression gates become part of the workflow.",
+        ],
+        ops: [
+          "Operator power moves behind a clear product layer",
+          "Health, FSCK, GC, leases, and virtual commands remain available without owning the first screen.",
+        ],
+      };
+
+      let hasKnowledge = false;
+      let hasAnswer = false;
+      let selectedEvidence = mockEvidence[0];
+
+      const $ = (selector) => document.querySelector(selector);
+      const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+      function setScreen(screen) {
+        $$(".screen").forEach((node) => node.classList.remove("active"));
+        $(`#screen-${screen}`).classList.add("active");
+        $$(".nav button").forEach((node) => {
+          node.classList.toggle("active", node.dataset.screen === screen);
+        });
+        $("#page-title").textContent = titles[screen][0];
+        $("#page-subtitle").textContent = titles[screen][1];
+      }
+
+      function loadKnowledge(source) {
+        hasKnowledge = true;
+        $("#intake-badge").textContent = source === "upload" ? "Uploaded" : "Sample";
+        $("#intake-badge").className = "badge ok";
+        $("#intake-subtitle").textContent = "Parsed, indexed, and ready for questions";
+        $("#intake-card").classList.add("ready");
+        $("#intake-card").querySelector("h3").textContent = "Workspace is ready";
+        $("#intake-card").querySelector("p").textContent =
+          "Recommended questions were generated from headings, entities, and launch-risk language.";
+        $("#step-add").className = "step done";
+        $("#step-add-text").textContent = "3 sources indexed";
+        $("#step-ask").className = "step active";
+        $("#step-ask-text").textContent = "Pick a suggested question";
+        $("#source-list").innerHTML = mockSources
+          .map(
+            (source) => `
+              <div class="source-row">
+                <span class="file-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+                    <path d="M14 2v6h6" />
+                  </svg>
+                </span>
+                <div>
+                  <strong>${source.name}</strong>
+                  <span>${source.meta}</span>
+                </div>
+                <span class="badge ok">${source.badge}</span>
+              </div>
+            `,
+          )
+          .join("");
+      }
+
+      function runQuery() {
+        if (!hasKnowledge) {
+          loadKnowledge("sample");
+        }
+        hasAnswer = true;
+        $("#answer-title").textContent = "Answer with cited evidence";
+        $("#answer-subtitle").textContent = $("#question").value;
+        $("#answer-badge").textContent = "Verified";
+        $("#answer-badge").className = "badge ok";
+        $("#answer-text").innerHTML =
+          "主要风险有三类：第一，复杂文档解析还缺少独立 sandbox 和资源上限，这是上线 gate <sup>E1</sup>；第二，外部租户管理员开放前需要完成 OIDC/JWKS 验证，不能继续依赖静态 token <sup>E2</sup>；第三，trace、旧解析产物和 inactive projection 的 retention 默认值还没有发布策略 <sup>E3</sup>。因此建议先完成 parser isolation、身份集成、retention policy 三个任务，再进入生产发布。";
+        $("#confidence").textContent = "86%";
+        $("#citation-count").textContent = "3";
+        $("#freshness").textContent = "4h";
+        $("#trace-id").textContent = "trace_4b92";
+        $("#step-ask").className = "step done";
+        $("#step-ask-text").textContent = "Question answered";
+        $("#step-verify").className = "step active";
+        $("#step-verify-text").textContent = "Inspect E1-E3";
+        renderEvidenceLists();
+        selectEvidence(mockEvidence[0].id);
+      }
+
+      function renderEvidenceLists() {
+        const evidenceMarkup = mockEvidence
+          .map(
+            (item) => `
+              <button class="evidence-row ${selectedEvidence.id === item.id ? "active" : ""}" data-evidence="${item.id}">
+                <div>
+                  <strong>${item.id}. ${item.title}</strong>
+                  <span>${item.path}</span>
+                </div>
+                <span class="badge info">${item.score}</span>
+              </button>
+            `,
+          )
+          .join("");
+        $("#inline-evidence").innerHTML = evidenceMarkup;
+        $("#evidence-browser-list").innerHTML = evidenceMarkup;
+        $$("[data-evidence]").forEach((node) => {
+          node.addEventListener("click", () => selectEvidence(node.dataset.evidence));
+        });
+      }
+
+      function selectEvidence(id) {
+        selectedEvidence = mockEvidence.find((item) => item.id === id) || mockEvidence[0];
+        const highlighted = selectedEvidence.excerpt.replace(
+          selectedEvidence.highlight,
+          `<mark>${selectedEvidence.highlight}</mark>`,
+        );
+        $("#selected-score").textContent = `score ${selectedEvidence.score}`;
+        $("#source-preview").innerHTML = `
+          <code>${selectedEvidence.path}</code>
+          <p>${highlighted}</p>
+          <div class="button-row">
+            <button class="button secondary">Open source</button>
+            <button class="button secondary">Copy path</button>
+          </div>
+        `;
+        $("#dense-rank").textContent = selectedEvidence.dense;
+        $("#fts-rank").textContent = selectedEvidence.fts;
+        $("#reranker-score").textContent = selectedEvidence.rerank;
+        renderEvidenceLists();
+      }
+
+      $$(".nav button").forEach((node) => {
+        node.addEventListener("click", () => setScreen(node.dataset.screen));
+      });
+
+      $("#loadSample").addEventListener("click", () => loadKnowledge("sample"));
+      $("#sampleInCard").addEventListener("click", () => loadKnowledge("sample"));
+      $("#mockUpload").addEventListener("click", () => loadKnowledge("upload"));
+      $("#runQuery").addEventListener("click", runQuery);
+      $$("#suggestions button").forEach((button) => {
+        button.addEventListener("click", () => {
+          $("#question").value = button.dataset.question;
+          runQuery();
+        });
+      });
+      $("#inlineTraceToggle").addEventListener("click", () => {
+        $("#inlineTrace").classList.toggle("open");
+      });
+      $("#openTrace").addEventListener("click", () => {
+        $("#traceDrawer").classList.add("open");
+      });
+      $("#closeTrace").addEventListener("click", () => {
+        $("#traceDrawer").classList.remove("open");
+      });
+      $("#traceDrawer").addEventListener("click", (event) => {
+        if (event.target.id === "traceDrawer") {
+          $("#traceDrawer").classList.remove("open");
+        }
+      });
+
+      renderEvidenceLists();
+    </script>
+  </body>
+</html>

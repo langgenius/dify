@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<!--
+  knowledge-fs — Query 三条检索执行管线 (fast / research / deep)。
+  Auto 是公开的 LLM 路由选择器，不是第四条执行管线：只有显式 auto 才使用空间
+  published reasoningModel/plugin-daemon；省略 mode 使用 defaultMode；失败回落 defaultMode。
+  Fast = ordinary dense + FTS hybrid + fusion + final rerank。
+  Research = Summary / Outline / PageIndex tree navigation；无 ordinary hybrid/Graph/rerank。
+  Deep = ordinary hybrid + Graph expansion + one unified final rerank。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>knowledge-fs · Query 检索模式</title>
+<style>
+  :root {
+    --bg: #fafaf9; --ink: #0f172a; --muted: #475569; --subtle: #94a3b8; --line: #cbd5e1;
+    --done-fill: #e7f8ef; --done-border: #10b981;
+    --plan-fill: #efe9fe; --plan-border: #8b5cf6;
+    --store-fill: #f3f4f6; --store-border: #9ca3af;
+    --rrf-fill: #ffedd5; --rrf-border: #ea580c;
+    --recall-fill: #e0f2fe; --recall-border: #0284c7;
+    --ext-fill: #fef9c3; --ext-border: #ca8a04;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 13px; line-height: 1.45;
+  }
+  .board {
+    max-width: 1760px; margin: 24px auto; padding: 24px 28px 36px;
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 8px 30px rgba(15,23,42,.05);
+  }
+  header.top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+  header.top h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+  header.top .sub { color: var(--muted); margin-left: 10px; font-size: 12px; }
+  .legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); align-items: flex-end; }
+  .legend-group { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .legend-title { color: var(--ink); font-weight: 600; font-size: 11px; min-width: 40px; }
+  .legend .item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .swatch { display: inline-block; width: 14px; height: 10px; border-radius: 3px; border: 1.5px solid transparent; }
+  .swatch.recall { background: var(--recall-fill); border-color: var(--recall-border); }
+  .swatch.ext    { background: var(--ext-fill);    border-color: var(--ext-border); }
+  .swatch.rrf    { background: var(--rrf-fill);    border-color: var(--rrf-border); }
+  .swatch.shared { background: var(--store-fill);  border-color: var(--store-border); }
+  .swatch.off    { background: var(--plan-fill);   border: 1.5px dashed var(--plan-border); }
+
+  .row {
+    display: grid; grid-template-columns: 150px 1fr; gap: 16px;
+    margin-bottom: 22px; align-items: stretch;
+    padding: 14px; border-radius: 14px; background: #fcfcfb; border: 1px solid #eef2f6;
+  }
+  .row-label { padding-top: 18px; white-space: nowrap; }
+  .row-label .mode { display: block; font-size: 17px; font-weight: 700; letter-spacing: .3px; }
+  .row-label .modesub { color: var(--subtle); font-size: 11px; margin-top: 2px; }
+
+  .cards { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+  .card {
+    position: relative; min-width: 150px; max-width: 230px; flex: 1 1 160px;
+    padding: 11px 13px; border: 1.5px solid var(--done-border);
+    background: var(--done-fill); border-radius: 13px;
+  }
+  .card .title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .card .desc  { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+  .card .big   { font-size: 16px; font-weight: 700; color: var(--ink); }
+  .card code {
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 10.5px;
+    color: #334155; background: rgba(15,23,42,.04); padding: 1px 4px; border-radius: 4px;
+  }
+  .card.shared { background: var(--store-fill); border-color: var(--store-border); }
+  .card.recall { background: var(--recall-fill); border-color: var(--recall-border); }
+  .card.ext    { background: var(--ext-fill);    border-color: var(--ext-border); }
+  .card.rrf    { background: var(--rrf-fill);    border-color: var(--rrf-border); }
+  .card.off    { background: var(--plan-fill);   border: 1.5px dashed var(--plan-border); }
+
+  .arrow { display: flex; align-items: center; justify-content: center; color: var(--subtle); font-size: 20px; font-weight: 300; padding: 0 1px; min-width: 12px; }
+  .arrow.fan   { color: var(--recall-border); font-size: 18px; }
+  .arrow.merge { color: var(--rrf-border);    font-size: 18px; }
+
+  .footer-note {
+    margin-top: 16px; color: var(--muted); font-size: 11.5px;
+    border-top: 1px dashed var(--line); padding-top: 12px;
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .footer-note b { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="board">
+  <header class="top">
+    <div>
+      <h1>knowledge-fs · Query 检索模式<span class="sub">三条执行管线：fast / research / deep · auto 只负责选择</span></h1>
+    </div>
+    <div class="legend">
+      <div class="legend-group">
+        <span class="legend-title">卡片</span>
+        <div class="item"><span class="swatch shared"></span>各模式相同</div>
+        <div class="item"><span class="swatch recall"></span>召回 (recall×)</div>
+        <div class="item"><span class="swatch ext"></span>模式扩展</div>
+        <div class="item"><span class="swatch rrf"></span>融合 / rerank</div>
+        <div class="item"><span class="swatch off"></span>关闭 (虚线)</div>
+      </div>
+      <div class="legend-group">
+        <span class="legend-title">参数</span>
+        <div class="item">使用 frozen published profile 的 <code>Top K</code>、<code>Score Threshold</code> 与模型配置</div>
+      </div>
+    </div>
+  </header>
+
+  <div style="margin:0 0 16px; padding:12px 14px; border:1px solid #bfdbfe; border-radius:10px; background:#eff6ff; color:#1e3a8a; font-size:12px; line-height:1.55;">
+    <b>Auto 路由：</b>只有请求显式传入 <code>mode=auto</code>，后端才使用知识空间 frozen published profile 的
+    <code>reasoningModel</code> 经 plugin-daemon 选择下面三条管线之一。省略 <code>mode</code> 直接使用
+    <code>defaultMode</code>；显式 fast/research/deep 不调用路由模型。失败安全降级到该 profile 的
+    <code>defaultMode</code>，不使用 CJK/语言、查询长度、词数或关键词启发式。
+  </div>
+
+  <!-- fast -->
+  <div class="row">
+    <div class="row-label">
+      <span class="mode">fast</span>
+      <span class="modesub">普通 hybrid + 最终 rerank</span>
+    </div>
+    <div class="cards">
+      <div class="card shared">
+        <div class="title">Embed</div>
+        <div class="desc">使用空间 published embedding model / vector-space</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card recall">
+        <div class="title">Dense + FTS</div>
+        <div class="desc">同一 publication、candidate ACL 下并行普通混合召回</div>
+      </div>
+      <div class="arrow merge">⇢</div>
+      <div class="card rrf">
+        <div class="title">RRF 融合</div>
+        <div class="desc">按 nodeId 去重，合并 dense / FTS 候选并保留来源</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card off">
+        <div class="title">Graph</div>
+        <div class="desc"><b>不运行</b><br/>Fast 不做 Graph 扩展</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card rrf">
+        <div class="title">最终 Rerank</div>
+        <div class="desc">使用空间 published rerank 配置；全部候选只重排一次</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card shared">
+        <div class="title">Evidence → Answer</div>
+        <div class="desc">Score Threshold → Top K → 使用空间 reasoning model 生成</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- deep -->
+  <div class="row">
+    <div class="row-label">
+      <span class="mode">deep</span>
+      <span class="modesub">普通 hybrid + Graph + 统一 rerank</span>
+    </div>
+    <div class="cards">
+      <div class="card shared">
+        <div class="title">Embed</div>
+        <div class="desc">使用空间 published embedding model / vector-space</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card recall">
+        <div class="title">Dense + FTS</div>
+        <div class="desc">先执行普通混合召回；不能只查 Graph</div>
+      </div>
+      <div class="arrow merge">⇢</div>
+      <div class="card rrf">
+        <div class="title">RRF 融合</div>
+        <div class="desc">形成 ordinary seeds，并保留完整候选宽度</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card ext">
+        <div class="title">Graph 扩展</div>
+        <div class="desc">同一 publication / ACL 下 traverse，并二次召回 graph candidates</div>
+      </div>
+      <div class="arrow merge">⇢</div>
+      <div class="card rrf">
+        <div class="title">统一最终 Rerank</div>
+        <div class="desc">ordinary + graph 候选先合并，再只重排一次</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card shared">
+        <div class="title">Evidence → Answer</div>
+        <div class="desc">Score Threshold → Top K → 使用空间 reasoning model 生成</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- research -->
+  <div class="row">
+    <div class="row-label">
+      <span class="mode">research</span>
+      <span class="modesub">Summary / Outline / PageIndex</span>
+    </div>
+    <div class="cards">
+      <div class="card off">
+        <div class="title">普通 Embed / Hybrid</div>
+        <div class="desc"><b>不运行</b><br/>Research 不依赖普通 dense + FTS seed</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card ext">
+        <div class="title">Summary / Outline</div>
+        <div class="desc">检索 generation-scoped PageIndex 节点摘要与文档大纲</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card recall">
+        <div class="title">PageIndex 召回</div>
+        <div class="desc">exact-term / normalized score 排序并定位相关树节点</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card ext">
+        <div class="title">树导航 / Leaf Evidence</div>
+        <div class="desc">从匹配 outline 节点打开可见 leaf ranges</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card off">
+        <div class="title">Graph / 普通 Rerank</div>
+        <div class="desc"><b>均不运行</b><br/>Research 不依赖 Graph</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card shared">
+        <div class="title">Evidence → Answer</div>
+        <div class="desc">PageIndex Threshold → Top K → 使用空间 reasoning model 生成</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin:28px 0 12px; padding-top:16px; border-top:2px dashed #cbd5e1; font-weight:700; font-size:14px; color:#0f172a;">
+    KnowledgeFS 文件命令 · 另一条访问路径 (<code style="font-size:11px;">/knowledge-spaces/{id}/fs/*</code>) — 路径寻址,<b>与上面三种 query mode 无关</b>
+  </div>
+  <div class="row">
+    <div class="row-label">
+      <span class="mode" style="font-size:15px;">/fs/*</span>
+      <span class="modesub">路径寻址 · 无 mode · 无向量</span>
+    </div>
+    <div class="cards">
+      <div class="card shared">
+        <div class="title">ls / tree / find / stat</div>
+        <div class="desc">列目录 / 树 / 查找 / 元信息<br/>读 <code>knowledge_paths</code> 虚拟视图(by-topic/by-entity/by-type、/sources)<br/><b>确定性,无模型</b></div>
+      </div>
+      <div class="card shared">
+        <div class="title">cat / open_node</div>
+        <div class="desc">取 chunk 正文<br/>读 <code>knowledge_nodes</code> / <code>artifact_segments</code><br/><b>确定性</b></div>
+      </div>
+      <div class="card shared">
+        <div class="title">grep</div>
+        <div class="desc"><b>字面 / 正则</b>文本匹配<br/>over node/segment 文本 <code>grepKnowledgePathResource</code><br/>无 embedding / 无语义</div>
+      </div>
+      <div class="card off">
+        <div class="title">diff</div>
+        <div class="desc">文本 diff(确定性)<br/><code>fs/diff</code> 可选 <code>semanticDiffProvider</code>(LLM)语义总结<br/><b>apps/api 未接线 → 语义总结不可用</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-note">
+    <div><b>三条执行管线：</b> Fast = ordinary hybrid + final rerank；Research = Summary/Outline/PageIndex，Graph 与 ordinary rerank zero-call；Deep = ordinary hybrid + Graph expansion + one unified final rerank。</div>
+    <div><b>Top K / Threshold：</b> Fast、Deep 在最终 rerank score 上先 threshold 再 Top K；Research 在 versioned PageIndex normalized score 上先 threshold 再 Top K。权限过滤与 immutable publication closure 对三条管线都生效。</div>
+    <div><b>Auto 不是第四条管线：</b><code>/queries</code> 接受显式 <code>auto</code>，由空间 published reasoning model 选择 concrete mode；未传 mode 使用空间 <code>defaultMode</code>。路由模型失败回落同一 default，不运行旧启发式。</div>
+    <div><b>可追踪性：</b>在线查询将 requested/resolved/resolver/model/prompt/degraded 等 bounded provenance 写入 AnswerTrace 的 <code>query.route</code> step；异步 Research create 冻结并持久化一次 Auto 决策，worker retry/restart 不重判。</div>
+    <div><b>答案生成：</b>三条管线最终都使用知识空间 frozen published <code>reasoningModel</code>；模型/provider/credential 不从部署级默认值猜测。</div>
+    <div><b>/fs/* 命令：</b> ls/tree/find/stat/cat/open_node/grep 都是<b>确定性</b>路径/仓库读取,走 <code>knowledge_paths</code> 视图 + nodes/segments,<b>不经 embedding/RRF/rerank/planner,也无 fast/deep/research</b>。唯一推理 hook 是 <code>fs/diff</code> 的可选 <code>semanticDiffProvider</code>(LLM),apps/api 未接线。⚠ 这些视图依赖 <code>knowledge_paths</code> 已物化——当前 loader 未建(0 行)→ ls 视图为空。</div>
+  </div>
+</div>
+</body>
+</html>
