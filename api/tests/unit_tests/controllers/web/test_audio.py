@@ -131,9 +131,7 @@ class TestAudioApi:
             raise NoAudioUploadedServiceError()
 
         with patch("controllers.web.audio.AudioService.transcript_asr", side_effect=fake_asr):
-            with app.test_request_context(
-                "/audio-to-text", method="POST", data={}, content_type="multipart/form-data"
-            ):
+            with app.test_request_context("/audio-to-text", method="POST", data={}, content_type="multipart/form-data"):
                 with pytest.raises(NoAudioUploadedError) as exc_info:
                     AudioApi().post(_app_model(), _end_user())
 
