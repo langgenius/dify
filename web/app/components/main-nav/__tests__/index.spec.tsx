@@ -404,9 +404,7 @@ describe('MainNav', () => {
   it('hides the roster entry when the user lacks agent.manage', () => {
     mockAppContextState.current = {
       ...appContextValue,
-      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(
-        (key) => key !== 'agent.manage',
-      ),
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter((key) => key !== 'agent.manage'),
     }
 
     renderMainNav()

@@ -444,6 +444,7 @@
   "nodes.agent.pluginNotInstalledDesc": "การผสานรวมนี้ติดตั้งจาก GitHub โปรดไปที่การผสานรวมเพื่อติดตั้งใหม่",
   "nodes.agent.roster.change": "เปลี่ยน",
   "nodes.agent.roster.editInConsole": "แก้ไขใน Agent Console",
+  "nodes.agent.roster.editInConsoleDisabled": "คุณไม่มีสิทธิ์จัดการ Agents",
   "nodes.agent.roster.inlineSetup.description": "การตั้งค่าครั้งเดียวที่อยู่เฉพาะในโหนดนี้",
   "nodes.agent.roster.inlineSetup.name": "การตั้งค่าแบบอินไลน์",
   "nodes.agent.roster.inlineSetup.title": "การตั้งค่า Agent",

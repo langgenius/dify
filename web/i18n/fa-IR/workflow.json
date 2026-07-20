@@ -444,6 +444,7 @@
   "nodes.agent.pluginNotInstalledDesc": "این یکپارچه‌سازی از GitHub نصب شده. برای نصب مجدد به بخش یکپارچه‌سازی‌ها بروید.",
   "nodes.agent.roster.change": "تغییر",
   "nodes.agent.roster.editInConsole": "ویرایش در Agent Console",
+  "nodes.agent.roster.editInConsoleDisabled": "شما مجوز مدیریت Agents را ندارید",
   "nodes.agent.roster.inlineSetup.description": "یک پیکربندی یک‌باره که فقط در این گره وجود دارد",
   "nodes.agent.roster.inlineSetup.name": "پیکربندی inline",
   "nodes.agent.roster.inlineSetup.title": "پیکربندی عامل",
