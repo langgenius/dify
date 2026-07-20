@@ -150,7 +150,7 @@ function StartMode({
         'relative flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-4 py-3.5 text-left outline-hidden transition-colors motion-reduce:transition-none',
         'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg',
-        'data-disabled:cursor-not-allowed data-disabled:opacity-50',
+        'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-components-option-card-option-bg',
       )}
     >
       <RadioControl aria-hidden />

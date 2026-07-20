@@ -31,11 +31,17 @@ export function KnowledgeSpaceShell({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const pathname = usePathname()
-  const knowledgeSpaceQuery = useQuery(
-    consoleQuery.knowledgeFs.getKnowledgeSpacesById.queryOptions({
+  const knowledgeSpaceQuery = useQuery({
+    ...consoleQuery.knowledgeFs.getKnowledgeSpacesById.queryOptions({
       input: { params: { id: knowledgeSpaceId } },
     }),
-  )
+    retry: (failureCount, error) => {
+      const status = responseStatus(error)
+      if (status === 403 || status === 404) return false
+
+      return failureCount < 3
+    },
+  })
   useDocumentTitle(knowledgeSpaceQuery.data?.name ?? t(($) => $.knowledge))
 
   if (knowledgeSpaceQuery.isPending)

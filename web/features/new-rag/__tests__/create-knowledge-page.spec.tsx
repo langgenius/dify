@@ -359,6 +359,7 @@ describe('CreateKnowledgePage', () => {
       name: 'dataset.newKnowledge.connectSource',
     })
     expect(connectSource).toBeDisabled()
+    expect(connectSource).toHaveClass('data-disabled:hover:bg-components-option-card-option-bg')
     expect(connectSource).toHaveAccessibleDescription(
       'dataset.newKnowledge.connectSourceDescription dataset.cornerLabel.unavailable',
     )

@@ -16,6 +16,7 @@ const queryMock = vi.hoisted(() => ({
 }))
 
 const queryOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
+const useQueryOptionsMock = vi.hoisted(() => vi.fn())
 const pathnameMock = vi.hoisted(() => ({ value: '/datasets/new/space-1/sources' }))
 
 vi.mock('@/next/navigation', () => ({
@@ -26,7 +27,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
-    useQuery: () => queryMock,
+    useQuery: (options: unknown) => {
+      useQueryOptionsMock(options)
+      return queryMock
+    },
   }
 })
 
@@ -106,6 +110,22 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByText('dataset.newKnowledge.notFoundTitle')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
   })
+
+  it.each([{ status: 403 }, { data: { status: 404 } }])(
+    'does not automatically retry terminal detail errors shaped as $error',
+    (error) => {
+      queryMock.error = error
+
+      render(<KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>)
+
+      const options = useQueryOptionsMock.mock.lastCall?.[0] as {
+        retry: (failureCount: number, queryError: unknown) => boolean
+      }
+      expect(options.retry(0, error)).toBe(false)
+      expect(options.retry(2, new Error('temporary failure'))).toBe(true)
+      expect(options.retry(3, new Error('temporary failure'))).toBe(false)
+    },
+  )
 
   it('marks Documents as the only current detail route', () => {
     pathnameMock.value = '/datasets/new/space-1/documents'
