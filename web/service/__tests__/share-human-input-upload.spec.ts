@@ -1,4 +1,5 @@
 const mockPostPublic = vi.hoisted(() => vi.fn())
+const mockGetPublic = vi.hoisted(() => vi.fn())
 const mockUpload = vi.hoisted(() => vi.fn())
 
 vi.mock('../base', () => ({
@@ -7,7 +8,7 @@ vi.mock('../base', () => ({
   patch: vi.fn(),
   post: vi.fn(),
   delPublic: vi.fn(),
-  getPublic: vi.fn(),
+  getPublic: (...args: unknown[]) => mockGetPublic(...args),
   patchPublic: vi.fn(),
   postPublic: (...args: unknown[]) => mockPostPublic(...args),
   ssePost: vi.fn(),
@@ -27,6 +28,26 @@ describe('human input form upload services', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('should preserve the legacy underscore definition and submit endpoints', async () => {
+    const { getHumanInputForm, submitHumanInputForm } = await import('../share')
+    mockGetPublic.mockResolvedValueOnce({ form_content: 'review' })
+    mockPostPublic.mockResolvedValueOnce(undefined)
+
+    await getHumanInputForm('legacy-form-token')
+    await submitHumanInputForm('legacy-form-token', {
+      inputs: { response: 'approved' },
+      action: 'approve',
+    })
+
+    expect(mockGetPublic).toHaveBeenCalledWith('/form/human_input/legacy-form-token')
+    expect(mockPostPublic).toHaveBeenCalledWith('/form/human_input/legacy-form-token', {
+      body: {
+        inputs: { response: 'approved' },
+        action: 'approve',
+      },
+    })
   })
 
   it('should fetch upload token before local file upload', async () => {

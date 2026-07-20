@@ -23,7 +23,7 @@ const FormStatusCard = ({
   const { t } = useTranslation()
 
   return (
-    <div className={cn('flex size-full flex-col items-center justify-center')}>
+    <div className="flex size-full flex-col items-center justify-center">
       <div className="max-w-160 min-w-120">
         <div className="flex h-80 flex-col gap-4 rounded-[20px] border border-divider-subtle bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">

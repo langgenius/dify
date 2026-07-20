@@ -1,7 +1,7 @@
 import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace, IOtherOptions } from './base'
-import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input-form/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
