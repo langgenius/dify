@@ -1,5 +1,5 @@
 import type { Source, SourceWorkflowRun } from '@dify/contracts/knowledge-fs/types.gen'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { WebsiteCrawlPreview } from '../website-crawl-preview'
@@ -303,6 +303,65 @@ describe('WebsiteCrawlPreview', () => {
     expect(clientMock.cancel).not.toHaveBeenCalled()
   })
 
+  it('cancels a retry that returns after navigation discard was confirmed', async () => {
+    const retryRequest = deferred<SourceWorkflowRun>()
+    clientMock.retry.mockReturnValue(retryRequest.promise)
+    clientMock.cancel.mockResolvedValue(run('canceled', { executionAttempts: 2 }))
+    render(
+      <>
+        <a href="/datasets/new/space-1/documents">Documents navigation</a>
+        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
+      </>,
+    )
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' }))
+    await waitFor(() => expect(clientMock.retry).toHaveBeenCalledOnce())
+
+    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+    retryRequest.resolve(run('running', { executionAttempts: 2 }))
+
+    await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
+    )
+  })
+
+  it('keeps the started run available when discard cancellation must be retried', async () => {
+    clientMock.getRun.mockReturnValue(new Promise<SourceWorkflowRun>(() => {}))
+    clientMock.cancel
+      .mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409 }))
+      .mockResolvedValueOnce(run('canceled'))
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+    expect(within(screen.getByRole('alertdialog')).getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.crawlFailedDescription',
+    )
+    expect(routerMock.push).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+
+    await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledTimes(2))
+    expect(clientMock.cancel.mock.calls[0]?.[0].params.runId).toBe('run-1')
+    expect(clientMock.cancel.mock.calls[1]?.[0].params.runId).toBe('run-1')
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+    )
+  })
+
   it('guards sidebar links and browser history after a crawl preview is ready', async () => {
     render(
       <>
@@ -350,6 +409,21 @@ describe('WebsiteCrawlPreview', () => {
         name: 'dataset.newKnowledge.discardSourceChanges',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('leaves through clean Cancel after a dirty form is cleared', async () => {
+    const user = userEvent.setup()
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const rootUrl = screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)
+    await user.type(rootUrl, 'x')
+    await user.clear(rootUrl)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+    )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
   it('clears a canceled sidebar destination before the form cancel action', async () => {

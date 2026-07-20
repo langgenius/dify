@@ -287,6 +287,7 @@ export function WebsiteCrawlPreview({
   const [requestError, setRequestError] = useState<string>()
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false)
   const [discarding, setDiscarding] = useState(false)
+  const [discardError, setDiscardError] = useState(false)
   const draftRef = useRef<PreviewDraft | undefined>(undefined)
   const actionPendingRef = useRef(false)
   const retryFingerprintRef = useRef<string | undefined>(undefined)
@@ -297,7 +298,10 @@ export function WebsiteCrawlPreview({
   const pageCursorRef = useRef<string | undefined>(undefined)
   const submittedRef = useRef(false)
   const discardRequestedRef = useRef(false)
-  const startPromiseRef = useRef<Promise<SourceWorkflowRun | undefined> | undefined>(undefined)
+  const pendingWorkflowPromiseRef = useRef<Promise<SourceWorkflowRun | undefined> | undefined>(
+    undefined,
+  )
+  const pendingCancelRunRef = useRef<SourceWorkflowRun | undefined>(undefined)
   const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined)
   const historyGuardRef = useRef<string | undefined>(undefined)
   const historyGuardCompletionRef = useRef<(() => void) | undefined>(undefined)
@@ -354,7 +358,7 @@ export function WebsiteCrawlPreview({
   }, [dirty])
 
   useEffect(() => {
-    if (!dirty || submittedRef.current) return
+    if ((!dirty && !historyGuardRef.current) || submittedRef.current) return
     const guardId = historyGuardRef.current ?? createRequestId()
     const currentState =
       window.history.state && typeof window.history.state === 'object' ? window.history.state : {}
@@ -375,12 +379,19 @@ export function WebsiteCrawlPreview({
         complete?.()
         return
       }
+      if (!dirty) {
+        window.removeEventListener('popstate', handlePopState)
+        historyGuardRef.current = undefined
+        window.history.back()
+        return
+      }
       window.history.pushState(
         { ...currentState, difyUnsavedSourceGuard: guardId },
         '',
         location.href,
       )
       pendingNavigationRef.current = { type: 'back' }
+      setDiscardError(false)
       setCancelConfirmationOpen(true)
     }
     const handleLinkClick = (event: MouseEvent) => {
@@ -410,6 +421,7 @@ export function WebsiteCrawlPreview({
         href: `${destination.pathname}${destination.search}${destination.hash}`,
         type: 'push',
       }
+      setDiscardError(false)
       setCancelConfirmationOpen(true)
     }
 
@@ -517,75 +529,89 @@ export function WebsiteCrawlPreview({
           setStarting(false)
         }
       })()
-      startPromiseRef.current = request
+      pendingWorkflowPromiseRef.current = request
       void request.finally(() => {
-        if (startPromiseRef.current === request) startPromiseRef.current = undefined
+        if (pendingWorkflowPromiseRef.current === request)
+          pendingWorkflowPromiseRef.current = undefined
       })
       return request
     },
     [ensureProvisionalSource, knowledgeSpaceId, resetPreviewPages],
   )
 
-  const retryRun = useCallback(async () => {
-    if (!run || actionPendingRef.current) return
+  const retryRun = useCallback(() => {
+    if (!run || actionPendingRef.current) return undefined
     const attemptKey = workflowAttemptKey(run)
     const retryAlreadySent = retryFingerprintRef.current === attemptKey
     actionPendingRef.current = true
-    setStarting(true)
-    setRequestError(undefined)
-    setPollPaused(false)
-    try {
-      if (retryAlreadySent) {
-        try {
-          const reconciled =
-            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-              params: { id: knowledgeSpaceId, runId: run.id },
-            })
-          if (!isRetryConfirmed(run, reconciled)) {
-            setRequestError('RETRY_FAILED')
-            return
-          }
+    const request = (async () => {
+      setStarting(true)
+      setRequestError(undefined)
+      setPollPaused(false)
+      const acceptRun = (nextRun: SourceWorkflowRun) => {
+        if (!discardRequestedRef.current) {
           resetPreviewPages()
-          setRun(reconciled)
-        } catch {
-          setRequestError('RETRY_FAILED')
+          setRun(nextRun)
         }
-        return
+        return nextRun
       }
-
-      retryFingerprintRef.current = attemptKey
       try {
-        const retried =
-          await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry({
-            params: { id: knowledgeSpaceId, runId: run.id },
-          })
-        resetPreviewPages()
-        setRun(retried)
-      } catch (error) {
-        if (isDefinitiveRequestFailure(error)) {
-          retryFingerprintRef.current = undefined
-          setRequestError('RETRY_FAILED')
-          return
+        if (retryAlreadySent) {
+          try {
+            const reconciled =
+              await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+                params: { id: knowledgeSpaceId, runId: run.id },
+              })
+            if (!isRetryConfirmed(run, reconciled)) {
+              setRequestError('RETRY_FAILED')
+              return undefined
+            }
+            return acceptRun(reconciled)
+          } catch {
+            setRequestError('RETRY_FAILED')
+            return undefined
+          }
         }
+
+        retryFingerprintRef.current = attemptKey
         try {
-          const reconciled =
-            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+          const retried =
+            await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry({
               params: { id: knowledgeSpaceId, runId: run.id },
             })
-          if (!isRetryConfirmed(run, reconciled)) {
+          return acceptRun(retried)
+        } catch (error) {
+          if (isDefinitiveRequestFailure(error)) {
+            retryFingerprintRef.current = undefined
             setRequestError('RETRY_FAILED')
-          } else {
-            resetPreviewPages()
-            setRun(reconciled)
+            return undefined
           }
-        } catch {
-          setRequestError('RETRY_FAILED')
+          try {
+            const reconciled =
+              await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+                params: { id: knowledgeSpaceId, runId: run.id },
+              })
+            if (!isRetryConfirmed(run, reconciled)) {
+              setRequestError('RETRY_FAILED')
+              return undefined
+            }
+            return acceptRun(reconciled)
+          } catch {
+            setRequestError('RETRY_FAILED')
+            return undefined
+          }
         }
+      } finally {
+        actionPendingRef.current = false
+        setStarting(false)
       }
-    } finally {
-      actionPendingRef.current = false
-      setStarting(false)
-    }
+    })()
+    pendingWorkflowPromiseRef.current = request
+    void request.finally(() => {
+      if (pendingWorkflowPromiseRef.current === request)
+        pendingWorkflowPromiseRef.current = undefined
+    })
+    return request
   }, [knowledgeSpaceId, resetPreviewPages, run])
 
   useEffect(() => {
@@ -782,6 +808,7 @@ export function WebsiteCrawlPreview({
   const cancel = () => {
     if (dirty) {
       pendingNavigationRef.current = undefined
+      setDiscardError(false)
       setCancelConfirmationOpen(true)
       return
     }
@@ -792,14 +819,20 @@ export function WebsiteCrawlPreview({
   const discardAndCancel = async () => {
     if (discarding) return
     setDiscarding(true)
+    setDiscardError(false)
     discardRequestedRef.current = true
-    const startingRun = await startPromiseRef.current
-    const runToCancel = startingRun && !isTerminal(startingRun.state) ? startingRun : run
+    const pendingRun = await pendingWorkflowPromiseRef.current
+    const runToCancel =
+      pendingCancelRunRef.current ??
+      (pendingRun && !isTerminal(pendingRun.state) ? pendingRun : run)
     if (runToCancel && !isTerminal(runToCancel.state) && !(await stop(runToCancel))) {
+      pendingCancelRunRef.current = runToCancel
       discardRequestedRef.current = false
       setDiscarding(false)
+      setDiscardError(true)
       return
     }
+    pendingCancelRunRef.current = undefined
     submittedRef.current = true
     setCancelConfirmationOpen(false)
     const pendingNavigation = pendingNavigationRef.current
@@ -818,7 +851,10 @@ export function WebsiteCrawlPreview({
   const handleCancelConfirmationOpenChange = (open: boolean) => {
     if (discarding) return
     setCancelConfirmationOpen(open)
-    if (!open) pendingNavigationRef.current = undefined
+    if (!open) {
+      pendingNavigationRef.current = undefined
+      setDiscardError(false)
+    }
   }
 
   return (
@@ -1084,6 +1120,11 @@ export function WebsiteCrawlPreview({
             <AlertDialogDescription className="mt-2 system-sm-regular text-text-tertiary">
               {t(($) => $['newKnowledge.discardSourceChangesDescription'])}
             </AlertDialogDescription>
+            {discardError && (
+              <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
+                {t(($) => $['newKnowledge.crawlFailedDescription'])}
+              </p>
+            )}
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton disabled={discarding}>
