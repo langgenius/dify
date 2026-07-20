@@ -10,9 +10,15 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import {
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '@/context/permission-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { consoleQuery } from '@/service/client'
-import { DatasetACLPermission, hasPermission } from '@/utils/permission'
+import { useDatasetDetail } from '@/service/knowledge/use-dataset'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
 import {
   documentDisplayStatus,
@@ -28,6 +34,19 @@ const DOCUMENT_PAGE_SIZE = 50
 const TASK_PAGE_SIZE = 100
 const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.md,.markdown,.html,.htm,.xls,.xlsx,.txt'
 
+const uploadExclusionReasonKey = {
+  batch_byte_limit_exceeded: 'batchLimit',
+  document_not_found: 'target',
+  file_count_limit_exceeded: 'countLimit',
+  file_too_large: 'fileSize',
+  invalid_file: 'fileType',
+  invalid_target: 'target',
+  processing_failed: 'processing',
+  quota_exceeded: 'quota',
+  revision_conflict: 'target',
+  unsupported_mime_type: 'fileType',
+} as const
+
 function responseStatus(error: unknown) {
   if (error instanceof Response) return error.status
   if (error && typeof error === 'object' && 'status' in error) return error.status
@@ -37,12 +56,41 @@ function responseStatus(error: unknown) {
   }
 }
 
+function taskVersionIsAfter(candidate: string, baseline: string) {
+  const candidateTime = Date.parse(candidate)
+  const baselineTime = Date.parse(baseline)
+  if (!Number.isNaN(candidateTime) && !Number.isNaN(baselineTime))
+    return candidateTime > baselineTime
+
+  return candidate.localeCompare(baseline) > 0
+}
+
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canEdit = hasPermission(workspacePermissionKeys, DatasetACLPermission.Edit)
+  const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const datasetQuery = useDatasetDetail(knowledgeSpaceId)
+  const canEdit = useMemo(
+    () =>
+      getDatasetACLCapabilities(datasetQuery.data?.permission_keys, {
+        currentUserId,
+        isRbacEnabled,
+        resourceMaintainer: datasetQuery.data?.maintainer,
+        workspacePermissionKeys,
+      }).canEdit,
+    [
+      currentUserId,
+      datasetQuery.data?.maintainer,
+      datasetQuery.data?.permission_keys,
+      isRbacEnabled,
+      workspacePermissionKeys,
+    ],
+  )
+  const permissionPending = datasetQuery.isPending || workspacePermissionKeysLoading
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const uploadPendingRef = useRef(false)
   const reindexPendingRef = useRef(false)
@@ -167,7 +215,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () =>
       baseTasks.map((task) => {
         const override = taskOverrides[task.id]
-        if (terminalTaskVersions[task.id] && override && taskIsActive(task))
+        const terminalTaskVersion = terminalTaskVersions[task.id]
+        if (
+          terminalTaskVersion &&
+          override &&
+          taskIsActive(task) &&
+          !taskVersionIsAfter(task.updatedAt, terminalTaskVersion)
+        )
           return { ...task, ...override }
         if (!override?.updatedAt) return override ? { ...task, ...override } : task
         const overrideTime = Date.parse(override.updatedAt)
@@ -178,6 +232,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
     [baseTasks, taskOverrides, terminalTaskVersions],
   )
+
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
   const documentStatuses = useMemo(
     () =>
@@ -230,20 +285,38 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     filterActive &&
     !documentsQuery.isFetchNextPageError &&
     (documentsQuery.hasNextPage || documentsQuery.isFetchingNextPage)
-  const dependencyQueryError = Boolean(
-    tasksQuery.error ||
+  const filteredResultsIncomplete = Boolean(
+    filterActive &&
+    (documentsQuery.hasNextPage ||
+      documentsQuery.isFetchingNextPage ||
+      documentsQuery.isFetchNextPageError),
+  )
+  const dependencyQueryBlockingError = Boolean(
+    (tasksQuery.error && !tasksQuery.data) || (sourcesQuery.error && !sourcesQuery.data),
+  )
+  const dependencyQueryWarning = Boolean(
+    (tasksQuery.error && tasksQuery.data) ||
     tasksQuery.isFetchNextPageError ||
-    sourcesQuery.error ||
+    (sourcesQuery.error && sourcesQuery.data) ||
     sourcesQuery.isFetchNextPageError,
   )
-  const dependencyQueriesPending = Boolean(
+  const taskResultsIncomplete = Boolean(
+    !tasksQuery.data ||
     tasksQuery.isPending ||
     tasksQuery.hasNextPage ||
     tasksQuery.isFetchingNextPage ||
+    tasksQuery.isFetchNextPageError,
+  )
+  const sourceResultsIncomplete = Boolean(
+    !sourcesQuery.data ||
     sourcesQuery.isPending ||
     sourcesQuery.hasNextPage ||
-    sourcesQuery.isFetchingNextPage,
+    sourcesQuery.isFetchingNextPage ||
+    sourcesQuery.isFetchNextPageError,
   )
+  const dependencyResultsIncomplete = taskResultsIncomplete || sourceResultsIncomplete
+  const selectionDisabled =
+    permissionPending || dependencyResultsIncomplete || filteredResultsIncomplete
   const selectableFilteredDocuments = filteredDocuments.filter(
     (document) => documentStatuses.get(document.id) !== 'disabled',
   )
@@ -320,14 +393,33 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             body: { files },
             params: { id: knowledgeSpaceId },
           })
+          const excludedItems = result.items.filter((item) => 'reason' in item)
+          const detailItems = excludedItems.slice(0, 3).map((item) => {
+            const reasonKey = uploadExclusionReasonKey[item.reason]
+            return `${item.filename} (${t(
+              ($) => $[`newKnowledge.documentUploadExclusion.${reasonKey}`],
+            )})`
+          })
+          if (excludedItems.length > detailItems.length)
+            detailItems.push(
+              t(($) => $['newKnowledge.documentUploadExclusion.more'], {
+                count: excludedItems.length - detailItems.length,
+              }),
+            )
+          const exclusionDetails = detailItems.join('; ')
           if (!result.accepted) {
-            toast.error(t(($) => $['newKnowledge.documentUploadRejected']))
+            toast.error(
+              t(($) => $['newKnowledge.documentUploadRejected'], {
+                details: exclusionDetails,
+              }),
+            )
             return
           }
           if (result.excluded)
             toast.warning(
               t(($) => $['newKnowledge.documentUploadPartial'], {
                 accepted: result.accepted,
+                details: exclusionDetails,
                 excluded: result.excluded,
               }),
             )
@@ -348,7 +440,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
 
   const handleReindexDocuments = useCallback(async () => {
-    if (!canEdit || !validSelectedDocumentIds.size || reindexPendingRef.current) return
+    if (
+      !canEdit ||
+      selectionDisabled ||
+      !validSelectedDocumentIds.size ||
+      reindexPendingRef.current
+    )
+      return
     reindexPendingRef.current = true
     setReindexing(true)
     try {
@@ -362,12 +460,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         .map((item) => item.documentId)
       const queuedCount = result.items.length - missingIds.length
       if (!queuedCount) {
+        setSelectedDocumentIds(new Set())
         toast.error(
           t(($) => $['newKnowledge.documentsReindexPartial'], {
             missing: missingIds.length,
             queued: 0,
           }),
         )
+        refreshDocumentsAndTasks()
         return
       }
       setSelectedDocumentIds(new Set(missingIds))
@@ -391,6 +491,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     knowledgeSpaceId,
     refreshDocumentsAndTasks,
     reindexDocuments,
+    selectionDisabled,
     t,
     validSelectedDocumentIds,
   ])
@@ -445,7 +546,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const toggleDocument = useCallback(
     (documentId: string) => {
-      if (!canEdit || completingFilteredResults) return
+      if (!canEdit || selectionDisabled) return
       setSelectedDocumentIds((current) => {
         const next = new Set(current)
         if (next.has(documentId)) next.delete(documentId)
@@ -453,11 +554,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         return next
       })
     },
-    [canEdit, completingFilteredResults],
+    [canEdit, selectionDisabled],
   )
 
   const toggleAllFiltered = () => {
-    if (!canEdit || completingFilteredResults) return
+    if (!canEdit || selectionDisabled) return
     setSelectedDocumentIds((current) => {
       const next = new Set(current)
       if (allFilteredSelected)
@@ -503,11 +604,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           }}
         />
       )}
-      {!canEdit && (
-        <span id="documents-readonly-reason" className="sr-only">
-          {t(($) => $['newKnowledge.permissionRestricted'])}
-        </span>
-      )}
       <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7">
         <header>
           <h2 className="title-xl-semi-bold text-text-primary">
@@ -516,6 +612,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           <p className="mt-1 system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.documentsDescription'])}
           </p>
+          {!permissionPending && !canEdit && (
+            <p
+              id="documents-readonly-reason"
+              className="mt-2 inline-flex items-center gap-1.5 system-xs-regular text-text-warning"
+            >
+              <span aria-hidden className="i-ri-lock-line size-3.5" />
+              {t(($) => $['newKnowledge.permissionRestricted'])}
+            </p>
+          )}
         </header>
         {documentsQuery.isPending ? (
           <div className="flex min-h-64 flex-1 items-center justify-center">
@@ -547,7 +652,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               </Button>
             )}
           </div>
-        ) : dependencyQueryError ? (
+        ) : dependencyQueryBlockingError ? (
           <div
             className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
             role="alert"
@@ -562,54 +667,74 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               {tCommon(($) => $['operation.retry'])}
             </Button>
           </div>
-        ) : dependencyQueriesPending ? (
-          <div className="flex min-h-64 flex-1 items-center justify-center">
-            <Loading />
-          </div>
         ) : !documents.length ? (
           <DocumentsEmpty
             canEdit={canEdit}
             onAddDocument={() => uploadInputRef.current?.click()}
             onDropFiles={(files) => void handleUploadFiles(files)}
-            readOnlyReasonId="documents-readonly-reason"
+            readOnlyReasonId={
+              !permissionPending && !canEdit ? 'documents-readonly-reason' : undefined
+            }
             uploading={uploading}
           />
         ) : (
-          <DocumentsList
-            activeTaskCount={activeTasks.length}
-            allSelected={allFilteredSelected}
-            attentionTaskCount={attentionTasks.length}
-            canEdit={canEdit}
-            completingResults={completingFilteredResults}
-            documents={filteredDocuments}
-            filter={filter}
-            hasNextPage={Boolean(documentsQuery.hasNextPage)}
-            hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
-            hasTaskError={hasTaskError}
-            isFetchNextPageError={documentsQuery.isFetchNextPageError}
-            isFetchingNextPage={documentsQuery.isFetchingNextPage}
-            onAddDocument={() => uploadInputRef.current?.click()}
-            onFilterChange={setFilter}
-            onLoadMore={() => void documentsQuery.fetchNextPage()}
-            onOpenTasks={() => setTasksOpen(true)}
-            onSearchChange={setSearch}
-            onSelectAll={toggleAllFiltered}
-            onSelectDocument={toggleDocument}
-            search={search}
-            selectionDisabled={completingFilteredResults}
-            selectedDocumentIds={validSelectedDocumentIds}
-            someSelected={someFilteredSelected}
-            sourceNames={sourceNames}
-            statuses={documentStatuses}
-            tasksButtonLabel={tasksButtonLabel}
-            tasksLiveStatus={tasksLiveStatus}
-            uploading={uploading}
-          />
+          <>
+            {dependencyQueryWarning && (
+              <div
+                className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
+                role="alert"
+              >
+                <span className="system-xs-regular text-text-tertiary">
+                  {sourcesQuery.error || sourcesQuery.isFetchNextPageError
+                    ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+                    : t(($) => $['newKnowledge.tasksErrorDescription'])}
+                </span>
+                <Button size="small" onClick={retryDependencyQueries}>
+                  {tCommon(($) => $['operation.retry'])}
+                </Button>
+              </div>
+            )}
+            <DocumentsList
+              activeTaskCount={activeTasks.length}
+              allSelected={allFilteredSelected}
+              attentionTaskCount={attentionTasks.length}
+              canEdit={canEdit}
+              completingResults={completingFilteredResults}
+              documents={filteredDocuments}
+              filter={filter}
+              hasNextPage={Boolean(documentsQuery.hasNextPage)}
+              hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
+              hasTaskError={hasTaskError}
+              isFetchNextPageError={documentsQuery.isFetchNextPageError}
+              isFetchingNextPage={documentsQuery.isFetchingNextPage}
+              onAddDocument={() => uploadInputRef.current?.click()}
+              onFilterChange={setFilter}
+              onLoadMore={() => void documentsQuery.fetchNextPage()}
+              onOpenTasks={() => setTasksOpen(true)}
+              onSearchChange={setSearch}
+              onSelectAll={toggleAllFiltered}
+              onSelectDocument={toggleDocument}
+              readOnlyReasonId={
+                !permissionPending && !canEdit ? 'documents-readonly-reason' : undefined
+              }
+              search={search}
+              selectionDisabled={selectionDisabled}
+              selectedDocumentIds={validSelectedDocumentIds}
+              someSelected={someFilteredSelected}
+              sourcesPending={sourceResultsIncomplete}
+              sourceNames={sourceNames}
+              statusPending={dependencyResultsIncomplete}
+              statuses={documentStatuses}
+              tasksButtonLabel={tasksButtonLabel}
+              tasksLiveStatus={tasksLiveStatus}
+              uploading={uploading}
+            />
+          </>
         )}
       </main>
       {canEdit && !!validSelectedDocumentIds.size && (
         <DocumentBulkActions
-          disabled={completingFilteredResults}
+          disabled={selectionDisabled}
           onClear={() => setSelectedDocumentIds(new Set())}
           onReindex={() => void handleReindexDocuments()}
           reindexing={reindexing}

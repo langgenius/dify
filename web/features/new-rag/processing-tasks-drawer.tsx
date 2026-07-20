@@ -135,18 +135,19 @@ export function ProcessingTasksDrawer({
                 </DrawerDescription>
               </header>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-                {taskQueryPending ? (
-                  <div className="flex min-h-40 items-center justify-center">
-                    <Loading />
-                  </div>
-                ) : taskQueryError ? (
-                  <div className="rounded-xl border border-divider-regular p-4" role="alert">
+                {taskQueryError && (
+                  <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
                     <p className="system-xs-regular text-text-destructive">
                       {t(($) => $['newKnowledge.tasksErrorDescription'])}
                     </p>
                     <Button className="mt-3" size="small" onClick={onRetryTaskQuery}>
                       {tCommon(($) => $['operation.retry'])}
                     </Button>
+                  </div>
+                )}
+                {taskQueryPending && !orderedTasks.length ? (
+                  <div className="flex min-h-40 items-center justify-center">
+                    <Loading />
                   </div>
                 ) : orderedTasks.length ? (
                   <ul className="divide-y divide-divider-subtle">
@@ -221,11 +222,11 @@ export function ProcessingTasksDrawer({
                       )
                     })}
                   </ul>
-                ) : (
+                ) : !taskQueryError ? (
                   <p className="py-16 text-center system-xs-regular text-text-tertiary">
                     {t(($) => $['newKnowledge.noBackgroundTasks'])}
                   </p>
-                )}
+                ) : null}
               </div>
             </DrawerContent>
           </DrawerPopup>

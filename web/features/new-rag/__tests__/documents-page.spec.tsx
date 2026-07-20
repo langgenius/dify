@@ -61,8 +61,22 @@ const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const queryClient = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
 const streamProcessingTaskEvents = vi.hoisted(() => vi.fn())
 const permissionStateMock = vi.hoisted(() => ({
-  atom: Symbol('workspacePermissionKeysAtom'),
-  keys: ['dataset.acl.edit'],
+  currentUserIdAtom: Symbol('userProfileIdAtom'),
+  datasetRbacEnabledAtom: Symbol('datasetRbacEnabledAtom'),
+  isRbacEnabled: true,
+  loading: false,
+  loadingAtom: Symbol('workspacePermissionKeysLoadingAtom'),
+  userId: 'user-1',
+  workspaceAtom: Symbol('workspacePermissionKeysAtom'),
+  workspaceKeys: ['dataset.create_and_management'],
+}))
+const datasetDetailQuery = vi.hoisted(() => ({
+  data: {
+    maintainer: 'maintainer-1',
+    permission_keys: ['dataset.acl.edit'],
+  } as { maintainer: string; permission_keys: string[] } | undefined,
+  error: null as unknown,
+  isPending: false,
 }))
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
@@ -71,19 +85,36 @@ const toastMock = vi.hoisted(() => ({
 }))
 
 vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: permissionStateMock.atom,
+  workspacePermissionKeysAtom: permissionStateMock.workspaceAtom,
+  workspacePermissionKeysLoadingAtom: permissionStateMock.loadingAtom,
+}))
+
+vi.mock('@/context/account-state', () => ({
+  userProfileIdAtom: permissionStateMock.currentUserIdAtom,
+}))
+
+vi.mock('@/context/system-features-state', () => ({
+  datasetRbacEnabledAtom: permissionStateMock.datasetRbacEnabledAtom,
 }))
 
 vi.mock('jotai', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai')>()
   return {
     ...original,
-    useAtomValue: (atom: unknown) =>
-      atom === permissionStateMock.atom
-        ? permissionStateMock.keys
-        : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
+    useAtomValue: (atom: unknown) => {
+      if (atom === permissionStateMock.workspaceAtom) return permissionStateMock.workspaceKeys
+      if (atom === permissionStateMock.loadingAtom) return permissionStateMock.loading
+      if (atom === permissionStateMock.currentUserIdAtom) return permissionStateMock.userId
+      if (atom === permissionStateMock.datasetRbacEnabledAtom)
+        return permissionStateMock.isRbacEnabled
+      return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
+    },
   }
 })
+
+vi.mock('@/service/knowledge/use-dataset', () => ({
+  useDatasetDetail: () => datasetDetailQuery,
+}))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
 
@@ -228,7 +259,14 @@ describe('DocumentsPage', () => {
     sourcesQuery.isFetchNextPageError = false
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
-    permissionStateMock.keys = ['dataset.acl.edit']
+    permissionStateMock.loading = false
+    permissionStateMock.workspaceKeys = ['dataset.create_and_management']
+    datasetDetailQuery.data = {
+      maintainer: 'maintainer-1',
+      permission_keys: ['dataset.acl.edit'],
+    }
+    datasetDetailQuery.error = null
+    datasetDetailQuery.isPending = false
     cancelMutation.mutateAsync.mockResolvedValue(task({ state: 'canceled' }))
     retryMutation.mutateAsync.mockResolvedValue(task({ state: 'queued' }))
     reindexMutation.mutateAsync.mockResolvedValue({
@@ -396,17 +434,25 @@ describe('DocumentsPage', () => {
 
   it('keeps every write action unavailable for read-only users', async () => {
     const user = userEvent.setup()
-    permissionStateMock.keys = ['dataset.acl.readonly']
+    datasetDetailQuery.data = {
+      maintainer: 'maintainer-1',
+      permission_keys: ['dataset.acl.readonly'],
+    }
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = { pages: [{ items: [task()] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
+    expect(screen.getByText('dataset.newKnowledge.permissionRestricted')).toBeVisible()
     expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
+    )
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+      'aria-describedby',
+      'documents-readonly-reason',
     )
     await user.click(
       screen.getByRole('button', {
@@ -493,7 +539,7 @@ describe('DocumentsPage', () => {
       new File(['large'], 'too-large.pdf', { type: 'application/pdf' }),
     ])
     expect(toastMock.warning).toHaveBeenCalledWith(
-      'dataset.newKnowledge.documentUploadPartial:{"accepted":1,"excluded":1}',
+      'dataset.newKnowledge.documentUploadPartial:{"accepted":1,"details":"too-large.pdf (dataset.newKnowledge.documentUploadExclusion.fileSize)","excluded":1}',
     )
 
     queryClient.invalidateQueries.mockClear()
@@ -501,7 +547,9 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
       new File(['two'], 'two.md', { type: 'text/markdown' }),
     ])
-    expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentUploadRejected')
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'dataset.newKnowledge.documentUploadRejected:{"details":"one.md (dataset.newKnowledge.documentUploadExclusion.quota); two.md (dataset.newKnowledge.documentUploadExclusion.quota)"}',
+    )
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
 
@@ -574,7 +622,73 @@ describe('DocumentsPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
-    expect(screen.queryByText('dataset.newKnowledge.documentStatus.ready')).not.toBeInTheDocument()
+    const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
+    expect(
+      within(documentRow).queryByText('dataset.newKnowledge.documentStatus.ready'),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox')).toBeDisabled()
+  })
+
+  it('keeps cached documents visible when a background task refresh fails', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.error = new Error('poll failed')
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.tasksErrorDescription',
+    )
+    expect(
+      within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ })).getByText(
+        'dataset.newKnowledge.documentStatus.ready',
+      ),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(tasksQuery.refetch).toHaveBeenCalledOnce()
+  })
+
+  it('renders document identity while dependency cursor pages continue loading', () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [], nextCursor: 'task-next' }] }
+    tasksQuery.hasNextPage = true
+    sourcesQuery.data = { pages: [{ items: [], nextCursor: 'source-next' }] }
+    sourcesQuery.hasNextPage = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('combobox')).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
+  it('keeps selection disabled after a filtered document page fails', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ title: 'Product handbook.pdf' })], nextCursor: 'next' }],
+    }
+    documentsQuery.hasNextPage = true
+    documentsQuery.isFetchNextPageError = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      'product',
+    )
+
+    expect(screen.getByRole('checkbox', { name: 'Product handbook.pdf' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAllDocuments' }),
+    ).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('re-indexes selected documents and keeps unsupported actions unavailable', async () => {
@@ -654,6 +768,29 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('checkbox', { name: 'Missing.pdf' })).toBeChecked()
     expect(toastMock.warning).toHaveBeenCalledWith(
       'dataset.newKnowledge.documentsReindexPartial:{"missing":1,"queued":1}',
+    )
+  })
+
+  it('clears stale selection and refreshes after every re-index target is missing', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({ id: 'missing' })] }] }
+    reindexMutation.mutateAsync.mockResolvedValue({
+      bulkJobId: 'reindex-missing',
+      items: [{ documentId: 'missing', status: 'not_found' }],
+      total: 1,
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toBeChecked()
+    expect(
+      screen.queryByRole('toolbar', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+    ).not.toBeInTheDocument()
+    expect(queryClient.invalidateQueries).toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'dataset.newKnowledge.documentsReindexPartial:{"missing":1,"queued":0}',
     )
   })
 
@@ -795,12 +932,18 @@ describe('DocumentsPage', () => {
   it('applies task events and clears the attention badge after completion', async () => {
     documentsQuery.data = { pages: [{ items: [document({})] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'running' })] }] }
+    let streamCount = 0
     streamProcessingTaskEvents.mockImplementation(async function* () {
-      yield {
-        data: { state: 'succeeded' as const },
-        event: 'terminal' as const,
-        id: 'running:terminal',
+      streamCount += 1
+      if (streamCount === 1) {
+        yield {
+          data: { state: 'succeeded' as const },
+          event: 'terminal' as const,
+          id: 'running:terminal',
+        }
+        return
       }
+      await new Promise<void>(() => {})
     })
 
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -834,9 +977,13 @@ describe('DocumentsPage', () => {
       ],
     }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
-    ).not.toHaveTextContent('1')
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        }),
+      ).toHaveTextContent('1'),
+    )
   })
 
   it('keeps one event stream and its resume cursor when polling updates task versions', async () => {

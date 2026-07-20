@@ -26,30 +26,43 @@ const DocumentRow = memo(
     document,
     formatTimeFromNow,
     onSelectedChange,
+    readOnlyReasonId,
     selected,
     selectionDisabled,
     source,
+    sourcePending,
     status,
+    statusPending,
   }: {
     document: LogicalDocument
     formatTimeFromNow: (time: number) => string
     onSelectedChange: (documentId: string) => void
+    readOnlyReasonId?: string
     selected: boolean
     selectionDisabled: boolean
     source?: string
+    sourcePending: boolean
     status: DocumentDisplayStatus
+    statusPending: boolean
   }) => {
     const { t } = useTranslation('dataset')
+    const { t: tCommon } = useTranslation('common')
     const titleId = `new-document-${document.id}`
     const revision = document.activeRevision ?? document.active?.revision
     const updatedTime = Date.parse(document.updatedAt)
 
     return (
-      <tr className={cn('border-t border-divider-subtle', status === 'disabled' && 'opacity-60')}>
+      <tr
+        className={cn(
+          'border-t border-divider-subtle',
+          status === 'disabled' && !statusPending && 'opacity-60',
+        )}
+      >
         <td className="w-10 py-3 pr-3">
           <Checkbox
             checked={selected}
             disabled={selectionDisabled || status === 'disabled'}
+            aria-describedby={selectionDisabled ? readOnlyReasonId : undefined}
             aria-labelledby={titleId}
             onCheckedChange={() => onSelectedChange(document.id)}
           />
@@ -71,20 +84,40 @@ const DocumentRow = memo(
           </div>
         </td>
         <td className="w-52 py-3 pr-6 system-xs-regular text-text-secondary">
-          <span className="block truncate">
-            {source ?? t(($) => $['newKnowledge.manualUpload'])}
-          </span>
+          {sourcePending ? (
+            <span className="inline-flex items-center gap-2">
+              <span
+                aria-hidden
+                className="h-3 w-24 animate-pulse rounded bg-background-section motion-reduce:animate-none"
+              />
+              <span className="sr-only">{tCommon(($) => $.loading)}</span>
+            </span>
+          ) : (
+            <span className="block truncate">
+              {source ?? t(($) => $['newKnowledge.manualUpload'])}
+            </span>
+          )}
         </td>
         <td className="w-56 py-3 pr-6">
-          <span
-            className={cn(
-              'inline-flex items-center gap-1.5 system-xs-regular',
-              status === 'failed' ? 'text-text-destructive' : 'text-text-secondary',
-            )}
-          >
-            <span aria-hidden className={cn('size-3.5', statusIconClass[status])} />
-            {t(($) => $[`newKnowledge.documentStatus.${status}`])}
-          </span>
+          {statusPending ? (
+            <span className="inline-flex items-center gap-2">
+              <span
+                aria-hidden
+                className="h-3 w-20 animate-pulse rounded bg-background-section motion-reduce:animate-none"
+              />
+              <span className="sr-only">{tCommon(($) => $.loading)}</span>
+            </span>
+          ) : (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 system-xs-regular',
+                status === 'failed' ? 'text-text-destructive' : 'text-text-secondary',
+              )}
+            >
+              <span aria-hidden className={cn('size-3.5', statusIconClass[status])} />
+              {t(($) => $[`newKnowledge.documentStatus.${status}`])}
+            </span>
+          )}
         </td>
         <td className="w-40 py-3 pr-6 system-xs-regular text-text-tertiary">
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
@@ -115,7 +148,7 @@ export function DocumentsEmpty({
   canEdit: boolean
   onAddDocument: () => void
   onDropFiles: (files: File[]) => void
-  readOnlyReasonId: string
+  readOnlyReasonId?: string
   uploading: boolean
 }) {
   const { t } = useTranslation('dataset')
@@ -175,11 +208,14 @@ export function DocumentsList({
   onSearchChange,
   onSelectAll,
   onSelectDocument,
+  readOnlyReasonId,
   search,
   selectionDisabled,
   selectedDocumentIds,
   someSelected,
+  sourcesPending,
   sourceNames,
+  statusPending,
   statuses,
   tasksButtonLabel,
   tasksLiveStatus,
@@ -204,11 +240,14 @@ export function DocumentsList({
   onSearchChange: (search: string) => void
   onSelectAll: () => void
   onSelectDocument: (documentId: string) => void
+  readOnlyReasonId?: string
   search: string
   selectionDisabled: boolean
   selectedDocumentIds: Set<string>
   someSelected: boolean
+  sourcesPending: boolean
   sourceNames: Map<string, string>
+  statusPending: boolean
   statuses: Map<string, DocumentDisplayStatus>
   tasksButtonLabel: string
   tasksLiveStatus: string
@@ -227,6 +266,7 @@ export function DocumentsList({
         </label>
         <select
           id="document-filter"
+          disabled={statusPending}
           value={filter}
           onChange={(event) => onFilterChange(event.target.value as DocumentFilter)}
           className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid sm:w-36"
@@ -288,7 +328,7 @@ export function DocumentsList({
           variant="primary"
           disabled={!canEdit}
           loading={uploading}
-          aria-describedby={!canEdit ? 'documents-readonly-reason' : undefined}
+          aria-describedby={!canEdit ? readOnlyReasonId : undefined}
           onClick={onAddDocument}
         >
           <span aria-hidden className="i-ri-add-line size-4" />
@@ -304,6 +344,7 @@ export function DocumentsList({
                   checked={allSelected}
                   indeterminate={someSelected && !allSelected}
                   disabled={!canEdit || selectionDisabled || !hasSelectableDocuments}
+                  aria-describedby={!canEdit ? readOnlyReasonId : undefined}
                   aria-label={t(($) => $['newKnowledge.selectAllDocuments'])}
                   onCheckedChange={onSelectAll}
                 />
@@ -322,12 +363,17 @@ export function DocumentsList({
                 document={document}
                 formatTimeFromNow={formatTimeFromNow}
                 onSelectedChange={onSelectDocument}
+                readOnlyReasonId={!canEdit ? readOnlyReasonId : undefined}
                 selected={selectedDocumentIds.has(document.id)}
                 selectionDisabled={!canEdit || selectionDisabled}
                 source={
                   (document.sourceId && sourceNames.get(document.sourceId)) ?? sourceName(document)
                 }
+                sourcePending={Boolean(
+                  sourcesPending && document.sourceId && !sourceNames.has(document.sourceId),
+                )}
                 status={statuses.get(document.id) ?? 'queued'}
+                statusPending={statusPending}
               />
             ))}
           </tbody>
