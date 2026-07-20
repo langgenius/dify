@@ -2,9 +2,10 @@
 Maintain V2 workflow-run archive bundles.
 
 Archive V2 keeps object-store manifests as the recoverable bundle source of truth. Delete and restore discover a
-bounded page of candidates from `workflow_run_archive_bundles`, then construct each immutable manifest key from the
-catalog identity. They never list the object-store namespace. Object-store marker files keep delete/restore
-idempotent, while the caller persists a non-dry-run cursor only after a candidate succeeds.
+bounded page of candidates from `workflow_run_archive_bundles`, optionally restricted to one exact archive shard, then
+construct each immutable manifest key from the catalog identity. They never list the object-store namespace.
+Object-store marker files keep delete/restore idempotent, while the caller persists a non-dry-run cursor only after a
+candidate succeeds.
 
 Each bundle is processed in its own database transaction. A failed bundle leaves source rows unchanged unless the
 transaction has already committed; marker handling makes the next run able to reconcile the common committed-but-marker
@@ -257,8 +258,9 @@ class WorkflowRunBundleArchiveMaintenance:
         target_month: int,
         after_catalog_id: str | None,
         limit: int,
+        shard: str | None = None,
     ) -> BundleOperationSummary:
-        """Validate and delete source rows for a keyset page of archived V2 bundles in one calendar month."""
+        """Validate and delete one keyset page, optionally scoped to an exact archive shard."""
         return self._process_batch(
             operation="delete",
             tenant_ids=tenant_ids,
@@ -266,6 +268,7 @@ class WorkflowRunBundleArchiveMaintenance:
             target_month=target_month,
             after_catalog_id=after_catalog_id,
             limit=limit,
+            shard=shard,
         )
 
     def restore_batch(
@@ -285,7 +288,42 @@ class WorkflowRunBundleArchiveMaintenance:
             target_month=target_month,
             after_catalog_id=after_catalog_id,
             limit=limit,
+            shard=None,
         )
+
+    def validate_catalog_shards(
+        self,
+        *,
+        target_year: int,
+        target_month: int,
+        shard_total: int,
+    ) -> None:
+        """
+        Fail before a parallel delete when the closed target month contains a different shard layout.
+
+        A subset of the expected shards is valid because an archive shard may legitimately contain no bundles. Any
+        other shard name indicates a historical or mixed-layout month that must be handled by the serial delete path.
+        """
+        if not 1 <= shard_total <= 16:
+            raise ValueError("shard_total must be between 1 and 16")
+        expected_shards = tuple(f"{index:02d}-of-{shard_total:02d}" for index in range(shard_total))
+        statement = (
+            select(WorkflowRunArchiveBundle.shard)
+            .where(
+                WorkflowRunArchiveBundle.year == target_year,
+                WorkflowRunArchiveBundle.month == target_month,
+                WorkflowRunArchiveBundle.shard.not_in(expected_shards),
+            )
+            .distinct()
+            .order_by(WorkflowRunArchiveBundle.shard.asc())
+        )
+        with self.session_factory() as session:
+            unexpected_shards = list(session.scalars(statement))
+        if unexpected_shards:
+            raise ValueError(
+                "archive catalog month contains unexpected shards for "
+                f"{shard_total}-way delete: {', '.join(unexpected_shards)}"
+            )
 
     def _process_batch(
         self,
@@ -296,6 +334,7 @@ class WorkflowRunBundleArchiveMaintenance:
         target_month: int,
         after_catalog_id: str | None,
         limit: int,
+        shard: str | None,
     ) -> BundleOperationSummary:
         start_time = time.time()
         summary = BundleOperationSummary(operation=operation)
@@ -309,14 +348,16 @@ class WorkflowRunBundleArchiveMaintenance:
             target_month=target_month,
             after_catalog_id=after_catalog_id,
             limit=limit,
+            shard=shard,
         )
 
         logger.info(
-            "Found %s V2 archive catalog candidates for %s: year=%s month=%s after_catalog_id=%s",
+            "Found %s V2 archive catalog candidates for %s: year=%s month=%s shard=%s after_catalog_id=%s",
             len(catalog_entries),
             operation,
             target_year,
             target_month,
+            shard,
             after_catalog_id,
         )
         for catalog_entry in catalog_entries:
@@ -359,6 +400,7 @@ class WorkflowRunBundleArchiveMaintenance:
         target_month: int,
         after_catalog_id: str | None,
         limit: int,
+        shard: str | None = None,
     ) -> list[ArchiveBundleCatalogEntry]:
         """Read one bounded, stable-order candidate page from the database catalog."""
         conditions = [
@@ -367,6 +409,8 @@ class WorkflowRunBundleArchiveMaintenance:
         ]
         if tenant_ids:
             conditions.append(WorkflowRunArchiveBundle.tenant_id.in_(tenant_ids))
+        if shard is not None:
+            conditions.append(WorkflowRunArchiveBundle.shard == shard)
         if after_catalog_id:
             conditions.append(WorkflowRunArchiveBundle.id > after_catalog_id)
 
@@ -381,6 +425,7 @@ class WorkflowRunBundleArchiveMaintenance:
                     tenant_ids=tenant_ids,
                     target_year=target_year,
                     target_month=target_month,
+                    shard=shard,
                 )
             bundles = list(session.scalars(statement))
         return [
@@ -405,6 +450,7 @@ class WorkflowRunBundleArchiveMaintenance:
         tenant_ids: Sequence[str] | None,
         target_year: int,
         target_month: int,
+        shard: str | None,
     ) -> None:
         """Reject a keyset cursor that cannot safely represent the requested catalog scope."""
         if cursor_bundle is None:
@@ -413,6 +459,8 @@ class WorkflowRunBundleArchiveMaintenance:
             raise ValueError("after_catalog_id is outside the requested archive month")
         if tenant_ids is not None and cursor_bundle.tenant_id not in tenant_ids:
             raise ValueError("after_catalog_id is outside the requested tenant scope")
+        if shard is not None and cursor_bundle.shard != shard:
+            raise ValueError("after_catalog_id is outside the requested archive shard")
 
     def _build_bundle_reference(
         self,

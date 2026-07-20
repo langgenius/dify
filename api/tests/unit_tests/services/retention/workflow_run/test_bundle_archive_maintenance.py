@@ -35,13 +35,13 @@ def _table_records(
     return records
 
 
-def _catalog_entry(*, catalog_id: str = CATALOG_ID) -> ArchiveBundleCatalogEntry:
+def _catalog_entry(*, catalog_id: str = CATALOG_ID, shard: str = "00-of-01") -> ArchiveBundleCatalogEntry:
     return ArchiveBundleCatalogEntry(
         catalog_id=catalog_id,
         tenant_id=TENANT_ID,
         year=2025,
         month=3,
-        shard="00-of-01",
+        shard=shard,
         bundle_id=BUNDLE_ID,
         workflow_run_count=0,
         row_count=0,
@@ -180,6 +180,95 @@ def test_catalog_discovery_is_ordered_and_limited_before_storage_io() -> None:
     assert "LIMIT" in rendered
     assert entries == [entry]
     storage.list_objects.assert_not_called()
+
+
+def test_catalog_discovery_filters_and_validates_the_requested_shard() -> None:
+    entry = _catalog_entry(shard="03-of-16")
+    bundle = SimpleNamespace(
+        id=entry.catalog_id,
+        tenant_id=entry.tenant_id,
+        year=entry.year,
+        month=entry.month,
+        shard=entry.shard,
+        bundle_id=entry.bundle_id,
+        workflow_run_count=entry.workflow_run_count,
+        row_count=entry.row_count,
+        archive_bytes=entry.archive_bytes,
+    )
+    session = MagicMock()
+    session.get.return_value = bundle
+    session.scalars.return_value = [bundle]
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        storage=cast(MagicMock, MagicMock()),
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    entries = maintenance._list_catalog_entries(
+        tenant_ids=None,
+        target_year=2025,
+        target_month=3,
+        after_catalog_id=CATALOG_ID,
+        limit=2,
+        shard="03-of-16",
+    )
+
+    statement = session.scalars.call_args.args[0]
+    rendered = str(statement)
+    assert "workflow_run_archive_bundles.shard =" in rendered
+    assert entries == [entry]
+
+    session.get.return_value = SimpleNamespace(
+        year=2025,
+        month=3,
+        tenant_id=TENANT_ID,
+        shard="04-of-16",
+    )
+    with pytest.raises(ValueError, match="requested archive shard"):
+        maintenance._list_catalog_entries(
+            tenant_ids=None,
+            target_year=2025,
+            target_month=3,
+            after_catalog_id=CATALOG_ID,
+            limit=2,
+            shard="03-of-16",
+        )
+
+
+def test_catalog_shard_preflight_rejects_mixed_layout_before_delete() -> None:
+    session = MagicMock()
+    session.scalars.return_value = ["00-of-01"]
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        storage=cast(MagicMock, MagicMock()),
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    with pytest.raises(ValueError, match=r"unexpected shards.*00-of-01"):
+        maintenance.validate_catalog_shards(
+            target_year=2025,
+            target_month=3,
+            shard_total=16,
+        )
+
+    statement = session.scalars.call_args.args[0]
+    rendered = str(statement)
+    assert "workflow_run_archive_bundles.year" in rendered
+    assert "workflow_run_archive_bundles.month" in rendered
+    assert "workflow_run_archive_bundles.shard NOT IN" in rendered
+
+
+def test_catalog_shard_preflight_accepts_an_expected_subset() -> None:
+    session = MagicMock()
+    session.scalars.return_value = []
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        storage=cast(MagicMock, MagicMock()),
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    maintenance.validate_catalog_shards(
+        target_year=2025,
+        target_month=3,
+        shard_total=16,
+    )
 
 
 @pytest.mark.parametrize(
