@@ -1,17 +1,12 @@
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
+import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { Provider as JotaiProvider } from 'jotai'
-import {
-  createTestQueryClient,
-  renderWithSystemFeatures,
-} from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
@@ -23,6 +18,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { MainNav } from '../index'
 
@@ -34,39 +30,29 @@ const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess } = vi.hoist
   mockToastSuccess: vi.fn(),
   mockIsAgentV2Enabled: vi.fn(() => true),
 }))
-const mockAppContextState = vi.hoisted(() => ({
-  current: undefined as AppContextStateMockState | undefined,
+const mockConsoleState = vi.hoisted(() => ({
+  current: undefined as ConsoleStateFixture | undefined,
 }))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
 })
 
 vi.mock('@/context/provider-context', () => ({
@@ -222,9 +208,9 @@ const mainNavUserProfile = {
   is_password_set: true,
 }
 
-const appContextValue: AppContextStateMockState = {
+const consoleState: ConsoleStateFixture = {
   userProfile: mainNavUserProfile,
-  mutateUserProfile: vi.fn(),
+  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
@@ -241,7 +227,7 @@ const appContextValue: AppContextStateMockState = {
   isCurrentWorkspaceOwner: true,
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
-  mutateCurrentWorkspace: vi.fn(),
+  refreshCurrentWorkspace: vi.fn(),
   langGeniusVersionInfo: {
     current_env: 'testing',
     current_version: '1.0.0',
@@ -257,7 +243,7 @@ const appContextValue: AppContextStateMockState = {
 }
 
 type MainNavSystemFeatures = Exclude<
-  NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures'],
+  NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'],
   null | undefined
 >
 
@@ -270,17 +256,17 @@ const renderMainNav = (
   systemFeatures: MainNavSystemFeatures = defaultMainNavSystemFeatures,
   options: { extra?: ReactNode } = {},
 ) => {
-  const queryClient = createTestQueryClient()
-  const currentAppContext = mockAppContextState.current ?? appContextValue
-  mockAppContextState.current = currentAppContext
+  const queryClient = createConsoleQueryClient()
+  const currentConsoleState = mockConsoleState.current ?? consoleState
+  mockConsoleState.current = currentConsoleState
   queryClient.setQueryData(
     consoleQuery.workspaces.current.post.queryKey(),
-    currentAppContext.currentWorkspace as ICurrentWorkspace,
+    currentConsoleState.currentWorkspace as ICurrentWorkspace,
   )
   queryClient.setQueryData(userProfileQueryOptions().queryKey, {
     profile: {
       ...mainNavUserProfile,
-      ...(currentAppContext.userProfile ?? {}),
+      ...(currentConsoleState.userProfile ?? {}),
     },
     meta: {
       currentVersion: null,
@@ -296,11 +282,11 @@ const renderMainNav = (
       ...systemFeatures.branding,
     },
   }
-  return renderWithSystemFeatures(
-    <JotaiProvider>
+  return renderWithConsoleQuery(
+    <>
       <MainNav />
       {options.extra}
-    </JotaiProvider>,
+    </>,
     { systemFeatures: resolvedSystemFeatures, queryClient },
   )
 }
@@ -342,7 +328,7 @@ describe('MainNav', () => {
       forward: vi.fn(),
       refresh: vi.fn(),
     })
-    mockAppContextState.current = appContextValue
+    mockConsoleState.current = consoleState
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
@@ -483,10 +469,10 @@ describe('MainNav', () => {
   })
 
   it('renders the desktop environment tag from the old header contract', () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       langGeniusVersionInfo: {
-        ...appContextValue.langGeniusVersionInfo,
+        ...consoleState.langGeniusVersionInfo,
         current_env: 'TESTING',
       },
     }
@@ -525,10 +511,10 @@ describe('MainNav', () => {
   })
 
   it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       currentWorkspace: {
-        ...appContextValue.currentWorkspace,
+        ...consoleState.currentWorkspace,
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
@@ -562,10 +548,10 @@ describe('MainNav', () => {
   })
 
   it('keeps unrestricted main routes visible without route permission keys', () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       currentWorkspace: {
-        ...appContextValue.currentWorkspace,
+        ...consoleState.currentWorkspace,
         role: 'normal',
       },
       isCurrentWorkspaceDatasetOperator: false,
@@ -703,11 +689,7 @@ describe('MainNav', () => {
     expect(homeLink).toHaveAttribute('aria-current', 'page')
 
     mockPathname = '/installed/installed-1'
-    rerender(
-      <JotaiProvider>
-        <MainNav />
-      </JotaiProvider>,
-    )
+    rerender(<MainNav />)
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
       'aria-current',
@@ -879,10 +861,10 @@ describe('MainNav', () => {
   })
 
   it('limits invite members by member management permission', async () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       currentWorkspace: {
-        ...appContextValue.currentWorkspace,
+        ...consoleState.currentWorkspace,
         role: 'normal',
       },
       isCurrentWorkspaceManager: false,
@@ -901,10 +883,10 @@ describe('MainNav', () => {
   })
 
   it('keeps workspace settings visible and hides invite members without member management permission', () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       currentWorkspace: {
-        ...appContextValue.currentWorkspace,
+        ...consoleState.currentWorkspace,
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,

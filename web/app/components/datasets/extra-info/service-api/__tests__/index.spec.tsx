@@ -1,15 +1,16 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import ServiceApi from '../index'
 
 let mockPermissionKeys = ['dataset.api_key.manage']
 
-vi.mock('jotai', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('jotai')>()
-  return {
-    ...actual,
-    useAtomValue: () => mockPermissionKeys,
-  }
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockPermissionKeys,
+  }))
 })
 
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
