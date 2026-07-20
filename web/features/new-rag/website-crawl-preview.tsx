@@ -135,8 +135,12 @@ function isRetryConfirmed(previous: SourceWorkflowRun, current: SourceWorkflowRu
   )
 }
 
-function isCancelConfirmed(current: SourceWorkflowRun) {
-  return isTerminal(current.state)
+function isCancelConfirmed(target: SourceWorkflowRun, current: SourceWorkflowRun) {
+  return (
+    target.id === current.id &&
+    current.executionAttempts >= target.executionAttempts &&
+    isTerminal(current.state)
+  )
 }
 
 function latestWorkflowRun(
@@ -334,9 +338,8 @@ export function WebsiteCrawlPreview({
   }, [])
 
   const updateRun = useCallback((nextRun: SourceWorkflowRun | undefined) => {
-    const latestRun = nextRun ? latestWorkflowRun(runRef.current, nextRun) : undefined
-    runRef.current = latestRun
-    setRun(latestRun)
+    runRef.current = nextRun
+    setRun(nextRun)
   }, [])
 
   const normalizedURL = useMemo(() => normalizeURL(rootUrl), [rootUrl])
@@ -683,6 +686,11 @@ export function WebsiteCrawlPreview({
             params: { id: knowledgeSpaceId, runId },
           })
         if (disposed) return
+        const currentRun = runRef.current
+        if (currentRun && latestWorkflowRun(currentRun, nextRun) === currentRun) {
+          if (!isTerminal(currentRun.state)) timer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
+          return
+        }
         let pageUpdates: Awaited<ReturnType<typeof listWorkflowPageUpdates>>
         const finalSnapshot = isSuccessful(nextRun.state)
         try {
@@ -756,7 +764,7 @@ export function WebsiteCrawlPreview({
             await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
               params: { id: knowledgeSpaceId, runId: targetRun.id },
             })
-          if (!isCancelConfirmed(reconciled)) {
+          if (!isCancelConfirmed(targetRun, reconciled)) {
             setRequestError('CANCEL_FAILED')
             return false
           }
@@ -790,7 +798,7 @@ export function WebsiteCrawlPreview({
             await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
               params: { id: knowledgeSpaceId, runId: targetRun.id },
             })
-          if (!isCancelConfirmed(reconciled)) {
+          if (!isCancelConfirmed(targetRun, reconciled)) {
             setRequestError('CANCEL_FAILED')
             return false
           } else {

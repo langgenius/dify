@@ -792,6 +792,25 @@ describe('WebsiteCrawlPreview', () => {
     expect(clientMock.startPreview).toHaveBeenCalledOnce()
   })
 
+  it('accepts a successful retry response even when its counters have not advanced yet', async () => {
+    const failedRun = run('failed', { lastErrorCode: 'PROVIDER_403', progressFailed: 1 })
+    clientMock.getRun
+      .mockResolvedValueOnce(failedRun)
+      .mockReturnValue(new Promise<SourceWorkflowRun>(() => {}))
+    clientMock.getPages.mockResolvedValue({ items: [] })
+    clientMock.retry.mockResolvedValue(run('running'))
+
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByRole('alert')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
+
+    expect(
+      await screen.findByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }),
+    ).toBeInTheDocument()
+  })
+
   it('reconciles a lost Retry response without sending retry twice', async () => {
     clientMock.getRun
       .mockResolvedValueOnce(run('failed', { lastErrorCode: 'PROVIDER_403' }))
