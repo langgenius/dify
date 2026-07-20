@@ -270,6 +270,7 @@
   "newKnowledge.pagesSelected": "{{count}} selected",
   "newKnowledge.permission": "Permission",
   "newKnowledge.permissionAllMembers": "Workspace · all members can view and edit",
+  "newKnowledge.permissionLoadFailed": "We couldn't verify your editing permissions. Try again.",
   "newKnowledge.permissionOnlyMe": "Only me",
   "newKnowledge.permissionRestricted": "Your workspace permissions don't allow changing this setting.",
   "newKnowledge.processDocument": "Process {{name}}",

@@ -13,6 +13,7 @@ import { ZENDESK_FIELD_IDS } from '@/config'
 import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
 import { initialWorkspaceInfo } from '../app-context-defaults'
 import {
+  datasetDefaultPermissionKeysAtom,
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '../permission-state'
@@ -29,6 +30,7 @@ import {
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({
+  datasetPermissionKeys: ['dataset.acl.edit'],
   isPending: false,
   permissionKeys: ['app.create_and_management'],
 }))
@@ -204,6 +206,7 @@ function ConsoleBootstrapProbe() {
   const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
@@ -215,6 +218,10 @@ function ConsoleBootstrapProbe() {
       <span>
         keys:
         {workspacePermissionKeys.join(',')}
+      </span>
+      <span>
+        dataset keys:
+        {datasetDefaultPermissionKeys.join(',')}
       </span>
       <span>
         permission loading:
@@ -318,6 +325,7 @@ describe('Console bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPermissionKeysState.isPending = false
+    mockPermissionKeysState.datasetPermissionKeys = ['dataset.acl.edit']
     mockPermissionKeysState.permissionKeys = ['app.create_and_management']
     mockCurrentWorkspaceQueryState.data = mockCurrentWorkspaceResponse
     mockCurrentWorkspaceQueryState.isPending = false
@@ -363,7 +371,7 @@ describe('Console bootstrap', () => {
             overrides: [],
           },
           dataset: {
-            default_permission_keys: [],
+            default_permission_keys: mockPermissionKeysState.datasetPermissionKeys,
             overrides: [],
           },
         })
@@ -382,6 +390,7 @@ describe('Console bootstrap', () => {
       expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
       expect(await screen.findByText('workspace:Workspace')).toBeInTheDocument()
       expect(await screen.findByText('keys:app.create_and_management')).toBeInTheDocument()
+      expect(screen.getByText('dataset keys:dataset.acl.edit')).toBeInTheDocument()
       expect(screen.getByText('permission loading:false')).toBeInTheDocument()
       expect(screen.getByText('workspace loading:false')).toBeInTheDocument()
       expect(await screen.findByText('version:1.0.0/1.0.1/cloud')).toBeInTheDocument()
@@ -389,6 +398,7 @@ describe('Console bootstrap', () => {
 
     it('should fall back to placeholder values when workspace, permission, or version data is missing', async () => {
       mockCurrentWorkspaceQueryState.data = undefined
+      mockPermissionKeysState.datasetPermissionKeys = []
       mockPermissionKeysState.permissionKeys = []
       mockLangGeniusVersionState.data = undefined
 
@@ -398,6 +408,7 @@ describe('Console bootstrap', () => {
       expect(screen.getByText(`workspace:${initialWorkspaceInfo.name}`)).toBeInTheDocument()
       expect(screen.getByText(`role:${initialWorkspaceInfo.role}`)).toBeInTheDocument()
       expect(screen.getByText('keys:')).toBeInTheDocument()
+      expect(screen.getByText('dataset keys:')).toBeInTheDocument()
       expect(screen.getByText('version://')).toBeInTheDocument()
     })
 

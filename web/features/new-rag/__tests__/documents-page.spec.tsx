@@ -61,22 +61,14 @@ const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const queryClient = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
 const streamProcessingTaskEvents = vi.hoisted(() => vi.fn())
 const permissionStateMock = vi.hoisted(() => ({
-  currentUserIdAtom: Symbol('userProfileIdAtom'),
-  datasetRbacEnabledAtom: Symbol('datasetRbacEnabledAtom'),
-  isRbacEnabled: true,
+  datasetAtom: Symbol('datasetDefaultPermissionKeysAtom'),
+  datasetKeys: ['dataset.acl.edit'],
+  error: null as unknown,
+  errorAtom: Symbol('workspacePermissionKeysErrorAtom'),
   loading: false,
   loadingAtom: Symbol('workspacePermissionKeysLoadingAtom'),
-  userId: 'user-1',
-  workspaceAtom: Symbol('workspacePermissionKeysAtom'),
-  workspaceKeys: ['dataset.create_and_management'],
-}))
-const datasetDetailQuery = vi.hoisted(() => ({
-  data: {
-    maintainer: 'maintainer-1',
-    permission_keys: ['dataset.acl.edit'],
-  } as { maintainer: string; permission_keys: string[] } | undefined,
-  error: null as unknown,
-  isPending: false,
+  retry: vi.fn(),
+  retryAtom: Symbol('retryWorkspacePermissionKeysAtom'),
 }))
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
@@ -85,16 +77,10 @@ const toastMock = vi.hoisted(() => ({
 }))
 
 vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: permissionStateMock.workspaceAtom,
+  datasetDefaultPermissionKeysAtom: permissionStateMock.datasetAtom,
+  retryWorkspacePermissionKeysAtom: permissionStateMock.retryAtom,
+  workspacePermissionKeysErrorAtom: permissionStateMock.errorAtom,
   workspacePermissionKeysLoadingAtom: permissionStateMock.loadingAtom,
-}))
-
-vi.mock('@/context/account-state', () => ({
-  userProfileIdAtom: permissionStateMock.currentUserIdAtom,
-}))
-
-vi.mock('@/context/system-features-state', () => ({
-  datasetRbacEnabledAtom: permissionStateMock.datasetRbacEnabledAtom,
 }))
 
 vi.mock('jotai', async (importOriginal) => {
@@ -102,19 +88,17 @@ vi.mock('jotai', async (importOriginal) => {
   return {
     ...original,
     useAtomValue: (atom: unknown) => {
-      if (atom === permissionStateMock.workspaceAtom) return permissionStateMock.workspaceKeys
+      if (atom === permissionStateMock.datasetAtom) return permissionStateMock.datasetKeys
+      if (atom === permissionStateMock.errorAtom) return permissionStateMock.error
       if (atom === permissionStateMock.loadingAtom) return permissionStateMock.loading
-      if (atom === permissionStateMock.currentUserIdAtom) return permissionStateMock.userId
-      if (atom === permissionStateMock.datasetRbacEnabledAtom)
-        return permissionStateMock.isRbacEnabled
       return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
     },
+    useSetAtom: (atom: unknown) =>
+      atom === permissionStateMock.retryAtom
+        ? permissionStateMock.retry
+        : original.useSetAtom(atom as Parameters<typeof original.useSetAtom>[0]),
   }
 })
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetDetail: () => datasetDetailQuery,
-}))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
 
@@ -259,14 +243,9 @@ describe('DocumentsPage', () => {
     sourcesQuery.isFetchNextPageError = false
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
+    permissionStateMock.datasetKeys = ['dataset.acl.edit']
+    permissionStateMock.error = null
     permissionStateMock.loading = false
-    permissionStateMock.workspaceKeys = ['dataset.create_and_management']
-    datasetDetailQuery.data = {
-      maintainer: 'maintainer-1',
-      permission_keys: ['dataset.acl.edit'],
-    }
-    datasetDetailQuery.error = null
-    datasetDetailQuery.isPending = false
     cancelMutation.mutateAsync.mockResolvedValue(task({ state: 'canceled' }))
     retryMutation.mutateAsync.mockResolvedValue(task({ state: 'queued' }))
     reindexMutation.mutateAsync.mockResolvedValue({
@@ -434,10 +413,7 @@ describe('DocumentsPage', () => {
 
   it('keeps every write action unavailable for read-only users', async () => {
     const user = userEvent.setup()
-    datasetDetailQuery.data = {
-      maintainer: 'maintainer-1',
-      permission_keys: ['dataset.acl.readonly'],
-    }
+    permissionStateMock.datasetKeys = ['dataset.acl.readonly']
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = { pages: [{ items: [task()] }] }
 
@@ -462,6 +438,20 @@ describe('DocumentsPage', () => {
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('keeps permission lookup failures distinct from read-only access and retries them', async () => {
+    const user = userEvent.setup()
+    permissionStateMock.error = new Error('permission service unavailable')
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('dataset.newKnowledge.permissionLoadFailed')
+    expect(screen.queryByText('dataset.newKnowledge.permissionRestricted')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(permissionStateMock.retry).toHaveBeenCalledOnce()
   })
 
   it('uploads one or multiple files through the pinned document contracts', async () => {
@@ -632,6 +622,7 @@ describe('DocumentsPage', () => {
   it('keeps cached documents visible when a background task refresh fails', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task()] }] }
     tasksQuery.error = new Error('poll failed')
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -642,11 +633,23 @@ describe('DocumentsPage', () => {
     )
     expect(
       within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ })).getByText(
-        'dataset.newKnowledge.documentStatus.ready',
+        'dataset.newKnowledge.documentStatus.processing',
       ),
     ).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(tasksQuery.refetch).toHaveBeenCalledOnce()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders document identity while dependency cursor pages continue loading', () => {
@@ -971,6 +974,46 @@ describe('DocumentsPage', () => {
               progressPercent: 90,
               state: 'running',
               updatedAt: '2026-07-20T10:05:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
+    ).not.toHaveTextContent('1')
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'running',
+              progressPercent: 100,
+              state: 'succeeded',
+              updatedAt: '2026-07-20T10:06:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
+      ).not.toHaveTextContent('1'),
+    )
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'running',
+              progressPercent: 0,
+              state: 'queued',
+              updatedAt: '2026-07-20T10:07:00Z',
             }),
           ],
         },

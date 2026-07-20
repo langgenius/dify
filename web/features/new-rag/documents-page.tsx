@@ -6,19 +6,18 @@ import type { ProcessingTaskEvent } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { userProfileIdAtom } from '@/context/account-state'
 import {
-  workspacePermissionKeysAtom,
+  datasetDefaultPermissionKeysAtom,
+  retryWorkspacePermissionKeysAtom,
+  workspacePermissionKeysErrorAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { consoleQuery } from '@/service/client'
-import { useDatasetDetail } from '@/service/knowledge/use-dataset'
-import { getDatasetACLCapabilities } from '@/utils/permission'
+import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
 import {
   documentDisplayStatus,
@@ -47,6 +46,11 @@ const uploadExclusionReasonKey = {
   unsupported_mime_type: 'fileType',
 } as const
 
+type TerminalTaskPin = {
+  confirmedAt?: string
+  observedAt: string
+}
+
 function responseStatus(error: unknown) {
   if (error instanceof Response) return error.status
   if (error && typeof error === 'object' && 'status' in error) return error.status
@@ -69,28 +73,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
-  const datasetQuery = useDatasetDetail(knowledgeSpaceId)
-  const canEdit = useMemo(
-    () =>
-      getDatasetACLCapabilities(datasetQuery.data?.permission_keys, {
-        currentUserId,
-        isRbacEnabled,
-        resourceMaintainer: datasetQuery.data?.maintainer,
-        workspacePermissionKeys,
-      }).canEdit,
-    [
-      currentUserId,
-      datasetQuery.data?.maintainer,
-      datasetQuery.data?.permission_keys,
-      isRbacEnabled,
-      workspacePermissionKeys,
-    ],
-  )
-  const permissionPending = datasetQuery.isPending || workspacePermissionKeysLoading
+  const workspacePermissionKeysError = useAtomValue(workspacePermissionKeysErrorAtom)
+  const retryWorkspacePermissionKeys = useSetAtom(retryWorkspacePermissionKeysAtom)
+  const canEdit = hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
+  const permissionPending = workspacePermissionKeysLoading
+  const permissionQueryError = Boolean(workspacePermissionKeysError)
+  const canWrite = canEdit && !permissionPending && !permissionQueryError
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const uploadPendingRef = useRef(false)
   const reindexPendingRef = useRef(false)
@@ -101,7 +91,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [taskOverrides, setTaskOverrides] = useState<
     Record<string, Partial<DocumentProcessingTask>>
   >({})
-  const [terminalTaskVersions, setTerminalTaskVersions] = useState<Record<string, string>>({})
+  const [terminalTaskPins, setTerminalTaskPins] = useState<Record<string, TerminalTaskPin>>({})
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
   const { mutateAsync: uploadDocument } = useMutation(
@@ -211,16 +201,37 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () => new Map(baseTasks.map((task) => [task.id, task.updatedAt])),
     [baseTasks],
   )
+  useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A server terminal snapshot confirms the SSE pin and establishes the retry version boundary.
+    setTerminalTaskPins((current) => {
+      let changed = false
+      const next = { ...current }
+      for (const task of baseTasks) {
+        const pin = current[task.id]
+        if (
+          !pin ||
+          taskIsActive(task) ||
+          taskVersionIsAfter(pin.observedAt, task.updatedAt) ||
+          pin.confirmedAt === task.updatedAt
+        )
+          continue
+        next[task.id] = { ...pin, confirmedAt: task.updatedAt }
+        changed = true
+      }
+      return changed ? next : current
+    })
+  }, [baseTasks])
   const tasks = useMemo(
     () =>
       baseTasks.map((task) => {
         const override = taskOverrides[task.id]
-        const terminalTaskVersion = terminalTaskVersions[task.id]
+        const terminalTaskPin = terminalTaskPins[task.id]
         if (
-          terminalTaskVersion &&
+          terminalTaskPin &&
           override &&
           taskIsActive(task) &&
-          !taskVersionIsAfter(task.updatedAt, terminalTaskVersion)
+          (!terminalTaskPin.confirmedAt ||
+            !taskVersionIsAfter(task.updatedAt, terminalTaskPin.confirmedAt))
         )
           return { ...task, ...override }
         if (!override?.updatedAt) return override ? { ...task, ...override } : task
@@ -230,7 +241,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           return task
         return { ...task, ...override }
       }),
-    [baseTasks, taskOverrides, terminalTaskVersions],
+    [baseTasks, taskOverrides, terminalTaskPins],
   )
 
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
@@ -316,7 +327,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const dependencyResultsIncomplete = taskResultsIncomplete || sourceResultsIncomplete
   const selectionDisabled =
-    permissionPending || dependencyResultsIncomplete || filteredResultsIncomplete
+    !canWrite || dependencyResultsIncomplete || dependencyQueryWarning || filteredResultsIncomplete
   const selectableFilteredDocuments = filteredDocuments.filter(
     (document) => documentStatuses.get(document.id) !== 'disabled',
   )
@@ -379,7 +390,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
-      if (!canEdit || !files.length || uploadPendingRef.current) return
+      if (!canWrite || !files.length || uploadPendingRef.current) return
       uploadPendingRef.current = true
       setUploading(true)
       try {
@@ -436,12 +447,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         setUploading(false)
       }
     },
-    [bulkUploadDocuments, canEdit, knowledgeSpaceId, refreshDocumentsAndTasks, t, uploadDocument],
+    [bulkUploadDocuments, canWrite, knowledgeSpaceId, refreshDocumentsAndTasks, t, uploadDocument],
   )
 
   const handleReindexDocuments = useCallback(async () => {
     if (
-      !canEdit ||
+      !canWrite ||
       selectionDisabled ||
       !validSelectedDocumentIds.size ||
       reindexPendingRef.current
@@ -487,7 +498,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       setReindexing(false)
     }
   }, [
-    canEdit,
+    canWrite,
     knowledgeSpaceId,
     refreshDocumentsAndTasks,
     reindexDocuments,
@@ -525,7 +536,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         }
       })
       if (event.event === 'terminal') {
-        setTerminalTaskVersions((current) => ({ ...current, [taskId]: taskVersion }))
+        setTerminalTaskPins((current) => ({
+          ...current,
+          [taskId]: { observedAt: taskVersion },
+        }))
         if (event.data.state === 'failed')
           toast.error(t(($) => $['newKnowledge.taskFailedNotification']))
         refreshDocumentsAndTasks()
@@ -537,7 +551,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const handleTaskUpdated = useCallback((task: DocumentProcessingTask) => {
     setTaskOverrides((current) => ({ ...current, [task.id]: task }))
     if (taskIsActive(task))
-      setTerminalTaskVersions((current) => {
+      setTerminalTaskPins((current) => {
         const next = { ...current }
         delete next[task.id]
         return next
@@ -546,7 +560,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const toggleDocument = useCallback(
     (documentId: string) => {
-      if (!canEdit || selectionDisabled) return
+      if (!canWrite || selectionDisabled) return
       setSelectedDocumentIds((current) => {
         const next = new Set(current)
         if (next.has(documentId)) next.delete(documentId)
@@ -554,11 +568,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         return next
       })
     },
-    [canEdit, selectionDisabled],
+    [canWrite, selectionDisabled],
   )
 
   const toggleAllFiltered = () => {
-    if (!canEdit || selectionDisabled) return
+    if (!canWrite || selectionDisabled) return
     setSelectedDocumentIds((current) => {
       const next = new Set(current)
       if (allFilteredSelected)
@@ -588,7 +602,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           taskVersion={baseTaskUpdatedAt.get(task.id) ?? task.updatedAt}
         />
       ))}
-      {canEdit && (
+      {canWrite && (
         <input
           ref={uploadInputRef}
           multiple
@@ -612,7 +626,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           <p className="mt-1 system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.documentsDescription'])}
           </p>
-          {!permissionPending && !canEdit && (
+          {!permissionPending && !permissionQueryError && !canEdit && (
             <p
               id="documents-readonly-reason"
               className="mt-2 inline-flex items-center gap-1.5 system-xs-regular text-text-warning"
@@ -622,6 +636,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             </p>
           )}
         </header>
+        {permissionQueryError && (
+          <div
+            className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
+            role="alert"
+          >
+            <span className="system-xs-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.permissionLoadFailed'])}
+            </span>
+            <Button size="small" onClick={retryWorkspacePermissionKeys}>
+              {tCommon(($) => $['operation.retry'])}
+            </Button>
+          </div>
+        )}
         {documentsQuery.isPending ? (
           <div className="flex min-h-64 flex-1 items-center justify-center">
             <Loading />
@@ -669,11 +696,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           </div>
         ) : !documents.length ? (
           <DocumentsEmpty
-            canEdit={canEdit}
+            canEdit={canWrite}
             onAddDocument={() => uploadInputRef.current?.click()}
             onDropFiles={(files) => void handleUploadFiles(files)}
             readOnlyReasonId={
-              !permissionPending && !canEdit ? 'documents-readonly-reason' : undefined
+              !permissionPending && !permissionQueryError && !canEdit
+                ? 'documents-readonly-reason'
+                : undefined
             }
             uploading={uploading}
           />
@@ -698,7 +727,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               activeTaskCount={activeTasks.length}
               allSelected={allFilteredSelected}
               attentionTaskCount={attentionTasks.length}
-              canEdit={canEdit}
+              canEdit={canWrite}
               completingResults={completingFilteredResults}
               documents={filteredDocuments}
               filter={filter}
@@ -715,7 +744,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               onSelectAll={toggleAllFiltered}
               onSelectDocument={toggleDocument}
               readOnlyReasonId={
-                !permissionPending && !canEdit ? 'documents-readonly-reason' : undefined
+                !permissionPending && !permissionQueryError && !canEdit
+                  ? 'documents-readonly-reason'
+                  : undefined
               }
               search={search}
               selectionDisabled={selectionDisabled}
@@ -732,7 +763,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           </>
         )}
       </main>
-      {canEdit && !!validSelectedDocumentIds.size && (
+      {canWrite && !!validSelectedDocumentIds.size && (
         <DocumentBulkActions
           disabled={selectionDisabled}
           onClear={() => setSelectedDocumentIds(new Set())}
@@ -742,7 +773,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         />
       )}
       <ProcessingTasksDrawer
-        canEdit={canEdit}
+        canEdit={canWrite && !taskResultsIncomplete && !tasksQuery.error}
         documents={documents}
         knowledgeSpaceId={knowledgeSpaceId}
         onOpenChange={setTasksOpen}
