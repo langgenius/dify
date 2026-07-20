@@ -42,13 +42,6 @@ const getCurrentPath = async () => {
 
 const redirectToAuthRefresh = async () => {
   const currentPath = await getCurrentPath()
-  // next/navigation's redirect() automatically prepends the configured
-  // `basePath` (next.config.ts -> basePath), so the destination must be a
-  // basePath-relative path. Prefixing it manually (as the previous
-  // `${basePath}${...}` did) results in a doubled base path, e.g.
-  // `/workflow/workflow/auth/refresh` when NEXT_PUBLIC_BASE_PATH=/workflow.
-  // The `redirect_url` query value still carries the basePath because the
-  // proxy already sets `x-dify-pathname` to the full path including basePath.
   redirect(`${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
 }
 
