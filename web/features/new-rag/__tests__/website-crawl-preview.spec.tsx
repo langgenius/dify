@@ -14,6 +14,40 @@ const clientMock = vi.hoisted(() => ({
   startPreview: vi.fn(),
 }))
 
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
+
+vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
+
+vi.mock('../crawl-selection-form', () => ({
+  CrawlSelectionForm: ({
+    busy,
+    onCancel,
+    onRecrawl,
+    pages,
+  }: {
+    busy?: boolean
+    onCancel: () => void
+    onRecrawl: () => void
+    pages: Array<{ pageId: string; title?: string }>
+  }) => (
+    <div>
+      <p role="status">dataset.newKnowledge.pagesCrawled</p>
+      {pages.map((page) => (
+        <label key={page.pageId}>
+          <input type="checkbox" aria-label={page.title} />
+          {page.title}
+        </label>
+      ))}
+      <button type="button" aria-disabled={busy} disabled={busy} onClick={onRecrawl}>
+        dataset.newKnowledge.reCrawl
+      </button>
+      <button type="button" onClick={onCancel}>
+        dataset.newKnowledge.cancelAddSource
+      </button>
+    </div>
+  ),
+}))
+
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
@@ -97,9 +131,13 @@ describe('WebsiteCrawlPreview', () => {
       ],
     })
     clientMock.listSources.mockResolvedValue({ items: [] })
+    routerMock.push.mockReset()
   })
 
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
 
   it('validates the URL and starts a real crawl preview with a provisional source', async () => {
     const user = userEvent.setup()
@@ -164,6 +202,33 @@ describe('WebsiteCrawlPreview', () => {
     await user.type(name, '{enter}')
 
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
+  })
+
+  it('confirms dirty cancellation and protects an unfinished draft from page unload', async () => {
+    const user = userEvent.setup()
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+
+    await user.type(
+      screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/),
+      'https://docs.dify.ai',
+    )
+    const unload = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(unload)
+    expect(unload.defaultPrevented).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    expect(
+      screen.getByRole('alertdialog', { name: 'dataset.newKnowledge.discardSourceChanges' }),
+    ).toBeInTheDocument()
+    expect(routerMock.push).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.keepEditing' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
 
   it('shows pending feedback while a completed crawl is being restarted', async () => {

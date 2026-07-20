@@ -6,11 +6,23 @@ import type {
   SourceWorkflowRun,
 } from '@dify/contracts/knowledge-fs/types.gen'
 import type { FormEvent } from 'react'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
+import { CrawlSelectionForm } from './crawl-selection-form'
+import { newKnowledgeDetailPath } from './routes'
 
 type ConnectionReference = {
   id: string
@@ -256,6 +268,7 @@ export function WebsiteCrawlPreview({
   knowledgeSpaceId: string
 }) {
   const { t } = useTranslation('dataset')
+  const router = useRouter()
   const rootUrlErrorId = useId()
   const [rootUrl, setRootUrl] = useState('')
   const [sourceName, setSourceName] = useState('')
@@ -270,6 +283,7 @@ export function WebsiteCrawlPreview({
   const [stopping, setStopping] = useState(false)
   const [pollPaused, setPollPaused] = useState(false)
   const [requestError, setRequestError] = useState<string>()
+  const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false)
   const draftRef = useRef<PreviewDraft | undefined>(undefined)
   const actionPendingRef = useRef(false)
   const retryFingerprintRef = useRef<string | undefined>(undefined)
@@ -278,6 +292,7 @@ export function WebsiteCrawlPreview({
   const sourceNameInputRef = useRef<HTMLInputElement>(null)
   const pageMapRef = useRef(new Map<string, PreviewPage>())
   const pageCursorRef = useRef<string | undefined>(undefined)
+  const submittedRef = useRef(false)
 
   const resetPreviewPages = useCallback(() => {
     pageMapRef.current.clear()
@@ -301,21 +316,34 @@ export function WebsiteCrawlPreview({
     [includeSubpages, normalizedLimit, normalizedURL, sourceName],
   )
   const active = Boolean(run && !isTerminal(run.state))
+  const successfulPreview = Boolean(
+    run && isSuccessful(run.state) && pagesLoaded && pages.length > 0,
+  )
   const shouldPoll = Boolean(
     run && !starting && !stopping && !pollPaused && (active || !pagesLoaded),
   )
   const runId = run?.id
-  const locked = starting || stopping || active
+  const locked = starting || stopping || active || successfulPreview
+  const dirty = Boolean(
+    rootUrl || sourceName || run || !includeSubpages || pageLimit !== DEFAULT_PAGE_LIMIT,
+  )
   const host = normalizedURL?.host ?? ''
   const completedCount = Math.max(run?.progressCompleted ?? 0, pages.length)
   const crawlingStatusText = t(($) => $['newKnowledge.crawlingPages'], {
     count: completedCount,
     host,
   })
-  const completedStatusText = t(($) => $['newKnowledge.pagesCrawled'], {
-    count: pages.length,
-    host,
-  })
+
+  useEffect(() => {
+    if (!dirty) return
+    const preventUnsavedUnload = (event: BeforeUnloadEvent) => {
+      if (submittedRef.current) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', preventUnsavedUnload)
+    return () => window.removeEventListener('beforeunload', preventUnsavedUnload)
+  }, [dirty])
 
   const ensureProvisionalSource = useCallback(
     async (nextConfiguration: CrawlConfiguration) => {
@@ -641,7 +669,7 @@ export function WebsiteCrawlPreview({
     (run && isFailed(run.state)),
   )
   const showZero = Boolean(run && isSuccessful(run.state) && pagesLoaded && pages.length === 0)
-  const showSuccess = Boolean(run && isSuccessful(run.state) && pages.length > 0)
+  const showSuccess = successfulPreview
   const showCanceled = Boolean(run && isCanceled(run.state))
   const errorCode = run?.lastErrorCode ?? requestError
   const is403 = errorCode?.includes('403')
@@ -649,6 +677,21 @@ export function WebsiteCrawlPreview({
     errorCode?.toUpperCase().includes('TIMEOUT') ||
     (run ? ['timed_out', 'timeout'].includes(normalizedState(run.state)) : false)
   const isProviderError = errorCode?.toUpperCase().includes('PROVIDER')
+
+  const cancel = () => {
+    if (dirty) {
+      setCancelConfirmationOpen(true)
+      return
+    }
+    submittedRef.current = true
+    router.push(newKnowledgeDetailPath(knowledgeSpaceId))
+  }
+
+  const discardAndCancel = () => {
+    submittedRef.current = true
+    setCancelConfirmationOpen(false)
+    router.push(newKnowledgeDetailPath(knowledgeSpaceId))
+  }
 
   return (
     <section aria-label={t(($) => $['newKnowledge.crawlAndPreview'])}>
@@ -820,31 +863,20 @@ export function WebsiteCrawlPreview({
             <CrawlPageList pages={pages} loading />
           </div>
         )}
-        {showSuccess && (
-          <div className="overflow-hidden rounded-xl border border-divider-regular">
-            <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-              <p
-                role="status"
-                aria-live="polite"
-                className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
-                title={completedStatusText}
-              >
-                {completedStatusText}
-              </p>
-              <Button
-                type="button"
-                variant="tertiary"
-                size="small"
-                className="ml-auto shrink-0"
-                disabled={starting || !configuration}
-                loading={starting}
-                onClick={handlePrimaryAction}
-              >
-                {t(($) => $['newKnowledge.reCrawl'])}
-              </Button>
-            </div>
-            <CrawlPageList pages={pages} />
-          </div>
+        {showSuccess && run && draftRef.current?.source && configuration && (
+          <CrawlSelectionForm
+            busy={starting}
+            knowledgeSpaceId={knowledgeSpaceId}
+            onCancel={cancel}
+            onRecrawl={handlePrimaryAction}
+            onSubmitted={() => {
+              submittedRef.current = true
+            }}
+            pages={pages}
+            rootUrl={configuration.url}
+            run={run}
+            source={draftRef.current.source}
+          />
         )}
         {showCanceled && (
           <div className="overflow-hidden rounded-xl border border-divider-regular">
@@ -898,6 +930,39 @@ export function WebsiteCrawlPreview({
           </div>
         )}
       </div>
+      {!showSuccess && (
+        <div className="mt-4 flex justify-end gap-2 border-t border-divider-subtle pt-5">
+          <Button type="button" onClick={cancel}>
+            {t(($) => $['newKnowledge.cancelAddSource'])}
+          </Button>
+          <span id="add-source-selection-requirement" className="sr-only">
+            {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
+          </span>
+          <Button variant="primary" disabled aria-describedby="add-source-selection-requirement">
+            {t(($) => $['newKnowledge.addSource'])}
+          </Button>
+        </div>
+      )}
+      <AlertDialog open={cancelConfirmationOpen} onOpenChange={setCancelConfirmationOpen}>
+        <AlertDialogContent>
+          <div>
+            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(($) => $['newKnowledge.discardSourceChanges'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 system-sm-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.discardSourceChangesDescription'])}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t(($) => $['newKnowledge.keepEditing'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={discardAndCancel}>
+              {t(($) => $['newKnowledge.discardSourceChangesConfirm'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
 }

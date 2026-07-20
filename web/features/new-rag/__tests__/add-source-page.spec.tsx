@@ -7,6 +7,8 @@ import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { AddSourcePage } from '../add-source-page'
 
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+
 type ConnectionsInfiniteData = {
   pages: GetKnowledgeSpacesByIdSourceConnectionsResponse[]
 }

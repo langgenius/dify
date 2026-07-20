@@ -616,6 +616,12 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const queryError =
     providersQuery.error || connectionsQuery.error || connectionsQuery.isFetchNextPageError
+  const websiteReady = Boolean(
+    !queryError &&
+    provider?.available &&
+    supportsDirectConnection &&
+    connection?.status === 'active',
+  )
 
   return (
     <main className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
@@ -674,20 +680,22 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             provider={provider}
           />
         )}
-        <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-          <Link
-            href={newKnowledgeDetailPath(knowledgeSpaceId)}
-            className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            {t(($) => $['newKnowledge.cancelAddSource'])}
-          </Link>
-          <span id={unavailableActionDescriptionId} className="sr-only">
-            {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
-          </span>
-          <Button variant="primary" disabled aria-describedby={unavailableActionDescriptionId}>
-            {t(($) => $['newKnowledge.addSource'])}
-          </Button>
-        </div>
+        {!websiteReady && (
+          <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
+            <Link
+              href={newKnowledgeDetailPath(knowledgeSpaceId)}
+              className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            >
+              {t(($) => $['newKnowledge.cancelAddSource'])}
+            </Link>
+            <span id={unavailableActionDescriptionId} className="sr-only">
+              {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
+            </span>
+            <Button variant="primary" disabled aria-describedby={unavailableActionDescriptionId}>
+              {t(($) => $['newKnowledge.addSource'])}
+            </Button>
+          </div>
+        )}
       </div>
     </main>
   )

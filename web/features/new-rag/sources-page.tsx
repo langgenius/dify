@@ -196,9 +196,26 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       }),
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       initialPageParam: null as string | null,
+      refetchInterval: (query) =>
+        query.state.data?.pages.some((page) =>
+          page.items.some((source) => source.status === 'syncing'),
+        )
+          ? 2000
+          : false,
     }),
   )
-  const sources = sourcesQuery.data?.pages.flatMap((page) => page.items)
+  const sources = useMemo(
+    () =>
+      sourcesQuery.data
+        ? sourcesQuery.data.pages
+            .flatMap((page) => page.items)
+            .sort(
+              (left, right) =>
+                right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),
+            )
+        : undefined,
+    [sourcesQuery.data],
+  )
   const filteredSources = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
     return (sources ?? []).filter((source) => {

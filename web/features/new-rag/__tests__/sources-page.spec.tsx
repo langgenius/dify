@@ -1,5 +1,5 @@
 import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { SourcesPage } from '../sources-page'
@@ -8,6 +8,9 @@ type SourcesInfiniteOptions = {
   getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
   input: (pageParam: string | null) => unknown
   initialPageParam: string | null
+  refetchInterval: (query: {
+    state: { data?: { pages: Array<{ items: Source[] }> } }
+  }) => false | number
 }
 
 const sourcesQuery = vi.hoisted(() => ({
@@ -83,6 +86,16 @@ describe('SourcesPage', () => {
     })
     expect(options.getNextPageParam({ nextCursor: 'next' })).toBe('next')
     expect(options.initialPageParam).toBeNull()
+    expect(
+      options.refetchInterval({
+        state: { data: { pages: [{ items: [source({ status: 'syncing' })] }] } },
+      }),
+    ).toBe(2000)
+    expect(
+      options.refetchInterval({
+        state: { data: { pages: [{ items: [source({ status: 'active' })] }] } },
+      }),
+    ).toBe(false)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
@@ -144,6 +157,25 @@ describe('SourcesPage', () => {
     )
     expect(screen.getByText('API reference')).toBeInTheDocument()
     expect(screen.queryByText('Support site')).not.toBeInTheDocument()
+  })
+
+  it('places the newest source first after creation', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({ id: 'older', name: 'Older source', createdAt: '2026-07-20T10:00:00Z' }),
+            source({ id: 'newer', name: 'Newest source', createdAt: '2026-07-20T10:01:00Z' }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(within(rows[0]!).getByText('Newest source')).toBeInTheDocument()
+    expect(within(rows[1]!).getByText('Older source')).toBeInTheDocument()
   })
 
   it('exposes the row action structure without pretending unsupported mutations work', async () => {
