@@ -30,6 +30,9 @@ type AppListHeaderFiltersProps = {
   onImportDSL: () => void
   onOpenTagManagement: () => void
   showCreateButton: boolean
+  stepByStepTourCreateMenuOpen?: boolean
+  stepByStepTourCreateMenuTarget?: string
+  stepByStepTourCreateMenuHighlightPart?: string
 }
 
 export function AppListHeaderFilters({
@@ -48,9 +51,11 @@ export function AppListHeaderFilters({
   onImportDSL,
   onOpenTagManagement,
   showCreateButton,
+  stepByStepTourCreateMenuOpen,
+  stepByStepTourCreateMenuTarget,
+  stepByStepTourCreateMenuHighlightPart,
 }: AppListHeaderFiltersProps) {
   const { t } = useTranslation()
-
   return (
     <div className="flex flex-wrap items-start justify-between gap-2">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -85,6 +90,9 @@ export function AppListHeaderFilters({
             onCreateBlank={onCreateBlank}
             onCreateTemplate={onCreateTemplate}
             onImportDSL={onImportDSL}
+            stepByStepTourControlledOpen={stepByStepTourCreateMenuOpen}
+            stepByStepTourTarget={stepByStepTourCreateMenuTarget}
+            stepByStepTourHighlightPart={stepByStepTourCreateMenuHighlightPart}
           />
         )}
       </div>

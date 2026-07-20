@@ -11,6 +11,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '@/app/components/step-by-step-tour/dropdown-menu'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import ServiceApi from '../extra-info/service-api'
 
@@ -30,6 +34,9 @@ type Props = {
   onKeywordsChange: (value: string) => void
   onOpenTagManagement: () => void
   onTagsChange: (value: string[]) => void
+  stepByStepTourCreateMenuHighlightPart?: string
+  stepByStepTourCreateMenuOpen?: boolean
+  stepByStepTourCreateMenuTarget?: string
 }
 
 const DatasetListHeader = ({
@@ -48,9 +55,15 @@ const DatasetListHeader = ({
   onKeywordsChange,
   onOpenTagManagement,
   onTagsChange,
+  stepByStepTourCreateMenuHighlightPart,
+  stepByStepTourCreateMenuOpen,
+  stepByStepTourCreateMenuTarget,
 }: Props) => {
   const { t } = useTranslation()
   const showCreateMenu = canCreateDataset || canConnectExternalDataset
+  const createMenu = useStepByStepTourControlledDropdown({
+    controlledOpen: stepByStepTourCreateMenuOpen,
+  })
 
   return (
     <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
@@ -103,10 +116,19 @@ const DatasetListHeader = ({
         </div>
         <div className="flex items-center gap-2">
           {showCreateMenu && (
-            <DropdownMenu modal={false}>
+            <DropdownMenu
+              modal={false}
+              open={createMenu.open}
+              onOpenChange={createMenu.onOpenChange}
+            >
               <DropdownMenuTrigger
                 render={
-                  <Button variant="primary" size="medium" className="gap-0.5 px-2 shadow-xs">
+                  <Button
+                    variant="primary"
+                    size="medium"
+                    className="gap-0.5 px-2 shadow-xs"
+                    data-step-by-step-tour-target={stepByStepTourCreateMenuTarget}
+                  >
                     <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
                     <span className="pl-1">
                       {t(($) => $['operation.create'], { ns: 'common' })}
@@ -115,7 +137,18 @@ const DatasetListHeader = ({
                   </Button>
                 }
               />
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-80">
+              <DropdownMenuContent
+                placement="bottom-end"
+                sideOffset={4}
+                {...getStepByStepTourDropdownMenuContentProps({
+                  disableMotion: createMenu.controlled,
+                  highlightPart: createMenu.controlled
+                    ? stepByStepTourCreateMenuHighlightPart
+                    : undefined,
+                  interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
+                  popupClassName: 'w-80',
+                })}
+              >
                 {canCreateDataset && (
                   <>
                     <DropdownMenuItem

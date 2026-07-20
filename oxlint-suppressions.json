@@ -807,11 +807,6 @@
       "count": 1
     }
   },
-  "web/app/components/apps/starred-app-card.tsx": {
-    "jsx_a11y/no-noninteractive-element-to-interactive-role": {
-      "count": 1
-    }
-  },
   "web/app/components/base/action-button/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -3934,14 +3929,6 @@
   "web/app/components/tools/setting/build-in/config-credentials.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/tools/tool-provider-grid.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/tools/types.ts": {
