@@ -98,6 +98,12 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   }),
 }))
 
+vi.mock('@/features/new-rag/new-knowledge-list', () => ({
+  NewKnowledgeList: ({ viewSwitcher }: { viewSwitcher: ReactNode }) => (
+    <section aria-label="New knowledge view">{viewSwitcher}</section>
+  ),
+}))
+
 // Mock Datasets component
 vi.mock('../datasets', () => ({
   default: ({
@@ -232,6 +238,41 @@ describe('List', () => {
         screen.getByRole('button', { name: 'dataset.newKnowledge.legacy' }),
       ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
+    })
+
+    it('should hide the New Knowledge surface when KnowledgeFS is disabled', () => {
+      renderWithNuqs(<List />, { searchParams: '?view=new' })
+
+      expect(
+        screen.queryByRole('button', { name: 'dataset.newKnowledge.new' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'New knowledge view' })).not.toBeInTheDocument()
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+    })
+
+    it('should switch to New Knowledge and persist the selected view in the URL', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const { onUrlUpdate } = renderWithNuqs(<List />)
+
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.new' }))
+
+      expect(await screen.findByRole('region', { name: 'New knowledge view' })).toBeInTheDocument()
+      expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('new')
+    })
+
+    it('should restore the New Knowledge view from the URL', () => {
+      mockConsoleState.knowledgeFsEnabled = true
+
+      renderWithNuqs(<List />, { searchParams: '?view=new' })
+
+      expect(screen.getByRole('region', { name: 'New knowledge view' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.newKnowledge.new' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
     })
 
     it('should show the first-visit guide once and remember dismissal', async () => {

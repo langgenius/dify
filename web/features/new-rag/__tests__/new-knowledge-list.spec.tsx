@@ -5,6 +5,17 @@ import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { NewKnowledgeList } from '../new-knowledge-list'
 
+type ListKnowledgeSpacesInfiniteOptions = {
+  getNextPageParam: (lastPage: KnowledgeSpaceList) => string | undefined
+  initialPageParam: string | null
+  input: (pageParam: unknown) => {
+    query: {
+      cursor?: string
+      limit: number
+    }
+  }
+}
+
 const externalApiPanelMock = vi.hoisted(() => ({
   open: false,
   setOpen: vi.fn(),
@@ -19,6 +30,10 @@ const queryMock = vi.hoisted(() => ({
   isFetchingNextPage: false,
   isPending: false,
   refetch: vi.fn(),
+}))
+
+const consoleQueryMock = vi.hoisted(() => ({
+  infiniteOptions: vi.fn((_options: ListKnowledgeSpacesInfiniteOptions) => ({})),
 }))
 
 const permissionStateMock = vi.hoisted(() => ({
@@ -73,7 +88,7 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     knowledgeFs: {
       listKnowledgeSpaces: {
-        infiniteOptions: vi.fn(() => ({})),
+        infiniteOptions: consoleQueryMock.infiniteOptions,
       },
     },
   },
@@ -110,11 +125,28 @@ describe('NewKnowledgeList', () => {
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
   })
 
+  it('requests the generated KnowledgeFS collection contract with cursor pagination', () => {
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
+
+    const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+    expect(options).toBeDefined()
+    expect(options?.initialPageParam).toBeNull()
+    expect(options?.input(null)).toEqual({ query: { limit: 30 } })
+    expect(options?.input('next-page')).toEqual({
+      query: { cursor: 'next-page', limit: 30 },
+    })
+    expect(options?.getNextPageParam({ items: [], nextCursor: 'next-page' })).toBe('next-page')
+    expect(options?.getNextPageParam({ items: [] })).toBeUndefined()
+  })
+
   it('renders real knowledge spaces as unavailable until the detail contract is supported', () => {
     setResolvedPage([
       {
         createdAt: '2026-07-15T00:00:00Z',
         description: 'Answers for customer support',
+        iconRef: 'builtin:camera',
         id: 'space-1',
         name: 'Support knowledge',
         revision: 1,
@@ -135,11 +167,10 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList viewSwitcher={<div>views</div>} />)
     const list = screen.getByRole('list', { name: 'dataset.knowledge' })
-    expect(
-      within(list).getByRole('article', {
-        name: 'Support knowledge. dataset.cornerLabel.unavailable',
-      }),
-    ).toBeInTheDocument()
+    const supportCard = within(list).getByRole('article', {
+      name: 'Support knowledge. dataset.cornerLabel.unavailable',
+    })
+    expect(supportCard).toBeInTheDocument()
     expect(
       within(list).getByRole('article', {
         name: 'Engineering handbook. dataset.cornerLabel.unavailable',
@@ -147,6 +178,9 @@ describe('NewKnowledgeList', () => {
     ).toBeInTheDocument()
     expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
     expect(within(list).getByText('dataset.newKnowledge.noDescription')).toBeInTheDocument()
+    expect(within(supportCard).getByLabelText('camera')).toBeInTheDocument()
+    expect(within(list).getAllByText('dataset.newKnowledge.cardType')).toHaveLength(2)
+    expect(within(list).getAllByText('dataset.newKnowledge.tags')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.documentsUnavailable')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.appsUnavailable')).toHaveLength(2)
     expect(within(list).queryByRole('link')).not.toBeInTheDocument()

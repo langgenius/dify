@@ -1,0 +1,215 @@
+import type { ReactNode } from 'react'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
+import CornerLabel from '@/app/components/base/corner-label'
+import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
+
+const LOADING_CARD_IDS = [
+  'loading-card-1',
+  'loading-card-2',
+  'loading-card-3',
+  'loading-card-4',
+  'loading-card-5',
+  'loading-card-6',
+  'loading-card-7',
+  'loading-card-8',
+] as const
+
+export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
+  'grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+
+export function UnavailableReason({ label, reason }: { label: string; reason: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        aria-label={label}
+        render={
+          <button
+            type="button"
+            className="flex size-6 shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            <span aria-hidden className="i-ri-information-line size-4" />
+          </button>
+        }
+      />
+      <PopoverContent
+        placement="bottom"
+        sideOffset={6}
+        popupClassName="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
+      >
+        <PopoverTitle className="system-xs-regular text-text-tertiary">{reason}</PopoverTitle>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+export function NewKnowledgeLoadingState() {
+  const { t } = useTranslation('common')
+
+  return (
+    <div className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} role="status" aria-label={t(($) => $.loading)}>
+      {LOADING_CARD_IDS.map((id) => (
+        <div
+          key={id}
+          className="h-[166px] rounded-xl border border-components-card-border bg-components-card-bg p-4 shadow-xs"
+        >
+          <SkeletonContainer className="h-full">
+            <div className="flex gap-3">
+              <SkeletonRectangle className="size-10 animate-pulse rounded-lg motion-reduce:animate-none" />
+              <div className="flex-1 space-y-2">
+                <SkeletonRectangle className="h-4 w-2/3 animate-pulse motion-reduce:animate-none" />
+                <SkeletonRectangle className="h-3 w-1/3 animate-pulse motion-reduce:animate-none" />
+              </div>
+            </div>
+            <SkeletonRectangle className="mt-4 h-3 w-full animate-pulse motion-reduce:animate-none" />
+            <SkeletonRectangle className="mt-2 h-3 w-4/5 animate-pulse motion-reduce:animate-none" />
+          </SkeletonContainer>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function NewKnowledgePageState({
+  action,
+  description,
+  title,
+}: {
+  action?: ReactNode
+  description: ReactNode
+  title: ReactNode
+}) {
+  return (
+    <div className="flex min-h-[420px] flex-col items-center justify-center px-6 text-center">
+      <div className="mb-5 flex size-12 items-center justify-center rounded-xl border border-components-card-border bg-components-card-bg shadow-xs">
+        <span aria-hidden className="i-ri-book-open-line size-6 text-text-tertiary" />
+      </div>
+      <h2 className="title-2xl-semi-bold text-text-primary">{title}</h2>
+      <p className="mt-2 max-w-[520px] body-md-regular text-text-tertiary">{description}</p>
+      {action ? <div className="mt-6">{action}</div> : null}
+    </div>
+  )
+}
+
+function EmptyAction({
+  description,
+  iconClassName,
+  recommended = false,
+  title,
+}: {
+  description: string
+  iconClassName: string
+  recommended?: boolean
+  title: string
+}) {
+  const { t } = useTranslation('dataset')
+  const unavailable = t(($) => $['cornerLabel.unavailable'])
+  const recommendedLabel = t(($) => $['firstEmpty.recommended'])
+  const descriptionId = useId()
+  const unavailableId = useId()
+  const recommendedId = useId()
+
+  return (
+    <button
+      type="button"
+      disabled
+      aria-label={title}
+      aria-describedby={`${descriptionId} ${unavailableId}${recommended ? ` ${recommendedId}` : ''}`}
+      className="relative flex min-h-[58px] w-full cursor-not-allowed items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-disabled outline-hidden backdrop-blur-[6px]"
+    >
+      <span className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-default-subtle">
+        <span aria-hidden className={`${iconClassName} size-4 text-text-disabled`} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block system-md-medium text-text-disabled">{title}</span>
+        <span id={descriptionId} className="mt-0.5 block system-xs-regular text-text-disabled">
+          {description}
+        </span>
+      </span>
+      <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
+        {unavailable}
+      </span>
+      {recommended && (
+        <div id={recommendedId}>
+          <CornerLabel
+            label={recommendedLabel}
+            className="absolute top-0 right-0 z-5"
+            cornerClassName="text-util-colors-indigo-indigo-100"
+            labelClassName="-ml-px rounded-tr-xl bg-util-colors-indigo-indigo-100 pr-2"
+            textClassName="text-util-colors-indigo-indigo-700"
+          />
+        </div>
+      )}
+    </button>
+  )
+}
+
+export function NewKnowledgeEmptyState({
+  canConnect,
+  canCreate,
+}: {
+  canConnect: boolean
+  canCreate: boolean
+}) {
+  const { t } = useTranslation('dataset')
+  const canStart = canConnect || canCreate
+
+  return (
+    <div className="flex min-h-[calc(100vh-134px)] items-center justify-center px-4 py-16 text-center sm:px-6">
+      <div className="flex w-full max-w-[520px] flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-[6px]">
+            <span aria-hidden className="i-ri-book-open-line size-6 text-text-accent" />
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <h2 className="title-lg-semi-bold text-text-primary">
+              {t(($) => $['newKnowledge.emptyTitle'])}
+            </h2>
+            <p className="body-sm-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.emptyDescription'])}
+            </p>
+          </div>
+        </div>
+        {canStart ? (
+          <div className="flex w-full flex-col gap-2 pb-8">
+            {canConnect && (
+              <EmptyAction
+                recommended
+                iconClassName="i-custom-vender-solid-development-api-connection-mod"
+                title={t(($) => $['newKnowledge.connectSource'])}
+                description={t(($) => $['newKnowledge.connectSourceDescription'])}
+              />
+            )}
+            {canCreate && (
+              <EmptyAction
+                iconClassName="i-ri-file-text-line"
+                title={t(($) => $['newKnowledge.uploadFiles'])}
+                description={t(($) => $['newKnowledge.uploadFilesDescription'])}
+              />
+            )}
+            {canCreate && (
+              <>
+                <div className="flex h-4 items-center gap-2 system-xs-medium-uppercase text-text-tertiary">
+                  <span className="h-px flex-1 bg-divider-subtle" />
+                  <span>{t(($) => $['firstEmpty.or'])}</span>
+                  <span className="h-px flex-1 bg-divider-subtle" />
+                </div>
+                <EmptyAction
+                  iconClassName="i-ri-folder-6-line"
+                  title={t(($) => $['newKnowledge.startEmpty'])}
+                  description={t(($) => $['newKnowledge.startEmptyDescription'])}
+                />
+              </>
+            )}
+          </div>
+        ) : (
+          <span className="mt-6 body-sm-regular text-text-tertiary">
+            {t(($) => $['newKnowledge.readOnlyEmpty'])}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}

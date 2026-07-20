@@ -133,6 +133,21 @@ def test_proxy_options_does_not_require_an_authenticated_account(app: Flask) -> 
     assert response.status_code == 204
 
 
+def test_proxy_options_is_hidden_when_knowledge_fs_is_disabled(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_ENABLED", False)
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces",
+        method="OPTIONS",
+    ):
+        response = app.make_response(proxy_knowledge_fs_options("knowledge-spaces"))
+
+    assert response.status_code == 404
+
+
 def test_proxy_is_hidden_when_knowledge_fs_is_disabled(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_ENABLED", False)
 

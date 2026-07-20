@@ -290,8 +290,10 @@ def _proxy_knowledge_fs_non_get(
     methods=["OPTIONS"],
     provide_automatic_options=False,
 )
+@_console_api_errors
+@_knowledge_fs_enabled
 def proxy_knowledge_fs_options(upstream_path: str) -> ResponseReturnValue:
-    """Complete a CORS preflight without entering account authorization."""
+    """Complete an enabled CORS preflight without entering account authorization."""
     return Response(status=HTTPStatus.NO_CONTENT)
 
 
