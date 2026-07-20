@@ -35,7 +35,7 @@ concurrency:
 jobs:
   translate:
     if: github.repository == 'langgenius/dify'
-    runs-on: depot-ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 120
 
     steps:
