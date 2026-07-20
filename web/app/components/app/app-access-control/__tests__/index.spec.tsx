@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -19,10 +20,8 @@ const render = (ui: ReactElement) =>
     systemFeatures: { webapp_auth: mockWebappAuth },
   })
 
-const mockMutateAsync = vi.fn()
-const mockUseUpdateAccessMode = vi.fn(() => ({
-  isPending: false,
-  mutateAsync: mockMutateAsync,
+const { mockMutateAsync } = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
 }))
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
@@ -31,7 +30,19 @@ vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
   useSearchForWhiteListCandidates: (...args: unknown[]) =>
     mockUseSearchForWhiteListCandidates(...args),
-  useUpdateAccessMode: () => mockUseUpdateAccessMode(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    systemFeatures: { get: { queryKey: () => ['system-features'] } },
+    enterprise: {
+      webAppAuth: {
+        updateWebAppWhitelistSubjects: {
+          mutationOptions: () => ({ mutationFn: mockMutateAsync }),
+        },
+      },
+    },
+  },
 }))
 
 describe('AccessControl', () => {
@@ -85,9 +96,11 @@ describe('AccessControl', () => {
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        appId: app.id,
-        accessMode: AccessMode.PUBLIC,
+      expect(mockMutateAsync.mock.calls[0]?.[0]).toEqual({
+        body: {
+          appId: app.id,
+          accessMode: AccessMode.PUBLIC,
+        },
       })
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalledTimes(1)
@@ -111,5 +124,21 @@ describe('AccessControl', () => {
 
     expect(screen.getByText('app.accessControlDialog.accessItems.external')).toBeInTheDocument()
     expect(screen.getByText('app.accessControlDialog.accessItems.anyone')).toBeInTheDocument()
+  })
+
+  it('should preserve an unfinished selection when the parent rerenders', async () => {
+    const user = userEvent.setup()
+    const app = { id: 'app-id-3', access_mode: AccessMode.PUBLIC } as App
+    const { rerender } = render(<AccessControl app={app} onClose={vi.fn()} />)
+
+    const organization = screen.getByRole('radio', {
+      name: 'app.accessControlDialog.accessItems.organization',
+    })
+    await user.click(organization)
+    expect(organization).toBeChecked()
+
+    rerender(<AccessControl app={{ ...app }} onClose={vi.fn()} />)
+
+    expect(organization).toBeChecked()
   })
 })

@@ -14,6 +14,7 @@
   "agentDetail.access.title": "Dostopna točka",
   "agentDetail.access.toggleSurface": "Preklopi dostop {{name}}",
   "agentDetail.access.webApp.accessUrl": "URL dostopa",
+  "agentDetail.access.webApp.actions.accessControl": "Nadzor dostopa",
   "agentDetail.access.webApp.actions.customize": "Frontend po meri",
   "agentDetail.access.webApp.actions.embedded": "Vgrajeno",
   "agentDetail.access.webApp.actions.launch": "Zaženi",

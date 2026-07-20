@@ -3,6 +3,7 @@ import type React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
@@ -16,6 +17,14 @@ const mocks = vi.hoisted(() => ({
   apiEnableMutation: vi.fn(),
   createApiKeyMutation: vi.fn(),
   deleteApiKeyMutation: vi.fn(),
+  accessControlRender: vi.fn(),
+}))
+
+vi.mock('@/app/components/app/app-access-control', () => ({
+  default: ({ app }: { app: { id: string; access_mode: string } }) => {
+    mocks.accessControlRender(app)
+    return <div role="dialog" aria-label="access-control" />
+  },
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -115,6 +124,11 @@ vi.mock('@/context/version-state', async () => {
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+      },
+    },
     apps: {
       byAppId: {
         siteEnable: {
@@ -207,6 +221,7 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
     mode: 'agent',
     name: 'Support Agent',
     app_id: 'app-1',
+    backing_app_id: 'app-1',
     api_base_url: 'https://api.example.test/v1',
     access_mode: 'sso_verified',
     site: {
@@ -226,16 +241,19 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
   }
 }
 
-function renderWithQueryClient(ui: React.ReactElement) {
-  const queryClient = createConsoleQueryClient()
+function renderWithQueryClient(
+  ui: React.ReactElement,
+  { webAppAuthEnabled = true }: { webAppAuthEnabled?: boolean } = {},
+) {
+  const queryClient = createConsoleQueryClient(webAppAuthEnabled)
 
   render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 
   return queryClient
 }
 
-function createConsoleQueryClient() {
-  return new QueryClient({
+function createConsoleQueryClient(webAppAuthEnabled = true) {
+  const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
@@ -245,6 +263,12 @@ function createConsoleQueryClient() {
       },
     },
   })
+  seedSystemFeatures(queryClient, {
+    webapp_auth: {
+      enabled: webAppAuthEnabled,
+    },
+  })
+  return queryClient
 }
 
 describe('Agent access surface cards', () => {
@@ -670,6 +694,97 @@ describe('Agent access surface cards', () => {
             api_key_id: 'key-1',
           },
         })
+      })
+    })
+  })
+
+  describe('Web app access control', () => {
+    const accessControlAgent = () =>
+      createAgent({
+        access_mode: 'private',
+        maintainer: 'user-1',
+        permission_keys: ['app.acl.release_and_version'],
+      })
+
+    const accessControlButtonName = 'agentV2.agentDetail.access.webApp.actions.accessControl'
+
+    it('should render the access control button when webapp auth is enabled and user can manage', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      expect(screen.getByRole('button', { name: accessControlButtonName })).toBeInTheDocument()
+    })
+
+    it('should hide the access control button when webapp auth is disabled', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+        { webAppAuthEnabled: false },
+      )
+
+      expect(
+        screen.queryByRole('button', { name: accessControlButtonName }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should hide the access control button when the user cannot manage access control', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: 'private', permission_keys: [] })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(
+        screen.queryByRole('button', { name: accessControlButtonName }),
+      ).not.toBeInTheDocument()
+    })
+
+    it.each([null, 'future-access-mode'])(
+      'should hide the access control button when the access mode is %s',
+      (accessMode) => {
+        renderWithQueryClient(
+          <WebAppAccessCard
+            agent={createAgent({
+              access_mode: accessMode,
+              maintainer: 'user-1',
+              permission_keys: ['app.acl.release_and_version'],
+            })}
+            agentId="agent-1"
+            isLoading={false}
+          />,
+        )
+
+        expect(
+          screen.queryByRole('button', { name: accessControlButtonName }),
+        ).not.toBeInTheDocument()
+      },
+    )
+
+    it('should open the access control dialog wired with the backing app id', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({
+            access_mode: 'private',
+            app_id: 'source-app-1',
+            backing_app_id: 'backing-app-1',
+            maintainer: 'user-1',
+            permission_keys: ['app.acl.release_and_version'],
+          })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: accessControlButtonName }))
+
+      expect(screen.getByRole('dialog', { name: 'access-control' })).toBeInTheDocument()
+      expect(mocks.accessControlRender).toHaveBeenCalledWith({
+        id: 'backing-app-1',
+        access_mode: 'private',
       })
     })
   })

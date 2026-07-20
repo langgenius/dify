@@ -14,6 +14,7 @@
   "agentDetail.access.title": "Punto di accesso",
   "agentDetail.access.toggleSurface": "Attiva/disattiva accesso di {{name}}",
   "agentDetail.access.webApp.accessUrl": "URL di accesso",
+  "agentDetail.access.webApp.actions.accessControl": "Controllo di accesso",
   "agentDetail.access.webApp.actions.customize": "Frontend personalizzato",
   "agentDetail.access.webApp.actions.embedded": "Incorporato",
   "agentDetail.access.webApp.actions.launch": "Avvia",
