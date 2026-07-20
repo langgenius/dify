@@ -165,6 +165,20 @@ def test_build_from_mapping_accepts_opaque_related_id_for_tool_file(mock_tool_fi
     assert file.storage_key == "tool_file.pdf"
 
 
+def test_build_from_mapping_prefers_tool_filename_extension_over_mimetype(mock_tool_file):
+    mock_tool_file.name = "report.docx"
+    mock_tool_file.file_key = "tools/test_tenant_id/file.bin"
+    mock_tool_file.mimetype = "application/octet-stream"
+    mapping = tool_file_mapping(file_type="document")
+
+    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+    assert file.extension == ".docx"
+    assert file.filename == "report.docx"
+    assert file.mime_type == "application/octet-stream"
+    assert file.storage_key == "tools/test_tenant_id/file.bin"
+
+
 @pytest.mark.parametrize(
     ("file_type", "should_pass", "expected_error"),
     [
@@ -211,6 +225,25 @@ def test_build_from_remote_url(mock_http_head):
     assert file.type == FileType.IMAGE
     assert file.filename == "remote_test.jpg"
     assert file.size == 2048
+
+
+def test_build_from_remote_url_prefers_filename_extension_over_mimetype():
+    mapping = {
+        "transfer_method": "remote_url",
+        "url": TEST_REMOTE_URL,
+        "type": "document",
+    }
+
+    with patch(
+        "factories.file_factory.builders.get_remote_file_info",
+        return_value=("application/octet-stream", "report.docx", 99),
+    ):
+        file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+    assert file.filename == "report.docx"
+    assert file.extension == ".docx"
+    assert file.mime_type == "application/octet-stream"
+    assert file.size == 99
 
 
 @pytest.mark.parametrize(

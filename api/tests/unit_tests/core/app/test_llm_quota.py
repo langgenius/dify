@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -28,8 +28,19 @@ from models.provider import Provider, ProviderType
 @contextmanager
 def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None, None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-    with patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker):
-        yield
+    sessions = []
+
+    def _session():
+        session = session_maker()
+        sessions.append(session)
+        return session
+
+    with patch("core.app.llm.quota.db", SimpleNamespace(session=_session)):
+        try:
+            yield
+        finally:
+            for session in sessions:
+                session.close()
 
 
 def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhausted() -> None:
@@ -122,6 +133,7 @@ def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=42,
+        session=ANY,
     )
 
 
@@ -241,6 +253,7 @@ def test_deduct_llm_quota_for_model_uses_credit_configuration() -> None:
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=9,
+        session=ANY,
     )
 
 
@@ -276,6 +289,7 @@ def test_deduct_llm_quota_for_model_uses_single_charge_for_times_quota() -> None
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=1,
+        session=ANY,
     )
 
 
@@ -313,6 +327,7 @@ def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
         tenant_id="tenant-id",
         credits_required=5,
         pool_type="paid",
+        session=ANY,
     )
 
 

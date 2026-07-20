@@ -16,7 +16,7 @@ class EnterpriseFeatureConfig(BaseSettings):
 
     CAN_REPLACE_LOGO: bool = Field(
         description="Allow customization of the enterprise logo.",
-        default=True,
+        default=False,
     )
 
     ENTERPRISE_REQUEST_TIMEOUT: int = Field(
@@ -32,6 +32,12 @@ class EnterpriseFeatureConfig(BaseSettings):
     RBAC_ENABLED: bool = Field(
         description="Enable enterprise RBAC APIs. When disabled, compatibility responses fall back to legacy roles.",
         default=False,
+    )
+
+    ENTERPRISE_RBAC_REQUEST_TIMEOUT: int = Field(
+        ge=1,
+        description="Maximum timeout in seconds for inner RBAC requests.",
+        default=30,
     )
 
 

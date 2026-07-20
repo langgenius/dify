@@ -9,7 +9,10 @@ const NAME_SPACE = 'access-control'
 export const useAppWhiteListSubjects = (appId: string | undefined, enabled: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'app-whitelist-subjects', appId],
-    queryFn: () => get<{ groups: AccessControlGroup[], members: AccessControlAccount[] }>(`/enterprise/webapp/app/subjects?appId=${appId}`),
+    queryFn: () =>
+      get<{ groups: AccessControlGroup[]; members: AccessControlAccount[] }>(
+        `/enterprise/webapp/app/subjects?appId=${appId}`,
+      ),
     enabled: !!appId && enabled,
     staleTime: 0,
     gcTime: 0,
@@ -29,26 +32,27 @@ type SearchForWhiteListCandidatesQuery = {
   resultsPerPage?: number
 }
 
-export const useSearchForWhiteListCandidates = (query: SearchForWhiteListCandidatesQuery, enabled: boolean) => {
+export const useSearchForWhiteListCandidates = (
+  query: SearchForWhiteListCandidatesQuery,
+  enabled: boolean,
+) => {
   const { keyword, groupId, resultsPerPage } = query
 
   return useInfiniteQuery({
     queryKey: [NAME_SPACE, 'app-whitelist-candidates', keyword, groupId, resultsPerPage],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams()
-      if (keyword)
-        params.append('keyword', keyword)
-      if (groupId)
-        params.append('groupId', groupId)
-      if (resultsPerPage)
-        params.append('resultsPerPage', `${resultsPerPage}`)
+      if (keyword) params.append('keyword', keyword)
+      if (groupId) params.append('groupId', groupId)
+      if (resultsPerPage) params.append('resultsPerPage', `${resultsPerPage}`)
       params.append('pageNumber', `${pageParam}`)
-      return get<SearchResults>(`/enterprise/webapp/app/subject/search?${new URLSearchParams(params).toString()}`)
+      return get<SearchResults>(
+        `/enterprise/webapp/app/subject/search?${new URLSearchParams(params).toString()}`,
+      )
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
-      if (lastPage.hasMore)
-        return lastPage.currPage + 1
+      if (lastPage.hasMore) return lastPage.currPage + 1
       return undefined
     },
     gcTime: 0,
@@ -57,7 +61,15 @@ export const useSearchForWhiteListCandidates = (query: SearchForWhiteListCandida
   })
 }
 
-export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string, isInstalledApp?: boolean, enabled?: boolean }) => {
+export const useGetUserCanAccessApp = ({
+  appId,
+  isInstalledApp = true,
+  enabled,
+}: {
+  appId?: string
+  isInstalledApp?: boolean
+  enabled?: boolean
+}) => {
   // useQuery (not useSuspenseQuery) to keep this service hook's call contract
   // unchanged from the zustand era: callers should not need a Suspense boundary.
   // First-fetch undefined is bridged via `?? false` so the inner queryKey is stable.
@@ -66,10 +78,8 @@ export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId, webappAuthEnabled, isInstalledApp],
     queryFn: () => {
-      if (webappAuthEnabled)
-        return getUserCanAccess(appId!, isInstalledApp)
-      else
-        return { result: true }
+      if (webappAuthEnabled) return getUserCanAccess(appId!, isInstalledApp)
+      else return { result: true }
     },
     enabled: enabled !== undefined ? enabled : !!appId,
     staleTime: 0,

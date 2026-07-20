@@ -19,23 +19,24 @@ const mockFetchIndexingStatus = vi.mocked(datasetsService.fetchIndexingStatus)
 const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
 const mockResumeDocIndexing = vi.mocked(datasetsService.resumeDocIndexing)
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-})
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
 
 const createWrapper = () => {
   const queryClient = createTestQueryClient()
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
 
-const mockIndexingStatus = (overrides: Partial<IndexingStatusResponse> = {}): IndexingStatusResponse => ({
+const mockIndexingStatus = (
+  overrides: Partial<IndexingStatusResponse> = {},
+): IndexingStatusResponse => ({
   id: 'doc1',
   indexing_status: 'indexing',
   completed_segments: 50,
@@ -158,19 +159,13 @@ describe('use-embedding-status', () => {
     })
 
     it('should not fetch when datasetId is missing', () => {
-      renderHook(
-        () => useEmbeddingStatus({ documentId: 'doc1' }),
-        { wrapper: createWrapper() },
-      )
+      renderHook(() => useEmbeddingStatus({ documentId: 'doc1' }), { wrapper: createWrapper() })
 
       expect(mockFetchIndexingStatus).not.toHaveBeenCalled()
     })
 
     it('should not fetch when documentId is missing', () => {
-      renderHook(
-        () => useEmbeddingStatus({ datasetId: 'ds1' }),
-        { wrapper: createWrapper() },
-      )
+      renderHook(() => useEmbeddingStatus({ datasetId: 'ds1' }), { wrapper: createWrapper() })
 
       expect(mockFetchIndexingStatus).not.toHaveBeenCalled()
     })
@@ -195,10 +190,12 @@ describe('use-embedding-status', () => {
     })
 
     it('should set isCompleted when status is completed', async () => {
-      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus({
-        indexing_status: 'completed',
-        completed_segments: 100,
-      }))
+      mockFetchIndexingStatus.mockResolvedValue(
+        mockIndexingStatus({
+          indexing_status: 'completed',
+          completed_segments: 100,
+        }),
+      )
 
       const { result } = renderHook(
         () => useEmbeddingStatus({ datasetId: 'ds1', documentId: 'doc1' }),
@@ -213,9 +210,11 @@ describe('use-embedding-status', () => {
     })
 
     it('should set isPaused when status is paused', async () => {
-      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus({
-        indexing_status: 'paused',
-      }))
+      mockFetchIndexingStatus.mockResolvedValue(
+        mockIndexingStatus({
+          indexing_status: 'paused',
+        }),
+      )
 
       const { result } = renderHook(
         () => useEmbeddingStatus({ datasetId: 'ds1', documentId: 'doc1' }),
@@ -228,10 +227,12 @@ describe('use-embedding-status', () => {
     })
 
     it('should set isError when status is error', async () => {
-      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus({
-        indexing_status: 'error',
-        completed_segments: 25,
-      }))
+      mockFetchIndexingStatus.mockResolvedValue(
+        mockIndexingStatus({
+          indexing_status: 'error',
+          completed_segments: 25,
+        }),
+      )
 
       const { result } = renderHook(
         () => useEmbeddingStatus({ datasetId: 'ds1', documentId: 'doc1' }),

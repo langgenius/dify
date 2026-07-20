@@ -1,8 +1,10 @@
 import re
 import tempfile
 from pathlib import Path
-from typing import Union
+from typing import Literal, overload
 from urllib.parse import unquote
+
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.file import remote_fetcher
@@ -40,10 +42,22 @@ USER_AGENT = (
 
 
 class ExtractProcessor:
+    @overload
+    @classmethod
+    def load_from_upload_file(
+        cls, upload_file: UploadFile, return_text: Literal[True], is_automatic: bool = False
+    ) -> str: ...
+
+    @overload
+    @classmethod
+    def load_from_upload_file(
+        cls, upload_file: UploadFile, return_text: Literal[False] = False, is_automatic: bool = False
+    ) -> list[Document]: ...
+
     @classmethod
     def load_from_upload_file(
         cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
-    ) -> Union[list[Document], str]:
+    ) -> list[Document] | str:
         extract_setting = ExtractSetting(
             datasource_type=DatasourceType.FILE, upload_file=upload_file, document_model="text_model"
         )
@@ -53,8 +67,16 @@ class ExtractProcessor:
         else:
             return cls.extract(extract_setting, is_automatic)
 
+    @overload
     @classmethod
-    def load_from_url(cls, url: str, return_text: bool = False) -> Union[list[Document], str]:
+    def load_from_url(cls, url: str, return_text: Literal[True]) -> str: ...
+
+    @overload
+    @classmethod
+    def load_from_url(cls, url: str, return_text: Literal[False] = False) -> list[Document]: ...
+
+    @classmethod
+    def load_from_url(cls, url: str, return_text: bool = False) -> list[Document] | str:
         response = remote_fetcher.make_request("GET", url, headers={"User-Agent": USER_AGENT})
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -91,7 +113,12 @@ class ExtractProcessor:
 
     @classmethod
     def extract(
-        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str | None = None
+        cls,
+        extract_setting: ExtractSetting,
+        is_automatic: bool = False,
+        file_path: str | None = None,
+        *,
+        session: Session | None = None,
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE:
             upload_file = extract_setting.upload_file
@@ -121,7 +148,9 @@ class ExtractProcessor:
                         )
                     elif file_extension == ".pdf":
                         assert upload_file is not None
-                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                        extractor = PdfExtractor(
+                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                        )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
                             UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
@@ -132,7 +161,9 @@ class ExtractProcessor:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
                         assert upload_file is not None
-                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                        extractor = WordExtractor(
+                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                        )
                     elif file_extension == ".doc":
                         extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".csv":
@@ -164,14 +195,18 @@ class ExtractProcessor:
                         )
                     elif file_extension == ".pdf":
                         assert upload_file is not None
-                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                        extractor = PdfExtractor(
+                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                        )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
                         assert upload_file is not None
-                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                        extractor = WordExtractor(
+                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                        )
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".epub":

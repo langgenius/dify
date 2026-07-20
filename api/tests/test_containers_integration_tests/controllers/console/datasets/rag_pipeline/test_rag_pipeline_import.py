@@ -14,7 +14,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
     RagPipelineImportCheckDependenciesApi,
     RagPipelineImportConfirmApi,
 )
-from core.plugin.entities.plugin import PluginDependency
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from models.dataset import Pipeline
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineImportInfo
@@ -237,7 +237,7 @@ class TestRagPipelineImportCheckDependenciesApi:
 
         pipeline = MagicMock(spec=Pipeline)
         dependency = PluginDependency(
-            type=PluginDependency.Type.Marketplace,
+            type=PluginDependencyType.Marketplace,
             value=PluginDependency.Marketplace(
                 marketplace_plugin_unique_identifier="langgenius/example:0.1.0",
                 version="0.1.0",

@@ -50,5 +50,5 @@
   "snippets.management": "Manage snippets",
   "tool.manage": "Manage tools",
   "workspace.member.manage": "Manage members",
-  "workspace.role.manage": "Manage role permissions and resource access rules"
+  "workspace.role.manage": "Manage roles and permission sets"
 }

@@ -7,9 +7,10 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
 class _FakeToolFile:
-    def __init__(self, mimetype: str):
+    def __init__(self, mimetype: str, name: str | None):
         self.id = "fake-tool-file-id"
         self.mimetype = mimetype
+        self.name = name or "fake-tool-file.bin"
 
 
 class _FakeToolFileManager:
@@ -38,7 +39,7 @@ class _FakeToolFileManager:
             "mimetype": mimetype,
             "filename": filename,
         }
-        return _FakeToolFile(mimetype)
+        return _FakeToolFile(mimetype, filename)
 
 
 @pytest.fixture(autouse=True)
@@ -87,6 +88,29 @@ def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
     assert "mime_type" in (o.meta or {})
     assert o.meta["mime_type"] is None
     assert o.meta["tool_file_id"] == "fake-tool-file-id"
+
+
+def test_transform_tool_invoke_messages_prefers_filename_extension_over_mimetype():
+    msg = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.BLOB,
+        message=ToolInvokeMessage.BlobMessage(blob=b"docx"),
+        meta={"mime_type": "application/octet-stream", "filename": "report.docx"},
+    )
+
+    out = list(
+        mt.ToolFileMessageTransformer.transform_tool_invoke_messages(
+            messages=_gen([msg]),
+            user_id="u1",
+            tenant_id="t1",
+            conversation_id="c1",
+        )
+    )
+
+    assert _FakeToolFileManager.last_call is not None
+    assert _FakeToolFileManager.last_call["filename"] == "report.docx"
+    assert len(out) == 1
+    assert isinstance(out[0].message, ToolInvokeMessage.TextMessage)
+    assert out[0].message.text.endswith(".docx")
 
 
 def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():

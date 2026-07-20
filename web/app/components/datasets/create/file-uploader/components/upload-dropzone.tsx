@@ -31,7 +31,7 @@ const UploadDropzone = ({
   onFileChange,
 }: UploadDropzoneProps) => {
   const { t } = useTranslation()
-  const enableBilling = useProviderContextSelector(state => state.enableBilling)
+  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
 
   return (
     <>
@@ -55,28 +55,25 @@ const UploadDropzone = ({
           <span className="mr-2 i-ri-upload-cloud-2-line size-5" />
           <span>
             {supportBatchUpload
-              ? t('stepOne.uploader.button', { ns: 'datasetCreation' })
-              : t('stepOne.uploader.buttonSingleFile', { ns: 'datasetCreation' })}
+              ? t(($) => $['stepOne.uploader.button'], { ns: 'datasetCreation' })
+              : t(($) => $['stepOne.uploader.buttonSingleFile'], { ns: 'datasetCreation' })}
             {acceptTypes.length > 0 && (
-              <label
-                className="ml-1 cursor-pointer text-text-accent"
-                onClick={onSelectFile}
-              >
-                {t('stepOne.uploader.browse', { ns: 'datasetCreation' })}
+              <label className="ml-1 cursor-pointer text-text-accent" onClick={onSelectFile}>
+                {t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })}
               </label>
             )}
           </span>
         </div>
         <div>
           {enableBilling
-            ? t('stepOne.uploader.tipWithTotalLimit', {
+            ? t(($) => $['stepOne.uploader.tipWithTotalLimit'], {
                 ns: 'datasetCreation',
                 size: fileUploadConfig.file_size_limit,
                 supportTypes: supportTypesShowNames,
                 batchCount: fileUploadConfig.batch_count_limit,
                 totalCount: fileUploadConfig.file_upload_limit,
               })
-            : t('stepOne.uploader.tip', {
+            : t(($) => $['stepOne.uploader.tip'], {
                 ns: 'datasetCreation',
                 size: fileUploadConfig.file_size_limit,
                 supportTypes: supportTypesShowNames,

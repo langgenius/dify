@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TagFilter } from '../components/tag-filter'
@@ -15,17 +15,54 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 const mockTags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },
-  { id: 'tag-3', name: 'Database', type: 'knowledge', binding_count: 2 },
-  { id: 'tag-4', name: 'API Design', type: 'app', binding_count: 1 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
+  { id: 'tag-3', name: 'Database', type: 'knowledge', binding_count: '' },
+  { id: 'tag-4', name: 'API Design', type: 'app', binding_count: '' },
 ]
 
 const defaultProps = {
@@ -51,11 +88,6 @@ describe('TagFilter', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<TagFilter {...defaultProps} />)
-      expect(screen.getByText(i18n.placeholder)).toBeInTheDocument()
-    })
-
     it('should expose the trigger as a named combobox', () => {
       render(<TagFilter {...defaultProps} />)
       expect(screen.getByRole('combobox', { name: i18n.placeholder })).toBeInTheDocument()

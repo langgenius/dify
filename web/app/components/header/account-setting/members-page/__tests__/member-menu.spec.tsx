@@ -57,17 +57,18 @@ const member: Member = {
 describe('MemberMenu', () => {
   const mockUpdateRolesOfMember = vi.fn()
 
-  const createQueryClient = () => new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        staleTime: Infinity,
+  const createQueryClient = () =>
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Infinity,
+        },
+        mutations: {
+          retry: false,
+        },
       },
-      mutations: {
-        retry: false,
-      },
-    },
-  })
+    })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -78,15 +79,17 @@ describe('MemberMenu', () => {
     } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
     vi.mocked(useWorkspaceRoleList).mockReturnValue({
       data: {
-        pages: [{
-          data: roles,
-          pagination: {
-            total_count: 2,
-            per_page: 20,
-            current_page: 1,
-            total_pages: 1,
+        pages: [
+          {
+            data: roles,
+            pagination: {
+              total_count: 2,
+              per_page: 20,
+              current_page: 1,
+              total_pages: 1,
+            },
           },
-        }],
+        ],
         pageParams: [1],
       },
       isLoading: false,
@@ -101,11 +104,7 @@ describe('MemberMenu', () => {
     const user = userEvent.setup()
 
     renderWithSystemFeatures(
-      <MemberMenu
-        member={member}
-        isCurrentUser={false}
-        allowMultipleRoles={false}
-      />,
+      <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
       {
         systemFeatures: {
           rbac_enabled: false,
@@ -116,7 +115,9 @@ describe('MemberMenu', () => {
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
 
     expect(screen.getByRole('menuitem', { name: /common\.members\.editRole/i })).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: /common\.members\.assignRoles/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: /common\.members\.assignRoles/i }),
+    ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('menuitem', { name: /common\.members\.editRole/i }))
 
@@ -127,11 +128,7 @@ describe('MemberMenu', () => {
     const user = userEvent.setup()
 
     renderWithSystemFeatures(
-      <MemberMenu
-        member={member}
-        isCurrentUser={false}
-        allowMultipleRoles={false}
-      />,
+      <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
       {
         systemFeatures: {
           rbac_enabled: false,
@@ -144,10 +141,13 @@ describe('MemberMenu', () => {
     await user.click(screen.getByRole('radio', { name: /Second role/i }))
     await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
-      memberId: 'member-1',
-      roleIds: ['role-2'],
-    }, expect.any(Object))
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
+      {
+        memberId: 'member-1',
+        roleIds: ['role-2'],
+      },
+      expect.any(Object),
+    )
   })
 
   it('should require confirmation before removing a member', async () => {
@@ -156,15 +156,9 @@ describe('MemberMenu', () => {
     const membersQueryKey = [...commonQueryKeys.members, 'en-US']
     queryClient.setQueryData(membersQueryKey, { accounts: [member] })
 
-    renderWithSystemFeatures(
-      <MemberMenu
-        member={member}
-        isCurrentUser={false}
-      />,
-      {
-        queryClient,
-      },
-    )
+    renderWithSystemFeatures(<MemberMenu member={member} isCurrentUser={false} />, {
+      queryClient,
+    })
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))

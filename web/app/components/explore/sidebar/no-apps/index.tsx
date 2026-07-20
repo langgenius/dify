@@ -16,10 +16,26 @@ const NoApps: FC = () => {
   const docLink = useDocLink()
   return (
     <div className="rounded-xl bg-background-default-subtle p-4">
-      <div className={cn('h-[35px] w-[86px] bg-contain bg-center bg-no-repeat', theme === Theme.dark ? s.dark : s.light)}></div>
-      <div className="mt-2 system-sm-semibold text-text-secondary">{t(`${i18nPrefix}.title`, { ns: 'explore' })}</div>
-      <div className="my-1 system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'explore' })}</div>
-      <a className="system-xs-regular text-text-accent" target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/publish/README')}>{t(`${i18nPrefix}.learnMore`, { ns: 'explore' })}</a>
+      <div
+        className={cn(
+          'h-[35px] w-[86px] bg-contain bg-center bg-no-repeat',
+          theme === Theme.dark ? s.dark : s.light,
+        )}
+      ></div>
+      <div className="mt-2 system-sm-semibold text-text-secondary">
+        {t(($) => $[`${i18nPrefix}.title`], { ns: 'explore' })}
+      </div>
+      <div className="my-1 system-xs-regular text-text-tertiary">
+        {t(($) => $[`${i18nPrefix}.description`], { ns: 'explore' })}
+      </div>
+      <a
+        className="system-xs-regular text-text-accent"
+        target="_blank"
+        rel="noopener noreferrer"
+        href={docLink('/use-dify/publish/README')}
+      >
+        {t(($) => $[`${i18nPrefix}.learnMore`], { ns: 'explore' })}
+      </a>
     </div>
   )
 }

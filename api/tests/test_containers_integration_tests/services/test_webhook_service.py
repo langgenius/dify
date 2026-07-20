@@ -127,6 +127,9 @@ class TestWebhookService:
         db_session_with_containers.add(workflow)
         db_session_with_containers.flush()
 
+        app.workflow_id = workflow.id
+        db_session_with_containers.flush()
+
         # Create webhook trigger
         webhook_id = fake.uuid4()[:16]
         webhook_trigger = WorkflowWebhookTrigger(

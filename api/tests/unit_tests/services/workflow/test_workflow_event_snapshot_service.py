@@ -17,10 +17,10 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.entities.task_entities import StreamEvent
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
-from graphon.entities.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.nodes.human_input.entities import SelectInputConfig, StringListSource
-from graphon.nodes.human_input.enums import ValueSourceType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.human_input import RecipientType

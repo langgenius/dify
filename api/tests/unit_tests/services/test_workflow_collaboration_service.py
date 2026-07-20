@@ -12,7 +12,7 @@ class TestWorkflowCollaborationService:
     def service(self) -> tuple[WorkflowCollaborationService, Mock, Mock]:
         repository = Mock(spec=WorkflowCollaborationRepository)
         socketio = Mock()
-        return WorkflowCollaborationService(repository, socketio), repository, socketio
+        return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
 
     def test_authorize_and_join_workflow_room_returns_leader_status(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]
@@ -32,11 +32,15 @@ class TestWorkflowCollaborationService:
             patch.object(collaboration_service, "broadcast_online_users"),
         ):
             # Act
-            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
+            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=Mock())
 
         # Assert
         assert result == ("u-1", True)
         repository.set_session_info.assert_called_once()
+        session_info = repository.set_session_info.call_args.args[1]
+        assert session_info["server_id"] == "server-1"
+        repository.refresh_server_heartbeat.assert_called_once_with("server-1")
+        socketio.start_background_task.assert_called_once()
         socketio.enter_room.assert_called_once_with("sid-1", "wf-1")
         socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
 
@@ -48,7 +52,7 @@ class TestWorkflowCollaborationService:
         socketio.get_session.return_value = {}
 
         # Act
-        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
+        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=Mock())
 
         # Assert
         assert result is None
@@ -59,7 +63,7 @@ class TestWorkflowCollaborationService:
         collaboration_service, repository, socketio = service
         socketio.get_session.return_value = {"user_id": "u-1", "username": "Jane", "avatar": None}
 
-        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
+        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=Mock())
 
         assert result is None
         repository.set_session_info.assert_not_called()
@@ -78,7 +82,7 @@ class TestWorkflowCollaborationService:
         }
 
         with patch.object(collaboration_service, "_can_access_workflow", return_value=False):
-            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
+            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=Mock())
 
         assert result is None
         repository.set_session_info.assert_not_called()
@@ -102,21 +106,12 @@ class TestWorkflowCollaborationService:
             {"user_id": "u-1", "username": "Jane", "avatar": "avatar.png", "tenant_id": "t-1"},
         )
 
-    def test_can_access_workflow_uses_session_factory(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+    def test_can_access_workflow_uses_session(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
         collaboration_service, _repository, _socketio = service
         session = Mock()
         session.scalar.return_value = "wf-1"
-        session_context = Mock()
-        session_context.__enter__ = Mock(return_value=session)
-        session_context.__exit__ = Mock(return_value=False)
 
-        with patch(
-            "services.workflow_collaboration_service.session_factory.create_session",
-            return_value=session_context,
-        ):
-            result = collaboration_service._can_access_workflow("wf-1", "tenant-1")
+        result = collaboration_service._can_access_workflow("wf-1", "tenant-1", session=session)
 
         assert result is True
         session.scalar.assert_called_once()
@@ -591,23 +586,47 @@ class TestWorkflowCollaborationService:
 
     def test_is_session_active_guard_branches(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
         collaboration_service, repository, socketio = service
-        socketio.manager.is_connected.return_value = True
+        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1", "server_id": "server-1"}
         repository.session_exists.return_value = True
-        repository.sid_mapping_exists.return_value = True
 
         assert collaboration_service.is_session_active("wf-1", "") is False
 
         socketio.manager.is_connected.return_value = False
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
 
+        socketio.manager.is_connected.return_value = True
+        assert collaboration_service.is_session_active("wf-1", "sid-1") is True
+
         socketio.manager.is_connected.side_effect = AttributeError("missing manager")
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
         socketio.manager.is_connected.side_effect = None
 
-        socketio.manager.is_connected.return_value = True
         repository.session_exists.return_value = False
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
 
         repository.session_exists.return_value = True
-        repository.sid_mapping_exists.return_value = False
+        repository.get_sid_mapping.return_value = None
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
+
+    def test_is_session_active_accepts_remote_session_with_live_server(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        collaboration_service, repository, socketio = service
+        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1", "server_id": "server-2"}
+        repository.session_exists.return_value = True
+        repository.server_heartbeat_exists.return_value = True
+        socketio.manager.is_connected.return_value = False
+
+        assert collaboration_service.is_session_active("wf-1", "sid-remote") is True
+        repository.server_heartbeat_exists.assert_called_once_with("server-2")
+
+    def test_is_session_active_rejects_remote_session_with_dead_server(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        collaboration_service, repository, socketio = service
+        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1", "server_id": "server-2"}
+        repository.session_exists.return_value = True
+        repository.server_heartbeat_exists.return_value = False
+        socketio.manager.is_connected.return_value = False
+
+        assert collaboration_service.is_session_active("wf-1", "sid-remote") is False

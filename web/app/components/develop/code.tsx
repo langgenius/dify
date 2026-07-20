@@ -1,18 +1,8 @@
 'use client'
 import type { PropsWithChildren, ReactElement } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Tabs,
-  TabsList,
-  TabsPanel,
-  TabsTab,
-} from '@langgenius/dify-ui/tabs'
-import {
-  Children,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Children, useEffect, useRef, useState } from 'react'
 import { writeTextToClipboard } from '@/utils/clipboard'
 import { Tag } from './tag'
 
@@ -53,25 +43,34 @@ function CopyButton({ code }: { code: string }) {
   return (
     <button
       type="button"
-      className={cn('group/button absolute top-1.5 right-4 overflow-hidden rounded-full py-1 pr-3 pl-2 text-2xs font-medium opacity-0 backdrop-blur-sm transition group-hover:opacity-100 focus:opacity-100', copied
-        ? 'bg-emerald-400/10 ring-1 ring-emerald-400/20 ring-inset'
-        : 'bg-white/5 hover:bg-white/7.5 dark:bg-white/2.5 dark:hover:bg-white/5')}
+      className={cn(
+        'group/button absolute top-1.5 right-4 overflow-hidden rounded-full py-1 pr-3 pl-2 text-2xs font-medium opacity-0 backdrop-blur-sm transition group-hover:opacity-100 focus:opacity-100',
+        copied
+          ? 'bg-emerald-400/10 inset-ring-1 inset-ring-emerald-400/20'
+          : 'bg-white/5 hover:bg-white/7.5 dark:bg-white/2.5 dark:hover:bg-white/5',
+      )}
       onClick={() => {
         writeTextToClipboard(code).then(() => {
-          setCopyCount(count => count + 1)
+          setCopyCount((count) => count + 1)
         })
       }}
     >
       <span
         aria-hidden={copied}
-        className={cn('pointer-events-none flex items-center gap-0.5 text-zinc-400 transition duration-300', copied && '-translate-y-1.5 opacity-0')}
+        className={cn(
+          'pointer-events-none flex items-center gap-0.5 text-zinc-400 transition duration-300',
+          copied && '-translate-y-1.5 opacity-0',
+        )}
       >
         <ClipboardIcon className="size-5 fill-zinc-500/20 stroke-zinc-500 transition-colors group-hover/button:stroke-zinc-400" />
         Copy
       </span>
       <span
         aria-hidden={!copied}
-        className={cn('pointer-events-none absolute inset-0 flex items-center justify-center text-emerald-400 transition duration-300', !copied && 'translate-y-1.5 opacity-0')}
+        className={cn(
+          'pointer-events-none absolute inset-0 flex items-center justify-center text-emerald-400 transition duration-300',
+          !copied && 'translate-y-1.5 opacity-0',
+        )}
       >
         Copied!
       </span>
@@ -79,9 +78,8 @@ function CopyButton({ code }: { code: string }) {
   )
 }
 
-function CodePanelHeader({ tag, label }: { tag?: string, label?: string }) {
-  if (!tag && !label)
-    return null
+function CodePanelHeader({ tag, label }: { tag?: string; label?: string }) {
+  if (!tag && !label) return null
 
   return (
     <div className="flex h-9 items-center gap-2 border-y border-t-transparent border-b-white/7.5 bg-white/2.5 bg-zinc-900 px-4 dark:border-b-white/5 dark:bg-white/1">
@@ -90,12 +88,8 @@ function CodePanelHeader({ tag, label }: { tag?: string, label?: string }) {
           <Tag variant="small">{tag}</Tag>
         </div>
       )}
-      {tag && label && (
-        <span className="size-0.5 rounded-full bg-zinc-500" />
-      )}
-      {label && (
-        <span className="font-mono text-xs text-zinc-400">{label}</span>
-      )}
+      {tag && label && <span className="size-0.5 rounded-full bg-zinc-500" />}
+      {label && <span className="font-mono text-xs text-zinc-400">{label}</span>}
     </div>
   )
 }
@@ -125,22 +119,13 @@ function CodePanel({ tag, label, children, targetCode }: ICodePanelProps) {
 
   return (
     <div className="group dark:bg-white/2.5">
-      <CodePanelHeader
-        tag={tag}
-        label={label}
-      />
+      <CodePanelHeader tag={tag} label={label} />
       <div className="relative">
         {/* <pre className="p-4 overflow-x-auto text-xs text-white">{children}</pre> */}
         {/* <CopyButton code={child.props.code ?? code} /> */}
         {/* <CopyButton code={child.props.children.props.children} /> */}
         <pre className="overflow-x-auto p-4 text-xs text-white">
-          {targetCode?.code
-            ? (
-                <code>{targetCode?.code}</code>
-              )
-            : (
-                child
-              )}
+          {targetCode?.code ? <code>{targetCode?.code}</code> : child}
         </pre>
         <CopyButton code={targetCode?.code ?? child.props.children.props.children} />
       </div>
@@ -158,16 +143,10 @@ function CodeGroupHeader({ title, tabs }: CodeGroupHeaderProps) {
 
   return (
     <div className="flex min-h-[calc(--spacing(12)+1px)] flex-wrap items-start gap-x-4 border-b border-zinc-700 bg-zinc-800 px-4 dark:border-zinc-800 dark:bg-transparent">
-      {title && (
-        <h3 className="mr-auto pt-3 text-xs font-semibold text-white">
-          {title}
-        </h3>
-      )}
+      {title && <h3 className="mr-auto pt-3 text-xs font-semibold text-white">{title}</h3>}
       {hasTabs && (
-        <TabsList
-          className="-mb-px flex gap-4 rounded-none bg-transparent p-0 text-xs font-medium"
-        >
-          {tabs!.map(tab => (
+        <TabsList className="-mb-px flex gap-4 rounded-none bg-transparent p-0 text-xs font-medium">
+          {tabs!.map((tab) => (
             <TabsTab
               key={tab.value}
               value={tab.value}
@@ -205,7 +184,11 @@ function CodeGroupPanels({ children, targetCode, tabs, ...props }: ICodeGroupPan
     )
   }
 
-  return <CodePanel {...props} targetCode={targetCode?.[0]}>{children}</CodePanel>
+  return (
+    <CodePanel {...props} targetCode={targetCode?.[0]}>
+      {children}
+    </CodePanel>
+  )
 }
 
 function usePreventLayoutShift() {
@@ -214,8 +197,7 @@ function usePreventLayoutShift() {
 
   useEffect(() => {
     return () => {
-      if (rafRef.current)
-        window.cancelAnimationFrame(rafRef.current)
+      if (rafRef.current) window.cancelAnimationFrame(rafRef.current)
     }
   }, [])
 
@@ -232,8 +214,7 @@ function usePreventLayoutShift() {
       callback()
 
       rafRef.current = window.requestAnimationFrame(() => {
-        if (!positionRef.current)
-          return
+        if (!positionRef.current) return
 
         const newTop = positionRef.current.getBoundingClientRect().top
         window.scrollBy(0, newTop - initialTop)
@@ -245,20 +226,16 @@ function usePreventLayoutShift() {
 function useTabGroupProps(tabValues: string[]) {
   const [selectedValue, setSelectedValue] = useState(tabValues[0] ?? '')
   const { positionRef, preventLayoutShift } = usePreventLayoutShift()
-  const value = tabValues.includes(selectedValue)
-    ? selectedValue
-    : tabValues[0] ?? ''
+  const value = tabValues.includes(selectedValue) ? selectedValue : (tabValues[0] ?? '')
 
   return {
     ref: positionRef,
     value,
     onValueChange: (newValue: string | number | null) => {
-      if (newValue == null)
-        return
+      if (newValue == null) return
 
       const nextValue = String(newValue)
-      if (!tabValues.includes(nextValue))
-        return
+      if (!tabValues.includes(nextValue)) return
 
       preventLayoutShift(() => {
         setSelectedValue(nextValue)
@@ -279,34 +256,36 @@ type CodeGroupProps = PropsWithChildren<{
 }>
 
 export function CodeGroup({ children, title, targetCode, ...props }: CodeGroupProps) {
-  const examples = typeof targetCode === 'string' ? [{ code: targetCode }] as CodeExample[] : targetCode
-  const tabs = examples?.map(({ title }, index) => ({
-    title: title || 'Code',
-    value: String(index),
-  })) || []
-  const tabGroupProps = useTabGroupProps(tabs.map(tab => tab.value))
+  const examples =
+    typeof targetCode === 'string' ? ([{ code: targetCode }] as CodeExample[]) : targetCode
+  const tabs =
+    examples?.map(({ title }, index) => ({
+      title: title || 'Code',
+      value: String(index),
+    })) || []
+  const tabGroupProps = useTabGroupProps(tabs.map((tab) => tab.value))
   const hasTabs = tabs.length > 1
   const content = (
     <>
       <CodeGroupHeader title={title} tabs={hasTabs ? tabs : undefined} />
-      <CodeGroupPanels {...props} targetCode={examples} tabs={hasTabs ? tabs : undefined}>{children}</CodeGroupPanels>
+      <CodeGroupPanels {...props} targetCode={examples} tabs={hasTabs ? tabs : undefined}>
+        {children}
+      </CodeGroupPanels>
     </>
   )
 
-  return hasTabs
-    ? (
-        <Tabs
-          {...tabGroupProps}
-          className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
-        >
-          {content}
-        </Tabs>
-      )
-    : (
-        <div className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10">
-          {content}
-        </div>
-      )
+  return hasTabs ? (
+    <Tabs
+      {...tabGroupProps}
+      className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
+    >
+      {content}
+    </Tabs>
+  ) : (
+    <div className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10">
+      {content}
+    </div>
+  )
 }
 
 export function Embed({ value, ...props }: IChildrenProps) {

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, fn } from 'storybook/test'
-
 import { Button } from '.'
 
 const meta = {
@@ -98,7 +97,7 @@ export const Loading: Story = {
     const button = canvas.getByRole('button', { name: 'Loading Button' })
 
     await expect(button).toHaveAttribute('aria-disabled', 'true')
-    await expect(button).toHaveAttribute('aria-busy', 'true')
+    await expect(button).not.toHaveAttribute('aria-busy')
 
     button.focus()
     await expect(button).toHaveFocus()
@@ -109,7 +108,8 @@ export const Loading: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
+        story:
+          'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
       },
     },
   },

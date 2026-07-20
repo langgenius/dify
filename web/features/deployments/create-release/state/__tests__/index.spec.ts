@@ -1,6 +1,6 @@
 import type { Getter } from 'jotai'
 import type { CreateReleaseFormValues } from '../index'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, skipToken } from '@tanstack/react-query'
 import { atom, createStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -31,6 +31,10 @@ const mockQueryResults = vi.hoisted(() => ({
   current: new Map<string, QueryResult>(),
 }))
 
+const mockQueryOptions = vi.hoisted(() => ({
+  current: new Map<string, QueryOptions>(),
+}))
+
 const mockCreateReleaseMutation = vi.hoisted<{ current: MutationResult }>(() => ({
   current: {
     isPending: false,
@@ -43,24 +47,26 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
 
   return {
     ...actual,
-    atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom((get) => {
-      const options = createOptions(get)
-      const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
-      const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
-      const queryResult = options.enabled === false
-        ? undefined
-        : mockQueryResults.current.get(queryName)
+    atomWithQuery: (createOptions: (get: Getter) => QueryOptions) =>
+      atom((get) => {
+        const options = createOptions(get)
+        const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
+        const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
+        const queryResult =
+          options.enabled === false ? undefined : mockQueryResults.current.get(queryName)
 
-      return {
-        ...options,
-        data: undefined,
-        isError: false,
-        isFetching: false,
-        isLoading: false,
-        isSuccess: false,
-        ...queryResult,
-      }
-    }),
+        mockQueryOptions.current.set(queryName, options)
+
+        return {
+          ...options,
+          data: undefined,
+          isError: false,
+          isFetching: false,
+          isLoading: false,
+          isSuccess: false,
+          ...queryResult,
+        }
+      }),
     atomWithMutation: () => atom(() => mockCreateReleaseMutation.current),
   }
 })
@@ -81,7 +87,8 @@ vi.mock('@/service/client', () => ({
     enterprise: {
       releaseService: {
         listReleaseSummaries: {
-          key: ({ input }: { input?: unknown } = {}) => input === undefined ? ['listReleaseSummaries'] : ['listReleaseSummaries', input],
+          key: ({ input }: { input?: unknown } = {}) =>
+            input === undefined ? ['listReleaseSummaries'] : ['listReleaseSummaries', input],
           queryOptions: ({ enabled, input }: QueryOptions) => ({
             enabled,
             input,
@@ -89,7 +96,8 @@ vi.mock('@/service/client', () => ({
           }),
         },
         listReleases: {
-          key: ({ input }: { input?: unknown } = {}) => input === undefined ? ['listReleases'] : ['listReleases', input],
+          key: ({ input }: { input?: unknown } = {}) =>
+            input === undefined ? ['listReleases'] : ['listReleases', input],
           queryOptions: ({ enabled, input }: QueryOptions) => ({
             enabled,
             input,
@@ -136,7 +144,9 @@ async function mountedStore() {
   }
 }
 
-function sourceApp(overrides: Partial<NonNullable<CreateReleaseFormValues['sourceApp']>> = {}): NonNullable<CreateReleaseFormValues['sourceApp']> {
+function sourceApp(
+  overrides: Partial<NonNullable<CreateReleaseFormValues['sourceApp']>> = {},
+): NonNullable<CreateReleaseFormValues['sourceApp']> {
   return {
     id: 'source-app-1',
     name: 'Source App',
@@ -146,25 +156,22 @@ function sourceApp(overrides: Partial<NonNullable<CreateReleaseFormValues['sourc
 }
 
 function validationIssueMessage(error: unknown) {
-  if (!error || typeof error !== 'object' || !('message' in error))
-    return undefined
+  if (!error || typeof error !== 'object' || !('message' in error)) return undefined
 
   return typeof error.message === 'string' ? error.message : undefined
 }
 
 function hasValidationIssue(errors: unknown[], message: string) {
-  return errors.some(error => validationIssueMessage(error) === message)
+  return errors.some((error) => validationIssueMessage(error) === message)
 }
 
 function workflowDsl() {
-  return [
-    'app:',
-    '  mode: workflow',
-    '  name: Release source',
-  ].join('\n')
+  return ['app:', '  mode: workflow', '  name: Release source'].join('\n')
 }
 
-function setDefaultSourceApp(defaultSourceApp = sourceApp({ id: 'default-source-app', name: 'Default Source App' })) {
+function setDefaultSourceApp(
+  defaultSourceApp = sourceApp({ id: 'default-source-app', name: 'Default Source App' }),
+) {
   mockQueryResults.current.set('listReleases', {
     data: {
       releases: [
@@ -181,11 +188,13 @@ function setDefaultSourceApp(defaultSourceApp = sourceApp({ id: 'default-source-
   })
 }
 
-function setPrecheckReleaseResult(overrides: {
-  canCreate?: boolean
-  matchedRelease?: unknown
-  unsupportedNodes?: Array<{ id?: string, type?: string }>
-} = {}) {
+function setPrecheckReleaseResult(
+  overrides: {
+    canCreate?: boolean
+    matchedRelease?: unknown
+    unsupportedNodes?: Array<{ id?: string; type?: string }>
+  } = {},
+) {
   mockQueryResults.current.set('precheckRelease', {
     data: {
       gateCommitId: 'gate-commit-1',
@@ -197,14 +206,18 @@ function setPrecheckReleaseResult(overrides: {
   })
 }
 
-function setCachedReleaseSummaries(queryClient: QueryClient, appInstanceId: string, displayNames: string[]) {
+function setCachedReleaseSummaries(
+  queryClient: QueryClient,
+  appInstanceId: string,
+  displayNames: string[],
+) {
   queryClient.setQueryData(
     consoleQuery.enterprise.releaseService.listReleaseSummaries.key({
       type: 'query',
       input: { params: { appInstanceId } },
     }),
     {
-      releaseSummaries: displayNames.map(displayName => ({
+      releaseSummaries: displayNames.map((displayName) => ({
         release: {
           displayName,
         },
@@ -226,6 +239,7 @@ describe('create release state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockQueryResults.current.clear()
+    mockQueryOptions.current.clear()
     mockCreateReleaseMutation.current = {
       isPending: false,
       mutateAsync: vi.fn(),
@@ -238,10 +252,12 @@ describe('create release state', () => {
     await store.set(state.submitCreateReleaseFormAtom)
 
     expect(mockCreateReleaseMutation.current.mutateAsync).not.toHaveBeenCalled()
-    expect(hasValidationIssue(
-      store.get(state.createReleaseNameFieldAtom).meta?.errors ?? [],
-      state.RELEASE_NAME_REQUIRED_ERROR,
-    )).toBe(true)
+    expect(
+      hasValidationIssue(
+        store.get(state.createReleaseNameFieldAtom).meta?.errors ?? [],
+        state.RELEASE_NAME_REQUIRED_ERROR,
+      ),
+    ).toBe(true)
 
     unsubscribe()
   })
@@ -330,6 +346,37 @@ describe('create release state', () => {
     expect(store.get(state.createReleaseHasDslContentAtom)).toBe(false)
     expect(store.get(state.isReadingCreateReleaseDslAtom)).toBe(false)
     expect(store.get(state.createReleaseIsWorkflowDslContentAtom)).toBe(false)
+
+    unsubscribe()
+  })
+
+  it('should reset source app search text when opening or closing the dialog', async () => {
+    const { state, store, unsubscribe } = await mountedStore()
+
+    store.set(state.createReleaseSourceAppSearchTextAtom, 'customer')
+    store.set(state.openCreateReleaseDialogAtom)
+
+    expect(store.get(state.createReleaseSourceAppSearchTextAtom)).toBe('')
+
+    store.set(state.createReleaseSourceAppSearchTextAtom, 'support')
+    store.set(state.closeCreateReleaseDialogAtom)
+
+    expect(store.get(state.createReleaseSourceAppSearchTextAtom)).toBe('')
+
+    unsubscribe()
+  })
+
+  it('should skip release content precheck input until source content is ready', async () => {
+    const { state, store, unsubscribe } = await mountedStore()
+
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
+    store.set(state.openCreateReleaseDialogAtom)
+    store.get(state.isCheckingCreateReleaseContentAtom)
+
+    expect(mockQueryOptions.current.get('precheckRelease')).toMatchObject({
+      enabled: false,
+      input: skipToken,
+    })
 
     unsubscribe()
   })

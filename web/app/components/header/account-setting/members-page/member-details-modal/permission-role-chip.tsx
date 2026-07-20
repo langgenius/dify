@@ -1,18 +1,9 @@
 'use client'
 
+import type { SelectorKey } from 'i18next'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import {
-  PreviewCard,
-  PreviewCardContent,
-  PreviewCardTrigger,
-} from '@langgenius/dify-ui/preview-card'
-import { memo, useState } from 'react'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { memo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
 type PermissionRoleChipProps = {
@@ -33,53 +24,53 @@ const PermissionRoleChip = ({
   className,
 }: PermissionRoleChipProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const permissions = permissionKeys
-  const canOpenMenu = !isOwner && !!onRemove
-  const permissionLabels = permissions
-    .map(key => t(key, {
+  const canRemoveRole = !isOwner && !!onRemove
+  // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
+  const translatePermissionName = (key: string) =>
+    t(key as SelectorKey, {
       ns: 'permissionKeys',
       defaultValue: key,
-    }))
-    .join(', ')
+    })
+  const permissionLabels = permissions.map(translatePermissionName).join(', ')
   const hasPermissionLabels = permissionLabels.length > 0
 
-  const chipClassName = cn(
-    'inline-flex h-6 max-w-full items-center rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-body p-1 system-xs-regular text-text-primary shadow-xs transition-colors outline-none',
-    canOpenMenu && 'cursor-pointer hover:bg-background-section-burn focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-    open && 'bg-background-section-burn',
+  const chipRootClassName = cn(
+    'inline-flex h-6 max-w-full min-w-0 items-center gap-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-body px-1.5 py-0.5 system-xs-medium text-text-primary shadow-xs transition-colors',
+    'hover:bg-background-section-burn has-[[data-popup-open]]:bg-background-section-burn',
+    'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-state-accent-solid',
     className,
   )
 
-  const chipContent = (
-    <span className="min-w-0 truncate px-1 leading-4">{label}</span>
-  )
+  const removeLabel = `${t(($) => $['operation.remove'], { ns: 'common' })} ${label}`
 
-  const chip = canOpenMenu
-    ? (
+  const chip = (
+    <span className={chipRootClassName}>
+      <PopoverTrigger
+        openOnHover
+        delay={300}
+        closeDelay={200}
+        render={
+          <button
+            type="button"
+            className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4 outline-hidden"
+          >
+            {label}
+          </button>
+        }
+      />
+      {canRemoveRole && (
         <button
           type="button"
-          className={chipClassName}
-          aria-label={t('members.memberDetails.roleActionsAria', {
-            ns: 'common',
-            role: label,
-            defaultValue: 'Open actions for {{role}} role',
-          })}
-          data-testid="permission-role-chip"
-          data-role-id={roleId}
+          aria-label={removeLabel}
+          className="flex size-3.5 shrink-0 items-center justify-center rounded-full border-none bg-transparent p-0 text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:bg-state-base-hover-alt focus-visible:text-text-secondary"
+          onClick={() => onRemove?.(roleId)}
         >
-          {chipContent}
+          <span aria-hidden className="i-ri-close-line size-3" />
         </button>
-      )
-    : (
-        <span
-          className={chipClassName}
-          data-testid="permission-role-chip"
-          data-role-id={roleId}
-        >
-          {chipContent}
-        </span>
-      )
+      )}
+    </span>
+  )
 
   const permissionSummary = (
     <div className="flex w-58 flex-col gap-1 px-4 py-3.5">
@@ -87,75 +78,39 @@ const PermissionRoleChip = ({
         {label}
       </div>
       <div className="body-xs-regular text-text-secondary">
-        {hasPermissionLabels
-          ? (
-              <Trans
-                i18nKey="members.memberDetails.rolePermissionSummary"
-                ns="common"
-                values={{
-                  role: label,
-                  permissions: permissionLabels,
-                }}
-                components={{
-                  permissionList: <span className="text-text-accent" />,
-                }}
-              />
-            )
-          : t('members.memberDetails.roleNoPermissionSummary', {
-              ns: 'common',
-              defaultValue: 'Current role has no permissions.',
-            })}
+        {hasPermissionLabels ? (
+          <Trans
+            i18nKey={($) => $['members.memberDetails.rolePermissionSummary']}
+            ns="common"
+            values={{
+              role: label,
+              permissions: permissionLabels,
+            }}
+            components={{
+              permissionList: <span className="text-text-accent" />,
+            }}
+          />
+        ) : (
+          t(($) => $['members.memberDetails.roleNoPermissionSummary'], {
+            ns: 'common',
+            defaultValue: 'Current role has no permissions.',
+          })
+        )}
       </div>
     </div>
   )
 
-  const chipWithPermissions = (
-    <PreviewCard>
-      <PreviewCardTrigger render={chip} />
-      <PreviewCardContent
-        placement="bottom-start"
-        sideOffset={8}
-        popupClassName="overflow-hidden border-components-panel-border bg-components-tooltip-bg p-0 shadow-lg backdrop-blur-[5px]"
-      >
-        {permissionSummary}
-      </PreviewCardContent>
-    </PreviewCard>
-  )
-
-  if (!canOpenMenu)
-    return chipWithPermissions
-
-  const menuTrigger = (
-    <PreviewCard>
-      <DropdownMenuTrigger render={<PreviewCardTrigger render={chip} />} />
-      <PreviewCardContent
-        placement="bottom-start"
-        sideOffset={8}
-        popupClassName="overflow-hidden border-components-panel-border bg-components-tooltip-bg p-0 shadow-lg backdrop-blur-[5px]"
-      >
-        {permissionSummary}
-      </PreviewCardContent>
-    </PreviewCard>
-  )
-
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      {menuTrigger}
-      <DropdownMenuContent
+    <Popover>
+      {chip}
+      <PopoverContent
         placement="bottom-start"
-        sideOffset={4}
-        popupClassName="w-[236px] rounded-xl p-1"
+        sideOffset={8}
+        popupClassName="overflow-hidden border-components-panel-border bg-components-tooltip-bg p-0 shadow-lg backdrop-blur-[5px]"
       >
-        <DropdownMenuItem
-          variant="destructive"
-          className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular"
-          onClick={() => onRemove?.(roleId)}
-        >
-          <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-          {t('operation.remove', { ns: 'common' })}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        {permissionSummary}
+      </PopoverContent>
+    </Popover>
   )
 }
 

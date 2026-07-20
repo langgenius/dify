@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any, cast
+from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool import Tool
@@ -48,6 +49,7 @@ class DummyTool(Tool):
 
     def _invoke(
         self,
+        session: Any,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -107,6 +109,7 @@ def test_invoke_supports_single_message_and_parameter_casting():
 
     messages = list(
         tool.invoke(
+            session=MagicMock(),
             user_id="user-1",
             tool_parameters={"age": "18", "raw": "keep"},
             conversation_id="conv-1",
@@ -129,7 +132,7 @@ def test_invoke_supports_single_message_and_parameter_casting():
 def test_invoke_supports_list_and_generator_results():
     tool = _build_tool()
     tool.result = [tool.create_text_message("a"), tool.create_text_message("b")]
-    list_messages = list(tool.invoke(user_id="user-1", tool_parameters={}))
+    list_messages = list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={}))
     assert [msg.message.text for msg in list_messages] == ["a", "b"]
 
     def _message_generator() -> Generator[ToolInvokeMessage, None, None]:
@@ -137,7 +140,7 @@ def test_invoke_supports_list_and_generator_results():
         yield tool.create_text_message("g2")
 
     tool.result = _message_generator()
-    generated_messages = list(tool.invoke(user_id="user-2", tool_parameters={}))
+    generated_messages = list(tool.invoke(session=MagicMock(), user_id="user-2", tool_parameters={}))
     assert [msg.message.text for msg in generated_messages] == ["g1", "g2"]
 
 
@@ -315,4 +318,4 @@ def test_message_factory_helpers():
 
 def test_base_abstract_invoke_placeholder_returns_none():
     tool = _build_tool()
-    assert Tool._invoke(tool, user_id="u", tool_parameters={}) is None
+    assert Tool._invoke(tool, session=MagicMock(), user_id="u", tool_parameters={}) is None

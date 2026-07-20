@@ -168,6 +168,29 @@ class RegularApi(Resource):
     assert checks[0].classification == "valid"
 
 
+def test_method_ignore_comment_does_not_skip_sibling_methods(tmp_path: Path):
+    checks = _checks_for_source(
+        tmp_path,
+        """
+@ns.route("/mixed")
+class MixedApi(Resource):
+    # response-contract:ignore binary response
+    @ns.response(200, "Binary file")
+    def get(self):
+        return send_file(path)
+
+    @ns.response(200, "OK", ns.models[RegularResponse.__name__])
+    def post(self):
+        return dump_response(RegularResponse, {})
+""",
+    )
+
+    assert len(checks) == 1
+    assert checks[0].class_name == "MixedApi"
+    assert checks[0].method == "post"
+    assert checks[0].classification == "valid"
+
+
 def test_main_is_report_only_by_default_for_mismatches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     module = _load_lint_response_contracts_module()
     controller_path = tmp_path / "controllers" / "sample.py"

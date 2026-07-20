@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "Dettagli",
   "detailPanel.operation.info": "Informazioni sul plugin",
   "detailPanel.operation.install": "Installare",
+  "detailPanel.operation.moreActions": "Altre azioni",
   "detailPanel.operation.remove": "Togliere",
   "detailPanel.operation.update": "Aggiornare",
   "detailPanel.operation.updateTooltip": "Aggiorna per accedere ai modelli più recenti.",

@@ -6,10 +6,9 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from graphon.variables import FloatVariable, IntegerVariable, StringVariable
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, EndUserType
@@ -152,13 +151,6 @@ class ConversationServiceVariableIntegrationFactory:
 @pytest.fixture
 def real_conversation_service_session_factory(flask_app_with_containers: Flask):
     del flask_app_with_containers
-    real_session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-
-    with (
-        patch("services.conversation_service.session_factory.create_session", side_effect=lambda: real_session_maker()),
-        patch("services.conversation_service.session_factory.get_session_maker", return_value=real_session_maker),
-    ):
-        yield
 
 
 class TestConversationServiceVariables:
@@ -193,6 +185,7 @@ class TestConversationServiceVariables:
             user=account,
             limit=10,
             last_id=None,
+            session=db_session_with_containers,
         )
 
         assert [item["id"] for item in result.data] == [first_variable.id, second_variable.id]
@@ -237,6 +230,7 @@ class TestConversationServiceVariables:
             user=account,
             limit=10,
             last_id=first_variable.id,
+            session=db_session_with_containers,
         )
 
         assert [item["id"] for item in result.data] == [second_variable.id, third_variable.id]
@@ -257,6 +251,7 @@ class TestConversationServiceVariables:
                 user=account,
                 limit=10,
                 last_id=str(uuid4()),
+                session=db_session_with_containers,
             )
 
     def test_get_conversational_variable_sets_has_more(
@@ -282,6 +277,7 @@ class TestConversationServiceVariables:
             user=account,
             limit=2,
             last_id=None,
+            session=db_session_with_containers,
         )
 
         assert len(result.data) == 2
@@ -309,6 +305,7 @@ class TestConversationServiceVariables:
                 variable_id=existing.id,
                 user=account,
                 new_value="support",
+                session=db_session_with_containers,
             )
 
         db_session_with_containers.expire_all()
@@ -335,6 +332,7 @@ class TestConversationServiceVariables:
                 variable_id=str(uuid4()),
                 user=account,
                 new_value="support",
+                session=db_session_with_containers,
             )
 
     def test_update_conversation_variable_type_mismatch_raises_error(
@@ -358,6 +356,7 @@ class TestConversationServiceVariables:
                 variable_id=existing.id,
                 user=account,
                 new_value="wrong-type",
+                session=db_session_with_containers,
             )
 
     def test_update_conversation_variable_integer_number_compatibility(
@@ -380,6 +379,7 @@ class TestConversationServiceVariables:
             variable_id=existing.id,
             user=account,
             new_value=42,
+            session=db_session_with_containers,
         )
 
         db_session_with_containers.expire_all()

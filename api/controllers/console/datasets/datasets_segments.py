@@ -8,6 +8,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy import String, case, cast, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -20,6 +21,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
@@ -42,7 +44,6 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.segment_fields import (
@@ -57,9 +58,11 @@ from fields.segment_fields import (
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response, escape_like_pattern
 from libs.login import login_required
+from libs.pagination import paginate_query
 from models import Account
-from models.dataset import ChildChunk, DocumentSegment
+from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile
+from services.dataset_ref_service import DatasetRefService, SegmentRef
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
@@ -162,6 +165,21 @@ register_response_schema_models(
 )
 
 
+def _get_segment_for_document(
+    session: Session, dataset: Dataset, document: Document, segment_id: str
+) -> tuple[SegmentRef, DocumentSegment]:
+    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    document_ref = DatasetRefService.create_document_ref(dataset_ref, document)
+    if document_ref is None:
+        raise NotFound("Document not found.")
+
+    segment_ref = DatasetRefService.create_segment_ref(document_ref, segment_id)
+    segment = SegmentService.get_segment_by_ref(segment_ref, session=session)
+    if not segment:
+        raise NotFound("Segment not found.")
+    return segment_ref, segment
+
+
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 class DatasetDocumentSegmentListApi(Resource):
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
@@ -173,19 +191,20 @@ class DatasetDocumentSegmentListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
-    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
 
         if not document:
             raise NotFound("Document not found.")
@@ -254,19 +273,19 @@ class DatasetDocumentSegmentListApi(Resource):
             elif args.enabled.lower() == "false":
                 query = query.where(DocumentSegment.enabled == False)
 
-        segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        segments = paginate_query(query, session=session, page=page, per_page=limit, max_per_page=100)
 
         segment_list = list(segments.items)
         segment_ids = [segment.id for segment in segment_list]
         summaries: dict[str, str | None] = {}
         if segment_ids:
             summary_records = SummaryIndexService.get_segments_summaries(
-                segment_ids=segment_ids, dataset_id=dataset_id_str
+                segment_ids=segment_ids, dataset_id=dataset_id_str, session=session
             )
             summaries = {chunk_id: summary.summary_content for chunk_id, summary in summary_records.items()}
 
         response = {
-            "data": segment_responses_with_summaries(segment_list, summaries),
+            "data": segment_responses_with_summaries(segment_list, summaries, session=session),
             "limit": limit,
             "total": segments.total,
             "total_pages": segments.pages,
@@ -283,17 +302,18 @@ class DatasetDocumentSegmentListApi(Resource):
     @console_ns.response(204, "Segments deleted successfully")
     @with_current_user
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
-    def delete(self, current_user: Account, dataset_id: UUID, document_id: UUID):
+    @with_session
+    def delete(self, session: Session, current_user: Account, dataset_id: UUID, document_id: UUID):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
         segment_ids = request.args.getlist("segment_id")
@@ -302,10 +322,10 @@ class DatasetDocumentSegmentListApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        SegmentService.delete_segments(segment_ids, document, dataset)
+        SegmentService.delete_segments(segment_ids, document, dataset, session)
         return "", 204
 
 
@@ -322,8 +342,10 @@ class DatasetDocumentSegmentApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
     def patch(
         self,
+        session: Session,
         current_tenant_id: str,
         current_user: Account,
         dataset_id: UUID,
@@ -331,11 +353,11 @@ class DatasetDocumentSegmentApi(Resource):
         action: Literal["enable", "disable"],
     ):
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
         # check user's model setting
@@ -345,7 +367,7 @@ class DatasetDocumentSegmentApi(Resource):
             raise Forbidden()
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
@@ -371,10 +393,10 @@ class DatasetDocumentSegmentApi(Resource):
         if cache_result is not None:
             raise InvalidActionError("Document is being indexed, please try again later")
         try:
-            SegmentService.update_segments_status(segment_ids, action, dataset, document)
+            SegmentService.update_segments_status(segment_ids, action, dataset, document, session)
         except Exception as e:
             raise InvalidActionError(str(e))
-        return dump_response(SimpleResultResponse, {"result": "success"}), 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
@@ -391,15 +413,23 @@ class DatasetDocumentSegmentAddApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
-    def post(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+    @with_session
+    def post(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
         if not current_user.is_dataset_editor:
@@ -421,17 +451,21 @@ class DatasetDocumentSegmentAddApi(Resource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
         payload = SegmentCreatePayload.model_validate(console_ns.payload or {})
         payload_dict = payload.model_dump(exclude_none=True)
         SegmentService.segment_create_args_validate(payload_dict, document)
-        segment = type_cast(DocumentSegment, SegmentService.create_segment(payload_dict, document, dataset))
-        summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id_str)
+        segment = type_cast(DocumentSegment, SegmentService.create_segment(payload_dict, document, dataset, session))
+        summary = SummaryIndexService.get_segment_summary(
+            segment_id=segment.id, dataset_id=dataset_id_str, session=session
+        )
         response = {
-            "data": segment_response_with_summary(segment, summary.summary_content if summary else None),
+            "data": segment_response_with_summary(
+                segment, summary.summary_content if summary else None, session=session
+            ),
             "doc_form": document.doc_form,
         }
         return dump_response(SegmentDetailResponse, response), 200
@@ -450,21 +484,35 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
     def patch(
-        self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID, segment_id: UUID
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
     ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
+        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
             try:
@@ -481,22 +529,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-            # check segment
         segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
-        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
         # validate args
         payload = SegmentUpdatePayload.model_validate(console_ns.payload or {})
         payload_dict = payload.model_dump(exclude_none=True)
@@ -504,11 +538,19 @@ class DatasetDocumentSegmentUpdateApi(Resource):
 
         # Update segment (summary update with change detection is handled in SegmentService.update_segment)
         segment = SegmentService.update_segment(
-            SegmentUpdateArgs.model_validate(payload.model_dump(exclude_none=True)), segment, document, dataset
+            SegmentUpdateArgs.model_validate(payload.model_dump(exclude_none=True)),
+            segment,
+            document,
+            dataset,
+            session,
         )
-        summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id_str)
+        summary = SummaryIndexService.get_segment_summary(
+            segment_id=segment.id, dataset_id=dataset_id_str, session=session
+        )
         response = {
-            "data": segment_response_with_summary(segment, summary.summary_content if summary else None),
+            "data": segment_response_with_summary(
+                segment, summary.summary_content if summary else None, session=session
+            ),
             "doc_form": document.doc_form,
         }
         return dump_response(SegmentDetailResponse, response), 200
@@ -522,38 +564,38 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
     def delete(
-        self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID, segment_id: UUID
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
     ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
-        # check segment
-        segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        SegmentService.delete_segment(segment, document, dataset)
+        segment_id_str = str(segment_id)
+        _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
+        SegmentService.delete_segment(segment, document, dataset, session)
         return "", 204
 
 
@@ -573,22 +615,30 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
-    def post(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+    @with_session
+    def post(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
 
         payload = BatchImportPayload.model_validate(console_ns.payload or {})
         upload_file_id = payload.upload_file_id
 
-        upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == upload_file_id).limit(1))
+        upload_file = session.scalar(select(UploadFile).where(UploadFile.id == upload_file_id).limit(1))
         if not upload_file:
             raise NotFound("UploadFile not found.")
 
@@ -646,30 +696,32 @@ class ChildChunkAddApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
     def post(
-        self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID, segment_id: UUID
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
     ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
-        # check segment
-        segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
         if not current_user.is_dataset_editor:
             raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
         # check embedding model setting
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
@@ -686,14 +738,12 @@ class ChildChunkAddApi(Resource):
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        segment_id_str = str(segment_id)
+        _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
         # validate args
         try:
             payload = ChildChunkCreatePayload.model_validate(console_ns.payload or {})
-            child_chunk = SegmentService.create_child_chunk(payload.content, segment, document, dataset)
+            child_chunk = SegmentService.create_child_chunk(payload.content, segment, document, dataset, session)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200
@@ -706,28 +756,22 @@ class ChildChunkAddApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
-    def get(self, current_tenant_id: str, dataset_id: UUID, document_id: UUID, segment_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
-        # check segment
         segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
+        _get_segment_for_document(session, dataset, document, segment_id_str)
         args = query_params_from_request(ChildChunkListQuery, use_defaults_for_malformed_ints=True)
 
         page = args.page
@@ -735,7 +779,13 @@ class ChildChunkAddApi(Resource):
         keyword = args.keyword
 
         child_chunks = SegmentService.get_child_chunks(
-            segment_id_str, document_id_str, dataset_id_str, page, limit, keyword
+            segment_id_str,
+            document_id_str,
+            dataset_id_str,
+            page,
+            limit,
+            keyword,
+            session=session,
         )
         response = {
             "data": child_chunks.items,
@@ -761,41 +811,41 @@ class ChildChunkAddApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
     def patch(
-        self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID, segment_id: UUID
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
     ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
-            # check segment
-        segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
+        segment_id_str = str(segment_id)
+        _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
         # validate args
         payload = ChildChunkBatchUpdatePayload.model_validate(console_ns.payload or {})
         try:
-            child_chunks = SegmentService.update_child_chunks(payload.chunks, segment, document, dataset)
+            child_chunks = SegmentService.update_child_chunks(payload.chunks, segment, document, dataset, session)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return dump_response(ChildChunkBatchUpdateResponse, {"data": child_chunks}), 200
@@ -814,8 +864,10 @@ class ChildChunkUpdateApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
     def delete(
         self,
+        session: Session,
         current_tenant_id: str,
         current_user: Account,
         dataset_id: UUID,
@@ -825,48 +877,31 @@ class ChildChunkUpdateApi(Resource):
     ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
-        # check segment
-        segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
-        # check child chunk
-        child_chunk_id_str = str(child_chunk_id)
-        child_chunk = db.session.scalar(
-            select(ChildChunk)
-            .where(
-                ChildChunk.id == child_chunk_id_str,
-                ChildChunk.tenant_id == current_tenant_id,
-                ChildChunk.segment_id == segment.id,
-                ChildChunk.document_id == document_id_str,
-            )
-            .limit(1)
-        )
-        if not child_chunk:
-            raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
+        segment_id_str = str(segment_id)
+        segment_ref, _ = _get_segment_for_document(session, dataset, document, segment_id_str)
+        child_chunk_id_str = str(child_chunk_id)
+        child_chunk = SegmentService.get_child_chunk_by_segment_ref(child_chunk_id_str, segment_ref, session=session)
+        if not child_chunk:
+            raise NotFound("Child chunk not found.")
         try:
-            SegmentService.delete_child_chunk(child_chunk, dataset)
+            SegmentService.delete_child_chunk(child_chunk, dataset, session)
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
         return "", 204
@@ -882,8 +917,10 @@ class ChildChunkUpdateApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
     def patch(
         self,
+        session: Session,
         current_tenant_id: str,
         current_user: Account,
         dataset_id: UUID,
@@ -893,50 +930,35 @@ class ChildChunkUpdateApi(Resource):
     ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
-            # check segment
-        segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
-        # check child chunk
-        child_chunk_id_str = str(child_chunk_id)
-        child_chunk = db.session.scalar(
-            select(ChildChunk)
-            .where(
-                ChildChunk.id == child_chunk_id_str,
-                ChildChunk.tenant_id == current_tenant_id,
-                ChildChunk.segment_id == segment.id,
-                ChildChunk.document_id == document_id_str,
-            )
-            .limit(1)
-        )
-        if not child_chunk:
-            raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
+        segment_id_str = str(segment_id)
+        segment_ref, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
+        child_chunk_id_str = str(child_chunk_id)
+        child_chunk = SegmentService.get_child_chunk_by_segment_ref(child_chunk_id_str, segment_ref, session=session)
+        if not child_chunk:
+            raise NotFound("Child chunk not found.")
         # validate args
         try:
             payload = ChildChunkUpdatePayload.model_validate(console_ns.payload or {})
-            child_chunk = SegmentService.update_child_chunk(payload.content, child_chunk, segment, document, dataset)
+            child_chunk = SegmentService.update_child_chunk(
+                payload.content, child_chunk, segment, document, dataset, session
+            )
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200

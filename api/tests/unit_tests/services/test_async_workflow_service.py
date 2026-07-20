@@ -1,4 +1,5 @@
 import json
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -7,7 +8,7 @@ import pytest
 import services.async_workflow_service as async_workflow_service_module
 from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from services.async_workflow_service import AsyncWorkflowService
-from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
+from services.errors.app import QuotaExceededError, WorkflowNotFoundError
 from services.workflow.entities import AsyncTriggerResponse, TriggerData
 from services.workflow.queue_dispatcher import QueuePriority
 
@@ -234,8 +235,10 @@ class TestAsyncWorkflowService:
                     trigger_data=trigger_data,
                 )
 
-    def test_should_mark_log_rate_limited_and_raise_when_quota_exceeded(self, async_workflow_trigger_mocks):
-        """Test quota-exceeded path updates trigger log and raises WorkflowQuotaLimitError."""
+    def test_should_mark_log_rate_limited_and_reraise_when_quota_exceeded(
+        self, async_workflow_trigger_mocks, caplog: pytest.LogCaptureFixture
+    ):
+        """Test quota-exceeded path updates trigger log and preserves the quota exception."""
         # Arrange
         session = MagicMock()
         session.commit = MagicMock()
@@ -254,22 +257,27 @@ class TestAsyncWorkflowService:
             tenant_id="tenant-123",
             required=1,
         )
+        caplog.set_level(logging.INFO, logger=async_workflow_service_module.__name__)
 
         # Act / Assert
-        with pytest.raises(
-            WorkflowQuotaLimitError,
-            match="Workflow execution quota limit reached for tenant tenant-123",
-        ):
+        with pytest.raises(QuotaExceededError) as exc_info:
             AsyncWorkflowService.trigger_workflow_async(
                 session=session,
                 user=SimpleNamespace(id="user-123"),
                 trigger_data=trigger_data,
             )
 
+        assert exc_info.value.feature == "workflow"
+        assert exc_info.value.tenant_id == "tenant-123"
+        assert exc_info.value.required == 1
         assert session.commit.call_count == 3
         updated_log = mocks["repo"].update.call_args[0][0]
         assert updated_log.status == WorkflowTriggerStatus.RATE_LIMITED
         assert "Quota limit reached" in updated_log.error
+        assert (
+            "Workflow quota exceeded for tenant tenant-123, app app-123, workflow workflow-123, "
+            "trigger log trigger-log-123"
+        ) in caplog.messages
         mocks["professional_task"].delay.assert_not_called()
         mocks["team_task"].delay.assert_not_called()
         mocks["sandbox_task"].delay.assert_not_called()
@@ -331,7 +339,7 @@ class TestAsyncWorkflowService:
         assert trigger_log.triggered_at is not None
         repo.update.assert_called_once_with(trigger_log)
         session.commit.assert_called_once()
-        called_trigger_data = mock_trigger_workflow_async.call_args[0][2]
+        called_trigger_data = mock_trigger_workflow_async.call_args.args[1]
         assert isinstance(called_trigger_data, TriggerData)
         assert called_trigger_data.app_id == "app-123"
 
@@ -465,11 +473,16 @@ class TestAsyncWorkflowServiceGetWorkflow:
         workflow_service.get_published_workflow_by_id.return_value = workflow
 
         # Act
-        result = AsyncWorkflowService._get_workflow(workflow_service, app_model, workflow_id="workflow-123")
+        session = MagicMock()
+        result = AsyncWorkflowService._get_workflow(
+            workflow_service, app_model, workflow_id="workflow-123", session=session
+        )
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow_by_id.assert_called_once_with(app_model, "workflow-123", session=None)
+        workflow_service.get_published_workflow_by_id.assert_called_once_with(
+            app_model, "workflow-123", session=session
+        )
         workflow_service.get_published_workflow.assert_not_called()
 
     def test_should_raise_when_specific_workflow_id_not_found(self):
@@ -481,7 +494,9 @@ class TestAsyncWorkflowServiceGetWorkflow:
 
         # Act / Assert
         with pytest.raises(WorkflowNotFoundError, match="Published workflow not found: workflow-404"):
-            AsyncWorkflowService._get_workflow(workflow_service, app_model, workflow_id="workflow-404")
+            AsyncWorkflowService._get_workflow(
+                workflow_service, app_model, workflow_id="workflow-404", session=MagicMock()
+            )
 
     def test_should_return_default_published_workflow_when_workflow_id_not_provided(self):
         """Test _get_workflow returns default published workflow when no id is provided."""
@@ -493,11 +508,12 @@ class TestAsyncWorkflowServiceGetWorkflow:
         workflow_service.get_published_workflow.return_value = workflow
 
         # Act
-        result = AsyncWorkflowService._get_workflow(workflow_service, app_model)
+        session = MagicMock()
+        result = AsyncWorkflowService._get_workflow(workflow_service, app_model, session=session)
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow.assert_called_once_with(app_model, session=None)
+        workflow_service.get_published_workflow.assert_called_once_with(app_model, session=session)
         workflow_service.get_published_workflow_by_id.assert_not_called()
 
     def test_should_raise_when_default_published_workflow_not_found(self):
@@ -510,4 +526,4 @@ class TestAsyncWorkflowServiceGetWorkflow:
 
         # Act / Assert
         with pytest.raises(WorkflowNotFoundError, match="No published workflow found for app: app-123"):
-            AsyncWorkflowService._get_workflow(workflow_service, app_model)
+            AsyncWorkflowService._get_workflow(workflow_service, app_model, session=MagicMock())

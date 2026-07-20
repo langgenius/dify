@@ -2,7 +2,7 @@ import enum
 import uuid
 
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest
 
 from extensions.ext_database import db
@@ -83,7 +83,7 @@ class OAuthServerService:
         return token
 
     @staticmethod
-    def validate_oauth_access_token(client_id: str, token: str) -> Account | None:
+    def validate_oauth_access_token(client_id: str, token: str, session: Session) -> Account | None:
         redis_key = OAUTH_ACCESS_TOKEN_REDIS_KEY.format(client_id=client_id, token=token)
         user_account_id = redis_client.get(redis_key)
         if not user_account_id:
@@ -91,4 +91,4 @@ class OAuthServerService:
 
         user_id_str = user_account_id.decode("utf-8")
 
-        return AccountService.load_user(user_id_str, db.session)
+        return AccountService.load_user(user_id_str, session)

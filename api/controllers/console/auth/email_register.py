@@ -23,9 +23,9 @@ from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import AccountRegisterError
+from services.errors.account import AccountRegisterError, SeatsLimitExceededError
 
-from ..error import AccountInFreezeError, EmailSendIpLimitError
+from ..error import AccountInFreezeError, EmailSendIpLimitError, SeatsLimitExceeded
 from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
 
 
@@ -101,7 +101,7 @@ class EmailRegisterSendEmailApi(Resource):
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
             raise AccountInFreezeError()
 
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, args.email)
+        account = AccountService.get_account_by_email_with_case_fallback(args.email, session=db.session())
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
         return {"result": "success", "data": token}
 
@@ -176,7 +176,7 @@ class EmailRegisterResetApi(Resource):
         email = register_data.get("email", "")
         normalized_email = email.lower()
 
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
 
         if account:
             raise EmailAlreadyInUseError()
@@ -187,7 +187,7 @@ class EmailRegisterResetApi(Resource):
             timezone=args.timezone,
             language=args.language,
         )
-        token_pair = AccountService.login(account=account, session=db.session, ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account=account, session=db.session(), ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
@@ -206,7 +206,9 @@ class EmailRegisterResetApi(Resource):
                 password=password,
                 interface_language=get_valid_language(language),
                 timezone=timezone,
-                session=db.session,
+                session=db.session(),
             )
+        except SeatsLimitExceededError:
+            raise SeatsLimitExceeded()
         except AccountRegisterError:
             raise AccountInFreezeError()

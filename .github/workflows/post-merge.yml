@@ -1,0 +1,78 @@
+name: Post-Merge Checks
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: post-merge-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  check-changes:
+    name: Check Changed Files
+    runs-on: depot-ubuntu-24.04
+    outputs:
+      external-e2e-changed: ${{ steps.changes.outputs.external_e2e }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+        id: changes
+        with:
+          filters: |
+            external_e2e:
+              - 'e2e/features/agent-v2/**'
+              - 'e2e/features/step-definitions/agent-v2/**'
+              - 'e2e/features/support/**'
+              - 'e2e/fixtures/test-materials/**'
+              - 'e2e/scripts/**'
+              - 'e2e/support/**'
+              - 'e2e/cucumber.config.ts'
+              - 'e2e/package.json'
+              - 'e2e/test-env.ts'
+              - 'e2e/tsx-register.js'
+              - '.github/workflows/post-merge.yml'
+              - '.github/workflows/web-e2e.yml'
+              - '.github/actions/setup-web/**'
+              - 'dify-agent/**'
+              - 'dify-agent-runtime/**'
+              - 'api/clients/agent_backend/**'
+              - 'api/core/app/apps/agent_app/**'
+              - 'api/core/workflow/nodes/agent_v2/**'
+              - 'api/controllers/console/agent/**'
+              - 'api/services/agent/**'
+              - 'api/core/plugin/**'
+              - 'api/services/plugin/**'
+              - 'api/core/tools/**'
+              - 'api/services/tools/**'
+              - 'packages/contracts/generated/api/console/agent/**'
+              - 'packages/contracts/generated/api/console/orpc.gen.ts'
+              - 'web/features/agent-v2/**'
+              - 'web/app/(commonLayout)/agents/**'
+              - 'web/app/(commonLayout)/@detailSidebar/agents/**'
+              - 'web/app/(commonLayout)/roster/**'
+              - 'web/app/components/base/chat/chat/**'
+              - 'web/app/components/base/voice-input/**'
+              - 'web/app/components/workflow/nodes/agent-v2/**'
+              - 'web/i18n/en-US/agent-v-2.json'
+              - 'web/i18n/en-US/common.json'
+              - 'web/service/base.ts'
+              - 'web/service/client.ts'
+              - 'web/service/console-link.ts'
+              - 'web/service/console-openapi-url.ts'
+              - 'web/service/console-router-loader.ts'
+              - 'web/service/share.ts'
+              - 'web/package.json'
+              - 'pnpm-workspace.yaml'
+
+  external-e2e:
+    name: External Runtime E2E
+    needs: check-changes
+    if: needs.check-changes.outputs.external-e2e-changed == 'true'
+    uses: ./.github/workflows/web-e2e.yml
+    with:
+      run-external-runtime: true
+    secrets: inherit

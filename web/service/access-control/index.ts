@@ -1,7 +1,7 @@
 import type { AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { post } from '../base'
+import { consoleClient, consoleQuery } from '../client'
 import {
   useAppWhiteListSubjects as useAppWhiteListSubjectsBase,
   useGetUserCanAccessApp as useGetUserCanAccessAppBase,
@@ -32,7 +32,10 @@ export const useAppWhiteListSubjects = (appId: string | undefined, enabled: bool
   return useAppWhiteListSubjectsBase(appId, enabled)
 }
 
-export const useSearchForWhiteListCandidates = (query: SearchForWhiteListCandidatesQuery, enabled: boolean) => {
+export const useSearchForWhiteListCandidates = (
+  query: SearchForWhiteListCandidatesQuery,
+  enabled: boolean,
+) => {
   return useSearchForWhiteListCandidatesBase(query, enabled)
 }
 
@@ -46,9 +49,14 @@ export const useUpdateAccessMode = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-access-mode'],
     mutationFn: (params: UpdateAccessModeParams) => {
-      return post('/enterprise/webapp/app/access-mode', { body: params })
+      return consoleClient.enterprise.webAppAuth.updateWebAppWhitelistSubjects({
+        body: params,
+      })
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key({ type: 'query' }),
+      })
       queryClient.invalidateQueries({
         queryKey: [NAME_SPACE, 'app-whitelist-subjects'],
       })

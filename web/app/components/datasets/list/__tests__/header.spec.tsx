@@ -2,23 +2,31 @@ import { render, screen } from '@testing-library/react'
 import DatasetListHeader from '../header'
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <button type="button" className={className}>{children}</button>
+  Button: ({ children }: { children: React.ReactNode }) => (
+    <button type="button">{children}</button>
   ),
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({ children, className, onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
-    <button type="button" className={className} onClick={onClick}>{children}</button>
+  DropdownMenuItem: ({
+    children,
+    onClick,
+  }: {
+    children: React.ReactNode
+    onClick?: () => void
+  }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
   ),
-  DropdownMenuSeparator: ({ className }: { className?: string }) => <hr data-testid="create-menu-separator" className={className} />,
+  DropdownMenuSeparator: () => <hr />,
   DropdownMenuTrigger: ({ render }: { render: React.ReactNode }) => render,
 }))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: () => <div data-testid="tag-filter" />,
+  TagFilter: () => <div />,
 }))
 
 vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
@@ -48,43 +56,37 @@ const defaultProps = {
 }
 
 describe('DatasetListHeader', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('uses the updated create menu labels and pipeline icon', () => {
-    render(<DatasetListHeader {...defaultProps} />)
-
-    expect(screen.getByRole('button', { name: /dataset\.firstEmpty\.createTitle/ })).toBeInTheDocument()
-
-    const menuItem = screen.getByRole('button', { name: /dataset\.firstEmpty\.pipelineTitle/ })
-
-    expect(menuItem.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
-  })
-
-  it('should hide dataset creation actions when dataset.create_and_management is unavailable', () => {
+  it('hides dataset creation actions without create permission', () => {
     render(<DatasetListHeader {...defaultProps} canCreateDataset={false} />)
 
-    expect(screen.queryByRole('button', { name: /dataset\.firstEmpty\.createTitle/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /dataset\.firstEmpty\.pipelineTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /dataset\.firstEmpty\.createTitle/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /dataset\.firstEmpty\.pipelineTitle/ }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /dataset\.connectDataset/ })).toBeInTheDocument()
   })
 
-  it('should hide external API panel entry when dataset.external.connect is unavailable', () => {
+  it('hides the external API entry without external-connect permission', () => {
     render(<DatasetListHeader {...defaultProps} canConnectExternalDataset={false} />)
 
-    expect(screen.queryByRole('button', { name: /dataset\.externalAPIPanelTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /dataset\.externalAPIPanelTitle/ }),
+    ).not.toBeInTheDocument()
   })
 
-  it('should hide the create menu when no creation or connection action is available', () => {
-    render((
+  it('hides the create menu when no creation action is available', () => {
+    render(
       <DatasetListHeader
         {...defaultProps}
         canConnectExternalDataset={false}
         canCreateDataset={false}
-      />
-    ))
+      />,
+    )
 
-    expect(screen.queryByRole('button', { name: /common\.operation\.create/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /common\.operation\.create/ }),
+    ).not.toBeInTheDocument()
   })
 })

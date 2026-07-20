@@ -1,11 +1,7 @@
 'use client'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  ComboboxItem,
-  ComboboxItemText,
-  ComboboxList,
-} from '@langgenius/dify-ui/combobox'
+import { ComboboxItem, ComboboxItemText, ComboboxList } from '@langgenius/dify-ui/combobox'
 import FileIcon from '../document-file-icon'
 
 type Props = Readonly<{
@@ -14,19 +10,15 @@ type Props = Readonly<{
 
 function getDocumentExtension(document: SimpleDocumentDetail) {
   const detailExtension = document.data_source_detail_dict?.upload_file?.extension
-  if (detailExtension)
-    return detailExtension
+  if (detailExtension) return detailExtension
 
   const dataSourceInfo = document.data_source_info
-  if (dataSourceInfo && 'upload_file' in dataSourceInfo)
-    return dataSourceInfo.upload_file.extension
+  if (dataSourceInfo && 'upload_file' in dataSourceInfo) return dataSourceInfo.upload_file.extension
 
   return ''
 }
 
-export default function DocumentList({
-  className,
-}: Props) {
+export default function DocumentList({ className }: Props) {
   return (
     <ComboboxList className={cn('max-h-[calc(100vh-120px)] p-0', className)}>
       {(item: SimpleDocumentDetail) => {

@@ -4,6 +4,7 @@ import time
 import click
 from celery import shared_task
 
+from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
@@ -31,9 +32,10 @@ def update_annotation_to_index_task(
     start_at = time.perf_counter()
 
     try:
-        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            collection_binding_id, "annotation"
-        )
+        with session_factory.create_session() as session:
+            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                collection_binding_id, session, "annotation"
+            )
 
         dataset = Dataset(
             id=app_id,
@@ -47,7 +49,8 @@ def update_annotation_to_index_task(
         document = Document(
             page_content=question, metadata={"annotation_id": annotation_id, "app_id": app_id, "doc_id": annotation_id}
         )
-        vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+        with session_factory.create_session() as session:
+            vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
         vector.delete_by_metadata_field("annotation_id", annotation_id)
         vector.add_texts([document])
         end_at = time.perf_counter()

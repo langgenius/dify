@@ -62,15 +62,8 @@ const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
-
-const opaqueJsonContent = (): Record<string, OpenApiMediaType> => ({
-  'application/json': {
-    schema: {
-      additionalProperties: true,
-      type: 'object',
-    },
-  },
-})
+const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
+const fastOpenApiConsolePathPrefix = '/console/api'
 
 const apiSpecs: ApiSpec[] = [
   { filename: 'console-openapi.json', name: 'console' },
@@ -92,7 +85,7 @@ const toWords = (value: string) => {
 }
 
 const toPascalCase = (words: string[]) => {
-  return words.map(word => `${word.charAt(0).toUpperCase()}${word.slice(1)}`).join('')
+  return words.map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`).join('')
 }
 
 const toCamelCase = (words: string[]) => {
@@ -105,28 +98,29 @@ const toKebabCase = (value: string) => {
 }
 
 const segmentWords = (segment: string) => {
-  if (segment.startsWith('{') && segment.endsWith('}'))
-    return ['by', ...toWords(segment)]
+  if (segment.startsWith('{') && segment.endsWith('}')) return ['by', ...toWords(segment)]
 
   return toWords(segment)
 }
 
+// Split on `:` too so custom methods nest as their own node (apps.byAppId.run), not apps.appIdRun.
+const routeNamingSegments = (routePath: string) => routePath.split(/[/:]/).filter(Boolean)
+
 const routeWords = (routePath: string) => {
-  return routePath
-    .split('/')
-    .filter(Boolean)
-    .flatMap(segmentWords)
+  return routeNamingSegments(routePath).flatMap(segmentWords)
 }
 
 const operationId = (method: string, routePath: string) => {
-  return toCamelCase([method, ...(routeWords(routePath).length > 0 ? routeWords(routePath) : ['root'])])
+  return toCamelCase([
+    method,
+    ...(routeWords(routePath).length > 0 ? routeWords(routePath) : ['root']),
+  ])
 }
 
 const contractPathSegments = (operation: ApiContractOperation) => {
-  const segments = operation.path
-    .split('/')
-    .filter(Boolean)
-    .map(segment => toCamelCase(segmentWords(segment)))
+  const segments = routeNamingSegments(operation.path).map((segment) =>
+    toCamelCase(segmentWords(segment)),
+  )
 
   return [...(segments.length > 0 ? segments : ['root']), operation.method.toLowerCase()]
 }
@@ -154,27 +148,24 @@ const clone = <T>(value: T): T => {
 const componentSchemaRefPrefix = '#/components/schemas/'
 
 const schemaNameFromRef = (ref: string) => {
-  if (ref.startsWith(componentSchemaRefPrefix))
-    return ref.slice(componentSchemaRefPrefix.length)
+  if (ref.startsWith(componentSchemaRefPrefix)) return ref.slice(componentSchemaRefPrefix.length)
   return undefined
 }
 
 const getDocumentSchemas = (document: SwaggerDocument) => {
-  const components = document.components ??= {}
-  return components.schemas ??= {}
+  const components = (document.components ??= {})
+  return (components.schemas ??= {})
 }
 
 const collectSchemaRefs = (value: unknown, refs: Set<string>, visited = new WeakSet<object>()) => {
-  if (!value || typeof value !== 'object')
-    return
+  if (!value || typeof value !== 'object') return
 
-  if (visited.has(value))
-    return
+  if (visited.has(value)) return
 
   visited.add(value)
 
   if (Array.isArray(value)) {
-    value.forEach(item => collectSchemaRefs(item, refs, visited))
+    value.forEach((item) => collectSchemaRefs(item, refs, visited))
     return
   }
 
@@ -182,18 +173,16 @@ const collectSchemaRefs = (value: unknown, refs: Set<string>, visited = new Weak
   const ref = objectValue.$ref
   if (typeof ref === 'string') {
     const refName = schemaNameFromRef(ref)
-    if (refName)
-      refs.add(refName)
+    if (refName) refs.add(refName)
   }
 
-  Object.values(objectValue).forEach(item => collectSchemaRefs(item, refs, visited))
+  Object.values(objectValue).forEach((item) => collectSchemaRefs(item, refs, visited))
 }
 
 const addOperationIds = (document: SwaggerDocument) => {
   for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
-      if (!operationMethods.has(method) || !isObject(operation))
-        continue
+      if (!operationMethods.has(method) || !isObject(operation)) continue
 
       const swaggerOperation = operation as SwaggerOperation
       swaggerOperation.operationId = operationId(method, routePath)
@@ -201,56 +190,56 @@ const addOperationIds = (document: SwaggerDocument) => {
   }
 }
 
-const isOpaqueContractResponse = (response: OpenApiResponse) => {
-  const content = response.content
-  if (!isObject(content))
-    return false
-
-  return Object.entries(content).some(([mediaType, media]) => {
-    if (!isObject(media))
-      return false
-
-    return (mediaType === 'application/json' || mediaType === 'text/event-stream') && !('schema' in media)
-  })
-}
-
-const hasOpaqueContractSuccessResponse = (operation: SwaggerOperation) => {
-  return Object.entries(operation.responses ?? {}).some(([status, response]) => {
-    return /^2\d\d$/.test(status) && isObject(response) && isOpaqueContractResponse(response)
-  })
-}
-
 const normalizeOpaqueContractResponses = (document: SwaggerDocument) => {
-  // Some backend endpoints has no schema (e.g. external) and will trap heyapi here
-  // So we forge an opaque schema here
+  // This runs before contract filtering. Flask-RESTX often emits plain success responses
+  // without a body schema; give those routes an opaque output so they stay in oRPC.
   for (const pathItem of Object.values(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
-      if (!operationMethods.has(method) || !isObject(operation))
-        continue
+      if (!operationMethods.has(method) || !isObject(operation)) continue
 
       const swaggerOperation = operation as SwaggerOperation
-      if (!hasOpaqueContractSuccessResponse(swaggerOperation))
-        continue
+      for (const [status, response] of Object.entries(swaggerOperation.responses ?? {})) {
+        // Ignore non-2xx or 204 or those w/o a response field
+        if (!/^2\d\d$/.test(status) || status === '204' || !isObject(response)) continue
 
-      Object.values(swaggerOperation.responses ?? {})
-        .filter(response => isObject(response) && isOpaqueContractResponse(response))
-        .forEach((response) => {
-          response.content = opaqueJsonContent()
-        })
+        const content = response.content
+        if (!isObject(content) || Object.keys(content).length === 0) {
+          // No response specification, fill a dummy opaque resp
+          response.content = {
+            'application/json': {
+              schema: {
+                additionalProperties: true,
+                type: 'object',
+              },
+            },
+          }
+          continue
+        }
+
+        for (const [mediaType, media] of Object.entries(content)) {
+          if (mediaType !== 'application/json' && mediaType !== 'text/event-stream') continue
+          if (!isObject(media) || isObject(media.schema)) continue
+
+          // JSON/SSE media without a schema traps heyapi. Patch only that media entry so
+          // sibling binary media keeps heyapi's Blob | File inference.
+          // Still a dummy opaque resp
+          media.schema = {
+            additionalProperties: true,
+            type: 'object',
+          }
+        }
+      }
     }
   }
 }
 
 const hasSuccessResponse = (operation: SwaggerOperation) => {
   return Object.entries(operation.responses ?? {}).some(([status, response]) => {
-    if (!/^2\d\d$/.test(status))
-      return false
-    if (!isObject(response))
-      return false
+    if (!/^2\d\d$/.test(status)) return false
+    if (!isObject(response)) return false
     const content = (response as JsonObject).content
     // 204 No Content is a valid success response without a body
-    if (!isObject(content) || Object.keys(content).length === 0)
-      return status === '204'
+    if (!isObject(content) || Object.keys(content).length === 0) return status === '204'
     return true
   })
 }
@@ -258,18 +247,16 @@ const hasSuccessResponse = (operation: SwaggerOperation) => {
 const filterContractOperations = (document: SwaggerDocument) => {
   for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
-      if (!operationMethods.has(method) || !isObject(operation))
-        continue
+      if (!operationMethods.has(method) || !isObject(operation)) continue
 
-      if (!hasSuccessResponse(operation as SwaggerOperation))
-        delete pathItem[method]
+      if (!hasSuccessResponse(operation as SwaggerOperation)) delete pathItem[method]
     }
 
-    const hasOperations = Object.entries(pathItem)
-      .some(([method, operation]) => operationMethods.has(method) && isObject(operation))
+    const hasOperations = Object.entries(pathItem).some(
+      ([method, operation]) => operationMethods.has(method) && isObject(operation),
+    )
 
-    if (!hasOperations)
-      delete document.paths?.[routePath]
+    if (!hasOperations) delete document.paths?.[routePath]
   }
 }
 
@@ -277,6 +264,33 @@ const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
+
+  return document
+}
+
+const mergeFastOpenApiConsoleSwagger = (document: SwaggerDocument) => {
+  const fastOpenApiDocument = readApiSwagger(fastOpenApiConsoleSpecFilename)
+  const targetPaths = (document.paths ??= {})
+
+  for (const [routePath, pathItem] of Object.entries(fastOpenApiDocument.paths ?? {})) {
+    const contractPath = routePath.startsWith(fastOpenApiConsolePathPrefix)
+      ? routePath.slice(fastOpenApiConsolePathPrefix.length) || '/'
+      : routePath
+
+    if (targetPaths[contractPath])
+      throw new Error(`Duplicate console API path after FastOpenAPI merge: ${contractPath}`)
+
+    targetPaths[contractPath] = pathItem
+  }
+
+  const targetSchemas = getDocumentSchemas(document)
+  const sourceSchemas = getDocumentSchemas(fastOpenApiDocument)
+  for (const [schemaName, schema] of Object.entries(sourceSchemas)) {
+    if (targetSchemas[schemaName])
+      throw new Error(`Duplicate console API schema after FastOpenAPI merge: ${schemaName}`)
+
+    targetSchemas[schemaName] = schema
+  }
 
   return document
 }
@@ -295,25 +309,21 @@ const selectReferencedSchemas = (
 
   while (pendingRefs.size > 0) {
     const refName = pendingRefs.values().next().value
-    if (!refName)
-      break
+    if (!refName) break
 
     pendingRefs.delete(refName)
 
-    if (selectedSchemas[refName])
-      continue
+    if (selectedSchemas[refName]) continue
 
     const schema = schemas[refName]
-    if (!schema)
-      throw new Error(`Missing referenced schema: ${refName}`)
+    if (!schema) throw new Error(`Missing referenced schema: ${refName}`)
 
     selectedSchemas[refName] = schema
 
     const nestedRefs = new Set<string>()
     collectSchemaRefs(selectedSchemas[refName], nestedRefs)
     for (const nestedRef of nestedRefs) {
-      if (!selectedSchemas[nestedRef])
-        pendingRefs.add(nestedRef)
+      if (!selectedSchemas[nestedRef]) pendingRefs.add(nestedRef)
     }
   }
 
@@ -346,16 +356,16 @@ const consoleContractEntryContent = (segments: string[]) => {
     }
   })
 
-  const imports = contracts
-    .map(contract => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+  const contractEntries = contracts
+    .map(
+      (contract) =>
+        `  ${contract.name}: () => import('./${contract.importPath}/orpc.gen').then(({ ${contract.name} }) => ({ ${contract.name} })),`,
+    )
     .join('\n')
-  const contractEntries = contracts.map(contract => `  ${contract.name},`).join('\n')
 
   return `// This file is auto-generated by @hey-api/openapi-ts
 
-${imports}
-
-export const contract = {
+export const contractLoaders = {
 ${contractEntries}
 }
 `
@@ -367,6 +377,42 @@ const writeConsoleContractEntry = (segments: string[]) => {
   fs.writeFileSync(entryPath, consoleContractEntryContent(segments))
 }
 
+const consoleRouterContractContent = (segments: string[]) => {
+  const contracts = segments.map((segment) => {
+    return {
+      importPath: toKebabCase(segment),
+      name: toCamelCase(segmentWords(segment)),
+    }
+  })
+
+  const imports = contracts
+    .map((contract) => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+    .join('\n')
+
+  const communityContractEntries = contracts.map((contract) => `  ${contract.name},`).join('\n')
+
+  return `// This file is auto-generated by packages/contracts/openapi-ts.api.config.ts
+
+${imports}
+import { contract as enterpriseContract } from '../../enterprise/orpc.gen'
+
+const communityContract = {
+${communityContractEntries}
+}
+
+export const consoleRouterContract = {
+  enterprise: enterpriseContract,
+  ...communityContract,
+}
+`
+}
+
+const writeConsoleRouterContract = (segments: string[]) => {
+  const routerPath = path.resolve(currentDir, 'generated/api/console/router.gen.ts')
+  fs.mkdirSync(path.dirname(routerPath), { recursive: true })
+  fs.writeFileSync(routerPath, consoleRouterContractContent(segments))
+}
+
 const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
   return {
     clean: false,
@@ -374,7 +420,10 @@ const createConsoleContractEntryJob = (document: SwaggerDocument, segments: stri
     outputPath: 'generated/api/console',
     plugins: [],
     source: {
-      callback: () => writeConsoleContractEntry(segments),
+      callback: () => {
+        writeConsoleContractEntry(segments)
+        writeConsoleRouterContract(segments)
+      },
       enabled: true,
       path: null,
       serialize: () => '',
@@ -393,19 +442,24 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
   }
 
   const segments = [...pathsBySegment.keys()].sort((left, right) => left.localeCompare(right))
-  const jobs = segments.map((segment): ApiJob => ({
-    document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
-    outputPath: `generated/api/console/${toKebabCase(segment)}`,
-  }))
+  const jobs = segments.map(
+    (segment): ApiJob => ({
+      document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
+      outputPath: `generated/api/console/${toKebabCase(segment)}`,
+    }),
+  )
 
   return [...jobs, createConsoleContractEntryJob(document, segments)]
 }
 
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
-  const document = normalizeApiSwagger(readApiSwagger(spec.filename))
+  const document = normalizeApiSwagger(
+    spec.name === 'console'
+      ? mergeFastOpenApiConsoleSwagger(readApiSwagger(spec.filename))
+      : readApiSwagger(spec.filename),
+  )
 
-  if (spec.name === 'console')
-    return splitConsoleDocument(document)
+  if (spec.name === 'console') return splitConsoleDocument(document)
 
   return [
     {
@@ -437,11 +491,14 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       name: '@hey-api/typescript',
     },
     {
-      'name': 'zod',
+      name: 'zod',
       '~resolvers': {
         string: (ctx) => {
           if (ctx.schema.format === 'binary')
-            return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
+            return $(ctx.symbols.z)
+              .attr('custom')
+              .call()
+              .generic($.type.or($.type('Blob'), $.type('File')))
 
           if (ctx.schema.pattern === pydanticDecimalStringPattern) {
             // the pydantic generated regex will emit error like

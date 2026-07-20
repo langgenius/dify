@@ -1,17 +1,62 @@
 import datetime
 import json
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+from sqlalchemy.exc import OperationalError
 
+from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.archive_paid_plan_workflow_run import (
+    ArchiveResult,
     ArchiveSummary,
     WorkflowRunArchiver,
 )
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
+
+
+class FakeArchiveStorage:
+    def __init__(self, objects: dict[str, bytes] | None = None):
+        self.objects = objects or {}
+
+    def object_exists(self, key: str) -> bool:
+        return key in self.objects
+
+    def get_object(self, key: str) -> bytes:
+        return self.objects[key]
+
+    def put_object(self, key: str, data: bytes) -> str:
+        self.objects[key] = data
+        return "checksum"
+
+    def list_objects(self, prefix: str) -> list[str]:
+        return sorted(key for key in self.objects if key.startswith(prefix))
+
+
+def _db_disconnect_error() -> OperationalError:
+    return OperationalError(
+        "select 1",
+        {},
+        RuntimeError("server closed the connection unexpectedly"),
+        connection_invalidated=True,
+    )
+
+
+def _run(run_id: str = "run-1"):
+    run = MagicMock()
+    run.id = run_id
+    run.tenant_id = "tenant-1"
+    run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+    return run
+
+
+def _session_context(session):
+    context = MagicMock()
+    context.__enter__.return_value = session
+    context.__exit__.return_value = False
+    return context
 
 
 class TestWorkflowRunArchiverInit:
@@ -121,6 +166,32 @@ class TestWorkflowRunArchiverInit:
         repo.get_runs_batch_by_time_range.assert_called_once()
         assert repo.get_runs_batch_by_time_range.call_args.kwargs["tenant_ids"] == ["tenant-b"]
 
+    def test_get_runs_batch_retries_retryable_db_disconnect(self):
+        repo = MagicMock()
+        repo.get_runs_batch_by_time_range.side_effect = [_db_disconnect_error(), []]
+        archiver = WorkflowRunArchiver(workflow_run_repo=repo)
+
+        with patch("services.retention.workflow_run.db_retry.time.sleep") as sleep:
+            runs = archiver._get_runs_batch(None)
+
+        assert runs == []
+        assert repo.get_runs_batch_by_time_range.call_count == 2
+        sleep.assert_called_once_with(1.0)
+
+    def test_get_runs_batch_does_not_retry_non_db_broken_pipe_error(self):
+        repo = MagicMock()
+        repo.get_runs_batch_by_time_range.side_effect = RuntimeError("broken pipe")
+        archiver = WorkflowRunArchiver(workflow_run_repo=repo)
+
+        with (
+            patch("services.retention.workflow_run.db_retry.time.sleep") as sleep,
+            pytest.raises(RuntimeError, match="broken pipe"),
+        ):
+            archiver._get_runs_batch(None)
+
+        repo.get_runs_batch_by_time_range.assert_called_once()
+        sleep.assert_not_called()
+
     def test_start_message_includes_shard(self):
         archiver = WorkflowRunArchiver(tenant_prefixes=["0"], run_shard_index=1, run_shard_total=4)
 
@@ -162,7 +233,9 @@ class TestBuildArchiveBundle:
 
 class TestGenerateManifest:
     def test_manifest_structure(self):
-        archiver = WorkflowRunArchiver(days=90)
+        start = datetime.datetime(2025, 1, 1, tzinfo=datetime.UTC)
+        end = datetime.datetime(2025, 4, 1, tzinfo=datetime.UTC)
+        archiver = WorkflowRunArchiver(start_from=start, end_before=end, run_shard_index=1, run_shard_total=4)
         from services.retention.workflow_run.archive_paid_plan_workflow_run import TableStats
 
         run = MagicMock()
@@ -197,6 +270,10 @@ class TestGenerateManifest:
         assert manifest["workflow_run_count"] == 1
         assert manifest["workflow_node_execution_count"] == 2
         assert manifest["run_ids"] == [run.id]
+        assert manifest["campaign_id"] == "2025-01-01T00:00:00Z_2025-04-01T00:00:00Z"
+        assert manifest["archive_window_start"] == "2025-01-01T00:00:00Z"
+        assert manifest["archive_window_end"] == "2025-04-01T00:00:00Z"
+        assert manifest["run_shard"] == "01-of-04"
         assert "tables" in manifest
         assert manifest["tables"]["workflow_runs"]["row_count"] == 1
         assert manifest["tables"]["workflow_runs"]["checksum"] == "abc123"
@@ -327,7 +404,88 @@ class TestDryRunArchive:
         assert summary.table_stats["workflow_app_logs"].size_bytes == 32
 
 
+class TestArchiveDbRetry:
+    def test_archive_bundle_groups_retries_with_fresh_session(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = _run()
+        session_maker = MagicMock(
+            side_effect=[
+                _session_context(MagicMock(name="session-1")),
+                _session_context(MagicMock(name="session-2")),
+            ]
+        )
+        success = ArchiveResult(
+            bundle_id=archiver._build_bundle_identity([run]).bundle_id,
+            tenant_id=run.tenant_id,
+            object_prefix=archiver._build_bundle_identity([run]).object_prefix,
+            run_count=1,
+            success=True,
+        )
+
+        with (
+            patch.object(archiver, "_archive_bundle", side_effect=[_db_disconnect_error(), success]) as archive_bundle,
+            patch("services.retention.workflow_run.db_retry.time.sleep") as sleep,
+        ):
+            results = archiver._archive_bundle_groups(session_maker, MagicMock(), [[run]])
+
+        assert results == [success]
+        assert archive_bundle.call_count == 2
+        assert session_maker.call_count == 2
+        sleep.assert_called_once_with(1.0)
+
+    def test_archive_bundle_groups_returns_failed_result_after_retry_exhaustion(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = _run()
+        session_maker = MagicMock(
+            side_effect=[
+                _session_context(MagicMock(name="session-1")),
+                _session_context(MagicMock(name="session-2")),
+                _session_context(MagicMock(name="session-3")),
+            ]
+        )
+
+        with (
+            patch.object(archiver, "_archive_bundle", side_effect=[_db_disconnect_error()] * 3) as archive_bundle,
+            patch("services.retention.workflow_run.db_retry.time.sleep") as sleep,
+        ):
+            results = archiver._archive_bundle_groups(session_maker, MagicMock(), [[run]])
+
+        assert len(results) == 1
+        assert results[0].success is False
+        assert "server closed the connection unexpectedly" in (results[0].error or "")
+        assert archive_bundle.call_count == archiver.DB_RETRY_ATTEMPTS
+        assert session_maker.call_count == archiver.DB_RETRY_ATTEMPTS
+        assert sleep.call_count == archiver.DB_RETRY_ATTEMPTS - 1
+
+    def test_archive_bundle_uses_safe_rollback_when_failure_rolls_back_badly(self):
+        archiver = WorkflowRunArchiver(days=90, dry_run=True)
+        session = MagicMock()
+        session.rollback.side_effect = RuntimeError("rollback failed")
+
+        with patch.object(archiver, "_extract_bundle_data", side_effect=RuntimeError("extract failed")):
+            result = archiver._archive_bundle(session, None, [_run()])
+
+        assert result.success is False
+        assert result.error == "extract failed"
+        session.rollback.assert_called_once()
+
+
 class TestArchiveRunIdempotency:
+    def _index_payload(self, archiver: WorkflowRunArchiver, run_ids: list[str], run) -> tuple[str, bytes]:
+        identity = archiver._build_bundle_identity([run])
+        index_key = archiver._get_index_object_key(identity)
+        payload = json.dumps(
+            {
+                "schema_version": ARCHIVE_BUNDLE_SCHEMA_VERSION,
+                "archive_format": ARCHIVE_BUNDLE_FORMAT,
+                "object_prefix": archiver._get_shard_object_prefix(identity),
+                "updated_at": "2025-03-15T00:00:00Z",
+                "manifest_keys": [],
+                "run_ids": run_ids,
+            }
+        ).encode()
+        return index_key, payload
+
     def test_locked_bundle_is_skipped(self):
         archiver = WorkflowRunArchiver(days=90)
         run = MagicMock()
@@ -360,3 +518,78 @@ class TestArchiveRunIdempotency:
         assert result.success is True
         assert result.skipped is True
         assert result.error == "bundle already archived"
+
+    def test_successful_bundle_persists_archive_index(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = MagicMock()
+        run.id = str(uuid.uuid4())
+        run.tenant_id = str(uuid.uuid4())
+        run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        session = MagicMock()
+        session.scalar.return_value = None
+        storage = MagicMock()
+        storage.object_exists.return_value = False
+        table_data = {
+            "workflow_runs": [{"id": run.id, "tenant_id": run.tenant_id}],
+            "workflow_node_executions": [{"id": str(uuid.uuid4()), "workflow_run_id": run.id}],
+        }
+
+        with (
+            patch.object(archiver, "_lock_runs_for_archive", return_value=[run]),
+            patch.object(archiver, "_extract_bundle_data", return_value=table_data),
+        ):
+            result = archiver._archive_bundle(session, storage, [run])
+
+        archived_bundle = session.add.call_args.args[0]
+        assert result.success is True
+        assert isinstance(archived_bundle, WorkflowRunArchiveBundle)
+        assert archived_bundle.tenant_id == run.tenant_id
+        assert archived_bundle.year == 2025
+        assert archived_bundle.month == 3
+        assert archived_bundle.workflow_run_count == 1
+        assert archived_bundle.row_count == 2
+        session.commit.assert_called_once()
+
+    def test_index_skips_all_already_archived_runs(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = MagicMock()
+        run.id = "run-1"
+        run.tenant_id = "tenant-1"
+        run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        index_key, index_payload = self._index_payload(archiver, ["run-1"], run)
+        storage = FakeArchiveStorage({index_key: index_payload})
+
+        result = archiver._archive_bundle(MagicMock(), storage, [run])
+
+        assert result.success is True
+        assert result.skipped is True
+        assert result.run_count == 0
+        assert result.skipped_run_count == 1
+        assert result.error == "all runs already archived in shard index"
+
+    def test_index_filters_duplicate_runs_before_archive(self):
+        archiver = WorkflowRunArchiver(days=90)
+        archived_run = MagicMock()
+        archived_run.id = "run-1"
+        archived_run.tenant_id = "tenant-1"
+        archived_run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        new_run = MagicMock()
+        new_run.id = "run-2"
+        new_run.tenant_id = "tenant-1"
+        new_run.created_at = datetime.datetime(2025, 3, 15, 11, 0, 0)
+        index_key, index_payload = self._index_payload(archiver, ["run-1"], archived_run)
+        storage = FakeArchiveStorage({index_key: index_payload})
+
+        with (
+            patch.object(archiver, "_lock_runs_for_archive", return_value=[new_run]) as lock_runs,
+            patch.object(archiver, "_extract_bundle_data", return_value={"workflow_runs": [{"id": "run-2"}]}),
+        ):
+            result = archiver._archive_bundle(MagicMock(), storage, [archived_run, new_run])
+
+        assert result.success is True
+        assert result.skipped is False
+        assert result.run_count == 1
+        assert result.skipped_run_count == 1
+        lock_runs.assert_called_once_with(ANY, ["run-2"])
+        manifest_keys = [key for key in storage.objects if key.endswith("/manifest.json")]
+        assert len(manifest_keys) == 1

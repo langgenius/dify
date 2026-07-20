@@ -1,12 +1,14 @@
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 from services.rag_pipeline.pipeline_template.remote.remote_retrieval import RemotePipelineTemplateRetrieval
 
 
-def test_get_pipeline_templates_fallbacks_to_database_on_error(mocker: MockerFixture) -> None:
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_get_pipeline_templates_fallbacks_to_database_on_error(mocker: MockerFixture, sqlite_session: Session) -> None:
     fetch_mock = mocker.patch.object(
         RemotePipelineTemplateRetrieval,
         "fetch_pipeline_templates_from_dify_official",
@@ -19,15 +21,19 @@ def test_get_pipeline_templates_fallbacks_to_database_on_error(mocker: MockerFix
     )
     retrieval = RemotePipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_templates("en-US")
+    result = retrieval.get_pipeline_templates("en-US", session=sqlite_session)
 
     assert retrieval.get_type() == PipelineTemplateType.REMOTE
     assert result == {"pipeline_templates": [{"id": "db-1"}]}
     fetch_mock.assert_called_once_with("en-US")
-    fallback_mock.assert_called_once_with("en-US")
+    fallback_mock.assert_called_once_with("en-US", session=sqlite_session)
+    assert not sqlite_session.in_transaction()
 
 
-def test_get_pipeline_template_detail_fallbacks_to_database_on_error(mocker: MockerFixture) -> None:
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_get_pipeline_template_detail_fallbacks_to_database_on_error(
+    mocker: MockerFixture, sqlite_session: Session
+) -> None:
     fetch_mock = mocker.patch.object(
         RemotePipelineTemplateRetrieval,
         "fetch_pipeline_template_detail_from_dify_official",
@@ -40,11 +46,12 @@ def test_get_pipeline_template_detail_fallbacks_to_database_on_error(mocker: Moc
     )
     retrieval = RemotePipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail("tpl-1")
+    result = retrieval.get_pipeline_template_detail("tpl-1", session=sqlite_session)
 
     assert result == {"id": "db-1"}
     fetch_mock.assert_called_once_with("tpl-1")
-    fallback_mock.assert_called_once_with("tpl-1")
+    fallback_mock.assert_called_once_with("tpl-1", session=sqlite_session)
+    assert not sqlite_session.in_transaction()
 
 
 def test_fetch_pipeline_templates_from_dify_official(mocker: MockerFixture) -> None:

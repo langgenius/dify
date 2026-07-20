@@ -95,3 +95,15 @@ def plugin_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         return view(*args, **kwargs)
 
     return decorated
+
+
+def agent_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Temporary alias for agent-backend inner API callers.
+
+    Agent tool and knowledge calls currently share the same trusted
+    `dify-agent -> Dify API` transport credentials as the plugin inner bridge.
+    Keep the wrapper name agent-specific so the controller surface does not grow
+    more plugin-only semantics while auth settings stay shared.
+    """
+
+    return plugin_inner_api_only(view)

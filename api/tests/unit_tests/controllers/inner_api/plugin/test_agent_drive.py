@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import inspect
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 from flask import Flask
@@ -33,7 +33,7 @@ def test_manifest_parses_query_and_returns_items():
             result = raw(AgentDriveManifestApi(), "agent-agent-1")
     assert result == {"items": [{"key": "docs/a.txt"}]}
     svc.return_value.manifest.assert_called_once_with(
-        tenant_id="tenant-1", agent_id="agent-1", prefix="docs/", include_download_url=True
+        tenant_id="tenant-1", agent_id="agent-1", prefix="docs/", include_download_url=True, session=ANY
     )
 
 
@@ -85,7 +85,11 @@ def test_skills_requires_tenant_id_and_returns_items():
             }
         ]
     }
-    assert svc.return_value.list_skills.call_args.kwargs == {"tenant_id": "tenant-1", "agent_id": "agent-1"}
+    assert svc.return_value.list_skills.call_args.kwargs == {
+        "tenant_id": "tenant-1",
+        "agent_id": "agent-1",
+        "session": ANY,
+    }
 
 
 def test_commit_parses_body_and_returns_items():

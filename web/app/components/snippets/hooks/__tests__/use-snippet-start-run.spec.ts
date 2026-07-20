@@ -4,7 +4,7 @@ import { act } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
-import { useSnippetDetailStore } from '../../store'
+import { useSnippetDraftStore } from '../../draft-store'
 import { useSnippetStartRun } from '../use-snippet-start-run'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -39,7 +39,7 @@ const inputFields: SnippetInputField[] = [
 describe('useSnippetStartRun', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useSnippetDetailStore.getState().reset()
+    useSnippetDraftStore.getState().reset()
     mockWorkflowStoreGetState.mockReturnValue({
       workflowRunningData: undefined,
       showDebugAndPreviewPanel: false,
@@ -51,11 +51,13 @@ describe('useSnippetStartRun', () => {
   })
 
   it('should open the debug panel and input form when snippet has input fields', () => {
-    useSnippetDetailStore.setState({ fields: inputFields })
+    useSnippetDraftStore.getState().setInputFields(inputFields)
 
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()
@@ -69,9 +71,11 @@ describe('useSnippetStartRun', () => {
   })
 
   it('should run immediately when snippet has no input fields', () => {
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()
@@ -83,11 +87,13 @@ describe('useSnippetStartRun', () => {
   })
 
   it('should use current snippet input fields from the store before starting a run', () => {
-    useSnippetDetailStore.setState({ fields: inputFields })
+    useSnippetDraftStore.getState().setInputFields(inputFields)
 
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()
@@ -99,7 +105,7 @@ describe('useSnippetStartRun', () => {
   })
 
   it('should close the panel when debug panel is already open', () => {
-    useSnippetDetailStore.setState({ fields: inputFields })
+    useSnippetDraftStore.getState().setInputFields(inputFields)
 
     mockWorkflowStoreGetState.mockReturnValue({
       workflowRunningData: undefined,
@@ -110,9 +116,11 @@ describe('useSnippetStartRun', () => {
       setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
     })
 
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()
@@ -122,7 +130,7 @@ describe('useSnippetStartRun', () => {
   })
 
   it('should do nothing when workflow is already running', () => {
-    useSnippetDetailStore.setState({ fields: inputFields })
+    useSnippetDraftStore.getState().setInputFields(inputFields)
 
     mockWorkflowStoreGetState.mockReturnValue({
       workflowRunningData: {
@@ -137,9 +145,11 @@ describe('useSnippetStartRun', () => {
       setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
     })
 
-    const { result } = renderHook(() => useSnippetStartRun({
-      handleRun: mockHandleRun,
-    }))
+    const { result } = renderHook(() =>
+      useSnippetStartRun({
+        handleRun: mockHandleRun,
+      }),
+    )
 
     act(() => {
       result.current.handleWorkflowStartRunInWorkflow()

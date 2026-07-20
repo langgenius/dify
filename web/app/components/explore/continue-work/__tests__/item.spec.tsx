@@ -7,7 +7,7 @@ import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import ContinueWorkItem from '../item'
 
-const mockAppContext = vi.hoisted(() => ({
+const mockAppContextState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'],
 }))
@@ -18,9 +18,38 @@ const toastMocks = vi.hoisted(() => ({
   warning: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: typeof mockAppContext) => unknown) => selector(mockAppContext),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
@@ -40,8 +69,10 @@ vi.mock('@/next/link', () => ({
     href,
     className,
     ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement> & { children?: ReactNode, href: string }) => (
-    <a href={href} className={className} {...props}>{children}</a>
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { children?: ReactNode; href: string }) => (
+    <a href={href} className={className} {...props}>
+      {children}
+    </a>
   ),
 }))
 
@@ -76,14 +107,16 @@ const createApp = (overrides: Partial<App> = {}): App => ({
 
 const renderItem = (
   app: App,
-  systemFeatures: NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures'] = { rbac_enabled: true },
+  systemFeatures: NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures'] = {
+    rbac_enabled: true,
+  },
 ) => renderWithSystemFeatures(<ContinueWorkItem app={app} />, { systemFeatures })
 
 describe('ContinueWorkItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContext.userProfile = { id: 'user-1' }
-    mockAppContext.workspacePermissionKeys = ['app.create_and_management']
+    mockAppContextState.userProfile = { id: 'user-1' }
+    mockAppContextState.workspacePermissionKeys = ['app.create_and_management']
     mockFormatTimeFromNow.mockReturnValue('5 minutes ago')
   })
 
@@ -94,7 +127,9 @@ describe('ContinueWorkItem', () => {
 
     expect(link).toHaveAttribute('href', '/app/app-1/configuration')
     expect(screen.getByText('Alice')).toBeInTheDocument()
-    expect(screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}')).toBeInTheDocument()
+    expect(
+      screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
+    ).toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(200000)
   })
 
@@ -107,13 +142,21 @@ describe('ContinueWorkItem', () => {
   it('should link to access config when RBAC is enabled and only access config permission is available', () => {
     renderItem(createApp({ permission_keys: [AppACLPermission.AccessConfig] }))
 
-    expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAttribute('href', '/app/app-1/access-config')
+    expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAttribute(
+      'href',
+      '/app/app-1/access-config',
+    )
   })
 
   it('should fall back to develop when RBAC is disabled for an access-config-only app', () => {
-    renderItem(createApp({ permission_keys: [AppACLPermission.AccessConfig] }), { rbac_enabled: false })
+    renderItem(createApp({ permission_keys: [AppACLPermission.AccessConfig] }), {
+      rbac_enabled: false,
+    })
 
-    expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAttribute('href', '/app/app-1/develop')
+    expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAttribute(
+      'href',
+      '/app/app-1/develop',
+    )
   })
 
   it('should render preview-only apps as disabled buttons and warn on click', () => {

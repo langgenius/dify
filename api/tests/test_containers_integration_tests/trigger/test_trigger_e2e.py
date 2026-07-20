@@ -194,7 +194,7 @@ def test_webhook_trigger_creates_trigger_log(
     db_session_with_containers.add_all([webhook_trigger, app_trigger])
     db_session_with_containers.commit()
 
-    def _fake_trigger_workflow_async(session: Session, user: Any, trigger_data: Any) -> SimpleNamespace:
+    def _fake_trigger_workflow_async(user: Any, trigger_data: Any, *, session: Session) -> SimpleNamespace:
         log = WorkflowTriggerLog(
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,
@@ -575,7 +575,7 @@ def test_schedule_trigger_creates_trigger_log(
     db_session_with_containers.commit()
 
     # Mock AsyncWorkflowService to create WorkflowTriggerLog
-    def _fake_trigger_workflow_async(session: Session, user: Any, trigger_data: Any) -> SimpleNamespace:
+    def _fake_trigger_workflow_async(user: Any, trigger_data: Any, *, session: Session) -> SimpleNamespace:
         log = WorkflowTriggerLog(
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,

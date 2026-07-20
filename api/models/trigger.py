@@ -125,7 +125,7 @@ class TriggerSubscription(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -180,7 +180,7 @@ class TriggerOAuthSystemClient(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -210,7 +210,7 @@ class TriggerOAuthTenantClient(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -370,7 +370,7 @@ class WorkflowWebhookTrigger(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -430,7 +430,7 @@ class WorkflowPluginTrigger(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -479,7 +479,7 @@ class AppTrigger(TypeBase):
         DateTime,
         nullable=False,
         default=naive_utc_now(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=naive_utc_now(),
         init=False,
     )
 

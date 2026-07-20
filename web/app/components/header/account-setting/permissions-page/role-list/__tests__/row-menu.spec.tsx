@@ -7,9 +7,11 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['workspace.role.manage'] as string[],
 }))
 
-const mockCopyRole = vi.hoisted(() => vi.fn((_variables, options?: { onSuccess?: () => void }) => {
-  options?.onSuccess?.()
-}))
+const mockCopyRole = vi.hoisted(() =>
+  vi.fn((_variables, options?: { onSuccess?: () => void }) => {
+    options?.onSuccess?.()
+  }),
+)
 const mockDeleteRole = vi.hoisted(() => vi.fn())
 const membersOfRoleQueryMock = vi.hoisted(() => {
   const response = {
@@ -30,11 +32,42 @@ const membersOfRoleQueryMock = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/access-control/use-workspace-roles', () => ({
   useCopyWorkspaceRole: () => ({
@@ -80,29 +113,38 @@ const openMenu = async () => {
 describe('RowMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    document.body.querySelectorAll('[role="menu"], [role="menuitem"]').forEach(element => element.remove())
+    document.body
+      .querySelectorAll('[role="menu"], [role="menuitem"]')
+      .forEach((element) => element.remove())
     mockWorkspacePermissionKeys.value = ['workspace.role.manage']
   })
 
   afterEach(() => {
-    document.body.querySelectorAll('[role="menu"], [role="menuitem"]').forEach(element => element.remove())
+    document.body
+      .querySelectorAll('[role="menu"], [role="menuitem"]')
+      .forEach((element) => element.remove())
   })
 
   describe('Rendering', () => {
     it('should render view action for the owner system role', async () => {
       render(
-        <RowMenu
-          roleCategory="global_system_default"
-          role={createRole({ role_tag: 'owner' })}
-        />,
+        <RowMenu roleCategory="global_system_default" role={createRole({ role_tag: 'owner' })} />,
       )
 
       const { menu } = await openMenu()
 
-      expect(within(menu).getByRole('menuitem', { name: 'common.operation.view' })).toBeInTheDocument()
-      expect(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' })).toBeInTheDocument()
-      expect(within(menu).queryByRole('menuitem', { name: 'common.operation.edit' })).not.toBeInTheDocument()
-      expect(within(menu).queryByRole('menuitem', { name: 'common.operation.delete' })).not.toBeInTheDocument()
+      expect(
+        within(menu).getByRole('menuitem', { name: 'common.operation.view' }),
+      ).toBeInTheDocument()
+      expect(
+        within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
+      ).toBeInTheDocument()
+      expect(
+        within(menu).queryByRole('menuitem', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
+      expect(
+        within(menu).queryByRole('menuitem', { name: 'common.operation.delete' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render view action for non-owner system roles', async () => {
@@ -115,8 +157,12 @@ describe('RowMenu', () => {
 
       const { menu } = await openMenu()
 
-      expect(within(menu).getByRole('menuitem', { name: 'common.operation.view' })).toBeInTheDocument()
-      expect(within(menu).queryByRole('menuitem', { name: 'common.operation.edit' })).not.toBeInTheDocument()
+      expect(
+        within(menu).getByRole('menuitem', { name: 'common.operation.view' }),
+      ).toBeInTheDocument()
+      expect(
+        within(menu).queryByRole('menuitem', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide view action for custom roles', async () => {
@@ -134,10 +180,18 @@ describe('RowMenu', () => {
 
       const { menu } = await openMenu()
 
-      expect(within(menu).queryByRole('menuitem', { name: 'common.operation.view' })).not.toBeInTheDocument()
-      expect(within(menu).getByRole('menuitem', { name: 'common.operation.edit' })).toBeInTheDocument()
-      expect(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' })).toBeInTheDocument()
-      expect(within(menu).getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
+      expect(
+        within(menu).queryByRole('menuitem', { name: 'common.operation.view' }),
+      ).not.toBeInTheDocument()
+      expect(
+        within(menu).getByRole('menuitem', { name: 'common.operation.edit' }),
+      ).toBeInTheDocument()
+      expect(
+        within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
+      ).toBeInTheDocument()
+      expect(
+        within(menu).getByRole('menuitem', { name: 'common.operation.delete' }),
+      ).toBeInTheDocument()
     })
 
     it('should keep custom role management actions visible without manage permission', async () => {
@@ -157,9 +211,16 @@ describe('RowMenu', () => {
 
       const { menu } = await openMenu()
 
-      expect(within(menu).getByRole('menuitem', { name: 'common.operation.edit' })).toHaveAttribute('aria-disabled', 'true')
-      expect(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' })).toHaveAttribute('aria-disabled', 'true')
-      expect(within(menu).getByRole('menuitem', { name: 'common.operation.delete' })).toHaveAttribute('aria-disabled', 'true')
+      expect(within(menu).getByRole('menuitem', { name: 'common.operation.edit' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(
+        within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
+      ).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        within(menu).getByRole('menuitem', { name: 'common.operation.delete' }),
+      ).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
@@ -167,13 +228,7 @@ describe('RowMenu', () => {
     it('should call onView when clicking the owner view action', async () => {
       const onView = vi.fn()
       const role = createRole({ role_tag: 'owner' })
-      render(
-        <RowMenu
-          roleCategory="global_system_default"
-          role={role}
-          onView={onView}
-        />,
-      )
+      render(<RowMenu roleCategory="global_system_default" role={role} onView={onView} />)
 
       const { user, menu } = await openMenu()
       await user.click(within(menu).getByRole('menuitem', { name: 'common.operation.view' }))
@@ -184,19 +239,18 @@ describe('RowMenu', () => {
 
     it('should ask before duplicating a system role and skipping member assignments', async () => {
       const role = createRole({ id: 'role-default-editor', name: 'Editor' })
-      render(
-        <RowMenu
-          roleCategory="global_system_default"
-          role={role}
-        />,
-      )
+      render(<RowMenu roleCategory="global_system_default" role={role} />)
 
       const { user, menu } = await openMenu()
-      await user.click(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }))
+      await user.click(
+        within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
+      )
 
       const dialog = screen.getByRole('alertdialog')
       expect(dialog).toHaveTextContent('permission.role.copyMembersTitle')
-      expect(dialog).toHaveTextContent('permission.role.copyMembersDescription:{"name":"Editor","count":3}')
+      expect(dialog).toHaveTextContent(
+        'permission.role.copyMembersDescription:{"name":"Editor","count":3}',
+      )
       expect(membersOfRoleQueryMock.useGetMembersOfRole).toHaveBeenCalledWith({
         roleId: role.id,
         page: 1,
@@ -206,36 +260,44 @@ describe('RowMenu', () => {
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.skip' }))
 
       expect(mockCopyRole).toHaveBeenCalledTimes(1)
-      expect(mockCopyRole).toHaveBeenCalledWith({
-        roleId: role.id,
-        copy_member: false,
-      }, expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }))
+      expect(mockCopyRole).toHaveBeenCalledWith(
+        {
+          roleId: role.id,
+          copy_member: false,
+        },
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+        }),
+      )
     })
 
     it('should copy member assignments when confirming duplicate with copy', async () => {
-      const role = createRole({ id: 'role-custom', category: 'global_custom', name: 'Support', is_builtin: false })
-      render(
-        <RowMenu
-          roleCategory="global_custom"
-          role={role}
-        />,
-      )
+      const role = createRole({
+        id: 'role-custom',
+        category: 'global_custom',
+        name: 'Support',
+        is_builtin: false,
+      })
+      render(<RowMenu roleCategory="global_custom" role={role} />)
 
       const { user, menu } = await openMenu()
-      await user.click(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }))
+      await user.click(
+        within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
+      )
       const dialog = screen.getByRole('alertdialog')
 
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.copy' }))
 
       expect(mockCopyRole).toHaveBeenCalledTimes(1)
-      expect(mockCopyRole).toHaveBeenCalledWith({
-        roleId: role.id,
-        copy_member: true,
-      }, expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }))
+      expect(mockCopyRole).toHaveBeenCalledWith(
+        {
+          roleId: role.id,
+          copy_member: true,
+        },
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+        }),
+      )
     })
 
     it('should close the copy member assignments dialog when clicking the backdrop', async () => {
@@ -247,7 +309,9 @@ describe('RowMenu', () => {
       )
 
       const { user, menu } = await openMenu()
-      await user.click(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }))
+      await user.click(
+        within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
+      )
 
       expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
@@ -269,18 +333,14 @@ describe('RowMenu', () => {
         name: 'Custom role',
         is_builtin: false,
       })
-      render(
-        <RowMenu
-          roleCategory="global_custom"
-          role={role}
-          onEdit={onEdit}
-        />,
-      )
+      render(<RowMenu roleCategory="global_custom" role={role} onEdit={onEdit} />)
 
       const { menu } = await openMenu()
 
       fireEvent.click(within(menu).getByRole('menuitem', { name: 'common.operation.edit' }))
-      fireEvent.click(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }))
+      fireEvent.click(
+        within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
+      )
       fireEvent.click(within(menu).getByRole('menuitem', { name: 'common.operation.delete' }))
 
       expect(onEdit).not.toHaveBeenCalled()

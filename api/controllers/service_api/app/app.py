@@ -2,20 +2,19 @@ from typing import Any, cast
 
 from flask_restx import Resource
 from pydantic import Field
-from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from controllers.common.agent_app_parameters import get_published_agent_app_feature_dict_and_user_input_form
 from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
 from controllers.service_api import service_api_ns
-from controllers.service_api.app.error import AppUnavailableError
+from controllers.service_api.app.error import AgentNotPublishedError, AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus
-from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode
+from models.model import App, AppMode, load_annotation_reply_config
 from services.app_service import AppService
 
 
@@ -34,38 +33,17 @@ class AppMetaResponse(ResponseModel):
 register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, AppInfoResponse)
 
 
-def _get_agent_app_feature_dict_and_user_input_form(app_model: App) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    app_model_config = app_model.app_model_config
-    features_dict = cast(dict[str, Any], app_model_config.to_dict()) if app_model_config is not None else {}
-
-    agent = db.session.scalar(
-        select(Agent)
-        .where(
-            Agent.tenant_id == app_model.tenant_id,
-            Agent.app_id == app_model.id,
-            Agent.scope == AgentScope.ROSTER,
-            Agent.source == AgentSource.AGENT_APP,
-            Agent.status == AgentStatus.ACTIVE,
-        )
-        .limit(1)
-    )
-    if agent is None or not agent.active_config_snapshot_id:
+def _get_agent_app_feature_dict_and_user_input_form(
+    app_model: App,
+    *,
+    session: Session,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    try:
+        return get_published_agent_app_feature_dict_and_user_input_form(app_model, session=session)
+    except AgentAppNotPublishedError:
+        raise AgentNotPublishedError()
+    except AgentAppGeneratorError:
         raise AppUnavailableError()
-
-    snapshot = db.session.scalar(
-        select(AgentConfigSnapshot)
-        .where(
-            AgentConfigSnapshot.tenant_id == app_model.tenant_id,
-            AgentConfigSnapshot.agent_id == agent.id,
-            AgentConfigSnapshot.id == agent.active_config_snapshot_id,
-        )
-        .limit(1)
-    )
-    if snapshot is None:
-        raise AppUnavailableError()
-
-    agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
-    return features_dict, agent_app_variables_to_user_input_form(agent_soul.app_variables)
 
 
 @service_api_ns.route("/parameters")
@@ -100,23 +78,31 @@ class AppParameterApi(Resource):
 
         Returns the input form parameters and configuration for the application.
         """
+        session = db.session()
         features_dict: dict[str, Any]
         user_input_form: list[dict[str, Any]]
         if app_model.mode == AppMode.AGENT:
-            features_dict, user_input_form = _get_agent_app_feature_dict_and_user_input_form(app_model)
+            features_dict, user_input_form = _get_agent_app_feature_dict_and_user_input_form(
+                app_model,
+                session=session,
+            )
         elif app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
+            workflow = app_model.workflow_with_session(session=session)
             if workflow is None:
                 raise AppUnavailableError()
 
             features_dict = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
-            app_model_config = app_model.app_model_config
+            app_model_config = app_model.app_model_config_with_session(session=session)
             if app_model_config is None:
                 raise AppUnavailableError()
 
-            features_dict = cast(dict[str, Any], app_model_config.to_dict())
+            annotation_reply = load_annotation_reply_config(session, app_model.id)
+            features_dict = cast(
+                dict[str, Any],
+                app_model_config.to_dict(annotation_reply=annotation_reply),
+            )
 
             user_input_form = features_dict.get("user_input_form", [])
 
@@ -150,7 +136,7 @@ class AppMetaApi(Resource):
 
         Returns metadata about the application including configuration and settings.
         """
-        return AppService().get_app_meta(app_model)
+        return AppService().get_app_meta(app_model, session=db.session())
 
 
 @service_api_ns.route("/info")

@@ -1,13 +1,26 @@
+from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
-from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
+from dify_agent.protocol import (
+    CancelRunRequest,
+    CancelRunResponse,
+    PydanticAIStreamRunEvent,
+    RunEvent,
+    RunStartedEvent,
+    RunSucceededEvent,
+    RunSucceededEventData,
+)
+from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
 from clients.agent_backend import (
+    AgentBackendInternalEventType,
     AgentBackendRunEventAdapter,
+    AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
@@ -26,12 +39,12 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentRuntimeSessionStore,
     WorkflowAgentSessionScope,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import GraphInitParams
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
-from graphon.nodes.human_input.entities import UserActionConfig
 from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -190,6 +203,83 @@ class FileOutputBackendClient(FakeAgentBackendRunClient):
         )
 
 
+class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
+    def _events(self, run_id: str):
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+            PydanticAIStreamRunEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+                agent_message_delta="hello ",
+            ),
+            RunSucceededEvent(
+                id="3-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunSucceededEventData(
+                    output={"text": "hello agent"},
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                ),
+            ),
+        )
+
+
+class FailingStreamBackendClient(FakeAgentBackendRunClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.cancel_requests: list[CancelRunRequest | None] = []
+
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del run_id, after, should_stop
+        raise AgentBackendStreamError("stream reconnect attempts exhausted")
+        yield
+
+    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        self.cancel_requests.append(request)
+        return CancelRunResponse(run_id=run_id, status="cancelled")
+
+
+class EmptyStreamBackendClient(FailingStreamBackendClient):
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del run_id, after, should_stop
+        return
+        yield
+
+
+class GenericFailingStreamBackendClient(FailingStreamBackendClient):
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del run_id, after, should_stop
+        raise RuntimeError("unexpected stream failure")
+        yield
+
+
+class CancelFailingStreamBackendClient(FailingStreamBackendClient):
+    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        self.cancel_requests.append(request)
+        raise RuntimeError(f"failed to cancel {run_id}")
+
+
 def _node(
     *,
     scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCESS,
@@ -245,6 +335,23 @@ def _node(
     )
 
 
+def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_markers():
+    mapping = DifyAgentNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="agent-node",
+        node_data={
+            "agent_task": (
+                "Review {{#previous-node.report#}}, ignore {{#sys.query#}}, "
+                "ignore [§node_output:legacy-node.output:LEGACY§], then use {{#previous-node.report#}} again."
+            )
+        },
+    )
+
+    assert mapping == {
+        "agent-node.previous-node.report": ["previous-node", "report"],
+    }
+
+
 def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     events = list(_node()._run())
 
@@ -256,7 +363,21 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert agent_log["agent_backend"]["run_id"] == "fake-run-1"
     assert agent_log["agent_backend"]["status"] == "succeeded"
     assert result.process_data["agent_id"] == "agent-1"
-    assert result.inputs["agent_backend_request"]["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
+    assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
+
+
+def test_agent_node_run_ignores_agent_message_delta_until_terminal_result():
+    events = list(_node(agent_backend_client=AgentMessageDeltaBackendClient())._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent"}
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["status"] == "succeeded"
+    assert agent_backend["agent_message_delta_count"] == 1
+    assert agent_backend["agent_message_delta_length"] == len("hello ")
 
 
 def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():
@@ -480,12 +601,43 @@ def test_agent_node_failed_run_without_session_store_skips_mark_cleaned():
     assert "session_snapshot_cleaned_on_failure" not in agent_backend
 
 
+def test_agent_node_failed_run_enqueues_backend_cleanup_before_local_retirement(monkeypatch):
+    store = FakeSessionStore()
+    store.loaded_session = StoredWorkflowAgentSession(
+        scope=_pending_session(CompositorSessionSnapshot(layers=[])).scope,
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        backend_run_id="stored-run-1",
+        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+    )
+    queued_payloads: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.agent_node.cleanup_workflow_agent_runtime_session.delay",
+        lambda payload: queued_payloads.append(payload),
+    )
+
+    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert store.cleaned[0][1] == "fake-run-1"
+    assert store.cleaned[0][0].workflow_run_id == "workflow-run-1"
+    assert store.cleaned[0][0].node_id == "agent-node"
+    assert len(queued_payloads) == 1
+    assert (
+        queued_payloads[0]["idempotency_key"]
+        == "tenant-1:workflow-run-1:agent-node:binding-1:workflow-agent-failure-cleanup:stored-run-1:fake-run-1"
+    )
+    assert queued_payloads[0]["metadata"]["previous_agent_backend_run_id"] == "stored-run-1"
+    assert queued_payloads[0]["metadata"]["failed_agent_backend_run_id"] == "fake-run-1"
+
+
 def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     store = FakeSessionStore()
     node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)
 
     # ENG-636: the PAUSED scenario emits a dify.ask_human deferred call, so the
-    # node now builds a HITL form and pauses with HumanInputRequired. Stub the
+    # node now builds a HITL form and pauses with HitlRequired. Stub the
     # form repository so the unit test stays DB-free.
     fake_repo = MagicMock()
     fake_repo.create_form.return_value = MagicMock(id="form-1")
@@ -495,8 +647,8 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
 
     assert len(events) == 1
     assert isinstance(events[0], PauseRequestedEvent)
-    assert isinstance(events[0].reason, HumanInputRequired)
-    assert events[0].reason.form_id == "form-1"
+    assert isinstance(events[0].reason, HitlRequired)
+    assert events[0].reason.session_id == "form-1"
     assert events[0].reason.node_id == "agent-node"
     fake_repo.create_form.assert_called_once()
     assert store.saved
@@ -560,7 +712,7 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
         form_id="form-1",
         form_content="Approve?",
         inputs=[],
-        actions=[UserActionConfig(id="ok", title="OK")],
+        actions=[],
         node_id="agent-node",
         node_title="Budget review",
     )
@@ -576,8 +728,80 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
 
     assert len(events) == 1
     assert isinstance(events[0], PauseRequestedEvent)
-    assert isinstance(events[0].reason, HumanInputRequired)
+    assert isinstance(events[0].reason, HitlRequired)
     assert client.request is None  # no second Agent run was created
+
+
+def test_agent_node_cancels_backend_run_when_stream_fails():
+    client = FailingStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is not None
+    assert len(client.cancel_requests) == 1
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "event_stream_failed"
+
+
+def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event():
+    client = EmptyStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is None
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "stream_ended_without_terminal_event"
+
+
+def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
+    client = GenericFailingStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is not None
+    assert failure.node_run_result.error == "unexpected stream failure"
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "event_stream_failed"
+
+
+def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
+    client = CancelFailingStreamBackendClient()
+    node = _node(agent_backend_client=client)
+    node.graph_runtime_state.graph_execution = SimpleNamespace(aborted=True)
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is not None
+    assert client.cancel_requests[0] is not None
+    assert client.cancel_requests[0].reason == "workflow_graph_aborted"
+    assert "Failed to cancel Workflow Agent backend run" in caplog.text
+
+
+def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
+    client = FakeAgentBackendRunClient()
+    node = _node(agent_backend_client=client)
+    node._agent_backend_client.cancel_run = MagicMock(  # type: ignore[method-assign]
+        return_value=CancelRunResponse(run_id="run-1", status="cancelled")
+    )
+    node._event_adapter.adapt = MagicMock(  # type: ignore[method-assign]
+        return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
+    )
+
+    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+
+    assert terminal is None
+    assert failure is not None
+    assert failure.node_run_result.error == (
+        "Unexpected internal event type <AgentBackendInternalEventType.RUN_FAILED: 'run_failed'>"
+    )
+    node._agent_backend_client.cancel_run.assert_called_once()
 
 
 def test_agent_node_records_stream_usage_metadata():

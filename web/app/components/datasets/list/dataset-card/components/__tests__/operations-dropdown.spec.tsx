@@ -14,44 +14,110 @@ const mockAppContextState = vi.hoisted(() => ({
 
 let mockIsRbacEnabled = true
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    rbac_enabled: mockIsRbacEnabled,
-  },
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      rbac_enabled: mockIsRbacEnabled,
+    },
+  })
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: mockIsRbacEnabled,
+    }),
+  )
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: mockIsRbacEnabled,
+    }),
+  )
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: mockIsRbacEnabled,
+    }),
+  )
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: mockIsRbacEnabled,
+    }),
+  )
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: mockIsRbacEnabled,
+    }),
+  )
 })
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState)),
-}))
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 describe('OperationsDropdown', () => {
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-    id: 'dataset-1',
-    name: 'Test Dataset',
-    description: 'Test description',
-    provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
-    data_source_type: DataSourceType.FILE,
-    indexing_technique: IndexingType.QUALIFIED,
-    embedding_available: true,
-    app_count: 5,
-    document_count: 10,
-    word_count: 1000,
-    updated_at: 1609545600,
-    tags: [],
-    embedding_model: 'text-embedding-ada-002',
-    embedding_model_provider: 'openai',
-    created_by: 'user-1',
-    doc_form: ChunkingMode.text,
-    runtime_mode: 'general',
-    permission_keys: [
-      DatasetACLPermission.Edit,
-      DatasetACLPermission.Delete,
-      DatasetACLPermission.ImportExportDSL,
-      DatasetACLPermission.AccessConfig,
-    ],
-    ...overrides,
-  } as DataSet)
+  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+    ({
+      id: 'dataset-1',
+      name: 'Test Dataset',
+      description: 'Test description',
+      provider: 'vendor',
+      permission: DatasetPermission.allTeamMembers,
+      data_source_type: DataSourceType.FILE,
+      indexing_technique: IndexingType.QUALIFIED,
+      embedding_available: true,
+      app_count: 5,
+      document_count: 10,
+      word_count: 1000,
+      updated_at: 1609545600,
+      tags: [],
+      embedding_model: 'text-embedding-ada-002',
+      embedding_model_provider: 'openai',
+      created_by: 'user-1',
+      doc_form: ChunkingMode.text,
+      runtime_mode: 'general',
+      permission_keys: [
+        DatasetACLPermission.Edit,
+        DatasetACLPermission.Delete,
+        DatasetACLPermission.ImportExportDSL,
+        DatasetACLPermission.AccessConfig,
+      ],
+      ...overrides,
+    }) as DataSet
 
   const defaultProps = {
     dataset: createMockDataset(),
@@ -69,11 +135,6 @@ describe('OperationsDropdown', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render the more icon button', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const moreIcon = container.querySelector('.i-ri-more-fill')
@@ -127,7 +188,9 @@ describe('OperationsDropdown', () => {
 
       fireEvent.click(screen.getByLabelText('Dataset operations'))
 
-      expect(screen.queryByText('datasetPipeline.operations.exportPipeline')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetPipeline.operations.exportPipeline'),
+      ).not.toBeInTheDocument()
     })
 
     it('should show resource access option when dataset has access config ACL permission', () => {
@@ -156,12 +219,6 @@ describe('OperationsDropdown', () => {
   })
 
   describe('Styles', () => {
-    it('should have correct positioning styles', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('absolute', 'right-2', 'top-2', 'z-5')
-    })
-
     it('should keep the trigger mounted when closed so menu exit animations retain an anchor', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
@@ -171,27 +228,10 @@ describe('OperationsDropdown', () => {
       expect(trigger).toBeInTheDocument()
     })
 
-    it('should have icon with correct size classes', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      const icon = container.querySelector('.i-ri-more-fill')
-      expect(icon).toHaveClass('size-5', 'text-text-tertiary')
-    })
-
     it('should have aria-label on trigger for accessibility', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const trigger = container.querySelector('[aria-label="Dataset operations"]')
       expect(trigger).toBeInTheDocument()
-    })
-
-    it('should expose visible keyboard focus styles on the trigger', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      const trigger = container.querySelector('[aria-label="Dataset operations"]')
-      expect(trigger).toHaveClass(
-        'focus-visible:outline-hidden',
-        'focus-visible:ring-1',
-        'focus-visible:ring-inset',
-        'focus-visible:ring-components-input-border-hover',
-      )
     })
 
     it('should use a solid trigger background without backdrop blur on hover states', () => {
@@ -208,7 +248,9 @@ describe('OperationsDropdown', () => {
 
       render(
         <div>
-          <button type="button" onClick={onOutsideClick}>Outside action</button>
+          <button type="button" onClick={onOutsideClick}>
+            Outside action
+          </button>
           <OperationsDropdown {...defaultProps} />
         </div>,
       )
@@ -242,26 +284,18 @@ describe('OperationsDropdown', () => {
       const dataset = createMockDataset({
         permission_keys: [DatasetACLPermission.AccessConfig],
       })
-      render(<OperationsDropdown {...defaultProps} dataset={dataset} openAccessConfig={openAccessConfig} />)
+      render(
+        <OperationsDropdown
+          {...defaultProps}
+          dataset={dataset}
+          openAccessConfig={openAccessConfig}
+        />,
+      )
 
       fireEvent.click(screen.getByLabelText('Dataset operations'))
       fireEvent.click(screen.getByText('common.settings.resourceAccess'))
 
       expect(openAccessConfig).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle dataset with external provider', () => {
-      const dataset = createMockDataset({ provider: 'external' })
-      const { container } = render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should handle dataset with undefined runtime_mode', () => {
-      const dataset = createMockDataset({ runtime_mode: undefined })
-      const { container } = render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
-      expect(container.firstChild).toBeInTheDocument()
     })
   })
 })

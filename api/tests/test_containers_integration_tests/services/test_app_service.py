@@ -84,7 +84,7 @@ class TestAppService:
 
         # Create app
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Verify app was created correctly
         assert app.name == app_params.name
@@ -144,7 +144,7 @@ class TestAppService:
                 icon_background="#4ECDC4",
             )
 
-            app = app_service.create_app(tenant.id, app_params, account)
+            app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
             # Verify app mode was set correctly
             assert app.mode == mode
@@ -183,7 +183,7 @@ class TestAppService:
         )
 
         app_service = AppService()
-        created_app = app_service.create_app(tenant.id, app_params, account)
+        created_app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Get app using the service - needs current_user mock
         mock_current_user = create_autospec(Account, instance=True)
@@ -191,7 +191,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            retrieved_app = app_service.get_app(created_app)
+            retrieved_app = app_service.get_app(created_app, session=db_session_with_containers)
 
         # Verify retrieved app matches created app
         assert retrieved_app.id == created_app.id
@@ -234,7 +234,7 @@ class TestAppService:
                 icon="📱",
                 icon_background="#96CEB4",
             )
-            app_service.create_app(tenant.id, app_params, account)
+            app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Get paginated apps
         params = AppListParams(page=1, limit=10, mode="chat")
@@ -277,16 +277,19 @@ class TestAppService:
             tenant.id,
             CreateAppParams(name="Oldest Created", mode="chat", icon_type="emoji", icon="1"),
             account,
+            session=db_session_with_containers,
         )
         newest_modified = app_service.create_app(
             tenant.id,
             CreateAppParams(name="Newest Modified", mode="chat", icon_type="emoji", icon="2"),
             account,
+            session=db_session_with_containers,
         )
         newest_created = app_service.create_app(
             tenant.id,
             CreateAppParams(name="Newest Created", mode="chat", icon_type="emoji", icon="3"),
             account,
+            session=db_session_with_containers,
         )
 
         timestamp_by_app_id = {
@@ -362,15 +365,17 @@ class TestAppService:
             tenant.id,
             CreateAppParams(name="Starred App", mode="chat", icon_type="emoji", icon="1"),
             account,
+            session=db_session_with_containers,
         )
         unstarred_app = app_service.create_app(
             tenant.id,
             CreateAppParams(name="Unstarred App", mode="chat", icon_type="emoji", icon="2"),
             account,
+            session=db_session_with_containers,
         )
 
-        app_service.star_app(db_session_with_containers, app=starred_app, account_id=account.id)
-        app_service.star_app(db_session_with_containers, app=starred_app, account_id=account.id)
+        app_service.star_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
+        app_service.star_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
         db_session_with_containers.commit()
 
         star_count = db_session_with_containers.scalar(
@@ -386,7 +391,7 @@ class TestAppService:
         assert starred_by_app_id[starred_app.id] is True
         assert starred_by_app_id[unstarred_app.id] is False
 
-        app_service.unstar_app(db_session_with_containers, app=starred_app, account_id=account.id)
+        app_service.unstar_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
         db_session_with_containers.commit()
 
         paginated_apps = app_service.get_paginate_apps(
@@ -422,26 +427,30 @@ class TestAppService:
             tenant.id,
             CreateAppParams(name="Oldest Created Starred App", mode="chat", icon_type="emoji", icon="1"),
             account,
+            session=db_session_with_containers,
         )
         newest_modified_app = app_service.create_app(
             tenant.id,
             CreateAppParams(name="Newest Modified Starred App", mode="chat", icon_type="emoji", icon="2"),
             account,
+            session=db_session_with_containers,
         )
         newest_created_app = app_service.create_app(
             tenant.id,
             CreateAppParams(name="Newest Created Starred App", mode="chat", icon_type="emoji", icon="3"),
             account,
+            session=db_session_with_containers,
         )
         unstarred_app = app_service.create_app(
             tenant.id,
             CreateAppParams(name="Unstarred App", mode="chat", icon_type="emoji", icon="4"),
             account,
+            session=db_session_with_containers,
         )
 
-        app_service.star_app(db_session_with_containers, app=oldest_created_app, account_id=account.id)
-        app_service.star_app(db_session_with_containers, app=newest_modified_app, account_id=account.id)
-        app_service.star_app(db_session_with_containers, app=newest_created_app, account_id=account.id)
+        app_service.star_app(app=oldest_created_app, account_id=account.id, session=db_session_with_containers)
+        app_service.star_app(app=newest_modified_app, account_id=account.id, session=db_session_with_containers)
+        app_service.star_app(app=newest_created_app, account_id=account.id, session=db_session_with_containers)
 
         timestamp_by_app_id = {
             oldest_created_app.id: (datetime(2026, 1, 1, 10, 0, 0), datetime(2026, 1, 1, 10, 0, 0)),
@@ -535,8 +544,10 @@ class TestAppService:
             icon_background="#4ECDC4",
         )
 
-        chat_app = app_service.create_app(tenant.id, chat_app_params, account)
-        completion_app = app_service.create_app(tenant.id, completion_app_params, account)
+        chat_app = app_service.create_app(tenant.id, chat_app_params, account, session=db_session_with_containers)
+        completion_app = app_service.create_app(
+            tenant.id, completion_app_params, account, session=db_session_with_containers
+        )
 
         # Test filter by mode
         chat_apps = app_service.get_paginate_apps(
@@ -599,7 +610,7 @@ class TestAppService:
             icon="💬",
             icon_background="#FF6B6B",
         )
-        app_service.create_app(tenant.id, app_params, first_account)
+        app_service.create_app(tenant.id, app_params, first_account, session=db_session_with_containers)
         other_app_params = CreateAppParams(
             name="Second Creator App",
             description="Created by the second account",
@@ -608,7 +619,7 @@ class TestAppService:
             icon="✍️",
             icon_background="#4ECDC4",
         )
-        app_service.create_app(tenant.id, other_app_params, second_account)
+        app_service.create_app(tenant.id, other_app_params, second_account, session=db_session_with_containers)
 
         filtered_apps = app_service.get_paginate_apps(
             first_account.id,
@@ -654,7 +665,7 @@ class TestAppService:
             icon="🏷️",
             icon_background="#FFEAA7",
         )
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Mock TagService to return the app ID for tag filtering
         with patch("services.app_service.TagService.get_target_ids_by_tag_ids") as mock_tag_service:
@@ -717,7 +728,7 @@ class TestAppService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Store original values
         original_name = app.name
@@ -741,7 +752,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app(app, update_args)
+            updated_app = app_service.update_app(app, update_args, session=db_session_with_containers)
 
         # Verify updated fields
         assert updated_app.name == update_args["name"]
@@ -788,6 +799,7 @@ class TestAppService:
                 icon_background="#45B7D1",
             ),
             account,
+            session=db_session_with_containers,
         )
 
         mock_current_user = create_autospec(Account, instance=True)
@@ -805,6 +817,7 @@ class TestAppService:
                     "icon_background": "#FF8C42",
                     "use_icon_as_answer_icon": True,
                 },
+                session=db_session_with_containers,
             )
 
         assert updated_app.icon_type == IconType.EMOJI
@@ -841,6 +854,7 @@ class TestAppService:
                 icon_background="#45B7D1",
             ),
             account,
+            session=db_session_with_containers,
         )
 
         mock_current_user = create_autospec(Account, instance=True)
@@ -859,6 +873,7 @@ class TestAppService:
                         "icon_background": "#FF8C42",
                         "use_icon_as_answer_icon": True,
                     },
+                    session=db_session_with_containers,
                 )
 
     def test_update_app_name_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -892,7 +907,7 @@ class TestAppService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Store original name
         original_name = app.name
@@ -904,7 +919,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_name(app, new_name)
+            updated_app = app_service.update_app_name(app, new_name, session=db_session_with_containers)
 
         assert updated_app.name == new_name
         assert updated_app.updated_by == account.id
@@ -946,7 +961,7 @@ class TestAppService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Store original values
         original_icon = app.icon
@@ -961,7 +976,9 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_icon(app, new_icon, new_icon_background, new_icon_type)
+            updated_app = app_service.update_app_icon(
+                app, new_icon, new_icon_background, new_icon_type, session=db_session_with_containers
+            )
 
         assert updated_app.icon == new_icon
         assert updated_app.icon_background == new_icon_background
@@ -1007,7 +1024,7 @@ class TestAppService:
             icon_background="#74B9FF",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store original site status
         original_site_status = app.enable_site
@@ -1018,13 +1035,13 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_site_status(app, False)
+            updated_app = app_service.update_app_site_status(app, False, session=db_session_with_containers)
         assert updated_app.enable_site is False
         assert updated_app.updated_by == account.id
 
         # Update site status back to enabled
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_site_status(updated_app, True)
+            updated_app = app_service.update_app_site_status(updated_app, True, session=db_session_with_containers)
         assert updated_app.enable_site is True
         assert updated_app.updated_by == account.id
 
@@ -1067,7 +1084,7 @@ class TestAppService:
             icon_background="#A29BFE",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store original API status
         original_api_status = app.enable_api
@@ -1078,13 +1095,13 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_api_status(app, False)
+            updated_app = app_service.update_app_api_status(app, False, session=db_session_with_containers)
         assert updated_app.enable_api is False
         assert updated_app.updated_by == account.id
 
         # Update API status back to enabled
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_api_status(updated_app, True)
+            updated_app = app_service.update_app_api_status(updated_app, True, session=db_session_with_containers)
         assert updated_app.enable_api is True
         assert updated_app.updated_by == account.id
 
@@ -1127,14 +1144,14 @@ class TestAppService:
             icon_background="#FD79A8",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store original values
         original_site_status = app.enable_site
         original_updated_at = app.updated_at
 
         # Update site status to the same value (no change)
-        updated_app = app_service.update_app_site_status(app, original_site_status)
+        updated_app = app_service.update_app_site_status(app, original_site_status, session=db_session_with_containers)
 
         # Verify app is returned unchanged
         assert updated_app.id == app.id
@@ -1178,7 +1195,7 @@ class TestAppService:
             icon_background="#E17055",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store app ID for verification
         app_id = app.id
@@ -1188,7 +1205,7 @@ class TestAppService:
             mock_delete_task.delay.return_value = None
 
             # Delete app
-            app_service.delete_app(app)
+            app_service.delete_app(app, session=db_session_with_containers)
 
             # Verify async deletion task was called
             mock_delete_task.delay.assert_called_once_with(tenant_id=tenant.id, app_id=app_id)
@@ -1230,7 +1247,7 @@ class TestAppService:
             icon_background="#00B894",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store app ID for verification
         app_id = app.id
@@ -1245,7 +1262,7 @@ class TestAppService:
             mock_delete_task.delay.return_value = None
 
             # Delete app
-            app_service.delete_app(app)
+            app_service.delete_app(app, session=db_session_with_containers)
 
             # Verify webapp auth cleanup was called
             mock_external_service_dependencies["enterprise_service"].WebAppAuth.cleanup_webapp.assert_called_once_with(
@@ -1290,10 +1307,10 @@ class TestAppService:
             icon_background="#6C5CE7",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Get app metadata
-        app_meta = app_service.get_app_meta(app)
+        app_meta = app_service.get_app_meta(app, session=db_session_with_containers)
 
         # Verify metadata contains expected fields
         assert "tool_icons" in app_meta
@@ -1329,10 +1346,10 @@ class TestAppService:
             icon_background="#FDCB6E",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Get app code by ID
-        app_code = AppService.get_app_code_by_id(app.id)
+        app_code = AppService.get_app_code_by_id(app.id, session=db_session_with_containers)
 
         # Verify app code was retrieved correctly
         # Note: Site would be created when App is created, site.code is auto-generated
@@ -1369,7 +1386,7 @@ class TestAppService:
             icon_background="#E84393",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Create a site for the app
         site = Site()
@@ -1384,7 +1401,7 @@ class TestAppService:
         db_session_with_containers.commit()
 
         # Get app ID by code
-        app_id = AppService.get_app_id_by_code(site.code)
+        app_id = AppService.get_app_id_by_code(site.code, session=db_session_with_containers)
 
         # Verify app ID was retrieved correctly
         assert app_id == app.id
@@ -1462,6 +1479,7 @@ class TestAppService:
                 api_rpm=10,
             ),
             account,
+            session=db_session_with_containers,
         )
 
         app_with_underscore = app_service.create_app(
@@ -1477,6 +1495,7 @@ class TestAppService:
                 api_rpm=10,
             ),
             account,
+            session=db_session_with_containers,
         )
 
         app_with_backslash = app_service.create_app(
@@ -1492,6 +1511,7 @@ class TestAppService:
                 api_rpm=10,
             ),
             account,
+            session=db_session_with_containers,
         )
 
         # Create app that should NOT match
@@ -1508,6 +1528,7 @@ class TestAppService:
                 api_rpm=10,
             ),
             account,
+            session=db_session_with_containers,
         )
 
         # Test 1: Search with % character
@@ -1560,7 +1581,7 @@ class TestAppService:
         from services.app_service import AppService
 
         with pytest.raises(ValueError, match="not found"):
-            AppService.get_app_code_by_id(str(uuid4()))
+            AppService.get_app_code_by_id(str(uuid4()), session=db_session_with_containers)
 
     def test_get_app_id_by_code_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1569,32 +1590,32 @@ class TestAppService:
         from services.app_service import AppService
 
         with pytest.raises(ValueError, match="not found"):
-            AppService.get_app_id_by_code("nonexistent-code")
+            AppService.get_app_id_by_code("nonexistent-code", session=db_session_with_containers)
 
     def test_get_app_meta_returns_empty_when_workflow_missing(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """Test get_app_meta returns empty tool_icons when workflow is None."""
+        """Test get_app_meta returns empty tool_icons when the workflow ID is absent."""
         from types import SimpleNamespace
 
         from services.app_service import AppService
 
         app_service = AppService()
-        workflow_app = SimpleNamespace(mode="workflow", workflow=None)
+        workflow_app = SimpleNamespace(mode="workflow", workflow_id=None)
 
-        meta = app_service.get_app_meta(workflow_app)
+        meta = app_service.get_app_meta(workflow_app, session=db_session_with_containers)
         assert meta == {"tool_icons": {}}
 
     def test_get_app_meta_returns_empty_when_model_config_missing(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """Test get_app_meta returns empty tool_icons when app_model_config is None."""
+        """Test get_app_meta returns empty tool_icons when the model config ID is absent."""
         from types import SimpleNamespace
 
         from services.app_service import AppService
 
         app_service = AppService()
-        chat_app = SimpleNamespace(mode="chat", app_model_config=None)
+        chat_app = SimpleNamespace(mode="chat", app_model_config_id=None)
 
-        meta = app_service.get_app_meta(chat_app)
+        meta = app_service.get_app_meta(chat_app, session=db_session_with_containers)
         assert meta == {"tool_icons": {}}

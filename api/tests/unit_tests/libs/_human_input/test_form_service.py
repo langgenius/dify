@@ -6,11 +6,11 @@ from datetime import timedelta
 
 import pytest
 
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     ParagraphInputConfig,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import (
+from core.workflow.nodes.human_input.enums import (
     TimeoutUnit,
 )
 from libs.datetime_utils import naive_utc_now

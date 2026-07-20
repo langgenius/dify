@@ -52,8 +52,9 @@ describe('E2E / difyctl auth logout', () => {
     try {
       await access(join(configDir, 'hosts.yml'))
       return true
+    } catch {
+      return false
     }
-    catch { return false }
   }
 
   async function expectNoActiveSession(): Promise<void> {

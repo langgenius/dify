@@ -11,7 +11,11 @@ import { Registry } from '@/auth/hosts'
 import { bufferStreams } from '@/sys/io/streams'
 import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
 
-function buildRegistry(host: string, email: string, tokenId: string): { reg: Registry, active: ActiveContext } {
+function buildRegistry(
+  host: string,
+  email: string,
+  tokenId: string,
+): { reg: Registry; active: ActiveContext } {
   const reg = Registry.empty('file')
   reg.upsert(host, email, {
     account: { id: 'acct-1', email, name: 'Test Tester' },
@@ -42,7 +46,7 @@ describe('runDevicesList', () => {
     expect(out).toContain('difyctl on laptop')
     expect(out).toContain('difyctl on desktop')
     const lines = out.trim().split('\n')
-    const laptopLine = lines.find(l => l.includes('difyctl on laptop'))!
+    const laptopLine = lines.find((l) => l.includes('difyctl on laptop'))!
     expect(laptopLine).toMatch(/\*\s*$/)
   })
 
@@ -75,7 +79,15 @@ describe('runDevicesRevoke', () => {
     await reg.save()
     const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await runDevicesRevoke({ io, reg, active, store, http, target: 'difyctl on desktop', all: false })
+    await runDevicesRevoke({
+      io,
+      reg,
+      active,
+      store,
+      http,
+      target: 'difyctl on desktop',
+      all: false,
+    })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
     expect(store.entries.size).toBe(1)
   })
@@ -106,9 +118,9 @@ describe('runDevicesRevoke', () => {
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
     const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await expect(runDevicesRevoke({ io, reg, active, store, http, target: 'difyctl', all: false }))
-      .rejects
-      .toThrow(/matches multiple/)
+    await expect(
+      runDevicesRevoke({ io, reg, active, store, http, target: 'difyctl', all: false }),
+    ).rejects.toThrow(/matches multiple/)
   })
 
   it('no match throws', async () => {
@@ -117,9 +129,9 @@ describe('runDevicesRevoke', () => {
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
     const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await expect(runDevicesRevoke({ io, reg, active, store, http, target: 'nonexistent', all: false }))
-      .rejects
-      .toThrow(/no session matches/)
+    await expect(
+      runDevicesRevoke({ io, reg, active, store, http, target: 'nonexistent', all: false }),
+    ).rejects.toThrow(/no session matches/)
   })
 
   it('--all: revokes everything except current', async () => {
@@ -153,9 +165,9 @@ describe('runDevicesRevoke', () => {
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
     const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await expect(runDevicesRevoke({ io, reg, active, store, http, all: true }))
-      .rejects
-      .toThrow(/aborted by user/)
+    await expect(runDevicesRevoke({ io, reg, active, store, http, all: true })).rejects.toThrow(
+      /aborted by user/,
+    )
     expect(base.errBuf()).toContain('Revoke 2 session(s)? [y/N]')
     expect(base.outBuf()).not.toContain('Revoked')
   })
@@ -188,9 +200,9 @@ describe('runDevicesRevoke', () => {
     const store = new MemStore()
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
     const http = testHttpClient(mock.url, 'dfoa_test')
-    await expect(runDevicesRevoke({ io, reg, active, store, http, all: false }))
-      .rejects
-      .toThrow(/specify a device label/)
+    await expect(runDevicesRevoke({ io, reg, active, store, http, all: false })).rejects.toThrow(
+      /specify a device label/,
+    )
   })
 })
 
@@ -205,12 +217,14 @@ describe('listAllSessions', () => {
     expires_at: null,
   })
 
-  function stubClient(pages: readonly SessionListResponse[]): { client: AccountSessionsClient, list: ReturnType<typeof vi.fn> } {
-    const list = vi.fn(async (q?: { page?: number, limit?: number }) => {
+  function stubClient(pages: readonly SessionListResponse[]): {
+    client: AccountSessionsClient
+    list: ReturnType<typeof vi.fn>
+  } {
+    const list = vi.fn(async (q?: { page?: number; limit?: number }) => {
       const page = q?.page ?? 1
       const env = pages[page - 1]
-      if (env === undefined)
-        throw new Error(`stub: no page ${page}`)
+      if (env === undefined) throw new Error(`stub: no page ${page}`)
       return env
     })
     return { client: { list } as unknown as AccountSessionsClient, list }
@@ -218,8 +232,20 @@ describe('listAllSessions', () => {
 
   it('exhausts pages until has_more=false', async () => {
     const { client, list } = stubClient([
-      { page: 1, limit: 200, total: 250, has_more: true, data: Array.from({ length: 200 }, (_, i) => row(`s-${i}`)) },
-      { page: 2, limit: 200, total: 250, has_more: false, data: Array.from({ length: 50 }, (_, i) => row(`s-${200 + i}`)) },
+      {
+        page: 1,
+        limit: 200,
+        total: 250,
+        has_more: true,
+        data: Array.from({ length: 200 }, (_, i) => row(`s-${i}`)),
+      },
+      {
+        page: 2,
+        limit: 200,
+        total: 250,
+        has_more: false,
+        data: Array.from({ length: 50 }, (_, i) => row(`s-${200 + i}`)),
+      },
     ])
     const all = await listAllSessions(client)
     expect(all.length).toBe(250)

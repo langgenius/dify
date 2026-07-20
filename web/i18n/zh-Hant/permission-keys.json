@@ -50,5 +50,5 @@
   "snippets.management": "管理 Snippets",
   "tool.manage": "管理工具",
   "workspace.member.manage": "管理成員",
-  "workspace.role.manage": "管理角色權限與訪問權限規則"
+  "workspace.role.manage": "管理角色與權限集"
 }

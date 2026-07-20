@@ -6,10 +6,14 @@ import { isAmplitudeEnabled } from '@/config'
  * @param eventName Event name
  * @param eventProperties Event properties (optional)
  */
-export const trackEvent = (eventName: string, eventProperties?: Record<string, any>) => {
-  if (!isAmplitudeEnabled)
-    return
-  amplitude.track(eventName, eventProperties)
+export const trackEvent = (eventName: string, eventProperties?: Record<string, unknown>) => {
+  if (!isAmplitudeEnabled) return
+  return amplitude.track(eventName, eventProperties)
+}
+
+export const flushEvents = () => {
+  if (!isAmplitudeEnabled) return
+  return amplitude.flush()
 }
 
 /**
@@ -17,8 +21,7 @@ export const trackEvent = (eventName: string, eventProperties?: Record<string, a
  * @param userId User ID
  */
 export const setUserId = (userId: string) => {
-  if (!isAmplitudeEnabled)
-    return
+  if (!isAmplitudeEnabled) return
   amplitude.setUserId(userId)
 }
 
@@ -26,9 +29,10 @@ export const setUserId = (userId: string) => {
  * Set user properties
  * @param properties User properties
  */
-export const setUserProperties = (properties: Record<string, any>) => {
-  if (!isAmplitudeEnabled)
-    return
+export const setUserProperties = (
+  properties: Record<string, amplitude.Types.ValidPropertyType>,
+) => {
+  if (!isAmplitudeEnabled) return
   const identifyEvent = new amplitude.Identify()
   Object.entries(properties).forEach(([key, value]) => {
     identifyEvent.set(key, value)
@@ -40,7 +44,6 @@ export const setUserProperties = (properties: Record<string, any>) => {
  * Reset user (e.g., when user logs out)
  */
 export const resetUser = () => {
-  if (!isAmplitudeEnabled)
-    return
+  if (!isAmplitudeEnabled) return
   amplitude.reset()
 }

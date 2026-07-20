@@ -10,6 +10,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from core.db.session_factory import session_factory
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
 from models import Account
@@ -131,7 +132,10 @@ def oauth_server_access_token_required[T, **P, R](
             response.headers["WWW-Authenticate"] = "Bearer"
             return response
 
-        account = OAuthServerService.validate_oauth_access_token(oauth_provider_app.client_id, access_token)
+        with session_factory.create_session() as session:
+            account = OAuthServerService.validate_oauth_access_token(
+                oauth_provider_app.client_id, access_token, session
+            )
         if not account:
             response = jsonify({"error": "access_token or client_id is invalid"})
             response.status_code = 401

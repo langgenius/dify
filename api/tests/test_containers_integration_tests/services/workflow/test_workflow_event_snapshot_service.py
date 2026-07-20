@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from graphon.entities.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource, UserActionConfig
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import SelectInputConfig, StringListSource, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm

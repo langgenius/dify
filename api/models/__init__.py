@@ -10,6 +10,8 @@ from .account import (
 )
 from .agent import (
     Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
@@ -142,6 +144,7 @@ from .workflow import (
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowPause,
     WorkflowRun,
+    WorkflowRunArchiveBundle,
     WorkflowType,
     resolve_workflow_kind,
 )
@@ -154,6 +157,8 @@ __all__ = [
     "AccountStatus",
     "AccountTrialAppRecord",
     "Agent",
+    "AgentConfigDraft",
+    "AgentConfigDraftType",
     "AgentConfigRevision",
     "AgentConfigRevisionOperation",
     "AgentConfigSnapshot",
@@ -278,6 +283,7 @@ __all__ = [
     "WorkflowNodeExecutionTriggeredFrom",
     "WorkflowPause",
     "WorkflowRun",
+    "WorkflowRunArchiveBundle",
     "WorkflowRunTriggeredFrom",
     "WorkflowSchedulePlan",
     "WorkflowToolProvider",

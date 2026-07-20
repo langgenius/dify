@@ -27,14 +27,14 @@ class ProviderCredentialsCache:
             try:
                 cached_provider_credentials = cached_provider_credentials.decode("utf-8")
                 cached_provider_credentials = json.loads(cached_provider_credentials)
-            except JSONDecodeError:
+            except (JSONDecodeError, UnicodeDecodeError):
                 return None
 
             return dict(cached_provider_credentials)
         else:
             return None
 
-    def set(self, credentials: dict[str, Any]):
+    def set(self, credentials: dict[str, Any]) -> None:
         """
         Cache model provider credentials.
 
@@ -43,7 +43,7 @@ class ProviderCredentialsCache:
         """
         redis_client.setex(self.cache_key, 86400, json.dumps(credentials))
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete cached model provider credentials.
 

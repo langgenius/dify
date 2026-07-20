@@ -41,6 +41,7 @@ Also remember:
 - repeated content usually needs scoping to a stable container
 - exact text matching is often too brittle when role/name or label already exists
 - `getByTestId` is acceptable when semantics are weak but the contract is intentional
+- when a real UI region, card, status, or icon lacks an accessible name, prefer adding that semantic contract in product code before falling back to `getByTestId`
 
 ### 3. Use web-first assertions
 
@@ -61,6 +62,8 @@ Avoid:
 - `waitForTimeout` as synchronization
 
 If a condition genuinely needs custom retry logic, use Playwright's polling/assertion tools deliberately and keep that choice local and explicit.
+
+Use `expect.poll` for non-DOM truth such as API state, backend eventual consistency, generated resources, or captured browser events. For DOM state, use locator assertions so Playwright can apply actionability and web-first retry semantics.
 
 ### 4. Let actions wait for actionability
 

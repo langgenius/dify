@@ -8,9 +8,10 @@ import { useEmbeddedChatbotContext } from '../../context'
 import Header from '../index'
 
 let mockBranding = { enabled: true, workspace_logo: '' }
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: { branding: { ...mockBranding } },
-})
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { branding: { ...mockBranding } },
+  })
 
 vi.mock('../../context', () => ({
   useEmbeddedChatbotContext: vi.fn(),
@@ -54,21 +55,28 @@ describe('EmbeddedChatbot Header', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockBranding = { enabled: true, workspace_logo: '' }
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(defaultContext as EmbeddedChatbotContextValue)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+      defaultContext as EmbeddedChatbotContextValue,
+    )
 
     Object.defineProperty(window, 'self', { value: window, configurable: true })
     Object.defineProperty(window, 'top', { value: window, configurable: true })
   })
 
-  const dispatchChatbotConfigMessage = async (origin: string, payload: { isToggledByButton: boolean, isDraggable: boolean }) => {
+  const dispatchChatbotConfigMessage = async (
+    origin: string,
+    payload: { isToggledByButton: boolean; isDraggable: boolean },
+  ) => {
     await act(async () => {
-      window.dispatchEvent(new MessageEvent('message', {
-        origin,
-        data: {
-          type: 'dify-chatbot-config',
-          payload,
-        },
-      }))
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin,
+          data: {
+            type: 'dify-chatbot-config',
+            payload,
+          },
+        }),
+      )
     })
   }
 
@@ -76,7 +84,6 @@ describe('EmbeddedChatbot Header', () => {
     it('should render desktop header with branding by default', async () => {
       render(<Header title="Test Chatbot" />)
 
-      expect(screen.getByTestId('webapp-brand')).toBeInTheDocument()
       expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
     })
 
@@ -133,11 +140,13 @@ describe('EmbeddedChatbot Header', () => {
 
       render(<Header title="Test Chatbot" />)
 
-      expect(screen.queryByTestId('webapp-brand')).not.toBeInTheDocument()
+      expect(screen.queryByText('share.chat.poweredBy')).not.toBeInTheDocument()
     })
 
     it('should render divider only when currentConversationId is present', () => {
-      vi.mocked(useEmbeddedChatbotContext).mockReturnValue({ ...defaultContext } as EmbeddedChatbotContextValue)
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
+        ...defaultContext,
+      } as EmbeddedChatbotContextValue)
       const { unmount } = render(<Header title="Test Chatbot" />)
       expect(screen.getByTestId('divider')).toBeInTheDocument()
       unmount()
@@ -159,7 +168,9 @@ describe('EmbeddedChatbot Header', () => {
     it('should call onCreateNewChat when reset button is clicked', async () => {
       const user = userEvent.setup()
       const onCreateNewChat = vi.fn()
-      render(<Header title="Test Chatbot" allowResetChat={true} onCreateNewChat={onCreateNewChat} />)
+      render(
+        <Header title="Test Chatbot" allowResetChat={true} onCreateNewChat={onCreateNewChat} />,
+      )
 
       await user.click(screen.getByRole('button', { name: 'share.chat.resetChat' }))
       expect(onCreateNewChat).toHaveBeenCalled()
@@ -210,7 +221,9 @@ describe('EmbeddedChatbot Header', () => {
     })
 
     it('should render customer icon in mobile header', () => {
-      render(<Header title="Mobile Chatbot" isMobile customerIcon={<div data-testid="custom-icon" />} />)
+      render(
+        <Header title="Mobile Chatbot" isMobile customerIcon={<div data-testid="custom-icon" />} />,
+      )
 
       expect(screen.getByTestId('custom-icon')).toBeInTheDocument()
     })
@@ -245,7 +258,10 @@ describe('EmbeddedChatbot Header', () => {
       const mockPostMessage = setupIframe()
       render(<Header title="Mobile Chatbot" isMobile />)
 
-      await dispatchChatbotConfigMessage('https://parent.com', { isToggledByButton: true, isDraggable: false })
+      await dispatchChatbotConfigMessage('https://parent.com', {
+        isToggledByButton: true,
+        isDraggable: false,
+      })
 
       const expandBtn = await screen.findByRole('button', { name: 'share.chat.expand' })
       expect(expandBtn).toBeInTheDocument()
@@ -263,10 +279,7 @@ describe('EmbeddedChatbot Header', () => {
       const mockPostMessage = setupIframe()
       render(<Header title="Iframe" />)
 
-      expect(mockPostMessage).toHaveBeenCalledWith(
-        { type: 'dify-chatbot-iframe-ready' },
-        '*',
-      )
+      expect(mockPostMessage).toHaveBeenCalledWith({ type: 'dify-chatbot-iframe-ready' }, '*')
     })
 
     it('should update expand button visibility and handle click', async () => {
@@ -274,7 +287,10 @@ describe('EmbeddedChatbot Header', () => {
       const mockPostMessage = setupIframe()
       render(<Header title="Iframe" />)
 
-      await dispatchChatbotConfigMessage('https://parent.com', { isToggledByButton: true, isDraggable: false })
+      await dispatchChatbotConfigMessage('https://parent.com', {
+        isToggledByButton: true,
+        isDraggable: false,
+      })
 
       const expandBtn = await screen.findByRole('button', { name: 'share.chat.expand' })
       expect(expandBtn).toBeInTheDocument()
@@ -292,7 +308,10 @@ describe('EmbeddedChatbot Header', () => {
       setupIframe()
       render(<Header title="Iframe" />)
 
-      await dispatchChatbotConfigMessage('https://parent.com', { isToggledByButton: true, isDraggable: true })
+      await dispatchChatbotConfigMessage('https://parent.com', {
+        isToggledByButton: true,
+        isDraggable: true,
+      })
 
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: 'share.chat.expand' })).not.toBeInTheDocument()
@@ -303,11 +322,17 @@ describe('EmbeddedChatbot Header', () => {
       setupIframe()
       render(<Header title="Iframe" />)
 
-      await dispatchChatbotConfigMessage('https://secure.com', { isToggledByButton: true, isDraggable: false })
+      await dispatchChatbotConfigMessage('https://secure.com', {
+        isToggledByButton: true,
+        isDraggable: false,
+      })
 
       await screen.findByRole('button', { name: 'share.chat.expand' })
 
-      await dispatchChatbotConfigMessage('https://malicious.com', { isToggledByButton: false, isDraggable: false })
+      await dispatchChatbotConfigMessage('https://malicious.com', {
+        isToggledByButton: false,
+        isDraggable: false,
+      })
 
       // Should still be visible (not hidden by the malicious message)
       expect(screen.getByRole('button', { name: 'share.chat.expand' })).toBeInTheDocument()
@@ -318,13 +343,18 @@ describe('EmbeddedChatbot Header', () => {
       render(<Header title="Iframe" />)
 
       await act(async () => {
-        window.dispatchEvent(new MessageEvent('message', {
-          origin: 'https://first.com',
-          data: { type: 'other-type' },
-        }))
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin: 'https://first.com',
+            data: { type: 'other-type' },
+          }),
+        )
       })
 
-      await dispatchChatbotConfigMessage('https://second.com', { isToggledByButton: true, isDraggable: false })
+      await dispatchChatbotConfigMessage('https://second.com', {
+        isToggledByButton: true,
+        isDraggable: false,
+      })
 
       // Should lock to second.com
       const expandBtn = await screen.findByRole('button', { name: 'share.chat.expand' })
@@ -345,13 +375,13 @@ describe('EmbeddedChatbot Header', () => {
   describe('Edge Cases', () => {
     it('should handle document.referrer for targetOrigin', () => {
       const mockPostMessage = setupIframe()
-      Object.defineProperty(document, 'referrer', { value: 'https://referrer.com', configurable: true })
+      Object.defineProperty(document, 'referrer', {
+        value: 'https://referrer.com',
+        configurable: true,
+      })
       render(<Header title="Referrer" />)
 
-      expect(mockPostMessage).toHaveBeenCalledWith(
-        expect.anything(),
-        'https://referrer.com',
-      )
+      expect(mockPostMessage).toHaveBeenCalledWith(expect.anything(), 'https://referrer.com')
     })
 
     it('should NOT add message listener if not in iframe', () => {

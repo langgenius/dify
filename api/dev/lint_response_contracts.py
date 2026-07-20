@@ -595,9 +595,15 @@ def line_has_ignore_marker(line: str) -> bool:
     return any(ignore_marker in normalized for ignore_marker in IGNORE_COMMENT_MARKERS)
 
 
+def node_ignore_scan_end_lineno(node: ast.ClassDef | MethodNode) -> int:
+    if isinstance(node, ast.ClassDef):
+        return node.lineno
+    return node.end_lineno or node.lineno
+
+
 def node_has_ignore_comment(lines: Sequence[str], node: ast.ClassDef | MethodNode) -> bool:
     start = node_start_lineno(node)
-    end = node.end_lineno or node.lineno
+    end = node_ignore_scan_end_lineno(node)
     if any(line_has_ignore_marker(line) for line in lines[start - 1 : end]):
         return True
 

@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "विवरण",
   "detailPanel.operation.info": "प्लगइन जानकारी",
   "detailPanel.operation.install": "स्थापित करें",
+  "detailPanel.operation.moreActions": "अधिक कार्रवाइयां",
   "detailPanel.operation.remove": "हटाएं",
   "detailPanel.operation.update": "अपडेट",
   "detailPanel.operation.updateTooltip": "नवीनतम मॉडल तक पहुँचने के लिए अपडेट करें।",

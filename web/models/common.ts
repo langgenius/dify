@@ -16,16 +16,6 @@ export type InitValidateStatusResponse = {
   status: 'finished' | 'not_started'
 }
 
-export type LangGeniusVersionResponse = {
-  current_version: string
-  latest_version: string
-  version: string
-  release_date: string
-  release_notes: string
-  can_auto_update: boolean
-  current_env: string
-}
-
 export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | 'avatar_url'> & {
   avatar: string
   last_login_at?: string
@@ -47,7 +37,7 @@ const ProviderName = {
   Tongyi: 'tongyi',
   ChatGLM: 'chatglm',
 } as const
-type ProviderName = typeof ProviderName[keyof typeof ProviderName]
+type ProviderName = (typeof ProviderName)[keyof typeof ProviderName]
 type ProviderAzureToken = {
   openai_api_base?: string
   openai_api_key?: string
@@ -82,6 +72,7 @@ export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   providers: Provider[]
   trial_credits: number
   trial_credits_used: number
+  trial_credits_exhausted_at: number
   next_credit_reset_date: number
   trial_end_reason?: string
   custom_config?: {
@@ -107,7 +98,10 @@ export type NotionPage = DataSourceNotionPage & {
   workspace_id: string
 }
 
-export type DataSourceNotionPageMap = Record<string, DataSourceNotionPage & { workspace_id: string }>
+export type DataSourceNotionPageMap = Record<
+  string,
+  DataSourceNotionPage & { workspace_id: string }
+>
 
 export type DataSourceNotionWorkspace = {
   workspace_name: string
@@ -122,7 +116,7 @@ export const DataSourceProvider = {
   jinaReader: 'jinareader',
   waterCrawl: 'watercrawl',
 } as const
-export type DataSourceProvider = typeof DataSourceProvider[keyof typeof DataSourceProvider]
+export type DataSourceProvider = (typeof DataSourceProvider)[keyof typeof DataSourceProvider]
 
 export type FileUploadConfigResponse = {
   batch_count_limit: number
@@ -137,30 +131,12 @@ export type FileUploadConfigResponse = {
   file_upload_limit: number // default is 5
 }
 
-export type InvitationResult = {
-  status: 'success'
-  email: string
-  url: string
-} | {
-  status: 'already_member'
-  email: string
-  message?: string
-} | {
-  status: 'failed'
-  email: string
-  message: string
-}
-
-export type InvitationResponse = CommonResponse & {
-  invitation_results: InvitationResult[]
-}
-
 export type CodeBasedExtensionForm = {
   type: string
   label: I18nText
   variable: string
   required: boolean
-  options: { label: I18nText, value: string }[]
+  options: { label: I18nText; value: string }[]
   default: string
   placeholder: string
   max_length?: number

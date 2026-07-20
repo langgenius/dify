@@ -28,6 +28,8 @@
   "accessRule.noDescription": "بدون توضیحات",
   "accessRule.noRules": "بدون قانون دسترسی",
   "accessRule.noUserAccessSettings": "بدون تنظیمات مجوز فردی",
+  "accessRule.onlyMe": "فقط من",
+  "accessRule.onlyMeDescription": "فقط شما می‌توانید به این منبع دسترسی داشته باشید.",
   "accessRule.permission": "مجوز",
   "accessRule.resourceOpenScope": "دامنه دسترسی منبع",
   "accessRule.resourceOpenScopeDescription": "انتخاب کنید این منبع برای چه کسانی باز است. مجوزهای نقش همچنان تعیین می‌کنند هر عضو چه کاری می‌تواند انجام دهد.",

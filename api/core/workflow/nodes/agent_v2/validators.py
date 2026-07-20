@@ -18,6 +18,7 @@ from models.agent_config_entities import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 
 from .entities import DifyAgentNodeData
 
@@ -60,16 +61,33 @@ class WorkflowAgentNodeValidator:
 
     @classmethod
     def validate_draft_workflow(cls, *, session: Session, workflow: Workflow) -> None:
-        cls._validate_workflow(session=session, workflow=workflow, require_binding=False)
+        cls._validate_workflow(
+            session=session,
+            workflow=workflow,
+            require_binding=False,
+            validate_previous_node_topology=False,
+        )
 
     @classmethod
     def validate_published_workflow(cls, *, session: Session, workflow: Workflow) -> None:
-        cls._validate_workflow(session=session, workflow=workflow, require_binding=True)
+        cls._validate_workflow(
+            session=session,
+            workflow=workflow,
+            require_binding=True,
+            validate_previous_node_topology=True,
+        )
 
     @classmethod
-    def _validate_workflow(cls, *, session: Session, workflow: Workflow, require_binding: bool) -> None:
+    def _validate_workflow(
+        cls,
+        *,
+        session: Session,
+        workflow: Workflow,
+        require_binding: bool,
+        validate_previous_node_topology: bool,
+    ) -> None:
         graph = workflow.graph_dict
-        topology = _WorkflowGraphTopology.from_graph(graph)
+        topology = _WorkflowGraphTopology.from_graph(graph) if validate_previous_node_topology else None
         for node_id, node_data in cls.iter_agent_v2_nodes(graph):
             cls._validate_node_schema(node_id=node_id, node_data=node_data)
             binding = cls._find_binding(
@@ -146,6 +164,7 @@ class WorkflowAgentNodeValidator:
             )
         cls._validate_agent_soul_env(binding=binding, agent_soul=agent_soul)
         cls._validate_agent_soul_tools(binding=binding, agent_soul=agent_soul)
+        cls._validate_agent_soul_knowledge(session=session, binding=binding, agent_soul=agent_soul)
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
         cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
 
@@ -183,12 +202,12 @@ class WorkflowAgentNodeValidator:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has invalid previous node output ref."
                 )
-            if topology is None:
-                continue
             if len(selector) < 2:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has incomplete previous node output ref."
                 )
+            if topology is None:
+                continue
             source_node_id = selector[0]
             if not topology.has_node(source_node_id):
                 raise WorkflowAgentNodeValidationError(
@@ -363,6 +382,26 @@ class WorkflowAgentNodeValidator:
                     f"Workflow Agent node {binding.node_id} has duplicate CLI Tool name {normalized_name}."
                 )
             cli_tool_names.add(normalized_name)
+
+    @classmethod
+    def _validate_agent_soul_knowledge(
+        cls,
+        *,
+        session: Session,
+        binding: WorkflowAgentNodeBinding,
+        agent_soul: AgentSoulConfig,
+    ) -> None:
+        """Validate knowledge set dataset rows against the publishing tenant."""
+        missing_ids = list_missing_tenant_knowledge_dataset_ids(
+            session=session,
+            tenant_id=binding.tenant_id,
+            agent_soul=agent_soul,
+        )
+        if missing_ids:
+            raise WorkflowAgentNodeValidationError(
+                f"Workflow Agent node {binding.node_id} references missing or out-of-scope knowledge datasets: "
+                f"{', '.join(missing_ids)}."
+            )
 
     @classmethod
     def _validate_agent_soul_env(

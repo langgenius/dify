@@ -26,6 +26,7 @@ from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
+from graphon.filters import ResponseStreamFilter
 from graphon.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
@@ -169,13 +170,14 @@ class _AppRunner:
 
         user = self._resolve_user()
 
-        with self._setup_flask_context(user):
+        with self._setup_flask_context(user), self._session_factory(expire_on_commit=False) as session:
             try:
                 response = self._run_app(
                     app=app,
                     workflow=workflow,
                     user=user,
                     pause_state_config=pause_config,
+                    session=session,
                 )
             except Exception as exc:
                 if exec_params.streaming:
@@ -205,6 +207,7 @@ class _AppRunner:
         workflow: Workflow,
         user: Account | EndUser,
         pause_state_config: PauseStateLayerConfig,
+        session: Session,
     ):
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
@@ -217,6 +220,7 @@ class _AppRunner:
                 streaming=exec_params.streaming,
                 workflow_run_id=exec_params.workflow_run_id,
                 pause_state_config=pause_state_config,
+                session=session,
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
             return WorkflowAppGenerator().generate(
@@ -245,7 +249,6 @@ class _AppRunner:
             case _Account():
                 with self._session() as session:
                     user: Account = session.get(Account, user_params.user_id)
-                    user.set_tenant_id(self._exec_params.tenant_id)
                 return user
             case _:
                 raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
@@ -254,10 +257,7 @@ class _AppRunner:
 def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Account | EndUser | None:
     role = CreatorUserRole(workflow_run.created_by_role)
     if role == CreatorUserRole.ACCOUNT:
-        user = session.get(Account, workflow_run.created_by)
-        if user:
-            user.set_tenant_id(workflow_run.tenant_id)
-        return user
+        return session.get(Account, workflow_run.created_by)
 
     return session.get(EndUser, workflow_run.created_by)
 
@@ -487,6 +487,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     generate_entity = resumption_context.get_generate_entity()
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    response_stream_filter = resumption_context.get_response_stream_filter()
 
     conversation = None
     message = None
@@ -555,19 +556,22 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         case AdvancedChatAppGenerateEntity():
             assert conversation is not None
             assert message is not None
-            _resume_advanced_chat(
-                app_model=app_model,
-                workflow=workflow,
-                user=user,
-                conversation=conversation,
-                message=message,
-                generate_entity=generate_entity,
-                graph_runtime_state=graph_runtime_state,
-                session_factory=session_factory,
-                pause_state_config=pause_config,
-                workflow_run_id=workflow_run_id,
-                workflow_run=workflow_run,
-            )
+            with session_factory() as session:
+                _resume_advanced_chat(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    conversation=conversation,
+                    message=message,
+                    generate_entity=generate_entity,
+                    graph_runtime_state=graph_runtime_state,
+                    response_stream_filter=response_stream_filter,
+                    session_factory=session_factory,
+                    pause_state_config=pause_config,
+                    workflow_run_id=workflow_run_id,
+                    workflow_run=workflow_run,
+                    session=session,
+                )
         case WorkflowAppGenerateEntity():
             _resume_workflow(
                 app_model=app_model,
@@ -575,6 +579,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 user=user,
                 generate_entity=generate_entity,
                 graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
                 session_factory=session_factory,
                 pause_state_config=pause_config,
                 workflow_run_id=workflow_run_id,
@@ -593,10 +598,12 @@ def _resume_advanced_chat(
     message: Message,
     generate_entity: AdvancedChatAppGenerateEntity,
     graph_runtime_state: GraphRuntimeState,
+    response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
     workflow_run: WorkflowRun,
+    session: Session,
 ) -> None:
     resumed_generate_entity = generate_entity.model_copy(
         update={"stream": True, "trace_manager": _build_resumed_trace_manager(app_model=app_model, user=user)}
@@ -609,12 +616,14 @@ def _resume_advanced_chat(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -634,6 +643,8 @@ def _resume_advanced_chat(
             workflow_node_execution_repository=workflow_node_execution_repository,
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
+            session=session,
         )
     except Exception:
         logger.exception("Failed to resume chatflow execution for workflow run %s", workflow_run_id)
@@ -657,6 +668,7 @@ def _resume_workflow(
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
     graph_runtime_state: GraphRuntimeState,
+    response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
@@ -675,12 +687,14 @@ def _resume_workflow(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -698,6 +712,7 @@ def _resume_workflow(
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
         )
     except Exception:
         logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)

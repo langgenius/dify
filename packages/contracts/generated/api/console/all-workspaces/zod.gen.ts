@@ -13,9 +13,9 @@ export const zWorkspaceListItemResponse = z.object({
 })
 
 /**
- * WorkspaceListResponse
+ * WorkspacePaginationResponse
  */
-export const zWorkspaceListResponse = z.object({
+export const zWorkspacePaginationResponse = z.object({
   data: z.array(zWorkspaceListItemResponse),
   has_more: z.boolean(),
   limit: z.int(),
@@ -31,4 +31,4 @@ export const zGetAllWorkspacesQuery = z.object({
 /**
  * Success
  */
-export const zGetAllWorkspacesResponse = zWorkspaceListResponse
+export const zGetAllWorkspacesResponse = zWorkspacePaginationResponse

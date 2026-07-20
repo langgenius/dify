@@ -28,6 +28,8 @@
   "accessRule.noDescription": "لا يوجد وصف",
   "accessRule.noRules": "لا توجد قواعد وصول",
   "accessRule.noUserAccessSettings": "لا توجد إعدادات أذونات فردية",
+  "accessRule.onlyMe": "أنا فقط",
+  "accessRule.onlyMeDescription": "يمكنك وحدك الوصول إلى هذا المورد.",
   "accessRule.permission": "الإذن",
   "accessRule.resourceOpenScope": "نطاق فتح المورد",
   "accessRule.resourceOpenScopeDescription": "اختر من يُفتح له هذا المورد. لا تزال أذونات الأدوار تحدد ما يمكن لكل عضو فعله.",

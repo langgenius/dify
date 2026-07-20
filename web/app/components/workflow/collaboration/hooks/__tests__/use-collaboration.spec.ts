@@ -4,7 +4,9 @@ import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-feat
 import { useCollaboration } from '../use-collaboration'
 
 type HookReactFlowStore = NonNullable<Parameters<typeof useCollaboration>[1]>
-type HookReactFlowInstance = Parameters<ReturnType<typeof useCollaboration>['startCursorTracking']>[1]
+type HookReactFlowInstance = Parameters<
+  ReturnType<typeof useCollaboration>['startCursorTracking']
+>[1]
 
 const mockConnect = vi.hoisted(() => vi.fn())
 const mockDisconnect = vi.hoisted(() => vi.fn())
@@ -12,7 +14,9 @@ const mockIsConnected = vi.hoisted(() => vi.fn(() => true))
 const mockEmitCursorMove = vi.hoisted(() => vi.fn())
 const mockGetLeaderId = vi.hoisted(() => vi.fn(() => 'leader-1'))
 
-let onStateChangeCallback: ((state: { isConnected?: boolean, disconnectReason?: string, error?: string }) => void) | null = null
+let onStateChangeCallback:
+  | ((state: { isConnected?: boolean; disconnectReason?: string; error?: string }) => void)
+  | null = null
 let onCursorCallback: ((cursors: Record<string, CursorPosition>) => void) | null = null
 let onUsersCallback: ((users: OnlineUser[]) => void) | null = null
 let onPresenceCallback: ((presence: NodePanelPresenceMap) => void) | null = null
@@ -28,7 +32,10 @@ let isCollaborationEnabled = true
 
 const mockStartTracking = vi.hoisted(() => vi.fn())
 const mockStopTracking = vi.hoisted(() => vi.fn())
-const cursorServiceInstances: Array<{ startTracking: typeof mockStartTracking, stopTracking: typeof mockStopTracking }> = []
+const cursorServiceInstances: Array<{
+  startTracking: typeof mockStartTracking
+  stopTracking: typeof mockStopTracking
+}> = []
 
 vi.mock('../../core/collaboration-manager', () => ({
   collaborationManager: {
@@ -37,7 +44,13 @@ vi.mock('../../core/collaboration-manager', () => ({
     isConnected: () => mockIsConnected(),
     emitCursorMove: (...args: unknown[]) => mockEmitCursorMove(...args),
     getLeaderId: () => mockGetLeaderId(),
-    onStateChange: (callback: (state: { isConnected?: boolean, disconnectReason?: string, error?: string }) => void) => {
+    onStateChange: (
+      callback: (state: {
+        isConnected?: boolean
+        disconnectReason?: string
+        error?: string
+      }) => void,
+    ) => {
       onStateChangeCallback = callback
       return unsubscribeState
     },
@@ -65,7 +78,10 @@ vi.mock('../../services/cursor-service', () => ({
     startTracking = mockStartTracking
     stopTracking = mockStopTracking
     constructor() {
-      cursorServiceInstances.push({ startTracking: this.startTracking, stopTracking: this.stopTracking })
+      cursorServiceInstances.push({
+        startTracking: this.startTracking,
+        stopTracking: this.stopTracking,
+      })
     }
   },
 }))
@@ -88,9 +104,12 @@ describe('useCollaboration', () => {
     const reactFlowStore: HookReactFlowStore = {
       getState: vi.fn(),
     }
-    const { result, unmount } = renderHookWithSystemFeatures(() => useCollaboration('app-1', reactFlowStore), {
-      systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
-    })
+    const { result, unmount } = renderHookWithSystemFeatures(
+      () => useCollaboration('app-1', reactFlowStore),
+      {
+        systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
+      },
+    )
 
     await waitFor(() => {
       expect(mockConnect).toHaveBeenCalledWith('app-1', reactFlowStore)
@@ -99,7 +118,9 @@ describe('useCollaboration', () => {
     onStateChangeCallback?.({ isConnected: true })
     onUsersCallback?.([{ user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' } as OnlineUser])
     onCursorCallback?.({ u1: { x: 10, y: 20, userId: 'u1', timestamp: 1 } })
-    onPresenceCallback?.({ nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } } })
+    onPresenceCallback?.({
+      nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } },
+    })
     onLeaderCallback?.(true)
 
     await waitFor(() => {
@@ -118,7 +139,7 @@ describe('useCollaboration', () => {
     } as HookReactFlowInstance
     result.current.startCursorTracking(ref, reactFlowInstance)
     expect(mockStartTracking).toHaveBeenCalledTimes(1)
-    const emitPosition = mockStartTracking.mock.calls[0]?.[1] as ((position: CursorPosition) => void)
+    const emitPosition = mockStartTracking.mock.calls[0]?.[1] as (position: CursorPosition) => void
     emitPosition({ x: 1, y: 2, userId: 'u1', timestamp: 2 })
     expect(mockEmitCursorMove).toHaveBeenCalledWith({ x: 1, y: 2, userId: 'u1', timestamp: 2 })
 

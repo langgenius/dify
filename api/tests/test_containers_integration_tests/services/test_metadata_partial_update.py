@@ -95,7 +95,9 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(db_session_with_containers, dataset, metadata_args, current_account)
+        MetadataService.update_documents_metadata(
+            dataset, metadata_args, current_account, session=db_session_with_containers
+        )
         db_session_with_containers.expire_all()
 
         updated_doc = db_session_with_containers.get(Document, document.id)
@@ -126,7 +128,9 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(db_session_with_containers, dataset, metadata_args, current_account)
+        MetadataService.update_documents_metadata(
+            dataset, metadata_args, current_account, session=db_session_with_containers
+        )
         db_session_with_containers.expire_all()
 
         updated_doc = db_session_with_containers.get(Document, document.id)
@@ -168,7 +172,9 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(db_session_with_containers, dataset, metadata_args, current_account)
+        MetadataService.update_documents_metadata(
+            dataset, metadata_args, current_account, session=db_session_with_containers
+        )
         db_session_with_containers.expire_all()
 
         bindings = db_session_with_containers.scalars(
@@ -205,5 +211,5 @@ class TestMetadataPartialUpdate:
         with patch.object(db_session_with_containers, "commit", side_effect=RuntimeError("database connection lost")):
             with pytest.raises(RuntimeError, match="database connection lost"):
                 MetadataService.update_documents_metadata(
-                    db_session_with_containers, dataset, metadata_args, current_account
+                    dataset, metadata_args, current_account, session=db_session_with_containers
                 )

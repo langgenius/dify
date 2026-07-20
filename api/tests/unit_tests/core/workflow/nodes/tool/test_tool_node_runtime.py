@@ -44,7 +44,10 @@ def runtime(monkeypatch) -> DifyToolNodeRuntime:
         invoke_from="debugger",
         call_depth=0,
     )
-    return DifyToolNodeRuntime(init_params.run_context)
+    session_maker = MagicMock()
+    session_maker.begin.return_value.__enter__.return_value = MagicMock(name="session")
+    session_maker.begin.return_value.__exit__.return_value = None
+    return DifyToolNodeRuntime(init_params.run_context, session_maker=session_maker)
 
 
 def _build_tool_node_data() -> ToolNodeData:
@@ -106,6 +109,7 @@ def test_invoke_creates_callback_and_converts_messages(runtime: DifyToolNodeRunt
 
     callback = generic_invoke_mock.call_args.kwargs["workflow_tool_callback"]
     assert isinstance(callback, DifyWorkflowCallbackHandler)
+    assert generic_invoke_mock.call_args.kwargs["session"] is not None
     assert generic_invoke_mock.call_args.kwargs["conversation_id"] == "conversation-id"
 
     transform_kwargs = transform_tool_messages.call_args.kwargs
@@ -117,11 +121,13 @@ def test_invoke_maps_plugin_errors_to_graph_errors(runtime: DifyToolNodeRuntime)
 
     with patch.object(ToolEngine, "generic_invoke", side_effect=invoke_error):
         with pytest.raises(ToolRuntimeInvocationError, match="An error occurred in the provider"):
-            runtime.invoke(
-                tool_runtime=ToolRuntimeHandle(raw=MagicMock()),
-                tool_parameters={},
-                workflow_call_depth=0,
-                provider_name="provider",
+            list(
+                runtime.invoke(
+                    tool_runtime=ToolRuntimeHandle(raw=MagicMock()),
+                    tool_parameters={},
+                    workflow_call_depth=0,
+                    provider_name="provider",
+                )
             )
 
 

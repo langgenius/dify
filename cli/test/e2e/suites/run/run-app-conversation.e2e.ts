@@ -18,7 +18,13 @@ import {
   assertStderrContains,
 } from '../../helpers/assert.js'
 import { registerConversation } from '../../helpers/cleanup-registry.js'
-import { injectAuth, run, spawn_background, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import {
+  injectAuth,
+  run,
+  spawn_background,
+  withAuthFixture,
+  withTempConfig,
+} from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalIt } from '../../helpers/skip.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -83,25 +89,32 @@ describe('E2E / difyctl run app --conversation', () => {
     // Spec 4.3.5: omitting --conversation creates a brand-new session each time;
     // the new conversation_id must be non-empty and distinct from the previous one.
     // withRetry: echo-chat app may return empty answer on back-to-back calls under load.
-    const firstId = await withRetry(async () => {
-      const r = await fx.r(['run', 'app', E.chatAppId, 'new-conv-1', '-o', 'json'])
-      assertExitCode(r, 0)
-      const { conversation_id } = assertJson<{ conversation_id: string }>(r)
-      expect(conversation_id, 'first call must return a non-empty conversation_id').toBeTruthy()
-      return conversation_id
-    }, { attempts: 3, delayMs: 2000 })
+    const firstId = await withRetry(
+      async () => {
+        const r = await fx.r(['run', 'app', E.chatAppId, 'new-conv-1', '-o', 'json'])
+        assertExitCode(r, 0)
+        const { conversation_id } = assertJson<{ conversation_id: string }>(r)
+        expect(conversation_id, 'first call must return a non-empty conversation_id').toBeTruthy()
+        return conversation_id
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
 
-    const secondId = await withRetry(async () => {
-      const r = await fx.r(['run', 'app', E.chatAppId, 'new-conv-2', '-o', 'json'])
-      assertExitCode(r, 0)
-      const { conversation_id } = assertJson<{ conversation_id: string }>(r)
-      expect(conversation_id, 'second call must return a non-empty conversation_id').toBeTruthy()
-      return conversation_id
-    }, { attempts: 3, delayMs: 2000 })
+    const secondId = await withRetry(
+      async () => {
+        const r = await fx.r(['run', 'app', E.chatAppId, 'new-conv-2', '-o', 'json'])
+        assertExitCode(r, 0)
+        const { conversation_id } = assertJson<{ conversation_id: string }>(r)
+        expect(conversation_id, 'second call must return a non-empty conversation_id').toBeTruthy()
+        return conversation_id
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
 
-    expect(secondId, 'omitting --conversation must create a new session, not reuse the previous one')
-      .not
-      .toBe(firstId)
+    expect(
+      secondId,
+      'omitting --conversation must create a new session, not reuse the previous one',
+    ).not.toBe(firstId)
   })
 
   // ── Error scenarios ─────────────────────────────────────────────────────
@@ -127,28 +140,33 @@ describe('E2E / difyctl run app --conversation', () => {
     // Spec 4.3.6: --conversation <cid> --stream should work and the streaming
     // reply must carry the same conversation_id as the one used in the request.
     // withRetry: echo-chat may return empty answer (no conversation_id) under load.
-    await withRetry(async () => {
-      const first = await fx.r(['run', 'app', E.chatAppId, 'init', '-o', 'json'])
-      assertExitCode(first, 0)
-      const { conversation_id } = assertJson<{ conversation_id: string }>(first)
-      expect(conversation_id, 'first call should return a conversation_id').toBeTruthy()
+    await withRetry(
+      async () => {
+        const first = await fx.r(['run', 'app', E.chatAppId, 'init', '-o', 'json'])
+        assertExitCode(first, 0)
+        const { conversation_id } = assertJson<{ conversation_id: string }>(first)
+        expect(conversation_id, 'first call should return a conversation_id').toBeTruthy()
 
-      const result = await fx.r([
-        'run',
-        'app',
-        E.chatAppId,
-        'continue',
-        '--conversation',
-        conversation_id,
-        '--stream',
-        '-o',
-        'json',
-      ])
-      assertExitCode(result, 0)
-      const streamed = assertJson<{ conversation_id?: string, answer?: string }>(result)
-      expect(streamed.conversation_id, 'streaming reply must carry the same conversation_id')
-        .toBe(conversation_id)
-    }, { attempts: 3, delayMs: 2000 })
+        const result = await fx.r([
+          'run',
+          'app',
+          E.chatAppId,
+          'continue',
+          '--conversation',
+          conversation_id,
+          '--stream',
+          '-o',
+          'json',
+        ])
+        assertExitCode(result, 0)
+        const streamed = assertJson<{ conversation_id?: string; answer?: string }>(result)
+        expect(
+          streamed.conversation_id,
+          'streaming reply must carry the same conversation_id',
+        ).toBe(conversation_id)
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
   })
 
   it('[P1] conversation output supports piping (-o json pipe-friendly format)', async () => {
@@ -170,8 +188,7 @@ describe('E2E / difyctl run app --conversation', () => {
         { configDir: unauthTmp.configDir },
       )
       assertExitCode(result, 4)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -189,16 +206,19 @@ describe('E2E / difyctl run app --conversation', () => {
         workspaceName: E.workspaceName,
       })
       const result = await withRetry(
-        () => run(['run', 'app', E.chatAppId, 'sso-conv-test', '-o', 'json'], {
-          configDir: ssoTmp.configDir,
-        }),
+        () =>
+          run(['run', 'app', E.chatAppId, 'sso-conv-test', '-o', 'json'], {
+            configDir: ssoTmp.configDir,
+          }),
         { attempts: 3, delayMs: 2000 },
       )
       assertExitCode(result, 0)
       const parsed = assertJson<{ conversation_id?: string }>(result)
-      expect(parsed.conversation_id, 'SSO conversation run should return a conversation_id').toBeTruthy()
-    }
-    finally {
+      expect(
+        parsed.conversation_id,
+        'SSO conversation run should return a conversation_id',
+      ).toBeTruthy()
+    } finally {
       await ssoTmp.cleanup()
     }
   })
@@ -207,54 +227,62 @@ describe('E2E / difyctl run app --conversation', () => {
 
   it('[P1] JSON output includes message_id field', async () => {
     // Spec 4.3.15: -o json response must include a non-empty message_id field.
-    const result = await withRetry(async () => {
-      const r = await fx.r(['run', 'app', E.chatAppId, 'msg-id-check', '-o', 'json'])
-      assertExitCode(r, 0)
-      const parsed = assertJson<{ message_id?: string }>(r)
-      expect(parsed.message_id, 'message_id must be non-empty').toBeTruthy()
-      return r
-    }, { attempts: 3, delayMs: 2000 })
+    const result = await withRetry(
+      async () => {
+        const r = await fx.r(['run', 'app', E.chatAppId, 'msg-id-check', '-o', 'json'])
+        assertExitCode(r, 0)
+        const parsed = assertJson<{ message_id?: string }>(r)
+        expect(parsed.message_id, 'message_id must be non-empty').toBeTruthy()
+        return r
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
     assertExitCode(result, 0)
   })
 
   it('[P1] after streaming interruption the same conversation_id remains usable', async () => {
     // Spec 4.3.18: interrupting a streaming run must not corrupt the conversation;
     // a subsequent non-streaming call with the same conversation_id must succeed.
-    const conversation_id = await withRetry(async () => {
-      const r = await fx.r(['run', 'app', E.chatAppId, 'pre-interrupt', '-o', 'json'])
-      assertExitCode(r, 0)
-      const { conversation_id: cid } = assertJson<{ conversation_id: string }>(r)
-      expect(cid, 'setup call must return a conversation_id').toBeTruthy()
-      return cid
-    }, { attempts: 3, delayMs: 2000 })
+    const conversation_id = await withRetry(
+      async () => {
+        const r = await fx.r(['run', 'app', E.chatAppId, 'pre-interrupt', '-o', 'json'])
+        assertExitCode(r, 0)
+        const { conversation_id: cid } = assertJson<{ conversation_id: string }>(r)
+        expect(cid, 'setup call must return a conversation_id').toBeTruthy()
+        return cid
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
 
     // Start a streaming run and interrupt it after 800 ms.
     const proc = spawn_background(
       ['run', 'app', E.chatAppId, 'streaming-msg', '--conversation', conversation_id, '--stream'],
       { configDir: fx.configDir },
     )
-    await new Promise(res => setTimeout(res, 800))
+    await new Promise((res) => setTimeout(res, 800))
     proc.interrupt()
     await proc.wait()
 
     // The conversation must still be usable after the interruption.
     const resume = await withRetry(
-      () => fx.r([
-        'run',
-        'app',
-        E.chatAppId,
-        'after-interrupt',
-        '--conversation',
-        conversation_id,
-        '-o',
-        'json',
-      ]),
+      () =>
+        fx.r([
+          'run',
+          'app',
+          E.chatAppId,
+          'after-interrupt',
+          '--conversation',
+          conversation_id,
+          '-o',
+          'json',
+        ]),
       { attempts: 3, delayMs: 2000 },
     )
     assertExitCode(resume, 0)
     const parsed = assertJson<{ conversation_id: string }>(resume)
-    expect(parsed.conversation_id, 'resumed call must carry the same conversation_id')
-      .toBe(conversation_id)
+    expect(parsed.conversation_id, 'resumed call must carry the same conversation_id').toBe(
+      conversation_id,
+    )
   })
 
   it('[P1] conversation run with unreachable host returns network error (exit non-zero)', async () => {
@@ -286,8 +314,7 @@ describe('E2E / difyctl run app --conversation', () => {
       )
       expect(result.exitCode, 'unreachable host should cause non-zero exit').not.toBe(0)
       expect(result.stderr.length, 'stderr should contain an error message').toBeGreaterThan(0)
-    }
-    finally {
+    } finally {
       await networkTmp.cleanup()
     }
   })
@@ -321,38 +348,47 @@ describe('E2E / difyctl run app --conversation', () => {
       '--conversation',
       'any-conv-id-for-wf',
     ])
-    expect(result.exitCode, '--conversation on workflow must not cause an unhandled crash (exit 2)').not.toBe(2)
+    expect(
+      result.exitCode,
+      '--conversation on workflow must not cause an unhandled crash (exit 2)',
+    ).not.toBe(2)
     expect(result.stderr).not.toMatch(/unhandled|uncaught|TypeError|ReferenceError/i)
   })
 
   it('[P1] same conversation_id remains stable across 3 consecutive calls', async () => {
     // Spec 4.3.24: reusing the same conversation_id multiple times must always
     // succeed; each call must exit 0 and return the same conversation_id.
-    const conversation_id = await withRetry(async () => {
-      const r = await fx.r(['run', 'app', E.chatAppId, 'stable-1', '-o', 'json'])
-      assertExitCode(r, 0)
-      const { conversation_id: cid } = assertJson<{ conversation_id: string }>(r)
-      expect(cid, 'initial call must return a conversation_id').toBeTruthy()
-      return cid
-    }, { attempts: 3, delayMs: 2000 })
+    const conversation_id = await withRetry(
+      async () => {
+        const r = await fx.r(['run', 'app', E.chatAppId, 'stable-1', '-o', 'json'])
+        assertExitCode(r, 0)
+        const { conversation_id: cid } = assertJson<{ conversation_id: string }>(r)
+        expect(cid, 'initial call must return a conversation_id').toBeTruthy()
+        return cid
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
 
     for (let i = 2; i <= 3; i++) {
       const result = await withRetry(
-        () => fx.r([
-          'run',
-          'app',
-          E.chatAppId,
-          `stable-${i}`,
-          '--conversation',
-          conversation_id,
-          '-o',
-          'json',
-        ]),
+        () =>
+          fx.r([
+            'run',
+            'app',
+            E.chatAppId,
+            `stable-${i}`,
+            '--conversation',
+            conversation_id,
+            '-o',
+            'json',
+          ]),
         { attempts: 3, delayMs: 2000 },
       )
       assertExitCode(result, 0)
       const parsed = assertJson<{ conversation_id: string }>(result)
-      expect(parsed.conversation_id, `call ${i}: conversation_id must be stable`).toBe(conversation_id)
+      expect(parsed.conversation_id, `call ${i}: conversation_id must be stable`).toBe(
+        conversation_id,
+      )
     }
   })
 
@@ -366,47 +402,51 @@ describe('E2E / difyctl run app --conversation', () => {
 
   const itWithFileChat = optionalIt(Boolean(E.fileChatAppId))
 
-  itWithFileChat('[P1] --conversation + --file doc uploads a file and continues the conversation', async () => {
-    // Spec 4.3.7: --conversation <cid> --file doc=@test.txt
-    // File upload succeeds, app executes correctly, conversation_id is preserved.
-    const FILE_URL = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  itWithFileChat(
+    '[P1] --conversation + --file doc uploads a file and continues the conversation',
+    async () => {
+      // Spec 4.3.7: --conversation <cid> --file doc=@test.txt
+      // File upload succeeds, app executes correctly, conversation_id is preserved.
+      const FILE_URL = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
 
-    // Step 1: Start a new conversation with a file — get the conversation_id.
-    const first = await fx.r([
-      'run',
-      'app',
-      E.fileChatAppId,
-      'summarize this document',
-      '--file',
-      `file_input=${FILE_URL}`,
-      '-o',
-      'json',
-    ])
-    assertExitCode(first, 0)
-    const { conversation_id } = assertJson<{ conversation_id: string }>(first)
-    expect(conversation_id, 'first call must return a non-empty conversation_id').toBeTruthy()
-    registerConversation(E.host, E.token, E.fileChatAppId, conversation_id)
+      // Step 1: Start a new conversation with a file — get the conversation_id.
+      const first = await fx.r([
+        'run',
+        'app',
+        E.fileChatAppId,
+        'summarize this document',
+        '--file',
+        `file_input=${FILE_URL}`,
+        '-o',
+        'json',
+      ])
+      assertExitCode(first, 0)
+      const { conversation_id } = assertJson<{ conversation_id: string }>(first)
+      expect(conversation_id, 'first call must return a non-empty conversation_id').toBeTruthy()
+      registerConversation(E.host, E.token, E.fileChatAppId, conversation_id)
 
-    // Step 2: Continue the same conversation with another file upload.
-    const second = await fx.r([
-      'run',
-      'app',
-      E.fileChatAppId,
-      'what is this document about?',
-      '--conversation',
-      conversation_id,
-      '--file',
-      `file_input=${FILE_URL}`,
-      '-o',
-      'json',
-    ])
-    assertExitCode(second, 0)
-    const secondParsed = assertJson<{ conversation_id: string }>(second)
+      // Step 2: Continue the same conversation with another file upload.
+      const second = await fx.r([
+        'run',
+        'app',
+        E.fileChatAppId,
+        'what is this document about?',
+        '--conversation',
+        conversation_id,
+        '--file',
+        `file_input=${FILE_URL}`,
+        '-o',
+        'json',
+      ])
+      assertExitCode(second, 0)
+      const secondParsed = assertJson<{ conversation_id: string }>(second)
 
-    // The conversation_id must be the same across both calls.
-    expect(secondParsed.conversation_id, '--conversation must preserve the conversation_id')
-      .toBe(conversation_id)
-  })
+      // The conversation_id must be the same across both calls.
+      expect(secondParsed.conversation_id, '--conversation must preserve the conversation_id').toBe(
+        conversation_id,
+      )
+    },
+  )
 
   // ── 4.3.8  --conversation + --inputs ────────────────────────────────────────
   //
@@ -452,8 +492,9 @@ describe('E2E / difyctl run app --conversation', () => {
     const secondParsed = assertJson<{ conversation_id: string }>(second)
 
     // The conversation_id must be identical across both calls.
-    expect(secondParsed.conversation_id, '--inputs must not break conversation continuity')
-      .toBe(conversation_id)
+    expect(secondParsed.conversation_id, '--inputs must not break conversation continuity').toBe(
+      conversation_id,
+    )
   })
 
   // ── 4.3.11  wrong app id + valid conversation_id ─────────────────────────────
@@ -469,34 +510,37 @@ describe('E2E / difyctl run app --conversation', () => {
   // pipeline.  The important contract is: exit code is 1 (non-zero) and stderr is
   // non-empty with a recognisable error code.
 
-  itWithFileChat('[P0] running fileChatApp with a conversation_id owned by chatApp returns an error (exit 1)', async () => {
-    // Spec 4.3.11: using the wrong app id with a valid conversation_id from another
-    // app must fail with a non-zero exit code.
+  itWithFileChat(
+    '[P0] running fileChatApp with a conversation_id owned by chatApp returns an error (exit 1)',
+    async () => {
+      // Spec 4.3.11: using the wrong app id with a valid conversation_id from another
+      // app must fail with a non-zero exit code.
 
-    // Step 1: create a conversation with chatApp.
-    const setup = await fx.r(['run', 'app', E.chatAppId, 'init-for-cross-app', '-o', 'json'])
-    assertExitCode(setup, 0)
-    const { conversation_id } = assertJson<{ conversation_id: string }>(setup)
-    expect(conversation_id, 'setup call must return a conversation_id').toBeTruthy()
-    registerConversation(E.host, E.token, E.chatAppId, conversation_id)
+      // Step 1: create a conversation with chatApp.
+      const setup = await fx.r(['run', 'app', E.chatAppId, 'init-for-cross-app', '-o', 'json'])
+      assertExitCode(setup, 0)
+      const { conversation_id } = assertJson<{ conversation_id: string }>(setup)
+      expect(conversation_id, 'setup call must return a conversation_id').toBeTruthy()
+      registerConversation(E.host, E.token, E.chatAppId, conversation_id)
 
-    // Step 2: attempt to continue that conversation using fileChatApp.
-    // The server rejects it because the conversation belongs to a different app.
-    const result = await fx.r([
-      'run',
-      'app',
-      E.fileChatAppId,
-      'this should fail',
-      '--conversation',
-      conversation_id,
-      '-o',
-      'json',
-    ])
+      // Step 2: attempt to continue that conversation using fileChatApp.
+      // The server rejects it because the conversation belongs to a different app.
+      const result = await fx.r([
+        'run',
+        'app',
+        E.fileChatAppId,
+        'this should fail',
+        '--conversation',
+        conversation_id,
+        '-o',
+        'json',
+      ])
 
-    // The server returns HTTP 500 (stream terminated by error event) with exit 1.
-    expect(result.exitCode, 'cross-app conversation_id must cause a non-zero exit').toBe(1)
-    expect(result.stderr.trim().length, 'stderr must contain an error message').toBeGreaterThan(0)
-    // stderr must be a JSON error envelope when -o json is active
-    assertErrorEnvelope(result)
-  })
+      // The server returns HTTP 500 (stream terminated by error event) with exit 1.
+      expect(result.exitCode, 'cross-app conversation_id must cause a non-zero exit').toBe(1)
+      expect(result.stderr.trim().length, 'stderr must contain an error message').toBeGreaterThan(0)
+      // stderr must be a JSON error envelope when -o json is active
+      assertErrorEnvelope(result)
+    },
+  )
 })

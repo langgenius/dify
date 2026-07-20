@@ -52,37 +52,41 @@ function DropdownContent({
 
   const { selectedCredentialId, isActivating, activate } = useActivateCredential(provider)
 
-  const handleEdit = useCallback((credential?: Credential) => {
-    if (credential ? !canManageCredential : !canCreateCredential)
-      return
+  const handleEdit = useCallback(
+    (credential?: Credential) => {
+      if (credential ? !canManageCredential : !canCreateCredential) return
 
-    handleOpenModal(credential)
-    onClose()
-  }, [canCreateCredential, canManageCredential, handleOpenModal, onClose])
+      handleOpenModal(credential)
+      onClose()
+    },
+    [canCreateCredential, canManageCredential, handleOpenModal, onClose],
+  )
 
-  const handleDelete = useCallback((credential?: Credential) => {
-    if (!canManageCredential)
-      return
+  const handleDelete = useCallback(
+    (credential?: Credential) => {
+      if (!canManageCredential) return
 
-    if (credential)
-      openConfirmDelete(credential)
-  }, [canManageCredential, openConfirmDelete])
+      if (credential) openConfirmDelete(credential)
+    },
+    [canManageCredential, openConfirmDelete],
+  )
 
   const handleAdd = useCallback(() => {
-    if (!canCreateCredential)
-      return
+    if (!canCreateCredential) return
 
     handleOpenModal()
     onClose()
   }, [canCreateCredential, handleOpenModal, onClose])
 
   const showCreditsExhaustedAlert = state.isCreditsExhausted && state.supportsCredits
-  const hasApiKeyFallback = state.variant === 'api-fallback'
-    || (state.variant === 'api-active' && state.priority === 'apiKey')
-  const showCreditsFallbackAlert = state.priority === 'apiKey'
-    && state.supportsCredits
-    && !state.isCreditsExhausted
-    && state.variant !== 'api-active'
+  const hasApiKeyFallback =
+    state.variant === 'api-fallback' ||
+    (state.variant === 'api-active' && state.priority === 'apiKey')
+  const showCreditsFallbackAlert =
+    state.priority === 'apiKey' &&
+    state.supportsCredits &&
+    !state.isCreditsExhausted &&
+    state.variant !== 'api-active'
 
   return (
     <>
@@ -94,9 +98,7 @@ function DropdownContent({
             onSelect={onChangePriority}
           />
         )}
-        {showCreditsFallbackAlert && (
-          <CreditsFallbackAlert hasCredentials={state.hasCredentials} />
-        )}
+        {showCreditsFallbackAlert && <CreditsFallbackAlert hasCredentials={state.hasCredentials} />}
         {showCreditsExhaustedAlert && (
           <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
         )}
@@ -114,23 +116,22 @@ function DropdownContent({
       <AlertDialog
         open={!!deleteCredentialId}
         onOpenChange={(open) => {
-          if (!open)
-            closeConfirmDelete()
+          if (!open) closeConfirmDelete()
         }}
       >
         <AlertDialogContent>
           <div className="p-6 pb-0">
             <AlertDialogTitle className="system-xl-semibold text-text-primary">
-              {t('modelProvider.confirmDelete', { ns: 'common' })}
+              {t(($) => $['modelProvider.confirmDelete'], { ns: 'common' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="mt-1 system-sm-regular text-text-secondary" />
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton disabled={doingAction}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
-              {t('operation.delete', { ns: 'common' })}
+              {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

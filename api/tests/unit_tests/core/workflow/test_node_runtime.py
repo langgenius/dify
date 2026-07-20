@@ -34,13 +34,13 @@ from core.workflow.node_runtime import (
     build_dify_llm_file_saver,
     resolve_dify_run_context,
 )
+from core.workflow.nodes.human_input.entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from graphon.nodes.human_input.entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
@@ -171,7 +171,7 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
     model_schema = _build_model_schema()
     model_instance = _ModelInstanceStub(model_schema=model_schema)
     model_type_instance = model_instance.model_type_instance
-    prepared = DifyPreparedLLM(model_instance)
+    prepared = DifyPreparedLLM(model_instance, request_metadata={"app_id": "app-id"})
 
     assert prepared.provider == "langgenius/openai/openai"
     assert prepared.model_name == "gpt-4o-mini"
@@ -197,6 +197,7 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
         tools=[],
         stop=[],
         stream=False,
+        request_metadata={"app_id": "app-id"},
     )
 
 

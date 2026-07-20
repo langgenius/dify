@@ -7,9 +7,10 @@ agent-side ``dify.ask_human`` contract so the node can start a *second* Agent ru
 that carries the human's answer:
 
 * submitted  -> AskHumanToolResult(status="submitted", action, values)
-* timeout / expired -> AskHumanToolResult(status="timeout")
+* timeout -> AskHumanToolResult(status="timeout")
+* expired (global timeout) -> invalid resume state; the workflow must not resume
 * still waiting (defensive: the host resumed us early) -> re-emit the same
-  HumanInputRequired pause rebuilt from the stored form definition.
+  Dify-side ``HumanInputRequired`` pause rebuilt from the stored form definition.
 
 It only *reads* existing HITL form state — it never mutates the form or the HITL
 submission flow. The DB read (``resolve_ask_human_form``) is kept thin so the
@@ -31,18 +32,17 @@ from pydantic import JsonValue
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.nodes.human_input.entities import FormDefinition
-from graphon.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from models.human_input import HumanInputForm
 
-# A WAITING form has not been answered yet; the other terminal states map onto
-# the agent-facing result status. EXPIRED (global timeout) and TIMEOUT
-# (node-level) both surface to the model as "timeout" so it can react.
+# A WAITING form has not been answered yet. TIMEOUT is resumable through the
+# agent-facing "timeout" result, but EXPIRED is a global timeout and therefore
+# an invalid resume state, matching the ordinary Human Input callback boundary.
 _FORM_STATUS_TO_RESULT: dict[HumanInputFormStatus, AskHumanResultStatus] = {
     HumanInputFormStatus.SUBMITTED: "submitted",
     HumanInputFormStatus.TIMEOUT: "timeout",
-    HumanInputFormStatus.EXPIRED: "timeout",
 }
 
 
@@ -99,6 +99,9 @@ def map_form_to_outcome(
     definition = FormDefinition.model_validate_json(form_definition)
     if status == HumanInputFormStatus.WAITING:
         return AskHumanResumeOutcome(repause=_rebuild_pause(definition=definition, form_id=form_id, node_id=node_id))
+    if status == HumanInputFormStatus.EXPIRED:
+        msg = f"cannot resume globally expired ask_human form, form_id={form_id}"
+        raise AssertionError(msg)
 
     result_status = _FORM_STATUS_TO_RESULT.get(status, "unavailable")
     if result_status != "submitted":

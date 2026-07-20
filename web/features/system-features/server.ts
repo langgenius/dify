@@ -26,8 +26,7 @@ export const serverSystemFeaturesQueryOptions = () => {
         return await serverConsoleClient.systemFeatures.get(undefined, {
           context: await getServerConsoleClientContext(),
         })
-      }
-      catch (err) {
+      } catch (err) {
         console.error('[systemFeatures] server fetch failed', err)
         return defaultSystemFeatures
       }

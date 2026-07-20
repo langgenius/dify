@@ -2,21 +2,23 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import RemoveAnnotationConfirmModal from '../index'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const translations: Record<string, string> = {
-        'feature.annotation.removeConfirm': 'Remove annotation?',
-        'operation.confirm': 'Confirm',
-        'operation.cancel': 'Cancel',
-      }
-      if (translations[key])
-        return translations[key]
-      const prefix = options?.ns ? `${options.ns}.` : ''
-      return `${prefix}${key}`
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => {
+        const translations: Record<string, string> = {
+          'feature.annotation.removeConfirm': 'Remove annotation?',
+          'operation.confirm': 'Confirm',
+          'operation.cancel': 'Cancel',
+        }
+        if (translations[key]) return translations[key]
+        const prefix = options?.ns ? `${options.ns}.` : ''
+        return `${prefix}${key}`
+      }),
+    }),
+  }
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -27,13 +29,7 @@ describe('RemoveAnnotationConfirmModal', () => {
   describe('Rendering', () => {
     it('should display the confirm modal when visible', () => {
       // Arrange
-      render(
-        <RemoveAnnotationConfirmModal
-          isShow
-          onHide={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<RemoveAnnotationConfirmModal isShow onHide={vi.fn()} onRemove={vi.fn()} />)
 
       // Assert
       expect(screen.getByText('Remove annotation?')).toBeInTheDocument()
@@ -43,13 +39,7 @@ describe('RemoveAnnotationConfirmModal', () => {
 
     it('should not render modal content when hidden', () => {
       // Arrange
-      render(
-        <RemoveAnnotationConfirmModal
-          isShow={false}
-          onHide={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<RemoveAnnotationConfirmModal isShow={false} onHide={vi.fn()} onRemove={vi.fn()} />)
 
       // Assert
       expect(screen.queryByText('Remove annotation?')).not.toBeInTheDocument()
@@ -62,13 +52,7 @@ describe('RemoveAnnotationConfirmModal', () => {
       const onHide = vi.fn()
       const onRemove = vi.fn()
       // Arrange
-      render(
-        <RemoveAnnotationConfirmModal
-          isShow
-          onHide={onHide}
-          onRemove={onRemove}
-        />,
-      )
+      render(<RemoveAnnotationConfirmModal isShow onHide={onHide} onRemove={onRemove} />)
 
       // Act
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
@@ -82,13 +66,7 @@ describe('RemoveAnnotationConfirmModal', () => {
       const onHide = vi.fn()
       const onRemove = vi.fn()
       // Arrange
-      render(
-        <RemoveAnnotationConfirmModal
-          isShow
-          onHide={onHide}
-          onRemove={onRemove}
-        />,
-      )
+      render(<RemoveAnnotationConfirmModal isShow onHide={onHide} onRemove={onRemove} />)
 
       // Act
       fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))

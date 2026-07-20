@@ -451,6 +451,46 @@ def test_app_runner_streaming_failure_publishes_started_then_failed_workflow_fin
     assert finished_payload["data"]["files"] == []
 
 
+def test_app_runner_resolves_account_without_switching_tenant(monkeypatch: pytest.MonkeyPatch):
+    exec_params = AppExecutionParams(
+        app_id="app-id",
+        workflow_id="workflow-id",
+        tenant_id="resource-tenant-id",
+        app_mode=AppMode.WORKFLOW,
+        user={"TYPE": "account", "user_id": "user-id"},
+        args={"inputs": {}},
+        invoke_from=InvokeFrom.EXPLORE,
+        streaming=True,
+        workflow_run_id="workflow-run-id",
+    )
+    runner = _AppRunner(session_factory=MagicMock(), exec_params=exec_params)
+    account = MagicMock()
+    session = MagicMock()
+    session.get.return_value = account
+    monkeypatch.setattr(runner, "_session", lambda: nullcontext(session))
+
+    resolved_user = runner._resolve_user()
+
+    assert resolved_user is account
+    account.set_tenant_id_with_session.assert_not_called()
+
+
+def test_resolve_account_for_run_without_switching_tenant():
+    account = MagicMock()
+    session = MagicMock()
+    session.get.return_value = account
+    workflow_run = MagicMock(
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-id",
+        tenant_id="resource-tenant-id",
+    )
+
+    resolved_user = workflow_execute_task_module._resolve_user_for_run(session, workflow_run)
+
+    assert resolved_user is account
+    account.set_tenant_id_with_session.assert_not_called()
+
+
 def test_app_runner_streaming_failure_keeps_existing_pre_runtime_helper_behavior(
     mock_topic: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
@@ -719,24 +759,28 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(monk
         "tasks.app_generate.workflow_execute_task.TraceQueueManager",
         lambda app_id, user_id: trace_manager,
     )
+    session = MagicMock()
 
     _resume_advanced_chat(
-        app_model=SimpleNamespace(id="app-id"),
+        app_model=SimpleNamespace(id="app-id", tenant_id="resource-tenant-id"),
         workflow=workflow,
         user=MagicMock(),
         conversation=SimpleNamespace(id="conversation-id"),
         message=MagicMock(),
         generate_entity=generate_entity,
         graph_runtime_state=MagicMock(),
+        response_stream_filter=MagicMock(),
         session_factory=MagicMock(),
         pause_state_config=MagicMock(),
         workflow_run_id="workflow-run-id",
         workflow_run=SimpleNamespace(triggered_from="app_run"),
+        session=session,
     )
 
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
     assert resumed_entity.trace_manager is trace_manager
+    assert generator_instance.resume.call_args.kwargs["session"] is session
     publish_streaming_response.assert_called_once_with(
         response_stream,
         "workflow-run-id",
@@ -780,11 +824,12 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(monkeypat
     pause_entity = MagicMock()
 
     _resume_workflow(
-        app_model=SimpleNamespace(id="app-id"),
+        app_model=SimpleNamespace(id="app-id", tenant_id="resource-tenant-id"),
         workflow=workflow,
         user=MagicMock(),
         generate_entity=generate_entity,
         graph_runtime_state=MagicMock(),
+        response_stream_filter=MagicMock(),
         session_factory=MagicMock(),
         pause_state_config=MagicMock(),
         workflow_run_id="workflow-run-id",
@@ -841,11 +886,12 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(monkeypatch: py
     pause_entity = MagicMock()
 
     _resume_workflow(
-        app_model=SimpleNamespace(id="app-id"),
+        app_model=SimpleNamespace(id="app-id", tenant_id="resource-tenant-id"),
         workflow=workflow,
         user=MagicMock(),
         generate_entity=generate_entity,
         graph_runtime_state=MagicMock(),
+        response_stream_filter=MagicMock(),
         session_factory=MagicMock(),
         pause_state_config=MagicMock(),
         workflow_run_id="workflow-run-id",

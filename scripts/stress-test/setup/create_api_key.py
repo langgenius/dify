@@ -11,7 +11,7 @@ import httpx
 from common import Logger, config_helper
 
 
-def create_api_key() -> None:
+def create_api_key() -> bool:
     """Create API key for the imported app."""
 
     log = Logger("CreateAPIKey")
@@ -21,14 +21,14 @@ def create_api_key() -> None:
     access_token = config_helper.get_token()
     if not access_token:
         log.error("No access token found in config")
-        return
+        return False
 
     # Read app_id from config
     app_id = config_helper.get_app_id()
     if not app_id:
         log.error("No app_id found in config")
         log.info("Please run import_workflow_app.py first to import the app")
-        return
+        return False
 
     log.step(f"Creating API key for app: {app_id}")
 
@@ -50,14 +50,14 @@ def create_api_key() -> None:
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-site",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
-        "authorization": f"Bearer {access_token}",
+        **config_helper.console_auth_headers(),
         "content-type": "application/json",
         "sec-ch-ua": '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"macOS"',
     }
 
-    cookies = {"locale": "en-US"}
+    cookies = config_helper.console_auth_cookies()
 
     try:
         # Make the API key creation request
@@ -91,23 +91,31 @@ def create_api_key() -> None:
 
                     if config_helper.write_config("api_key_config", api_key_config):
                         log.info(f"API key saved to: {config_helper.get_config_path('benchmark_state')}")
+                        return True
+                    return False
                 else:
                     log.error("No API token received")
                     log.debug(f"Response: {json.dumps(response_data, indent=2)}")
+                    return False
 
             elif response.status_code == 401:
                 log.error("API key creation failed: Unauthorized")
                 log.info("Token may have expired. Please run login_admin.py again")
+                return False
             else:
                 log.error(f"API key creation failed with status code: {response.status_code}")
                 log.debug(f"Response: {response.text}")
+                return False
 
     except httpx.ConnectError:
         log.error("Could not connect to Dify API at http://localhost:5001")
         log.info("Make sure the API server is running with: ./dev/start-api")
+        return False
     except Exception as e:
         log.error(f"An error occurred: {e}")
+        return False
 
 
 if __name__ == "__main__":
-    create_api_key()
+    if not create_api_key():
+        sys.exit(1)

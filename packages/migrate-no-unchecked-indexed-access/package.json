@@ -1,17 +1,17 @@
 {
   "name": "migrate-no-unchecked-indexed-access",
-  "type": "module",
   "version": "0.0.0-private",
   "private": true,
   "bin": {
     "migrate-no-unchecked-indexed-access": "./bin/migrate-no-unchecked-indexed-access.js"
   },
+  "type": "module",
   "scripts": {
     "build": "vp pack",
-    "type-check": "tsgo"
+    "type-check": "tsc"
   },
   "dependencies": {
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
     "typescript": "catalog:"
   },
   "devDependencies": {

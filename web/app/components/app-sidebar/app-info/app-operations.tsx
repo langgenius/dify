@@ -41,32 +41,27 @@ const AppOperations = ({
   const navRef = useRef<HTMLDivElement>(null)
 
   const primaryOps = useMemo(() => {
-    if (operations)
-      return operations
-    if (primaryOperations)
-      return primaryOperations
+    if (operations) return operations
+    if (primaryOperations) return primaryOperations
     return EMPTY_OPERATIONS
   }, [operations, primaryOperations])
 
   const secondaryOps = useMemo(() => {
-    if (operations)
-      return EMPTY_OPERATIONS
-    if (secondaryOperations)
-      return secondaryOperations
+    if (operations) return EMPTY_OPERATIONS
+    if (secondaryOperations) return secondaryOperations
     return EMPTY_OPERATIONS
   }, [operations, secondaryOperations])
-  const inlineOperations = primaryOps.filter(operation => operation.type !== 'divider')
+  const inlineOperations = primaryOps.filter((operation) => operation.type !== 'divider')
 
   useEffect(() => {
     const applyState = (visible: Operation[], overflow: Operation[]) => {
       const combinedMore = [...overflow, ...secondaryOps]
-      if (!overflow.length && combinedMore[0]?.type === 'divider')
-        combinedMore.shift()
+      if (!overflow.length && combinedMore[0]?.type === 'divider') combinedMore.shift()
       setVisibleOperations(visible)
       setMoreOperations(combinedMore)
     }
 
-    const inline = primaryOps.filter(operation => operation.type !== 'divider')
+    const inline = primaryOps.filter((operation) => operation.type !== 'divider')
 
     if (!inline.length) {
       applyState([], [])
@@ -76,43 +71,41 @@ const AppOperations = ({
     const navElement = navRef.current
     const moreElement = document.getElementById('more-measure')
 
-    if (!navElement || !moreElement)
-      return
+    if (!navElement || !moreElement) return
 
     let width = 0
     const containerWidth = navElement.clientWidth
     const moreWidth = moreElement.clientWidth
 
-    if (containerWidth === 0 || moreWidth === 0)
-      return
+    if (containerWidth === 0 || moreWidth === 0) return
 
-    const updatedEntries: Record<string, boolean> = inline.reduce((pre, cur) => {
-      pre[cur.id] = false
-      return pre
-    }, {} as Record<string, boolean>)
+    const updatedEntries: Record<string, boolean> = inline.reduce(
+      (pre, cur) => {
+        pre[cur.id] = false
+        return pre
+      },
+      {} as Record<string, boolean>,
+    )
     const childrens = Array.from(navElement.children).slice(0, -1)
     for (let i = 0; i < childrens.length; i++) {
       const child = childrens[i] as HTMLElement
       const id = child.dataset.targetid
-      if (!id)
-        break
+      if (!id) break
       const childWidth = child.clientWidth
 
       if (width + gap + childWidth + moreWidth <= containerWidth) {
         updatedEntries[id] = true
         width += gap + childWidth
-      }
-      else {
+      } else {
         if (i === childrens.length - 1 && width + childWidth <= containerWidth)
           updatedEntries[id] = true
-        else
-          updatedEntries[id] = false
+        else updatedEntries[id] = false
         break
       }
     }
 
-    const visible = inline.filter(item => updatedEntries[item.id])
-    const overflow = inline.filter(item => !updatedEntries[item.id])
+    const visible = inline.filter((item) => updatedEntries[item.id])
+    const overflow = inline.filter((item) => !updatedEntries[item.id])
 
     applyState(visible, overflow)
   }, [gap, primaryOps, secondaryOps])
@@ -127,7 +120,7 @@ const AppOperations = ({
         className="pointer-events-none flex h-0 items-center self-stretch overflow-hidden"
         style={{ gap }}
       >
-        {inlineOperations.map(operation => (
+        {inlineOperations.map((operation) => (
           <Button
             key={operation.id}
             data-targetid={operation.id}
@@ -136,7 +129,9 @@ const AppOperations = ({
             className="gap-px focus-visible:ring-inset"
             tabIndex={-1}
           >
-            {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
+            {cloneElement(operation.icon, {
+              className: 'h-3.5 w-3.5 text-components-button-secondary-text',
+            })}
             <span className="system-xs-medium text-components-button-secondary-text">
               {operation.title}
             </span>
@@ -151,12 +146,12 @@ const AppOperations = ({
         >
           <RiMoreLine className="size-3.5 text-components-button-secondary-text" />
           <span className="system-xs-medium text-components-button-secondary-text">
-            {t('operation.more', { ns: 'common' })}
+            {t(($) => $['operation.more'], { ns: 'common' })}
           </span>
         </Button>
       </div>
       <div className="flex items-center self-stretch overflow-hidden" style={{ gap }}>
-        {visibleOpreations.map(operation => (
+        {visibleOpreations.map((operation) => (
           <Button
             key={operation.id}
             data-targetid={operation.id}
@@ -165,7 +160,9 @@ const AppOperations = ({
             className="gap-px focus-visible:ring-inset"
             onClick={operation.onClick}
           >
-            {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
+            {cloneElement(operation.icon, {
+              className: 'h-3.5 w-3.5 text-components-button-secondary-text',
+            })}
             <span className="system-xs-medium text-components-button-secondary-text">
               {operation.title}
             </span>
@@ -174,18 +171,18 @@ const AppOperations = ({
         {shouldShowMoreButton && (
           <DropdownMenu open={showMore} onOpenChange={setShowMore}>
             <DropdownMenuTrigger
-              render={(
+              render={
                 <Button
                   size="small"
                   variant="secondary"
                   className="gap-px focus-visible:ring-inset"
                 />
-              )}
+              }
             >
               <>
                 <RiMoreLine className="size-3.5 text-components-button-secondary-text" />
                 <span className="system-xs-medium text-components-button-secondary-text">
-                  {t('operation.more', { ns: 'common' })}
+                  {t(($) => $['operation.more'], { ns: 'common' })}
                 </span>
               </>
             </DropdownMenuTrigger>
@@ -194,20 +191,16 @@ const AppOperations = ({
               sideOffset={4}
               popupClassName="min-w-[264px]"
             >
-              {moreOperations.map(item => item.type === 'divider'
-                ? (
-                    <DropdownMenuSeparator key={item.id} />
-                  )
-                : (
-                    <DropdownMenuItem
-                      key={item.id}
-                      className="gap-x-1 px-1.5"
-                      onClick={item.onClick}
-                    >
-                      {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
-                      <span className="system-md-regular text-text-secondary">{item.title}</span>
-                    </DropdownMenuItem>
-                  ))}
+              {moreOperations.map((item) =>
+                item.type === 'divider' ? (
+                  <DropdownMenuSeparator key={item.id} />
+                ) : (
+                  <DropdownMenuItem key={item.id} className="gap-x-1 px-1.5" onClick={item.onClick}>
+                    {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
+                    <span className="system-md-regular text-text-secondary">{item.title}</span>
+                  </DropdownMenuItem>
+                ),
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

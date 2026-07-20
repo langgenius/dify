@@ -8,7 +8,7 @@ const PluginCardSkeleton = () => (
     data-testid="plugin-card-skeleton"
     className="relative overflow-hidden rounded-xl border-[1.5px] border-background-section-burn bg-background-section-burn p-1"
   >
-    <div className="relative z-10 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
+    <div className="relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
       <div className="flex">
         <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-xl" />
         <div className="ml-3 w-0 grow">
@@ -33,15 +33,13 @@ type PluginListSkeletonProps = {
   contentFrameClassName: string
 }
 
-const PluginListSkeleton = ({
-  contentFrameClassName,
-}: PluginListSkeletonProps) => {
+const PluginListSkeleton = ({ contentFrameClassName }: PluginListSkeletonProps) => {
   const { t } = useTranslation()
 
   return (
     <div
       role="status"
-      aria-label={t('loading', { ns: 'common' })}
+      aria-label={t(($) => $.loading, { ns: 'common' })}
       className={cn('min-h-0 grow self-stretch bg-components-panel-bg', contentFrameClassName)}
     >
       <div className="grid grid-cols-1 gap-3 pb-3 lg:grid-cols-2">

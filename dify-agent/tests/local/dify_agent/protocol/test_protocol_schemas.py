@@ -12,6 +12,7 @@ from dify_agent.layers.dify_plugin import DIFY_PLUGIN_LLM_LAYER_TYPE_ID, DIFY_PL
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
+    AgentRunUsage,
     RUN_EVENT_ADAPTER,
     CreateRunRequest,
     DeferredToolCallPayload,
@@ -41,7 +42,11 @@ from dify_agent.layers.dify_plugin.configs import (
 def test_run_event_adapter_round_trips_typed_variants() -> None:
     events = [
         RunStartedEvent(run_id="run-1"),
-        PydanticAIStreamRunEvent(run_id="run-1", data=FinalResultEvent(tool_name=None, tool_call_id=None)),
+        PydanticAIStreamRunEvent(
+            run_id="run-1",
+            data=FinalResultEvent(tool_name=None, tool_call_id=None),
+            agent_message_delta="hello",
+        ),
         RunSucceededEvent(
             run_id="run-1",
             data=RunSucceededEventData(
@@ -100,6 +105,7 @@ def test_create_run_request_rejects_old_compositor_payload_and_model_layer_id_is
 
 def test_protocol_package_no_longer_exports_execution_context_dto() -> None:
     assert not hasattr(protocol_exports, "ExecutionContext")
+    assert not hasattr(protocol_exports, "RunPurpose")
 
 
 def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_graph_config() -> None:
@@ -130,7 +136,6 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         }
     )
     request = CreateRunRequest(
-        purpose="workflow_node",
         idempotency_key="workflow-run-1:node-execution-1",
         metadata={"source": "unit_test"},
         composition=RunComposition(
@@ -171,11 +176,11 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         "conversation_id": None,
         "agent_id": None,
         "agent_config_version_id": None,
+        "agent_config_version_kind": None,
         "agent_mode": "workflow_run",
         "invoke_from": "service-api",
         "trace_id": "trace-1",
     }
-    assert payload["purpose"] == "workflow_node"
     assert payload["idempotency_key"] == "workflow-run-1:node-execution-1"
     assert payload["metadata"] == {"source": "unit_test"}
     assert payload["composition"]["layers"][0]["config"] == {"prefix": "system", "user": "hello", "suffix": []}
@@ -403,6 +408,27 @@ def test_run_succeeded_event_round_trips_explicit_json_null_output() -> None:
     assert b'"deferred_tool_call"' not in payload
 
 
+def test_run_succeeded_event_round_trips_usage() -> None:
+    event = RunSucceededEvent(
+        run_id="run-usage",
+        data=RunSucceededEventData(
+            output="done",
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            usage=AgentRunUsage(prompt_tokens=3, completion_tokens=5),
+        ),
+    )
+
+    payload = RUN_EVENT_ADAPTER.dump_json(event)
+    decoded = RUN_EVENT_ADAPTER.validate_json(payload)
+
+    assert isinstance(decoded, RunSucceededEvent)
+    assert decoded.data.usage is not None
+    assert decoded.data.usage.prompt_tokens == 3
+    assert decoded.data.usage.completion_tokens == 5
+    assert decoded.data.usage.total_tokens == 8
+    assert b'"usage"' in payload
+
+
 def test_on_exit_accept_layer_overrides() -> None:
     request = CreateRunRequest.model_validate(
         {
@@ -429,6 +455,16 @@ def test_create_run_request_rejects_removed_top_level_execution_context() -> Non
                     "agent_mode": "workflow_run",
                     "invoke_from": "service-api",
                 },
+            }
+        )
+
+
+def test_create_run_request_rejects_removed_top_level_purpose() -> None:
+    with pytest.raises(ValidationError):
+        _ = CreateRunRequest.model_validate(
+            {
+                "composition": {"layers": []},
+                "purpose": "session_cleanup",
             }
         )
 

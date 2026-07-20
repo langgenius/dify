@@ -1,16 +1,14 @@
-import type { ContractRouterClient } from '@orpc/contract'
+import type { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
+import type { ClientLink } from '@orpc/client'
+import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import {
-  API_PREFIX,
-  CSRF_COOKIE_NAME,
-  CSRF_HEADER_NAME,
-} from '@/config'
+import { cache } from 'react'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
-import { consoleRouterContract } from '@/contract/router'
-
+import { createConsoleDynamicLink } from './console-link'
 import 'server-only'
 
 export type ServerConsoleClientContext = {
@@ -18,14 +16,13 @@ export type ServerConsoleClientContext = {
   csrfToken?: string
 }
 
-const withTrailingSlash = (value: string) => value.endsWith('/') ? value : `${value}/`
-const withoutLeadingSlash = (value: string) => value.startsWith('/') ? value.slice(1) : value
+const withTrailingSlash = (value: string) => (value.endsWith('/') ? value : `${value}/`)
+const withoutLeadingSlash = (value: string) => (value.startsWith('/') ? value.slice(1) : value)
 
 const resolveAbsoluteUrlPrefix = (value: string) => {
   try {
     return new URL(value).toString()
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -41,16 +38,14 @@ export const resolveServerConsoleApiUrl = (
   publicApiPrefix = API_PREFIX,
 ) => {
   const apiPrefix = resolveServerConsoleApiPrefix(serverConsoleApiPrefix, publicApiPrefix)
-  if (!apiPrefix)
-    return null
+  if (!apiPrefix) return null
 
   return new URL(withoutLeadingSlash(pathname), withTrailingSlash(apiPrefix)).toString()
 }
 
 const getServerConsoleApiPrefix = () => {
   const apiPrefix = resolveServerConsoleApiPrefix()
-  if (!apiPrefix)
-    throw new Error('Server console API URL is not configured')
+  if (!apiPrefix) throw new Error('Server console API URL is not configured')
 
   return apiPrefix
 }
@@ -60,48 +55,58 @@ const createServerConsoleRequestHeaders = (context: ServerConsoleClientContext |
     Accept: 'application/json',
   })
 
-  if (context?.cookie)
-    requestHeaders.set('cookie', context.cookie)
-  if (context?.csrfToken)
-    requestHeaders.set(CSRF_HEADER_NAME, context.csrfToken)
+  if (context?.cookie) requestHeaders.set('cookie', context.cookie)
+  if (context?.csrfToken) requestHeaders.set(CSRF_HEADER_NAME, context.csrfToken)
 
   return requestHeaders
 }
 
-export const getServerConsoleClientContext = async (): Promise<ServerConsoleClientContext> => {
-  const { cookies, headers } = await import('@/next/headers')
-  const requestHeaders = await headers()
-  const cookieStore = await cookies()
+type ServerConsoleClientLink = ClientLink<ServerConsoleClientContext>
 
-  return {
-    cookie: requestHeaders.get('cookie') || undefined,
-    csrfToken: cookieStore.get(CSRF_COOKIE_NAME())?.value,
-  }
+function createServerConsoleOpenAPILink(contract: AnyContractRouter): ServerConsoleClientLink {
+  return new OpenAPILink<ServerConsoleClientContext>(contract, {
+    url: getServerConsoleApiPrefix,
+    headers: ({ context }) => createServerConsoleRequestHeaders(context),
+    fetch: (request, init) => {
+      if (request.body && !request.headers.has('content-type'))
+        request.headers.set('Content-Type', 'application/json')
+
+      return globalThis.fetch(request, {
+        ...init,
+        cache: 'no-store',
+      })
+    },
+    interceptors: [
+      onError((error) => {
+        console.error(error)
+      }),
+    ],
+  })
 }
+
+export const getServerConsoleClientContext = cache(
+  async (): Promise<ServerConsoleClientContext> => {
+    const { cookies, headers } = await import('@/next/headers')
+    const requestHeaders = await headers()
+    const cookieStore = await cookies()
+
+    return {
+      cookie: requestHeaders.get('cookie') || undefined,
+      csrfToken: cookieStore.get(CSRF_COOKIE_NAME())?.value,
+    }
+  },
+)
 
 export const getServerConsoleRequestHeaders = async () =>
   createServerConsoleRequestHeaders(await getServerConsoleClientContext())
 
-const serverConsoleLink = new OpenAPILink<ServerConsoleClientContext>(consoleRouterContract, {
-  url: getServerConsoleApiPrefix,
-  headers: ({ context }) => createServerConsoleRequestHeaders(context),
-  fetch: (request, init) => {
-    if (request.body && !request.headers.has('content-type'))
-      request.headers.set('Content-Type', 'application/json')
+const serverConsoleLink = createConsoleDynamicLink<ServerConsoleClientContext>(
+  createServerConsoleOpenAPILink,
+)
 
-    return globalThis.fetch(request, {
-      ...init,
-      cache: 'no-store',
-    })
-  },
-  interceptors: [
-    onError((error) => {
-      console.error(error)
-    }),
-  ],
-})
-
-export const serverConsoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ServerConsoleClientContext>> = createORPCClient(serverConsoleLink)
+export const serverConsoleClient: JsonifiedClient<
+  ContractRouterClient<typeof consoleRouterContract, ServerConsoleClientContext>
+> = createORPCClient(serverConsoleLink)
 
 export const serverConsoleQuery = createTanstackQueryUtils(serverConsoleClient, {
   path: ['console'],

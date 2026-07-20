@@ -17,18 +17,14 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app/app-1/overview',
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: testState.workspacePermissionKeys,
-  })),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn((selector: (state: { appDetail: { permission_keys: string[] } }) => unknown) => selector({
-    appDetail: {
-      permission_keys: testState.appPermissionKeys,
-    },
-  })),
+  useStore: vi.fn((selector: (state: { appDetail: { permission_keys: string[] } }) => unknown) =>
+    selector({
+      appDetail: {
+        permission_keys: testState.appPermissionKeys,
+      },
+    }),
+  ),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -60,7 +56,14 @@ vi.mock('@/app/components/base/icons/src/public/tracing', () => ({
 }))
 
 vi.mock('../config-button', () => ({
-  default: ({ children, ...props }: ComponentProps<'div'> & { readOnly: boolean, hasConfigured: boolean, children?: ReactNode }) => {
+  default: ({
+    children,
+    ...props
+  }: ComponentProps<'div'> & {
+    readOnly: boolean
+    hasConfigured: boolean
+    children?: ReactNode
+  }) => {
     testState.configButtonProps.push({
       readOnly: props.readOnly,
       hasConfigured: props.hasConfigured,

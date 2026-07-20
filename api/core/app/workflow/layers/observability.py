@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import cast, final, override
 
 from opentelemetry import context as context_api
-from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer, set_span_in_context
+from opentelemetry.trace import Span, SpanKind, Tracer, get_current_span, get_tracer, set_span_in_context
 
 from configs import dify_config
 from extensions.otel.parser import (
@@ -24,9 +24,10 @@ from extensions.otel.parser import (
     ToolNodeOTelParser,
 )
 from extensions.otel.runtime import is_instrument_flag_enabled
+from extensions.otel.semconv import DifySpanAttributes
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphNodeEventBase
+from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunAbortedEvent
 from graphon.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
@@ -158,9 +159,13 @@ class ObservabilityLayer(GraphEngineLayer):
             logger.warning("Failed to end OpenTelemetry span for node %s: %s", node.id, e)
 
     @override
-    def on_event(self, event) -> None:
-        """Not used in this layer."""
-        pass
+    def on_event(self, event: GraphEngineEvent) -> None:
+        """Record graph-level observability events."""
+        if self._is_disabled:
+            return
+
+        if isinstance(event, GraphRunAbortedEvent):
+            self._record_abort_reason(reason=event.reason or "Workflow execution aborted")
 
     @override
     def on_graph_end(self, error: Exception | None) -> None:
@@ -171,3 +176,16 @@ class ObservabilityLayer(GraphEngineLayer):
                 len(self._node_contexts),
             )
             self._node_contexts.clear()
+
+    def _record_abort_reason(self, *, reason: str) -> None:
+        span = get_current_span()
+        if not span.is_recording():
+            return
+
+        span.set_attribute(DifySpanAttributes.WORKFLOW_ABORT_REASON, reason)
+        span.add_event(
+            "dify.workflow.aborted",
+            attributes={
+                DifySpanAttributes.WORKFLOW_ABORT_REASON: reason,
+            },
+        )

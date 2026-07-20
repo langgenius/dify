@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Không có mô tả",
   "accessRule.noRules": "Không có quy tắc truy cập",
   "accessRule.noUserAccessSettings": "Không có cài đặt quyền riêng lẻ",
+  "accessRule.onlyMe": "Chỉ mình tôi",
+  "accessRule.onlyMeDescription": "Chỉ bạn có thể truy cập tài nguyên này.",
   "accessRule.permission": "Quyền",
   "accessRule.resourceOpenScope": "Phạm vi mở của tài nguyên",
   "accessRule.resourceOpenScopeDescription": "Chọn tài nguyên này được mở cho ai. Quyền vai trò vẫn quyết định mỗi thành viên có thể làm gì.",

@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Brez opisa",
   "accessRule.noRules": "Brez pravil za dostop",
   "accessRule.noUserAccessSettings": "Brez individualnih nastavitev dovoljenj",
+  "accessRule.onlyMe": "Samo jaz",
+  "accessRule.onlyMeDescription": "Do tega vira lahko dostopate samo vi.",
   "accessRule.permission": "Dovoljenje",
   "accessRule.resourceOpenScope": "Obseg odprtosti vira",
   "accessRule.resourceOpenScopeDescription": "Izberite, komu je ta vir na voljo. Dovoljenja vlog še vedno določajo, kaj lahko vsak član počne.",

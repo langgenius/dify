@@ -5,7 +5,7 @@ import { usePipeline } from '../use-pipeline'
 
 const mockGetNodes = vi.fn()
 const mockSetNodes = vi.fn()
-const mockEdges: Array<{ id: string, source: string, target: string }> = []
+const mockEdges: Array<{ id: string; source: string; target: string }> = []
 
 vi.mock('reactflow', () => ({
   useStoreApi: () => ({
@@ -15,8 +15,12 @@ vi.mock('reactflow', () => ({
       edges: mockEdges,
     }),
   }),
-  getOutgoers: (node: { id: string }, nodes: Array<{ id: string }>, edges: Array<{ source: string, target: string }>) => {
-    return nodes.filter(n => edges.some(e => e.source === node.id && e.target === n.id))
+  getOutgoers: (
+    node: { id: string },
+    nodes: Array<{ id: string }>,
+    edges: Array<{ source: string; target: string }>,
+  ) => {
+    return nodes.filter((n) => edges.some((e) => e.source === node.id && e.target === n.id))
   },
 }))
 
@@ -38,8 +42,7 @@ vi.mock('es-toolkit/compat', () => ({
     const seen = new Set<string>()
     return arr.filter((item) => {
       const val = item[key as keyof typeof item] as string
-      if (seen.has(val))
-        return false
+      if (seen.has(val)) return false
       seen.add(val)
       return true
     })
@@ -98,10 +101,7 @@ describe('usePipeline', () => {
 
       const isUsed = result.current.isVarUsedInNodes(['rag', 'ds-1', 'var1'])
       expect(isUsed).toBe(true)
-      expect(mockFindUsedVarNodes).toHaveBeenCalledWith(
-        ['rag', 'ds-1', 'var1'],
-        expect.any(Array),
-      )
+      expect(mockFindUsedVarNodes).toHaveBeenCalledWith(['rag', 'ds-1', 'var1'], expect.any(Array))
     })
 
     it('should return false when variable is not used', () => {
@@ -278,7 +278,7 @@ describe('usePipeline', () => {
       expect(isUsed).toBe(true)
 
       const nodesArg = mockFindUsedVarNodes.mock.calls[0]![1] as Array<{ id: string }>
-      const nodeIds = nodesArg.map(n => n.id)
+      const nodeIds = nodesArg.map((n) => n.id)
       expect(nodeIds).toContain('ds-1')
       expect(nodeIds).toContain('node-2')
       expect(nodeIds).toContain('node-3')
@@ -313,7 +313,7 @@ describe('usePipeline', () => {
       result.current.isVarUsedInNodes(['rag', 'ds-1', 'var1'])
 
       const nodesArg = mockFindUsedVarNodes.mock.calls[0]![1] as Array<{ id: string }>
-      const nodeIds = nodesArg.map(n => n.id)
+      const nodeIds = nodesArg.map((n) => n.id)
       const uniqueIds = [...new Set(nodeIds)]
       expect(nodeIds.length).toBe(uniqueIds.length)
     })

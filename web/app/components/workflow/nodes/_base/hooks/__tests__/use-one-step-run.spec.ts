@@ -1,9 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import {
-  BlockEnum,
-  InputVarType,
-  VarType,
-} from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
 import useOneStepRun from '../use-one-step-run'
 
@@ -20,13 +16,6 @@ const mockWorkflowState = {
   setListeningTriggerIsAll: vi.fn(),
   setShowVariableInspectPanel: vi.fn(),
 }
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
@@ -178,19 +167,22 @@ vi.mock('@/app/components/workflow/nodes/variable-assigner/default', () => ({
   default: {},
 }))
 
-const renderUseOneStepRun = () => renderHook(() => useOneStepRun({
-  id: 'if-else-node',
-  flowId: 'app-id',
-  flowType: FlowType.appFlow,
-  data: {
-    type: BlockEnum.IfElse,
-    title: 'IF/ELSE',
-    desc: '',
-  },
-  defaultRunInputData: {},
-  isRunAfterSingleRun: false,
-  isPaused: false,
-}))
+const renderUseOneStepRun = () =>
+  renderHook(() =>
+    useOneStepRun({
+      id: 'if-else-node',
+      flowId: 'app-id',
+      flowType: FlowType.appFlow,
+      data: {
+        type: BlockEnum.IfElse,
+        title: 'IF/ELSE',
+        desc: '',
+      },
+      defaultRunInputData: {},
+      isRunAfterSingleRun: false,
+      isPaused: false,
+    }),
+  )
 
 describe('useOneStepRun single-run input vars', () => {
   beforeEach(() => {
@@ -225,9 +217,7 @@ describe('useOneStepRun single-run input vars', () => {
   it('resolves global system vars by full variable name', () => {
     const { result } = renderUseOneStepRun()
 
-    const inputs = result.current.varSelectorsToVarInputs([
-      ['sys', 'timestamp'],
-    ])
+    const inputs = result.current.varSelectorsToVarInputs([['sys', 'timestamp']])
 
     expect(inputs).toMatchObject([
       {

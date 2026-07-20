@@ -8,8 +8,10 @@ EE blueprint chain so this module is unreachable there.
 from __future__ import annotations
 
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.common.session import with_session
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import (
@@ -22,7 +24,6 @@ from controllers.openapi._models import (
 from controllers.openapi.apps import build_app_describe_response
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData, Edition
-from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import App
 from models.enums import AppStatus
@@ -40,7 +41,8 @@ class PermittedExternalAppsListApi(Resource):
     )
     @returns(200, PermittedExternalAppsListResponse, description="Permitted external apps list")
     @accepts(query=PermittedExternalAppsListQuery)
-    def get(self, *, auth_data: AuthData, query: PermittedExternalAppsListQuery):
+    @with_session(write=False)
+    def get(self, session: Session, *, auth_data: AuthData, query: PermittedExternalAppsListQuery):
         page_result = list_permitted_apps(
             page=query.page,
             limit=query.limit,
@@ -55,10 +57,10 @@ class PermittedExternalAppsListApi(Resource):
             return env
 
         apps_by_id: dict[str, App] = {
-            str(a.id): a for a in AppService.find_visible_apps_by_ids(db.session, page_result.app_ids)
+            str(a.id): a for a in AppService.find_visible_apps_by_ids(page_result.app_ids, session)
         }
         tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
-        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(db.session, tenant_ids)}
+        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(tenant_ids, session=session)}
 
         items: list[AppListRow] = []
         for app_id in page_result.app_ids:
@@ -87,7 +89,7 @@ class PermittedExternalAppsListApi(Resource):
         return env
 
 
-@openapi_ns.route("/permitted-external-apps/<string:app_id>/describe")
+@openapi_ns.route("/permitted-external-apps/<string:app_id>")
 class PermittedExternalAppDescribeApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
@@ -96,9 +98,10 @@ class PermittedExternalAppDescribeApi(Resource):
     )
     @returns(200, AppDescribeResponse, description="Permitted external app description")
     @accepts(query=AppDescribeQuery)
-    def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
+    @with_session(write=False)
+    def get(self, session: Session, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
         # App already loaded and ACL-checked by the external_sso pipeline; project it.
         app = auth_data.app
         if app is None:
             raise NotFound("app not found")
-        return build_app_describe_response(app, query.fields)
+        return build_app_describe_response(app, query.fields, session=session)

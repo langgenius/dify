@@ -19,30 +19,28 @@ vi.mock('../../hooks', () => ({
 
 const renderWithProviders = (
   ui: ReactElement,
-  options: { enableMarketplace: boolean, searchParams?: string } = { enableMarketplace: true },
+  options: { enableMarketplace: boolean; searchParams?: string } = { enableMarketplace: true },
 ) => {
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { enable_marketplace: options.enableMarketplace },
   })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <SystemFeaturesWrapper>
-      <NuqsTestingAdapter searchParams={options.searchParams ?? ''}>
-        {children}
-      </NuqsTestingAdapter>
+      <NuqsTestingAdapter searchParams={options.searchParams ?? ''}>{children}</NuqsTestingAdapter>
     </SystemFeaturesWrapper>
   )
   return render(ui, { wrapper: Wrapper })
 }
 
 const Consumer = () => {
-  const currentPluginID = usePluginPageContext(v => v.currentPluginID)
-  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
-  const options = usePluginPageContext(v => v.options)
+  const currentPluginID = usePluginPageContext((v) => v.currentPluginID)
+  const setCurrentPluginID = usePluginPageContext((v) => v.setCurrentPluginID)
+  const options = usePluginPageContext((v) => v.options)
 
   return (
     <div>
-      <span data-testid="current-plugin">{currentPluginID ?? 'none'}</span>
-      <span data-testid="options-count">{options.length}</span>
+      <output aria-label="Current plugin">{currentPluginID ?? 'none'}</output>
+      <output aria-label="Available tabs">{options.length}</output>
       <button onClick={() => setCurrentPluginID('plugin-1')}>select plugin</button>
     </div>
   )
@@ -61,7 +59,7 @@ describe('PluginPageContextProvider', () => {
       { enableMarketplace: false },
     )
 
-    expect(screen.getByTestId('options-count')).toHaveTextContent('1')
+    expect(screen.getByRole('status', { name: 'Available tabs' })).toHaveTextContent('1')
   })
 
   it('keeps the query-state tab and updates the current plugin id', () => {
@@ -74,7 +72,7 @@ describe('PluginPageContextProvider', () => {
 
     fireEvent.click(screen.getByText('select plugin'))
 
-    expect(screen.getByTestId('current-plugin')).toHaveTextContent('plugin-1')
-    expect(screen.getByTestId('options-count')).toHaveTextContent('2')
+    expect(screen.getByRole('status', { name: 'Current plugin' })).toHaveTextContent('plugin-1')
+    expect(screen.getByRole('status', { name: 'Available tabs' })).toHaveTextContent('2')
   })
 })

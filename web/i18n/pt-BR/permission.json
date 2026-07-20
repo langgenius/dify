@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Sem descrição",
   "accessRule.noRules": "Sem regras de acesso",
   "accessRule.noUserAccessSettings": "Sem configurações de permissão individuais",
+  "accessRule.onlyMe": "Somente eu",
+  "accessRule.onlyMeDescription": "Somente você pode acessar este recurso.",
   "accessRule.permission": "Permissão",
   "accessRule.resourceOpenScope": "Escopo de abertura do recurso",
   "accessRule.resourceOpenScopeDescription": "Escolha para quem este recurso está aberto. As permissões de função ainda determinam o que cada membro pode fazer.",

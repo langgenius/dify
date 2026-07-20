@@ -19,6 +19,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
@@ -42,6 +43,7 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.runtime import GraphRuntimeState
@@ -241,6 +243,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
             workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
+                tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=workflow_triggered_from,
@@ -248,6 +251,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             # Create workflow node execution repository
             workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=session_factory,
+                tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -280,6 +284,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Resume a paused workflow execution using the persisted runtime state.
@@ -310,6 +315,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             graph_engine_layers=graph_engine_layers,
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
         )
 
     def _generate(
@@ -328,6 +334,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -356,12 +363,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 app_mode=app_model.mode,
             )
 
+            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
             if pause_state_config is not None:
                 graph_layers.append(
                     PauseStatePersistenceLayer(
                         session_factory=pause_state_config.session_factory,
                         generate_entity=application_generate_entity,
                         state_owner_user_id=pause_state_config.state_owner_user_id,
+                        response_stream_filter=resolved_response_stream_filter,
                     )
                 )
 
@@ -384,6 +393,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     "workflow_node_execution_repository": workflow_node_execution_repository,
                     "graph_engine_layers": tuple(graph_layers),
                     "graph_runtime_state": graph_runtime_state,
+                    "response_stream_filter": resolved_response_stream_filter,
                 },
             )
 
@@ -411,6 +421,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
+        *,
+        session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -421,6 +433,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param user: account or end user
         :param args: request args
         :param streaming: is streamed
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -459,6 +472,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow execution(aka workflow run) repository
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -466,11 +480,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -500,6 +515,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         args: LoopNodeRunPayload,
         streaming: bool = True,
+        *,
+        session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -510,6 +527,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param user: account or end user
         :param args: request args
         :param streaming: is streamed
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -546,6 +564,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow execution(aka workflow run) repository
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -553,11 +572,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -590,6 +610,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -638,10 +659,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 root_node_id=root_node_id,
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
             )
 
             try:
-                runner.run()
+                with active_workflow_task(application_generate_entity.task_id):
+                    runner.run()
             except GenerateTaskStoppedError as e:
                 logger.warning("Task stopped: %s", str(e))
                 pass

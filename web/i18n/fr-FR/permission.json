@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Aucune description",
   "accessRule.noRules": "Aucune règle d'accès",
   "accessRule.noUserAccessSettings": "Aucun paramètre d'autorisation individuel",
+  "accessRule.onlyMe": "Moi uniquement",
+  "accessRule.onlyMeDescription": "Vous seul pouvez accéder à cette ressource.",
   "accessRule.permission": "Autorisation",
   "accessRule.resourceOpenScope": "Portée d'ouverture de la ressource",
   "accessRule.resourceOpenScopeDescription": "Choisissez à qui cette ressource est ouverte. Les autorisations de rôle déterminent toujours ce que chaque membre peut faire.",

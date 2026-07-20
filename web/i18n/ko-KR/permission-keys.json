@@ -50,5 +50,5 @@
   "snippets.management": "스니펫 관리",
   "tool.manage": "도구 관리",
   "workspace.member.manage": "멤버 관리",
-  "workspace.role.manage": "역할 권한 및 리소스 접근 규칙 관리"
+  "workspace.role.manage": "역할 및 권한 세트 관리"
 }

@@ -74,7 +74,7 @@ class TestApiToolInvoke:
         mock_get.return_value = mock_response
 
         # Invoke the tool
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=Mock(), user_id="test_user", tool_parameters={})
 
         # Get the result from the generator
         result = list(result_generator)
@@ -149,7 +149,7 @@ class TestApiToolInvoke:
         mock_get.return_value = mock_response
 
         # Invoke the tool
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=Mock(), user_id="test_user", tool_parameters={})
 
         # Get the result from the generator
         result = list(result_generator)
@@ -186,7 +186,7 @@ class TestApiToolInvoke:
         mock_get.return_value = mock_response
 
         # Invoke the tool
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=Mock(), user_id="test_user", tool_parameters={})
 
         # Get the result from the generator
         result = list(result_generator)
@@ -212,7 +212,7 @@ class TestApiToolInvoke:
         mock_get.return_value = mock_response
 
         # Invoke the tool
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=Mock(), user_id="test_user", tool_parameters={})
 
         # Get the result from the generator
         result = list(result_generator)
@@ -236,7 +236,7 @@ class TestApiToolInvoke:
         mock_response.text = "Not Found"
         mock_get.return_value = mock_response
 
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=Mock(), user_id="test_user", tool_parameters={})
 
         # Invoke the tool and expect an error
         with pytest.raises(Exception) as exc_info:

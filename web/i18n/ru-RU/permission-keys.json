@@ -50,5 +50,5 @@
   "snippets.management": "Управление сниппетами",
   "tool.manage": "Управление инструментами",
   "workspace.member.manage": "Управление участниками",
-  "workspace.role.manage": "Управление правами ролей и правилами доступа к ресурсам"
+  "workspace.role.manage": "Управление ролями и наборами разрешений"
 }

@@ -28,6 +28,8 @@
   "accessRule.noDescription": "No description",
   "accessRule.noRules": "No access rules",
   "accessRule.noUserAccessSettings": "No individual permission settings",
+  "accessRule.onlyMe": "Only me",
+  "accessRule.onlyMeDescription": "Only you can access this resource.",
   "accessRule.permission": "Permission",
   "accessRule.resourceOpenScope": "Resource open scope",
   "accessRule.resourceOpenScopeDescription": "Choose who this resource is open to. Role permissions still decide what each member can do.",

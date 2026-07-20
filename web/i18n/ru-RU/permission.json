@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Без описания",
   "accessRule.noRules": "Нет правил доступа",
   "accessRule.noUserAccessSettings": "Нет индивидуальных настроек прав",
+  "accessRule.onlyMe": "Только я",
+  "accessRule.onlyMeDescription": "Только вы можете получить доступ к этому ресурсу.",
   "accessRule.permission": "Право",
   "accessRule.resourceOpenScope": "Область открытости ресурса",
   "accessRule.resourceOpenScopeDescription": "Выберите, кому открыт этот ресурс. Права роли по-прежнему определяют, что может делать каждый участник.",

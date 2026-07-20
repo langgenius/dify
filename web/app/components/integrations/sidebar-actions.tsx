@@ -2,7 +2,11 @@
 
 import type { ReactNode } from 'react'
 import type { PermissionSettingKey } from './permission-quick-panel'
-import type { Permissions, PermissionType, PluginCategoryEnum } from '@/app/components/plugins/types'
+import type {
+  Permissions,
+  PermissionType,
+  PluginCategoryEnum,
+} from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -36,21 +40,19 @@ function PermissionTooltipWrapper({
   show,
 }: PermissionTooltipWrapperProps) {
   const trigger = (
-    <span
-      aria-label={show ? content : undefined}
-      className={cn('inline-flex', className)}
-    >
+    <span aria-label={show ? content : undefined} className={cn('inline-flex', className)}>
       {children}
     </span>
   )
 
-  if (!show)
-    return trigger
+  if (!show) return trigger
 
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
-      <TooltipContent placement={placement} sideOffset={8} className={permissionTooltipClassName}>{content}</TooltipContent>
+      <TooltipContent placement={placement} sideOffset={8} className={permissionTooltipClassName}>
+        {content}
+      </TooltipContent>
     </Tooltip>
   )
 }
@@ -70,8 +72,8 @@ export function IntegrationSidebarActions({
     <IntegrationSidebarInstallActions
       canManagement={canManagement}
       installContextCategory={installContextCategory}
-      installLabel={t('installAction', { ns: 'plugin' })}
-      permissionTooltip={t('privilege.noInstallPermissionTooltip', { ns: 'plugin' })}
+      installLabel={t(($) => $.installAction, { ns: 'plugin' })}
+      permissionTooltip={t(($) => $['privilege.noInstallPermissionTooltip'], { ns: 'plugin' })}
       onSwitchToMarketplace={onSwitchToMarketplace}
     />
   )
@@ -140,8 +142,8 @@ export function IntegrationSidebarUtilityActions({
   onPermissionChange: (key: PermissionSettingKey, value: PermissionType) => void
 }) {
   const { t } = useTranslation()
-  const debugLabel = t('debugInfo.title', { ns: 'plugin' })
-  const permissionsLabel = t('privilege.permissions', { ns: 'plugin' })
+  const debugLabel = t(($) => $['debugInfo.title'], { ns: 'plugin' })
+  const permissionsLabel = t(($) => $['privilege.permissions'], { ns: 'plugin' })
 
   return (
     <div className="flex w-46 shrink-0 flex-col gap-px pt-2 pb-2.5">
@@ -150,20 +152,20 @@ export function IntegrationSidebarUtilityActions({
           popupPlacement="top-start"
           triggerVariant="ghost"
           triggerClassName={sidebarUtilityActionClassName}
-          triggerContent={(
+          triggerContent={
             <>
               <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
                 <span className="i-ri-bug-line size-4" />
               </span>
               <span className="min-w-0 truncate">{debugLabel}</span>
             </>
-          )}
+          }
         />
       )}
       {showPermissionQuickPanel && permission && (
         <Popover>
           <PopoverTrigger
-            render={(
+            render={
               <Button
                 variant="ghost"
                 className={sidebarUtilityActionClassName}
@@ -174,17 +176,14 @@ export function IntegrationSidebarUtilityActions({
                 </span>
                 <span className="min-w-0 truncate">{permissionsLabel}</span>
               </Button>
-            )}
+            }
           />
           <PopoverContent
             placement="top-start"
             sideOffset={4}
             popupClassName="border-0 bg-transparent p-0 shadow-none"
           >
-            <PermissionQuickPanel
-              permission={permission}
-              onChange={onPermissionChange}
-            />
+            <PermissionQuickPanel permission={permission} onChange={onPermissionChange} />
           </PopoverContent>
         </Popover>
       )}

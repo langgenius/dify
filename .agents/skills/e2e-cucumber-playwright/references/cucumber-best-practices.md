@@ -39,12 +39,15 @@ Prefer reuse when:
 - the user action is genuinely the same
 - the expected outcome is genuinely the same
 - the wording stays natural across features
+- the parameter is a real product domain value such as a named surface, mode, resource, or status
 
 Write a new step when:
 
 - the behavior is materially different
 - reusing the old wording would make the scenario misleading
 - a supposedly generic step would become an implementation-detail wrapper
+
+Do not optimize for a low step count by making vague steps. Optimize for a small set of truthful, domain-owned steps.
 
 ### 4. Prefer Cucumber Expressions
 
@@ -58,6 +61,8 @@ Common examples:
 - `{word}` only when the value is truly a single token
 
 Keep expressions readable. If a step needs complicated parsing logic, first ask whether the scenario wording should be simpler.
+
+Use regex for a bounded natural-language alternative only when it keeps Gherkin readable, for example `/(Web app|Backend service API)/`. Avoid broad regexes that accept unowned language.
 
 ### 5. Keep step definitions thin and meaningful
 

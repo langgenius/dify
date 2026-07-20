@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "Szczegóły",
   "detailPanel.operation.info": "Informacje o wtyczce",
   "detailPanel.operation.install": "Instalować",
+  "detailPanel.operation.moreActions": "Więcej działań",
   "detailPanel.operation.remove": "Usunąć",
   "detailPanel.operation.update": "Aktualizacja",
   "detailPanel.operation.updateTooltip": "Zaktualizuj, aby uzyskać dostęp do najnowszych modeli.",

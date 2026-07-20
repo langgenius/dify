@@ -18,7 +18,7 @@ const PluginList: FC<IPluginListProps> = ({
   return (
     <div className="pb-3">
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {pluginList.map(plugin => (
+        {pluginList.map((plugin) => (
           <PluginItem
             key={plugin.plugin_id}
             plugin={plugin}

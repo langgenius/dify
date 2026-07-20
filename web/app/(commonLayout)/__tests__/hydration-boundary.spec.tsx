@@ -63,11 +63,15 @@ describe('CommonLayoutHydrationBoundary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    mocks.headers.mockResolvedValue(new Headers({
-      'x-dify-pathname': '/apps',
-      'x-dify-search': '?tag=workflow',
-    }))
-    mocks.resolveServerConsoleApiUrl.mockReturnValue('https://console.example.com/console/api/account/profile')
+    mocks.headers.mockResolvedValue(
+      new Headers({
+        'x-dify-pathname': '/apps',
+        'x-dify-search': '?tag=workflow',
+      }),
+    )
+    mocks.resolveServerConsoleApiUrl.mockReturnValue(
+      'https://console.example.com/console/api/account/profile',
+    )
     mocks.profileQueryFn.mockResolvedValue({
       profile: {
         id: 'account-id',
@@ -122,17 +126,23 @@ describe('CommonLayoutHydrationBoundary', () => {
   })
 
   it('should redirect unauthorized users to the refresh route with the current path', async () => {
-    mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }))
+    mocks.profileQueryFn.mockRejectedValue(
+      new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
+    )
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mocks.redirect).toHaveBeenCalledWith('/auth/refresh?redirect_url=%2Fapps%3Ftag%3Dworkflow')
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      '/auth/refresh?redirect_url=%2Fapps%3Ftag%3Dworkflow',
+    )
   })
 
   it('should default unauthorized refresh redirects to the home path when the pathname header is missing', async () => {
     mocks.headers.mockResolvedValue(new Headers())
-    mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }))
+    mocks.profileQueryFn.mockRejectedValue(
+      new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
+    )
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
@@ -141,7 +151,9 @@ describe('CommonLayoutHydrationBoundary', () => {
   })
 
   it('should redirect setup errors to install', async () => {
-    mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code: 'not_setup' }), { status: 401 }))
+    mocks.profileQueryFn.mockRejectedValue(
+      new Response(JSON.stringify({ code: 'not_setup' }), { status: 401 }),
+    )
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')

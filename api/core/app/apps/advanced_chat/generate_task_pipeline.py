@@ -9,7 +9,7 @@ from threading import Thread
 from typing import Any, Union
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -71,12 +71,12 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
-from extensions.ext_database import db
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -399,8 +399,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     @contextmanager
     def _database_session(self):
         """Context manager for database sessions."""
-        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-            yield session
+        with session_factory.create_session() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
 
     def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
@@ -825,7 +830,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self, event: QueueAnnotationReplyEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
         """Handle annotation reply events."""
-        self._message_cycle_manager.handle_annotation_reply(event)
+        with self._database_session() as session:
+            self._message_cycle_manager.handle_annotation_reply(event, session)
         yield from ()
 
     def _handle_message_replace_event(

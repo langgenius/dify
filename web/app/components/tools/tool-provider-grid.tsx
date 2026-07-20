@@ -50,7 +50,7 @@ const collectionToCardPayload = (collection: Collection): CardPayload => {
     endpoint: {
       settings: [],
     },
-    tags: collection.labels?.map(name => ({ name })) ?? [],
+    tags: collection.labels?.map((name) => ({ name })) ?? [],
     badges: [],
     verification: {
       authorized_category: 'community',
@@ -87,7 +87,8 @@ export function ToolProviderGrid({
   onRefreshData: () => void
   onSelectProvider: (providerId: string) => void
 }) {
-  const showWorkflowEmptyState = activeTab === 'workflow' && !hasCategoryCollections && !isSearchResultEmpty
+  const showWorkflowEmptyState =
+    activeTab === 'workflow' && !hasCategoryCollections && !isSearchResultEmpty
   const useCustomToolGrid = activeTab === 'api'
   const useThreeColumnIntegrationsGrid = useIntegrationsCard && activeTab !== 'builtin'
   const skeletonVariant = useIntegrationsCard
@@ -111,53 +112,54 @@ export function ToolProviderGrid({
         showWorkflowEmptyState && 'grow',
       )}
     >
-      {isLoading
-        ? <ToolCardSkeletonGrid variant={skeletonVariant} />
-        : (
-            <>
-              {activeTab === 'api' && showCreateCard && <CustomCreateCard onRefreshData={onRefreshData} />}
-              {collections.map(collection => (
-                <div
-                  key={collection.id}
-                  className={cn(
-                    useCustomToolGrid && 'min-w-0',
-                    useIntegrationsCard && !useCustomToolGrid && 'min-w-0',
-                  )}
-                  onClick={() => onSelectProvider(collection.id)}
-                >
-                  {useIntegrationsCard
-                    ? (
-                        <IntegrationsToolProviderCard
-                          collection={collection}
-                          current={currentProviderId === collection.id}
-                          showBuiltInBadge={activeTab === 'builtin' && !collection.plugin_id}
-                          variant={activeTab === 'workflow' || activeTab === 'api' ? 'labeled' : 'default'}
-                        />
-                      )
-                    : (
-                        <Card
-                          className={cn(
-                            'cursor-pointer',
-                            currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
-                          )}
-                          hideCornerMark
-                          payload={collectionToCardPayload(collection)}
-                          footer={(
-                            <CardMoreInfo
-                              tags={collection.labels?.map(label => getTagLabel(label)) || []}
-                            />
-                          )}
-                        />
-                      )}
-                </div>
-              ))}
-              {showWorkflowEmptyState && (
-                <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
-                  <WorkflowToolEmpty type={getToolType(activeTab)} />
-                </div>
-              )}
-            </>
+      {isLoading ? (
+        <ToolCardSkeletonGrid variant={skeletonVariant} />
+      ) : (
+        <>
+          {activeTab === 'api' && showCreateCard && (
+            <CustomCreateCard onRefreshData={onRefreshData} />
           )}
+          {collections.map((collection) => (
+            <div
+              key={collection.id}
+              className={cn(
+                useCustomToolGrid && 'min-w-0',
+                useIntegrationsCard && !useCustomToolGrid && 'min-w-0',
+              )}
+              onClick={() => onSelectProvider(collection.id)}
+            >
+              {useIntegrationsCard ? (
+                <IntegrationsToolProviderCard
+                  collection={collection}
+                  current={currentProviderId === collection.id}
+                  showBuiltInBadge={activeTab === 'builtin' && !collection.plugin_id}
+                  variant={activeTab === 'workflow' || activeTab === 'api' ? 'labeled' : 'default'}
+                />
+              ) : (
+                <Card
+                  className={cn(
+                    'cursor-pointer',
+                    currentProviderId === collection.id &&
+                      'border-[1.5px] border-components-option-card-option-selected-border',
+                  )}
+                  hideCornerMark
+                  payload={collectionToCardPayload(collection)}
+                  footer={
+                    <CardMoreInfo
+                      tags={collection.labels?.map((label) => getTagLabel(label)) || []}
+                    />
+                  }
+                />
+              )}
+            </div>
+          ))}
+          {showWorkflowEmptyState && (
+            <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
+              <WorkflowToolEmpty type={getToolType(activeTab)} />
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

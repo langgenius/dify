@@ -1,11 +1,12 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
-
 import List from '../list'
 
 vi.mock('react-i18next', async () => {
@@ -25,9 +26,41 @@ vi.mock('react-i18next', async () => {
 
 const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 const mockAppStarredListQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
-const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) => ({
-  onlineUsersMap: {},
-})))
+const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
+  vi.fn((_options: unknown) => ({
+    onlineUsersMap: {},
+  })),
+)
+
+const mockLearnDifyApp = vi.hoisted(
+  () =>
+    ({
+      app_id: 'learn-dify-template',
+      app: {
+        id: 'learn-dify-template-source',
+        mode: 'chat',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#fff',
+        icon_url: '',
+        name: 'Learn Dify Template',
+        description: 'Learn how to build with Dify',
+        use_icon_as_answer_icon: false,
+      },
+      description: 'Learn how to build with Dify',
+      copyright: '',
+      privacy_policy: null,
+      custom_disclaimer: null,
+      categories: ['Assistant'],
+      position: 1,
+      is_listed: true,
+      install_count: 0,
+      installed: false,
+      editable: false,
+      is_agent: false,
+      can_trial: true,
+    }) satisfies App,
+)
 
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
@@ -46,15 +79,17 @@ vi.mock('@/service/client', () => ({
   },
   consoleQuery: {
     apps: {
-      list: {
+      get: {
         infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
       },
-      starredList: {
-        queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
+      starred: {
+        get: {
+          queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
+        },
       },
     },
     tags: {
-      list: {
+      get: {
         queryOptions: (options: unknown) => options,
       },
     },
@@ -68,22 +103,54 @@ vi.mock('@/service/client', () => ({
 
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 let mockWorkspacePermissionKeys = ['app.create_and_management']
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-  useSelector: (selector: (state: {
-    isCurrentWorkspaceDatasetOperator: boolean
-    userProfile: { id: string }
-    workspacePermissionKeys: string[]
-  }) => unknown) => selector({
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 const mockOnPlanInfoChanged = vi.fn()
 vi.mock('@/context/provider-context', () => ({
@@ -121,11 +188,23 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: ({ value, onChange, onOpenTagManagement }: { value: string[], onChange: (value: string[]) => void, onOpenTagManagement: () => void }) => (
+  TagFilter: ({
+    value,
+    onChange,
+    onOpenTagManagement,
+  }: {
+    value: string[]
+    onChange: (value: string[]) => void
+    onOpenTagManagement: () => void
+  }) => (
     <div>
-      <button type="button" onClick={() => onChange(['tag-1'])}>common.tag.placeholder</button>
+      <button type="button" onClick={() => onChange(['tag-1'])}>
+        common.tag.placeholder
+      </button>
       <span data-testid="tag-filter-value">{value.join(',')}</span>
-      <button type="button" onClick={onOpenTagManagement}>Manage tags</button>
+      <button type="button" onClick={onOpenTagManagement}>
+        Manage tags
+      </button>
     </div>
   ),
 }))
@@ -156,37 +235,39 @@ const mockServiceState = {
 }
 
 const defaultAppData = {
-  pages: [{
-    data: [
-      {
-        id: 'app-1',
-        name: 'Test App 1',
-        description: 'Description 1',
-        mode: AppModeEnum.CHAT,
-        icon: '🤖',
-        icon_type: 'emoji',
-        icon_background: '#FFEAD5',
-        tags: [],
-        author_name: 'Author 1',
-        created_at: 1704067200,
-        updated_at: 1704153600,
-      },
-      {
-        id: 'app-2',
-        name: 'Test App 2',
-        description: 'Description 2',
-        mode: AppModeEnum.WORKFLOW,
-        icon: '⚙️',
-        icon_type: 'emoji',
-        icon_background: '#E4FBCC',
-        tags: [],
-        author_name: 'Author 2',
-        created_at: 1704067200,
-        updated_at: 1704153600,
-      },
-    ],
-    total: 2,
-  }],
+  pages: [
+    {
+      data: [
+        {
+          id: 'app-1',
+          name: 'Test App 1',
+          description: 'Description 1',
+          mode: AppModeEnum.CHAT,
+          icon: '🤖',
+          icon_type: 'emoji',
+          icon_background: '#FFEAD5',
+          tags: [],
+          author_name: 'Author 1',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        },
+        {
+          id: 'app-2',
+          name: 'Test App 2',
+          description: 'Description 2',
+          mode: AppModeEnum.WORKFLOW,
+          icon: '⚙️',
+          icon_type: 'emoji',
+          icon_background: '#E4FBCC',
+          tags: [],
+          author_name: 'Author 2',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        },
+      ],
+      total: 2,
+    },
+  ],
 }
 let mockAppData = defaultAppData
 
@@ -229,6 +310,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: (response: unknown) => response,
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -253,24 +335,98 @@ vi.mock('@/next/dynamic', () => ({
       }
     }
     if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
+      return function MockCreateFromDSLModal({
+        show,
+        onClose,
+        onSuccess,
+      }: {
+        show: boolean
+        onClose: () => void
+        onSuccess: () => void
+      }) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'create-dsl-modal' },
+          React.createElement(
+            'button',
+            { onClick: onClose, 'data-testid': 'close-dsl-modal' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess, 'data-testid': 'success-dsl-modal' },
+            'Success',
+          ),
+        )
       }
     }
     if (fnString.includes('create-app-modal')) {
-      return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: { show: boolean, onClose: () => void, onSuccess: () => void, onCreateFromTemplate: () => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'create-app-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-create-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-create-modal' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromTemplate, 'data-testid': 'to-template-modal' }, 'To Template'))
+      return function MockCreateAppModal({
+        show,
+        onClose,
+        onSuccess,
+        onCreateFromTemplate,
+      }: {
+        show: boolean
+        onClose: () => void
+        onSuccess: () => void
+        onCreateFromTemplate: () => void
+      }) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'create-app-modal' },
+          React.createElement(
+            'button',
+            { onClick: onClose, 'data-testid': 'close-create-modal' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess, 'data-testid': 'success-create-modal' },
+            'Success',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onCreateFromTemplate, 'data-testid': 'to-template-modal' },
+            'To Template',
+          ),
+        )
       }
     }
     if (fnString.includes('create-app-dialog')) {
-      return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: { show: boolean, onClose: () => void, onSuccess: () => void, onCreateFromBlank: () => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'template-dialog' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-template-dialog' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-template-dialog' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromBlank, 'data-testid': 'to-blank-modal' }, 'To Blank'))
+      return function MockCreateAppTemplateDialog({
+        show,
+        onClose,
+        onSuccess,
+        onCreateFromBlank,
+      }: {
+        show: boolean
+        onClose: () => void
+        onSuccess: () => void
+        onCreateFromBlank: () => void
+      }) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'template-dialog' },
+          React.createElement(
+            'button',
+            { onClick: onClose, 'data-testid': 'close-template-dialog' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess, 'data-testid': 'success-template-dialog' },
+            'Success',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onCreateFromBlank, 'data-testid': 'to-blank-modal' },
+            'To Blank',
+          ),
+        )
       }
     }
     return () => null
@@ -278,29 +434,67 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('../app-card', () => ({
-  AppCard: ({ app }: { app: { id: string, name: string } }) => {
-    return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
+  AppCard: ({ app }: { app: { id: string; name: string } }) => {
+    return React.createElement(
+      'div',
+      { 'data-testid': `app-card-${app.id}`, role: 'article' },
+      app.name,
+    )
   },
-  AppCardActionBar: ({ app, onRefresh }: { app: { id: string }, onRefresh?: () => void }) => {
+  AppCardActionBar: ({ app, onRefresh }: { app: { id: string }; onRefresh?: () => void }) => {
     return React.createElement('button', {
       'data-testid': `app-card-action-bar-${app.id}`,
-      'type': 'button',
-      'onClick': onRefresh,
+      type: 'button',
+      onClick: onRefresh,
     })
   },
-  default: ({ app }: { app: { id: string, name: string } }) => {
-    return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
+  default: ({ app }: { app: { id: string; name: string } }) => {
+    return React.createElement(
+      'div',
+      { 'data-testid': `app-card-${app.id}`, role: 'article' },
+      app.name,
+    )
   },
 }))
 
 vi.mock('../empty', () => ({
   default: () => {
-    return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
+    return React.createElement(
+      'div',
+      { 'data-testid': 'empty-state', role: 'status' },
+      'No apps found',
+    )
   },
 }))
 
 vi.mock('@/app/components/explore/learn-dify', () => ({
-  default: ({ title }: { title?: string }) => React.createElement('section', null, title),
+  default: ({
+    title,
+    onCreate,
+    onTry,
+  }: {
+    title?: string
+    onCreate?: (app: App) => void
+    onTry?: (params: TryAppSelection) => void
+  }) =>
+    React.createElement(
+      'section',
+      null,
+      title,
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          onClick: () => onTry?.({ appId: mockLearnDifyApp.app_id, app: mockLearnDifyApp }),
+        },
+        'Preview Learn Dify template',
+      ),
+      React.createElement(
+        'button',
+        { type: 'button', onClick: () => onCreate?.(mockLearnDifyApp) },
+        'Create Learn Dify template',
+      ),
+    ),
 }))
 
 const intersectionCallbacks: IntersectionObserverCallback[] = []
@@ -326,6 +520,8 @@ beforeAll(() => {
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
 type RenderListOptions = {
+  onCreateLearnDify?: (app: App) => void
+  onTryLearnDify?: (params: TryAppSelection) => void
   systemFeatures?: Partial<GetSystemFeaturesResponse>
 }
 
@@ -334,12 +530,17 @@ const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
-  return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
+  return renderWithNuqs(
+    <SystemFeaturesWrapper>
+      <List onCreateLearnDify={options.onCreateLearnDify} onTryLearnDify={options.onTryLearnDify} />
+    </SystemFeaturesWrapper>,
+    { searchParams },
+  )
 }
 
 type AppListInfiniteOptions = {
   input: (pageParam: number) => { query: Record<string, unknown> }
-  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
+  getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
 }
 
 type AppStarredListQueryOptions = {
@@ -387,28 +588,34 @@ describe('List', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = renderList()
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
-      expect(container.querySelector('.i-ri-filter-3-line')).not.toBeInTheDocument()
-    })
-
     it('should render app type select with all app types', async () => {
       renderList()
       await openAppTypeSelect()
 
       expect(await screen.findByRole('menuitemradio', { name: 'All' }))!.toBeInTheDocument()
       expect(screen.queryByRole('menuitemradio', { name: 'Types' })).not.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.agent' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }),
+      )!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
       renderList()
-      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+      )!.toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
@@ -426,16 +633,30 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
     })
 
-    it('should render sort filter before search and hide the snippets link', () => {
+    it('should render filters and search before the right aligned actions', () => {
       renderList()
 
+      const creatorsButton = screen.getByRole('button', { name: 'Creators' })
+      const searchInput = screen.getByRole('searchbox', {
+        name: 'app.gotoAnything.actions.searchApplications',
+      })
       const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
-      const searchInput = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
+      const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
-      expect(sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(searchInput.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(screen.queryByRole('link', { name: 'app.studio.viewSnippets' })).not.toBeInTheDocument()
+      expect(snippetsLink).toHaveAttribute('href', '/snippets')
+      expect(
+        creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
 
     it('should render app cards when apps exist', () => {
@@ -454,20 +675,22 @@ describe('List', () => {
 
     it('should render starred apps before all app cards when starred apps exist', () => {
       mockStarredAppData = {
-        data: [{
-          id: 'starred-app-1',
-          name: 'Starred App',
-          description: 'Starred description',
-          mode: AppModeEnum.CHAT,
-          icon: '⭐',
-          icon_type: 'emoji',
-          icon_background: '#FFEAD5',
-          icon_url: null,
-          tags: [],
-          author_name: 'Author 1',
-          created_at: 1704067200,
-          updated_at: 1704153600,
-        }],
+        data: [
+          {
+            id: 'starred-app-1',
+            name: 'Starred App',
+            description: 'Starred description',
+            mode: AppModeEnum.CHAT,
+            icon: '⭐',
+            icon_type: 'emoji',
+            icon_background: '#FFEAD5',
+            icon_url: null,
+            tags: [],
+            author_name: 'Author 1',
+            created_at: 1704067200,
+            updated_at: 1704153600,
+          },
+        ],
         total: 1,
         page: 1,
         limit: 100,
@@ -484,9 +707,15 @@ describe('List', () => {
 
       expect(starredCard).toBeInTheDocument()
       expect(actionBar).toBeInTheDocument()
-      expect(starredLabel.compareDocumentPosition(starredCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(starredCard.compareDocumentPosition(allAppsLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(allAppsLabel.compareDocumentPosition(firstAppCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        starredLabel.compareDocumentPosition(starredCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        starredCard.compareDocumentPosition(allAppsLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        allAppsLabel.compareDocumentPosition(firstAppCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
 
       fireEvent.click(actionBar)
 
@@ -515,6 +744,29 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+    })
+
+    it('should lay out first empty state placeholder cards with auto-fill grid columns', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      const { container } = renderList()
+      const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none')).find(
+        (element) => element.className.includes('grid-rows-4'),
+      )
+
+      if (!placeholderGrid) throw new Error('Expected first empty state placeholder grid to render')
+
+      expect(placeholderGrid).toHaveClass(
+        'grid',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+        'grid-rows-4',
+      )
+      expect(placeholderGrid).not.toHaveClass(
+        'grid-cols-1',
+        'sm:grid-cols-2',
+        'lg:grid-cols-3',
+        'xl:grid-cols-4',
+      )
     })
 
     it('should hide learn dify in first empty state when learn app is disabled', () => {
@@ -562,6 +814,28 @@ describe('List', () => {
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
+    it('should forward Learn Dify template interactions', async () => {
+      const user = userEvent.setup()
+      const onCreateLearnDify = vi.fn()
+      const onTryLearnDify = vi.fn()
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList('', {
+        onCreateLearnDify,
+        onTryLearnDify,
+        systemFeatures: { enable_learn_app: true },
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
+      expect(onTryLearnDify).toHaveBeenCalledWith({
+        appId: mockLearnDifyApp.app_id,
+        app: mockLearnDifyApp,
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
+      expect(onCreateLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
+    })
+
     it('should pass workflow app ids to online users hook', () => {
       renderList()
 
@@ -606,13 +880,17 @@ describe('List', () => {
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       renderList()
-      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+      )!.toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
       renderList()
 
-      const input = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
+      const input = screen.getByRole('searchbox', {
+        name: 'app.gotoAnything.actions.searchApplications',
+      })
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(mockSetKeywords).toHaveBeenCalledWith('test search')
@@ -625,8 +903,7 @@ describe('List', () => {
 
       const clearButton = document.querySelector('.i-ri-close-circle-fill')?.closest('button')
       expect(clearButton)!.toBeInTheDocument()
-      if (clearButton)
-        fireEvent.click(clearButton)
+      if (clearButton) fireEvent.click(clearButton)
 
       expect(mockSetKeywords).toHaveBeenCalledWith('')
     })
@@ -666,7 +943,9 @@ describe('List', () => {
       renderList()
       fireEvent.click(screen.getByText('common.tag.placeholder'))
 
-      const options = mockAppStarredListQueryOptions.mock.calls.at(-1)?.[0] as AppStarredListQueryOptions
+      const options = mockAppStarredListQueryOptions.mock.calls.at(
+        -1,
+      )?.[0] as AppStarredListQueryOptions
 
       expect(options.input).toEqual({
         query: {
@@ -678,17 +957,6 @@ describe('List', () => {
           creator_ids: ['creator-1'],
           mode: AppModeEnum.WORKFLOW,
         },
-      })
-    })
-
-    it('should remove legacy tagIDs from URL while preserving other filters', async () => {
-      renderList('?category=workflow&tagIDs=tag-1;tag-2&keywords=sales')
-
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith(
-          '/apps?category=workflow&keywords=sales',
-          { scroll: false },
-        )
       })
     })
   })
@@ -760,7 +1028,9 @@ describe('List', () => {
 
       renderList()
 
-      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.create' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -823,7 +1093,9 @@ describe('List', () => {
     it('should render with all filter options visible', () => {
       renderList()
 
-      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+      )!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Creators' }))!.toBeInTheDocument()
     })
@@ -848,11 +1120,21 @@ describe('List', () => {
       await openAppTypeSelect()
 
       expect(await screen.findByRole('menuitemradio', { name: 'All' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.agent' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }),
+      )!.toBeInTheDocument()
     })
 
     it('should update category for each app type option click', async () => {
@@ -909,8 +1191,7 @@ describe('List', () => {
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
@@ -921,8 +1202,7 @@ describe('List', () => {
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
@@ -937,8 +1217,7 @@ describe('List', () => {
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()

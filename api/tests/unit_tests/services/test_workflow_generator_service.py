@@ -199,3 +199,103 @@ class TestWorkflowGeneratorService:
 
         call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
         assert call_kwargs["current_graph"] is None
+
+    @patch("services.workflow_generator_service.WorkflowGenerator")
+    @patch("services.workflow_generator_service.ModelManager")
+    @patch("services.workflow_generator_service.build_tool_catalogue")
+    @patch("services.workflow_generator_service.format_tool_catalogue")
+    def test_auto_mode_forwards_sentinel_to_runner(
+        self,
+        mock_format_catalogue: MagicMock,
+        mock_build_catalogue: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_workflow_generator: MagicMock,
+    ):
+        """``mode="auto"`` passes straight through — the planner resolves it, no extra LLM call."""
+        mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
+        mock_build_catalogue.return_value = []
+        mock_format_catalogue.return_value = ""
+        mock_workflow_generator.generate_workflow_graph.return_value = {
+            "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+            "message": "",
+            "error": "",
+        }
+
+        WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id="t-1",
+            mode="auto",
+            instruction="Summarize a URL",
+            model_config=_model_config(),
+        )
+
+        assert mock_workflow_generator.generate_workflow_graph.call_args.kwargs["mode"] == "auto"
+        # the model registry is consulted exactly once — no classifier resolution
+        mock_model_manager.for_tenant.return_value.get_model_instance.assert_called_once()
+
+    @patch("services.workflow_generator_service.WorkflowGenerator")
+    @patch("services.workflow_generator_service.ModelManager")
+    @patch("services.workflow_generator_service.build_tool_catalogue")
+    @patch("services.workflow_generator_service.format_tool_catalogue")
+    def test_explicit_mode_passes_through_unchanged(
+        self,
+        mock_format_catalogue: MagicMock,
+        mock_build_catalogue: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_workflow_generator: MagicMock,
+    ):
+        """A concrete mode reaches the runner verbatim."""
+        mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
+        mock_build_catalogue.return_value = []
+        mock_format_catalogue.return_value = ""
+        mock_workflow_generator.generate_workflow_graph.return_value = {
+            "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+            "message": "",
+            "error": "",
+        }
+
+        WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id="t-1",
+            mode="advanced-chat",
+            instruction="A chat bot",
+            model_config=_model_config(),
+        )
+
+        assert mock_workflow_generator.generate_workflow_graph.call_args.kwargs["mode"] == "advanced-chat"
+
+    @patch("services.workflow_generator_service.WorkflowGenerator")
+    @patch("services.workflow_generator_service.ModelManager")
+    @patch("services.workflow_generator_service.build_tool_catalogue")
+    @patch("services.workflow_generator_service.format_tool_catalogue")
+    def test_stream_delegates_to_runner_stream(
+        self,
+        mock_format_catalogue: MagicMock,
+        mock_build_catalogue: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_workflow_generator: MagicMock,
+    ):
+        """Task 2b: the streaming facade resolves context and yields the runner's events through."""
+        instance = MagicMock(name="model_instance")
+        mock_model_manager.for_tenant.return_value.get_model_instance.return_value = instance
+        mock_build_catalogue.return_value = []
+        mock_format_catalogue.return_value = ""
+
+        def _runner_stream(**_kwargs):
+            yield ("plan", {"mode": "workflow"})
+            yield ("result", {"error": "", "mode": "workflow"})
+
+        mock_workflow_generator.generate_workflow_graph_stream.side_effect = _runner_stream
+
+        events = list(
+            WorkflowGeneratorService.generate_workflow_graph_stream(
+                tenant_id="t-1",
+                mode="workflow",
+                instruction="Summarize a URL",
+                model_config=_model_config(),
+            )
+        )
+
+        assert [name for name, _ in events] == ["plan", "result"]
+        call_kwargs = mock_workflow_generator.generate_workflow_graph_stream.call_args.kwargs
+        assert call_kwargs["model_instance"] is instance
+        assert call_kwargs["mode"] == "workflow"
+        assert call_kwargs["provider"] == "openai"

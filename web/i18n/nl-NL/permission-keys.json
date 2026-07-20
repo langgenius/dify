@@ -50,5 +50,5 @@
   "snippets.management": "Snippets beheren",
   "tool.manage": "Tools beheren",
   "workspace.member.manage": "Leden beheren",
-  "workspace.role.manage": "Rolrechten en regels voor resourcetoegang beheren"
+  "workspace.role.manage": "Rollen en machtigingensets beheren"
 }

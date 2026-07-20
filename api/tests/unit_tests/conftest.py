@@ -1,9 +1,12 @@
 import os
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -34,6 +37,7 @@ os.environ.setdefault("STORAGE_TYPE", "opendal")
 
 from core.db.session_factory import configure_session_factory, session_factory
 from extensions import ext_redis
+from models.base import TypeBase
 
 
 def _patch_redis_clients_on_loaded_modules():
@@ -111,6 +115,29 @@ def _unit_test_engine():
     engine = create_engine("sqlite:///:memory:")
     yield engine
     engine.dispose()
+
+
+@pytest.fixture
+def sqlite_engine() -> Iterator[Engine]:
+    """Create an isolated in-memory SQLite engine for tests that need a disposable database."""
+
+    engine = create_engine("sqlite:///:memory:")
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def sqlite_session(request: pytest.FixtureRequest, sqlite_engine: Engine) -> Iterator[Session]:
+    """Yield a SQLite session after creating the model tables passed through ``request.param``."""
+
+    models: tuple[type[TypeBase], ...] = request.param
+    tables = [model.metadata.tables[model.__tablename__] for model in models]
+    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
+    session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with session_factory() as session:
+        yield session
 
 
 @pytest.fixture(autouse=True)

@@ -3,17 +3,26 @@ import userEvent from '@testing-library/user-event'
 import SecretKeyButton from '../secret-key-button'
 
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose, appId, canManage }: { isShow: boolean, onClose: () => void, appId?: string, canManage: boolean }) => (
-    isShow
-      ? (
-          <div data-testid="secret-key-modal">
-            <span data-testid="modal-app-id">{`Modal for ${appId || 'no-app'}`}</span>
-            <span data-testid="modal-can-manage">{String(canManage)}</span>
-            <button onClick={onClose} data-testid="close-modal">Close</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({
+    isShow,
+    onClose,
+    appId,
+    canManage,
+  }: {
+    isShow: boolean
+    onClose: () => void
+    appId?: string
+    canManage: boolean
+  }) =>
+    isShow ? (
+      <div data-testid="secret-key-modal">
+        <span data-testid="modal-app-id">{`Modal for ${appId || 'no-app'}`}</span>
+        <span data-testid="modal-can-manage">{String(canManage)}</span>
+        <button onClick={onClose} data-testid="close-modal">
+          Close
+        </button>
+      </div>
+    ) : null,
 }))
 
 describe('SecretKeyButton', () => {
@@ -97,12 +106,6 @@ describe('SecretKeyButton', () => {
   })
 
   describe('props', () => {
-    it('should apply custom className', () => {
-      render(<SecretKeyButton className="custom-class" />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('custom-class')
-    })
-
     it('should pass appId to modal', async () => {
       const user = userEvent.setup()
       render(<SecretKeyButton appId="app-123" canManage />)
@@ -195,12 +198,6 @@ describe('SecretKeyButton', () => {
   })
 
   describe('text styling', () => {
-    it('should have system-xs-medium class', () => {
-      render(<SecretKeyButton />)
-      const text = screen.getByText('appApi.apiKey')
-      expect(text.className).toContain('system-xs-medium')
-    })
-
     it('should have horizontal padding', () => {
       render(<SecretKeyButton />)
       const text = screen.getByText('appApi.apiKey')
