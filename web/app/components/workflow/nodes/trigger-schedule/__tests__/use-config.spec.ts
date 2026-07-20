@@ -141,42 +141,50 @@ describe('trigger-schedule/use-config', () => {
     })
 
     result.current.handleFrequencyChange('daily')
-    expect(setInputs).toHaveBeenLastCalledWith(expect.objectContaining({
-      frequency: 'daily',
-      cron_expression: undefined,
-      visual_config: {
-        time: '08:30 AM',
-      },
-    }))
+    expect(setInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        frequency: 'daily',
+        cron_expression: undefined,
+        visual_config: {
+          time: '08:30 AM',
+        },
+      }),
+    )
 
     result.current.handleFrequencyChange('weekly')
-    expect(setInputs).toHaveBeenLastCalledWith(expect.objectContaining({
-      frequency: 'weekly',
-      cron_expression: undefined,
-      visual_config: {
-        time: '08:30 AM',
-        weekdays: ['tue', 'thu'],
-      },
-    }))
+    expect(setInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        frequency: 'weekly',
+        cron_expression: undefined,
+        visual_config: {
+          time: '08:30 AM',
+          weekdays: ['tue', 'thu'],
+        },
+      }),
+    )
 
     result.current.handleFrequencyChange('monthly')
-    expect(setInputs).toHaveBeenLastCalledWith(expect.objectContaining({
-      frequency: 'monthly',
-      cron_expression: undefined,
-      visual_config: {
-        time: '08:30 AM',
-        monthly_days: [5, 'last'],
-      },
-    }))
+    expect(setInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        frequency: 'monthly',
+        cron_expression: undefined,
+        visual_config: {
+          time: '08:30 AM',
+          monthly_days: [5, 'last'],
+        },
+      }),
+    )
 
     result.current.handleFrequencyChange('hourly')
-    expect(setInputs).toHaveBeenLastCalledWith(expect.objectContaining({
-      frequency: 'hourly',
-      cron_expression: undefined,
-      visual_config: {
-        on_minute: 20,
-      },
-    }))
+    expect(setInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        frequency: 'hourly',
+        cron_expression: undefined,
+        visual_config: {
+          on_minute: 20,
+        },
+      }),
+    )
   })
 
   it('uses default frequency-specific fields when switching from a cleaned visual config', () => {
@@ -195,24 +203,28 @@ describe('trigger-schedule/use-config', () => {
     })
 
     result.current.handleFrequencyChange('weekly')
-    expect(setInputs).toHaveBeenLastCalledWith(expect.objectContaining({
-      frequency: 'weekly',
-      cron_expression: undefined,
-      visual_config: {
-        time: '08:30 AM',
-        weekdays: ['sun'],
-      },
-    }))
+    expect(setInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        frequency: 'weekly',
+        cron_expression: undefined,
+        visual_config: {
+          time: '08:30 AM',
+          weekdays: ['sun'],
+        },
+      }),
+    )
 
     result.current.handleFrequencyChange('monthly')
-    expect(setInputs).toHaveBeenLastCalledWith(expect.objectContaining({
-      frequency: 'monthly',
-      cron_expression: undefined,
-      visual_config: {
-        time: '08:30 AM',
-        monthly_days: [1],
-      },
-    }))
+    expect(setInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        frequency: 'monthly',
+        cron_expression: undefined,
+        visual_config: {
+          time: '08:30 AM',
+          monthly_days: [1],
+        },
+      }),
+    )
   })
 
   it('switches to raw cron mode and clears visual schedule fields', () => {
