@@ -3,7 +3,7 @@ import type React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -291,12 +291,9 @@ function createTestQueryClient(webAppAuthEnabled = true) {
       },
     },
   })
-  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
+  seedSystemFeatures(queryClient, {
     webapp_auth: {
       enabled: webAppAuthEnabled,
-      allow_sso: false,
-      allow_email_password_login: true,
-      allow_email_code_login: false,
     },
   })
   return queryClient
