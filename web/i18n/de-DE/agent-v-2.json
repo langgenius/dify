@@ -14,6 +14,7 @@
   "agentDetail.access.title": "Zugangspunkt",
   "agentDetail.access.toggleSurface": "Zugriff von {{name}} umschalten",
   "agentDetail.access.webApp.accessUrl": "Zugriffs-URL",
+  "agentDetail.access.webApp.actions.accessControl": "Zugriffskontrolle",
   "agentDetail.access.webApp.actions.customize": "Benutzerdefiniertes Frontend",
   "agentDetail.access.webApp.actions.embedded": "Eingebettet",
   "agentDetail.access.webApp.actions.launch": "Starten",

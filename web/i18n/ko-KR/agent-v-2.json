@@ -14,6 +14,7 @@
   "agentDetail.access.title": "액세스 지점",
   "agentDetail.access.toggleSurface": "{{name}} 액세스 전환",
   "agentDetail.access.webApp.accessUrl": "액세스 URL",
+  "agentDetail.access.webApp.actions.accessControl": "접근 제어",
   "agentDetail.access.webApp.actions.customize": "커스텀 프런트엔드",
   "agentDetail.access.webApp.actions.embedded": "임베드",
   "agentDetail.access.webApp.actions.launch": "실행",

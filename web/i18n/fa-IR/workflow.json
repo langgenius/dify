@@ -169,6 +169,7 @@
   "common.currentWorkflow": "گردش کار فعلی",
   "common.debugAndPreview": "اشکال‌زدایی و پیش‌نمایش",
   "common.disconnect": "قطع اتصال",
+  "common.draftSaveFailed": "ذخیره پیش‌نویس ناموفق بود",
   "common.duplicate": "تکثیر",
   "common.editing": "در حال ویرایش",
   "common.effectVarConfirm.content": "این متغیر در گره‌های دیگر استفاده شده است. آیا مطمئنید می‌خواهید آن را حذف کنید؟",

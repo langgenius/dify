@@ -8,7 +8,7 @@ import { toast, ToastHost } from '@langgenius/dify-ui/toast'
  * Covers community/premium/enterprise plan rendering, external URL navigation,
  * and workspace manager permission enforcement.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import {
@@ -18,37 +18,20 @@ import {
 } from '@/app/components/billing/config'
 import SelfHostedPlanItem from '@/app/components/billing/pricing/plans/self-hosted-plan-item'
 import { SelfHostedPlan } from '@/app/components/billing/type'
+import { render } from '@/test/console/render'
 
-let mockAppCtx: Record<string, unknown> = {}
+let mockConsoleState: Record<string, unknown> = {}
 
 const originalLocation = window.location
 let assignedHref = ''
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/hooks/use-theme', () => ({
@@ -69,8 +52,8 @@ vi.mock('@/app/components/billing/pricing/plans/self-hosted-plan-item/list', () 
   ),
 }))
 
-const setupAppContext = (overrides: Record<string, unknown> = {}) => {
-  mockAppCtx = {
+const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
+  mockConsoleState = {
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: ['billing.manage'],
     ...overrides,
@@ -91,7 +74,7 @@ describe('Self-Hosted Plan Flow', () => {
     vi.clearAllMocks()
     cleanup()
     toast.dismiss()
-    setupAppContext()
+    setupConsoleState()
 
     // Mock window.location with minimal getter/setter (Location props are non-enumerable)
     assignedHref = ''
@@ -208,7 +191,7 @@ describe('Self-Hosted Plan Flow', () => {
   // ─── 3. Permission Check ────────────────────────────────────────────────
   describe('Permission check', () => {
     it('should redirect when billing manage permission is granted without manager role', async () => {
-      setupAppContext({
+      setupConsoleState({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.manage'],
       })
@@ -222,7 +205,7 @@ describe('Self-Hosted Plan Flow', () => {
     })
 
     it('should show error toast when billing manage permission is missing for community button', async () => {
-      setupAppContext({ workspacePermissionKeys: [] })
+      setupConsoleState({ workspacePermissionKeys: [] })
       const user = userEvent.setup()
       renderSelfHostedPlanItem(SelfHostedPlan.community)
 
@@ -237,7 +220,7 @@ describe('Self-Hosted Plan Flow', () => {
     })
 
     it('should show error toast when billing manage permission is missing for premium button', async () => {
-      setupAppContext({ workspacePermissionKeys: [] })
+      setupConsoleState({ workspacePermissionKeys: [] })
       const user = userEvent.setup()
       renderSelfHostedPlanItem(SelfHostedPlan.premium)
 
@@ -251,7 +234,7 @@ describe('Self-Hosted Plan Flow', () => {
     })
 
     it('should show error toast when billing manage permission is missing for enterprise button', async () => {
-      setupAppContext({ workspacePermissionKeys: [] })
+      setupConsoleState({ workspacePermissionKeys: [] })
       const user = userEvent.setup()
       renderSelfHostedPlanItem(SelfHostedPlan.enterprise)
 

@@ -1,4 +1,7 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type {
   RenderHookOptions,
   RenderHookResult,
@@ -6,10 +9,21 @@ import type {
   RenderResult,
 } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
 import { defaultSystemFeatures } from '@/features/system-features/config'
 import { consoleQuery } from '@/service/client'
+import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
+import {
+  currentWorkspaceQueryKey,
+  ensureCurrentWorkspaceQuery,
+  seedCurrentWorkspaceQuery,
+} from '@/test/console/current-workspace'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import {
+  ensureWorkspacePermissionsQuery,
+  seedWorkspacePermissionsQuery,
+} from '@/test/console/workspace-permissions'
+import { createTestQueryClient } from '@/test/query-client'
 
 type QueryKeyProvider = {
   queryKey: () => readonly unknown[]
@@ -21,6 +35,10 @@ type TrialModelsQueryProvider = {
 
 type AppDslVersionQueryProvider = {
   get?: QueryKeyProvider
+}
+
+type CurrentWorkspaceQueryProvider = {
+  post?: QueryKeyProvider
 }
 
 const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
@@ -37,6 +55,16 @@ const getAppDslVersionQueryKey = () => {
     .appDslVersion
 
   return appDslVersionQuery?.get?.queryKey() ?? fallbackAppDslVersionQueryKey
+}
+
+const getCurrentWorkspaceQueryKey = () => {
+  const currentWorkspaceQuery = (
+    consoleQuery as {
+      workspaces?: { current?: CurrentWorkspaceQueryProvider }
+    }
+  ).workspaces?.current
+
+  return currentWorkspaceQuery?.post?.queryKey() ?? currentWorkspaceQueryKey
 }
 
 type DeepPartial<T> =
@@ -90,18 +118,8 @@ const buildSystemFeatures = (
  * mirrors the behaviour of an in-flight network request without touching the
  * real fetch layer.
  */
-export const createTestQueryClient = (): QueryClient =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-        staleTime: Infinity,
-        queryFn: () => new Promise(() => {}),
-      },
-      mutations: { retry: false },
-    },
-  })
+export const createConsoleQueryClient = (): QueryClient =>
+  createTestQueryClient(() => new Promise(() => {}))
 
 export const seedSystemFeatures = (
   queryClient: QueryClient,
@@ -112,15 +130,35 @@ export const seedSystemFeatures = (
   return data
 }
 
+const ensureSystemFeatures = (queryClient: QueryClient) => {
+  const queryKey = consoleQuery.systemFeatures.get.queryKey()
+  const existingSystemFeatures = queryClient.getQueryData<GetSystemFeaturesResponse>(queryKey)
+  if (existingSystemFeatures === undefined) return seedSystemFeatures(queryClient)
+
+  return existingSystemFeatures
+}
+
+const seedPendingSystemFeatures = (queryClient: QueryClient) => {
+  void queryClient.prefetchQuery({
+    queryKey: consoleQuery.systemFeatures.get.queryKey(),
+    queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
+  })
+}
+
 const seedTrialModels = (queryClient: QueryClient, trialModels: readonly string[] = []) => {
   queryClient.setQueryData(getTrialModelsQueryKey(), { trial_models: [...trialModels] })
+}
+
+const ensureTrialModels = (queryClient: QueryClient) => {
+  const queryKey = getTrialModelsQueryKey()
+  if (queryClient.getQueryData(queryKey) === undefined) seedTrialModels(queryClient)
 }
 
 export const seedAppDslVersion = (queryClient: QueryClient, appDslVersion = '0.6.0') => {
   queryClient.setQueryData(getAppDslVersionQueryKey(), { app_dsl_version: appDslVersion })
 }
 
-type SystemFeaturesTestOptions = {
+export type ConsoleQueryTestOptions = {
   /**
    * Partial overrides for the systemFeatures payload. When omitted, the cache
    * is seeded with `defaultSystemFeatures` so consumers using
@@ -128,7 +166,10 @@ type SystemFeaturesTestOptions = {
    * keep the systemFeatures query in the pending state.
    */
   systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
+  accountProfile?: Partial<GetAccountProfileResponse> | null
+  currentWorkspace?: Partial<PostWorkspacesCurrentResponse> | null
   trialModels?: readonly string[] | null
+  workspacePermissionKeys?: readonly string[] | null
   /**
    * Seed the workflow clipboard DSL version query only for tests that need it.
    * Omit or pass `null` to leave it unseeded.
@@ -137,45 +178,71 @@ type SystemFeaturesTestOptions = {
   queryClient?: QueryClient
 }
 
-type SystemFeaturesWrapper = {
+type ConsoleQueryWrapper = {
   queryClient: QueryClient
   systemFeatures: GetSystemFeaturesResponse | null
   wrapper: (props: { children: ReactNode }) => ReactElement
 }
 
-export const createSystemFeaturesWrapper = (
-  options: SystemFeaturesTestOptions = {},
-): SystemFeaturesWrapper => {
-  const queryClient = options.queryClient ?? createTestQueryClient()
+export const createConsoleQueryWrapper = (
+  options: ConsoleQueryTestOptions = {},
+): ConsoleQueryWrapper => {
+  const queryClient = options.queryClient ?? createConsoleQueryClient()
+  if (options.accountProfile !== null) {
+    if (options.accountProfile) seedAccountProfileQuery(queryClient, options.accountProfile)
+    else ensureAccountProfileQuery(queryClient, { timezone: 'UTC' })
+  }
+  if (options.currentWorkspace !== null) {
+    const queryKey = getCurrentWorkspaceQueryKey()
+    if (options.currentWorkspace)
+      seedCurrentWorkspaceQuery(queryClient, options.currentWorkspace, queryKey)
+    else ensureCurrentWorkspaceQuery(queryClient, {}, queryKey)
+  }
+  if (options.workspacePermissionKeys !== null) {
+    if (options.workspacePermissionKeys)
+      seedWorkspacePermissionsQuery(queryClient, 'workspace-1', options.workspacePermissionKeys)
+    else ensureWorkspacePermissionsQuery(queryClient)
+  }
   const systemFeatures =
-    options.systemFeatures === null ? null : seedSystemFeatures(queryClient, options.systemFeatures)
-  if (options.trialModels !== undefined && options.trialModels !== null)
-    seedTrialModels(queryClient, options.trialModels)
+    options.systemFeatures === null
+      ? null
+      : options.systemFeatures
+        ? seedSystemFeatures(queryClient, options.systemFeatures)
+        : ensureSystemFeatures(queryClient)
+  if (options.systemFeatures === null) seedPendingSystemFeatures(queryClient)
+  if (options.trialModels !== null) {
+    if (options.trialModels) seedTrialModels(queryClient, options.trialModels)
+    else ensureTrialModels(queryClient)
+  }
   if (options.appDslVersion !== undefined && options.appDslVersion !== null)
     seedAppDslVersion(queryClient, options.appDslVersion)
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
+  const wrapper = createQueryClientWrapper(queryClient)
   return { queryClient, systemFeatures, wrapper }
 }
 
-export const renderWithSystemFeatures = (
+export const renderWithConsoleQuery = (
   ui: ReactElement,
-  options: SystemFeaturesTestOptions & Omit<RenderOptions, 'wrapper'> = {},
+  options: ConsoleQueryTestOptions & Omit<RenderOptions, 'wrapper'> = {},
 ): RenderResult & {
   queryClient: QueryClient
   systemFeatures: GetSystemFeaturesResponse | null
 } => {
   const {
     systemFeatures: sf,
+    accountProfile,
+    currentWorkspace,
     trialModels,
+    workspacePermissionKeys,
     appDslVersion,
     queryClient: qc,
     ...renderOptions
   } = options
-  const { wrapper, queryClient, systemFeatures } = createSystemFeaturesWrapper({
+  const { wrapper, queryClient, systemFeatures } = createConsoleQueryWrapper({
     systemFeatures: sf,
+    accountProfile,
+    currentWorkspace,
     trialModels,
+    workspacePermissionKeys,
     appDslVersion,
     queryClient: qc,
   })
@@ -183,23 +250,29 @@ export const renderWithSystemFeatures = (
   return { ...rendered, queryClient, systemFeatures }
 }
 
-export const renderHookWithSystemFeatures = <Result, Props = void>(
+export const renderHookWithConsoleQuery = <Result, Props = void>(
   callback: (props: Props) => Result,
-  options: SystemFeaturesTestOptions & Omit<RenderHookOptions<Props>, 'wrapper'> = {},
+  options: ConsoleQueryTestOptions & Omit<RenderHookOptions<Props>, 'wrapper'> = {},
 ): RenderHookResult<Result, Props> & {
   queryClient: QueryClient
   systemFeatures: GetSystemFeaturesResponse | null
 } => {
   const {
     systemFeatures: sf,
+    accountProfile,
+    currentWorkspace,
     trialModels,
+    workspacePermissionKeys,
     appDslVersion,
     queryClient: qc,
     ...hookOptions
   } = options
-  const { wrapper, queryClient, systemFeatures } = createSystemFeaturesWrapper({
+  const { wrapper, queryClient, systemFeatures } = createConsoleQueryWrapper({
     systemFeatures: sf,
+    accountProfile,
+    currentWorkspace,
     trialModels,
+    workspacePermissionKeys,
     appDslVersion,
     queryClient: qc,
   })

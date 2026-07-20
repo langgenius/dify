@@ -1,45 +1,50 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import useAccessControlStore from '@/context/access-control-store'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { AccessMode } from '@/models/access-control'
 import AccessControlItem from '../access-control-item'
 
 describe('AccessControlItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    useAccessControlStore.setState({
-      appId: '',
-      specificGroups: [],
-      specificMembers: [],
-      currentMenu: AccessMode.PUBLIC,
-      selectedGroupsForBreadcrumb: [],
-    })
+  function AccessOptions({ initialValue = AccessMode.PUBLIC }: { initialValue?: AccessMode }) {
+    const [value, setValue] = useState<AccessMode>(initialValue)
+
+    return (
+      <RadioGroup<AccessMode> aria-label="Access" value={value} onValueChange={setValue}>
+        <AccessControlItem type={AccessMode.ORGANIZATION}>Organization Only</AccessControlItem>
+        <AccessControlItem type={AccessMode.PUBLIC}>Anyone</AccessControlItem>
+      </RadioGroup>
+    )
+  }
+
+  it('should expose a single-select radio group and update the checked option', async () => {
+    const user = userEvent.setup()
+    render(<AccessOptions />)
+
+    const organization = screen.getByRole('radio', { name: 'Organization Only' })
+    const anyone = screen.getByRole('radio', { name: 'Anyone' })
+
+    expect(screen.getByRole('radiogroup', { name: 'Access' })).toBeInTheDocument()
+    expect(organization).not.toBeChecked()
+    expect(anyone).toBeChecked()
+
+    await user.click(organization)
+
+    expect(organization).toBeChecked()
+    expect(anyone).not.toBeChecked()
   })
 
-  it('should update current menu when selecting a different access type', () => {
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
-    )
+  it('should support arrow-key selection between options', async () => {
+    const user = userEvent.setup()
+    render(<AccessOptions initialValue={AccessMode.ORGANIZATION} />)
 
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    fireEvent.click(option)
+    const organization = screen.getByRole('radio', { name: 'Organization Only' })
+    const anyone = screen.getByRole('radio', { name: 'Anyone' })
+    expect(organization).toBeChecked()
+    organization.focus()
 
-    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
-  })
+    await user.keyboard('{ArrowRight}')
 
-  it('should keep the selected state for the active access type', () => {
-    useAccessControlStore.setState({
-      currentMenu: AccessMode.ORGANIZATION,
-    })
-
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
-    )
-
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    expect(option).toHaveClass('border-components-option-card-option-selected-border')
+    expect(anyone).toBeChecked()
   })
 })
