@@ -51,6 +51,9 @@ _HAPPY_PATH_OPERATION_IDS = (
     "putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
     "getKnowledgeSpacesByIdLogicalDocuments",
     "getKnowledgeSpacesByIdLogicalDocumentsByDocumentId",
+    "postKnowledgeSpacesByIdDocuments",
+    "postKnowledgeSpacesByIdDocumentsBulk",
+    "postKnowledgeSpacesByIdDocumentsBulkReindex",
     "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions",
     "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks",
     "getKnowledgeSpacesByIdProcessingTasks",
@@ -102,6 +105,9 @@ _OPERATION_AUTHORIZATION_POLICIES = {
     "putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy": (RBACPermission.DATASET_EDIT, "dataset_editor"),
     "getKnowledgeSpacesByIdLogicalDocuments": (RBACPermission.DATASET_READONLY, "reader"),
     "getKnowledgeSpacesByIdLogicalDocumentsByDocumentId": (RBACPermission.DATASET_READONLY, "reader"),
+    "postKnowledgeSpacesByIdDocuments": (RBACPermission.DATASET_EDIT, "dataset_editor"),
+    "postKnowledgeSpacesByIdDocumentsBulk": (RBACPermission.DATASET_EDIT, "dataset_editor"),
+    "postKnowledgeSpacesByIdDocumentsBulkReindex": (RBACPermission.DATASET_EDIT, "dataset_editor"),
     "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions": (RBACPermission.DATASET_READONLY, "reader"),
     "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks": (
         RBACPermission.DATASET_READONLY,
@@ -413,7 +419,7 @@ def test_transport_failures_are_normalized(
         ("GET", "knowledge-spaces/space-1/manifest"),
         ("PATCH", "knowledge-spaces"),
         ("POST", "queries"),
-        ("POST", "knowledge-spaces/space-1/documents"),
+        ("DELETE", "knowledge-spaces/space-1/documents/bulk"),
     ],
 )
 def test_unregistered_route_is_rejected_before_external_io(

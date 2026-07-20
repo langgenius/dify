@@ -74,6 +74,24 @@ export type KnowledgeSpaceList = {
   nextCursor?: string
 }
 
+export type DocumentAsset = {
+  createdAt: string
+  filename: string
+  id: string
+  knowledgeSpaceId: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  mimeType: string
+  objectKey: string
+  parserStatus: 'pending' | 'parsed' | 'failed'
+  sha256: string
+  sizeBytes: number
+  sourceId?: string
+  updatedAt?: string
+  version: number
+}
+
 export type LogicalDocumentRevision = {
   activatedAt?: string
   contentHash: string
@@ -174,6 +192,71 @@ export type DocumentChunkList = {
 export type DocumentProcessingTaskList = {
   items: Array<DocumentProcessingTask>
   nextCursor?: string
+}
+
+export type BulkDocumentReindexResult = {
+  bulkJobId: string
+  items: Array<
+    | {
+        asset: DocumentAsset
+        compilationJob: {
+          id: string
+          stage: 'queued'
+        }
+        status: 'queued'
+        statusUrl: string
+      }
+    | {
+        documentId: string
+        status: 'not_found'
+      }
+  >
+  total: number
+}
+
+export type DocumentUploadAccepted = {
+  asset: DocumentAsset
+  assetStatusUrl?: string
+  compilationJob: {
+    id: string
+    stage: 'queued'
+  }
+  logicalDocument: {
+    id: string
+    revision: number
+  }
+  logicalDocumentId: string
+  documentRevision: number
+  statusUrl: string
+  status?: 'accepted'
+}
+
+export type BulkDocumentUploadAccepted = {
+  accepted: number
+  bulkJobId: string
+  excluded: number
+  items: Array<
+    | DocumentUploadAccepted
+    | {
+        filename: string
+        index: number
+        mimeType: string
+        reason:
+          | 'batch_byte_limit_exceeded'
+          | 'document_not_found'
+          | 'file_count_limit_exceeded'
+          | 'file_too_large'
+          | 'invalid_file'
+          | 'invalid_target'
+          | 'processing_failed'
+          | 'quota_exceeded'
+          | 'revision_conflict'
+          | 'unsupported_mime_type'
+        sizeBytes: number
+        status: 'excluded'
+      }
+  >
+  total: number
 }
 
 export type SourceWorkflowRun = {
@@ -1033,6 +1116,119 @@ export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses = {
 
 export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse =
   GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses[keyof GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses]
+
+export type PostKnowledgeSpacesByIdDocumentsData = {
+  body: {
+    documentId?: string
+    expectedActiveRevision?: number | 'null'
+    expectedDocumentRowVersion?: number | null
+    file: Blob | File
+    sourceId?: string
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents'
+}
+
+export type PostKnowledgeSpacesByIdDocumentsErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+  413: ErrorResponse
+  429: ErrorResponse
+  500: ErrorResponse
+  503: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdDocumentsError =
+  PostKnowledgeSpacesByIdDocumentsErrors[keyof PostKnowledgeSpacesByIdDocumentsErrors]
+
+export type PostKnowledgeSpacesByIdDocumentsResponses = {
+  201: DocumentAsset
+  202: DocumentUploadAccepted
+}
+
+export type PostKnowledgeSpacesByIdDocumentsResponse =
+  PostKnowledgeSpacesByIdDocumentsResponses[keyof PostKnowledgeSpacesByIdDocumentsResponses]
+
+export type PostKnowledgeSpacesByIdDocumentsBulkData = {
+  body: {
+    files: Array<Blob | File>
+    targets?: string
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/bulk'
+}
+
+export type PostKnowledgeSpacesByIdDocumentsBulkErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+  413: ErrorResponse
+  429: ErrorResponse
+  500: ErrorResponse
+  503: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdDocumentsBulkError =
+  PostKnowledgeSpacesByIdDocumentsBulkErrors[keyof PostKnowledgeSpacesByIdDocumentsBulkErrors]
+
+export type PostKnowledgeSpacesByIdDocumentsBulkResponses = {
+  202: BulkDocumentUploadAccepted
+}
+
+export type PostKnowledgeSpacesByIdDocumentsBulkResponse =
+  PostKnowledgeSpacesByIdDocumentsBulkResponses[keyof PostKnowledgeSpacesByIdDocumentsBulkResponses]
+
+export type PostKnowledgeSpacesByIdDocumentsBulkReindexData = {
+  body: {
+    all?: boolean
+    documentIds?: Array<string>
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/bulk/reindex'
+}
+
+export type PostKnowledgeSpacesByIdDocumentsBulkReindexErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+  413: ErrorResponse
+  503: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdDocumentsBulkReindexError =
+  PostKnowledgeSpacesByIdDocumentsBulkReindexErrors[keyof PostKnowledgeSpacesByIdDocumentsBulkReindexErrors]
+
+export type PostKnowledgeSpacesByIdDocumentsBulkReindexResponses = {
+  202: BulkDocumentReindexResult
+}
+
+export type PostKnowledgeSpacesByIdDocumentsBulkReindexResponse =
+  PostKnowledgeSpacesByIdDocumentsBulkReindexResponses[keyof PostKnowledgeSpacesByIdDocumentsBulkReindexResponses]
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsData = {
   body?: never

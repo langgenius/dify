@@ -230,6 +230,27 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         legacy_role="reader",
     ),
     _console_operation(
+        operation_id="postKnowledgeSpacesByIdDocuments",
+        method="POST",
+        path="knowledge-spaces/{id}/documents",
+        rbac_permission=RBACPermission.DATASET_EDIT,
+        legacy_role="dataset_editor",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdDocumentsBulk",
+        method="POST",
+        path="knowledge-spaces/{id}/documents/bulk",
+        rbac_permission=RBACPermission.DATASET_EDIT,
+        legacy_role="dataset_editor",
+    ),
+    _console_operation(
+        operation_id="postKnowledgeSpacesByIdDocumentsBulkReindex",
+        method="POST",
+        path="knowledge-spaces/{id}/documents/bulk/reindex",
+        rbac_permission=RBACPermission.DATASET_EDIT,
+        legacy_role="dataset_editor",
+    ),
+    _console_operation(
         operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions",
         method="GET",
         path="knowledge-spaces/{id}/documents/{documentId}/revisions",

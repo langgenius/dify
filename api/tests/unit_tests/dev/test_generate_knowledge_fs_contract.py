@@ -112,7 +112,7 @@ def test_contract_script_loads_runtime_registry_outside_api_directory(tmp_path: 
         text=True,
     )
 
-    assert result.stdout.strip() == "27"
+    assert result.stdout.strip() == "30"
 
 
 def test_validate_declarations_accepts_matching_contract() -> None:

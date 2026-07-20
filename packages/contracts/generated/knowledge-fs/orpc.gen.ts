@@ -61,9 +61,21 @@ import {
   zPatchKnowledgeSpacesByIdAccessPolicyHeaders,
   zPatchKnowledgeSpacesByIdAccessPolicyPath,
   zPatchKnowledgeSpacesByIdAccessPolicyResponse,
+  zPostKnowledgeSpacesByIdDocumentsBody,
+  zPostKnowledgeSpacesByIdDocumentsBulkBody,
+  zPostKnowledgeSpacesByIdDocumentsBulkHeaders,
+  zPostKnowledgeSpacesByIdDocumentsBulkPath,
+  zPostKnowledgeSpacesByIdDocumentsBulkReindexBody,
+  zPostKnowledgeSpacesByIdDocumentsBulkReindexHeaders,
+  zPostKnowledgeSpacesByIdDocumentsBulkReindexPath,
+  zPostKnowledgeSpacesByIdDocumentsBulkReindexResponse,
+  zPostKnowledgeSpacesByIdDocumentsBulkResponse,
   zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryHeaders,
   zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryPath,
   zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponse,
+  zPostKnowledgeSpacesByIdDocumentsHeaders,
+  zPostKnowledgeSpacesByIdDocumentsPath,
+  zPostKnowledgeSpacesByIdDocumentsResponse,
   zPostKnowledgeSpacesByIdSourceConnectionsBody,
   zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshBody,
   zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshHeaders,
@@ -440,6 +452,60 @@ export const getKnowledgeSpacesByIdLogicalDocumentsByDocumentId = oc
   )
   .output(zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse)
 
+export const postKnowledgeSpacesByIdDocuments = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdDocuments',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents',
+    successStatus: 201,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdDocumentsBody,
+      headers: zPostKnowledgeSpacesByIdDocumentsHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdDocumentsPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdDocumentsResponse)
+
+export const postKnowledgeSpacesByIdDocumentsBulk = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdDocumentsBulk',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/bulk',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdDocumentsBulkBody,
+      headers: zPostKnowledgeSpacesByIdDocumentsBulkHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdDocumentsBulkPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdDocumentsBulkResponse)
+
+export const postKnowledgeSpacesByIdDocumentsBulkReindex = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdDocumentsBulkReindex',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/bulk/reindex',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdDocumentsBulkReindexBody,
+      headers: zPostKnowledgeSpacesByIdDocumentsBulkReindexHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdDocumentsBulkReindexPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdDocumentsBulkReindexResponse)
+
 export const getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions = oc
   .route({
     inputStructure: 'detailed',
@@ -548,6 +614,9 @@ export const contract = {
   putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy,
   getKnowledgeSpacesByIdLogicalDocuments,
   getKnowledgeSpacesByIdLogicalDocumentsByDocumentId,
+  postKnowledgeSpacesByIdDocuments,
+  postKnowledgeSpacesByIdDocumentsBulk,
+  postKnowledgeSpacesByIdDocumentsBulkReindex,
   getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions,
   getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks,
   getKnowledgeSpacesByIdProcessingTasks,

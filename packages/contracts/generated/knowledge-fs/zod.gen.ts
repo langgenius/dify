@@ -105,6 +105,27 @@ export const zKnowledgeSpaceList = z.object({
   nextCursor: z.string().optional(),
 })
 
+export const zDocumentAsset = z.object({
+  createdAt: z.iso.datetime(),
+  filename: z.string().min(1).max(512),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  mimeType: z.string().min(1),
+  objectKey: z.string().min(1),
+  parserStatus: z.enum(['pending', 'parsed', 'failed']),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  sizeBytes: z.int().gte(0),
+  sourceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  updatedAt: z.iso.datetime().optional(),
+  version: z.int().gt(0),
+})
+
 export const zLogicalDocumentRevision = z
   .object({
     activatedAt: z.string().optional(),
@@ -201,6 +222,76 @@ export const zDocumentChunkList = z.object({
 export const zDocumentProcessingTaskList = z.object({
   items: z.array(zDocumentProcessingTask),
   nextCursor: z.string().optional(),
+})
+
+export const zBulkDocumentReindexResult = z.object({
+  bulkJobId: z.string().min(1),
+  items: z.array(
+    z.union([
+      z.object({
+        asset: zDocumentAsset,
+        compilationJob: z.object({
+          id: z.string().min(1),
+          stage: z.enum(['queued']),
+        }),
+        status: z.enum(['queued']),
+        statusUrl: z.string().min(1),
+      }),
+      z.object({
+        documentId: z.uuid(),
+        status: z.enum(['not_found']),
+      }),
+    ]),
+  ),
+  total: z.int().gte(0),
+})
+
+export const zDocumentUploadAccepted = z.object({
+  asset: zDocumentAsset,
+  assetStatusUrl: z.string().min(1).optional(),
+  compilationJob: z.object({
+    id: z.string().min(1),
+    stage: z.enum(['queued']),
+  }),
+  logicalDocument: z.object({
+    id: z.uuid(),
+    revision: z.int().gt(0),
+  }),
+  logicalDocumentId: z.uuid(),
+  documentRevision: z.int().gt(0),
+  statusUrl: z.string().min(1),
+  status: z.enum(['accepted']).optional(),
+})
+
+export const zBulkDocumentUploadAccepted = z.object({
+  accepted: z.int().gte(0),
+  bulkJobId: z.string().min(1),
+  excluded: z.int().gte(0),
+  items: z.array(
+    z.union([
+      zDocumentUploadAccepted,
+      z.object({
+        filename: z.string(),
+        index: z.int().gte(0),
+        mimeType: z.string(),
+        reason: z.enum([
+          'batch_byte_limit_exceeded',
+          'document_not_found',
+          'file_count_limit_exceeded',
+          'file_too_large',
+          'invalid_file',
+          'invalid_target',
+          'processing_failed',
+          'quota_exceeded',
+          'revision_conflict',
+          'unsupported_mime_type',
+        ]),
+        sizeBytes: z.int().gte(0),
+        status: z.enum(['excluded']),
+      }),
+    ]),
+  ),
+  total: z.int().gte(0),
 })
 
 export const zSourceWorkflowRun = z.object({
@@ -707,6 +798,63 @@ export const zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdPath = z.object(
  * Logical document
  */
 export const zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse = zLogicalDocument
+
+export const zPostKnowledgeSpacesByIdDocumentsBody = z.object({
+  documentId: z.uuid().optional(),
+  expectedActiveRevision: z.union([z.int().gt(0), z.enum(['null'])]).optional(),
+  expectedDocumentRowVersion: z.int().gte(0).nullish(),
+  file: z.custom<Blob | File>(),
+  sourceId: z.uuid().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsResponse = z.union([
+  zDocumentAsset,
+  zDocumentUploadAccepted,
+])
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkBody = z.object({
+  files: z.array(z.custom<Blob | File>()).min(1),
+  targets: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Accepted bulk document upload for durable compilation
+ */
+export const zPostKnowledgeSpacesByIdDocumentsBulkResponse = zBulkDocumentUploadAccepted
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexBody = z.object({
+  all: z.boolean().optional(),
+  documentIds: z.array(z.uuid()).min(1).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Accepted bulk document reindex
+ */
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexResponse = zBulkDocumentReindexResult
 
 export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsHeaders = z.object({
   'x-trace-id': z.string().optional(),
