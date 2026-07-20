@@ -37,7 +37,7 @@ const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
 const mockResumeDocIndexing = vi.mocked(datasetsService.resumeDocIndexing)
 const mockUseProcessRule = vi.mocked(useDataset.useProcessRule)
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },
@@ -48,7 +48,7 @@ const createTestQueryClient = () =>
 const createWrapper = (
   contextValue: DocumentContextValue = { datasetId: 'ds1', documentId: 'doc1' },
 ) => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <>

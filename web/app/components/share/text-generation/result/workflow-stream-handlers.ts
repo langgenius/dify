@@ -342,15 +342,25 @@ export const createWorkflowStreamHandlers = ({
       setWorkflowProcessData(finishWorkflowNode(getWorkflowProcessData(), data))
     },
     onWorkflowFinished: ({ data }) => {
+      const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (isTimedOut()) {
+        const finishedStatus =
+          workflowStatus === WorkflowRunningStatus.Stopped
+            ? WorkflowRunningStatus.Stopped
+            : workflowStatus === WorkflowRunningStatus.Failed || data.error
+              ? WorkflowRunningStatus.Failed
+              : WorkflowRunningStatus.Succeeded
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), finishedStatus, data.error),
+        )
         notify({
           type: 'warning',
           message: t(($) => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }),
         })
+        markEnded()
         return
       }
 
-      const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (workflowStatus === WorkflowRunningStatus.Stopped) {
         setWorkflowProcessData(
           applyWorkflowFinishedState(

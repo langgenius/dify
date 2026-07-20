@@ -1,5 +1,6 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import IntegrationsPage from '../page'
 
@@ -8,7 +9,7 @@ const { mockRouterPush, mockWindowOpen } = vi.hoisted(() => ({
   mockWindowOpen: vi.fn(),
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
 }))
 
@@ -16,12 +17,14 @@ const {
   mockCanManagement,
   mockCanDebugger,
   mockCanSetPermissions,
+  mockIsPermissionLoading,
   mockReferenceSetting,
   mockSetReferenceSettings,
 } = vi.hoisted(() => ({
   mockCanManagement: vi.fn(() => true),
   mockCanDebugger: vi.fn(() => true),
   mockCanSetPermissions: vi.fn(() => true),
+  mockIsPermissionLoading: vi.fn(() => false),
   mockReferenceSetting: vi.fn(() => ({
     permission: {
       install_permission: 'everyone',
@@ -54,6 +57,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
     canSetPermissions: mockCanSetPermissions(),
     canSetPluginPreferences: mockCanSetPermissions(),
     canUpdatePlugin: true,
+    isPermissionLoading: mockIsPermissionLoading(),
     setPluginPermissionSettings: mockSetReferenceSettings,
   }),
   default: () => ({
@@ -65,6 +69,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
     canSetPermissions: mockCanSetPermissions(),
     canSetPluginPreferences: mockCanSetPermissions(),
     canUpdatePlugin: true,
+    isPermissionLoading: mockIsPermissionLoading(),
     setReferenceSettings: mockSetReferenceSettings,
   }),
 }))
@@ -96,11 +101,9 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  __esModule: true,
   default: () => (
-    <button type="button" data-testid="update-setting-dialog">
+    <button type="button" aria-label="plugin.autoUpdate.autoUpdate">
       plugin.autoUpdate.autoUpdate
-      <span>plugin.autoUpdate.strategy.fixOnly.name</span>
     </button>
   ),
 }))
@@ -319,7 +322,8 @@ describe('IntegrationsPage', () => {
     mockCanManagement.mockReturnValue(true)
     mockCanDebugger.mockReturnValue(true)
     mockCanSetPermissions.mockReturnValue(true)
-    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
+    mockIsPermissionLoading.mockReturnValue(false)
+    mockConsoleState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
     mockReferenceSetting.mockReturnValue({
       permission: {
         install_permission: 'everyone',
@@ -399,6 +403,43 @@ describe('IntegrationsPage', () => {
     expect(navText.indexOf('plugin.categorySingle.extension')).toBeLessThan(
       navText.indexOf('common.settings.customEndpoint'),
     )
+  })
+
+  it('anchors step-by-step tour targets inside stable sidebar rows', () => {
+    renderIntegrationsPage({ section: 'mcp' })
+
+    const targetRows = [
+      {
+        label: 'common.settings.provider',
+        target: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
+      },
+      {
+        label: 'common.toolsPage.toolPlugin',
+        target: STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
+      },
+      {
+        label: 'MCP',
+        target: STEP_BY_STEP_TOUR_TARGETS.integrationMcpNav,
+      },
+      {
+        label: 'common.settings.dataSource',
+        target: STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
+      },
+      {
+        label: 'plugin.categorySingle.trigger',
+        target: STEP_BY_STEP_TOUR_TARGETS.integrationTriggerNav,
+      },
+    ]
+
+    targetRows.forEach(({ label, target }) => {
+      const row = screen.getByRole('link', { name: label })
+      const targetAnchor = row.querySelector(`[data-step-by-step-tour-target="${target}"]`)
+
+      expect(row).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(row).toHaveClass('relative')
+      expect(targetAnchor).toBeInTheDocument()
+      expect(targetAnchor).toHaveClass('absolute', 'inset-y-1', 'left-0', 'right-0')
+    })
   })
 
   it('keeps sidebar item icons outlined when the item is active', () => {
@@ -555,7 +596,7 @@ describe('IntegrationsPage', () => {
   })
 
   it('renders the MCP route as read-only without mcp.manage', () => {
-    mockAppContextState.workspacePermissionKeys = ['tool.manage']
+    mockConsoleState.workspacePermissionKeys = ['tool.manage']
 
     renderIntegrationsPage(undefined, 'mcp')
 
@@ -565,7 +606,7 @@ describe('IntegrationsPage', () => {
   it.each(['custom-tool', 'workflow-tool'] as const)(
     'renders the %s route as read-only without tool.manage',
     (section) => {
-      mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+      mockConsoleState.workspacePermissionKeys = ['mcp.manage']
 
       renderIntegrationsPage(undefined, section)
 
@@ -674,7 +715,7 @@ describe('IntegrationsPage', () => {
 
   it('keeps custom, workflow, and MCP tool entries visible without manage permissions', async () => {
     const user = userEvent.setup()
-    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
     renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
 
     await user.click(screen.getByRole('button', { name: 'common.menus.tools' }))
@@ -733,6 +774,16 @@ describe('IntegrationsPage', () => {
       screen.queryByRole('link', { name: 'common.toolsPage.toolPlugin' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
+
+    view.rerender(<IntegrationsPage section="mcp" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
+    })
+    expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
   })
 
   it('renders the tools header for tool sections', () => {
@@ -889,8 +940,9 @@ describe('IntegrationsPage', () => {
     (section) => {
       renderIntegrationsPage({ section })
 
-      expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
-      expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+      ).toBeInTheDocument()
     },
   )
 
@@ -939,7 +991,9 @@ describe('IntegrationsPage', () => {
 
     renderIntegrationsPage({ section: 'trigger' })
 
-    expect(screen.queryByTestId('update-setting-dialog')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the sidebar plugin permissions quick settings and updates permissions', async () => {
