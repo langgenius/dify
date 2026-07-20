@@ -313,7 +313,6 @@ export const startApi = async () => {
     env,
   })
 
-  // Collaboration is enabled by default, so E2E must serve both HTTP and Socket.IO.
   await runForegroundProcess({
     command: 'uv',
     args: [
@@ -321,19 +320,12 @@ export const startApi = async () => {
       '--project',
       '.',
       '--no-sync',
-      'gunicorn',
-      '--no-control-socket',
-      '--bind',
-      `${apiHost}:${apiPort}`,
-      '--workers',
-      '1',
-      '--worker-class',
-      'geventwebsocket.gunicorn.workers.GeventWebSocketWorker',
-      '--worker-connections',
-      '1000',
-      '--timeout',
-      '200',
-      'app:socketio_app',
+      'flask',
+      'run',
+      '--host',
+      apiHost,
+      '--port',
+      String(apiPort),
     ],
     cwd: apiDir,
     env,
