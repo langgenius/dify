@@ -55,6 +55,18 @@ vi.mock('@/service/share', () => ({
     mockUploadHumanInputFormRemoteFileInfo(...args),
 }))
 
+const mockHumanInputV2Transport = vi.hoisted(() => ({
+  getForm: vi.fn(),
+  requestAccess: vi.fn(),
+  submit: vi.fn(),
+  requestUploadToken: vi.fn(),
+  uploadLocalFile: vi.fn(),
+  uploadRemoteFile: vi.fn(),
+}))
+vi.mock('@/features/human-input-v2-form/transport-context', () => ({
+  useHumanInputV2FormTransport: () => mockHumanInputV2Transport,
+}))
+
 vi.mock('uuid', () => ({
   v4: () => 'mock-uuid',
 }))
@@ -126,6 +138,28 @@ describe('useFile', () => {
     mockNavigationState.pathname = '/chat'
     mockIsAllowedFileExtension.mockReturnValue(true)
     mockGetSupportFileType.mockReturnValue('document')
+    mockHumanInputV2Transport.requestUploadToken.mockResolvedValue({
+      uploadToken: 'mock-upload-token',
+      expiresAt: 999999,
+    })
+    mockHumanInputV2Transport.uploadLocalFile.mockImplementation((_token: string, file: File) =>
+      Promise.resolve({
+        id: 'v2-local-file',
+        name: file.name,
+        mimeType: file.type,
+        size: file.size,
+        url: '',
+      }),
+    )
+    mockHumanInputV2Transport.uploadRemoteFile.mockImplementation((_token: string, url: string) =>
+      Promise.resolve({
+        id: 'v2-remote-file',
+        name: 'remote.txt',
+        mimeType: 'text/plain',
+        size: 100,
+        url,
+      }),
+    )
   })
 
   it('should return all file handler functions', () => {
@@ -387,6 +421,24 @@ describe('useFile', () => {
         'form-token',
         'https://example.com/file.txt',
       )
+      expect(mockUploadRemoteFileInfo).not.toHaveBeenCalled()
+    })
+
+    it('should use the v2 upload-token transport for a remote file on the form-v2 page', async () => {
+      mockNavigationState.params = { token: 'v2-form-token' }
+      mockNavigationState.pathname = '/form-v2/v2-form-token'
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      await act(async () => {
+        result.current.handleLoadFileFromLink('https://example.com/file.txt')
+      })
+
+      expect(mockHumanInputV2Transport.requestUploadToken).toHaveBeenCalledWith('v2-form-token')
+      expect(mockHumanInputV2Transport.uploadRemoteFile).toHaveBeenCalledWith(
+        'v2-form-token',
+        'https://example.com/file.txt',
+      )
+      expect(mockUploadHumanInputFormRemoteFileInfo).not.toHaveBeenCalled()
       expect(mockUploadRemoteFileInfo).not.toHaveBeenCalled()
     })
 
@@ -797,6 +849,35 @@ describe('useFile', () => {
         }),
       )
       expect(mockFileUpload).not.toHaveBeenCalled()
+    })
+
+    it('should use the v2 upload-token transport for a local file on the form-v2 page', async () => {
+      mockNavigationState.params = { token: 'v2-form-token' }
+      mockNavigationState.pathname = '/form-v2/v2-form-token'
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      await act(async () => {
+        result.current.handleLocalFileUpload(file)
+      })
+
+      expect(mockHumanInputV2Transport.requestUploadToken).toHaveBeenCalledWith('v2-form-token')
+      expect(mockHumanInputV2Transport.uploadLocalFile).toHaveBeenCalledWith('v2-form-token', file)
+      expect(mockUploadHumanInputFormLocalFile).not.toHaveBeenCalled()
+      expect(mockFileUpload).not.toHaveBeenCalled()
+    })
+
+    it('should not consume a route token for malformed form paths', () => {
+      mockNavigationState.params = { token: 'unrelated-token' }
+      mockNavigationState.pathname = '/form-v2/unrelated-token/extra'
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockFileUpload).toHaveBeenCalledWith(expect.any(Object), true)
+      expect(mockHumanInputV2Transport.uploadLocalFile).not.toHaveBeenCalled()
+      expect(mockUploadHumanInputFormLocalFile).not.toHaveBeenCalled()
     })
 
     it('should handle fileUpload error callback', () => {

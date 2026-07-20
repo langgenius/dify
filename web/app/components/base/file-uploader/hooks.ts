@@ -16,6 +16,12 @@ import {
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { classifyHumanInputFormRoute } from '@/features/human-input-form/route-classifier'
+import { useHumanInputV2FormTransport } from '@/features/human-input-v2-form/transport-context'
+import {
+  uploadHumanInputV2LocalFile,
+  uploadHumanInputV2RemoteFile,
+} from '@/features/human-input-v2-form/upload'
 import { useParams, usePathname } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
@@ -54,11 +60,13 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const fileStore = useFileStore()
   const params = useParams()
   const pathname = usePathname()
+  const humanInputV2Transport = useHumanInputV2FormTransport()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
-  const formToken = typeof params.token === 'string' ? params.token : undefined
-  const isHumanInputFormPage = !!formToken && /(?:^|\/)form\/[^/]+$/.test(pathname)
+  const formRoute = classifyHumanInputFormRoute(pathname)
+  const routeToken = typeof params.token === 'string' ? params.token : undefined
+  const formToken = formRoute.kind === 'non-form' ? undefined : (routeToken ?? formRoute.token)
 
   const checkSizeLimit = useCallback(
     (fileType: string, fileSize: number) => {
@@ -190,8 +198,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           },
         }
 
-        if (isHumanInputFormPage) {
+        if (formRoute.kind === 'legacy') {
           uploadHumanInputFormLocalFile({
+            formToken: formToken!,
+            ...uploadParams,
+          })
+        } else if (formRoute.kind === 'v2') {
+          void uploadHumanInputV2LocalFile({
+            transport: humanInputV2Transport,
             formToken: formToken!,
             ...uploadParams,
           })
@@ -200,7 +214,15 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         }
       }
     },
-    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token],
+    [
+      fileStore,
+      t,
+      handleUpdateFile,
+      formRoute.kind,
+      formToken,
+      humanInputV2Transport,
+      params.token,
+    ],
   )
 
   const startProgressTimer = useCallback(
@@ -234,9 +256,16 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       handleAddFile(uploadingFile)
       startProgressTimer(uploadingFile.id)
 
-      const remoteUpload = isHumanInputFormPage
-        ? uploadHumanInputFormRemoteFileInfo(formToken!, url)
-        : uploadRemoteFileInfo(url, !!params.token)
+      const remoteUpload =
+        formRoute.kind === 'legacy'
+          ? uploadHumanInputFormRemoteFileInfo(formToken!, url)
+          : formRoute.kind === 'v2'
+            ? uploadHumanInputV2RemoteFile({
+                transport: humanInputV2Transport,
+                formToken: formToken!,
+                url,
+              })
+            : uploadRemoteFileInfo(url, !!params.token)
 
       remoteUpload
         .then((res) => {
@@ -284,8 +313,9 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       fileConfig?.allowed_file_types,
       fileConfig.allowed_file_extensions,
       startProgressTimer,
-      isHumanInputFormPage,
+      formRoute.kind,
       formToken,
+      humanInputV2Transport,
       params.token,
     ],
   )
@@ -368,8 +398,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             },
           }
 
-          if (isHumanInputFormPage) {
+          if (formRoute.kind === 'legacy') {
             uploadHumanInputFormLocalFile({
+              formToken: formToken!,
+              ...uploadParams,
+            })
+          } else if (formRoute.kind === 'v2') {
+            void uploadHumanInputV2LocalFile({
+              transport: humanInputV2Transport,
               formToken: formToken!,
               ...uploadParams,
             })
@@ -394,8 +430,9 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       t,
       handleAddFile,
       handleUpdateFile,
-      isHumanInputFormPage,
+      formRoute.kind,
       formToken,
+      humanInputV2Transport,
       params.token,
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
