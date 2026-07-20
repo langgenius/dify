@@ -196,11 +196,24 @@ describe('WebsiteCrawlPreview', () => {
         nextCursor: 'page-2',
       })
       .mockResolvedValueOnce({
-        items: [{ pageId: 'page-2', sourceUrl: 'https://docs.dify.ai/two', title: 'Two' }],
+        items: [
+          { pageId: 'page-2', sourceUrl: 'https://docs.dify.ai/two', title: 'Two' },
+          {
+            pageId: 'page-deleted',
+            sourceUrl: 'https://docs.dify.ai/deleted',
+            title: 'Deleted page',
+          },
+        ],
       })
       .mockResolvedValueOnce({
         items: [
+          { pageId: 'page-2', sourceUrl: 'https://docs.dify.ai/two', title: 'Two' },
           { pageId: 'page-0', sourceUrl: 'https://docs.dify.ai/new', title: 'New first' },
+        ],
+        nextCursor: 'final-page-2',
+      })
+      .mockResolvedValueOnce({
+        items: [
           { pageId: 'page-1', sourceUrl: 'https://docs.dify.ai/one', title: 'Updated one' },
           { pageId: 'page-3', sourceUrl: 'https://docs.dify.ai/three', title: 'Three' },
         ],
@@ -226,7 +239,7 @@ describe('WebsiteCrawlPreview', () => {
       screen.getByRole('progressbar', {
         name: 'dataset.newKnowledge.crawlProgress:{"host":"docs.dify.ai"}',
       }),
-    ).toHaveValue(2)
+    ).toHaveValue(3)
     const status = screen.getByText(/^dataset\.newKnowledge\.crawlingPages/)
     expect(status).toHaveAttribute('role', 'status')
     expect(status.querySelector('button')).not.toBeInTheDocument()
@@ -238,11 +251,18 @@ describe('WebsiteCrawlPreview', () => {
     expect(screen.getByText('New first')).toBeInTheDocument()
     expect(screen.getByText('Updated one')).toBeInTheDocument()
     expect(screen.queryByText('Old one')).not.toBeInTheDocument()
-    expect(screen.queryByText('Two')).not.toBeInTheDocument()
+    expect(screen.queryByText('Deleted page')).not.toBeInTheDocument()
     expect(clientMock.getPages).toHaveBeenNthCalledWith(3, {
       params: { id: 'space-1', runId: 'run-1' },
       query: { limit: 200 },
     })
+    expect(clientMock.getPages).toHaveBeenNthCalledWith(4, {
+      params: { id: 'space-1', runId: 'run-1' },
+      query: { cursor: 'final-page-2', limit: 200 },
+    })
+    expect(
+      screen.getAllByRole('checkbox').map((checkbox) => checkbox.getAttribute('aria-label')),
+    ).toEqual(['Two', 'New first', 'Updated one', 'Three'])
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }),
     ).not.toBeInTheDocument()
