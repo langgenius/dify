@@ -11,7 +11,9 @@ const mockSetDraftUpdatedAt = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
 const mockCollaborationIsConnected = vi.fn()
 const mockCollaborationGetIsLeader = vi.fn()
-const mockCollaborationEmitSyncRequest = vi.fn()
+const mockCollaborationRequestWorkflowSync = vi.fn()
+const mockCollaborationCanPersistLocalGraph = vi.fn()
+const mockCollaborationCanFlushGraphOnPageClose = vi.fn()
 let isCollaborationEnabled = false
 
 let reactFlowState: {
@@ -66,16 +68,11 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   collaborationManager: {
     isConnected: (...args: unknown[]) => mockCollaborationIsConnected(...args),
     getIsLeader: (...args: unknown[]) => mockCollaborationGetIsLeader(...args),
-    emitSyncRequest: (...args: unknown[]) => mockCollaborationEmitSyncRequest(...args),
+    requestWorkflowSync: (...args: unknown[]) => mockCollaborationRequestWorkflowSync(...args),
+    canPersistLocalGraph: (...args: unknown[]) => mockCollaborationCanPersistLocalGraph(...args),
+    canFlushGraphOnPageClose: (...args: unknown[]) =>
+      mockCollaborationCanFlushGraphOnPageClose(...args),
   },
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-serial-async-callback', () => ({
-  useSerialAsyncCallback:
-    (fn: (...args: unknown[]) => Promise<void>, checkFn: () => boolean) =>
-    (...args: unknown[]) => {
-      if (!checkFn()) return fn(...args)
-    },
 }))
 
 const mockSyncWorkflowDraft = vi.fn()
@@ -140,6 +137,12 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new', updated_at: 1 })
     mockCollaborationIsConnected.mockReturnValue(false)
     mockCollaborationGetIsLeader.mockReturnValue(true)
+    mockCollaborationCanPersistLocalGraph.mockReturnValue(true)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(true)
+    mockCollaborationRequestWorkflowSync.mockResolvedValue({
+      hash: 'remote-hash',
+      updatedAt: 2,
+    })
     isCollaborationEnabled = false
   })
 
@@ -201,7 +204,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
 
     const { result } = renderUseNodesSyncDraft()
     await act(async () => {
-      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeUndefined()
+      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
     })
 
     expect(error.json).toHaveBeenCalled()
@@ -465,7 +468,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     )
   })
 
-  it('should emit sync request instead of syncing when current user is collaboration follower', async () => {
+  it('should wait for the leader save result when current user is collaboration follower', async () => {
     isCollaborationEnabled = true
     mockCollaborationIsConnected.mockReturnValue(true)
     mockCollaborationGetIsLeader.mockReturnValue(false)
@@ -481,11 +484,100 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       await result.current.doSyncWorkflowDraft(false, callbacks)
     })
 
-    expect(mockCollaborationEmitSyncRequest).toHaveBeenCalled()
+    expect(mockCollaborationRequestWorkflowSync).toHaveBeenCalled()
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(callbacks.onSuccess).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('remote-hash')
+    expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(2)
+    expect(callbacks.onSuccess).toHaveBeenCalled()
     expect(callbacks.onError).not.toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('should report a failed leader save to the follower caller', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    mockCollaborationRequestWorkflowSync.mockRejectedValue(new Error('sync timeout'))
+    const callbacks = {
+      onSuccess: vi.fn(),
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+
+    const { result } = renderUseNodesSyncDraft()
+
+    let syncResult: unknown
+    await act(async () => {
+      syncResult = await result.current.doSyncWorkflowDraft(false, callbacks)
+    })
+
+    expect(syncResult).toBeNull()
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onSuccess).not.toHaveBeenCalled()
+    expect(callbacks.onError).toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('should force a directed sync request to save locally even before leader status arrives', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+
+    const { result } = renderUseNodesSyncDraft()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+    })
+
+    expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+    expect(mockSyncWorkflowDraft).toHaveBeenCalled()
+  })
+
+  it('should not queue a directed local save behind the requester waiting for its ack', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    let resolveRemoteSync: ((result: { hash: string; updatedAt: number }) => void) | undefined
+    mockCollaborationRequestWorkflowSync.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRemoteSync = resolve
+      }),
+    )
+    const { result } = renderUseNodesSyncDraft()
+
+    let requesterSync: Promise<unknown> | undefined
+    await act(async () => {
+      requesterSync = result.current.doSyncWorkflowDraft()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+
+    resolveRemoteSync?.({ hash: 'remote-hash', updatedAt: 2 })
+    await act(async () => {
+      await requesterSync
+    })
+  })
+
+  it('should not persist an untrusted collaborative graph', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(true)
+    mockCollaborationCanPersistLocalGraph.mockReturnValue(false)
+
+    const { result } = renderUseNodesSyncDraft()
+
+    let syncResult: unknown
+    await act(async () => {
+      syncResult = await result.current.doSyncWorkflowDraft(false)
+    })
+
+    expect(syncResult).toBeNull()
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
   it('should skip keepalive sync on page close when current user is collaboration follower', () => {
@@ -500,5 +592,20 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     })
 
     expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+  })
+
+  it('should allow the trusted sole leader to flush with keepalive while hidden', () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(true)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(true)
+
+    const { result } = renderUseNodesSyncDraft()
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
   })
 })
