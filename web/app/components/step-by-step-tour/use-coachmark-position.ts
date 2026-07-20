@@ -40,7 +40,7 @@ const clamp = (value: number, min: number, max: number) => {
   return Math.min(Math.max(value, min), max)
 }
 
-export const getStepByStepTourCoachmarkPosition = (
+const getStepByStepTourCoachmarkPosition = (
   placementRect: StepByStepTourTargetRect,
   viewportSize: ViewportSize,
   placement: StepByStepTourCoachmarkPlacement = 'bottom',
