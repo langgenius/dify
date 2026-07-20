@@ -1500,6 +1500,12 @@ class ToolMCPAuthApi(Resource):
                 timeout=provider_entity.timeout,
                 sse_read_timeout=provider_entity.sse_read_timeout,
             ):
+                if (
+                    provider_entity.retrieve_tokens() is None
+                    and provider_entity.retrieve_client_information() is not None
+                ):
+                    raise MCPAuthError("Authentication failed - no token received")
+
                 # Update credentials in new transaction
                 with sessionmaker(db.engine).begin() as session:
                     service = MCPToolManageService(session=session)

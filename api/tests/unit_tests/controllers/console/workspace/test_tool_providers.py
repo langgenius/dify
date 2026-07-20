@@ -138,6 +138,20 @@ def _bind_database_session(session: Session):
         database_session.remove()
 
 
+class _SessionmakerStub:
+    def __init__(self, session: MagicMock):
+        self._session = session
+
+    def begin(self):
+        return self
+
+    def __enter__(self):
+        return self._session
+
+    def __exit__(self, *args):
+        return False
+
+
 @contextmanager
 def _mock_credential_encryption(controller_module: ModuleType):
     encrypter = MagicMock()
@@ -683,6 +697,63 @@ def test_api_tools_list(app: Flask, controller_module, monkeypatch: pytest.Monke
         resp = controller_module.ToolApiListApi().get()
 
     assert resp == [expected_response]
+
+
+def test_mcp_auth_starts_oauth_when_initialize_succeeds_without_token(
+    app: Flask, controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+):
+    provider_entity = MagicMock()
+    provider_entity.credentials = {"client_information": {"client_id": "client-1"}}
+    provider_entity.timeout = 30
+    provider_entity.sse_read_timeout = 300
+    provider_entity.decrypt_server_url.return_value = "https://mcp.example.com/mcp"
+    provider_entity.decrypt_authentication.return_value = {}
+    provider_entity.retrieve_tokens.return_value = None
+    provider_entity.retrieve_client_information.return_value = MagicMock()
+
+    db_provider = MagicMock()
+    db_provider.to_entity.return_value = provider_entity
+
+    service = MagicMock()
+    service.get_provider.return_value = db_provider
+    auth_result = MagicMock()
+    service.execute_auth_actions.return_value = {"authorization_url": "https://auth.example.com/oauth"}
+
+    service_cls = MagicMock(return_value=service)
+    client_cls = MagicMock()
+    client_cls.return_value.__enter__.return_value = MagicMock()
+    client_cls.return_value.__exit__.return_value = None
+
+    session = MagicMock()
+    monkeypatch.setattr(controller_module, "db", MagicMock(engine=object()))
+    monkeypatch.setattr(controller_module, "sessionmaker", lambda *_args, **_kwargs: _SessionmakerStub(session))
+    monkeypatch.setattr(controller_module, "MCPToolManageService", service_cls)
+    monkeypatch.setattr(controller_module, "MCPClient", client_cls)
+    monkeypatch.setattr(controller_module, "auth", MagicMock(return_value=auth_result))
+
+    with app.test_request_context(
+        "/workspaces/current/tool-provider/mcp/auth",
+        method="POST",
+        json={"provider_id": "provider-1"},
+    ):
+        api = controller_module.ToolMCPAuthApi()
+        response = unwrap(api.post)(api, "tenant-1")
+
+    assert response == {"result": None, "authorization_url": "https://auth.example.com/oauth"}
+    client_cls.assert_called_once_with(
+        server_url="https://mcp.example.com/mcp",
+        headers={},
+        timeout=30,
+        sse_read_timeout=300,
+    )
+    controller_module.auth.assert_called_once_with(
+        provider_entity,
+        None,
+        resource_metadata_url=None,
+        scope_hint=None,
+    )
+    service.execute_auth_actions.assert_called_once_with(auth_result)
+    service.update_provider_credentials.assert_not_called()
 
 
 def test_workflow_tools_list(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
