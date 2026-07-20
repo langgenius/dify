@@ -44,11 +44,13 @@ def _load_plugin_factory(vector_type: str) -> type[AbstractVectorFactory] | None
     for ep in _vector_backend_entry_points():
         if ep.name != vector_type:
             continue
+        logger.info("loading vector backend entry point %s (%s)", ep.name, ep.value)
         try:
             loaded = ep.load()
         except Exception:
             logger.exception("Failed to load vector backend entry point %s", ep.name)
             raise
+        logger.info("vector backend entry point %s loaded", ep.name)
         return loaded  # type: ignore[return-value]
     return None
 
@@ -77,6 +79,7 @@ def get_vector_factory_class(vector_type: str) -> type[AbstractVectorFactory]:
     if vector_type in _VECTOR_FACTORY_CACHE:
         return _VECTOR_FACTORY_CACHE[vector_type]
 
+    logger.info("vector backend cache miss, discovering entry points: %s", vector_type)
     plugin_cls = _load_plugin_factory(vector_type)
     if plugin_cls is not None:
         _VECTOR_FACTORY_CACHE[vector_type] = plugin_cls

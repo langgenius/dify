@@ -144,7 +144,20 @@ class Vector:
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
+        logger.info(
+            "resolving vector backend factory: type=%s tenant_id=%s dataset_id=%s",
+            vector_type,
+            self._dataset.tenant_id,
+            self._dataset.id,
+        )
         vector_factory_cls = self.get_vector_factory(vector_type)
+        logger.info(
+            "vector backend factory resolved: type=%s cls=%s tenant_id=%s dataset_id=%s",
+            vector_type,
+            vector_factory_cls.__name__,
+            self._dataset.tenant_id,
+            self._dataset.id,
+        )
         return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
 
     @staticmethod
