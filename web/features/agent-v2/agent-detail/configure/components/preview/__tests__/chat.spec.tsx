@@ -45,6 +45,7 @@ vi.mock('@/next/dynamic', async () => {
           children?: Array<{ id: string; content: string }>
         }>
         noChatInput?: boolean
+        showRegenerate?: boolean
         speechToTextTarget?: SpeechToTextTarget
         onBeforeSpeechToText?: () => Promise<unknown>
       }) {
@@ -64,6 +65,7 @@ vi.mock('@/next/dynamic', async () => {
             data-show-prompt-log={String(!!props.showPromptLog)}
             data-footer-notice={props.footerNotice ?? ''}
             data-no-chat-input={String(!!props.noChatInput)}
+            data-show-regenerate={String(!!props.showRegenerate)}
             data-speech-agent-id={
               props.speechToTextTarget?.type === 'agent' ? props.speechToTextTarget.agentId : ''
             }
@@ -389,6 +391,19 @@ describe('AgentPreviewChat', () => {
     expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
       'data-speech-draft-type',
       'debug_build',
+    )
+  })
+
+  it('should keep answer regeneration available when the chat input is external', () => {
+    renderPreviewChat()
+
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-no-chat-input',
+      'true',
+    )
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-show-regenerate',
+      'true',
     )
   })
 

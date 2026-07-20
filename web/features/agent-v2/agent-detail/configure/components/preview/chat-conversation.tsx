@@ -297,6 +297,7 @@ export function AgentPreviewChatConversation({
       switchSibling={(siblingMessageId) => setTargetMessageId(siblingMessageId)}
       onStopResponding={doStopResponding}
       noChatInput
+      showRegenerate
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
