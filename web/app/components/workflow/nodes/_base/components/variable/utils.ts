@@ -1420,7 +1420,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     case BlockEnum.HumanInput: {
       if (isHumanInputV2NodeData(data)) {
         const payload = data
-        const dynamicRecipientSelectors = payload.recpients_spec.flatMap((recipient) =>
+        const dynamicRecipientSelectors = payload.recipients_spec.flatMap((recipient) =>
           recipient.type === 'dynamic_email' ? [recipient.selector] : [],
         )
         const inputSelectors = payload.inputs.flatMap((input) => {
@@ -1910,7 +1910,7 @@ export const updateNodeVars = (
             oldVarSelector,
             newVarSelector,
           )
-          payload.recpients_spec = payload.recpients_spec.map((recipient) => {
+          payload.recipients_spec = payload.recipients_spec.map((recipient) => {
             if (
               recipient.type === 'dynamic_email' &&
               recipient.selector.join('.') === oldVarSelector.join('.')

@@ -20,4 +20,4 @@ This inventory records the frontend boundaries that currently key on `BlockEnum.
 
 ## Narrow shared shape
 
-Only these fields are shared by v1 and v2 editor infrastructure: `form_content`, `inputs`, `user_actions`, `timeout`, and `timeout_unit`. `delivery_methods`, `recpients_spec`, `message_template`, `debug_mode`, and `version` stay version-specific.
+Only these fields are shared by v1 and v2 editor infrastructure: `form_content`, `inputs`, `user_actions`, `timeout`, and `timeout_unit`. `delivery_methods`, `recipients_spec`, `message_template`, `debug_mode`, and `version` stay version-specific.

@@ -286,7 +286,7 @@ describe('getLayoutByELK', () => {
           version: '2',
           title: '',
           desc: '',
-          recpients_spec: [{ type: 'initiator' }],
+          recipients_spec: [{ type: 'initiator' }],
           message_template: { subject: 'Review', body: 'Body' },
           debug_mode: { enabled: false, channels: [] },
           form_content: '',

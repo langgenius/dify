@@ -60,7 +60,7 @@ describe('useAvailableNodesMetaData', () => {
     expect(result.current.nodesMap?.[BlockEnum.HumanInputV2]?.defaultValue).toMatchObject({
       type: BlockEnum.HumanInput,
       version: '2',
-      recpients_spec: [],
+      recipients_spec: [],
     })
   })
 

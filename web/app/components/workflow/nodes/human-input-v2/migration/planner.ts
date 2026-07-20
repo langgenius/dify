@@ -231,7 +231,7 @@ const convertNode = (
       ...sharedAndExtensionData,
       type: BlockEnum.HumanInput,
       version: '2',
-      recpients_spec: accumulator.recipients,
+      recipients_spec: accumulator.recipients,
       message_template: {
         subject: firstTemplate?.subject ?? '',
         body: firstTemplate?.body ?? '',

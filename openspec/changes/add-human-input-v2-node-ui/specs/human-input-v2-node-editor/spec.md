@@ -31,7 +31,7 @@
 #### Scenario: 创建 Human Input v2
 
 - **WHEN** 用户从 block catalog 的 Human Input v2 candidate 创建节点
-- **THEN** 新节点 MUST 包含 `version: '2'`、空的 `recpients_spec`、空 subject/body 的 `message_template`、`enabled: false` 且 channels 为空的 `debug_mode`、空的 `form_content`、`inputs` 和 `user_actions`、`timeout: 36` 与 `timeout_unit: hour`
+- **THEN** 新节点 MUST 包含 `version: '2'`、空的 `recipients_spec`、空 subject/body 的 `message_template`、`enabled: false` 且 channels 为空的 `debug_mode`、空的 `form_content`、`inputs` 和 `user_actions`、`timeout: 36` 与 `timeout_unit: hour`
 
 #### Scenario: 序列化新建节点
 
@@ -45,7 +45,7 @@
 
 ### Requirement: Human Input v2 必须保持 DSL 字段无损 round-trip
 
-前端 MUST 使用 `api/core/workflow/nodes/human_input_v2/entities.py` 中现阶段的字段和值作为 v2 DSL contract。node data key MUST 保持为 `recpients_spec`，不得在导入、编辑、复制粘贴或导出时更名为 `recipients_spec`。
+前端 MUST 使用 `api/core/workflow/nodes/human_input_v2/entities.py` 中现阶段的字段和值作为 v2 DSL contract。node data key MUST 保持为 `recipients_spec`，并 MUST NOT 在导入、编辑、复制粘贴或导出时生成旧拼写 `recpients_spec`。
 
 #### Scenario: 导入并导出未修改的 v2 节点
 
@@ -55,25 +55,25 @@
 #### Scenario: 编辑无关字段
 
 - **WHEN** 用户只修改 v2 节点的 timeout
-- **THEN** 前端 MUST 保留原 `recpients_spec`、`message_template`、`debug_mode` 和未知但未被编辑的兼容数据
+- **THEN** 前端 MUST 保留原 `recipients_spec`、`message_template`、`debug_mode` 和未知但未被编辑的兼容数据
 
 #### Scenario: 检查 recipient wire key
 
 - **WHEN** v2 节点被保存、复制或粘贴
-- **THEN** 输出 MUST 包含 `recpients_spec`，MUST NOT 生成 `recipients_spec`
+- **THEN** 输出 MUST 包含 `recipients_spec`，MUST NOT 生成 `recpients_spec`
 
 ### Requirement: Node card 必须呈现 Figma 定义的 recipient 状态
 
-Human Input v2 node card MUST 根据 `recpients_spec` 和 Contact option resolution 派生 recipient summary，并 MUST 覆盖 Figma nodes `25096:30986`、`25096:32299`、`25096:32351` 与 `25096:32400` 所定义的状态。summary 计算 MUST 为纯派生逻辑，不得修改 node data。
+Human Input v2 node card MUST 根据 `recipients_spec` 和 Contact option resolution 派生 recipient summary，并 MUST 覆盖 Figma nodes `25096:30986`、`25096:32299`、`25096:32351` 与 `25096:32400` 所定义的状态。summary 计算 MUST 为纯派生逻辑，不得修改 node data。
 
 #### Scenario: 没有 recipient
 
-- **WHEN** `recpients_spec` 为空
+- **WHEN** `recipients_spec` 为空
 - **THEN** node card MUST 展示 Figma 对应的未配置状态
 
 #### Scenario: 展示已配置 recipient
 
-- **WHEN** `recpients_spec` 包含一个或多个有效 recipient
+- **WHEN** `recipients_spec` 包含一个或多个有效 recipient
 - **THEN** node card MUST 按 DSL 顺序展示设计指定的类型、label、组合和 overflow 信息
 
 #### Scenario: Contact 无法解析
@@ -135,7 +135,7 @@ Human Input v2 MUST 从 `user_actions[].id` 生成 action branch handles，并 M
 
 #### Scenario: 没有有效 recipient
 
-- **WHEN** v2 `recpients_spec` 为空或全部 recipient 无效
+- **WHEN** v2 `recipients_spec` 为空或全部 recipient 无效
 - **THEN** validation MUST 阻止该节点被视为配置完整，并 MUST 将错误关联到 recipient 配置区
 
 #### Scenario: Debug mode 没有 channel

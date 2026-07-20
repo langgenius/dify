@@ -2,7 +2,7 @@
 
 ### Requirement: Recipient 配置必须严格支持四种 DSL discriminator
 
-前端 MUST 将 `recpients_spec` 建模为 ordered discriminated union，并 MUST 支持 `contact`、`dynamic_email`、`onetime_email` 与 `initiator` 四种类型。每种类型 MUST 只写入 entity 定义的字段。
+前端 MUST 将 `recipients_spec` 建模为 ordered discriminated union，并 MUST 支持 `contact`、`dynamic_email`、`onetime_email` 与 `initiator` 四种类型。每种类型 MUST 只写入 entity 定义的字段。
 
 #### Scenario: 添加 Contact recipient
 
@@ -36,7 +36,7 @@ Recipient input MUST 按 Figma node `25087:29285` 呈现可用类型、输入状
 #### Scenario: 确认有效草稿
 
 - **WHEN** 当前类型的 required field 有效且用户确认
-- **THEN** input MUST 原子地向 `recpients_spec` 添加一个 typed recipient，并按设计清理或保留输入状态
+- **THEN** input MUST 原子地向 `recipients_spec` 添加一个 typed recipient，并按设计清理或保留输入状态
 
 #### Scenario: 确认无效草稿
 
@@ -46,7 +46,7 @@ Recipient input MUST 按 Figma node `25087:29285` 呈现可用类型、输入状
 #### Scenario: 取消草稿
 
 - **WHEN** 用户取消 recipient 输入
-- **THEN** input MUST 丢弃未确认草稿，MUST NOT 改变 `recpients_spec`
+- **THEN** input MUST 丢弃未确认草稿，MUST NOT 改变 `recipients_spec`
 
 ### Requirement: Recipient 列表必须支持局部编辑、删除与稳定顺序
 
@@ -73,7 +73,7 @@ Recipient 配置区 MUST 按 Figma node `25094:31750` 展示已配置项，并 M
 
 #### Scenario: 重复选择 Contact
 
-- **WHEN** `recpients_spec` 已含相同 `contact_id` 且用户再次选择该 Contact
+- **WHEN** `recipients_spec` 已含相同 `contact_id` 且用户再次选择该 Contact
 - **THEN** 前端 MUST 阻止新增并展示重复提示
 
 #### Scenario: Email 大小写不同但值相同
@@ -88,7 +88,7 @@ Recipient 配置区 MUST 按 Figma node `25094:31750` 展示已配置项，并 M
 
 #### Scenario: DSL 已含重复项
 
-- **WHEN** imported `recpients_spec` 包含重复 canonical key
+- **WHEN** imported `recipients_spec` 包含重复 canonical key
 - **THEN** 前端 MUST 保留原数组用于 round-trip，并 MUST 在 validation 与相关列表项展示可修复错误
 
 ### Requirement: Contact recipient 必须通过可替换的 typed provider 读取 mock options

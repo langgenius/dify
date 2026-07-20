@@ -672,7 +672,7 @@ describe('useNodesInteractions', () => {
           title: 'Human Input v2',
           desc: '',
           version: '2',
-          recpients_spec: [],
+          recipients_spec: [],
           message_template: { subject: '', body: '' },
           debug_mode: { enabled: false, channels: [] },
           form_content: '',
@@ -697,7 +697,7 @@ describe('useNodesInteractions', () => {
     expect(node?.data).toMatchObject({
       type: BlockEnum.HumanInput,
       version: '2',
-      recpients_spec: [],
+      recipients_spec: [],
       timeout: 36,
       timeout_unit: 'hour',
     })
@@ -852,7 +852,7 @@ describe('useNodesInteractions', () => {
         defaultValue: {
           type: BlockEnum.HumanInput,
           version: '2',
-          recpients_spec: [],
+          recipients_spec: [],
           message_template: { subject: '', body: '' },
           debug_mode: { enabled: false, channels: [] },
           form_content: '',
@@ -883,7 +883,7 @@ describe('useNodesInteractions', () => {
         version: '2',
         title: 'Review request',
         desc: '',
-        recpients_spec: [
+        recipients_spec: [
           { type: 'initiator' },
           { type: 'dynamic_email', selector: ['source-copy', 'email'] },
           { type: 'onetime_email', email: 'owner@example.com' },
@@ -921,7 +921,7 @@ describe('useNodesInteractions', () => {
       (node) => node.data.type === BlockEnum.Code && node.id !== 'existing-node',
     )
     expect(pastedData.type).toBe(BlockEnum.HumanInput)
-    expect(pastedData.recpients_spec).toEqual([
+    expect(pastedData.recipients_spec).toEqual([
       { type: 'initiator' },
       { type: 'dynamic_email', selector: [pastedSource?.id, 'email'] },
       { type: 'onetime_email', email: 'owner@example.com' },
@@ -932,7 +932,6 @@ describe('useNodesInteractions', () => {
     })
     expect(pastedData.form_content).toBe(`{{#${pastedSource?.id}.email#}}`)
     expect(pastedData.debug_mode).toEqual(copiedData.debug_mode)
-    expect(pastedData).not.toHaveProperty('recipients_spec')
   })
 
   it('cancels selection state with collaborative nodes snapshot', () => {

@@ -45,7 +45,7 @@ The frontend MUST build one migration plan containing every eligible legacy Huma
 
 ### Requirement: Migration shall preserve node and graph identity
 
-Each replacement MUST retain its node ID, position, dimensions, selection-independent metadata, title, description, shared Human Input configuration, branch handles, edge endpoints, variable references, and compatible extension fields. The converter MUST add `version: '2'`, `recpients_spec`, `message_template`, and `debug_mode`, and MUST remove legacy `delivery_methods` only after a valid replacement is complete.
+Each replacement MUST retain its node ID, position, dimensions, selection-independent metadata, title, description, shared Human Input configuration, branch handles, edge endpoints, variable references, and compatible extension fields. The converter MUST add `version: '2'`, `recipients_spec`, `message_template`, and `debug_mode`, and MUST remove legacy `delivery_methods` only after a valid replacement is complete.
 
 #### Scenario: Shared Human Input configuration survives conversion
 
@@ -60,7 +60,7 @@ Each replacement MUST retain its node ID, position, dimensions, selection-indepe
 #### Scenario: V2 wire shape is exact
 
 - **WHEN** an eligible legacy node is converted successfully
-- **THEN** its replacement MUST persist `type: human-input`, string `version: '2'`, and the literal `recpients_spec` key, and MUST NOT emit `recipients_spec` or retain `delivery_methods`
+- **THEN** its replacement MUST persist `type: human-input`, string `version: '2'`, and the literal `recipients_spec` key, and MUST NOT emit `recpients_spec` or retain `delivery_methods`
 
 ### Requirement: Active legacy delivery recipients shall map deterministically
 

@@ -7,11 +7,11 @@
 ## 2. Human Input v2 Types, Defaults and Routing
 
 - [x] 2.1 Write failing unit tests for the exact discriminator rule: only `type: human-input` plus string `version: '2'` is v2; missing version, `'1'` and numeric `2` are not v2.
-- [x] 2.2 Add frontend-local Human Input v2 TypeScript types that mirror `human_input_v2/entities.py`, including all four recipient unions, six debug channels, `message_template`, `debug_mode` and the exact wire key `recpients_spec`.
+- [x] 2.2 Add frontend-local Human Input v2 TypeScript types that mirror `human_input_v2/entities.py`, including all four recipient unions, six debug channels, `message_template`, `debug_mode` and the exact wire key `recipients_spec`.
 - [x] 2.3 Add the pure v2 type guard and a complete v2 default with `version: '2'`, empty recipients/template/channels/form/actions, `timeout: 36` and `timeout_unit: hour`.
 - [x] 2.4 Register a UI-only Human Input v2 catalog identity, metadata and independent creation candidate while preserving the original Human Input candidate; normalize created v2 data to persisted `type: human-input`.
 - [x] 2.5 Add version-aware node, panel, metadata and checklist routers that dispatch exact v2 data to the new implementation and all original Human Input data to v1.
-- [x] 2.6 Add round-trip tests proving new and imported v2 nodes preserve `type: human-input`, string `version: '2'`, `recpients_spec`, nested objects and array order without requiring graphon changes.
+- [x] 2.6 Add round-trip tests proving new and imported v2 nodes preserve `type: human-input`, string `version: '2'`, `recipients_spec`, nested objects and array order without requiring graphon changes.
 
 ## 3. Shared Human Input Form and Workflow Infrastructure
 
@@ -67,4 +67,4 @@
 - [x] 9.1 Run targeted Vitest suites for Human Input v1/v2 components, guards, defaults, recipients, template, Debug Mode, workflow variables, branches and DSL round-trip.
 - [x] 9.2 Run frontend formatting, lint and type checks required by `web/AGENTS.md`, and fix all issues introduced by this change.
 - [x] 9.3 Run `openspec validate add-human-input-v2-node-ui --strict` and resolve every proposal, design, spec and task consistency error.
-- [x] 9.4 Audit the final diff to prove it contains only frontend implementation (`web/` plus the directly related `oxlint-suppressions.json` cleanup) and this OpenSpec change, preserves the literal `recpients_spec`, writes version as string `'2'`, keeps the original Human Input implementation and adds no API, backend, graphon, database or runtime change.
+- [x] 9.4 Audit the final diff to prove it contains only frontend implementation (`web/` plus the directly related `oxlint-suppressions.json` cleanup) and this OpenSpec change, uses the literal `recipients_spec` without generating `recpients_spec`, writes version as string `'2'`, keeps the original Human Input implementation and adds no API, backend, graphon, database or runtime change.

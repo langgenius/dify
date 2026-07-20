@@ -23,7 +23,7 @@ const nodeDefault: NodeDefault<HumanInputV2NodeType> = {
   defaultValue: {
     type: BlockEnum.HumanInput,
     version: '2',
-    recpients_spec: [],
+    recipients_spec: [],
     message_template: { subject: '', body: '' },
     debug_mode: { enabled: false, channels: [] },
     form_content: '',
@@ -36,11 +36,11 @@ const nodeDefault: NodeDefault<HumanInputV2NodeType> = {
     let errorMessage = ''
     if (payload.version !== '2')
       errorMessage = t(($) => $['nodes.humanInputV2.error.version'], { ns: 'workflow' })
-    else if (!payload.recpients_spec.length)
+    else if (!payload.recipients_spec.length)
       errorMessage = t(($) => $['nodes.humanInputV2.error.recipientRequired'], { ns: 'workflow' })
-    else if (payload.recpients_spec.some(getRecipientValidationError))
+    else if (payload.recipients_spec.some(getRecipientValidationError))
       errorMessage = t(($) => $['nodes.humanInputV2.error.recipientInvalid'], { ns: 'workflow' })
-    else if (hasDuplicateRecipients(payload.recpients_spec))
+    else if (hasDuplicateRecipients(payload.recipients_spec))
       errorMessage = t(($) => $['nodes.humanInputV2.error.recipientDuplicate'], { ns: 'workflow' })
     else if (!payload.message_template.subject.trim())
       errorMessage = t(($) => $['nodes.humanInputV2.error.subjectRequired'], { ns: 'workflow' })

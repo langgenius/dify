@@ -26,7 +26,7 @@ vi.mock('@/app/components/workflow/nodes/human-input/shared/panel-sections', () 
 }))
 vi.mock('../components/recipients', () => ({
   __esModule: true,
-  default: (props: { onChange: (value: HumanInputV2NodeType['recpients_spec']) => void }) => (
+  default: (props: { onChange: (value: HumanInputV2NodeType['recipients_spec']) => void }) => (
     <button type="button" onClick={() => props.onChange([{ type: 'initiator' }])}>
       recipients-section
     </button>
@@ -54,7 +54,7 @@ const data: HumanInputV2NodeType = {
   version: '2',
   title: 'Human Input v2',
   desc: '',
-  recpients_spec: [],
+  recipients_spec: [],
   message_template: { subject: '', body: '' },
   debug_mode: { enabled: false, channels: [] },
   form_content: '',

@@ -1,6 +1,6 @@
 ## Context
 
-The completed `add-human-input-v2-node-ui` change introduced a frontend-only Human Input v2 editor. Both generations persist with `type: human-input`; only an exact string `version: '2'` selects the v2 node and panel. The legacy editor stores `delivery_methods`, while v2 stores `recpients_spec`, `message_template`, and `debug_mode`. The frontend catalog currently exposes separate v1 and v2 candidates.
+The completed `add-human-input-v2-node-ui` change introduced a frontend-only Human Input v2 editor. Both generations persist with `type: human-input`; only an exact string `version: '2'` selects the v2 node and panel. The legacy editor stores `delivery_methods`, while v2 stores `recipients_spec`, `message_template`, and `debug_mode`. The frontend catalog currently exposes separate v1 and v2 candidates.
 
 This change advances that rollout without removing the legacy renderer. Existing drafts can still contain v1 nodes and must remain editable, but users must migrate every legacy node before they can insert another Human Input. New drafts must expose one user-facing Human Input candidate backed by v2. The migration is constrained to `web/`, existing workflow draft mutation/synchronization infrastructure, and current frontend data or mocks; there is no backend migration endpoint or graphon update.
 
@@ -76,7 +76,7 @@ For each eligible node, the planner clones shared and extension data, replaces o
 | Email `debug_mode: true`                     | `{ enabled: true, channels: ['email'] }`                                                                                           |
 | Email `debug_mode: false` or no email method | `{ enabled: false, channels: [] }`                                                                                                 |
 
-Recipients are deduplicated by canonical identity while preserving first occurrence, and initiator appears at most once. The node receives exact `version: '2'` and the literal wire key `recpients_spec`. IDs, positions, title/description, `form_content`, `inputs`, `user_actions`, timeout fields, branch handles, edges, variable references, and unrelated compatible extension fields are preserved. `delivery_methods` is removed only from a successfully converted replacement.
+Recipients are deduplicated by canonical identity while preserving first occurrence, and initiator appears at most once. The node receives exact `version: '2'` and the literal wire key `recipients_spec`; the legacy misspelling `recpients_spec` is not emitted. IDs, positions, title/description, `form_content`, `inputs`, `user_actions`, timeout fields, branch handles, edges, variable references, and unrelated compatible extension fields are preserved. `delivery_methods` is removed only from a successfully converted replacement.
 
 V2 has no lossless representation for a disabled method that retains material configuration, conflicting multiple email templates, an enabled Slack/Teams/Discord method, an invalid external email, or an unresolvable member/workspace recipient. Those cases are blockers. Blocking the entire migration was chosen over silently dropping data or activating previously disabled configuration, both of which would contradict the dialog's preservation promise.
 

@@ -11,7 +11,7 @@
 - [x] 2.2 Add failing converter tests for preserving IDs, positions, common node metadata, shared Human Input fields, compatible extension fields, branch handles, edges, variable references, and array order.
 - [x] 2.3 Implement supported recipient conversion: enabled WebApp to initiator, external email to `onetime_email`, member to contact or verified-email fallback, and whole-workspace expansion from one stable resolver snapshot.
 - [x] 2.4 Implement canonical recipient deduplication and deterministic first-occurrence ordering across delivery methods, email items, and whole-workspace expansion.
-- [x] 2.5 Implement message-template and debug mapping, preserve subject/body verbatim, write exact `version: '2'` and `recpients_spec`, and remove `delivery_methods` only from a complete valid replacement.
+- [x] 2.5 Implement message-template and debug mapping, preserve subject/body verbatim, write exact `version: '2'` and `recipients_spec`, and remove `delivery_methods` only from a complete valid replacement.
 - [x] 2.6 Add and satisfy blocker tests for malformed/unknown versions, invalid email, unresolved members, configured disabled methods, enabled unsupported/unknown delivery methods, conflicting email templates, and missing valid v2 recipients.
 - [x] 2.7 Add idempotence and batch-preflight tests proving existing v2 nodes remain unchanged and one invalid legacy node prevents every replacement.
 
@@ -65,4 +65,4 @@
 - Focused Human Input, migration, selector, insertion, history, and locale suites pass: 26 files and 174 tests.
 - `pnpm check` reaches pre-existing Markdown formatting failures under `openspec/changes/hitl-im-contact-domain-discovery/` and `openspec/changes/human-input-v2-api-contracts/`. The complete `web/` Vite+ formatting, lint, and type check passes with zero errors, and the repository ESLint fallback passes.
 - The rollout surfaces match the captured Figma states and copy for nodes `1333:5041`, `1333:5414`, `1333:5404`, `1333:5522`, and `1333:5532`; component tests cover keyboard focus, Escape/Cancel, pending submission, and read-only behavior.
-- The implementation commits touch only `web/` and this change's `tasks.md`; locale changes are limited to `en-US` and `zh-Hans`. Exact string `version: '2'`, literal `recpients_spec`, legacy `delivery_methods` routing, and frontend-only scope are preserved.
+- The implementation commits touch only `web/` and this change's OpenSpec documents; locale changes are limited to `en-US` and `zh-Hans`. Exact string `version: '2'`, literal `recipients_spec`, absence of generated `recpients_spec`, legacy `delivery_methods` routing, and frontend-only scope are preserved.

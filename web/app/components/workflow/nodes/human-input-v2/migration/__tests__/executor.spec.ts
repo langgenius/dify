@@ -139,7 +139,7 @@ describe('Human Input migration executor', () => {
     v2Node.data = {
       ...v2Node.data,
       version: '2',
-      recpients_spec: [{ type: 'initiator' }],
+      recipients_spec: [{ type: 'initiator' }],
       message_template: { subject: '', body: '' },
       debug_mode: { enabled: false, channels: [] },
     } as unknown as Node['data']

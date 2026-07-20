@@ -113,7 +113,7 @@ describe('Human Input v2 migration planner', () => {
     expect(plan.status).toBe('ready')
     if (plan.status !== 'ready') return
     const data = plan.replacements[0]!.data
-    expect(data.recpients_spec).toEqual([
+    expect(data.recipients_spec).toEqual([
       { type: 'initiator' },
       { type: 'contact', contact_id: 'contact-a' },
       { type: 'onetime_email', email: 'fallback@example.com' },
@@ -124,7 +124,6 @@ describe('Human Input v2 migration planner', () => {
       body: '\nKeep whitespace {{#url#}}\n',
     })
     expect(data.debug_mode).toEqual({ enabled: true, channels: ['email'] })
-    expect(data).not.toHaveProperty('recipients_spec')
   })
 
   it('expands one stable whole-workspace snapshot and deduplicates in first-occurrence order', () => {
@@ -155,7 +154,7 @@ describe('Human Input v2 migration planner', () => {
     const plan = createHumanInputV2MigrationPlan({ nodes: [node], edges: [] }, snapshot)
     expect(plan.status).toBe('ready')
     if (plan.status !== 'ready') return
-    expect(plan.replacements[0]!.data.recpients_spec).toEqual([
+    expect(plan.replacements[0]!.data.recipients_spec).toEqual([
       { type: 'initiator' },
       { type: 'contact', contact_id: 'contact-a' },
       { type: 'onetime_email', email: 'first@example.com' },
@@ -316,7 +315,7 @@ describe('Human Input v2 migration planner', () => {
     if (plan.status !== 'blocked') return
     expect(plan.blockers.some((blocker) => blocker.code === code)).toBe(true)
     expect(node.data).toHaveProperty('delivery_methods')
-    expect(node.data).not.toHaveProperty('recpients_spec')
+    expect(node.data).not.toHaveProperty('recipients_spec')
   })
 
   it('is idempotent for existing v2 nodes and preflights the entire batch before replacement', () => {
@@ -326,7 +325,7 @@ describe('Human Input v2 migration planner', () => {
       data: {
         ...createLegacyNode().data,
         version: '2',
-        recpients_spec: [{ type: 'initiator' }],
+        recipients_spec: [{ type: 'initiator' }],
         message_template: { subject: '', body: '' },
         debug_mode: { enabled: false, channels: [] },
       } as unknown as HumanInputV2NodeType,
