@@ -1,4 +1,5 @@
 import gzip
+from typing import override
 from unittest.mock import ANY, MagicMock, call, patch
 
 import httpx
@@ -81,6 +82,7 @@ def test_buffer_response_rejects_identity_response_exceeding_byte_limit() -> Non
 
 def test_request_can_return_an_open_stream_the_caller_closes() -> None:
     class EventStream(httpx.SyncByteStream):
+        @override
         def __iter__(self):
             yield b"event: delta\ndata: first\n\n"
 

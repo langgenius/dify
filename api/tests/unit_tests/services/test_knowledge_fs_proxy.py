@@ -53,14 +53,15 @@ def test_console_registry_starts_with_list_and_create_operations() -> None:
 
 
 @pytest.mark.parametrize(
-    ("method", "operation_id", "scope", "permission"),
+    ("method", "operation_id", "scope", "permission", "requires_dataset_editor"),
     [
-        ("GET", "listKnowledgeSpaces", "knowledge-spaces:read", RBACPermission.DATASET_READONLY),
+        ("GET", "listKnowledgeSpaces", "knowledge-spaces:read", RBACPermission.DATASET_READONLY, False),
         (
             "POST",
             "createKnowledgeSpace",
             "knowledge-spaces:write",
             RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+            True,
         ),
     ],
 )
@@ -69,12 +70,14 @@ def test_console_registry_preserves_contract_and_policy(
     operation_id: str,
     scope: str,
     permission: RBACPermission,
+    requires_dataset_editor: bool,
 ) -> None:
     operation = get_knowledge_fs_operation(method, "knowledge-spaces")
 
     assert operation.operation_id == operation_id
     assert operation.required_scope == scope
     assert operation.rbac_permission == permission
+    assert operation.requires_dataset_editor is requires_dataset_editor
     assert operation.max_response_bytes == 1_048_576
     assert operation.request_headers == ("x-trace-id",)
     assert operation.response_headers == ("x-trace-id",)
@@ -178,6 +181,17 @@ def test_create_rejects_non_dataset_editor_before_rbac(monkeypatch: pytest.Monke
         )
 
     check_access.assert_not_called()
+
+
+def test_authorization_uses_the_declared_editor_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=False)
+    check_access = MagicMock(return_value=True)
+    monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
+    operation = get_knowledge_fs_operation("POST", "knowledge-spaces")._replace(requires_dataset_editor=False)
+
+    authorize_knowledge_fs_request(account=account, tenant_id="tenant-1", operation=operation)
+
+    check_access.assert_called_once()
 
 
 @pytest.mark.parametrize(

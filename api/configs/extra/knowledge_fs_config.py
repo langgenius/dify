@@ -45,6 +45,10 @@ class KnowledgeFSConfig(BaseSettings):
         parsed = urlsplit(value)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("KNOWLEDGE_FS_BASE_URL must be an absolute HTTP(S) URL")
+        try:
+            _ = parsed.port
+        except ValueError as exc:
+            raise ValueError("KNOWLEDGE_FS_BASE_URL must include a valid port") from exc
         if parsed.username or parsed.password or parsed.query or parsed.fragment:
             raise ValueError("KNOWLEDGE_FS_BASE_URL must not include credentials, query, or fragment")
         return value.rstrip("/")

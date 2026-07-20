@@ -4,7 +4,7 @@ These raw Blueprint routes deliberately stay outside Dify's OpenAPI surface:
 KnowledgeFS owns the wire contract consumed by the frontend. The catch-all path
 avoids resource-specific Dify controllers, while the forwarding module consumes
 only the operations explicitly enabled by Dify's product registry. The registry
-is validated against the pinned KnowledgeFS contract during development and CI.
+can be validated explicitly against the pinned KnowledgeFS contract during development.
 Console auth and contract-specific dataset RBAC run before forwarding. Request
 bodies are capped at 64 MiB, JSON and binary responses have separate bounds,
 SSE responses remain streaming with a bounded idle read timeout, and only safe
@@ -49,6 +49,7 @@ from services.knowledge_fs_proxy import (
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,
     KnowledgeFSUpstreamResponse,
+    authorize_knowledge_fs_request,
     get_knowledge_fs_operation,
     proxy_knowledge_fs_request,
 )
@@ -124,6 +125,32 @@ def _translate_proxy_error(exc: Exception, *, tenant_id: str) -> NoReturn:
         logger.warning("KnowledgeFS transport request failed for tenant_id=%s", tenant_id)
         raise BadGateway("KnowledgeFS is unavailable") from exc
     raise exc
+
+
+def _knowledge_fs_operation_access_required(
+    view: Callable[[KnowledgeFSMethod, str], ResponseReturnValue],
+) -> Callable[[KnowledgeFSMethod, str], ResponseReturnValue]:
+    """Authorize one declared operation before billing and request-body work."""
+
+    @wraps(view)
+    def decorated(method: KnowledgeFSMethod, upstream_path: str) -> ResponseReturnValue:
+        try:
+            operation = get_knowledge_fs_operation(method, upstream_path)
+        except KnowledgeFSRouteNotAllowedError as exc:
+            raise NotFound() from exc
+
+        current_user, tenant_id = current_account_with_tenant()
+        try:
+            authorize_knowledge_fs_request(
+                account=current_user,
+                tenant_id=tenant_id,
+                operation=operation,
+            )
+        except KnowledgeFSAccessDeniedError as exc:
+            _translate_proxy_error(exc, tenant_id=tenant_id)
+        return view(method, upstream_path)
+
+    return decorated
 
 
 def _request_body() -> bytes:
@@ -248,6 +275,7 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
 
 
 @_knowledge_fs_enabled
+@_knowledge_fs_operation_access_required
 @cloud_edition_billing_rate_limit_check("knowledge")
 def _proxy_knowledge_fs_non_get(
     method: KnowledgeFSMethod,
@@ -301,8 +329,4 @@ def proxy_knowledge_fs_write(upstream_path: str) -> ResponseReturnValue:
         The filtered raw KnowledgeFS response or a Console JSON error response.
     """
     method = cast(KnowledgeFSMethod, request.method)
-    try:
-        get_knowledge_fs_operation(method, upstream_path)
-    except KnowledgeFSRouteNotAllowedError as exc:
-        raise NotFound() from exc
     return _proxy_knowledge_fs_non_get(method, upstream_path)

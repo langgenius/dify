@@ -42,6 +42,7 @@ class KnowledgeFSOperation(NamedTuple):
     response_kind: KnowledgeFSResponseKind
     required_scope: KnowledgeFSRequiredScope
     rbac_permission: RBACPermission
+    requires_dataset_editor: bool
     max_response_bytes: int
     request_headers: tuple[str, ...]
     response_headers: tuple[str, ...]
@@ -56,6 +57,7 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         response_kind="buffered",
         required_scope="knowledge-spaces:read",
         rbac_permission=RBACPermission.DATASET_READONLY,
+        requires_dataset_editor=False,
         max_response_bytes=1_048_576,
         request_headers=("x-trace-id",),
         response_headers=("x-trace-id",),
@@ -68,6 +70,7 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         response_kind="buffered",
         required_scope="knowledge-spaces:write",
         rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        requires_dataset_editor=True,
         max_response_bytes=1_048_576,
         request_headers=("x-trace-id",),
         response_headers=("x-trace-id",),
@@ -122,7 +125,7 @@ def authorize_knowledge_fs_request(
     Raises:
         KnowledgeFSAccessDeniedError: The account lacks a required legacy or enterprise permission.
     """
-    if operation.required_scope == "knowledge-spaces:write" and not account.is_dataset_editor:
+    if operation.requires_dataset_editor and not account.is_dataset_editor:
         raise KnowledgeFSAccessDeniedError("KnowledgeFS mutations require dataset edit access")
     if not RBACService.CheckAccess.check(
         tenant_id,

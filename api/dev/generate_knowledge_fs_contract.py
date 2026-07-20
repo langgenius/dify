@@ -1,7 +1,7 @@
 """Validate Dify Console KnowledgeFS declarations against a pinned OpenAPI document.
 
-The OpenAPI document is exported only during development and CI. Runtime declarations live with Dify product policy;
-this module validates their transport metadata without generating a complete operation catalog.
+The OpenAPI document is exported only during explicit development validation. Runtime declarations live with Dify
+product policy; this module validates their transport metadata without generating a complete operation catalog.
 """
 
 from __future__ import annotations

@@ -84,6 +84,21 @@ def test_knowledge_fs_config_rejects_non_http_absolute_urls(base_url: str) -> No
 @pytest.mark.parametrize(
     "base_url",
     [
+        "https://knowledge-fs.test:notaport",
+        "https://knowledge-fs.test:65536",
+    ],
+)
+def test_knowledge_fs_config_rejects_invalid_ports(base_url: str) -> None:
+    with pytest.raises(ValidationError, match="valid port"):
+        KnowledgeFSConfig(
+            KNOWLEDGE_FS_BASE_URL=base_url,
+            KNOWLEDGE_FS_JWT_SECRET="production-secret-with-at-least-32-bytes",
+        )
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
         "https://user:password@knowledge-fs.test",
         "https://knowledge-fs.test?region=us",
         "https://knowledge-fs.test#gateway",

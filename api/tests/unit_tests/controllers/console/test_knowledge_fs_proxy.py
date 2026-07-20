@@ -55,6 +55,7 @@ def _upstream(
         response_kind=kind,
         required_scope="knowledge-spaces:read",
         rbac_permission=RBACPermission.DATASET_READONLY,
+        requires_dataset_editor=False,
         max_response_bytes=max_response_bytes
         or (64 * 1024 * 1024 if kind == "stream" else 25 * 1024 * 1024 if kind == "binary" else 1024 * 1024),
         request_headers=(),
@@ -227,9 +228,16 @@ def test_read_post_applies_knowledge_rate_limit_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("controllers.common.wraps.dify_config.RBAC_ENABLED", False)
+    account = MagicMock(id="account-1", is_dataset_editor=True)
+
+    def current_workspace() -> tuple[MagicMock, str]:
+        return account, "tenant-1"
+
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.current_account_with_tenant", current_workspace)
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", current_workspace)
     monkeypatch.setattr(
-        "controllers.console.wraps.current_account_with_tenant",
-        lambda: (MagicMock(id="account-1"), "tenant-1"),
+        "services.knowledge_fs_proxy.RBACService.CheckAccess.check",
+        MagicMock(return_value=True),
     )
     monkeypatch.setattr(
         "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
@@ -248,6 +256,43 @@ def test_read_post_applies_knowledge_rate_limit_once(
     assert isinstance(response, Response)
     zadd.assert_called_once()
     proxy.assert_called_once_with("POST", "knowledge-spaces")
+
+
+def test_denied_write_does_not_consume_the_workspace_rate_limit(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=False)
+
+    def current_workspace() -> tuple[MagicMock, str]:
+        return account, "tenant-1"
+
+    monkeypatch.setattr(
+        "controllers.console.knowledge_fs_proxy.current_account_with_tenant",
+        current_workspace,
+    )
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", current_workspace)
+    monkeypatch.setattr(
+        "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
+        MagicMock(return_value=MagicMock(enabled=True, limit=10)),
+    )
+    zadd = MagicMock()
+    monkeypatch.setattr("controllers.console.wraps.redis_client.zadd", zadd)
+    upstream_request = MagicMock()
+    monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", upstream_request)
+    route = unwrap(proxy_knowledge_fs_write)
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces",
+        method="POST",
+        data=b"{}",
+        content_type="application/json",
+    ):
+        with pytest.raises(Forbidden):
+            route("knowledge-spaces")
+
+    zadd.assert_not_called()
+    upstream_request.assert_not_called()
 
 
 def test_generic_get_forwards_path_query_and_raw_response(
