@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import QuotaPanel from '../quota-panel'
 
 let mockWorkspaceData:
@@ -57,7 +57,7 @@ vi.mock('../use-trial-credits', () => ({
 }))
 
 const renderQuotaPanel = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     trialModels: mockTrialModels ?? [],
   })
 

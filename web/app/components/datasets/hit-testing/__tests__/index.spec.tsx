@@ -2,9 +2,10 @@ import type { ReactNode } from 'react'
 import type { DataSet, HitTesting, HitTestingRecord, HitTestingResponse } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
 
@@ -117,7 +118,7 @@ const mockDataset = {
   permission_keys: ['dataset.acl.retrieval_recall'],
 } as Partial<DataSet>
 
-let mockAppContextState = {
+let mockConsoleState = {
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }
@@ -138,35 +139,25 @@ vi.mock('@/context/dataset-detail', () => ({
   ),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
 const mockRecordsRefetch = vi.fn()
@@ -186,13 +177,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
     isLoading: false,
   })),
 }))
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
 
 vi.mock('@/service/knowledge/use-hit-testing', () => ({
   useHitTesting: vi.fn(() => ({
@@ -338,7 +322,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 // Test Wrapper with QueryClientProvider
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
@@ -352,7 +336,7 @@ const createTestQueryClient = () =>
   })
 
 const TestWrapper = ({ children }: { children: ReactNode }) => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
@@ -433,7 +417,7 @@ describe('HitTestingPage', () => {
       is_multimodal: false,
       permission_keys: ['dataset.acl.retrieval_recall'],
     })
-    mockAppContextState = {
+    mockConsoleState = {
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
     }

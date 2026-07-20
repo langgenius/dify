@@ -3,9 +3,9 @@ import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AccessControl from '../index'
 
 let mockWebappAuth = {
@@ -16,7 +16,7 @@ let mockWebappAuth = {
 }
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { webapp_auth: mockWebappAuth },
   })
 

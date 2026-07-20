@@ -4,8 +4,8 @@ import type { Permissions, ReferenceSetting } from '@/app/components/plugins/typ
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PermissionType } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '../auto-update-setting/types'
 import ReferenceSettingModal from '../index'
 
@@ -15,7 +15,7 @@ const mockSystemFeatures = {
 }
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: mockSystemFeatures })
+  renderWithConsoleQuery(ui, { systemFeatures: mockSystemFeatures })
 
 let mockDialogOnOpenChange: ((open: boolean) => void) | undefined
 

@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
@@ -74,7 +74,7 @@ const renderModelProviderPage = (
   } = {},
 ) => {
   const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
-  return renderWithSystemFeatures(
+  return renderWithConsoleQuery(
     <ModelProviderPage searchText={searchText} stickyToolbar={stickyToolbar} />,
     {
       systemFeatures: { enable_marketplace: enableMarketplace },
