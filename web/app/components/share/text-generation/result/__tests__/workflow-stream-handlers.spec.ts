@@ -649,6 +649,26 @@ describe('createWorkflowStreamHandlers', () => {
     expect(setup.resetRunState).toHaveBeenCalled()
   })
 
+  it('should keep one resumable stream for installed apps', () => {
+    const { handlers } = setupHandlers({ isPublicAPI: false })
+    const onWorkflowPaused = handlers.onWorkflowPaused!
+    const pausedEvent = {
+      data: {
+        workflow_run_id: 'run-installed',
+      },
+    } as never
+
+    onWorkflowPaused(pausedEvent)
+    onWorkflowPaused(pausedEvent)
+
+    expect(sseGetMock).toHaveBeenCalledWith(
+      '/workflow/run-installed/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ isPublicAPI: false }),
+    )
+    expect(sseGetMock).toHaveBeenCalledTimes(1)
+  })
+
   it('should handle timeout and workflow failures', () => {
     const timeoutSetup = setupHandlers({
       isTimedOut: () => true,

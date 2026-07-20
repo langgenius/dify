@@ -411,15 +411,13 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
-      if (isPublicAPI && !hasStartedResumeStream) {
+      if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
         void sseGet(
           `/workflow/${data.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`,
           {},
           otherOptions,
         )
-      } else if (!isPublicAPI) {
-        void sseGet(`/workflow/${data.workflow_run_id}/events`, {}, otherOptions)
       }
       setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
     },
