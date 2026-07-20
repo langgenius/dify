@@ -1,5 +1,6 @@
 import type { PropsWithChildren, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
+import { preprocessThinkTag } from '../markdown-utils'
 import StreamdownWrapper from '../streamdown-wrapper'
 
 const TILDE_RANGE_RE = /0\.3~8mm/
@@ -87,6 +88,30 @@ describe('StreamdownWrapper', () => {
   })
 
   describe('Basic rendering', () => {
+    it('should render a level-one heading immediately after a think block', () => {
+      const { rerender } = render(
+        <StreamdownWrapper
+          latexContent={preprocessThinkTag('<think>reasoning</think>')}
+          isAnimating
+          mode="streaming"
+        />,
+      )
+
+      rerender(
+        <StreamdownWrapper
+          latexContent={preprocessThinkTag(
+            '<think>reasoning</think># Markdown 流式渲染\n\n这是一段普通文本',
+          )}
+          isAnimating={false}
+          mode="streaming"
+        />,
+      )
+
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Markdown 流式渲染' }),
+      ).toBeInTheDocument()
+    })
+
     it('should render plain text content', () => {
       // Arrange
       const content = 'Hello World'

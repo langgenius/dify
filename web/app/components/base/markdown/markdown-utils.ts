@@ -11,7 +11,9 @@ const LATEX_DELIMITER_MARKER_REGEX = /\\[[(]/
 const THINK_TAG_MARKER_REGEX = /<think>|<\/think>|<\/details>/
 const THINK_OPEN_TAG_REGEX = /(<think>\s*)+/g
 const THINK_CLOSE_TAG_REGEX = /(\s*<\/think>)+/g
-const DETAILS_WITHOUT_TRAILING_NEWLINE_REGEX = /(<\/details>)(?![^\S\r\n]*[\r\n])(?![^\S\r\n]*$)/g
+const DETAILS_FOLLOWED_BY_CONTENT_ON_SAME_LINE_REGEX = /(<\/details>)[^\S\r\n]*(?=\S)/g
+const DETAILS_FOLLOWED_BY_CONTENT_ON_NEXT_LINE_REGEX =
+  /(<\/details>)[^\S\r\n]*\r?\n(?=[^\S\r\n]*\S)/g
 
 const preprocessTextLaTeX = flow([
   (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
@@ -24,7 +26,8 @@ const preprocessTextLaTeX = flow([
 const replaceThinkTags = flow([
   (str: string) => str.replace(THINK_OPEN_TAG_REGEX, '<details data-think=true>\n'),
   (str: string) => str.replace(THINK_CLOSE_TAG_REGEX, '\n[ENDTHINKFLAG]</details>'),
-  (str: string) => str.replace(DETAILS_WITHOUT_TRAILING_NEWLINE_REGEX, '$1\n'),
+  (str: string) => str.replace(DETAILS_FOLLOWED_BY_CONTENT_ON_NEXT_LINE_REGEX, '$1\n\n'),
+  (str: string) => str.replace(DETAILS_FOLLOWED_BY_CONTENT_ON_SAME_LINE_REGEX, '$1\n\n'),
 ])
 
 export const preprocessLaTeX = (content: string) => {
