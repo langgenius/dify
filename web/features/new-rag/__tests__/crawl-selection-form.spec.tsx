@@ -398,6 +398,31 @@ describe('CrawlSelectionForm', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('allows discard when only the sync-policy outcome is uncertain', async () => {
+    clientMock.getPolicy
+      .mockReset()
+      .mockResolvedValueOnce(policy())
+      .mockRejectedValueOnce(new Error('reconciliation unavailable'))
+    clientMock.updatePolicy.mockRejectedValue(new Error('response lost'))
+    const onCancel = vi.fn()
+    const user = userEvent.setup()
+    const { onSubmissionUncertainChange } = renderSelectionForm(onCancel)
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+      'manual',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.addSourceFailed',
+    )
+    expect(onSubmissionUncertainChange).not.toHaveBeenCalledWith(true)
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    expect(onCancel).toHaveBeenCalledOnce()
+  })
+
   it('uses the latest concurrency tokens after a conflicting sync-policy update', async () => {
     clientMock.getPolicy
       .mockReset()

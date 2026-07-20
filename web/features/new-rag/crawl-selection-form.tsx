@@ -152,7 +152,8 @@ function ReadyCrawlSelectionForm({
   )
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(false)
-  const [submissionUncertain, setSubmissionUncertain] = useState(false)
+  const [policyUncertain, setPolicyUncertain] = useState(false)
+  const [selectionUncertain, setSelectionUncertain] = useState(false)
   const policySnapshotRef = useRef(policy)
   const submissionPendingRef = useRef(false)
   const selectionRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(
@@ -176,15 +177,20 @@ function ReadyCrawlSelectionForm({
     customIntervalHours <= MAX_CUSTOM_INTERVAL_HOURS
   const canSubmit = selectedPageIds.size > 0 && (syncMode !== 'custom' || customIntervalValid)
   const formBusy = busy || submitting
-  const submissionLocked = formBusy || submissionUncertain
+  const submissionLocked = formBusy || policyUncertain || selectionUncertain
   const selectionLocked = submissionLocked || workflowUncertain
-  const updateSubmissionUncertain = (uncertain: boolean) => {
-    setSubmissionUncertain(uncertain)
+  const updateSelectionUncertain = (uncertain: boolean) => {
+    setSelectionUncertain(uncertain)
     onSubmissionUncertainChange(uncertain)
   }
 
   const togglePage = (pageId: string) => {
-    if (!selectablePageIds.has(pageId) || submissionPendingRef.current || submissionUncertain)
+    if (
+      !selectablePageIds.has(pageId) ||
+      submissionPendingRef.current ||
+      policyUncertain ||
+      selectionUncertain
+    )
       return
     setSelectedPageIds((current) => {
       const next = new Set(current)
@@ -196,7 +202,7 @@ function ReadyCrawlSelectionForm({
   }
 
   const toggleAll = () => {
-    if (submissionPendingRef.current || submissionUncertain) return
+    if (submissionPendingRef.current || policyUncertain || selectionUncertain) return
     setSelectedPageIds(
       allSelected ? new Set() : new Set(bulkSelectablePages.map((page) => page.pageId)),
     )
@@ -215,7 +221,10 @@ function ReadyCrawlSelectionForm({
     )
     const sortedPageIds = [...selectedPageIds].sort()
     const fingerprint = JSON.stringify({ pageIds: sortedPageIds, policy: desiredPolicy })
-    if (submissionUncertain && selectionRequestRef.current?.fingerprint !== fingerprint) {
+    if (
+      (policyUncertain || selectionUncertain) &&
+      selectionRequestRef.current?.fingerprint !== fingerprint
+    ) {
       submissionPendingRef.current = false
       setSubmitting(false)
       setSubmitError(true)
@@ -256,18 +265,19 @@ function ReadyCrawlSelectionForm({
                 params: { id: knowledgeSpaceId, sourceId: source.id },
               })
           } catch (reconciliationError) {
-            if (!isDefinitiveRequestFailure(error)) updateSubmissionUncertain(true)
+            setPolicyUncertain(!isDefinitiveRequestFailure(error))
             throw reconciliationError
           }
           policySnapshotRef.current = reconciled
           if (!policyMatches(reconciled, desiredPolicy)) {
-            if (!isDefinitiveRequestFailure(error)) updateSubmissionUncertain(true)
+            setPolicyUncertain(!isDefinitiveRequestFailure(error))
             throw error
           }
           currentPolicy = reconciled
         }
         policySnapshotRef.current = currentPolicy
       }
+      setPolicyUncertain(false)
 
       if (discardRequested()) return
 
@@ -281,10 +291,10 @@ function ReadyCrawlSelectionForm({
         transactionRun = selectionRun
         onWorkflowRun(selectionRun)
       } catch (error) {
-        updateSubmissionUncertain(!isDefinitiveRequestFailure(error))
+        updateSelectionUncertain(!isDefinitiveRequestFailure(error))
         throw error
       }
-      updateSubmissionUncertain(true)
+      updateSelectionUncertain(true)
       if (discardRequested()) return
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
@@ -453,7 +463,7 @@ function ReadyCrawlSelectionForm({
         </p>
       )}
       <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-        <Button type="button" disabled={submissionLocked} onClick={onCancel}>
+        <Button type="button" disabled={formBusy || selectionUncertain} onClick={onCancel}>
           {t(($) => $['newKnowledge.cancelAddSource'])}
         </Button>
         <Button
