@@ -2474,9 +2474,6 @@
     }
   },
   "web/app/components/datasets/create/website/firecrawl/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -2506,9 +2503,6 @@
     }
   },
   "web/app/components/datasets/create/website/watercrawl/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
