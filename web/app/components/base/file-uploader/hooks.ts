@@ -236,9 +236,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       handleAddFile(uploadingFile)
       startProgressTimer(uploadingFile.id)
 
-      const remoteUpload = isHumanInputFormPage
-        ? uploadHumanInputFormRemoteFileInfo(formToken!, url)
-        : uploadRemoteFileInfo(url, !!params.token, undefined, remoteUploadUrl)
+      let remoteUpload
+      if (isHumanInputFormPage) remoteUpload = uploadHumanInputFormRemoteFileInfo(formToken!, url)
+      else if (remoteUploadUrl)
+        remoteUpload = uploadRemoteFileInfo(url, !!params.token, undefined, remoteUploadUrl)
+      else remoteUpload = uploadRemoteFileInfo(url, !!params.token)
 
       remoteUpload
         .then((res) => {
