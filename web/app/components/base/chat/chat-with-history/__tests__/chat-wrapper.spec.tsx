@@ -3,7 +3,7 @@ import type { ChatWithHistoryContextValue } from '../context'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   fetchChatList,
@@ -137,6 +137,7 @@ const defaultChatHookReturn: Partial<ChatHookReturn> = {
   handleSend: vi.fn(),
   handleStop: vi.fn(),
   handleSwitchSibling: vi.fn(),
+  prepareHumanInputSubmission: vi.fn().mockResolvedValue(true),
   isResponding: false,
   suggestedQuestions: [],
 }
@@ -873,6 +874,13 @@ describe('ChatWrapper', () => {
   it('should handle human input form submission for installed app', async () => {
     const { submitHumanInputForm: submitWorkflowForm } = await import('@/service/workflow')
     vi.mocked(submitWorkflowForm).mockResolvedValue({} as unknown as void)
+    let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
+    const prepareHumanInputSubmission = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveWorkflowEventsReady = resolve
+        }),
+    )
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
@@ -881,6 +889,7 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
+      prepareHumanInputSubmission,
       chatList: [
         { id: 'q1', content: 'Question' },
         {
@@ -924,6 +933,12 @@ describe('ChatWrapper', () => {
     const runButton = screen.getByText('Run')
     fireEvent.click(runButton)
 
+    expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
+    expect(submitWorkflowForm).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveWorkflowEventsReady(true)
+    })
     await waitFor(() => {
       expect(submitWorkflowForm).toHaveBeenCalled()
     })

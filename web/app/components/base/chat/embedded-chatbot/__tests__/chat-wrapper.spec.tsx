@@ -3,7 +3,7 @@ import type { HumanInputFieldValue } from '../../chat/answer/human-input-content
 import type { ChatConfig, ChatItem, ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
 import type { ConversationItem } from '@/models/share'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AppSourceType, fetchSuggestedQuestions, submitHumanInputForm } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
@@ -203,6 +203,7 @@ const createUseChatReturn = (overrides: Partial<UseChatReturn> = {}): UseChatRet
   setIsResponding: vi.fn() as UseChatReturn['setIsResponding'],
   handleStop: vi.fn(),
   handleSwitchSibling: vi.fn(),
+  prepareHumanInputSubmission: vi.fn().mockResolvedValue(true),
   isResponding: false,
   suggestedQuestions: [],
   handleRestart: vi.fn(),
@@ -450,6 +451,18 @@ describe('EmbeddedChatbot chat-wrapper', () => {
 
   describe('Human input submit behavior', () => {
     it('should submit via installed app service when the app is installed', async () => {
+      let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
+      const prepareHumanInputSubmission = vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveWorkflowEventsReady = resolve
+          }),
+      )
+      vi.mocked(useChat).mockReturnValue(
+        createUseChatReturn({
+          prepareHumanInputSubmission,
+        }),
+      )
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
         createContextValue({
           isInstalledApp: true,
@@ -459,6 +472,12 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       render(<ChatWrapper />)
       fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
 
+      expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
+      expect(submitHumanInputFormService).not.toHaveBeenCalled()
+
+      await act(async () => {
+        resolveWorkflowEventsReady(true)
+      })
       await waitFor(() => {
         expect(submitHumanInputFormService).toHaveBeenCalledWith('form-token', {
           inputs: { answer: 'ok' },
