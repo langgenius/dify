@@ -7,8 +7,17 @@ vi.mock('@/i18n-config/language', () => ({ getLanguage: () => 'en_US' }))
 vi.mock(
   '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool',
   () => ({
-    default: ({ onHide }: { onHide: () => void }) => (
-      <div data-testid="tool-detail">
+    default: ({
+      onHide,
+      showReadOnlySettingDetails,
+    }: {
+      onHide: () => void
+      showReadOnlySettingDetails?: boolean
+    }) => (
+      <div
+        data-testid="tool-detail"
+        data-show-readonly-setting-details={showReadOnlySettingDetails}
+      >
         <button onClick={onHide}>Close details</button>
       </div>
     ),
@@ -34,6 +43,10 @@ describe('ToolItem', () => {
 
     fireEvent.click(screen.getByText('Tool label'))
     expect(screen.getByTestId('tool-detail')).toBeInTheDocument()
+    expect(screen.getByTestId('tool-detail')).toHaveAttribute(
+      'data-show-readonly-setting-details',
+      'true',
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'Close details' }))
     expect(screen.queryByTestId('tool-detail')).not.toBeInTheDocument()
