@@ -21,6 +21,25 @@ class RateLimit:
     _instance_dict: dict[str, "RateLimit"] = {}
     max_active_requests: int
 
+    # Atomically enforce the active-request cap and admit a request in a single
+    # round trip. The previous implementation ran HLEN (check) and HSET (act) as
+    # two independent Redis calls, so N concurrent callers could all observe a
+    # count below the cap and all proceed to register, pushing the active count
+    # to ``max_active_requests - 1 + N``. Doing the check-and-set inside a Lua
+    # script makes Redis evaluate it single-threaded and eliminates the race.
+    #
+    # KEYS[1] = active requests hash key
+    # ARGV[1] = request id (hash field)
+    # ARGV[2] = timestamp to store as the field value
+    # ARGV[3] = max active requests cap
+    # Returns the stored value on admit, or nil on rejection.
+    _ADMIT_SCRIPT = """
+        if redis.call('HLEN', KEYS[1]) >= tonumber(ARGV[3]) then
+            return nil
+        end
+        return redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+    """
+
     def __new__(cls, client_id: str, max_active_requests: int):
         if client_id not in cls._instance_dict:
             instance = super().__new__(cls)
@@ -46,6 +65,7 @@ class RateLimit:
         self.max_active_requests_key = self._MAX_ACTIVE_REQUESTS_KEY.format(client_id)
         self.last_recalculate_time = float("-inf")
         self.flush_cache(use_local_value=True)
+        self._admit_script = redis_client.register_script(self._ADMIT_SCRIPT)
 
     def flush_cache(self, use_local_value=False):
         self.last_recalculate_time = time.time()
@@ -78,13 +98,18 @@ class RateLimit:
         if not request_id:
             request_id = RateLimit.gen_request_key()
 
-        active_requests_count = redis_client.hlen(self.active_requests_key)
-        if active_requests_count >= self.max_active_requests:
+        # Admit atomically: the Lua script checks HLEN against the cap and only
+        # runs HSET when there is still headroom, all in one Redis round trip.
+        # It returns nil (None in Python) when the cap has been reached.
+        admitted = self._admit_script(
+            keys=[self.active_requests_key],
+            args=[request_id, str(time.time()), self.max_active_requests],
+        )
+        if admitted is None:
             raise AppInvokeQuotaExceededError(
                 f"Too many requests. Please try again later. The current maximum concurrent requests allowed "
                 f"for {self.client_id} is {self.max_active_requests}."
             )
-        redis_client.hset(self.active_requests_key, request_id, str(time.time()))
         return request_id
 
     def exit(self, request_id: str):
