@@ -1,7 +1,7 @@
 """add step by step tour state
 
 Revision ID: b8c9d0e1f2a3
-Revises: 7a1c2d9e4b60
+Revises: 3c9f8e2a1d7b
 Create Date: 2026-06-29 12:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "b8c9d0e1f2a3"
-down_revision = "7a1c2d9e4b60"
+down_revision = "3c9f8e2a1d7b"
 branch_labels = None
 depends_on = None
 
