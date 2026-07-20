@@ -4,7 +4,7 @@ import inspect
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import cast
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -36,6 +36,7 @@ def current_user() -> Account:
 
 
 def test_get_data_source_integrates_serializes_orm_binding(flask_app: Flask) -> None:
+    session = MagicMock()
     binding = DataSourceOauthBinding(
         tenant_id="tenant-1",
         access_token="token",
@@ -60,11 +61,9 @@ def test_get_data_source_integrates_serializes_orm_binding(flask_app: Flask) -> 
     binding.created_at = datetime(2026, 5, 25, 1, 2, 3, tzinfo=UTC)
     binding.disabled = False
 
-    with (
-        flask_app.test_request_context("/"),
-        patch.object(module.db.session, "scalars", return_value=MagicMock(all=lambda: [binding])),
-    ):
-        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), "tenant-1")
+    session.scalars.return_value.all.return_value = [binding]
+    with flask_app.test_request_context("/"):
+        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), session, "tenant-1")
 
     assert status == 200
     assert response == {
@@ -97,11 +96,10 @@ def test_get_data_source_integrates_serializes_orm_binding(flask_app: Flask) -> 
 
 
 def test_get_data_source_integrates_preserves_empty_list_when_no_binding(flask_app: Flask) -> None:
-    with (
-        flask_app.test_request_context("/"),
-        patch.object(module.db.session, "scalars", return_value=MagicMock(all=lambda: [])),
-    ):
-        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), "tenant-1")
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = []
+    with flask_app.test_request_context("/"):
+        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), session, "tenant-1")
 
     assert status == 200
     assert response == {"data": []}
@@ -154,7 +152,6 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(flask_app: Flask
             "get_datasource_credentials",
             return_value={"token": "token"},
         ),
-        patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=MagicMock()),
         patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime),
     ):
         response, status = unwrap(DataSourceNotionListApi().get)(

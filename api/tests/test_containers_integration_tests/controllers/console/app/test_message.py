@@ -1,28 +1,28 @@
 """Authenticated controller integration tests for console message APIs."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from flask.testing import FlaskClient
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.console.app.message import ChatMessagesQuery, FeedbackExportQuery, MessageFeedbackPayload
-from controllers.console.app.message import attach_message_extra_contents as _attach_message_extra_contents
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from libs.datetime_utils import naive_utc_now
-from models.enums import ConversationFromSource, FeedbackRating
+from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from tests.test_containers_integration_tests.controllers.console.helpers import (
+    AuthenticatedConsoleAgentClient,
     authenticate_console_client,
     create_console_account_and_tenant,
     create_console_app,
 )
+from tests.test_containers_integration_tests.helpers import DatabaseState
 
 
 def _create_conversation(db_session: Session, app_id: str, account_id: str, mode: AppMode) -> Conversation:
@@ -54,6 +54,9 @@ def _create_message(
     account_id: str,
     *,
     created_at_offset_seconds: int = 0,
+    app_mode: AppMode = AppMode.CHAT,
+    query: str = "Hello",
+    answer: str = "Hi there",
 ) -> Message:
     created_at = naive_utc_now() + timedelta(seconds=created_at_offset_seconds)
     message = Message(
@@ -63,12 +66,12 @@ def _create_message(
         override_model_configs=None,
         conversation_id=conversation_id,
         inputs={},
-        query="Hello",
-        message={"type": "text", "content": "Hello"},
+        query=query,
+        message={"type": "text", "content": query},
         message_tokens=1,
         message_unit_price=Decimal("0.0001"),
         message_price_unit=Decimal("0.001"),
-        answer="Hi there",
+        answer=answer,
         answer_tokens=1,
         answer_unit_price=Decimal("0.0001"),
         answer_price_unit=Decimal("0.001"),
@@ -80,11 +83,40 @@ def _create_message(
         from_account_id=account_id,
         created_at=created_at,
         updated_at=created_at,
-        app_mode=AppMode.CHAT,
+        app_mode=app_mode,
     )
     db_session.add(message)
     db_session.commit()
     return message
+
+
+def _expected_message_contract(message: Message) -> dict[str, object]:
+    return {
+        "id": message.id,
+        "conversation_id": message.conversation_id,
+        "inputs": {},
+        "query": message.query,
+        "message": {"type": "text", "content": message.query},
+        "message_tokens": 1,
+        "answer": message.answer,
+        "answer_tokens": 1,
+        "provider_response_latency": 0.0,
+        "from_source": ConversationFromSource.CONSOLE.value,
+        "from_end_user_id": None,
+        "from_account_id": message.from_account_id,
+        "feedbacks": [],
+        "workflow_run_id": None,
+        "annotation": None,
+        "annotation_hit_history": None,
+        "created_at": int(message.created_at.timestamp()),
+        "agent_thoughts": [],
+        "message_files": [],
+        "metadata": {},
+        "status": "normal",
+        "error": None,
+        "parent_message_id": None,
+        "extra_contents": [],
+    }
 
 
 class TestMessageValidators:
@@ -115,11 +147,11 @@ class TestMessageValidators:
 
 
 def test_chat_message_list_not_found(
-    db_session_with_containers: Session,
+    transactional_db_session: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
+    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
 
     response = test_client_with_containers.get(
         f"/console/api/apps/{app.id}/chat-messages",
@@ -134,50 +166,67 @@ def test_chat_message_list_not_found(
 
 
 def test_chat_message_list_success(
-    db_session_with_containers: Session,
+    transactional_db_session: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, app.mode)
-    _create_message(db_session_with_containers, app.id, conversation.id, account.id, created_at_offset_seconds=0)
+    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(transactional_db_session, app.id, account.id, app.mode)
+    first = _create_message(
+        transactional_db_session,
+        app.id,
+        conversation.id,
+        account.id,
+        created_at_offset_seconds=0,
+        query="First question",
+        answer="First answer",
+    )
     second = _create_message(
-        db_session_with_containers,
+        transactional_db_session,
         app.id,
         conversation.id,
         account.id,
         created_at_offset_seconds=1,
+        query="Second question",
+        answer="Second answer",
     )
     # Capture IDs before the HTTP request detaches ORM instances from the session
     app_id = app.id
     conversation_id = conversation.id
     second_id = second.id
 
-    with patch(
-        "controllers.console.app.message.attach_message_extra_contents",
-        side_effect=_attach_message_extra_contents,
-    ):
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app_id}/chat-messages",
-            query_string={"conversation_id": conversation_id, "limit": 1},
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
+    response = test_client_with_containers.get(
+        f"/console/api/apps/{app_id}/chat-messages",
+        query_string={"conversation_id": conversation_id, "limit": 1},
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
 
     assert response.status_code == 200
     payload = response.get_json()
     assert payload is not None
     assert payload["limit"] == 1
     assert payload["has_more"] is True
-    assert len(payload["data"]) == 1
-    assert payload["data"][0]["id"] == second_id
+    assert payload["data"] == [_expected_message_contract(second)]
+
+    cursor_response = test_client_with_containers.get(
+        f"/console/api/apps/{app_id}/chat-messages",
+        query_string={"conversation_id": conversation_id, "first_id": second_id},
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
+
+    assert cursor_response.status_code == 200
+    assert cursor_response.json is not None
+    assert cursor_response.json["data"] == [_expected_message_contract(first)]
+    assert cursor_response.json["limit"] == 20
+    assert cursor_response.json["has_more"] is False
 
 
 def test_message_feedback_not_found(
-    db_session_with_containers: Session,
+    transactional_db_session: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
+    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
 
     response = test_client_with_containers.post(
         f"/console/api/apps/{app.id}/feedbacks",
@@ -192,40 +241,61 @@ def test_message_feedback_not_found(
 
 
 def test_message_feedback_success(
-    db_session_with_containers: Session,
+    transactional_db_session: Session,
     test_client_with_containers: FlaskClient,
+    database_state: DatabaseState,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, app.mode)
-    message = _create_message(db_session_with_containers, app.id, conversation.id, account.id)
+    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(transactional_db_session, app.id, account.id, app.mode)
+    message = _create_message(transactional_db_session, app.id, conversation.id, account.id)
+    app_id = app.id
+    account_id = account.id
+    message_id = message.id
 
     response = test_client_with_containers.post(
-        f"/console/api/apps/{app.id}/feedbacks",
-        json={"message_id": message.id, "rating": "like"},
+        f"/console/api/apps/{app_id}/feedbacks",
+        json={"message_id": message_id, "rating": "like"},
         headers=authenticate_console_client(test_client_with_containers, account),
     )
 
     assert response.status_code == 200
     assert response.get_json() == {"result": "success"}
 
-    feedback = db_session_with_containers.scalar(
-        select(MessageFeedback).where(MessageFeedback.message_id == message.id)
-    )
-    assert feedback is not None
+    feedback = database_state.one(MessageFeedback, MessageFeedback.message_id == message_id)
     assert feedback.rating == FeedbackRating.LIKE
-    assert feedback.from_account_id == account.id
+    assert feedback.from_account_id == account_id
+
+    update_response = test_client_with_containers.post(
+        f"/console/api/apps/{app_id}/feedbacks",
+        json={"message_id": message_id, "rating": "dislike", "content": "Changed my mind"},
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
+
+    assert update_response.status_code == 200
+    feedback = database_state.one(MessageFeedback, MessageFeedback.message_id == message_id)
+    assert feedback.rating == FeedbackRating.DISLIKE
+    assert feedback.content == "Changed my mind"
+
+    delete_response = test_client_with_containers.post(
+        f"/console/api/apps/{app_id}/feedbacks",
+        json={"message_id": message_id, "rating": None},
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
+
+    assert delete_response.status_code == 200
+    assert database_state.count(MessageFeedback, MessageFeedback.message_id == message_id) == 0
 
 
 def test_message_annotation_count(
-    db_session_with_containers: Session,
+    transactional_db_session: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, app.mode)
-    message = _create_message(db_session_with_containers, app.id, conversation.id, account.id)
-    db_session_with_containers.add(
+    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(transactional_db_session, app.id, account.id, app.mode)
+    message = _create_message(transactional_db_session, app.id, conversation.id, account.id)
+    transactional_db_session.add(
         MessageAnnotation(
             app_id=app.id,
             conversation_id=conversation.id,
@@ -235,7 +305,7 @@ def test_message_annotation_count(
             account_id=account.id,
         )
     )
-    db_session_with_containers.commit()
+    transactional_db_session.commit()
 
     response = test_client_with_containers.get(
         f"/console/api/apps/{app.id}/annotations/count",
@@ -247,24 +317,29 @@ def test_message_annotation_count(
 
 
 def test_message_suggested_questions_success(
-    db_session_with_containers: Session,
+    transactional_db_session: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    message_id = str(uuid4())
+    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(transactional_db_session, app.id, account.id, app.mode)
+    message = _create_message(transactional_db_session, app.id, conversation.id, account.id)
 
     with patch(
         "controllers.console.app.message.MessageService.get_suggested_questions_after_answer",
         return_value=["q1", "q2"],
-    ):
+    ) as get_questions:
         response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/chat-messages/{message_id}/suggested-questions",
+            f"/console/api/apps/{app.id}/chat-messages/{message.id}/suggested-questions",
             headers=authenticate_console_client(test_client_with_containers, account),
         )
 
     assert response.status_code == 200
     assert response.get_json() == {"data": ["q1", "q2"]}
+    call = get_questions.call_args.kwargs
+    assert call["app_model"].id == app.id
+    assert call["message_id"] == message.id
+    assert call["user"].id == account.id
 
 
 @pytest.mark.parametrize(
@@ -283,11 +358,11 @@ def test_message_suggested_questions_errors(
     exc: Exception,
     expected_status: int,
     expected_code: str,
-    db_session_with_containers: Session,
+    transactional_db_session: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
+    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
     message_id = str(uuid4())
 
     with patch(
@@ -306,41 +381,156 @@ def test_message_suggested_questions_errors(
 
 
 def test_message_feedback_export_success(
-    db_session_with_containers: Session,
+    transactional_db_session: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
+    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(transactional_db_session, app.id, account.id, app.mode)
+    message = _create_message(transactional_db_session, app.id, conversation.id, account.id)
+    headers = authenticate_console_client(test_client_with_containers, account)
+    feedback = MessageFeedback(
+        app_id=app.id,
+        conversation_id=conversation.id,
+        message_id=message.id,
+        rating=FeedbackRating.LIKE,
+        content="Useful answer",
+        from_source=FeedbackFromSource.ADMIN,
+        from_account_id=account.id,
+    )
+    transactional_db_session.add(feedback)
+    transactional_db_session.commit()
 
-    with patch("services.feedback_service.FeedbackService.export_feedbacks", return_value={"exported": True}):
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/feedbacks/export",
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
+    response = test_client_with_containers.get(
+        f"/console/api/apps/{app.id}/feedbacks/export",
+        query_string={"format": "json", "rating": "like", "has_comment": "true"},
+        headers=headers,
+    )
 
     assert response.status_code == 200
-    assert response.get_json() == {"exported": True}
+    assert response.json is not None
+    payload = response.json
+    export_date = payload["export_info"].pop("export_date")
+    datetime.fromisoformat(export_date)
+    assert payload == {
+        "export_info": {
+            "app_id": app.id,
+            "total_records": 1,
+            "data_source": "dify_feedback_export",
+        },
+        "feedback_data": [
+            {
+                "feedback_id": feedback.id,
+                "app_name": app.name,
+                "app_id": app.id,
+                "conversation_id": conversation.id,
+                "conversation_name": conversation.name,
+                "message_id": message.id,
+                "user_query": message.query,
+                "ai_response": message.answer,
+                "feedback_rating": "\U0001f44d",
+                "feedback_rating_raw": FeedbackRating.LIKE.value,
+                "feedback_comment": "Useful answer",
+                "feedback_source": FeedbackFromSource.ADMIN.value,
+                "feedback_date": feedback.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "message_date": message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "from_account_name": account.name,
+                "from_end_user_id": "",
+                "has_comment": "Yes",
+            }
+        ],
+    }
+
+    invalid_response = test_client_with_containers.get(
+        f"/console/api/apps/{app.id}/feedbacks/export",
+        query_string={"format": "json", "start_date": "not-a-date"},
+        headers=headers,
+    )
+
+    assert invalid_response.status_code == 400
+    assert invalid_response.json is not None
+    assert "Invalid start_date format" in invalid_response.json["error"]
 
 
 def test_message_api_get_success(
-    db_session_with_containers: Session,
+    transactional_db_session: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, app.mode)
-    message = _create_message(db_session_with_containers, app.id, conversation.id, account.id)
+    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(transactional_db_session, app.id, account.id, app.mode)
+    message = _create_message(transactional_db_session, app.id, conversation.id, account.id)
 
-    with patch(
-        "controllers.console.app.message.attach_message_extra_contents",
-        side_effect=_attach_message_extra_contents,
-    ):
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/messages/{message.id}",
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
+    response = test_client_with_containers.get(
+        f"/console/api/apps/{app.id}/messages/{message.id}",
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
 
     assert response.status_code == 200
     payload = response.get_json()
     assert payload is not None
-    assert payload["id"] == message.id
+    assert payload == _expected_message_contract(message)
+
+
+def test_agent_message_routes_use_backing_app_and_persist_feedback(
+    transactional_db_session: Session,
+    authenticated_console_agent_client: AuthenticatedConsoleAgentClient,
+    database_state: DatabaseState,
+) -> None:
+    context = authenticated_console_agent_client
+    conversation = _create_conversation(
+        transactional_db_session,
+        context.app.id,
+        context.account.id,
+        AppMode.AGENT,
+    )
+    message = _create_message(
+        transactional_db_session,
+        context.app.id,
+        conversation.id,
+        context.account.id,
+        app_mode=AppMode.AGENT,
+    )
+    agent_id = context.agent.id
+    conversation_id = conversation.id
+    message_id = message.id
+    route_prefix = f"/console/api/agent/{agent_id}"
+
+    list_response = context.client.get(
+        f"{route_prefix}/chat-messages",
+        query_string={"conversation_id": conversation_id},
+        headers=context.headers,
+    )
+    detail_response = context.client.get(
+        f"{route_prefix}/messages/{message_id}",
+        headers=context.headers,
+    )
+    feedback_response = context.client.post(
+        f"{route_prefix}/feedbacks",
+        json={"message_id": message_id, "rating": "dislike", "content": "Needs work"},
+        headers=context.headers,
+    )
+    with patch(
+        "controllers.console.app.message.MessageService.get_suggested_questions_after_answer",
+        return_value=["What changed?"],
+    ):
+        questions_response = context.client.get(
+            f"{route_prefix}/chat-messages/{message_id}/suggested-questions",
+            headers=context.headers,
+        )
+
+    assert list_response.status_code == 200
+    assert list_response.json is not None
+    assert list_response.json["data"] == [_expected_message_contract(message)]
+    assert detail_response.status_code == 200
+    assert detail_response.json is not None
+    assert detail_response.json == _expected_message_contract(message)
+    assert feedback_response.status_code == 200
+    assert feedback_response.json == {"result": "success"}
+    feedback = database_state.one(MessageFeedback, MessageFeedback.message_id == message_id)
+    assert feedback.app_id == context.app.id
+    assert feedback.rating == FeedbackRating.DISLIKE
+    assert feedback.content == "Needs work"
+    assert feedback.from_account_id == context.account.id
+    assert questions_response.status_code == 200
+    assert questions_response.json == {"data": ["What changed?"]}

@@ -959,6 +959,11 @@ class AppService:
         return str(site.code)
 
     @staticmethod
+    def get_site_by_app_id(app_id: str, *, session: Session) -> Site | None:
+        """Return the site configured for an app, if one exists."""
+        return session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
+
+    @staticmethod
     def get_app_id_by_code(app_code: str, *, session: Session) -> str:
         """
         Get app id by app code

@@ -16,7 +16,6 @@ from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account
-from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
 from services.api_token_service import ApiTokenCache
@@ -255,73 +254,3 @@ class AppApiKeyResource(BaseApiKeyResource):
     resource_type = ApiTokenType.APP
     resource_model = App
     resource_id_field = "app_id"
-
-
-@console_ns.route("/datasets/<uuid:resource_id>/api-keys")
-class DatasetApiKeyListResource(BaseApiKeyListResource):
-    @console_ns.doc("get_dataset_api_keys")
-    @console_ns.doc(description="Get all API keys for a dataset")
-    @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
-        """Get all API keys for a dataset"""
-        return dump_response(
-            ApiKeyList,
-            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),
-        )
-
-    @console_ns.doc("create_dataset_api_key")
-    @console_ns.doc(description="Create a new API key for a dataset")
-    @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
-    @console_ns.response(400, "Maximum keys exceeded")
-    @with_current_tenant_id
-    @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
-    @with_session
-    def post(self, session: Session, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
-        """Create a new API key for a dataset"""
-        return dump_response(
-            ApiKeyItem,
-            self._create_api_key(str(resource_id), current_tenant_id, session=session),
-        ), 201
-
-    resource_type = ApiTokenType.DATASET
-    resource_model = Dataset
-    resource_id_field = "dataset_id"
-    token_prefix = "ds-"
-
-
-@console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
-class DatasetApiKeyResource(BaseApiKeyResource):
-    @console_ns.doc("delete_dataset_api_key")
-    @console_ns.doc(description="Delete an API key for a dataset")
-    @console_ns.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
-    @console_ns.response(204, "API key deleted successfully")
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
-    @with_session
-    def delete(
-        self,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        resource_id: UUID,
-        api_key_id: UUID,
-    ) -> tuple[str, int]:
-        """Delete an API key for a dataset"""
-        self._delete_api_key(
-            str(resource_id),
-            str(api_key_id),
-            current_tenant_id,
-            current_user,
-            session=session,
-        )
-        return "", 204
-
-    resource_type = ApiTokenType.DATASET
-    resource_model = Dataset
-    resource_id_field = "dataset_id"

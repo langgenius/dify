@@ -1097,6 +1097,12 @@ class TestConversationServiceExport:
             app_model,
             user,
         )
+        message = ConversationServiceIntegrationTestDataFactory.create_message(
+            container_session,
+            app_model,
+            conversation,
+            user,
+        )
         conversation_id = conversation.id
         runtime_session = AgentRuntimeSession(
             tenant_id=app_model.tenant_id,
@@ -1122,6 +1128,10 @@ class TestConversationServiceExport:
         # Step 1: Immediate database deletion
         deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
         assert deleted is None
+
+        # Related rows remain until the queued cleanup task processes them.
+        pending_message = container_session.scalar(select(Message).where(Message.id == message.id))
+        assert pending_message is not None
 
         # Step 2: Async cleanup task triggered
         # The Celery task will handle cleanup of messages, annotations, etc.

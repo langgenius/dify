@@ -1,494 +1,535 @@
-"""Testcontainers integration tests for controllers.console.datasets.data_source endpoints."""
+"""HTTP and persistence contracts for console datasource endpoints."""
 
 from __future__ import annotations
 
-import inspect
-from collections.abc import Iterator
-from datetime import UTC, datetime
-from unittest.mock import MagicMock, PropertyMock, patch
+import json
+from collections.abc import Generator
+from dataclasses import dataclass, field
 from uuid import uuid4
 
 import pytest
-from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets import data_source
-from controllers.console.datasets.data_source import (
-    DataSourceApi,
-    DataSourceNotionDatasetSyncApi,
-    DataSourceNotionDocumentSyncApi,
-    DataSourceNotionIndexingEstimateApi,
-    DataSourceNotionListApi,
-    DataSourceNotionPreviewApi,
+from core.datasource.datasource_manager import DatasourceManager
+from core.datasource.entities.datasource_entities import (
+    DatasourceProviderType,
+    OnlineDocumentInfo,
+    OnlineDocumentPage,
+    OnlineDocumentPagesMessage,
 )
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from models import Account, DataSourceOauthBinding
-from models.dataset import Document
+from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.models.document import Document as RagDocument
+from models import DataSourceOauthBinding
+from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.datasource_provider_service import DatasourceProviderService
+from tests.test_containers_integration_tests.controllers.console.helpers import (
+    AuthenticatedConsoleClient,
+    ConsoleAccountFactory,
+)
+from tests.test_containers_integration_tests.helpers import DatabaseState
 
 
-@pytest.fixture
-def current_user() -> Account:
-    account = Account(name="Test User", email="u1@example.com")
-    account.id = "u1"
-    return account
+@dataclass
+class _RuntimeState:
+    credentials: dict[str, object] = field(default_factory=dict)
 
 
-@pytest.fixture
-def mock_engine() -> Iterator[None]:
-    with patch.object(
-        type(data_source.db),
-        "engine",
-        new_callable=PropertyMock,
-        return_value=MagicMock(),
-    ):
-        yield
+class _OnlineDocumentRuntime:
+    def __init__(self, messages: list[OnlineDocumentPagesMessage]) -> None:
+        self.runtime = _RuntimeState()
+        self._messages = messages
+
+    def datasource_provider_type(self) -> DatasourceProviderType:
+        return DatasourceProviderType.ONLINE_DOCUMENT
+
+    def get_online_document_pages(self, **_: object) -> Generator[OnlineDocumentPagesMessage, None, None]:
+        yield from self._messages
+
+
+@dataclass
+class _TaskRecorder:
+    calls: list[tuple[str, str]] = field(default_factory=list)
+
+    def delay(self, dataset_id: str, document_id: str) -> None:
+        self.calls.append((dataset_id, document_id))
+
+
+def _set_credentials(monkeypatch: pytest.MonkeyPatch, credentials: dict[str, object] | None) -> None:
+    monkeypatch.setattr(
+        DatasourceProviderService,
+        "get_datasource_credentials",
+        lambda _self, **_kwargs: credentials,
+    )
+
+
+def _set_online_document_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    message = OnlineDocumentPagesMessage(
+        result=[
+            OnlineDocumentInfo(
+                workspace_id="workspace-1",
+                workspace_name="Workspace",
+                workspace_icon="workspace-icon",
+                total=1,
+                pages=[
+                    OnlineDocumentPage(
+                        page_id="page-1",
+                        page_name="Page One",
+                        page_icon=None,
+                        type="page",
+                        last_edited_time="2026-01-01T00:00:00Z",
+                        parent_id="parent-1",
+                    )
+                ],
+            )
+        ]
+    )
+    runtime = _OnlineDocumentRuntime([message])
+    monkeypatch.setattr(DatasourceManager, "get_datasource_runtime", lambda **_kwargs: runtime)
+
+
+def _create_binding(
+    session: Session,
+    *,
+    tenant_id: str,
+    disabled: bool = False,
+) -> DataSourceOauthBinding:
+    binding = DataSourceOauthBinding(
+        tenant_id=tenant_id,
+        access_token="token",
+        provider="notion",
+        source_info={
+            "workspace_name": "Workspace",
+            "workspace_id": "workspace-1",
+            "workspace_icon": None,
+            "total": 1,
+            "pages": [
+                {
+                    "page_id": "page-1",
+                    "page_name": "Page",
+                    "page_icon": {"type": "emoji", "emoji": "P", "url": None},
+                    "parent_id": "parent-1",
+                    "type": "page",
+                }
+            ],
+        },
+        disabled=disabled,
+    )
+    session.add(binding)
+    session.commit()
+    return binding
+
+
+def _create_dataset(
+    session: Session,
+    client: AuthenticatedConsoleClient,
+    *,
+    data_source_type: DataSourceType = DataSourceType.NOTION_IMPORT,
+) -> Dataset:
+    dataset = Dataset(
+        tenant_id=client.tenant.id,
+        name=f"Datasource Dataset {uuid4()}",
+        description="Datasource controller integration dataset",
+        data_source_type=data_source_type,
+        indexing_technique=IndexTechniqueType.ECONOMY,
+        created_by=client.account.id,
+        permission="only_me",
+        provider="vendor",
+    )
+    session.add(dataset)
+    session.commit()
+    return dataset
+
+
+def _create_document(
+    session: Session,
+    client: AuthenticatedConsoleClient,
+    dataset: Dataset,
+    *,
+    enabled: bool = True,
+) -> Document:
+    document = Document(
+        tenant_id=client.tenant.id,
+        dataset_id=dataset.id,
+        position=1,
+        data_source_type=DataSourceType.NOTION_IMPORT,
+        data_source_info=json.dumps({"notion_page_id": "page-1"}),
+        batch=f"batch-{uuid4()}",
+        name="Notion Page",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by=client.account.id,
+        indexing_status=IndexingStatus.COMPLETED,
+        enabled=enabled,
+        archived=False,
+    )
+    session.add(document)
+    session.commit()
+    return document
 
 
 class TestDataSourceApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def test_get_returns_persisted_binding_contract(
+        self,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        console_account_factory: ConsoleAccountFactory,
+        transactional_db_session: Session,
+    ) -> None:
+        binding = _create_binding(transactional_db_session, tenant_id=authenticated_console_client.tenant.id)
+        _foreign_account, foreign_tenant = console_account_factory()
+        _create_binding(transactional_db_session, tenant_id=foreign_tenant.id)
+        binding_id = binding.id
+        binding_created_at = int(binding.created_at.timestamp())
 
-    def test_get_success(self, app: Flask) -> None:
-        api = DataSourceApi()
-        method = inspect.unwrap(api.get)
-
-        binding = DataSourceOauthBinding(
-            tenant_id="tenant-1",
-            access_token="token",
-            provider="notion",
-            source_info={
-                "workspace_name": "Workspace",
-                "workspace_id": "workspace-1",
-                "workspace_icon": None,
-                "total": 1,
-                "pages": [
-                    {
-                        "page_id": "page-1",
-                        "page_name": "Page",
-                        "page_icon": {"type": "emoji", "emoji": "P", "url": None},
-                        "parent_id": "parent-1",
-                        "type": "page",
-                    }
-                ],
-            },
+        response = authenticated_console_client.client.get(
+            "/console/api/data-source/integrates",
+            headers=authenticated_console_client.headers,
         )
-        binding.id = "b1"
-        binding.created_at = datetime(2026, 5, 25, 1, 2, 3, tzinfo=UTC)
-        binding.disabled = False
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.data_source.db.session.scalars",
-                return_value=MagicMock(all=lambda: [binding]),
-            ),
-        ):
-            response, status = method(api, "tenant-1")
-
-        assert status == 200
-        assert response["data"][0] == {
-            "id": "b1",
-            "provider": "notion",
-            "created_at": 1779670923,
-            "is_bound": True,
-            "disabled": False,
-            "source_info": {
-                "workspace_name": "Workspace",
-                "workspace_id": "workspace-1",
-                "workspace_icon": None,
-                "pages": [
-                    {
-                        "page_name": "Page",
-                        "page_id": "page-1",
-                        "page_icon": {"type": "emoji", "url": None, "emoji": "P"},
-                        "parent_id": "parent-1",
-                        "type": "page",
-                    }
-                ],
-                "total": 1,
-            },
-            "link": "http://localhost/console/api/oauth/data-source/notion",
+        assert response.status_code == 200
+        assert response.json == {
+            "data": [
+                {
+                    "id": binding_id,
+                    "provider": "notion",
+                    "created_at": binding_created_at,
+                    "is_bound": True,
+                    "disabled": False,
+                    "source_info": {
+                        "workspace_name": "Workspace",
+                        "workspace_id": "workspace-1",
+                        "workspace_icon": None,
+                        "pages": [
+                            {
+                                "page_name": "Page",
+                                "page_id": "page-1",
+                                "page_icon": {"type": "emoji", "url": None, "emoji": "P"},
+                                "parent_id": "parent-1",
+                                "type": "page",
+                            }
+                        ],
+                        "total": 1,
+                    },
+                    "link": "http://localhost/console/api/oauth/data-source/notion",
+                }
+            ]
         }
 
-    def test_get_no_bindings(self, app: Flask) -> None:
-        api = DataSourceApi()
-        method = inspect.unwrap(api.get)
+    def test_get_without_bindings_returns_empty_collection(
+        self,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        console_account_factory: ConsoleAccountFactory,
+        transactional_db_session: Session,
+    ) -> None:
+        _foreign_account, foreign_tenant = console_account_factory()
+        _create_binding(transactional_db_session, tenant_id=foreign_tenant.id)
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.data_source.db.session.scalars",
-                return_value=MagicMock(all=lambda: []),
-            ),
-        ):
-            response, status = method(api, "tenant-1")
+        response = authenticated_console_client.client.get(
+            "/console/api/data-source/integrates",
+            headers=authenticated_console_client.headers,
+        )
 
-        assert status == 200
-        assert response["data"] == []
+        assert response.status_code == 200
+        assert response.json == {"data": []}
 
-    def test_patch_enable_binding(self, app: Flask) -> None:
-        api = DataSourceApi()
-        method = inspect.unwrap(api.patch)
+    @pytest.mark.parametrize(("initially_disabled", "action"), [(True, "enable"), (False, "disable")])
+    def test_patch_persists_binding_state_change(
+        self,
+        initially_disabled: bool,
+        action: str,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        transactional_db_session: Session,
+        database_state: DatabaseState,
+    ) -> None:
+        binding = _create_binding(
+            transactional_db_session,
+            tenant_id=authenticated_console_client.tenant.id,
+            disabled=initially_disabled,
+        )
 
-        binding = MagicMock(id="b1", disabled=True)
-        session = MagicMock()
-        session.scalar.return_value = binding
+        response = authenticated_console_client.client.patch(
+            f"/console/api/data-source/integrates/{binding.id}/{action}",
+            headers=authenticated_console_client.headers,
+        )
 
-        with app.test_request_context("/"):
-            response, status = method(api, session, "tenant-1", "b1", "enable")
+        assert response.status_code == 200
+        assert response.json == {"result": "success"}
+        persisted = database_state.one(DataSourceOauthBinding, DataSourceOauthBinding.id == binding.id)
+        assert persisted.disabled is (not initially_disabled)
 
-        assert status == 200
-        assert binding.disabled is False
+    @pytest.mark.parametrize(("disabled", "action"), [(False, "enable"), (True, "disable")])
+    def test_patch_rejects_missing_foreign_and_noop_bindings(
+        self,
+        disabled: bool,
+        action: str,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        console_account_factory: ConsoleAccountFactory,
+        transactional_db_session: Session,
+        database_state: DatabaseState,
+    ) -> None:
+        _foreign_account, foreign_tenant = console_account_factory()
+        foreign_binding = _create_binding(transactional_db_session, tenant_id=foreign_tenant.id, disabled=disabled)
+        own_binding = _create_binding(
+            transactional_db_session,
+            tenant_id=authenticated_console_client.tenant.id,
+            disabled=disabled,
+        )
 
-    def test_patch_disable_binding(self, app: Flask) -> None:
-        api = DataSourceApi()
-        method = inspect.unwrap(api.patch)
+        foreign_response = authenticated_console_client.client.patch(
+            f"/console/api/data-source/integrates/{foreign_binding.id}/{action}",
+            headers=authenticated_console_client.headers,
+        )
+        noop_response = authenticated_console_client.client.patch(
+            f"/console/api/data-source/integrates/{own_binding.id}/{action}",
+            headers=authenticated_console_client.headers,
+        )
 
-        binding = MagicMock(id="b1", disabled=False)
-        session = MagicMock()
-        session.scalar.return_value = binding
-
-        with app.test_request_context("/"):
-            response, status = method(api, session, "tenant-1", "b1", "disable")
-
-        assert status == 200
-        assert binding.disabled is True
-
-    def test_patch_binding_not_found(self, app: Flask) -> None:
-        api = DataSourceApi()
-        method = inspect.unwrap(api.patch)
-        session = MagicMock()
-        session.scalar.return_value = None
-
-        with app.test_request_context("/"):
-            with pytest.raises(NotFound):
-                method(api, session, "tenant-1", "b1", "enable")
-
-    def test_patch_enable_already_enabled(self, app: Flask) -> None:
-        api = DataSourceApi()
-        method = inspect.unwrap(api.patch)
-
-        binding = MagicMock(id="b1", disabled=False)
-        session = MagicMock()
-        session.scalar.return_value = binding
-
-        with app.test_request_context("/"):
-            with pytest.raises(ValueError):
-                method(api, session, "tenant-1", "b1", "enable")
-
-    def test_patch_disable_already_disabled(self, app: Flask) -> None:
-        api = DataSourceApi()
-        method = inspect.unwrap(api.patch)
-
-        binding = MagicMock(id="b1", disabled=True)
-        session = MagicMock()
-        session.scalar.return_value = binding
-
-        with app.test_request_context("/"):
-            with pytest.raises(ValueError):
-                method(api, session, "tenant-1", "b1", "disable")
+        assert foreign_response.status_code == 404
+        assert noop_response.status_code == 400
+        persisted = database_state.one(DataSourceOauthBinding, DataSourceOauthBinding.id == own_binding.id)
+        assert persisted.disabled is disabled
 
 
 class TestDataSourceNotionListApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
-    def test_get_credential_not_found(self, app: Flask, current_user: Account) -> None:
-        api = DataSourceNotionListApi()
-        method = inspect.unwrap(api.get)
-
-        with (
-            app.test_request_context("/?credential_id=c1"),
-            patch(
-                "controllers.console.datasets.data_source.DatasourceProviderService.get_datasource_credentials",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, MagicMock(), "tenant-1", current_user)
-
-    def test_get_success_no_dataset_id(self, app: Flask, current_user: Account, mock_engine: None) -> None:
-        api = DataSourceNotionListApi()
-        method = inspect.unwrap(api.get)
-
-        page = MagicMock(
-            page_id="p1",
-            page_name="Page 1",
-            type="page",
-            parent_id="parent",
-            page_icon=None,
-        )
-
-        online_document_message = MagicMock(
-            result=[
-                MagicMock(
-                    workspace_id="w1",
-                    workspace_name="My Workspace",
-                    workspace_icon="icon",
-                    pages=[page],
-                )
-            ]
-        )
-
-        with (
-            app.test_request_context("/?credential_id=c1"),
-            patch(
-                "controllers.console.datasets.data_source.DatasourceProviderService.get_datasource_credentials",
-                return_value={"token": "t"},
-            ),
-            patch(
-                "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
-                return_value=MagicMock(
-                    get_online_document_pages=lambda **kw: iter([online_document_message]),
-                    datasource_provider_type=lambda: None,
-                ),
-            ),
-        ):
-            response, status = method(api, MagicMock(), "tenant-1", current_user)
-
-        assert status == 200
-
-    def test_get_success_with_dataset_id(
-        self, app: Flask, current_user: Account, mock_engine: None, db_session_with_containers: Session
+    def test_get_reports_bound_state_from_persisted_document(
+        self,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        transactional_db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        api = DataSourceNotionListApi()
-        method = inspect.unwrap(api.get)
-        tenant_id = str(uuid4())
-        dataset_id = str(uuid4())
+        _set_credentials(monkeypatch, {"integration_secret": "secret"})
+        _set_online_document_runtime(monkeypatch)
 
-        page = MagicMock(
-            page_id="p1",
-            page_name="Page 1",
-            type="page",
-            parent_id="parent",
-            page_icon=None,
+        unbound_response = authenticated_console_client.client.get(
+            "/console/api/notion/pre-import/pages?credential_id=credential-1",
+            headers=authenticated_console_client.headers,
+        )
+        dataset = _create_dataset(transactional_db_session, authenticated_console_client)
+        _create_document(transactional_db_session, authenticated_console_client, dataset)
+        bound_response = authenticated_console_client.client.get(
+            f"/console/api/notion/pre-import/pages?credential_id=credential-1&dataset_id={dataset.id}",
+            headers=authenticated_console_client.headers,
         )
 
-        online_document_message = MagicMock(
-            result=[
-                MagicMock(
-                    workspace_id="w1",
-                    workspace_name="My Workspace",
-                    workspace_icon="icon",
-                    pages=[page],
-                )
+        assert unbound_response.status_code == 200
+        assert bound_response.status_code == 200
+        assert unbound_response.json == {
+            "notion_info": [
+                {
+                    "workspace_id": "workspace-1",
+                    "workspace_name": "Workspace",
+                    "workspace_icon": "workspace-icon",
+                    "pages": [
+                        {
+                            "page_id": "page-1",
+                            "page_name": "Page One",
+                            "page_icon": None,
+                            "type": "page",
+                            "parent_id": "parent-1",
+                            "is_bound": False,
+                        }
+                    ],
+                }
             ]
+        }
+        assert bound_response.json == {
+            "notion_info": [
+                {
+                    "workspace_id": "workspace-1",
+                    "workspace_name": "Workspace",
+                    "workspace_icon": "workspace-icon",
+                    "pages": [
+                        {
+                            "page_id": "page-1",
+                            "page_name": "Page One",
+                            "page_icon": None,
+                            "type": "page",
+                            "parent_id": "parent-1",
+                            "is_bound": True,
+                        }
+                    ],
+                }
+            ]
+        }
+
+    def test_get_rejects_missing_credentials_and_invalid_datasets(
+        self,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        console_account_factory: ConsoleAccountFactory,
+        transactional_db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _set_credentials(monkeypatch, None)
+        missing_credential = authenticated_console_client.client.get(
+            "/console/api/notion/pre-import/pages?credential_id=missing",
+            headers=authenticated_console_client.headers,
         )
 
-        dataset = MagicMock(data_source_type="notion_import")
-        document = Document(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id,
-            position=1,
-            data_source_type=DataSourceType.NOTION_IMPORT,
-            data_source_info='{"notion_page_id": "p1"}',
-            batch=f"batch-{uuid4()}",
-            name="Notion Page",
-            created_from=DocumentCreatedFrom.WEB,
-            created_by=str(uuid4()),
-            indexing_status=IndexingStatus.COMPLETED,
-            enabled=True,
+        _set_credentials(monkeypatch, {"integration_secret": "secret"})
+        missing_dataset = authenticated_console_client.client.get(
+            f"/console/api/notion/pre-import/pages?credential_id=credential-1&dataset_id={uuid4()}",
+            headers=authenticated_console_client.headers,
         )
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        wrong_type = _create_dataset(
+            transactional_db_session,
+            authenticated_console_client,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+        )
+        wrong_type_response = authenticated_console_client.client.get(
+            f"/console/api/notion/pre-import/pages?credential_id=credential-1&dataset_id={wrong_type.id}",
+            headers=authenticated_console_client.headers,
+        )
+        foreign_account, foreign_tenant = console_account_factory()
+        foreign_client = AuthenticatedConsoleClient(
+            client=authenticated_console_client.client,
+            headers=authenticated_console_client.headers,
+            account=foreign_account,
+            tenant=foreign_tenant,
+        )
+        foreign_dataset = _create_dataset(transactional_db_session, foreign_client)
+        foreign_response = authenticated_console_client.client.get(
+            f"/console/api/notion/pre-import/pages?credential_id=credential-1&dataset_id={foreign_dataset.id}",
+            headers=authenticated_console_client.headers,
+        )
 
-        with (
-            app.test_request_context(f"/?credential_id=c1&dataset_id={dataset_id}"),
-            patch(
-                "controllers.console.datasets.data_source.DatasourceProviderService.get_datasource_credentials",
-                return_value={"token": "t"},
-            ),
-            patch(
-                "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
-                return_value=MagicMock(
-                    get_online_document_pages=lambda **kw: iter([online_document_message]),
-                    datasource_provider_type=lambda: None,
-                ),
-            ),
-        ):
-            response, status = method(api, db_session_with_containers, tenant_id, current_user)
-
-        assert status == 200
-
-    def test_get_invalid_dataset_type(self, app: Flask, current_user: Account, mock_engine: None) -> None:
-        api = DataSourceNotionListApi()
-        method = inspect.unwrap(api.get)
-
-        dataset = MagicMock(data_source_type="other_type")
-
-        with (
-            app.test_request_context("/?credential_id=c1&dataset_id=ds1"),
-            patch(
-                "controllers.console.datasets.data_source.DatasourceProviderService.get_datasource_credentials",
-                return_value={"token": "t"},
-            ),
-            patch(
-                "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api, MagicMock(), "tenant-1", current_user)
+        assert missing_credential.status_code == 404
+        assert missing_dataset.status_code == 404
+        assert wrong_type_response.status_code == 400
+        assert foreign_response.status_code == 404
 
 
 class TestDataSourceNotionPreviewApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def test_get_returns_extracted_content_and_rejects_missing_credentials(
+        self,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        page_id = uuid4()
 
-    def test_get_preview_success(self, app: Flask) -> None:
-        api = DataSourceNotionPreviewApi()
-        method = inspect.unwrap(api.get)
+        class FakeNotionExtractor:
+            def __init__(self, **kwargs: object) -> None:
+                assert kwargs["notion_obj_id"] == str(page_id)
+                assert kwargs["notion_access_token"] == "secret"
 
-        extractor = MagicMock(extract=lambda: [MagicMock(page_content="hello")])
+            def extract(self) -> list[RagDocument]:
+                return [RagDocument(page_content="first"), RagDocument(page_content="second")]
 
-        with (
-            app.test_request_context("/?credential_id=c1"),
-            patch(
-                "controllers.console.datasets.data_source.DatasourceProviderService.get_datasource_credentials",
-                return_value={"integration_secret": "t"},
-            ),
-            patch(
-                "controllers.console.datasets.data_source.NotionExtractor",
-                return_value=extractor,
-            ),
-        ):
-            response, status = method(api, "tenant-1", "p1", "page")
+        _set_credentials(monkeypatch, {"integration_secret": "secret"})
+        monkeypatch.setattr(data_source, "NotionExtractor", FakeNotionExtractor)
+        response = authenticated_console_client.client.get(
+            f"/console/api/notion/pages/{page_id}/page/preview?credential_id=credential-1",
+            headers=authenticated_console_client.headers,
+        )
 
-        assert status == 200
+        _set_credentials(monkeypatch, None)
+        missing_credential = authenticated_console_client.client.get(
+            f"/console/api/notion/pages/{page_id}/page/preview?credential_id=missing",
+            headers=authenticated_console_client.headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json == {"content": "first\nsecond"}
+        assert missing_credential.status_code == 404
 
 
 class TestDataSourceNotionIndexingEstimateApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def test_post_validates_payload_and_returns_indexing_contract(
+        self,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        observed: dict[str, object] = {}
 
-    def test_post_indexing_estimate_success(self, app: Flask) -> None:
-        api = DataSourceNotionIndexingEstimateApi()
-        method = inspect.unwrap(api.post)
+        def indexing_estimate(_self: object, **kwargs: object) -> IndexingEstimate:
+            observed.update(kwargs)
+            return IndexingEstimate(total_segments=1, preview=[PreviewDetail(content="preview")])
 
-        empty_rules: dict[str, object] = {}
-        payload: dict[str, object] = {
-            "notion_info_list": [
-                {
-                    "workspace_id": "w1",
-                    "credential_id": "c1",
-                    "pages": [{"page_id": "p1", "type": "page"}],
-                }
-            ],
-            "process_rule": {"rules": empty_rules},
-            "doc_form": IndexStructureType.PARAGRAPH_INDEX,
-            "doc_language": "English",
+        monkeypatch.setattr(data_source.IndexingRunner, "indexing_estimate", indexing_estimate)
+        response = authenticated_console_client.client.post(
+            "/console/api/datasets/notion-indexing-estimate",
+            headers=authenticated_console_client.headers,
+            json={
+                "notion_info_list": [
+                    {
+                        "workspace_id": "workspace-1",
+                        "credential_id": "credential-1",
+                        "pages": [{"page_id": "page-1", "type": "page"}],
+                    }
+                ],
+                "process_rule": {"mode": "automatic"},
+                "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+                "doc_language": "English",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json == {
+            "total_segments": 1,
+            "preview": [{"content": "preview", "summary": None, "child_chunks": None}],
+            "qa_preview": None,
         }
-
-        with (
-            app.test_request_context("/", method="POST", json=payload, headers={"Content-Type": "application/json"}),
-            patch(
-                "controllers.console.datasets.data_source.DocumentService.estimate_args_validate",
-            ),
-            patch(
-                "controllers.console.datasets.data_source.IndexingRunner.indexing_estimate",
-                return_value=MagicMock(model_dump=lambda: {"total_pages": 1}),
-            ),
-        ):
-            response, status = method(api, MagicMock(), "tenant-1")
-
-        assert status == 200
+        assert observed["tenant_id"] == authenticated_console_client.tenant.id
+        extract_settings = observed["extract_settings"]
+        assert isinstance(extract_settings, list)
+        assert extract_settings[0].notion_info.notion_obj_id == "page-1"
 
 
 class TestDataSourceNotionDatasetSyncApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def test_get_dispatches_only_persisted_enabled_documents(
+        self,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        transactional_db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        dataset = _create_dataset(transactional_db_session, authenticated_console_client)
+        enabled_document = _create_document(transactional_db_session, authenticated_console_client, dataset)
+        _create_document(transactional_db_session, authenticated_console_client, dataset, enabled=False)
+        task = _TaskRecorder()
+        monkeypatch.setattr(data_source, "document_indexing_sync_task", task)
 
-    def test_get_success(self, app: Flask) -> None:
-        api = DataSourceNotionDatasetSyncApi()
-        method = inspect.unwrap(api.get)
+        response = authenticated_console_client.client.get(
+            f"/console/api/datasets/{dataset.id}/notion/sync",
+            headers=authenticated_console_client.headers,
+        )
+        missing = authenticated_console_client.client.get(
+            f"/console/api/datasets/{uuid4()}/notion/sync",
+            headers=authenticated_console_client.headers,
+        )
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.data_source.DocumentService.get_document_by_dataset_id",
-                return_value=[MagicMock(id="d1")],
-            ),
-            patch(
-                "controllers.console.datasets.data_source.document_indexing_sync_task.delay",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, MagicMock(), "ds-1")
-
-        assert status == 200
-
-    def test_get_dataset_not_found(self, app: Flask) -> None:
-        api = DataSourceNotionDatasetSyncApi()
-        method = inspect.unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, MagicMock(), "ds-1")
+        assert response.status_code == 200
+        assert response.json == {"result": "success"}
+        assert task.calls == [(dataset.id, enabled_document.id)]
+        assert missing.status_code == 404
 
 
 class TestDataSourceNotionDocumentSyncApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def test_get_dispatches_persisted_document_and_rejects_missing_resources(
+        self,
+        authenticated_console_client: AuthenticatedConsoleClient,
+        transactional_db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        dataset = _create_dataset(transactional_db_session, authenticated_console_client)
+        document = _create_document(transactional_db_session, authenticated_console_client, dataset)
+        task = _TaskRecorder()
+        monkeypatch.setattr(data_source, "document_indexing_sync_task", task)
 
-    def test_get_success(self, app: Flask) -> None:
-        api = DataSourceNotionDocumentSyncApi()
-        method = inspect.unwrap(api.get)
+        response = authenticated_console_client.client.get(
+            f"/console/api/datasets/{dataset.id}/documents/{document.id}/notion/sync",
+            headers=authenticated_console_client.headers,
+        )
+        missing_document = authenticated_console_client.client.get(
+            f"/console/api/datasets/{dataset.id}/documents/{uuid4()}/notion/sync",
+            headers=authenticated_console_client.headers,
+        )
+        missing_dataset = authenticated_console_client.client.get(
+            f"/console/api/datasets/{uuid4()}/documents/{uuid4()}/notion/sync",
+            headers=authenticated_console_client.headers,
+        )
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.data_source.DocumentService.get_document",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.data_source.document_indexing_sync_task.delay",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, MagicMock(), "ds-1", "doc-1")
-
-        assert status == 200
-
-    def test_get_document_not_found(self, app: Flask) -> None:
-        api = DataSourceNotionDocumentSyncApi()
-        method = inspect.unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.data_source.DocumentService.get_document",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, MagicMock(), "ds-1", "doc-1")
+        assert response.status_code == 200
+        assert response.json == {"result": "success"}
+        assert task.calls == [(dataset.id, document.id)]
+        assert missing_document.status_code == 404
+        assert missing_dataset.status_code == 404

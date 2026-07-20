@@ -2,7 +2,8 @@
 
 import uuid
 from collections.abc import Callable
-from typing import cast
+from dataclasses import dataclass
+from typing import Protocol, cast
 
 from flask.testing import FlaskClient
 from sqlalchemy import select
@@ -14,8 +15,35 @@ from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
 from models import Account, DifySetup, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode
 from services.account_service import AccountService
+
+
+class ConsoleAccountFactory(Protocol):
+    def __call__(self, *, role: TenantAccountRole = TenantAccountRole.OWNER) -> tuple[Account, Tenant]: ...
+
+
+class ConsoleAppFactory(Protocol):
+    def __call__(self, mode: AppMode = AppMode.CHAT) -> App: ...
+
+
+@dataclass(frozen=True)
+class AuthenticatedConsoleClient:
+    client: FlaskClient
+    headers: dict[str, str]
+    account: Account
+    tenant: Tenant
+
+
+@dataclass(frozen=True)
+class AuthenticatedConsoleAppClient(AuthenticatedConsoleClient):
+    app: App
+
+
+@dataclass(frozen=True)
+class AuthenticatedConsoleAgentClient(AuthenticatedConsoleAppClient):
+    agent: Agent
 
 
 def ensure_dify_setup(db_session: Session) -> None:
@@ -27,7 +55,11 @@ def ensure_dify_setup(db_session: Session) -> None:
     db_session.commit()
 
 
-def create_console_account_and_tenant(db_session: Session) -> tuple[Account, Tenant]:
+def create_console_account_and_tenant(
+    db_session: Session,
+    *,
+    role: TenantAccountRole = TenantAccountRole.OWNER,
+) -> tuple[Account, Tenant]:
     """Create an initialized owner account with a current tenant."""
     account = Account(
         email=f"test-{uuid.uuid4()}@example.com",
@@ -47,7 +79,7 @@ def create_console_account_and_tenant(db_session: Session) -> tuple[Account, Ten
         TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER,
+            role=role,
             current=True,
         )
     )
@@ -74,6 +106,24 @@ def create_console_app(db_session: Session, tenant_id: str, account_id: str, mod
     db_session.add(app)
     db_session.commit()
     return app
+
+
+def create_console_agent(db_session: Session, app: App, account_id: str) -> Agent:
+    agent = Agent(
+        tenant_id=app.tenant_id,
+        name=f"Test Agent {uuid.uuid4()}",
+        description="",
+        role="",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        app_id=app.id,
+        created_by=account_id,
+        updated_by=account_id,
+    )
+    db_session.add(agent)
+    db_session.commit()
+    return agent
 
 
 def authenticate_console_client(test_client: FlaskClient, account: Account) -> dict[str, str]:

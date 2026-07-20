@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
 from models.source import DataSourceApiKeyAuthBinding
+from services.auth.api_key_auth_base import AuthCredentials
 from services.auth.api_key_auth_service import ApiKeyAuthService
 from services.auth.auth_type import AuthType
 
@@ -33,25 +34,25 @@ class TestAuthIntegration:
         return "search"
 
     @pytest.fixture
-    def firecrawl_credentials(self) -> dict:
+    def firecrawl_credentials(self) -> AuthCredentials:
         return {"auth_type": "bearer", "config": {"api_key": "fc_test_key_123"}}
 
     @pytest.fixture
-    def jina_credentials(self) -> dict:
+    def jina_credentials(self) -> AuthCredentials:
         return {"auth_type": "bearer", "config": {"api_key": "jina_test_key_456"}}
 
     @patch("services.auth.firecrawl.firecrawl.httpx.post")
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token")
     def test_end_to_end_auth_flow(
         self,
-        mock_encrypt,
-        mock_http,
+        mock_encrypt: Mock,
+        mock_http: Mock,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
-        tenant_id_1,
-        category,
-        firecrawl_credentials,
-    ):
+        tenant_id_1: str,
+        category: str,
+        firecrawl_credentials: AuthCredentials,
+    ) -> None:
         mock_http.return_value = self._create_success_response()
         mock_encrypt.return_value = "encrypted_fc_test_key_123"
 
@@ -63,7 +64,11 @@ class TestAuthIntegration:
         assert "https://api.firecrawl.dev/v1/crawl" in call_args[0][0]
         assert call_args[1]["headers"]["Authorization"] == "Bearer fc_test_key_123"
 
-        mock_encrypt.assert_called_once_with(tenant_id_1, "fc_test_key_123")
+        mock_encrypt.assert_called_once_with(
+            tenant_id_1,
+            "fc_test_key_123",
+            session=db_session_with_containers,
+        )
 
         db_session_with_containers.expire_all()
         bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id_1).all()
@@ -75,17 +80,17 @@ class TestAuthIntegration:
     @patch("services.auth.jina.jina._http_client.post")
     def test_multi_tenant_isolation(
         self,
-        mock_jina_http,
-        mock_fc_http,
-        mock_encrypt,
+        mock_jina_http: Mock,
+        mock_fc_http: Mock,
+        mock_encrypt: Mock,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
-        tenant_id_1,
-        tenant_id_2,
-        category,
-        firecrawl_credentials,
-        jina_credentials,
-    ):
+        tenant_id_1: str,
+        tenant_id_2: str,
+        category: str,
+        firecrawl_credentials: AuthCredentials,
+        jina_credentials: AuthCredentials,
+    ) -> None:
         mock_fc_http.return_value = self._create_success_response()
         mock_jina_http.return_value = self._create_success_response()
         mock_encrypt.return_value = "encrypted_key"
@@ -107,8 +112,12 @@ class TestAuthIntegration:
         assert result2[0].tenant_id == tenant_id_2
 
     def test_cross_tenant_access_prevention(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id_2, category
-    ):
+        self,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        tenant_id_2: str,
+        category: str,
+    ) -> None:
         result = ApiKeyAuthService.get_auth_credentials(
             tenant_id_2, category, AuthType.FIRECRAWL, session=db_session_with_containers
         )
@@ -119,21 +128,21 @@ class TestAuthIntegration:
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token", return_value="encrypted_key")
     def test_concurrent_creation_safety(
         self,
-        mock_encrypt,
-        mock_http,
+        mock_encrypt: Mock,
+        mock_http: Mock,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
-        tenant_id_1,
-        category,
-        firecrawl_credentials,
-    ):
+        tenant_id_1: str,
+        category: str,
+        firecrawl_credentials: AuthCredentials,
+    ) -> None:
         app = flask_app_with_containers
         mock_http.return_value = self._create_success_response()
 
-        results = []
-        exceptions = []
+        results: list[str] = []
+        exceptions: list[Exception] = []
 
-        def create_auth():
+        def create_auth() -> None:
             try:
                 with app.app_context():
                     thread_args = {
@@ -157,13 +166,13 @@ class TestAuthIntegration:
     @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_network_failure_recovery(
         self,
-        mock_http,
+        mock_http: Mock,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
-        tenant_id_1,
-        category,
-        firecrawl_credentials,
-    ):
+        tenant_id_1: str,
+        category: str,
+        firecrawl_credentials: AuthCredentials,
+    ) -> None:
         mock_http.side_effect = httpx.RequestError("Network timeout")
 
         args = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
@@ -179,14 +188,14 @@ class TestAuthIntegration:
     @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_get_auth_credentials_returns_stored_credentials(
         self,
-        mock_http,
-        mock_encrypt,
+        mock_http: Mock,
+        mock_encrypt: Mock,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
-        tenant_id_1,
-        category,
-        firecrawl_credentials,
-    ):
+        tenant_id_1: str,
+        category: str,
+        firecrawl_credentials: AuthCredentials,
+    ) -> None:
         mock_http.return_value = self._create_success_response()
         mock_encrypt.return_value = "encrypted_key"
 
@@ -201,7 +210,7 @@ class TestAuthIntegration:
         assert result is not None
         assert result["config"]["api_key"] == "encrypted_key"
 
-    def _create_success_response(self, status_code=200):
+    def _create_success_response(self, status_code: int = 200) -> Mock:
         mock_response = Mock()
         mock_response.status_code = status_code
         mock_response.json.return_value = {"status": "success"}

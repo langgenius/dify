@@ -2,10 +2,11 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from extensions.ext_database import db
+from controllers.common.session import with_session
 from fields.base import ResponseModel
 from libs.login import login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
@@ -58,8 +59,9 @@ class ApiKeyAuthDataSource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
-        data_source_api_key_bindings = ApiKeyAuthService.get_provider_auth_list(current_tenant_id, session=db.session())
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str):
+        data_source_api_key_bindings = ApiKeyAuthService.get_provider_auth_list(current_tenant_id, session=session)
         if data_source_api_key_bindings:
             return {
                 "sources": [
@@ -87,13 +89,14 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str):
         # The role of the current user in the table must be admin or owner
         payload = ApiKeyAuthBindingPayload.model_validate(console_ns.payload)
         data = payload.model_dump()
         ApiKeyAuthService.validate_api_key_auth_args(data)
         try:
-            ApiKeyAuthService.create_provider_auth(current_tenant_id, data, session=db.session())
+            ApiKeyAuthService.create_provider_auth(current_tenant_id, data, session=session)
         except Exception as e:
             raise ApiKeyAuthFailedError(str(e))
         return {"result": "success"}, 200
@@ -108,8 +111,9 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @console_ns.response(204, "Binding deleted successfully")
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, binding_id: UUID):
+    @with_session
+    def delete(self, session: Session, current_tenant_id: str, binding_id: UUID):
         # The role of the current user in the table must be admin or owner
-        ApiKeyAuthService.delete_provider_auth(current_tenant_id, str(binding_id), session=db.session())
+        ApiKeyAuthService.delete_provider_auth(current_tenant_id, str(binding_id), session=session)
 
         return "", 204

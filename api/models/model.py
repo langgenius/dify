@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, foreign, mapped_column
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -1194,9 +1194,19 @@ class Conversation(Base):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
+    messages = db.relationship(
+        lambda: Message,
+        primaryjoin=lambda: Conversation.id == foreign(Message.conversation_id),
+        backref="conversation",
+        lazy="select",
+        passive_deletes="all",
+    )
     message_annotations = db.relationship(
-        lambda: MessageAnnotation, backref="conversation", lazy="select", passive_deletes="all"
+        lambda: MessageAnnotation,
+        primaryjoin=lambda: Conversation.id == foreign(MessageAnnotation.conversation_id),
+        backref="conversation",
+        lazy="select",
+        passive_deletes="all",
     )
 
     is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
@@ -1521,7 +1531,8 @@ class Message(Base):
     model_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
     model_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     override_model_configs: Mapped[str | None] = mapped_column(LongText)
-    conversation_id: Mapped[str] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), nullable=False)
+    # Conversation rows are deleted before their related data is cleaned asynchronously.
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
     query: Mapped[str] = mapped_column(LongText, nullable=False)
     message: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
@@ -2017,7 +2028,8 @@ class MessageAnnotation(TypeBase):
     content: Mapped[str] = mapped_column(LongText, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), init=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), default=None)
+    # Conversation rows are deleted before their related data is cleaned asynchronously.
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
     message_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False

@@ -1,24 +1,27 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from inspect import unwrap
-from uuid import uuid4
+from datetime import UTC, datetime
 
 import pytest
-from flask import Flask
+from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
-from controllers.openapi._models import SessionListQuery
-from controllers.openapi.account import (
-    AccountSessionByIdApi,
-    AccountSessionsApi,
-    AccountSessionsSelfApi,
-)
 from extensions.ext_redis import redis_client
-from models import Account
+from models import Account, OAuthAccessToken
 from services.oauth_device_flow import PREFIX_OAUTH_ACCOUNT, MintResult, mint_oauth_token
-from tests.test_containers_integration_tests.controllers.openapi.conftest import account_auth_context, auth_for
+from tests.test_containers_integration_tests.controllers.openapi.conftest import BearerFactory
+from tests.test_containers_integration_tests.helpers import DatabaseState
+
+pytestmark = pytest.mark.requires_redis
+
+
+def _iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.isoformat().replace("+00:00", "Z")
 
 
 def _mint_account_token(
@@ -28,12 +31,11 @@ def _mint_account_token(
     client_id: str = "integration-cli",
     device_label: str = "Test Device",
 ) -> MintResult:
-    """Mint a real, persisted ``dfoa_`` access token for ``account``."""
     return mint_oauth_token(
         redis_client,
         subject_email=account.email,
         subject_issuer=None,
-        account_id=str(account.id),
+        account_id=account.id,
         client_id=client_id,
         device_label=device_label,
         prefix=PREFIX_OAUTH_ACCOUNT,
@@ -42,115 +44,129 @@ def _mint_account_token(
     )
 
 
+def _session_contract(token: OAuthAccessToken) -> dict[str, object]:
+    return {
+        "id": token.id,
+        "prefix": token.prefix,
+        "client_id": token.client_id,
+        "device_label": token.device_label,
+        "created_at": _iso(token.created_at),
+        "last_used_at": _iso(token.last_used_at),
+        "expires_at": _iso(token.expires_at),
+    }
+
+
 class TestSessionList:
     def test_lists_active_session(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+        self,
+        test_client_with_containers: FlaskClient,
+        transactional_db_session: Session,
+        make_transactional_account: Callable[..., Account],
+        database_state: DatabaseState,
     ) -> None:
-        account = make_account()
-        mint = _mint_account_token(db_session_with_containers, account, device_label="Laptop")
+        account = make_transactional_account()
+        mint = _mint_account_token(transactional_db_session, account, device_label="Laptop")
 
-        api = AccountSessionsApi()
-        with app.test_request_context("/openapi/v1/account/sessions"):
-            with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(api.get)(
-                    api,
-                    db_session_with_containers,
-                    auth_data=auth_for(account, token_id=mint.token_id),
-                    query=SessionListQuery(),
-                )
+        response = test_client_with_containers.get(
+            "/openapi/v1/account/sessions", headers={"Authorization": f"Bearer {mint.token}"}
+        )
 
-        assert result.total == 1
-        row = result.data[0]
-        assert row.id == str(mint.token_id)
-        assert row.prefix == PREFIX_OAUTH_ACCOUNT
-        assert row.device_label == "Laptop"
+        assert response.status_code == 200
+        result = response.get_json()
+        assert result["page"] == 1
+        assert result["limit"] == 100
+        assert result["total"] == 1
+        assert result["has_more"] is False
+        persisted = database_state.one(OAuthAccessToken, OAuthAccessToken.id == mint.token_id)
+        assert result["data"] == [_session_contract(persisted)]
 
     def test_excludes_other_accounts_sessions(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+        self,
+        test_client_with_containers: FlaskClient,
+        transactional_db_session: Session,
+        make_transactional_account: Callable[..., Account],
+        database_state: DatabaseState,
     ) -> None:
-        """Sessions are subject-scoped: another account's token must not appear."""
-        account = make_account()
-        other = make_account()
-        mine = _mint_account_token(db_session_with_containers, account)
-        _mint_account_token(db_session_with_containers, other)
+        account = make_transactional_account()
+        other = make_transactional_account()
+        mine = _mint_account_token(transactional_db_session, account)
+        _mint_account_token(transactional_db_session, other)
 
-        api = AccountSessionsApi()
-        with app.test_request_context("/openapi/v1/account/sessions"):
-            with account_auth_context(account, token_id=mine.token_id):
-                result = unwrap(api.get)(
-                    api,
-                    db_session_with_containers,
-                    auth_data=auth_for(account, token_id=mine.token_id),
-                    query=SessionListQuery(),
-                )
+        response = test_client_with_containers.get(
+            "/openapi/v1/account/sessions", headers={"Authorization": f"Bearer {mine.token}"}
+        )
 
-        assert {row.id for row in result.data} == {str(mine.token_id)}
+        assert response.status_code == 200
+        result = response.get_json()
+        persisted = database_state.one(OAuthAccessToken, OAuthAccessToken.id == mine.token_id)
+        assert result == {
+            "page": 1,
+            "limit": 100,
+            "total": 1,
+            "has_more": False,
+            "data": [_session_contract(persisted)],
+        }
 
 
 class TestSessionRevoke:
-    def test_revoke_self_removes_from_active_list(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+    def test_revoke_self_persists(
+        self,
+        test_client_with_containers: FlaskClient,
+        transactional_db_session: Session,
+        make_transactional_account: Callable[..., Account],
+        database_state: DatabaseState,
     ) -> None:
-        account = make_account()
-        mint = _mint_account_token(db_session_with_containers, account)
+        account = make_transactional_account()
+        mint = _mint_account_token(transactional_db_session, account)
 
-        revoke_api = AccountSessionsSelfApi()
-        with app.test_request_context("/openapi/v1/account/sessions/self", method="DELETE"):
-            with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(revoke_api.delete)(
-                    revoke_api, db_session_with_containers, auth_data=auth_for(account, token_id=mint.token_id)
-                )
+        response = test_client_with_containers.delete(
+            "/openapi/v1/account/sessions/self", headers={"Authorization": f"Bearer {mint.token}"}
+        )
 
-        assert result.status == "revoked"
-
-        # Revocation persisted: the real list path no longer returns it.
-        list_api = AccountSessionsApi()
-        with app.test_request_context("/openapi/v1/account/sessions"):
-            with account_auth_context(account, token_id=mint.token_id):
-                listing = unwrap(list_api.get)(
-                    list_api,
-                    db_session_with_containers,
-                    auth_data=auth_for(account, token_id=mint.token_id),
-                    query=SessionListQuery(),
-                )
-        assert listing.total == 0
+        assert response.status_code == 200
+        assert response.get_json() == {"status": "revoked"}
+        persisted = database_state.one(OAuthAccessToken, OAuthAccessToken.id == mint.token_id)
+        assert persisted.revoked_at is not None
 
     def test_revoke_by_id_for_own_session(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+        self,
+        test_client_with_containers: FlaskClient,
+        transactional_db_session: Session,
+        make_transactional_account: Callable[..., Account],
+        account_bearer_factory: BearerFactory,
+        database_state: DatabaseState,
     ) -> None:
-        account = make_account()
-        mint = _mint_account_token(db_session_with_containers, account)
-        session_id = str(mint.token_id)
+        account = make_transactional_account()
+        caller_headers, _caller = account_bearer_factory(account)
+        target = _mint_account_token(transactional_db_session, account, client_id="target-client")
 
-        api = AccountSessionByIdApi()
-        with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
-            with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(api.delete)(
-                    api,
-                    db_session_with_containers,
-                    session_id=session_id,
-                    auth_data=auth_for(account, token_id=mint.token_id),
-                )
+        response = test_client_with_containers.delete(
+            f"/openapi/v1/account/sessions/{target.token_id}", headers=caller_headers
+        )
 
-        assert result.status == "revoked"
+        assert response.status_code == 200
+        assert response.get_json() == {"status": "revoked"}
+        persisted = database_state.one(OAuthAccessToken, OAuthAccessToken.id == target.token_id)
+        assert persisted.revoked_at is not None
 
     def test_revoke_foreign_session_is_404(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+        self,
+        test_client_with_containers: FlaskClient,
+        transactional_db_session: Session,
+        make_transactional_account: Callable[..., Account],
+        account_bearer_factory: BearerFactory,
+        database_state: DatabaseState,
     ) -> None:
-        """A token id owned by another subject must be indistinguishable from a
-        missing one (404), so token ids can't be probed across subjects."""
-        owner = make_account()
-        outsider = make_account()
-        foreign = _mint_account_token(db_session_with_containers, owner)
+        owner = make_transactional_account()
+        outsider = make_transactional_account()
+        foreign = _mint_account_token(transactional_db_session, owner)
+        outsider_headers, _outsider = account_bearer_factory(outsider)
 
-        api = AccountSessionByIdApi()
-        session_id = str(foreign.token_id)
-        with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
-            with account_auth_context(outsider, token_id=uuid4()):
-                with pytest.raises(NotFound):
-                    unwrap(api.delete)(
-                        api,
-                        db_session_with_containers,
-                        session_id=session_id,
-                        auth_data=auth_for(outsider, token_id=uuid4()),
-                    )
+        response = test_client_with_containers.delete(
+            f"/openapi/v1/account/sessions/{foreign.token_id}", headers=outsider_headers
+        )
+
+        assert response.status_code == 404
+        assert response.get_json()["message"] == "session not found"
+        persisted = database_state.one(OAuthAccessToken, OAuthAccessToken.id == foreign.token_id)
+        assert persisted.revoked_at is None

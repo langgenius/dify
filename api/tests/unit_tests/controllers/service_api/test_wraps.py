@@ -24,7 +24,6 @@ from enums.cloud_plan import CloudPlan
 from models.account import TenantStatus
 from models.model import ApiToken
 from tests.unit_tests.conftest import (
-    setup_mock_dataset_owner_execute_result,
     setup_mock_tenant_owner_execute_result,
 )
 
@@ -157,7 +156,7 @@ class TestValidateAppToken:
 
         # Act
         with app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}):
-            result = protected_view()
+            result = protected_view()  # pyrefly: ignore[missing-argument]
 
         # Assert
         assert result["success"] is True
@@ -515,10 +514,17 @@ class TestValidateDatasetToken:
         return app
 
     @patch("controllers.service_api.wraps.user_logged_in")
-    @patch("controllers.service_api.wraps.db")
+    @patch("controllers.service_api.wraps.session_factory.create_session")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.current_app")
-    def test_valid_dataset_token(self, mock_current_app, mock_validate_token, mock_db, mock_user_logged_in, app: Flask):
+    def test_valid_dataset_token(
+        self,
+        mock_current_app,
+        mock_validate_token,
+        mock_create_session,
+        mock_user_logged_in,
+        app: Flask,
+    ):
         """Test that valid dataset token allows access."""
         # Arrange
         _configure_current_app_mock(mock_current_app)
@@ -539,11 +545,9 @@ class TestValidateDatasetToken:
         mock_account.id = mock_ta.account_id
         mock_account.current_tenant = mock_tenant
 
-        # Mock the tenant account join query (execute(select(...)).one_or_none())
-        setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_ta)
-
-        # Mock the account lookup via session.get()
-        mock_db.session.get.return_value = mock_account
+        mock_session = mock_create_session.return_value.__enter__.return_value
+        mock_session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_ta)
+        mock_session.get.return_value = mock_account
 
         @validate_dataset_token
         def protected_view(tenant_id):
@@ -556,17 +560,20 @@ class TestValidateDatasetToken:
         # Assert
         assert result["success"] is True
         assert result["tenant_id"] == tenant_id
+        mock_create_session.assert_called_once_with()
+        mock_account.set_current_tenant_with_session.assert_called_once_with(mock_tenant, session=mock_session)
 
-    @patch("controllers.service_api.wraps.db")
+    @patch("controllers.service_api.wraps.session_factory.create_session")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    def test_dataset_not_found_raises_not_found(self, mock_validate_token, mock_db, app: Flask):
+    def test_dataset_not_found_raises_not_found(self, mock_validate_token, mock_create_session, app: Flask):
         """Test that NotFound is raised when dataset doesn't exist."""
         # Arrange
         mock_api_token = Mock()
         mock_api_token.tenant_id = str(uuid.uuid4())
         mock_validate_token.return_value = mock_api_token
 
-        mock_db.session.scalar.return_value = None
+        mock_session = mock_create_session.return_value.__enter__.return_value
+        mock_session.scalar.return_value = None
 
         @validate_dataset_token
         def protected_view(dataset_id=None, **kwargs):
@@ -577,6 +584,7 @@ class TestValidateDatasetToken:
             with pytest.raises(NotFound) as exc_info:
                 protected_view(dataset_id=str(uuid.uuid4()))
             assert "Dataset not found" in str(exc_info.value)
+        mock_create_session.assert_called_once_with()
 
 
 class TestFetchUserArg:
