@@ -833,6 +833,19 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
       enterprise: {
+        webAppAuth: {
+          updateWebAppWhitelistSubjects: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _result, context) => {
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
+                  consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
+                  consoleQuery.agent.byAgentId.get.key(),
+                ])
+              },
+            },
+          },
+        },
         appInstanceService: {
           createAppInstance: {
             mutationOptions: {

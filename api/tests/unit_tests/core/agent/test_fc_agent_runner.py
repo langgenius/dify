@@ -1,9 +1,12 @@
 import json
+from collections.abc import Iterator
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
@@ -69,7 +72,7 @@ class DummyResult:
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture):
+def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCallAgentRunner]:
     # Completely bypass BaseAgentRunner __init__ to avoid DB / Flask context
     mocker.patch(
         "core.agent.base_agent_runner.BaseAgentRunner.__init__",
@@ -131,7 +134,7 @@ def runner(mocker: MockerFixture):
     runner._current_thoughts = []
     runner.files = []
     runner.agent_callback = MagicMock()
-    runner.session = MagicMock()
+    runner.session = Session(sqlite_engine)
 
     runner._init_prompt_tools = MagicMock(return_value=({}, []))
     runner.create_agent_thought = MagicMock(return_value="thought1")
@@ -139,7 +142,10 @@ def runner(mocker: MockerFixture):
     runner.recalc_llm_max_tokens = MagicMock()
     runner.update_prompt_message_tool = MagicMock()
 
-    return runner
+    try:
+        yield runner
+    finally:
+        runner.session.close()
 
 
 # ==============================

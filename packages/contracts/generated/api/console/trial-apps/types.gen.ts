@@ -64,6 +64,24 @@ export type TrialDatasetListResponse = {
   total: number
 }
 
+export type FileResponse = {
+  conversation_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  extension?: string | null
+  file_key?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  original_url?: string | null
+  preview_url?: string | null
+  reference?: string | null
+  size: number
+  source_url?: string | null
+  tenant_id?: string | null
+  user_id?: string | null
+}
+
 export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
@@ -81,6 +99,21 @@ export type Parameters = {
   system_parameters: SystemParameters
   text_to_speech: JsonObject
   user_input_form: Array<JsonObject>
+}
+
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type FileWithSignedUrl = {
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  url: string | null
 }
 
 export type Site = {
@@ -378,6 +411,25 @@ export type GetTrialAppsByAppIdDatasetsResponses = {
 export type GetTrialAppsByAppIdDatasetsResponse =
   GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
 
+export type PostTrialAppsByAppIdFilesUploadData = {
+  body: {
+    file: Blob | File
+    source?: 'datasets'
+  }
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/files/upload'
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponses = {
+  201: FileResponse
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponse =
+  PostTrialAppsByAppIdFilesUploadResponses[keyof PostTrialAppsByAppIdFilesUploadResponses]
+
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
   path: {
@@ -410,6 +462,22 @@ export type GetTrialAppsByAppIdParametersResponses = {
 
 export type GetTrialAppsByAppIdParametersResponse =
   GetTrialAppsByAppIdParametersResponses[keyof GetTrialAppsByAppIdParametersResponses]
+
+export type PostTrialAppsByAppIdRemoteFilesUploadData = {
+  body: RemoteFileUploadPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/remote-files/upload'
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponse =
+  PostTrialAppsByAppIdRemoteFilesUploadResponses[keyof PostTrialAppsByAppIdRemoteFilesUploadResponses]
 
 export type GetTrialAppsByAppIdSiteData = {
   body?: never
