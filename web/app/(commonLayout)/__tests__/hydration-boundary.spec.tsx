@@ -107,7 +107,7 @@ describe('CommonLayoutHydrationBoundary', () => {
     })
   })
 
-  it('should hydrate common layout queries and render children', async () => {
+  it('should prefetch common layout queries and render children', async () => {
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     const element = await CommonLayoutHydrationBoundary({
@@ -163,7 +163,7 @@ describe('CommonLayoutHydrationBoundary', () => {
   it.each([
     ['not_setup', '/install'],
     ['not_init_validated', '/init'],
-  ])('should use a basePath-relative destination for %s errors', async (code, destination) => {
+  ])('should use an internal destination for %s errors', async (code, destination) => {
     mocks.basePath = '/workflow'
     mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code }), { status: 401 }))
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
