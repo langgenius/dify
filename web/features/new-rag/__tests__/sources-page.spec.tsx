@@ -178,6 +178,36 @@ describe('SourcesPage', () => {
     expect(within(rows[1]!).getByText('Older source')).toBeInTheDocument()
   })
 
+  it('keeps provisional crawl sources out of the source list', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              id: 'preview',
+              metadata: { preview: true },
+              name: 'Discarded preview',
+              status: 'disabled',
+            }),
+            source({ id: 'connected', name: 'Connected source' }),
+            source({
+              id: 'submitted-preview',
+              metadata: { preview: true },
+              name: 'Submitted preview',
+              status: 'syncing',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.queryByText('Discarded preview')).not.toBeInTheDocument()
+    expect(screen.getByText('Connected source')).toBeInTheDocument()
+    expect(screen.getByText('Submitted preview')).toBeInTheDocument()
+  })
+
   it('exposes the row action structure without pretending unsupported mutations work', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }

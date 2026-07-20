@@ -37,6 +37,10 @@ function metadataString(metadata: Source['metadata'], key: string) {
   return typeof value === 'string' && value.trim() ? value : undefined
 }
 
+function isPreviewDraft(source: Source) {
+  return source.metadata.preview === true && source.status === 'disabled'
+}
+
 function SourceActions({ source }: { source: Source }) {
   const { t } = useTranslation('dataset')
   const unavailableProps = { disabled: true, 'aria-disabled': true } as const
@@ -209,6 +213,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       sourcesQuery.data
         ? sourcesQuery.data.pages
             .flatMap((page) => page.items)
+            .filter((source) => !isPreviewDraft(source))
             .sort(
               (left, right) =>
                 right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),

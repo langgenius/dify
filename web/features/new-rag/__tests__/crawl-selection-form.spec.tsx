@@ -58,7 +58,9 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number]
+type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number] & {
+  status?: string
+}
 
 const source: Source = {
   connectionId: 'connection-1',
@@ -109,7 +111,8 @@ const pages: PreviewPage[] = [
   },
   {
     pageId: 'failed',
-    sourceUrl: 'not-a-url',
+    sourceUrl: 'https://docs.dify.ai/unavailable',
+    status: 'failed',
     title: 'Failed page',
   },
 ]
@@ -173,9 +176,15 @@ describe('CrawlSelectionForm', () => {
       name: 'dataset.newKnowledge.addSource',
     })
     expect(addSource).toBeDisabled()
-    expect(screen.getByRole('checkbox', { name: 'Edit this page' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Edit this page' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(screen.getByText('dataset.newKnowledge.skippedOffDomain')).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Failed page' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Failed page' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(screen.getByText('dataset.newKnowledge.skippedFailed')).toBeInTheDocument()
 
     await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
@@ -183,6 +192,9 @@ describe('CrawlSelectionForm', () => {
     expect(
       screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' }),
     ).toHaveAttribute('aria-checked', 'mixed')
+    expect(
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' }),
+    ).toHaveAttribute('data-indeterminate')
     expect(screen.getByText('dataset.newKnowledge.pagesSelected:{"count":1}')).toBeInTheDocument()
 
     await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' }))
@@ -208,6 +220,7 @@ describe('CrawlSelectionForm', () => {
     await user.clear(interval)
     await user.type(interval, '0')
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeDisabled()
+    expect(interval).toHaveAccessibleDescription('dataset.newKnowledge.customIntervalInvalid')
     await user.clear(interval)
     await user.type(interval, '6')
 
@@ -295,6 +308,47 @@ describe('CrawlSelectionForm', () => {
     await waitFor(() => expect(clientMock.selectPages).toHaveBeenCalledOnce())
     expect(clientMock.getPolicy).toHaveBeenCalledTimes(2)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('uses the latest concurrency tokens after a conflicting sync-policy update', async () => {
+    clientMock.getPolicy
+      .mockReset()
+      .mockResolvedValueOnce(policy())
+      .mockResolvedValueOnce(
+        policy({
+          expectedSourceVersion: 4,
+          mode: 'provider',
+          revision: 3,
+        }),
+      )
+    clientMock.updatePolicy
+      .mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409 }))
+      .mockResolvedValueOnce(policy({ enabled: false, mode: 'manual', revision: 4 }))
+    const user = userEvent.setup()
+    renderSelectionForm()
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+      'manual',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.addSourceFailed',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() => expect(clientMock.updatePolicy).toHaveBeenCalledTimes(2))
+    expect(clientMock.updatePolicy.mock.calls[1]?.[0]).toEqual({
+      body: {
+        enabled: false,
+        expectedRevision: 3,
+        expectedSourceVersion: 4,
+        mode: 'manual',
+      },
+      params: { id: 'space-1', sourceId: 'source-1' },
+    })
+    expect(clientMock.selectPages).toHaveBeenCalledOnce()
   })
 
   it('recovers when the initial sync policy cannot load', async () => {

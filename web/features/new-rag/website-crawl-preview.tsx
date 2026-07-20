@@ -46,6 +46,8 @@ type PreviewDraft = {
   source?: Source
 }
 
+type PendingNavigation = { type: 'back' } | { href: string; type: 'push' }
+
 function previewPagesEqual(left: PreviewPage, right: PreviewPage) {
   return (
     left.pageId === right.pageId &&
@@ -293,6 +295,9 @@ export function WebsiteCrawlPreview({
   const pageMapRef = useRef(new Map<string, PreviewPage>())
   const pageCursorRef = useRef<string | undefined>(undefined)
   const submittedRef = useRef(false)
+  const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined)
+  const historyGuardRef = useRef<string | undefined>(undefined)
+  const historyGuardCompletionRef = useRef<(() => void) | undefined>(undefined)
 
   const resetPreviewPages = useCallback(() => {
     pageMapRef.current.clear()
@@ -344,6 +349,84 @@ export function WebsiteCrawlPreview({
     window.addEventListener('beforeunload', preventUnsavedUnload)
     return () => window.removeEventListener('beforeunload', preventUnsavedUnload)
   }, [dirty])
+
+  useEffect(() => {
+    if (!dirty || submittedRef.current) return
+    const guardId = historyGuardRef.current ?? (successfulPreview ? createRequestId() : undefined)
+    const currentState =
+      window.history.state && typeof window.history.state === 'object' ? window.history.state : {}
+    if (guardId && !historyGuardRef.current) {
+      window.history.pushState(
+        { ...currentState, difyUnsavedSourceGuard: guardId },
+        '',
+        location.href,
+      )
+      historyGuardRef.current = guardId
+    }
+
+    const handlePopState = () => {
+      if (submittedRef.current) {
+        historyGuardRef.current = undefined
+        const complete = historyGuardCompletionRef.current
+        historyGuardCompletionRef.current = undefined
+        complete?.()
+        return
+      }
+      if (!guardId) return
+      window.history.pushState(
+        { ...currentState, difyUnsavedSourceGuard: guardId },
+        '',
+        location.href,
+      )
+      pendingNavigationRef.current = { type: 'back' }
+      setCancelConfirmationOpen(true)
+    }
+    const handleLinkClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const anchor = target.closest('a[href]')
+      if (
+        !(anchor instanceof HTMLAnchorElement) ||
+        anchor.target === '_blank' ||
+        anchor.hasAttribute('download')
+      )
+        return
+      const destination = new URL(anchor.href, location.href)
+      if (destination.origin !== location.origin || destination.href === location.href) return
+      event.preventDefault()
+      event.stopPropagation()
+      pendingNavigationRef.current = {
+        href: `${destination.pathname}${destination.search}${destination.hash}`,
+        type: 'push',
+      }
+      setCancelConfirmationOpen(true)
+    }
+
+    if (guardId) window.addEventListener('popstate', handlePopState)
+    document.addEventListener('click', handleLinkClick, true)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      document.removeEventListener('click', handleLinkClick, true)
+    }
+  }, [dirty, successfulPreview])
+
+  const leaveHistoryGuard = useCallback((complete: () => void) => {
+    if (!historyGuardRef.current) {
+      complete()
+      return
+    }
+    historyGuardCompletionRef.current = complete
+    window.history.back()
+  }, [])
 
   const ensureProvisionalSource = useCallback(
     async (nextConfiguration: CrawlConfiguration) => {
@@ -564,7 +647,7 @@ export function WebsiteCrawlPreview({
   }, [knowledgeSpaceId, runId, shouldPoll])
 
   const stop = async () => {
-    if (!run || actionPendingRef.current || !active) return
+    if (!run || actionPendingRef.current || !active) return false
     const attemptKey = workflowAttemptKey(run)
     const cancelAlreadySent = cancelFingerprintRef.current === attemptKey
     actionPendingRef.current = true
@@ -579,14 +662,15 @@ export function WebsiteCrawlPreview({
             })
           if (!isCancelConfirmed(reconciled)) {
             setRequestError('CANCEL_FAILED')
-            return
+            return false
           }
           cancelFingerprintRef.current = undefined
           setRun(reconciled)
+          return true
         } catch {
           setRequestError('CANCEL_FAILED')
+          return false
         }
-        return
       }
 
       cancelFingerprintRef.current = attemptKey
@@ -598,11 +682,12 @@ export function WebsiteCrawlPreview({
           })
         cancelFingerprintRef.current = undefined
         setRun(canceled)
+        return true
       } catch (error) {
         if (isDefinitiveRequestFailure(error)) {
           cancelFingerprintRef.current = undefined
           setRequestError('CANCEL_FAILED')
-          return
+          return false
         }
         try {
           const reconciled =
@@ -611,12 +696,15 @@ export function WebsiteCrawlPreview({
             })
           if (!isCancelConfirmed(reconciled)) {
             setRequestError('CANCEL_FAILED')
+            return false
           } else {
             cancelFingerprintRef.current = undefined
             setRun(reconciled)
+            return true
           }
         } catch {
           setRequestError('CANCEL_FAILED')
+          return false
         }
       }
     } finally {
@@ -684,13 +772,24 @@ export function WebsiteCrawlPreview({
       return
     }
     submittedRef.current = true
-    router.push(newKnowledgeDetailPath(knowledgeSpaceId))
+    leaveHistoryGuard(() => router.push(newKnowledgeDetailPath(knowledgeSpaceId)))
   }
 
-  const discardAndCancel = () => {
+  const discardAndCancel = async () => {
+    if (active && !(await stop())) return
     submittedRef.current = true
     setCancelConfirmationOpen(false)
-    router.push(newKnowledgeDetailPath(knowledgeSpaceId))
+    const pendingNavigation = pendingNavigationRef.current
+    pendingNavigationRef.current = undefined
+    leaveHistoryGuard(() => {
+      if (pendingNavigation?.type === 'back') window.history.back()
+      else
+        router.push(
+          pendingNavigation?.type === 'push'
+            ? pendingNavigation.href
+            : newKnowledgeDetailPath(knowledgeSpaceId),
+        )
+    })
   }
 
   return (
@@ -869,9 +968,13 @@ export function WebsiteCrawlPreview({
             knowledgeSpaceId={knowledgeSpaceId}
             onCancel={cancel}
             onRecrawl={handlePrimaryAction}
-            onSubmitted={() => {
-              submittedRef.current = true
-            }}
+            onSubmitted={() =>
+              new Promise<void>((resolve) => {
+                pendingNavigationRef.current = undefined
+                submittedRef.current = true
+                leaveHistoryGuard(resolve)
+              })
+            }
             pages={pages}
             rootUrl={configuration.url}
             run={run}
@@ -957,7 +1060,7 @@ export function WebsiteCrawlPreview({
             <AlertDialogCancelButton>
               {t(($) => $['newKnowledge.keepEditing'])}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={discardAndCancel}>
+            <AlertDialogConfirmButton onClick={() => void discardAndCancel()}>
               {t(($) => $['newKnowledge.discardSourceChangesConfirm'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

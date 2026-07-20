@@ -231,6 +231,59 @@ describe('WebsiteCrawlPreview', () => {
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
 
+  it('cancels an active preview before discarding its provisional source', async () => {
+    clientMock.getRun.mockReturnValue(new Promise<SourceWorkflowRun>(() => {}))
+    clientMock.cancel.mockResolvedValue(run('canceled'))
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+
+    await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
+    expect(clientMock.cancel).toHaveBeenCalledWith({
+      body: { reason: 'user_requested' },
+      params: { id: 'space-1', runId: 'run-1' },
+    })
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
+  })
+
+  it('guards sidebar links and browser history after a crawl preview is ready', async () => {
+    render(
+      <>
+        <a href="/datasets/new/space-1/documents">Documents navigation</a>
+        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
+      </>,
+    )
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+
+    act(() => window.history.back())
+    expect(
+      await screen.findByRole('alertdialog', {
+        name: 'dataset.newKnowledge.discardSourceChanges',
+      }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.keepEditing' }))
+
+    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
+    expect(
+      screen.getByRole('alertdialog', { name: 'dataset.newKnowledge.discardSourceChanges' }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+    )
+
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
+    )
+  })
+
   it('shows pending feedback while a completed crawl is being restarted', async () => {
     const retryRequest = deferred<SourceWorkflowRun>()
     clientMock.retry.mockReturnValue(retryRequest.promise)

@@ -9,6 +9,7 @@ import type {
 } from '@dify/contracts/knowledge-fs/types.gen'
 import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +17,12 @@ import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { newKnowledgeDetailPath } from './routes'
 
-type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number]
+type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number] & {
+  error?: unknown
+  skipReason?: unknown
+  state?: unknown
+  status?: unknown
+}
 type SyncPolicy = GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse
 type SyncMode = SyncPolicy['mode']
 type SyncPolicyBody = PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData['body']
@@ -27,6 +33,20 @@ const MAX_CUSTOM_INTERVAL_HOURS = 720
 type PageSkipReason = 'failed' | 'off-domain'
 
 function pageSkipReason(page: PreviewPage, rootUrl: string): PageSkipReason | undefined {
+  const explicitReason = typeof page.skipReason === 'string' ? page.skipReason.toLowerCase() : ''
+  if (explicitReason.includes('domain')) return 'off-domain'
+  const explicitState =
+    typeof page.status === 'string'
+      ? page.status.toLowerCase()
+      : typeof page.state === 'string'
+        ? page.state.toLowerCase()
+        : ''
+  if (
+    page.error ||
+    ['error', 'failed', 'skipped'].includes(explicitState) ||
+    (explicitReason && explicitReason !== 'success')
+  )
+    return 'failed'
   try {
     const root = new URL(rootUrl)
     const candidate = new URL(page.sourceUrl)
@@ -95,7 +115,7 @@ function ReadyCrawlSelectionForm({
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
-  onSubmitted: () => void
+  onSubmitted: () => Promise<void> | void
   pages: PreviewPage[]
   policy: SyncPolicy
   rootUrl: string
@@ -105,6 +125,7 @@ function ReadyCrawlSelectionForm({
   const { t } = useTranslation('dataset')
   const router = useRouter()
   const queryClient = useQueryClient()
+  const customIntervalErrorId = 'crawl-custom-interval-error'
   const pageSkipReasons = useMemo(
     () => new Map(pages.map((page) => [page.pageId, pageSkipReason(page, rootUrl)])),
     [pages, rootUrl],
@@ -200,6 +221,7 @@ function ReadyCrawlSelectionForm({
             await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy({
               params: { id: knowledgeSpaceId, sourceId: source.id },
             })
+          policySnapshotRef.current = reconciled
           if (!policyMatches(reconciled, desiredPolicy)) throw error
           currentPolicy = reconciled
         }
@@ -214,7 +236,7 @@ function ReadyCrawlSelectionForm({
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
       })
-      onSubmitted()
+      await onSubmitted()
       router.push(newKnowledgeDetailPath(knowledgeSpaceId))
     } catch {
       setSubmitError(true)
@@ -254,29 +276,28 @@ function ReadyCrawlSelectionForm({
           </Button>
         </div>
         <div className="mt-3 overflow-hidden rounded-xl border border-divider-regular">
-          <label className="flex items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
+            <Checkbox
               checked={allSelected}
-              aria-checked={someSelected && !allSelected ? 'mixed' : allSelected}
-              onChange={toggleAll}
+              indeterminate={someSelected && !allSelected}
+              onCheckedChange={toggleAll}
               disabled={!selectablePages.length || formBusy}
+              aria-label={t(($) => $['newKnowledge.selectAll'])}
             />
             {t(($) => $['newKnowledge.selectAll'])}
-          </label>
+          </div>
           <ul className="max-h-[280px] divide-y divide-divider-subtle overflow-y-auto">
             {pages.map((page) => {
               const skipReason = pageSkipReasons.get(page.pageId)
               const selectable = !skipReason
               return (
                 <li key={page.pageId}>
-                  <label className="flex items-center gap-2.5 px-3 py-2.5">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-2.5 px-3 py-2.5">
+                    <Checkbox
                       checked={selectedPageIds.has(page.pageId)}
                       disabled={!selectable || formBusy}
                       aria-label={page.title || page.sourceUrl}
-                      onChange={() => togglePage(page.pageId)}
+                      onCheckedChange={() => togglePage(page.pageId)}
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate system-xs-medium text-text-primary">
@@ -293,7 +314,7 @@ function ReadyCrawlSelectionForm({
                           : t(($) => $['newKnowledge.skippedFailed'])}
                       </span>
                     )}
-                  </label>
+                  </div>
                 </li>
               )
             })}
@@ -332,6 +353,7 @@ function ReadyCrawlSelectionForm({
               step={1}
               value={customIntervalHours}
               aria-invalid={!customIntervalValid}
+              aria-describedby={!customIntervalValid ? customIntervalErrorId : undefined}
               onChange={(event) => {
                 setCustomIntervalHours(
                   Number.isFinite(event.target.valueAsNumber) ? event.target.valueAsNumber : '',
@@ -341,7 +363,10 @@ function ReadyCrawlSelectionForm({
               className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
             />
             {!customIntervalValid && (
-              <span className="mt-1 block system-xs-regular text-text-destructive">
+              <span
+                id={customIntervalErrorId}
+                className="mt-1 block system-xs-regular text-text-destructive"
+              >
                 {t(($) => $['newKnowledge.customIntervalInvalid'])}
               </span>
             )}
@@ -392,7 +417,7 @@ export function CrawlSelectionForm({
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
-  onSubmitted: () => void
+  onSubmitted: () => Promise<void> | void
   pages: PreviewPage[]
   rootUrl: string
   run: SourceWorkflowRun
