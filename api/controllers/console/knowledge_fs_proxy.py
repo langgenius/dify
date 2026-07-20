@@ -27,7 +27,6 @@ from werkzeug.exceptions import (
     BadGateway,
     Forbidden,
     GatewayTimeout,
-    MethodNotAllowed,
     NotFound,
     RequestEntityTooLarge,
     ServiceUnavailable,
@@ -92,6 +91,20 @@ def _console_api_errors[**P](
             return view(*args, **kwargs)
         except Exception as exc:
             return api.handle_error(exc)
+
+    return decorated
+
+
+def _knowledge_fs_enabled[**P](
+    view: Callable[P, ResponseReturnValue],
+) -> Callable[P, ResponseReturnValue]:
+    """Hide the complete KnowledgeFS route surface while the bridge is disabled."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> ResponseReturnValue:
+        if not dify_config.KNOWLEDGE_FS_ENABLED:
+            raise NotFound()
+        return view(*args, **kwargs)
 
     return decorated
 
@@ -234,6 +247,7 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     )
 
 
+@_knowledge_fs_enabled
 @cloud_edition_billing_rate_limit_check("knowledge")
 def _proxy_knowledge_fs_non_get(
     method: KnowledgeFSMethod,
@@ -243,8 +257,13 @@ def _proxy_knowledge_fs_non_get(
     return _proxy_request(method, upstream_path)
 
 
-@bp.route("/knowledge-fs/<path:upstream_path>", methods=["GET"])
+@bp.route(
+    "/knowledge-fs/<path:upstream_path>",
+    methods=["GET", "OPTIONS"],
+    provide_automatic_options=False,
+)
 @_console_api_errors
+@_knowledge_fs_enabled
 @setup_required
 @login_required
 @account_initialization_required
@@ -258,12 +277,17 @@ def proxy_knowledge_fs_get(upstream_path: str) -> ResponseReturnValue:
         The filtered raw KnowledgeFS response or a Console JSON error response.
     """
     if request.method != "GET":
-        raise MethodNotAllowed(valid_methods=["GET"])
+        raise NotFound()
     return _proxy_request("GET", upstream_path)
 
 
-@bp.route("/knowledge-fs/<path:upstream_path>", methods=["DELETE", "PATCH", "POST", "PUT"])
+@bp.route(
+    "/knowledge-fs/<path:upstream_path>",
+    methods=["DELETE", "PATCH", "POST", "PUT"],
+    provide_automatic_options=False,
+)
 @_console_api_errors
+@_knowledge_fs_enabled
 @setup_required
 @login_required
 @account_initialization_required

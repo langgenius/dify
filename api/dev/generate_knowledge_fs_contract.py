@@ -9,13 +9,16 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Literal, TypedDict
 
 API_ROOT = Path(__file__).resolve().parents[1]
+if str(API_ROOT) not in sys.path:
+    sys.path.insert(0, str(API_ROOT))
+
 WORKSPACE_ROOT = API_ROOT.parent
 LOCK_PATH = API_ROOT / "knowledge-fs-contract.lock.json"
 DEFAULT_REPOSITORY = WORKSPACE_ROOT.parent / "knowledge-fs"
@@ -61,14 +64,15 @@ DECLARATION_FIELDS: tuple[DeclarationField, ...] = (
 
 
 def main() -> None:
-    """Update or verify the pinned KnowledgeFS commit and OpenAPI hash."""
+    """Update or verify the pin and validate Console declarations against its OpenAPI document."""
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--update-lock", action="store_true")
+    parser.add_argument("--repository", type=Path, default=DEFAULT_REPOSITORY)
     args = parser.parse_args()
 
-    repository = Path(os.environ.get("KNOWLEDGE_FS_REPO", DEFAULT_REPOSITORY)).resolve()
+    repository = args.repository.resolve()
     lock = json.loads(LOCK_PATH.read_text())
     tracked_changes = run("git", "status", "--porcelain", "--untracked-files=no", cwd=repository).strip()
     if tracked_changes:
@@ -91,6 +95,14 @@ def main() -> None:
         openapi_content = openapi_path.read_bytes()
 
     openapi_sha256 = sha256(openapi_content)
+    if not args.update_lock and openapi_sha256 != lock["openapiSha256"]:
+        raise RuntimeError(
+            f"KnowledgeFS OpenAPI hash mismatch: expected {lock['openapiSha256']}, received {openapi_sha256}"
+        )
+
+    document: dict[str, Any] = json.loads(openapi_content)
+    validate_declarations(document, console_contract_declarations())
+
     if args.update_lock:
         LOCK_PATH.write_text(
             json.dumps(
@@ -102,12 +114,6 @@ def main() -> None:
                 indent=2,
             )
             + "\n"
-        )
-        return
-
-    if openapi_sha256 != lock["openapiSha256"]:
-        raise RuntimeError(
-            f"KnowledgeFS OpenAPI hash mismatch: expected {lock['openapiSha256']}, received {openapi_sha256}"
         )
 
 
@@ -160,6 +166,26 @@ def validate_declarations(document: dict[str, Any], declarations: tuple[Contract
                     f"KnowledgeFS operation {operation_id} field {field} drifted: "
                     f"expected {expected_value!r}, received {received_value!r}"
                 )
+
+
+def console_contract_declarations() -> tuple[ContractDeclaration, ...]:
+    """Return transport declarations from the runtime Console operation registry."""
+    from services.knowledge_fs_proxy import KNOWLEDGE_FS_CONSOLE_OPERATIONS
+
+    return tuple(
+        {
+            "operation_id": operation.operation_id,
+            "method": operation.method,
+            "path": operation.path,
+            "required_scope": operation.required_scope,
+            "response_kind": operation.response_kind,
+            "max_response_bytes": operation.max_response_bytes,
+            "request_headers": operation.request_headers,
+            "response_headers": operation.response_headers,
+            "response_media_types": operation.response_media_types,
+        }
+        for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS
+    )
 
 
 def response_kind(operation: dict[str, Any]) -> str:

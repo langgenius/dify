@@ -38,7 +38,7 @@ def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, m
         ["git", "rev-parse", "HEAD"], cwd=repository, check=True, capture_output=True, text=True
     ).stdout.strip()
 
-    document = {"paths": {"/health": {"get": operation(None, "getHealth", security=[])}}}
+    document = console_registry_document()
     executable_directory = tmp_path / "bin"
     executable_directory.mkdir()
     fake_pnpm = executable_directory / "pnpm"
@@ -55,22 +55,58 @@ def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, m
         )
     )
     monkeypatch.setattr(contract_validator, "LOCK_PATH", lock_path)
-    monkeypatch.setenv("KNOWLEDGE_FS_REPO", str(repository))
     monkeypatch.setenv("PATH", f"{executable_directory}{os.pathsep}{os.environ['PATH']}")
 
-    monkeypatch.setattr(sys, "argv", ["generate_knowledge_fs_contract.py", "--update-lock"])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["generate_knowledge_fs_contract.py", "--repository", str(repository), "--update-lock"],
+    )
     contract_validator.main()
 
     updated_lock = json.loads(lock_path.read_text())
     assert updated_lock["commit"] == commit
     assert set(updated_lock) == {"commit", "openapiSha256", "repository"}
 
-    monkeypatch.setattr(sys, "argv", ["generate_knowledge_fs_contract.py", "--check"])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["generate_knowledge_fs_contract.py", "--repository", str(repository), "--check"],
+    )
     contract_validator.main()
+
+    with monkeypatch.context() as registry_drift:
+        registry_drift.setattr(
+            contract_validator,
+            "console_contract_declarations",
+            lambda: (declaration(method="DELETE"),),
+            raising=False,
+        )
+        with pytest.raises(ValueError, match="listKnowledgeSpaces.*method.*expected.*received"):
+            contract_validator.main()
 
     write_fake_pnpm(fake_pnpm, {"paths": {}})
     with pytest.raises(RuntimeError, match="OpenAPI hash mismatch"):
         contract_validator.main()
+
+
+def test_contract_script_loads_runtime_registry_outside_api_directory(tmp_path: Path) -> None:
+    script_path = Path(contract_validator.__file__).resolve()
+    command = (
+        "import runpy; "
+        f"namespace = runpy.run_path({str(script_path)!r}); "
+        "print(len(namespace['console_contract_declarations']()))"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", command],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.stdout.strip() == "2"
 
 
 def test_validate_declarations_accepts_matching_contract() -> None:
@@ -118,6 +154,20 @@ def test_console_operation_registry_matches_contract() -> None:
         },
         tuple(_contract_declaration(operation) for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS),
     )
+
+
+def console_registry_document() -> dict[str, object]:
+    list_route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
+    create_route = operation("knowledge-spaces:write", "createKnowledgeSpace")
+    for route in (list_route, create_route):
+        route["parameters"] = [{"in": "header", "name": "X-Trace-Id"}]
+        route["responses"] = {
+            "200": {
+                "content": {"application/json": {}},
+                "headers": {"X-Trace-Id": {}},
+            }
+        }
+    return {"paths": {"/knowledge-spaces": {"get": list_route, "post": create_route}}}
 
 
 @pytest.mark.parametrize(

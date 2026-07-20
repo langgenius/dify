@@ -8,6 +8,7 @@ import pytest
 from pydantic import SecretStr
 
 from core.helper import ssrf_proxy
+from core.rbac import RBACPermission
 from core.tools.errors import ToolSSRFError
 from services.knowledge_fs_proxy import (
     KNOWLEDGE_FS_CONSOLE_OPERATIONS,
@@ -54,15 +55,20 @@ def test_console_registry_starts_with_list_and_create_operations() -> None:
 @pytest.mark.parametrize(
     ("method", "operation_id", "scope", "permission"),
     [
-        ("GET", "listKnowledgeSpaces", "knowledge-spaces:read", "dataset_readonly"),
-        ("POST", "createKnowledgeSpace", "knowledge-spaces:write", "dataset_create_and_management"),
+        ("GET", "listKnowledgeSpaces", "knowledge-spaces:read", RBACPermission.DATASET_READONLY),
+        (
+            "POST",
+            "createKnowledgeSpace",
+            "knowledge-spaces:write",
+            RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        ),
     ],
 )
 def test_console_registry_preserves_contract_and_policy(
     method: KnowledgeFSMethod,
     operation_id: str,
     scope: str,
-    permission: str,
+    permission: RBACPermission,
 ) -> None:
     operation = get_knowledge_fs_operation(method, "knowledge-spaces")
 

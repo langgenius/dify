@@ -10,7 +10,6 @@ from flask import Flask, Response
 from werkzeug.exceptions import (
     BadGateway,
     Forbidden,
-    MethodNotAllowed,
     NotFound,
     RequestEntityTooLarge,
     ServiceUnavailable,
@@ -29,6 +28,7 @@ from controllers.console.wraps import RBACPermission
 from services.knowledge_fs_proxy import (
     KnowledgeFSAccessDeniedError,
     KnowledgeFSConfigurationError,
+    KnowledgeFSMethod,
     KnowledgeFSOperation,
     KnowledgeFSResponseKind,
     KnowledgeFSRouteNotAllowedError,
@@ -54,7 +54,7 @@ def _upstream(
         path="test",
         response_kind=kind,
         required_scope="knowledge-spaces:read",
-        rbac_permission="dataset_readonly",
+        rbac_permission=RBACPermission.DATASET_READONLY,
         max_response_bytes=max_response_bytes
         or (64 * 1024 * 1024 if kind == "stream" else 25 * 1024 * 1024 if kind == "binary" else 1024 * 1024),
         request_headers=(),
@@ -113,6 +113,12 @@ def test_console_blueprint_registers_generic_knowledge_fs_routes() -> None:
         )
         assert write_endpoint.endswith("proxy_knowledge_fs_write")
         assert write_values == {"upstream_path": "knowledge-spaces/space-1"}
+    options_endpoint, options_values = adapter.match(
+        "/console/api/knowledge-fs/knowledge-spaces",
+        method="OPTIONS",
+    )
+    assert options_endpoint.endswith("proxy_knowledge_fs_get")
+    assert options_values == {"upstream_path": "knowledge-spaces"}
 
 
 def test_proxy_is_hidden_when_knowledge_fs_is_disabled(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -123,9 +129,38 @@ def test_proxy_is_hidden_when_knowledge_fs_is_disabled(app: Flask, monkeypatch: 
             _proxy_request("GET", "knowledge-spaces")
 
 
-def test_generic_get_rejects_flasks_implicit_head_route(
+@pytest.mark.parametrize(
+    ("route", "method"),
+    [
+        (proxy_knowledge_fs_get, "GET"),
+        (proxy_knowledge_fs_write, "POST"),
+    ],
+)
+def test_proxy_routes_are_hidden_before_downstream_work_when_disabled(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    route,
+    method: KnowledgeFSMethod,
+) -> None:
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_ENABLED", False)
+    proxy_request = MagicMock()
+    proxy_non_get = MagicMock()
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_request", proxy_request)
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_knowledge_fs_non_get", proxy_non_get)
+
+    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces", method=method):
+        response = app.make_response(route("knowledge-spaces"))
+
+    assert response.status_code == 404
+    proxy_request.assert_not_called()
+    proxy_non_get.assert_not_called()
+
+
+@pytest.mark.parametrize("method", ["HEAD", "OPTIONS"])
+def test_generic_get_hides_unregistered_methods(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
 ) -> None:
     proxy = MagicMock(return_value=Response(status=200))
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_request", proxy)
@@ -133,9 +168,9 @@ def test_generic_get_rejects_flasks_implicit_head_route(
 
     with app.test_request_context(
         "/console/api/knowledge-fs/knowledge-spaces",
-        method="HEAD",
+        method=method,
     ):
-        with pytest.raises(MethodNotAllowed):
+        with pytest.raises(NotFound):
             route("knowledge-spaces")
 
     proxy.assert_not_called()
@@ -157,7 +192,7 @@ def test_generic_routes_delegate_to_the_authorized_service_use_case(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     route,
-    method: str,
+    method: KnowledgeFSMethod,
     path: str,
     permission: RBACPermission,
 ) -> None:
@@ -184,7 +219,7 @@ def test_generic_routes_delegate_to_the_authorized_service_use_case(
     assert proxy.call_args.kwargs["tenant_id"] == "tenant-1"
     assert proxy.call_args.kwargs["method"] == method
     assert proxy.call_args.kwargs["path"] == path
-    assert get_knowledge_fs_operation(method, path).rbac_permission == permission.value
+    assert get_knowledge_fs_operation(method, path).rbac_permission == permission
 
 
 def test_read_post_applies_knowledge_rate_limit_once(
@@ -537,7 +572,7 @@ def test_disallowed_kfs_route_is_hidden_as_not_found(app: Flask, monkeypatch: py
 def test_disallowed_non_get_route_is_hidden_as_not_found(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    method: str,
+    method: KnowledgeFSMethod,
 ) -> None:
     route = unwrap(proxy_knowledge_fs_write)
 

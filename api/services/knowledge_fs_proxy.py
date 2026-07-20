@@ -28,7 +28,6 @@ from services.enterprise.rbac_service import RBACService
 type KnowledgeFSMethod = Literal["DELETE", "GET", "PATCH", "POST", "PUT"]
 type KnowledgeFSResponseKind = Literal["binary", "buffered", "stream"]
 type KnowledgeFSRequiredScope = Literal["knowledge-spaces:read", "knowledge-spaces:write"]
-type KnowledgeFSRBACPermission = Literal["dataset_create_and_management", "dataset_readonly"]
 
 _JWT_AUDIENCE = "knowledge-fs"
 _JWT_ISSUER = "dify"
@@ -42,7 +41,7 @@ class KnowledgeFSOperation(NamedTuple):
     path: str
     response_kind: KnowledgeFSResponseKind
     required_scope: KnowledgeFSRequiredScope
-    rbac_permission: KnowledgeFSRBACPermission
+    rbac_permission: RBACPermission
     max_response_bytes: int
     request_headers: tuple[str, ...]
     response_headers: tuple[str, ...]
@@ -56,7 +55,7 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         path="knowledge-spaces",
         response_kind="buffered",
         required_scope="knowledge-spaces:read",
-        rbac_permission="dataset_readonly",
+        rbac_permission=RBACPermission.DATASET_READONLY,
         max_response_bytes=1_048_576,
         request_headers=("x-trace-id",),
         response_headers=("x-trace-id",),
@@ -68,7 +67,7 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         path="knowledge-spaces",
         response_kind="buffered",
         required_scope="knowledge-spaces:write",
-        rbac_permission="dataset_create_and_management",
+        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
         max_response_bytes=1_048_576,
         request_headers=("x-trace-id",),
         response_headers=("x-trace-id",),
@@ -123,13 +122,12 @@ def authorize_knowledge_fs_request(
     Raises:
         KnowledgeFSAccessDeniedError: The account lacks a required legacy or enterprise permission.
     """
-    permission = RBACPermission(operation.rbac_permission)
     if operation.required_scope == "knowledge-spaces:write" and not account.is_dataset_editor:
         raise KnowledgeFSAccessDeniedError("KnowledgeFS mutations require dataset edit access")
     if not RBACService.CheckAccess.check(
         tenant_id,
         account.id,
-        scene=permission.value,
+        scene=operation.rbac_permission.value,
         resource_type=RBACResourceScope.DATASET.value,
     ):
         raise KnowledgeFSAccessDeniedError("KnowledgeFS operation is denied by workspace RBAC")
