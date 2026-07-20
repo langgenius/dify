@@ -4,7 +4,6 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { ContactsManagementMockProvider } from '@/features/contacts/management/composition'
 import {
   ContactsMockScenario,
@@ -14,6 +13,7 @@ import { useUpdateRolesOfMember } from '@/service/access-control/use-member-role
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberMenu from '../member-menu'
 
 const mockIsContactsManagementEnabled = vi.hoisted(() => vi.fn(() => true))
@@ -114,7 +114,7 @@ describe('MemberMenu', () => {
   it('should show edit role copy when multiple roles are disabled', async () => {
     const user = userEvent.setup()
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
       {
         systemFeatures: {
@@ -138,7 +138,7 @@ describe('MemberMenu', () => {
   it('should submit only one selected role from the assign modal when RBAC is disabled', async () => {
     const user = userEvent.setup()
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
       {
         systemFeatures: {
@@ -165,7 +165,7 @@ describe('MemberMenu', () => {
     ['workspace owner', { ...member, role: 'owner' as const }, false],
     ['current member', member, true],
   ])('keeps the existing protection for the %s', (_case, protectedMember, isCurrentUser) => {
-    renderWithSystemFeatures(<MemberMenu member={protectedMember} isCurrentUser={isCurrentUser} />)
+    renderWithConsoleQuery(<MemberMenu member={protectedMember} isCurrentUser={isCurrentUser} />)
 
     expect(
       screen.queryByRole('button', { name: /members\.memberActions/i }),
@@ -178,7 +178,7 @@ describe('MemberMenu', () => {
     const membersQueryKey = [...commonQueryKeys.members, 'en-US']
     queryClient.setQueryData(membersQueryKey, { accounts: [member] })
 
-    renderWithSystemFeatures(<MemberMenu member={member} isCurrentUser={false} />, {
+    renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} />, {
       queryClient,
     })
 
@@ -210,7 +210,7 @@ describe('MemberMenu', () => {
     const activeMember = { ...member, id: 'member-owner' }
     queryClient.setQueryData(membersQueryKey, { accounts: [activeMember] })
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <ContactsManagementMockProvider scenario={scenario}>
         <MemberMenu member={activeMember} isCurrentUser={false} />
       </ContactsManagementMockProvider>,
@@ -236,7 +236,7 @@ describe('MemberMenu', () => {
     const user = userEvent.setup()
     const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <ContactsManagementMockProvider scenario={scenario}>
         <MemberMenu member={{ ...member, status: 'pending' }} isCurrentUser={false} />
       </ContactsManagementMockProvider>,
@@ -258,7 +258,7 @@ describe('MemberMenu', () => {
     const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
     mockIsContactsManagementEnabled.mockReturnValue(false)
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <ContactsManagementMockProvider scenario={scenario}>
         <MemberMenu member={member} isCurrentUser={false} />
       </ContactsManagementMockProvider>,

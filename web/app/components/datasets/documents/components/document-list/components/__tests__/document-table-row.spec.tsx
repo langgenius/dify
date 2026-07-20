@@ -1,14 +1,23 @@
 import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSourceType } from '@/models/datasets'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { render } from '@/test/console/render'
 import DocumentTableRow from '../document-table-row'
 
 const mockPush = vi.fn()
 let mockSearchParams = ''
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -17,18 +26,10 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(mockSearchParams),
 }))
 
-const createTestQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-      mutations: { retry: false },
-    },
-  })
-
 const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
-  const queryClient = createTestQueryClient()
+  const QueryClientWrapper = createQueryClientWrapper(createAccountProfileQueryClient())
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientWrapper>
       <CheckboxGroup
         value={value}
         onValueChange={(nextValue) => onValueChange(nextValue)}
@@ -38,7 +39,7 @@ const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
           <tbody>{children}</tbody>
         </table>
       </CheckboxGroup>
-    </QueryClientProvider>
+    </QueryClientWrapper>
   )
 }
 
@@ -82,6 +83,14 @@ const createMockDoc = (overrides: Record<string, unknown> = {}): LocalDoc =>
   }) as unknown as LocalDoc
 
 const getRowCheckbox = () => screen.getByRole('checkbox', { name: 'test-document.txt' })
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('DocumentTableRow', () => {
   const defaultProps = {

@@ -2,7 +2,7 @@ import type { PluginInstallationItemResponse } from '@dify/contracts/api/console
 import type { ReactNode } from 'react'
 import type { Permissions, PluginTaskStart } from '@/app/components/plugins/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import {
@@ -15,6 +15,7 @@ import {
   PluginSource,
   TaskStatus,
 } from '@/app/components/plugins/types'
+import { renderHook } from '@/test/console/render'
 import {
   normalizeInstalledPluginDetail,
   useInstalledPluginList,
@@ -24,10 +25,9 @@ import {
   usePluginTaskList,
 } from '../use-plugins'
 
-const { mockGet, mockPost, mockWorkspacePermissionKeysAtom } = vi.hoisted(() => ({
+const { mockGet, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPost: vi.fn(),
-  mockWorkspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
 vi.mock('@/service/base', () => ({
@@ -43,29 +43,13 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list',
   }),
 }))
 
-vi.mock('@/context/account-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
-vi.mock('@/context/workspace-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
-vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
-vi.mock('@/context/version-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
-vi.mock('@/context/system-features-state', () => ({
-  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: unknown) => {
-    if (atom === mockWorkspacePermissionKeysAtom) return ['plugin.install']
-
-    throw new Error('Unexpected atom')
-  },
-}))
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['plugin.install'],
+  }))
+})
 
 vi.mock('../use-tools', () => ({
   useInvalidateAllBuiltInTools: () => vi.fn(),
