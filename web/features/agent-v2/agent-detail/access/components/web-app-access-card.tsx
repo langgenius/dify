@@ -267,10 +267,7 @@ export function WebAppAccessCard({
         <span aria-hidden className="i-ri-palette-line size-4" />
         {t(($) => $['agentDetail.access.webApp.actions.settings'])}
       </Button>
-      <WebAppAccessControlButton
-        agent={agent}
-        onAccessModeUpdated={() => queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })}
-      />
+      <WebAppAccessControlButton agent={agent} />
       {settingsAppInfo && (
         <SettingsModal
           isChat

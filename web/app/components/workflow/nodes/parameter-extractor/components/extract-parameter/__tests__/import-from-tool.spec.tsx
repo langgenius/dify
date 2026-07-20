@@ -2,13 +2,13 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   createTool,
   createToolProvider,
 } from '@/app/components/workflow/block-selector/__tests__/factories'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import ImportFromTool from '../import-from-tool'
 
 vi.mock('reactflow', () => ({
@@ -70,10 +70,10 @@ const createToolParameter = (overrides: Partial<ToolParameter> = {}): ToolParame
 })
 
 const renderImportFromTool = (ui: React.ReactElement) => {
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: false },
   })
-  return renderWorkflowComponent(<SystemFeaturesWrapper>{ui}</SystemFeaturesWrapper>, {
+  return renderWorkflowComponent(<ConsoleQueryWrapper>{ui}</ConsoleQueryWrapper>, {
     hooksStoreProps: {
       availableNodesMetaData: { nodes: [] },
     },

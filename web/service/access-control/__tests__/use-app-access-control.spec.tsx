@@ -12,6 +12,9 @@ import {
 const mockSystemFeatures = vi.hoisted(() => ({
   webappAuthEnabled: false,
 }))
+const { mockGetWebAppWhitelistSubjects } = vi.hoisted(() => ({
+  mockGetWebAppWhitelistSubjects: vi.fn(),
+}))
 
 vi.mock('@/service/base', () => ({
   get: vi.fn(),
@@ -20,6 +23,21 @@ vi.mock('@/service/base', () => ({
 
 vi.mock('@/service/share', () => ({
   getUserCanAccess: vi.fn(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    enterprise: {
+      webAppAuth: {
+        getWebAppWhitelistSubjects: {
+          queryOptions: ({ input }: { input: { query: { appId?: string } } }) => ({
+            queryKey: ['web-app-whitelist-subjects', input.query.appId],
+            queryFn: () => mockGetWebAppWhitelistSubjects(input),
+          }),
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('@/features/system-features/client', () => ({
@@ -53,16 +71,44 @@ describe('use-app-access-control', () => {
     vi.clearAllMocks()
     mockSystemFeatures.webappAuthEnabled = false
     vi.mocked(get).mockResolvedValue({ groups: [], members: [] })
+    mockGetWebAppWhitelistSubjects.mockResolvedValue({ groups: [], members: [] })
     vi.mocked(getUserCanAccess).mockResolvedValue({ result: true })
   })
 
   // Queries build the enterprise whitelist endpoints from app and filter inputs.
   describe('Queries', () => {
     it('should fetch app whitelist subjects when enabled', async () => {
-      renderHook(() => useAppWhiteListSubjects('app-1', true), { wrapper: createWrapper() })
+      mockGetWebAppWhitelistSubjects.mockResolvedValue({
+        groups: [{ id: 'group-1', name: 'Engineering', groupSize: 3 }],
+        members: [
+          {
+            id: 'member-1',
+            name: 'Ada',
+            email: 'ada@example.com',
+            avatar: 'avatar-url',
+          },
+        ],
+      })
+      const { result } = renderHook(() => useAppWhiteListSubjects('app-1', true), {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
-        expect(get).toHaveBeenCalledWith('/enterprise/webapp/app/subjects?appId=app-1')
+        expect(result.current.data).toEqual({
+          groups: [{ id: 'group-1', name: 'Engineering', groupSize: 3 }],
+          members: [
+            {
+              id: 'member-1',
+              name: 'Ada',
+              email: 'ada@example.com',
+              avatar: 'avatar-url',
+              avatarUrl: 'avatar-url',
+            },
+          ],
+        })
+      })
+      expect(mockGetWebAppWhitelistSubjects).toHaveBeenCalledWith({
+        query: { appId: 'app-1' },
       })
     })
 

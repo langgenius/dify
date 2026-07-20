@@ -1,6 +1,7 @@
 import type { SimpleDocumentDetail } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { useDocumentSort } from '../document-list/hooks'
 import DocumentList from '../list'
 
@@ -13,6 +14,13 @@ const mockHandleBatchDownload = vi.fn()
 const mockShowEditModal = vi.fn()
 const mockHideEditModal = vi.fn()
 const mockHandleSave = vi.fn()
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('../document-list/hooks', () => ({
   useDocumentSort: vi.fn(() => ({
@@ -132,6 +140,14 @@ const defaultProps = {
   remoteSortValue: '-created_at',
   onSortChange: vi.fn(),
 }
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('DocumentList', () => {
   beforeEach(() => {
