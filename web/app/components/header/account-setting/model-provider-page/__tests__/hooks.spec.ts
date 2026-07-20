@@ -937,7 +937,7 @@ describe('hooks', () => {
       expect(result.current.isLoading).toBe(true)
     })
 
-    it('should not crash when plugins is undefined', () => {
+    it('should return an empty list when plugin data is unavailable', () => {
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
         plugins: [],
         isLoading: false,

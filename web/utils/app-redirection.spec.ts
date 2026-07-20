@@ -70,6 +70,27 @@ describe('app-redirection', () => {
       expect(result).toBe('/app/app-456/configuration')
     })
 
+    it('returns the Agent configure path when the backing Agent ID is available', () => {
+      const app = {
+        id: 'app-1',
+        mode: AppModeEnum.AGENT,
+        permission_keys: [AppACLPermission.ViewLayout],
+        bound_agent_id: 'agent-1',
+      }
+
+      expect(getRedirectionPath(app)).toBe('/agents/agent-1/configure')
+    })
+
+    it('falls back to the Agent roster when the backing Agent ID is unavailable', () => {
+      const app = {
+        id: 'app-1',
+        mode: AppModeEnum.AGENT,
+        permission_keys: [AppACLPermission.ViewLayout],
+      }
+
+      expect(getRedirectionPath(app)).toBe('/agents')
+    })
+
     it('handles different app IDs', () => {
       const app1 = { id: 'abc-123', mode: AppModeEnum.CHAT, permission_keys: [] }
       const app2 = {

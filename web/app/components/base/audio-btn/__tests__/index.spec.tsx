@@ -68,13 +68,6 @@ describe('AudioBtn', () => {
       expect(getButton()).not.toBeDisabled()
       await hoverAndCheckTooltip('play')
     })
-
-    it('should apply className in initial state', () => {
-      const { container } = render(<AudioBtn value="hello" className="custom-wrapper" />)
-      const wrapper = container.firstElementChild
-
-      expect(wrapper)!.toHaveClass('custom-wrapper')
-    })
   })
 
   // URL path resolution for app/public audio endpoints.

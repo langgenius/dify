@@ -1229,32 +1229,6 @@ describe('Form', () => {
       expect(screen.getByText('Select A'))!.toBeInTheDocument()
     })
 
-    // No fieldMoreInfo: should not crash
-    it('should render without fieldMoreInfo', () => {
-      const formSchemas: AnyFormSchema[] = [
-        createTextSchema({
-          variable: 'f1',
-          label: createI18n('Field 1'),
-          placeholder: createI18n('Field 1'),
-        }),
-      ]
-      const value: FormValue = { f1: '' }
-
-      render(
-        <Form
-          value={value}
-          onChange={vi.fn()}
-          formSchemas={formSchemas}
-          validating={false}
-          validatedSuccess={false}
-          showOnVariableMap={{}}
-          isEditMode={false}
-        />,
-      )
-
-      expect(screen.getByPlaceholderText('Field 1'))!.toBeInTheDocument()
-    })
-
     it('should render tooltip when schema has tooltip property', () => {
       const formSchemas: AnyFormSchema[] = [
         createTextSchema({
@@ -1477,65 +1451,6 @@ describe('Form', () => {
 
       fireEvent.change(screen.getByPlaceholderText('Custom Key'), { target: { value: 'new' } })
       expect(onChange).toHaveBeenCalledWith({ custom_key: 'new' })
-    })
-
-    it('should return undefined when customRenderField is not provided for unknown type', () => {
-      const formSchemas: Array<AnyFormSchema | CustomSchema> = [
-        {
-          ...createTextSchema({
-            variable: 'unknown',
-            label: createI18n('Unknown'),
-          }),
-          type: 'custom-type',
-        } as unknown as CustomSchema,
-      ]
-      const value: FormValue = { unknown: '' }
-
-      render(
-        <Form<CustomSchema>
-          value={value}
-          onChange={vi.fn()}
-          formSchemas={formSchemas}
-          validating={false}
-          validatedSuccess={false}
-          showOnVariableMap={{}}
-          isEditMode={false}
-        />,
-      )
-
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
     })
 
     it('should render fieldMoreInfo for checkbox field', () => {
@@ -1808,8 +1723,6 @@ describe('Form', () => {
         />,
       )
 
-      // Assert - should render without crash (value[variable] || [] path taken)
-      // Assert - should render without crash (value[variable] || [] path taken)
       expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
     })
 
@@ -1935,8 +1848,6 @@ describe('Form', () => {
         />,
       )
 
-      // Assert - should render without crash
-      // Assert - should render without crash
       expect(screen.getByText('Any Field'))!.toBeInTheDocument()
     })
 

@@ -166,10 +166,7 @@ const ApiKeyModal = ({
       >
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle
-              data-testid="modal-title"
-              className="title-2xl-semi-bold text-text-primary"
-            >
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['auth.useApiAuth'], { ns: 'plugin' })}
             </DialogTitle>
             <div className="mt-1 system-xs-regular text-text-tertiary">
@@ -216,12 +213,7 @@ const ApiKeyModal = ({
             <div className="flex items-center">
               {editValues && (
                 <>
-                  <Button
-                    data-testid="modal-extra"
-                    variant="primary"
-                    onClick={onRemove}
-                    disabled={isDisabled}
-                  >
+                  <Button variant="primary" onClick={onRemove} disabled={isDisabled}>
                     {t(($) => $['operation.remove'], { ns: 'common' })}
                   </Button>
                   <div className="mx-3 h-4 w-px bg-divider-regular"></div>
@@ -231,7 +223,6 @@ const ApiKeyModal = ({
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
-                data-testid="modal-confirm"
                 className="ml-2"
                 variant="primary"
                 onClick={handleConfirm}

@@ -500,11 +500,15 @@ class QueueStopEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.STOP
     stopped_by: StopBy
+    reason: str | None = None
 
     def get_stop_reason(self) -> str:
         """
         To stop reason
         """
+        if self.reason:
+            return self.reason
+
         reason_mapping = {
             QueueStopEvent.StopBy.USER_MANUAL: "Stopped by user.",
             QueueStopEvent.StopBy.ANNOTATION_REPLY: "Stopped by annotation reply.",

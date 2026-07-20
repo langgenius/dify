@@ -15,6 +15,7 @@ import { useRouter } from '@/next/navigation'
 import { importDSL, importDSLConfirm } from '@/service/apps'
 import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
+import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 
 type DSLPayload = {
   mode: DSLImportMode
@@ -86,7 +87,12 @@ export const useImportDSL = () => {
           setNeedRefresh('1')
           invalidateAppList()
           await handleCheckPluginDependencies(app_id)
-          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+          const redirectionTarget = await resolveImportedAppRedirectionTarget({
+            id: app_id,
+            mode: app_mode,
+            permission_keys,
+          })
+          getRedirection(redirectionTarget, push, {
             currentUserId,
             resourceMaintainer: currentUserId,
             workspacePermissionKeys,
@@ -137,13 +143,31 @@ export const useImportDSL = () => {
         const { status, app_id, app_mode, permission_keys } = response
         if (!app_id) return
 
-        if (status === DSLImportStatus.COMPLETED) {
+        if (
+          status === DSLImportStatus.COMPLETED ||
+          status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+        ) {
           onSuccess?.(response)
-          toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
+          const message = t(
+            ($) => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'],
+            { ns: 'app' },
+          )
+          const description =
+            status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+              ? t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
+              : undefined
+
+          if (status === DSLImportStatus.COMPLETED) toast.success(message)
+          else toast.warning(message, { description })
           await handleCheckPluginDependencies(app_id)
           setNeedRefresh('1')
           invalidateAppList()
-          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+          const redirectionTarget = await resolveImportedAppRedirectionTarget({
+            id: app_id,
+            mode: app_mode,
+            permission_keys,
+          })
+          getRedirection(redirectionTarget, push, {
             currentUserId,
             resourceMaintainer: currentUserId,
             workspacePermissionKeys,

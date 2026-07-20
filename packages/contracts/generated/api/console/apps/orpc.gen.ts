@@ -2205,7 +2205,7 @@ export const messages = {
 }
 
 /**
- * Modify app model config
+ * Modify the app model config and dataset joins in one request transaction
  *
  * Update application model configuration
  */
@@ -2216,7 +2216,7 @@ export const post28 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdModelConfig',
     path: '/apps/{app_id}/model-config',
-    summary: 'Modify app model config',
+    summary: 'Modify the app model config and dataset joins in one request transaction',
     tags: ['console'],
   })
   .input(

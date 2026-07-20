@@ -346,11 +346,6 @@ describe('Documents', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('documents-header')).toBeInTheDocument()
-    })
-
     it('should render DocumentsHeader with correct props', () => {
       render(<Documents {...defaultProps} />)
       expect(screen.getByTestId('header-dataset-id')).toHaveTextContent('test-dataset-id')

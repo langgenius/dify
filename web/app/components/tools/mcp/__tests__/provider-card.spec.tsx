@@ -186,11 +186,6 @@ describe('MCPCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('Test MCP Server')).toBeInTheDocument()
-    })
-
     it('should display MCP name', () => {
       render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('Test MCP Server')).toBeInTheDocument()

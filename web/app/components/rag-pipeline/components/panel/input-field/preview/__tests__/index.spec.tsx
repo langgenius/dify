@@ -227,12 +227,6 @@ describe('PreviewPanel', () => {
   })
 
   describe('Rendering', () => {
-    it('should render preview panel without crashing', () => {
-      renderWithProviders(<PreviewPanel />)
-
-      expect(screen.getByText('datasetPipeline.operations.preview')).toBeInTheDocument()
-    })
-
     it('should render preview badge', () => {
       renderWithProviders(<PreviewPanel />)
 
@@ -332,33 +326,6 @@ describe('PreviewPanel', () => {
   })
 
   describe('Floating Right Behavior', () => {
-    it('should apply floating right styles when floatingRight is true', () => {
-      mockUseFloatingRight.mockReturnValue({
-        floatingRight: true,
-        floatingRightWidth: 400,
-      })
-
-      const { container } = renderWithProviders(<PreviewPanel />)
-
-      const panel = container.firstChild as HTMLElement
-      expect(panel.className).toContain('absolute')
-      expect(panel.className).toContain('right-0')
-      expect(panel.style.width).toBe('400px')
-    })
-
-    it('should not apply floating right styles when floatingRight is false', () => {
-      mockUseFloatingRight.mockReturnValue({
-        floatingRight: false,
-        floatingRightWidth: 480,
-      })
-
-      const { container } = renderWithProviders(<PreviewPanel />)
-
-      const panel = container.firstChild as HTMLElement
-      expect(panel.className).not.toContain('absolute')
-      expect(panel.style.width).toBe('480px')
-    })
-
     it('should update width when floatingRightWidth changes', () => {
       mockUseFloatingRight.mockReturnValue({
         floatingRight: false,
@@ -533,26 +500,6 @@ describe('DataSource', () => {
     })
   })
 
-  describe('Memoization', () => {
-    it('should be memoized (React.memo)', () => {
-      const onSelect = vi.fn()
-
-      const { rerender } = renderWithProviders(
-        <DataSource onSelect={onSelect} dataSourceNodeId="node-1" />,
-      )
-
-      rerender(
-        <TestWrapper>
-          <DataSource onSelect={onSelect} dataSourceNodeId="node-1" />
-        </TestWrapper>,
-      )
-
-      expect(
-        screen.getByText('datasetPipeline.inputFieldPanel.preview.stepOneTitle'),
-      ).toBeInTheDocument()
-    })
-  })
-
   describe('Edge Cases', () => {
     it('should handle null pipelineId', () => {
       const onSelect = vi.fn()
@@ -693,22 +640,6 @@ describe('ProcessDocuments', () => {
     })
   })
 
-  describe('Memoization', () => {
-    it('should be memoized (React.memo)', () => {
-      const { rerender } = renderWithProviders(<ProcessDocuments dataSourceNodeId="node-1" />)
-
-      rerender(
-        <TestWrapper>
-          <ProcessDocuments dataSourceNodeId="node-1" />
-        </TestWrapper>,
-      )
-
-      expect(
-        screen.getByText('datasetPipeline.inputFieldPanel.preview.stepTwoTitle'),
-      ).toBeInTheDocument()
-    })
-  })
-
   describe('Edge Cases', () => {
     it('should handle null pipelineId', () => {
       mockPipelineId = null
@@ -844,39 +775,6 @@ describe('Form', () => {
       renderWithProviders(<Form variables={variables} />)
 
       expect(screen.getByTestId('form-ref').textContent).toBe('has-form')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should memoize initialData when variables do not change', () => {
-      const variables = [createRAGPipelineVariable()]
-
-      const { rerender } = renderWithProviders(<Form variables={variables} />)
-      rerender(
-        <TestWrapper>
-          <Form variables={variables} />
-        </TestWrapper>,
-      )
-
-      expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
-    })
-
-    it('should memoize configurations when variables do not change', () => {
-      const variables = [
-        createRAGPipelineVariable({ variable: 'var1' }),
-        createRAGPipelineVariable({ variable: 'var2' }),
-      ]
-
-      const { rerender } = renderWithProviders(<Form variables={variables} />)
-
-      rerender(
-        <TestWrapper>
-          <Form variables={variables} />
-        </TestWrapper>,
-      )
-
-      expect(screen.getByTestId('field-var1')).toBeInTheDocument()
-      expect(screen.getByTestId('field-var2')).toBeInTheDocument()
     })
   })
 

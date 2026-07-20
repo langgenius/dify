@@ -204,6 +204,8 @@ class TestRun:
 
         results = list(runner.run(runner.session, message, "query", {}))
         assert isinstance(results, list)
+        assert "session" not in runner.create_agent_thought.call_args.kwargs
+        assert all("session" not in call.kwargs for call in runner.save_agent_thought.call_args_list)
 
     def test_run_with_action_and_tool_invocation(self, runner: DummyRunner, mocker: MockerFixture):
         message = MagicMock()
@@ -335,13 +337,23 @@ class TestRun:
     def test_run_when_no_action_branch(self, runner: DummyRunner, mocker: MockerFixture):
         message = MagicMock()
         message.id = "msg-id"
+        events: list[str] = []
+        session = MagicMock()
+        session.commit.side_effect = lambda: events.append("commit")
+        session.close.side_effect = lambda: events.append("close")
 
+        def provider_chunks():
+            events.append("first-chunk")
+            yield "chunk"
+
+        runner.model_instance.invoke_llm.return_value = provider_chunks()
         mocker.patch(
             "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
-            return_value=[],
+            side_effect=lambda chunks, _usage: list(chunks),
         )
 
-        results = list(runner.run(runner.session, message, "query", {}))
+        results = list(runner.run(session, message, "query", {}))
+        assert events == ["commit", "close", "first-chunk"]
         assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
         assert results[-1].delta.message.content == ""
 

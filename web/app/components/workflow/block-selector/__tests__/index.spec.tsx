@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import NodeSelectorWrapper from '../index'
-import { BlockClassificationEnum } from '../types'
+import { BlockClassification } from '../types'
 
 vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
@@ -29,7 +29,7 @@ const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
     type,
     title,
     sort: 0,
-    classification: BlockClassificationEnum.Default,
+    classification: BlockClassification.Default,
     author: 'Dify',
     description: `${title} description`,
   },

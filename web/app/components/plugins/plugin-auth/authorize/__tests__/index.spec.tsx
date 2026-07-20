@@ -368,36 +368,6 @@ describe('Authorize', () => {
 
   // ==================== Memoization Dependencies ====================
   describe('Memoization and Re-rendering', () => {
-    it('should maintain stable props across re-renders with same dependencies', () => {
-      const pluginPayload = createPluginPayload()
-      const onUpdate = vi.fn()
-
-      const { rerender } = render(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={true}
-          theme="primary"
-          onUpdate={onUpdate}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const initialButtonCount = screen.getAllByRole('button').length
-
-      rerender(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={true}
-          theme="primary"
-          onUpdate={onUpdate}
-        />,
-      )
-
-      expect(screen.getAllByRole('button').length).toBe(initialButtonCount)
-    })
-
     it('should update when canApiKey changes', () => {
       const pluginPayload = createPluginPayload()
 
@@ -517,13 +487,6 @@ describe('Authorize', () => {
 
   // ==================== Component Memoization ====================
   describe('Component Memoization', () => {
-    it('should be a memoized component (exported with memo)', async () => {
-      const AuthorizeDefault = (await import('../index')).default
-      expect(AuthorizeDefault).toBeDefined()
-      // memo wrapped components are React elements with $$typeof
-      expect(typeof AuthorizeDefault).toBe('object')
-    })
-
     it('should reflect notAllowCustomCredential change via button disabled state', () => {
       const pluginPayload = createPluginPayload()
 

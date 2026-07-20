@@ -15,7 +15,7 @@
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
             alt="chat on Discord"></a>
-    <a href="https://reddit.com/r/difyai" target="_blank">  
+    <a href="https://reddit.com/r/difyai" target="_blank">
         <img src="https://img.shields.io/reddit/subreddit-subscribers/difyai?style=plastic&logo=reddit&label=r%2Fdifyai&labelColor=white"
             alt="join Reddit"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
@@ -207,9 +207,16 @@ At the same time, please consider supporting Dify by sharing it on social media 
   <img src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Star history
+## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+<!-- GitHub token name: star-history -->
+<a href="https://www.star-history.com/?repos=langgenius%2Fdify&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=langgenius/dify&type=date&theme=dark&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=langgenius/dify&type=date&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=langgenius/dify&type=date&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+ </picture>
+</a>
 
 ## Security disclosure
 

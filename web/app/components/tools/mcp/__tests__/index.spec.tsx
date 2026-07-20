@@ -166,12 +166,6 @@ describe('MCPList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<MCPList searchText="" />)
-
-      expect(screen.getByTestId('create-card')).toBeInTheDocument()
-    })
-
     it('should render create card', () => {
       render(<MCPList searchText="" />)
 

@@ -14,12 +14,19 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 vi.mock('@/app/components/workflow/block-selector/market-place-plugin/action', () => ({
-  default: () => <div data-testid="marketplace-action" />,
+  default: () => <button type="button" aria-label="common.operation.more" />,
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
   default: () => <div data-testid="install-from-marketplace" />,
 }))
+
+vi.mock(
+  '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
+  () => ({
+    default: () => ({ canInstallPlugin: true, currentDifyVersion: '1.0.0' }),
+  }),
+)
 
 vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
@@ -106,7 +113,12 @@ describe('FeaturedTriggers', () => {
 
       render(<FeaturedTriggers plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />)
 
-      await user.click(screen.getByRole('button', { name: /workflow\.tabs\.featuredTools/ }))
+      const trigger = screen.getByRole('button', { name: /workflow\.tabs\.featuredTools/ })
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+      await user.click(trigger)
+
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
       expect(
         screen.queryByRole('link', { name: 'workflow.tabs.noFeaturedTriggers' }),
@@ -117,9 +129,9 @@ describe('FeaturedTriggers', () => {
       )
     })
 
-    it('should show more and show less across installed providers', async () => {
+    it('should reveal installed providers in batches and then return to the initial list', async () => {
       const user = userEvent.setup()
-      const providers = Array.from({ length: 6 }).map((_, index) =>
+      const providers = Array.from({ length: 11 }).map((_, index) =>
         createTriggerProvider({
           id: `provider-${index}`,
           name: `provider-${index}`,
@@ -141,10 +153,19 @@ describe('FeaturedTriggers', () => {
       expect(screen.getByText('Provider 4')).toBeInTheDocument()
       expect(screen.queryByText('Provider 5')).not.toBeInTheDocument()
 
-      await user.click(screen.getByText('workflow.tabs.showMoreFeatured'))
-      expect(screen.getByText('Provider 5')).toBeInTheDocument()
+      const showMoreButton = screen.getByRole('button', {
+        name: 'workflow.tabs.showMoreFeatured',
+      })
+      expect(showMoreButton).not.toHaveAttribute('aria-expanded')
 
-      await user.click(screen.getByText('workflow.tabs.showLessFeatured'))
+      await user.click(showMoreButton)
+      expect(screen.getByText('Provider 9')).toBeInTheDocument()
+      expect(screen.queryByText('Provider 10')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'workflow.tabs.showMoreFeatured' }))
+      expect(screen.getByText('Provider 10')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'workflow.tabs.showLessFeatured' }))
       expect(screen.queryByText('Provider 5')).not.toBeInTheDocument()
     })
   })
@@ -192,38 +213,28 @@ describe('FeaturedTriggers', () => {
       )
     })
 
-    it('should align featured item icons with the trigger list column', () => {
-      const provider = createTriggerProvider()
+    it('should keep the marketplace link and row actions keyboard reachable', async () => {
+      const user = userEvent.setup()
 
       render(
-        <FeaturedTriggers
-          plugins={[
-            createPlugin({ plugin_id: 'plugin-1', latest_package_identifier: 'plugin-1@1.0.0' }),
-            createPlugin({
-              name: 'plugin-two',
-              plugin_id: 'plugin-2',
-              latest_package_identifier: 'plugin-2@1.0.0',
-              label: { en_US: 'Plugin Two', zh_Hans: '插件二' },
-            }),
-          ]}
-          providerMap={
-            new Map([
-              ['plugin-1', provider],
-              ['plugin-1@1.0.0', provider],
-            ])
-          }
-          onSelect={vi.fn()}
-        />,
+        <FeaturedTriggers plugins={[createPlugin()]} providerMap={new Map()} onSelect={vi.fn()} />,
       )
 
-      const installedRow = screen.getByText('Provider One').closest('.select-none')
-      expect(installedRow).toHaveClass('h-8', 'pr-2', 'pl-3')
-      expect(installedRow?.parentElement?.parentElement?.parentElement).toHaveClass('p-1')
+      const detailsLink = screen.getByRole('link', { name: 'Plugin One' })
+      const installButton = screen.getByRole('button', { name: 'plugin.installAction' })
+      const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
 
-      const uninstalledRow = screen.getByText('Plugin Two').closest('.group')
-      expect(uninstalledRow).toHaveClass('h-8', 'pr-2', 'pl-3')
-      expect(uninstalledRow?.parentElement).toHaveClass('mb-1', 'last-of-type:mb-0')
-      expect(uninstalledRow?.parentElement?.parentElement).toHaveClass('p-1')
+      expect(detailsLink).toHaveAttribute(
+        'href',
+        'https://marketplace.test/plugins/org/trigger-plugin',
+      )
+
+      detailsLink.focus()
+      await user.tab()
+      expect(installButton).toHaveFocus()
+
+      await user.tab()
+      expect(moreButton).toHaveFocus()
     })
   })
 })

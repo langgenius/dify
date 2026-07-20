@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -15,7 +16,12 @@ from core.app.app_config.entities import (
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import (
+    QueueAgentMessageEvent,
+    QueueLLMChunkEvent,
+    QueueMessageEndEvent,
+    QueueMessageFileEvent,
+)
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -352,6 +358,55 @@ class TestAppRunner:
         assert queue.events[-1].llm_result.usage == usage
         assert "Failed to handle multimodal image output" in caplog.messages
 
+    def test_handle_invoke_result_stream_commits_message_file_before_publish(self, monkeypatch: pytest.MonkeyPatch):
+        runner = AppRunner()
+        runner._handle_multimodal_image_content = MagicMock(return_value="message-file-1")
+        session = MagicMock()
+        events: list[str] = []
+        session.commit.side_effect = lambda: events.append("commit")
+        monkeypatch.setattr(
+            "core.app.apps.base_app_runner.session_factory.create_session",
+            lambda: nullcontext(session),
+        )
+        queue = _QueueRecorder()
+        original_publish = queue.publish
+
+        def publish(event, pub_from):
+            if isinstance(event, QueueMessageFileEvent):
+                events.append("publish")
+            original_publish(event, pub_from)
+
+        queue.publish = publish
+
+        def stream():
+            yield LLMResultChunk(
+                model="model",
+                prompt_messages=[AssistantPromptMessage(content="prompt")],
+                delta=LLMResultChunkDelta(
+                    index=0,
+                    message=AssistantPromptMessage(
+                        content=[
+                            ImagePromptMessageContent(
+                                url="https://example.com/image.png",
+                                format="png",
+                                mime_type="image/png",
+                            )
+                        ]
+                    ),
+                ),
+            )
+
+        runner._handle_invoke_result_stream(
+            invoke_result=stream(),
+            queue_manager=queue,
+            agent=False,
+            message_id="message-1",
+            user_id="user-1",
+            tenant_id="tenant-1",
+        )
+
+        assert events == ["commit", "publish"]
+
     def test_handle_invoke_result_stream_closes_generator_when_stopped(self):
         runner = AppRunner()
         chunk = LLMResultChunk(
@@ -393,13 +448,13 @@ class TestAppRunner:
             mime_type="image/png",
         )
 
-        db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock(), refresh=MagicMock())
+        db_session = SimpleNamespace(add=MagicMock(), flush=MagicMock(), refresh=MagicMock())
         monkeypatch.setattr("core.app.apps.base_app_runner.ToolFileManager", lambda: MagicMock())
-        monkeypatch.setattr("core.app.apps.base_app_runner.db", SimpleNamespace(session=db_session))
 
         queue_manager = SimpleNamespace(invoke_from=InvokeFrom.SERVICE_API, publish=MagicMock())
 
         runner._handle_multimodal_image_content(
+            session=db_session,
             content=content,
             message_id="message-id",
             user_id="user-id",
@@ -471,7 +526,7 @@ class TestAppRunner:
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.AnnotationReplyFeature.query",
-            lambda self, app_record, message, query, user_id, invoke_from: "reply",
+            lambda self, app_record, message, query, user_id, invoke_from, session: "reply",
         )
 
         response = runner.query_app_annotations_to_reply(
@@ -480,6 +535,7 @@ class TestAppRunner:
             query="hello",
             user_id="user",
             invoke_from=InvokeFrom.WEB_APP,
+            session=MagicMock(),
         )
 
         assert response == "reply"

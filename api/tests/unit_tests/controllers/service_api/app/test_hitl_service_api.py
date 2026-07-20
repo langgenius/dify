@@ -353,6 +353,7 @@ class TestHitlServiceApi:
         app_model.tenant_id = "tenant-id"
         app_model.max_active_requests = 0
         app_model.is_agent = False
+        app_model.is_agent_with_session.return_value = False
 
         user = MagicMock()
         user.id = "user-id"

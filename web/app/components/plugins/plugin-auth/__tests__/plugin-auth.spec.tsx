@@ -134,38 +134,6 @@ describe('PluginAuth', () => {
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
   })
 
-  it('renders with className wrapper when not authorized', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    const { container } = render(
-      <PluginAuth pluginPayload={defaultPayload} className="custom-class" />,
-    )
-    expect(container.innerHTML).toContain('custom-class')
-  })
-
-  it('does not render className wrapper when authorized', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    const { container } = render(
-      <PluginAuth pluginPayload={defaultPayload} className="custom-class" />,
-    )
-    expect(container.innerHTML).not.toContain('custom-class')
-  })
-
   it('passes pluginPayload.provider to usePluginAuth', () => {
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,

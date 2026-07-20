@@ -6,6 +6,12 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import useTimestamp from './use-timestamp'
 
+const mockUseLocale = vi.hoisted(() => vi.fn(() => 'en-US'))
+
+vi.mock('@/context/i18n', () => ({
+  useLocale: mockUseLocale,
+}))
+
 const createEmptyQueryWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -23,6 +29,10 @@ const createEmptyQueryWrapper = () => {
 }
 
 describe('useTimestamp', () => {
+  beforeEach(() => {
+    mockUseLocale.mockReturnValue('en-US')
+  })
+
   describe('formatTime', () => {
     it('should format unix timestamp correctly', () => {
       const { result } = renderHook(() => useTimestamp(), {
@@ -44,6 +54,16 @@ describe('useTimestamp', () => {
       expect(result.current.formatTime(timestamp, 'MM/DD/YYYY')).toBe('01/02/2024')
 
       expect(result.current.formatTime(timestamp, 'HH:mm')).toBe('02:00')
+    })
+
+    it('should format month names with the current interface locale', () => {
+      mockUseLocale.mockReturnValue('zh-Hans')
+      const { result } = renderHook(() => useTimestamp(), {
+        wrapper: createAccountProfileQueryWrapper(),
+      })
+      const timestamp = 1704132000
+
+      expect(result.current.formatTime(timestamp, 'MMM D')).toBe('1月 2')
     })
   })
 
@@ -68,6 +88,37 @@ describe('useTimestamp', () => {
       expect(result.current.formatDate(dateString, 'MM/DD/YYYY')).toBe('01/01/2024')
 
       expect(result.current.formatDate(dateString, 'HH:mm')).toBe('20:00')
+    })
+
+    it('should format date string month names with the current interface locale', () => {
+      mockUseLocale.mockReturnValue('zh-Hans')
+      const { result } = renderHook(() => useTimestamp(), {
+        wrapper: createAccountProfileQueryWrapper(),
+      })
+      const dateString = '2024-01-01T12:00:00Z'
+
+      expect(result.current.formatDate(dateString, 'MMM D')).toBe('1月 1')
+    })
+  })
+
+  describe('formatMonthDay', () => {
+    it('should format month and day naturally for English', () => {
+      const { result } = renderHook(() => useTimestamp(), {
+        wrapper: createAccountProfileQueryWrapper(),
+      })
+      const timestamp = 1704132000
+
+      expect(result.current.formatMonthDay(timestamp)).toBe('Jan 2')
+    })
+
+    it('should format month and day naturally for Chinese', () => {
+      mockUseLocale.mockReturnValue('zh-Hans')
+      const { result } = renderHook(() => useTimestamp(), {
+        wrapper: createAccountProfileQueryWrapper(),
+      })
+      const timestamp = 1704132000
+
+      expect(result.current.formatMonthDay(timestamp)).toBe('1月2日')
     })
   })
 

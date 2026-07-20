@@ -14,6 +14,7 @@ const baseWorkspace: ICurrentWorkspace = {
   providers: [],
   trial_credits: 200,
   trial_credits_used: 200,
+  trial_credits_exhausted_at: 0,
   next_credit_reset_date: Date.now() + 86400000,
 }
 

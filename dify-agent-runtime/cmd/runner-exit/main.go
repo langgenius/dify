@@ -5,8 +5,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 
+	"github.com/langgenius/dify/dify-agent-runtime/internal/cmdutil"
 	runnerexit "github.com/langgenius/dify/dify-agent-runtime/internal/runner_exit"
 )
 
@@ -19,12 +19,11 @@ func main() {
 	flag.Parse()
 
 	if *stateDir == "" || *jobID == "" || *endedAt == "" {
-		fmt.Fprintf(os.Stderr, "shellctl-runner-exit: --state-dir, --job-id, and --ended-at are required\n")
-		os.Exit(1)
+		cmdutil.HandleError(fmt.Errorf("missing flags"), 1, "--state-dir, --job-id, and --ended-at are required")
 	}
 
-	if err := runnerexit.RecordRunnerExit(*stateDir, *jobID, *exitCode, *endedAt, *busyTimeoutMs); err != nil {
-		fmt.Fprintf(os.Stderr, "shellctl-runner-exit: %v\n", err)
-		os.Exit(1)
-	}
+	cmdutil.HandleError(
+		runnerexit.RecordRunnerExit(*stateDir, *jobID, *exitCode, *endedAt, *busyTimeoutMs),
+		1, "record runner exit",
+	)
 }

@@ -1432,6 +1432,7 @@ export type AgentConfigFileItemResponse = {
   file_id?: string | null
   hash?: string | null
   id: string
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -1450,6 +1451,7 @@ export type AgentConfigSkillItemResponse = {
   file_id?: string | null
   hash?: string | null
   id: string
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -2397,9 +2399,10 @@ export type AppVariableConfig = {
 }
 
 export type AgentConfigFileRefConfig = {
-  file_id: string
+  file_id?: string
   file_kind: 'tool_file' | 'upload_file'
   hash?: string | null
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -2407,9 +2410,10 @@ export type AgentConfigFileRefConfig = {
 
 export type AgentConfigSkillRefConfig = {
   description?: string
-  file_id: string
+  file_id?: string
   file_kind?: 'tool_file'
   hash?: string | null
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null

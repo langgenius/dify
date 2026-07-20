@@ -23,7 +23,7 @@ const parseArgs = (argv: string[]): SeedOptions => {
     allowBlocked: false,
     dryRun: false,
     pack: 'agent-v2',
-    profile: 'full',
+    profile: 'post-merge',
   }
 
   for (const [index, arg] of argv.entries()) {
@@ -133,8 +133,7 @@ const main = async () => {
       dryRun: options.dryRun,
       resources: new Map(),
     })
-    const reportName =
-      options.profile === 'full' ? options.pack : `${options.pack}-${options.profile}`
+    const reportName = `${options.pack}-${options.profile}`
     const reportPath = await writeSeedReport(reportName, results)
     const blockedCount = results.filter((result) => result.status === 'blocked').length
 

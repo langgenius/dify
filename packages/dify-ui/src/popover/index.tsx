@@ -4,6 +4,7 @@ import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
+import { floatingPopupAnimationClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 export type { Placement }
@@ -55,7 +56,7 @@ export function PopoverContent({
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
             'outline-hidden focus:outline-hidden focus-visible:outline-hidden',
-            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
+            floatingPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}

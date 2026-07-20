@@ -37,7 +37,6 @@ export type SyncDraftOptions = {
 
 export type WorkflowAccessControl = {
   canEdit: boolean
-  canComment: boolean
   canRun: boolean
   canImportExportDSL: boolean
   canReleaseAndVersion: boolean
@@ -45,7 +44,6 @@ export type WorkflowAccessControl = {
 
 export const fullWorkflowAccessControl: WorkflowAccessControl = {
   canEdit: true,
-  canComment: true,
   canRun: true,
   canImportExportDSL: true,
   canReleaseAndVersion: true,
