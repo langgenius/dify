@@ -44,7 +44,9 @@ from controllers.console.explore.error import (
     NotWorkflowAppError,
 )
 from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
-from controllers.console.wraps import with_current_user
+from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
+from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
+from controllers.console.wraps import cloud_edition_billing_resource_check, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -64,6 +66,7 @@ from fields.app_fields import (
     tag_fields,
 )
 from fields.dataset_fields import dataset_fields
+from fields.file_fields import FileResponse, FileWithSignedUrl
 from fields.member_fields import simple_account_fields
 from fields.message_fields import SuggestedQuestionsResponse
 from fields.workflow_fields import (
@@ -75,8 +78,8 @@ from fields.workflow_fields import (
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import uuid_value
-from models import Account
+from libs.helper import dump_response, uuid_value
+from models import Account, App
 from models.account import TenantStatus
 from models.model import AppMode, Site
 from models.workflow import Workflow
@@ -197,6 +200,36 @@ register_response_schema_models(
     SiteResponse,
     SuggestedQuestionsResponse,
 )
+
+
+class TrialAppFileUploadApi(TrialAppResource):
+    @trial_feature_enable
+    @cloud_edition_billing_resource_check("documents")
+    @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
+        """Upload a file into the tenant that owns the trial app."""
+        upload_file = upload_file_from_request(
+            current_user=current_user,
+            resource_tenant_id=app_model.tenant_id,
+        )
+        return dump_response(FileResponse, upload_file), 201
+
+
+class TrialAppRemoteFileUploadApi(TrialAppResource):
+    @trial_feature_enable
+    @cloud_edition_billing_resource_check("documents")
+    @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
+        """Upload a remote file into the tenant that owns the trial app."""
+        remote_file = upload_remote_file_from_request(
+            current_user=current_user,
+            resource_tenant_id=app_model.tenant_id,
+        )
+        return remote_file.model_dump(mode="json"), 201
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
@@ -604,6 +637,18 @@ class DatasetListApi(Resource):
 
 
 console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
+
+console_ns.add_resource(
+    TrialAppFileUploadApi,
+    "/trial-apps/<uuid:app_id>/files/upload",
+    endpoint="trial_app_file_upload",
+)
+
+console_ns.add_resource(
+    TrialAppRemoteFileUploadApi,
+    "/trial-apps/<uuid:app_id>/remote-files/upload",
+    endpoint="trial_app_remote_file_upload",
+)
 
 console_ns.add_resource(
     TrialMessageSuggestedQuestionApi,

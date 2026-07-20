@@ -1,5 +1,6 @@
 from inspect import unwrap as inspect_unwrap
 from io import BytesIO
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -95,6 +96,44 @@ def valid_parameters() -> dict[str, object]:
 def test_trial_workflow_uses_trial_scoped_simple_account_model() -> None:
     assert module.simple_account_model.name == "TrialSimpleAccount"
     assert hasattr(module.simple_account_model, "items")
+
+
+class TestTrialAppFileUploadApi:
+    def test_upload_uses_trial_app_tenant(self, app: Flask, account: Account) -> None:
+        api = module.TrialAppFileUploadApi()
+        method = unwrap(api.post)
+        app_model = SimpleNamespace(tenant_id="app-tenant-id")
+        upload_file = MagicMock()
+
+        with (
+            app.test_request_context("/", method="POST"),
+            patch.object(module, "upload_file_from_request", return_value=upload_file) as upload,
+            patch.object(module, "dump_response", return_value={"id": "upload-file-id"}),
+        ):
+            response, status = method(api, account, app_model)
+
+        assert status == 201
+        assert response == {"id": "upload-file-id"}
+        upload.assert_called_once_with(current_user=account, resource_tenant_id="app-tenant-id")
+
+
+class TestTrialAppRemoteFileUploadApi:
+    def test_upload_uses_trial_app_tenant(self, app: Flask, account: Account) -> None:
+        api = module.TrialAppRemoteFileUploadApi()
+        method = unwrap(api.post)
+        app_model = SimpleNamespace(tenant_id="app-tenant-id")
+        remote_file = MagicMock()
+        remote_file.model_dump.return_value = {"id": "upload-file-id"}
+
+        with (
+            app.test_request_context("/", method="POST", json={"url": "https://example.com/file.txt"}),
+            patch.object(module, "upload_remote_file_from_request", return_value=remote_file) as upload,
+        ):
+            response, status = method(api, account, app_model)
+
+        assert status == 201
+        assert response == {"id": "upload-file-id"}
+        upload.assert_called_once_with(current_user=account, resource_tenant_id="app-tenant-id")
 
 
 class TestTrialAppWorkflowRunApi:
