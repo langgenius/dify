@@ -230,6 +230,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     })
   }, [filter, search, sources])
   const filterActive = filter !== 'all' || Boolean(search.trim())
+  const needsVisibleSource = sources !== undefined && sources.length === 0
   const completingFilteredResults =
     filterActive &&
     !sourcesQuery.isFetchNextPageError &&
@@ -242,7 +243,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   useEffect(() => {
     if (
-      filterActive &&
+      (filterActive || needsVisibleSource) &&
       hasNextSourcePage &&
       !isFetchingNextSourcePage &&
       !sourcesQuery.isFetchNextPageError
@@ -253,6 +254,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     fetchNextSourcePage,
     hasNextSourcePage,
     isFetchingNextSourcePage,
+    needsVisibleSource,
     sourcesQuery.isFetchNextPageError,
   ])
 
@@ -293,6 +295,19 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           <Button className="mt-4" onClick={() => void sourcesQuery.refetch()}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
+        </div>
+      ) : !sources?.length && sourcesQuery.isFetchNextPageError ? (
+        <div className="flex min-h-64 flex-1 items-center justify-center gap-3" role="alert">
+          <span className="system-xs-regular text-text-destructive">
+            {t(($) => $['newKnowledge.sourcesErrorDescription'])}
+          </span>
+          <Button onClick={() => void sourcesQuery.fetchNextPage()}>
+            {tCommon(($) => $['operation.retry'])}
+          </Button>
+        </div>
+      ) : !sources?.length && (sourcesQuery.hasNextPage || sourcesQuery.isFetchingNextPage) ? (
+        <div className="flex min-h-64 flex-1 items-center justify-center">
+          <Loading />
         </div>
       ) : !sources?.length ? (
         <SourcesEmpty knowledgeSpaceId={knowledgeSpaceId} />

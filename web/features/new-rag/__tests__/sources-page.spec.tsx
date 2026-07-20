@@ -208,6 +208,30 @@ describe('SourcesPage', () => {
     expect(screen.getByText('Submitted preview')).toBeInTheDocument()
   })
 
+  it('continues past cursor pages containing only hidden preview drafts', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              id: 'preview',
+              metadata: { preview: true },
+              status: 'disabled',
+            }),
+          ],
+          nextCursor: 'next',
+        },
+      ],
+    }
+    sourcesQuery.hasNextPage = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.sourcesEmptyTitle')).not.toBeInTheDocument()
+  })
+
   it('exposes the row action structure without pretending unsupported mutations work', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
