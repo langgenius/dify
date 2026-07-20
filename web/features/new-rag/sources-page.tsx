@@ -384,7 +384,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                   {t(($) => $['newKnowledge.noMatchingSources'])}
                 </p>
               )}
-            {!filteredSources.length && completingFilteredResults && (
+            {completingFilteredResults && (
               <div className="flex min-h-40 items-center justify-center">
                 <Loading />
               </div>

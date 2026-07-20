@@ -313,6 +313,24 @@ describe('SourcesPage', () => {
     expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
   })
 
+  it('announces automatic filtered pagination when some results already match', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [{ items: [source({ name: 'Product documentation' })], nextCursor: 'next' }],
+    }
+    sourcesQuery.hasNextPage = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
+      'product',
+    )
+
+    expect(screen.getByText('Product documentation')).toBeInTheDocument()
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
   it('announces a filtered search with no matches', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
