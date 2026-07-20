@@ -6,12 +6,16 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AccessControl from '@/app/components/app/app-access-control'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAccessMode } from '@/models/access-control'
+import dynamic from '@/next/dynamic'
 import { getAppACLCapabilities } from '@/utils/permission'
+
+const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
+  ssr: false,
+})
 
 export function WebAppAccessControlButton({ agent }: { agent?: AgentAppDetailWithSite }) {
   const { t } = useTranslation('agentV2')
