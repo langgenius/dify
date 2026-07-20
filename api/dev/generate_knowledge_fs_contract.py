@@ -107,7 +107,9 @@ def main() -> None:
 
     if args.output_openapi:
         args.output_openapi.parent.mkdir(parents=True, exist_ok=True)
-        args.output_openapi.write_text(json.dumps(filter_openapi_document(document, declarations), indent=2) + "\n")
+        args.output_openapi.write_text(
+            json.dumps(filter_openapi_document(document, codegen_contract_declarations(declarations)), indent=2) + "\n"
+        )
 
     if args.update_lock:
         LOCK_PATH.write_text(
@@ -248,6 +250,17 @@ def console_contract_declarations() -> tuple[ContractDeclaration, ...]:
         }
         for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS
     )
+
+
+def codegen_contract_declarations(
+    declarations: tuple[ContractDeclaration, ...],
+) -> tuple[ContractDeclaration, ...]:
+    """Return operations that the generated request/response client can represent faithfully.
+
+    Custom-named SSE events are consumed by the dedicated frontend stream adapter. OpenAPI models
+    the wire body as a string, which would otherwise expose a misleading JSON-style client method.
+    """
+    return tuple(declaration for declaration in declarations if declaration["response_kind"] != "stream")
 
 
 def response_kind(operation: dict[str, Any]) -> str:

@@ -12,6 +12,7 @@ import pytest
 from dev import generate_knowledge_fs_contract as contract_validator
 from dev.generate_knowledge_fs_contract import (
     ContractDeclaration,
+    codegen_contract_declarations,
     filter_openapi_document,
     validate_declarations,
 )
@@ -180,6 +181,18 @@ def test_filter_openapi_document_keeps_only_declared_operations_and_referenced_s
     assert set(filtered["paths"]["/knowledge-spaces"]) == {"get"}
     assert set(filtered["components"]["schemas"]) == {"KnowledgeSpaceList", "KnowledgeSpace"}
     assert filtered["components"]["securitySchemes"] == document["components"]["securitySchemes"]
+
+
+def test_codegen_contract_declarations_excludes_custom_sse_streams() -> None:
+    json_declaration = declaration()
+    stream_declaration = declaration(
+        operation_id="streamTask",
+        path="tasks/{id}/events",
+        response_kind="stream",
+        response_media_types=("text/event-stream",),
+    )
+
+    assert codegen_contract_declarations((json_declaration, stream_declaration)) == (json_declaration,)
 
 
 def test_console_operation_registry_matches_contract() -> None:

@@ -56,7 +56,7 @@ def _upstream(
         response_kind=kind,
         required_scope="knowledge-spaces:read",
         rbac_permission=RBACPermission.DATASET_READONLY,
-        requires_dataset_editor=False,
+        legacy_role="reader",
         max_response_bytes=max_response_bytes
         or (64 * 1024 * 1024 if kind == "stream" else 25 * 1024 * 1024 if kind == "binary" else 1024 * 1024),
         request_headers=(),

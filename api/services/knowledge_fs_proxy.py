@@ -28,6 +28,7 @@ from services.enterprise.rbac_service import RBACService
 type KnowledgeFSMethod = Literal["DELETE", "GET", "PATCH", "POST", "PUT"]
 type KnowledgeFSResponseKind = Literal["binary", "buffered", "stream"]
 type KnowledgeFSRequiredScope = Literal["knowledge-spaces:read", "knowledge-spaces:write"]
+type KnowledgeFSLegacyRole = Literal["reader", "dataset_editor", "admin"]
 
 _JWT_AUDIENCE = "knowledge-fs"
 _JWT_ISSUER = "dify"
@@ -42,7 +43,7 @@ class KnowledgeFSOperation(NamedTuple):
     response_kind: KnowledgeFSResponseKind
     required_scope: KnowledgeFSRequiredScope
     rbac_permission: RBACPermission
-    requires_dataset_editor: bool
+    legacy_role: KnowledgeFSLegacyRole
     max_response_bytes: int
     request_headers: tuple[str, ...]
     response_headers: tuple[str, ...]
@@ -54,12 +55,14 @@ def _console_operation(
     method: KnowledgeFSMethod,
     path: str,
     *,
+    rbac_permission: RBACPermission,
+    legacy_role: KnowledgeFSLegacyRole,
     max_response_bytes: int = 1_048_576,
     request_headers: tuple[str, ...] = ("x-trace-id",),
     response_kind: KnowledgeFSResponseKind = "buffered",
     response_media_types: tuple[str, ...] = ("application/json",),
 ) -> KnowledgeFSOperation:
-    """Declare one contract-pinned operation with the shared Dify dataset policy."""
+    """Declare one contract-pinned operation with an explicit Dify authorization policy."""
     is_read = method == "GET"
     return KnowledgeFSOperation(
         operation_id=operation_id,
@@ -67,8 +70,8 @@ def _console_operation(
         path=path,
         response_kind=response_kind,
         required_scope="knowledge-spaces:read" if is_read else "knowledge-spaces:write",
-        rbac_permission=(RBACPermission.DATASET_READONLY if is_read else RBACPermission.DATASET_CREATE_AND_MANAGEMENT),
-        requires_dataset_editor=not is_read,
+        rbac_permission=rbac_permission,
+        legacy_role=legacy_role,
         max_response_bytes=max_response_bytes,
         request_headers=request_headers,
         response_headers=("x-trace-id",),
@@ -81,128 +84,178 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         operation_id="listKnowledgeSpaces",
         method="GET",
         path="knowledge-spaces",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="createKnowledgeSpace",
         method="POST",
         path="knowledge-spaces",
+        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesById",
         method="GET",
         path="knowledge-spaces/{id}",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdAccessPolicy",
         method="GET",
         path="knowledge-spaces/{id}/access-policy",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="patchKnowledgeSpacesByIdAccessPolicy",
         method="PATCH",
         path="knowledge-spaces/{id}/access-policy",
+        rbac_permission=RBACPermission.DATASET_ACCESS_CONFIG,
+        legacy_role="admin",
     ),
     _console_operation(
         operation_id="getSourceProviders",
         method="GET",
         path="source-providers",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdSourceConnections",
         method="GET",
         path="knowledge-spaces/{id}/source-connections",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdSourceConnections",
         method="POST",
         path="knowledge-spaces/{id}/source-connections",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh",
         method="POST",
         path="knowledge-spaces/{id}/source-connections/{connectionId}/refresh",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdSources",
         method="GET",
         path="knowledge-spaces/{id}/sources",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdSources",
         method="POST",
         path="knowledge-spaces/{id}/sources",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview",
         method="POST",
         path="knowledge-spaces/{id}/sources/{sourceId}/crawl-preview",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
         request_headers=("idempotency-key", "x-trace-id"),
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdSourceWorkflowsByRunId",
         method="GET",
         path="knowledge-spaces/{id}/source-workflows/{runId}",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages",
         method="GET",
         path="knowledge-spaces/{id}/source-workflows/{runId}/pages",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel",
         method="POST",
         path="knowledge-spaces/{id}/source-workflows/{runId}/cancel",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry",
         method="POST",
         path="knowledge-spaces/{id}/source-workflows/{runId}/retry",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection",
         method="POST",
         path="knowledge-spaces/{id}/source-workflows/{runId}/selection",
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
         request_headers=("idempotency-key", "x-trace-id"),
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
         method="GET",
         path="knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
         method="PUT",
         path="knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
+        rbac_permission=RBACPermission.DATASET_EDIT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdLogicalDocuments",
         method="GET",
         path="knowledge-spaces/{id}/logical-documents",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdLogicalDocumentsByDocumentId",
         method="GET",
         path="knowledge-spaces/{id}/logical-documents/{documentId}",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions",
         method="GET",
         path="knowledge-spaces/{id}/documents/{documentId}/revisions",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks",
         method="GET",
         path="knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdProcessingTasks",
         method="GET",
         path="knowledge-spaces/{id}/processing-tasks",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents",
         method="GET",
         path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
         max_response_bytes=67_108_864,
         request_headers=("last-event-id", "x-trace-id"),
         response_kind="stream",
@@ -212,11 +265,15 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         operation_id="deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
         method="DELETE",
         path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}",
+        rbac_permission=RBACPermission.DATASET_EDIT,
+        legacy_role="dataset_editor",
     ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry",
         method="POST",
         path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/retry",
+        rbac_permission=RBACPermission.DATASET_EDIT,
+        legacy_role="dataset_editor",
     ),
 )
 
@@ -267,8 +324,10 @@ def authorize_knowledge_fs_request(
     Raises:
         KnowledgeFSAccessDeniedError: The account lacks a required legacy or enterprise permission.
     """
-    if operation.requires_dataset_editor and not account.is_dataset_editor:
-        raise KnowledgeFSAccessDeniedError("KnowledgeFS mutations require dataset edit access")
+    if operation.legacy_role == "dataset_editor" and not account.is_dataset_editor:
+        raise KnowledgeFSAccessDeniedError("KnowledgeFS operation requires dataset edit access")
+    if operation.legacy_role == "admin" and not account.is_admin_or_owner:
+        raise KnowledgeFSAccessDeniedError("KnowledgeFS operation requires workspace administration access")
     if not RBACService.CheckAccess.check(
         tenant_id,
         account.id,

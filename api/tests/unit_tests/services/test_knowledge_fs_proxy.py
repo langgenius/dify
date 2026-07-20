@@ -59,6 +59,69 @@ _HAPPY_PATH_OPERATION_IDS = (
     "postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry",
 )
 
+_OPERATION_AUTHORIZATION_POLICIES = {
+    "listKnowledgeSpaces": (RBACPermission.DATASET_READONLY, "reader"),
+    "createKnowledgeSpace": (RBACPermission.DATASET_CREATE_AND_MANAGEMENT, "dataset_editor"),
+    "getKnowledgeSpacesById": (RBACPermission.DATASET_READONLY, "reader"),
+    "getKnowledgeSpacesByIdAccessPolicy": (RBACPermission.DATASET_READONLY, "reader"),
+    "patchKnowledgeSpacesByIdAccessPolicy": (RBACPermission.DATASET_ACCESS_CONFIG, "admin"),
+    "getSourceProviders": (RBACPermission.DATASET_EXTERNAL_CONNECT, "dataset_editor"),
+    "getKnowledgeSpacesByIdSourceConnections": (RBACPermission.DATASET_EXTERNAL_CONNECT, "dataset_editor"),
+    "postKnowledgeSpacesByIdSourceConnections": (RBACPermission.DATASET_EXTERNAL_CONNECT, "dataset_editor"),
+    "postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh": (
+        RBACPermission.DATASET_EXTERNAL_CONNECT,
+        "dataset_editor",
+    ),
+    "getKnowledgeSpacesByIdSources": (RBACPermission.DATASET_READONLY, "reader"),
+    "postKnowledgeSpacesByIdSources": (RBACPermission.DATASET_EXTERNAL_CONNECT, "dataset_editor"),
+    "postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview": (
+        RBACPermission.DATASET_EXTERNAL_CONNECT,
+        "dataset_editor",
+    ),
+    "getKnowledgeSpacesByIdSourceWorkflowsByRunId": (
+        RBACPermission.DATASET_EXTERNAL_CONNECT,
+        "dataset_editor",
+    ),
+    "getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages": (
+        RBACPermission.DATASET_EXTERNAL_CONNECT,
+        "dataset_editor",
+    ),
+    "postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel": (
+        RBACPermission.DATASET_EXTERNAL_CONNECT,
+        "dataset_editor",
+    ),
+    "postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry": (
+        RBACPermission.DATASET_EXTERNAL_CONNECT,
+        "dataset_editor",
+    ),
+    "postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection": (
+        RBACPermission.DATASET_EXTERNAL_CONNECT,
+        "dataset_editor",
+    ),
+    "getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy": (RBACPermission.DATASET_READONLY, "reader"),
+    "putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy": (RBACPermission.DATASET_EDIT, "dataset_editor"),
+    "getKnowledgeSpacesByIdLogicalDocuments": (RBACPermission.DATASET_READONLY, "reader"),
+    "getKnowledgeSpacesByIdLogicalDocumentsByDocumentId": (RBACPermission.DATASET_READONLY, "reader"),
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions": (RBACPermission.DATASET_READONLY, "reader"),
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks": (
+        RBACPermission.DATASET_READONLY,
+        "reader",
+    ),
+    "getKnowledgeSpacesByIdProcessingTasks": (RBACPermission.DATASET_READONLY, "reader"),
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents": (
+        RBACPermission.DATASET_READONLY,
+        "reader",
+    ),
+    "deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId": (
+        RBACPermission.DATASET_EDIT,
+        "dataset_editor",
+    ),
+    "postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry": (
+        RBACPermission.DATASET_EDIT,
+        "dataset_editor",
+    ),
+}
+
 
 def _materialized_path(operation: KnowledgeFSOperation) -> str:
     segments = []
@@ -92,14 +155,13 @@ def test_console_registry_exposes_only_the_new_rag_happy_path_operations() -> No
     assert tuple(operation.operation_id for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS) == _HAPPY_PATH_OPERATION_IDS
 
 
-def test_console_registry_preserves_the_read_and_write_policy_for_every_operation() -> None:
+def test_console_registry_preserves_explicit_scope_and_authorization_policies() -> None:
     for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS:
         is_read = operation.method == "GET"
         assert operation.required_scope == f"knowledge-spaces:{'read' if is_read else 'write'}"
-        assert operation.rbac_permission == (
-            RBACPermission.DATASET_READONLY if is_read else RBACPermission.DATASET_CREATE_AND_MANAGEMENT
-        )
-        assert operation.requires_dataset_editor is not is_read
+        assert (operation.rbac_permission, operation.legacy_role) == _OPERATION_AUTHORIZATION_POLICIES[
+            operation.operation_id
+        ]
         assert operation.response_headers == ("x-trace-id",)
 
 
@@ -219,14 +281,14 @@ def test_authorization_rejects_workspace_rbac_denial(
 
 @pytest.mark.parametrize(
     "operation",
-    tuple(operation for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS if operation.method != "GET"),
+    tuple(operation for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS if operation.legacy_role == "dataset_editor"),
     ids=lambda operation: operation.operation_id,
 )
-def test_write_operations_reject_non_dataset_editor_before_rbac(
+def test_dataset_editor_operations_reject_legacy_viewers_before_rbac(
     monkeypatch: pytest.MonkeyPatch,
     operation: KnowledgeFSOperation,
 ) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=False)
+    account = MagicMock(id="account-1", is_dataset_editor=False, is_admin_or_owner=False)
     check_access = MagicMock(return_value=True)
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
 
@@ -240,11 +302,25 @@ def test_write_operations_reject_non_dataset_editor_before_rbac(
     check_access.assert_not_called()
 
 
-def test_authorization_uses_the_declared_editor_policy(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=False)
+def test_admin_operation_rejects_legacy_editors_before_rbac(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=True, is_admin_or_owner=False)
     check_access = MagicMock(return_value=True)
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
-    operation = get_knowledge_fs_operation("POST", "knowledge-spaces")._replace(requires_dataset_editor=False)
+    operation = get_knowledge_fs_operation(
+        "PATCH", "knowledge-spaces/00000000-0000-4000-8000-000000000001/access-policy"
+    )
+
+    with pytest.raises(KnowledgeFSAccessDeniedError, match="administration access"):
+        authorize_knowledge_fs_request(account=account, tenant_id="tenant-1", operation=operation)
+
+    check_access.assert_not_called()
+
+
+def test_authorization_uses_the_declared_reader_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=False, is_admin_or_owner=False)
+    check_access = MagicMock(return_value=True)
+    monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
+    operation = get_knowledge_fs_operation("GET", "knowledge-spaces")
 
     authorize_knowledge_fs_request(account=account, tenant_id="tenant-1", operation=operation)
 

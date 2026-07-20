@@ -62,6 +62,22 @@ export function getBaseURL(path: string) {
   return url
 }
 
+export function requestConsoleResponse(
+  path: string,
+  init: RequestInit = {},
+  context: Pick<ConsoleClientContext, 'silent'> = {},
+) {
+  const baseURL = getBaseURL(API_PREFIX)
+  baseURL.pathname = `${baseURL.pathname.replace(/\/$/, '')}/`
+  const url = new URL(path.replace(/^\//, ''), baseURL)
+  const input = new Request(url, init)
+  return request<Response>(normalizeConsoleOpenAPIURL(input.url), init, {
+    fetchCompat: true,
+    request: input,
+    silent: context.silent,
+  })
+}
+
 export type ConsoleClientContext = TanstackQueryOperationContext & {
   silent?: boolean
 }
