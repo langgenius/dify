@@ -47,6 +47,24 @@ class MaxRetriesExceededError(ValueError):
     pass
 
 
+class ResponseLimitError(ValueError):
+    """Base error for responses that cannot be safely bounded."""
+
+    pass
+
+
+class ResponseTooLargeError(ResponseLimitError):
+    """Raised when an identity response exceeds the configured byte limit."""
+
+    pass
+
+
+class UnsupportedResponseEncodingError(ResponseLimitError):
+    """Raised when response encoding prevents safe decoded-size enforcement."""
+
+    pass
+
+
 request_error = httpx.RequestError
 max_retries_exceeded_error = MaxRetriesExceededError
 
@@ -142,7 +160,31 @@ def _inject_trace_headers(headers: Headers | None) -> Headers:
     return headers
 
 
-def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+def make_request(
+    method: str,
+    url: str,
+    max_retries: int = SSRF_DEFAULT_MAX_RETRIES,
+    stream_response: bool = False,
+    **kwargs: Any,
+) -> httpx.Response:
+    """Send one SSRF-protected request with optional streaming.
+
+    Args:
+        method: HTTP method sent through the configured SSRF client.
+        url: Absolute request URL.
+        max_retries: Number of retry attempts after the initial request.
+        stream_response: Return an open streaming response that the caller must close.
+        **kwargs: Additional keyword arguments forwarded to ``httpx.Client``.
+
+    Returns:
+        A buffered response, or an open response when ``stream_response`` is true.
+
+    Raises:
+        ToolSSRFError: The configured SSRF proxy rejects the destination.
+        MaxRetriesExceededError: All configured request attempts fail.
+        httpx.RequestError: A request fails while retries are disabled.
+        ValueError: The SSL verification option or request headers are invalid.
+    """
     # Convert requests-style allow_redirects to httpx-style follow_redirects
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
@@ -175,6 +217,11 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
     # When using a forward proxy, httpx may override the Host header based on the URL.
     # We extract and preserve any explicitly set Host header to support virtual hosting.
     user_provided_host = _get_user_provided_host_header(headers)
+    send_kwargs: dict[str, Any] = {}
+    if "auth" in kwargs:
+        send_kwargs["auth"] = kwargs.pop("auth")
+    if "follow_redirects" in kwargs:
+        send_kwargs["follow_redirects"] = kwargs.pop("follow_redirects")
 
     retries = 0
     while retries <= max_retries:
@@ -185,7 +232,11 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
             if user_provided_host is not None:
                 headers["host"] = user_provided_host
             kwargs["headers"] = headers
-            response = client.request(method=method, url=url, **kwargs)
+            request = client.build_request(method=method, url=url, **kwargs)
+            if stream_response:
+                response = client.send(request, stream=True, **send_kwargs)
+            else:
+                response = client.send(request, **send_kwargs)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
@@ -195,6 +246,7 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
 
                 # Squid typically identifies itself in Server or Via headers
                 if "squid" in server_header or "squid" in via_header:
+                    response.close()
                     raise ToolSSRFError(
                         f"Access to '{url}' was blocked by SSRF protection. "
                         f"The URL may point to a private or local network address. "
@@ -208,6 +260,7 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
                     response.status_code,
                     url,
                 )
+                response.close()
 
         except httpx.RequestError as e:
             logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
@@ -218,6 +271,42 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
     raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
+
+
+def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> httpx.Response:
+    """Consume one open identity response under a decoded byte limit and close its stream."""
+    if max_response_bytes <= 0:
+        raise ValueError("max_response_bytes must be positive")
+
+    try:
+        content_encoding = response.headers.get("content-encoding", "identity").strip().lower()
+        if content_encoding not in {"", "identity"}:
+            raise UnsupportedResponseEncodingError(f"content encoding {content_encoding} cannot be safely bounded")
+        content = bytearray()
+        for chunk in response.iter_bytes():
+            if len(content) + len(chunk) > max_response_bytes:
+                raise ResponseTooLargeError(f"response exceeded {max_response_bytes} bytes")
+            content.extend(chunk)
+        decoded_headers = {
+            name: value
+            for name, value in response.headers.items()
+            if name.lower() not in {"content-encoding", "content-length", "transfer-encoding"}
+        }
+        try:
+            request = response.request
+        except RuntimeError:
+            request = None
+        return httpx.Response(
+            response.status_code,
+            headers=decoded_headers,
+            content=bytes(content),
+            request=request,
+            extensions=response.extensions,
+            history=response.history,
+            default_encoding=response.default_encoding,
+        )
+    finally:
+        response.close()
 
 
 def get(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
