@@ -444,6 +444,7 @@
   "nodes.agent.pluginNotInstalledDesc": "Acest integrare este instalat de pe GitHub. Vă rugăm să accesați Integrări pentru a reinstala",
   "nodes.agent.roster.change": "Schimbă",
   "nodes.agent.roster.editInConsole": "Editează în Agent Console",
+  "nodes.agent.roster.editInConsoleDisabled": "Nu aveți permisiunea de a gestiona Agents",
   "nodes.agent.roster.inlineSetup.description": "O configurare unică ce există doar în acest nod",
   "nodes.agent.roster.inlineSetup.name": "Configurare inline",
   "nodes.agent.roster.inlineSetup.title": "Configurarea agentului",

@@ -444,6 +444,7 @@
   "nodes.agent.pluginNotInstalledDesc": "Questo integrazione viene installato da GitHub. Vai su Integrazione per reinstallare",
   "nodes.agent.roster.change": "Cambia",
   "nodes.agent.roster.editInConsole": "Modifica in Agent Console",
+  "nodes.agent.roster.editInConsoleDisabled": "Non hai i permessi per gestire gli Agents",
   "nodes.agent.roster.inlineSetup.description": "Una configurazione una tantum che vive solo in questo nodo",
   "nodes.agent.roster.inlineSetup.name": "Configurazione inline",
   "nodes.agent.roster.inlineSetup.title": "Configurazione dell’agente",

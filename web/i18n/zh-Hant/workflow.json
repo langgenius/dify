@@ -444,6 +444,7 @@
   "nodes.agent.pluginNotInstalledDesc": "此集成安裝自 GitHub。請前往集成重新安裝",
   "nodes.agent.roster.change": "更換",
   "nodes.agent.roster.editInConsole": "在 Agent Console 中編輯",
+  "nodes.agent.roster.editInConsoleDisabled": "你沒有管理 Agents 的權限",
   "nodes.agent.roster.inlineSetup.description": "僅存在於此節點的一次性設定",
   "nodes.agent.roster.inlineSetup.name": "內聯設定",
   "nodes.agent.roster.inlineSetup.title": "Agent 設定",

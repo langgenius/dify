@@ -444,6 +444,7 @@
   "nodes.agent.pluginNotInstalledDesc": "このインテグレーションは GitHub からインストールされています。再インストールするにはインテグレーションに移動してください。",
   "nodes.agent.roster.change": "変更",
   "nodes.agent.roster.editInConsole": "Agent Console で編集",
+  "nodes.agent.roster.editInConsoleDisabled": "Agents を管理する権限がありません",
   "nodes.agent.roster.inlineSetup.description": "このノード内にのみ存在する一度きりのセットアップ",
   "nodes.agent.roster.inlineSetup.name": "インラインセットアップ",
   "nodes.agent.roster.inlineSetup.title": "Agent セットアップ",

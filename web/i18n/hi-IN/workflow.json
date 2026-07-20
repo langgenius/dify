@@ -444,6 +444,7 @@
   "nodes.agent.pluginNotInstalledDesc": "यह एकीकरण गिटहब से स्थापित किया गया है। कृपया पुनः स्थापित करने के लिए एकीकरण पर जाएं।",
   "nodes.agent.roster.change": "बदलें",
   "nodes.agent.roster.editInConsole": "Agent Console में संपादित करें",
+  "nodes.agent.roster.editInConsoleDisabled": "आपके पास Agents प्रबंधित करने की अनुमति नहीं है",
   "nodes.agent.roster.inlineSetup.description": "एक एकल सेटअप जो केवल इस नोड में रहता है",
   "nodes.agent.roster.inlineSetup.name": "इनलाइन सेटअप",
   "nodes.agent.roster.inlineSetup.title": "एजेंट सेटअप",

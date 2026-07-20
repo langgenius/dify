@@ -38,6 +38,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from pydantic import JsonValue, TypeAdapter
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
@@ -91,17 +92,23 @@ class _HasUsage(Protocol):
 
 @runtime_checkable
 class _HasInputTokens(Protocol):
-    input_tokens: object
+    input_tokens: int | None
 
 
 @runtime_checkable
 class _HasOutputTokens(Protocol):
-    output_tokens: object
+    output_tokens: int | None
 
 
 @runtime_checkable
 class _HasTotalTokens(Protocol):
-    total_tokens: object
+    total_tokens: int | None
+
+
+@runtime_checkable
+class _HasAccumulatedUsage(Protocol):
+    @property
+    def accumulated_usage(self) -> LLMUsage | None: ...
 
 
 class AgentRunValidationError(ValueError):
@@ -365,7 +372,8 @@ class AgentRunRunner:
                     deferred_tool_results=deferred_tool_results,
                     event_stream_handler=handle_events,
                 )
-                usage = _serialize_agent_usage(_result_usage(result))
+                complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
+                usage = _serialize_agent_usage(complete_usage if complete_usage is not None else _result_usage(result))
                 append_successful_run_history(history_layer, result.new_messages())
                 if isinstance(result.output, DeferredToolRequests):
                     if ask_human_layer is None:
@@ -424,9 +432,11 @@ def _result_usage(result: object) -> object | None:
 
 
 def _serialize_agent_usage(usage: object | None) -> AgentRunUsage | None:
-    """Convert pydantic-ai request usage into the public Agent run usage shape."""
+    """Convert complete daemon or fallback pydantic-ai usage into the public shape."""
     if usage is None:
         return None
+    if isinstance(usage, LLMUsage):
+        return AgentRunUsage.model_validate(usage.model_dump(mode="python"))
     input_tokens = int(usage.input_tokens or 0) if isinstance(usage, _HasInputTokens) else 0
     output_tokens = int(usage.output_tokens or 0) if isinstance(usage, _HasOutputTokens) else 0
     total_tokens = int(usage.total_tokens or 0) if isinstance(usage, _HasTotalTokens) else 0
