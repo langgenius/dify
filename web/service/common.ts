@@ -134,8 +134,8 @@ export const changePasswordWithToken = ({ url, body }: { url: string, body: { to
 export const changeWebAppPasswordWithToken = ({ url, body }: { url: string, body: { token: string, new_password: string, password_confirm: string } }): Promise<CommonResponse> =>
   post<CommonResponse>(url, { body }, { isPublicAPI: true })
 
-export const uploadRemoteFileInfo = (url: string, isPublic?: boolean, silent?: boolean): Promise<{ id: string, name: string, size: number, mime_type: string, url: string }> => {
-  return post<{ id: string, name: string, size: number, mime_type: string, url: string }>('/remote-files/upload', { body: { url } }, { isPublicAPI: isPublic, silent })
+export const uploadRemoteFileInfo = (url: string, isPublic?: boolean, silent?: boolean, uploadEndpoint?: string): Promise<{ id: string, name: string, size: number, mime_type: string, url: string }> => {
+  return post<{ id: string, name: string, size: number, mime_type: string, url: string }>(uploadEndpoint || '/remote-files/upload', { body: { url } }, { isPublicAPI: isPublic, silent })
 }
 
 export const sendEMailLoginCode = (email: string, language = 'en-US'): Promise<CommonResponse & { data: string }> =>
