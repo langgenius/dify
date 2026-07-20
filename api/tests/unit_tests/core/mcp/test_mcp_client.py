@@ -158,37 +158,11 @@ class TestMCPClient:
     @patch("core.mcp.mcp_client.sse_client")
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")
-    def test_initialize_with_unknown_method_fallback_to_sse(
+    def test_initialize_with_unknown_method_fallback_to_streamable_http(
         self, mock_client_session, mock_streamable_client, mock_sse_client
     ):
-        """Test initialization with unknown method falls back to SSE."""
+        """Test initialization with unknown method tries streamable-http first."""
         # Setup mocks
-        mock_read_stream = Mock()
-        mock_write_stream = Mock()
-        mock_sse_client.return_value.__enter__.return_value = (mock_read_stream, mock_write_stream)
-
-        mock_session = Mock()
-        mock_client_session.return_value.__enter__.return_value = mock_session
-
-        client = MCPClient(server_url="http://test.example.com/unknown")
-        client._initialize()
-
-        # Verify SSE client was tried
-        mock_sse_client.assert_called_once()
-        mock_streamable_client.assert_not_called()
-
-        # Verify session was created
-        assert client._session == mock_session
-
-    @patch("core.mcp.mcp_client.sse_client")
-    @patch("core.mcp.mcp_client.streamablehttp_client")
-    @patch("core.mcp.mcp_client.ClientSession")
-    def test_initialize_fallback_from_sse_to_mcp(self, mock_client_session, mock_streamable_client, mock_sse_client):
-        """Test initialization falls back from SSE to MCP on connection error."""
-        # Setup SSE to fail
-        mock_sse_client.side_effect = MCPConnectionError("SSE connection failed")
-
-        # Setup MCP to succeed
         mock_read_stream = Mock()
         mock_write_stream = Mock()
         mock_client_context = Mock()
@@ -204,11 +178,67 @@ class TestMCPClient:
         client = MCPClient(server_url="http://test.example.com/unknown")
         client._initialize()
 
-        # Verify both were tried
-        mock_sse_client.assert_called_once()
+        # Verify streamable-http client was tried first
         mock_streamable_client.assert_called_once()
+        mock_sse_client.assert_not_called()
 
-        # Verify session was created with MCP
+        # Verify session was created
+        assert client._session == mock_session
+
+    @patch("core.mcp.mcp_client.sse_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_from_streamable_http_to_sse(
+        self, mock_client_session, mock_streamable_client, mock_sse_client
+    ):
+        """Test initialization falls back from streamable-http to SSE on connection error."""
+        # Setup streamable-http to fail
+        mock_streamable_client.side_effect = MCPConnectionError("streamable-http connection failed")
+
+        # Setup SSE to succeed
+        mock_read_stream = Mock()
+        mock_write_stream = Mock()
+        mock_sse_client.return_value.__enter__.return_value = (mock_read_stream, mock_write_stream)
+
+        mock_session = Mock()
+        mock_client_session.return_value.__enter__.return_value = mock_session
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        # Verify both were tried
+        mock_streamable_client.assert_called_once()
+        mock_sse_client.assert_called_once()
+
+        # Verify session was created with SSE
+        assert client._session == mock_session
+
+    @patch("core.mcp.mcp_client.sse_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_on_httpx_timeout(self, mock_client_session, mock_streamable_client, mock_sse_client):
+        """Test initialization falls back from streamable-http to SSE on httpx.ReadTimeout (#39301)."""
+        import httpx
+
+        # Setup streamable-http to fail with ReadTimeout (the bug from #39301)
+        mock_streamable_client.side_effect = httpx.ReadTimeout("timed out")
+
+        # Setup SSE to succeed
+        mock_read_stream = Mock()
+        mock_write_stream = Mock()
+        mock_sse_client.return_value.__enter__.return_value = (mock_read_stream, mock_write_stream)
+
+        mock_session = Mock()
+        mock_client_session.return_value.__enter__.return_value = mock_session
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        # Verify both were tried
+        mock_streamable_client.assert_called_once()
+        mock_sse_client.assert_called_once()
+
+        # Verify session was created with SSE
         assert client._session == mock_session
 
     @patch("core.mcp.mcp_client.streamablehttp_client")
