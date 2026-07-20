@@ -279,7 +279,7 @@ export const getAppCardDisplayState = ({
 }
 
 export const isAppAccessConfigured = (
-  appDetail: AppDetailResponse | null | undefined,
+  appDetail: Pick<AppDetailResponse, 'access_mode'> | null | undefined,
   appAccessSubjects: AccessSubjectsLike,
 ) => {
   if (!appDetail || !appAccessSubjects) return true

@@ -15,6 +15,43 @@ const mocks = vi.hoisted(() => ({
   apiEnableMutation: vi.fn(),
   createApiKeyMutation: vi.fn(),
   deleteApiKeyMutation: vi.fn(),
+  systemFeaturesQueryFn: vi.fn(),
+  whiteListSubjectsQueryFn: vi.fn(),
+}))
+
+vi.mock('@/features/system-features/client', () => ({
+  systemFeaturesQueryOptions: () => ({
+    queryKey: ['system-features'],
+    queryFn: () => mocks.systemFeaturesQueryFn(),
+  }),
+}))
+
+vi.mock('@/service/access-control', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/access-control')>()),
+  useAppWhiteListSubjects: (appId: string | undefined, enabled: boolean) => ({
+    data: enabled ? mocks.whiteListSubjectsQueryFn(appId) : undefined,
+  }),
+}))
+
+vi.mock('@/app/components/app/app-access-control', () => ({
+  default: ({
+    app,
+    onClose,
+    onConfirm,
+  }: {
+    app: { id: string; access_mode: string }
+    onClose: () => void
+    onConfirm?: () => void
+  }) => (
+    <div data-testid="access-control-modal" data-app-id={app.id} data-access-mode={app.access_mode}>
+      <button type="button" onClick={onClose}>
+        close-access-control
+      </button>
+      <button type="button" onClick={() => onConfirm?.()}>
+        confirm-access-control
+      </button>
+    </div>
+  ),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -698,6 +735,101 @@ describe('Agent access surface cards', () => {
             api_key_id: 'key-1',
           },
         })
+      })
+    })
+  })
+
+  describe('Web app access control', () => {
+    const accessControlAgent = () =>
+      createAgent({
+        access_mode: 'private',
+        maintainer: 'user-1',
+        permission_keys: ['app.acl.release_and_version'],
+      })
+
+    beforeEach(() => {
+      mocks.systemFeaturesQueryFn.mockResolvedValue({
+        webapp_auth: {
+          enabled: true,
+          allow_sso: false,
+          allow_email_password_login: true,
+          allow_email_code_login: false,
+        },
+      })
+      mocks.whiteListSubjectsQueryFn.mockReturnValue({ groups: [], members: [] })
+    })
+
+    it('should render the current access mode row when webapp auth is enabled and user can manage', async () => {
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      expect(
+        await screen.findByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('app.publishApp.notSet')).toBeInTheDocument()
+    })
+
+    it('should hide the access control row when webapp auth is disabled', async () => {
+      mocks.systemFeaturesQueryFn.mockResolvedValue({ webapp_auth: { enabled: false } })
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+        ).not.toBeInTheDocument()
+      })
+    })
+
+    it('should hide the access control row when the user cannot manage access control', async () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: 'private', permission_keys: [] })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+        ).not.toBeInTheDocument()
+      })
+    })
+
+    it('should open the access control dialog wired with the backing app id', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(
+        await screen.findByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+      )
+
+      const modal = screen.getByTestId('access-control-modal')
+      expect(modal).toHaveAttribute('data-app-id', 'app-1')
+      expect(modal).toHaveAttribute('data-access-mode', 'private')
+    })
+
+    it('should close the dialog on confirm', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(
+        await screen.findByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+      )
+      await user.click(screen.getByText('confirm-access-control'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('access-control-modal')).not.toBeInTheDocument()
       })
     })
   })
