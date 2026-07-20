@@ -23,7 +23,7 @@ concurrency:
 jobs:
   validate:
     name: validate manifest + resolve target Dify release
-    runs-on: depot-ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     if: github.repository == 'langgenius/dify'
     permissions:
       contents: read
@@ -87,7 +87,7 @@ jobs:
   release:
     name: build + attach standalone binaries (all targets)
     needs: validate
-    runs-on: depot-ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     permissions:
       contents: write
     defaults:
