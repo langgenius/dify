@@ -320,7 +320,8 @@ export function WebsiteCrawlPreview({
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false)
   const [discarding, setDiscarding] = useState(false)
   const [discardError, setDiscardError] = useState(false)
-  const [uncertainOperation, setUncertainOperation] = useState(false)
+  const [workflowUncertain, setWorkflowUncertain] = useState(false)
+  const [selectionUncertain, setSelectionUncertain] = useState(false)
   const draftRef = useRef<PreviewDraft | undefined>(undefined)
   const actionPendingRef = useRef(false)
   const retryFingerprintRef = useRef<string | undefined>(undefined)
@@ -384,6 +385,7 @@ export function WebsiteCrawlPreview({
   const successfulPreview = Boolean(
     run && isSuccessful(run.state) && pagesLoaded && pages.length > 0,
   )
+  const uncertainOperation = workflowUncertain || selectionUncertain
   const shouldPoll = Boolean(
     run && !starting && !stopping && !pollPaused && (active || !pagesLoaded),
   )
@@ -520,10 +522,10 @@ export function WebsiteCrawlPreview({
         const reconciled = await findProvisionalSource(knowledgeSpaceId, draft.clientRequestId)
         if (reconciled) {
           draft.source = reconciled
-          setUncertainOperation(false)
+          setWorkflowUncertain(false)
           return draft
         }
-        setUncertainOperation(true)
+        setWorkflowUncertain(true)
         throw new Error('Provisional source creation is still reconciling')
       }
 
@@ -548,20 +550,20 @@ export function WebsiteCrawlPreview({
           },
           params: { id: knowledgeSpaceId },
         })
-        setUncertainOperation(false)
+        setWorkflowUncertain(false)
       } catch (error) {
         if (isDefinitiveRequestFailure(error)) {
           draft.creationAttempted = false
-          setUncertainOperation(false)
+          setWorkflowUncertain(false)
           throw error
         }
         const reconciled = await findProvisionalSource(knowledgeSpaceId, draft.clientRequestId)
         if (!reconciled) {
-          setUncertainOperation(true)
+          setWorkflowUncertain(true)
           throw error
         }
         draft.source = reconciled
-        setUncertainOperation(false)
+        setWorkflowUncertain(false)
       }
       return draft
     },
@@ -591,7 +593,7 @@ export function WebsiteCrawlPreview({
             })
           uncertainWorkflowRef.current = undefined
           retryPredecessorRef.current = undefined
-          setUncertainOperation(false)
+          setWorkflowUncertain(false)
           if (!discardRequestedRef.current) updateRun(nextRun)
           return nextRun
         } catch (error) {
@@ -610,10 +612,10 @@ export function WebsiteCrawlPreview({
                 return undefined
               }
             }
-            setUncertainOperation(true)
+            setWorkflowUncertain(true)
           } else if (isDefinitiveRequestFailure(error) && !existingUncertainWorkflow) {
             uncertainWorkflowRef.current = undefined
-            setUncertainOperation(false)
+            setWorkflowUncertain(false)
           }
           setRequestError('START_FAILED')
           return undefined
@@ -645,7 +647,7 @@ export function WebsiteCrawlPreview({
       const acceptRun = (nextRun: SourceWorkflowRun) => {
         uncertainWorkflowRef.current = undefined
         retryPredecessorRef.current = run
-        setUncertainOperation(false)
+        setWorkflowUncertain(false)
         if (!discardRequestedRef.current) {
           resetPreviewPages()
           updateRun(nextRun)
@@ -693,13 +695,13 @@ export function WebsiteCrawlPreview({
             if (!existingUncertainWorkflow) {
               retryFingerprintRef.current = undefined
               uncertainWorkflowRef.current = undefined
-              setUncertainOperation(false)
+              setWorkflowUncertain(false)
             }
             setRequestError('RETRY_FAILED')
             return undefined
           }
           uncertainWorkflowRef.current = reconcileRetry
-          setUncertainOperation(true)
+          setWorkflowUncertain(true)
           const reconciled = await reconcileRetry()
           if (!reconciled) {
             setRequestError('RETRY_FAILED')
@@ -955,7 +957,7 @@ export function WebsiteCrawlPreview({
     }
     if (pendingRun) {
       uncertainWorkflowRef.current = undefined
-      setUncertainOperation(false)
+      setWorkflowUncertain(false)
     }
     const runToCancel = pendingRun ?? pendingCancelRunRef.current ?? runRef.current
     if (runToCancel && !isTerminal(runToCancel.state) && !(await stop(runToCancel))) {
@@ -1173,7 +1175,7 @@ export function WebsiteCrawlPreview({
             knowledgeSpaceId={knowledgeSpaceId}
             onCancel={cancel}
             onRecrawl={handlePrimaryAction}
-            onSubmissionUncertainChange={setUncertainOperation}
+            onSubmissionUncertainChange={setSelectionUncertain}
             onSubmitted={() =>
               new Promise<void>((resolve) => {
                 pendingNavigationRef.current = undefined
@@ -1189,7 +1191,7 @@ export function WebsiteCrawlPreview({
             rootUrl={configuration.url}
             run={run}
             source={draftRef.current.source}
-            workflowUncertain={uncertainOperation}
+            workflowUncertain={workflowUncertain}
           />
         )}
         {showCanceled && (
