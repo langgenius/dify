@@ -16,20 +16,12 @@ const mocks = vi.hoisted(() => ({
   createApiKeyMutation: vi.fn(),
   deleteApiKeyMutation: vi.fn(),
   systemFeaturesQueryFn: vi.fn(),
-  whiteListSubjectsQueryFn: vi.fn(),
 }))
 
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({
     queryKey: ['system-features'],
     queryFn: () => mocks.systemFeaturesQueryFn(),
-  }),
-}))
-
-vi.mock('@/service/access-control', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/access-control')>()),
-  useAppWhiteListSubjects: (appId: string | undefined, enabled: boolean) => ({
-    data: enabled ? mocks.whiteListSubjectsQueryFn(appId) : undefined,
   }),
 }))
 
@@ -747,6 +739,8 @@ describe('Agent access surface cards', () => {
         permission_keys: ['app.acl.release_and_version'],
       })
 
+    const accessControlButtonName = 'agentV2.agentDetail.access.webApp.actions.accessControl'
+
     beforeEach(() => {
       mocks.systemFeaturesQueryFn.mockResolvedValue({
         webapp_auth: {
@@ -756,21 +750,19 @@ describe('Agent access surface cards', () => {
           allow_email_code_login: false,
         },
       })
-      mocks.whiteListSubjectsQueryFn.mockReturnValue({ groups: [], members: [] })
     })
 
-    it('should render the current access mode row when webapp auth is enabled and user can manage', async () => {
+    it('should render the access control button when webapp auth is enabled and user can manage', async () => {
       renderWithQueryClient(
         <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
       )
 
       expect(
-        await screen.findByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+        await screen.findByRole('button', { name: accessControlButtonName }),
       ).toBeInTheDocument()
-      expect(screen.getByText('app.publishApp.notSet')).toBeInTheDocument()
     })
 
-    it('should hide the access control row when webapp auth is disabled', async () => {
+    it('should hide the access control button when webapp auth is disabled', async () => {
       mocks.systemFeaturesQueryFn.mockResolvedValue({ webapp_auth: { enabled: false } })
 
       renderWithQueryClient(
@@ -779,12 +771,12 @@ describe('Agent access surface cards', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+          screen.queryByRole('button', { name: accessControlButtonName }),
         ).not.toBeInTheDocument()
       })
     })
 
-    it('should hide the access control row when the user cannot manage access control', async () => {
+    it('should hide the access control button when the user cannot manage access control', async () => {
       renderWithQueryClient(
         <WebAppAccessCard
           agent={createAgent({ access_mode: 'private', permission_keys: [] })}
@@ -795,7 +787,7 @@ describe('Agent access surface cards', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+          screen.queryByRole('button', { name: accessControlButtonName }),
         ).not.toBeInTheDocument()
       })
     })
@@ -807,9 +799,7 @@ describe('Agent access surface cards', () => {
         <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
       )
 
-      await user.click(
-        await screen.findByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
-      )
+      await user.click(await screen.findByRole('button', { name: accessControlButtonName }))
 
       const modal = screen.getByTestId('access-control-modal')
       expect(modal).toHaveAttribute('data-app-id', 'app-1')
@@ -823,9 +813,7 @@ describe('Agent access surface cards', () => {
         <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
       )
 
-      await user.click(
-        await screen.findByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
-      )
+      await user.click(await screen.findByRole('button', { name: accessControlButtonName }))
       await user.click(screen.getByText('confirm-access-control'))
 
       await waitFor(() => {

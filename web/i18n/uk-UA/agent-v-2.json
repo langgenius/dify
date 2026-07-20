@@ -14,6 +14,7 @@
   "agentDetail.access.title": "Точка доступу",
   "agentDetail.access.toggleSurface": "Перемкнути доступ {{name}}",
   "agentDetail.access.webApp.accessUrl": "URL доступу",
+  "agentDetail.access.webApp.actions.accessControl": "Контроль доступу",
   "agentDetail.access.webApp.actions.customize": "Користувацький фронтенд",
   "agentDetail.access.webApp.actions.embedded": "Вбудувати",
   "agentDetail.access.webApp.actions.launch": "Запустити",

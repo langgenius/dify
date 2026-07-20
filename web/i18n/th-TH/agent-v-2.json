@@ -14,6 +14,7 @@
   "agentDetail.access.title": "จุดเข้าถึง",
   "agentDetail.access.toggleSurface": "สลับการเข้าถึง {{name}}",
   "agentDetail.access.webApp.accessUrl": "URL การเข้าถึง",
+  "agentDetail.access.webApp.actions.accessControl": "การควบคุมการเข้าถึง",
   "agentDetail.access.webApp.actions.customize": "ฟรอนต์เอนด์ที่กำหนดเอง",
   "agentDetail.access.webApp.actions.embedded": "ฝัง",
   "agentDetail.access.webApp.actions.launch": "เปิดใช้",
