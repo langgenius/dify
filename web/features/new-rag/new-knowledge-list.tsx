@@ -10,7 +10,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsString, useQueryState } from 'nuqs'
@@ -47,6 +46,14 @@ const EMPTY_CARD_IDS = [
   'empty-card-6',
   'empty-card-7',
   'empty-card-8',
+  'empty-card-9',
+  'empty-card-10',
+  'empty-card-11',
+  'empty-card-12',
+  'empty-card-13',
+  'empty-card-14',
+  'empty-card-15',
+  'empty-card-16',
 ] as const
 
 type NewKnowledgeListProps = {
@@ -129,7 +136,6 @@ function formatUpdatedAt(value: string) {
 function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: KnowledgeSpace }) {
   const { t } = useTranslation('dataset')
   const { push } = useRouter()
-  const tags = knowledgeSpace.slug.split('-').filter(Boolean).slice(0, 2)
 
   return (
     <li>
@@ -152,44 +158,12 @@ function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: KnowledgeSpace
             <h2 className="truncate system-md-semibold text-text-secondary">
               {knowledgeSpace.name}
             </h2>
-            <div className="mt-1 flex min-w-0 items-center gap-3 truncate system-2xs-medium-uppercase text-text-tertiary">
-              <span>{t(($) => $['chunkingMode.general'])}</span>
-              <span className="truncate">
-                {`${t(($) => $['indexingTechnique.high_quality'])} · ${t(($) => $['indexingMethod.semantic_search'])}`}
-              </span>
-            </div>
           </div>
         </div>
-        <p className="line-clamp-2 min-h-10 w-full px-4 py-1 body-xs-regular text-text-tertiary">
+        <p className="line-clamp-3 w-full px-4 py-1 body-xs-regular text-text-tertiary">
           {knowledgeSpace.description || t(($) => $['newKnowledge.noDescription'])}
         </p>
-        <div className="relative flex h-[26px] w-full items-center gap-1 overflow-hidden px-4">
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className="min-w-[18px] shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary"
-            >
-              {tag}
-            </span>
-          ))}
-          <span className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-r from-transparent to-components-card-bg" />
-        </div>
-        <div className="mt-auto flex w-full items-center gap-3 px-4 pt-2 pb-3 system-xs-regular text-text-tertiary">
-          <span
-            className="flex items-center gap-1"
-            aria-label={t(($) => $['newKnowledge.documentsUnavailable'])}
-          >
-            <span aria-hidden className="i-ri-file-text-fill size-3 text-text-quaternary" />
-            <span aria-hidden>—</span>
-          </span>
-          <span
-            className="flex items-center gap-1"
-            aria-label={t(($) => $['newKnowledge.appsUnavailable'])}
-          >
-            <span aria-hidden className="i-ri-robot-2-fill size-3 text-text-quaternary" />
-            <span aria-hidden>—</span>
-          </span>
-          <span aria-hidden>/</span>
+        <div className="mt-auto flex w-full items-center px-4 pt-2 pb-3 system-xs-regular text-text-tertiary">
           <span className="min-w-0 truncate">
             {t(($) => $['newKnowledge.updated'], {
               date: formatUpdatedAt(knowledgeSpace.updatedAt),
@@ -264,11 +238,12 @@ function EmptyState({ canConnect, canCreate }: { canConnect: boolean; canCreate:
     <div className="relative min-h-[calc(100vh-134px)] overflow-hidden">
       <div
         aria-hidden
-        className="absolute inset-0 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
+        className="absolute inset-0 grid auto-rows-[209px] grid-cols-1 gap-3 [mask-image:linear-gradient(to_bottom,black_0%,black_68%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_68%,transparent_100%)] md:grid-cols-2 xl:grid-cols-4"
       >
         {EMPTY_CARD_IDS.map((id) => (
           <div
             key={id}
+            data-testid="empty-knowledge-card"
             className="h-[209px] rounded-xl border-[0.5px] border-components-card-border bg-gradient-to-b from-components-card-bg to-background-default-subtle shadow-xs"
           />
         ))}
@@ -335,29 +310,19 @@ function EmptyState({ canConnect, canCreate }: { canConnect: boolean; canCreate:
   )
 }
 
-function MetadataFilter({ label }: { label: ReactNode }) {
+function DisabledMetadataFilter({ label }: { label: ReactNode }) {
   const { t } = useTranslation('dataset')
 
   return (
-    <Popover>
-      <PopoverTrigger
-        render={
-          <button
-            type="button"
-            className="flex h-8 items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-text-tertiary outline-hidden hover:bg-components-input-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          />
-        }
-      >
-        <span className="px-1 system-sm-regular">{label}</span>
-        <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-      </PopoverTrigger>
-      <PopoverContent
-        placement="bottom-start"
-        popupClassName="max-w-72 px-3 py-2 body-xs-regular text-text-tertiary"
-      >
-        {t(($) => $['newKnowledge.filtersUnavailable'])}
-      </PopoverContent>
-    </Popover>
+    <button
+      type="button"
+      disabled
+      title={t(($) => $['newKnowledge.filtersUnavailable'])}
+      className="flex h-8 cursor-not-allowed items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-disabled px-2 text-components-input-text-filled-disabled"
+    >
+      <span className="px-1 system-sm-regular">{label}</span>
+      <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+    </button>
   )
 }
 
@@ -422,8 +387,8 @@ export function NewKnowledgeList({ viewSwitcher }: NewKnowledgeListProps) {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <MetadataFilter label={t(($) => $['newKnowledge.tags'])} />
-            <MetadataFilter label={t(($) => $['newKnowledge.creators'])} />
+            <DisabledMetadataFilter label={t(($) => $['newKnowledge.tags'])} />
+            <DisabledMetadataFilter label={t(($) => $['newKnowledge.creators'])} />
             <SearchInput
               className="w-[200px]"
               value={query}

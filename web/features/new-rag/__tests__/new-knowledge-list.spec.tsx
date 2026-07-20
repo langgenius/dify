@@ -115,7 +115,7 @@ describe('NewKnowledgeList', () => {
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
   })
 
-  it('renders real knowledge spaces and filters them with URL-backed search', async () => {
+  it('renders only real knowledge-space metadata and filters with URL-backed search', async () => {
     setResolvedPage([
       {
         createdAt: '2026-07-15T00:00:00Z',
@@ -142,14 +142,12 @@ describe('NewKnowledgeList', () => {
     const list = screen.getByRole('list', { name: 'dataset.knowledge' })
     expect(within(list).getByText('Support knowledge')).toBeInTheDocument()
     expect(within(list).getByText('Engineering handbook')).toBeInTheDocument()
-    expect(within(list).getAllByText('dataset.chunkingMode.general')).toHaveLength(2)
-    expect(
-      within(list).getAllByText(
-        'dataset.indexingTechnique.high_quality · dataset.indexingMethod.semantic_search',
-      ),
-    ).toHaveLength(2)
-    expect(within(list).getByText('support')).toBeInTheDocument()
-    expect(within(list).getByText('knowledge')).toBeInTheDocument()
+    expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
+    expect(within(list).getByText('dataset.newKnowledge.noDescription')).toBeInTheDocument()
+    expect(within(list).queryByText('dataset.chunkingMode.general')).not.toBeInTheDocument()
+    expect(within(list).queryByText('support')).not.toBeInTheDocument()
+    expect(within(list).queryByText('knowledge')).not.toBeInTheDocument()
+    expect(within(list).queryByText('—')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'support' } })
 
@@ -162,7 +160,7 @@ describe('NewKnowledgeList', () => {
     })
   })
 
-  it('renders the designed header actions and explains unavailable metadata filters', async () => {
+  it('renders unsupported metadata filters as disabled controls', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
@@ -182,10 +180,8 @@ describe('NewKnowledgeList', () => {
     expect(externalApiPanelMock.setOpen).toHaveBeenCalledWith(true)
     expect(screen.getByRole('button', { name: 'dataset.serviceApi.title' })).toBeInTheDocument()
 
-    const tagsFilter = screen.getByRole('button', { name: 'dataset.newKnowledge.tags' })
-    expect(tagsFilter).toBeEnabled()
-    await user.click(tagsFilter)
-    expect(await screen.findByText('dataset.newKnowledge.filtersUnavailable')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.tags' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' })).toBeDisabled()
   })
 
   it('shows the three empty-state creation entries to authorized users', () => {
@@ -206,6 +202,7 @@ describe('NewKnowledgeList', () => {
     expect(screen.getByText('dataset.newKnowledge.uploadFilesDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.startEmptyDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.firstEmpty.recommended')).toBeInTheDocument()
+    expect(screen.getAllByTestId('empty-knowledge-card')).toHaveLength(16)
   })
 
   it('hides creation entries from read-only users', () => {
