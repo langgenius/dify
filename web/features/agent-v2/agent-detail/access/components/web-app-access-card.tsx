@@ -17,6 +17,7 @@ import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { accessSurfaceActionClassName, AccessSurfaceCard } from './access-surface-card'
+import { WebAppAccessControlSection } from './web-app-access-control-section'
 
 export function WebAppAccessCard({
   agent,
@@ -219,6 +220,10 @@ export function WebAppAccessCard({
       disabled={isLoading || !canManageWebApp}
       busy={isBusy}
     >
+      <WebAppAccessControlSection
+        agent={agent}
+        onAccessModeUpdated={() => queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })}
+      />
       {webAppUrl && isEnabled ? (
         <a
           href={webAppUrl}

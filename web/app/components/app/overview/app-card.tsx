@@ -7,17 +7,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useAppACLCapabilities } from '@/hooks/use-app-acl-capabilities'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
@@ -26,7 +24,6 @@ import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
-import { getAppACLCapabilities } from '@/utils/permission'
 import {
   AppCardAccessControlSection,
   AppCardDialogs,
@@ -73,17 +70,7 @@ function AppCard({
   const router = useRouter()
   const pathname = usePathname()
   const queryClient = useQueryClient()
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const appACLCapabilities = useMemo(
-    () =>
-      getAppACLCapabilities(appInfo.permission_keys, {
-        currentUserId,
-        resourceMaintainer: appInfo.maintainer,
-        workspacePermissionKeys,
-      }),
-    [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys],
-  )
+  const appACLCapabilities = useAppACLCapabilities(appInfo.permission_keys, appInfo.maintainer)
   const canEditApp = appACLCapabilities.canEdit
   const canManageWebAppAccessControl = appACLCapabilities.canReleaseAndVersion
   const shouldFetchWorkflow =
