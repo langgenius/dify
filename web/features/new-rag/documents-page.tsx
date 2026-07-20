@@ -19,7 +19,7 @@ import {
   workspacePermissionKeysErrorAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
 import {
@@ -72,6 +72,14 @@ function taskVersionIsAfter(candidate: string, baseline: string) {
   return candidate.localeCompare(baseline) > 0
 }
 
+function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessingTask {
+  return {
+    ...task,
+    errorCode: task.errorCode,
+    errorMessage: task.errorMessage,
+  }
+}
+
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -95,6 +103,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     Record<string, Partial<DocumentProcessingTask>>
   >({})
   const [terminalTaskPins, setTerminalTaskPins] = useState<Record<string, TerminalTaskPin>>({})
+  const [taskObserverGenerations, setTaskObserverGenerations] = useState<Record<string, number>>({})
   const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
@@ -176,6 +185,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () => tasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [tasksQuery.data],
   )
+  const baseTaskById = useMemo(() => new Map(baseTasks.map((task) => [task.id, task])), [baseTasks])
   const sourceNames = useMemo(
     () =>
       new Map(
@@ -199,6 +209,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () => new Map(baseTasks.map((task) => [task.id, task.updatedAt])),
     [baseTasks],
   )
+  const baseTaskByIdRef = useRef(baseTaskById)
+  baseTaskByIdRef.current = baseTaskById
   const baseTaskUpdatedAtRef = useRef(baseTaskUpdatedAt)
   baseTaskUpdatedAtRef.current = baseTaskUpdatedAt
   useEffect(() => {
@@ -386,6 +398,49 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     ])
   }, [queryClient])
 
+  const reconcileTerminalTask = useCallback(
+    async (taskId: string, terminalVersion: string) => {
+      const currentTask = baseTaskByIdRef.current.get(taskId)
+      if (!currentTask) return
+      try {
+        const snapshot =
+          await consoleClient.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId(
+            {
+              params: {
+                documentId: currentTask.documentId,
+                id: knowledgeSpaceId,
+                taskId,
+              },
+            },
+          )
+        if (taskVersionIsAfter(terminalVersion, snapshot.updatedAt)) return
+        const normalizedSnapshot = normalizedTaskSnapshot(snapshot)
+        setTaskOverrides((current) => {
+          const currentVersion = current[taskId]?.updatedAt
+          if (currentVersion && taskVersionIsAfter(currentVersion, snapshot.updatedAt))
+            return current
+          return { ...current, [taskId]: normalizedSnapshot }
+        })
+        setTerminalTaskPins((current) => {
+          const pin = current[taskId]
+          if (!pin || taskVersionIsAfter(pin.observedAt, snapshot.updatedAt)) return current
+          const next = { ...current }
+          delete next[taskId]
+          return next
+        })
+        if (taskIsActive(snapshot)) {
+          setTaskObserverGenerations((current) => ({
+            ...current,
+            [taskId]: (current[taskId] ?? 0) + 1,
+          }))
+        }
+      } catch {
+        // The invalidated task list remains the polling fallback when exact reconciliation fails.
+      }
+    },
+    [knowledgeSpaceId],
+  )
+
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
       if (!canWrite || !files.length || uploadPendingRef.current) return
@@ -537,6 +592,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           [taskId]:
             event.event === 'progress'
               ? {
+                  errorCode: undefined,
+                  errorMessage: undefined,
                   progressPercent: event.data.progressPercent,
                   stage: event.data.stage,
                   state: event.data.state,
@@ -544,7 +601,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 }
               : {
                   errorCode: event.data.errorCode,
-                  ...(event.data.state === 'failed' ? {} : { errorMessage: undefined }),
+                  errorMessage: undefined,
                   ...(pendingTerminalProgress
                     ? {
                         progressPercent: pendingTerminalProgress.data.progressPercent,
@@ -564,14 +621,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         if (event.data.state === 'failed')
           toast.error(t(($) => $['newKnowledge.taskFailedNotification']))
         refreshDocumentsAndTasks()
+        void reconcileTerminalTask(taskId, eventVersion)
       }
       return true
     },
-    [refreshDocumentsAndTasks, t],
+    [reconcileTerminalTask, refreshDocumentsAndTasks, t],
   )
 
   const handleTaskUpdated = useCallback((task: DocumentProcessingTask) => {
-    setTaskOverrides((current) => ({ ...current, [task.id]: task }))
+    setTaskOverrides((current) => ({ ...current, [task.id]: normalizedTaskSnapshot(task) }))
     if (taskIsActive(task)) {
       pendingTerminalProgressRef.current.delete(task.id)
       setTerminalTaskPins((current) => {
@@ -617,7 +675,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     <>
       {activeTasks.map((task) => (
         <TaskEventObserver
-          key={task.id}
+          key={`${task.id}:${taskObserverGenerations[task.id] ?? 0}`}
           documentId={task.documentId}
           knowledgeSpaceId={knowledgeSpaceId}
           onError={refreshDocumentsAndTasks}

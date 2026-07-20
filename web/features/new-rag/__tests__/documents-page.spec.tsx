@@ -60,6 +60,7 @@ const uploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const queryClient = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
 const streamProcessingTaskEvents = vi.hoisted(() => vi.fn())
+const getTaskSnapshot = vi.hoisted(() => vi.fn())
 const permissionStateMock = vi.hoisted(() => ({
   datasetAtom: Symbol('datasetDefaultPermissionKeysAtom'),
   datasetKeys: ['dataset.acl.edit'],
@@ -135,6 +136,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/client', () => ({
+  consoleClient: {
+    knowledgeFs: {
+      getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId: getTaskSnapshot,
+    },
+  },
   consoleQuery: {
     knowledgeFs: {
       deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId: {
@@ -246,6 +252,7 @@ describe('DocumentsPage', () => {
     permissionStateMock.datasetKeys = ['dataset.acl.edit']
     permissionStateMock.error = null
     permissionStateMock.loading = false
+    getTaskSnapshot.mockResolvedValue(task({ state: 'succeeded' }))
     cancelMutation.mutateAsync.mockResolvedValue(task({ state: 'canceled' }))
     retryMutation.mutateAsync.mockResolvedValue(task({ state: 'queued' }))
     reindexMutation.mutateAsync.mockResolvedValue({
@@ -949,6 +956,106 @@ describe('DocumentsPage', () => {
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('clears an old failure across retry and shows the next terminal error', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({ id: 'retried-failure', state: 'failed', errorMessage: 'Old parser error' }),
+          ],
+        },
+      ],
+    }
+    retryMutation.mutateAsync.mockResolvedValue(
+      task({
+        id: 'retried-failure',
+        progressPercent: 0,
+        state: 'queued',
+        updatedAt: '2026-07-20T10:02:00Z',
+      }),
+    )
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      yield {
+        data: {
+          progressPercent: 20,
+          stage: 'parsed' as const,
+          state: 'failed' as const,
+          updatedAt: '2026-07-20T10:03:00Z',
+        },
+        event: 'progress' as const,
+        id: 'retried-failure:2026-07-20T10:03:00Z',
+      }
+      yield {
+        data: { errorCode: 'NEW_PARSER_ERROR', state: 'failed' as const },
+        event: 'terminal' as const,
+        id: 'retried-failure:terminal',
+      }
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+
+    await waitFor(() => expect(screen.queryByText('Old parser error')).not.toBeInTheDocument())
+    expect(await screen.findByText('NEW_PARSER_ERROR')).toBeInTheDocument()
+  })
+
+  it('accepts an exact active retry snapshot with the terminal timestamp', async () => {
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'same-time-retry' })] }] }
+    getTaskSnapshot.mockResolvedValue(
+      task({
+        id: 'same-time-retry',
+        progressPercent: 0,
+        state: 'dispatch_pending',
+        updatedAt: '2026-07-20T10:03:00Z',
+      }),
+    )
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) {
+        yield {
+          data: {
+            progressPercent: 80,
+            stage: 'parsed' as const,
+            state: 'failed' as const,
+            updatedAt: '2026-07-20T10:03:00Z',
+          },
+          event: 'progress' as const,
+          id: 'same-time-retry:2026-07-20T10:03:00Z',
+        }
+        yield {
+          data: { errorCode: 'PARSER_FAILED', state: 'failed' as const },
+          event: 'terminal' as const,
+          id: 'same-time-retry:terminal',
+        }
+        return
+      }
+      await new Promise<void>(() => {})
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        }),
+      ).toHaveTextContent('1'),
+    )
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
+    expect(getTaskSnapshot).toHaveBeenCalledWith({
+      params: { documentId: 'document-1', id: 'space-1', taskId: 'same-time-retry' },
+    })
   })
 
   it('consumes the terminal error after final progress without duplicate side effects', async () => {

@@ -1360,6 +1360,36 @@ export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskI
 export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
   DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses[keyof DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses]
 
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    taskId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses = {
+  200: DocumentProcessingTask
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses]
+
 export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryData = {
   body?: never
   headers?: {

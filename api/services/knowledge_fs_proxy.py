@@ -272,6 +272,13 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         legacy_role="reader",
     ),
     _console_operation(
+        operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
+        method="GET",
+        path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}",
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
+    ),
+    _console_operation(
         operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents",
         method="GET",
         path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events",

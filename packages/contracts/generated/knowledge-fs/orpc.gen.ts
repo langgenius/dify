@@ -12,6 +12,9 @@ import {
   zGetKnowledgeSpacesByIdAccessPolicyHeaders,
   zGetKnowledgeSpacesByIdAccessPolicyPath,
   zGetKnowledgeSpacesByIdAccessPolicyResponse,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksHeaders,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksPath,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksQuery,
@@ -575,6 +578,23 @@ export const deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTask
   )
   .output(zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse)
 
+export const getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers:
+        zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath,
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse)
+
 export const postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry = oc
   .route({
     inputStructure: 'detailed',
@@ -621,5 +641,6 @@ export const contract = {
   getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks,
   getKnowledgeSpacesByIdProcessingTasks,
   deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId,
+  getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId,
   postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry,
 }

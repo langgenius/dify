@@ -57,6 +57,7 @@ _HAPPY_PATH_OPERATION_IDS = (
     "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions",
     "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks",
     "getKnowledgeSpacesByIdProcessingTasks",
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
     "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents",
     "deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
     "postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry",
@@ -114,6 +115,10 @@ _OPERATION_AUTHORIZATION_POLICIES = {
         "reader",
     ),
     "getKnowledgeSpacesByIdProcessingTasks": (RBACPermission.DATASET_READONLY, "reader"),
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId": (
+        RBACPermission.DATASET_READONLY,
+        "reader",
+    ),
     "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents": (
         RBACPermission.DATASET_READONLY,
         "reader",

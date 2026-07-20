@@ -933,6 +933,22 @@ export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTas
 export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
   zDocumentProcessingTask
 
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+  taskId: z.uuid(),
+})
+
+/**
+ * Processing task polling snapshot
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
+  zDocumentProcessingTask
+
 export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryHeaders =
   z.object({
     'x-trace-id': z.string().optional(),
