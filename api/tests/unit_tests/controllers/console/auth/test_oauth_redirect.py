@@ -1,5 +1,5 @@
 import urllib.parse
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -91,3 +91,54 @@ def test_oauth_callback_validates_redirect_url_and_appends_new_user_flag(
     assert response.headers["Location"] == (
         f"{expected_target_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
     )
+
+
+def test_oauth_callback_with_invitation_establishes_console_session(app: Flask) -> None:
+    oauth_provider = MagicMock()
+    oauth_provider.get_access_token.return_value = "google-access-token"
+    oauth_provider.get_user_info.return_value = OAuthUserInfo(
+        id="google-user-123",
+        name="Test User",
+        email="Invitee@Example.com",
+    )
+    account = MagicMock()
+    account.status = AccountStatus.ACTIVE
+    token_pair = MagicMock()
+    token_pair.access_token = "dify-access-token"
+    token_pair.refresh_token = "dify-refresh-token"
+    token_pair.csrf_token = "dify-csrf-token"
+    state = encode_oauth_state(invite_token="invite-token")
+
+    with (
+        patch("controllers.console.auth.oauth.get_oauth_providers", return_value={"google": oauth_provider}),
+        patch("controllers.console.auth.oauth.dify_config.CONSOLE_WEB_URL", CONSOLE_WEB_URL),
+        patch("controllers.console.auth.oauth.RegisterService") as register_service,
+        patch("controllers.console.auth.oauth.AccountService.link_account_integrate") as link_account,
+        patch("controllers.console.auth.oauth.AccountService.login", return_value=token_pair) as login,
+        patch("controllers.console.auth.oauth.TenantService.create_owner_tenant_if_not_exist") as create_workspace,
+        patch("controllers.console.auth.oauth.set_access_token_to_cookie") as set_access_cookie,
+        patch("controllers.console.auth.oauth.set_refresh_token_to_cookie") as set_refresh_cookie,
+        patch("controllers.console.auth.oauth.set_csrf_token_to_cookie") as set_csrf_cookie,
+        app.test_request_context(f"/oauth/authorize/google?code=test-code&state={state}"),
+    ):
+        register_service.is_valid_invite_token.return_value = True
+        register_service.get_invitation_if_token_valid.return_value = {
+            "account": account,
+            "data": {
+                "account_id": "account-id",
+                "email": "invitee@example.com",
+                "workspace_id": "workspace-id",
+            },
+            "tenant": MagicMock(),
+        }
+
+        response = OAuthCallback().get("google")
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == (f"{CONSOLE_WEB_URL}/signin/invite-settings?invite_token=invite-token")
+    link_account.assert_called_once_with("google", "google-user-123", account, session=ANY)
+    login.assert_called_once_with(account=account, session=ANY, ip_address=ANY)
+    create_workspace.assert_not_called()
+    set_access_cookie.assert_called_once_with(ANY, response, "dify-access-token")
+    set_refresh_cookie.assert_called_once_with(ANY, response, "dify-refresh-token")
+    set_csrf_cookie.assert_called_once_with(ANY, response, "dify-csrf-token")
