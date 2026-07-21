@@ -14,6 +14,7 @@ import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
 import { initialWorkspaceInfo } from '../app-context-defaults'
 import {
   datasetDefaultPermissionKeysAtom,
+  refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '../permission-state'
@@ -212,6 +213,9 @@ function ConsoleBootstrapProbe() {
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
   const refreshCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
+  const refreshPermissionsAfterMutationDenial = useSetAtom(
+    refreshWorkspacePermissionKeysAfterMutationDenialAtom,
+  )
 
   return (
     <>
@@ -269,6 +273,9 @@ function ConsoleBootstrapProbe() {
       </button>
       <button type="button" onClick={refreshCurrentWorkspace}>
         refresh workspace
+      </button>
+      <button type="button" onClick={() => void refreshPermissionsAfterMutationDenial()}>
+        refresh permissions after denial
       </button>
     </>
   )
@@ -458,6 +465,44 @@ describe('Console bootstrap', () => {
 
       expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['user-profile'] })
       expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['current-workspace'] })
+    })
+
+    it('starts a fresh permission request after an older request settles', async () => {
+      const { queryClient } = renderConsoleBootstrap()
+      await screen.findByText('dataset keys:dataset.acl.edit')
+      let resolveOlderRequest: ((value: unknown) => void) | undefined
+      const olderRequest = new Promise((resolve) => {
+        resolveOlderRequest = resolve
+      })
+      let permissionRequestCount = 0
+      mockGetRequest.mockImplementation((url: string) => {
+        if (url !== '/workspaces/current/rbac/my-permissions')
+          return Promise.reject(new Error(`Unexpected GET ${url}`))
+        permissionRequestCount += 1
+        if (permissionRequestCount === 1) return olderRequest
+        return Promise.resolve({
+          workspace: { permission_keys: [] },
+          app: { default_permission_keys: [], overrides: [] },
+          dataset: { default_permission_keys: ['dataset.acl.readonly'], overrides: [] },
+        })
+      })
+
+      const backgroundRefresh = queryClient.refetchQueries({
+        queryKey: ['workspace-permission-keys'],
+      })
+      await waitFor(() => expect(permissionRequestCount).toBe(1))
+      fireEvent.click(screen.getByRole('button', { name: /refresh permissions after denial/i }))
+      expect(permissionRequestCount).toBe(1)
+
+      resolveOlderRequest?.({
+        workspace: { permission_keys: ['app.create_and_management'] },
+        app: { default_permission_keys: [], overrides: [] },
+        dataset: { default_permission_keys: ['dataset.acl.edit'], overrides: [] },
+      })
+      await backgroundRefresh
+
+      await waitFor(() => expect(permissionRequestCount).toBe(2))
+      expect(await screen.findByText('dataset keys:dataset.acl.readonly')).toBeInTheDocument()
     })
   })
 

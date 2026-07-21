@@ -38,6 +38,7 @@ const tasksQuery = vi.hoisted(() => ({
     | { pages: Array<{ items: DocumentProcessingTask[]; nextCursor?: string }> }
     | undefined,
   dataUpdatedAt: 0,
+  dataUpdateCount: 0,
   error: null as unknown,
   fetchNextPage: vi.fn(),
   hasNextPage: false,
@@ -65,7 +66,11 @@ const retryMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const uploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
-const queryClient = vi.hoisted(() => ({ cancelQueries: vi.fn(), invalidateQueries: vi.fn() }))
+const queryClient = vi.hoisted(() => ({
+  cancelQueries: vi.fn(),
+  getQueryState: vi.fn(() => ({ dataUpdateCount: tasksQuery.dataUpdateCount })),
+  invalidateQueries: vi.fn(),
+}))
 const streamProcessingTaskEvents = vi.hoisted(() => vi.fn())
 const getTaskSnapshot = vi.hoisted(() => vi.fn())
 const permissionStateMock = vi.hoisted(() => ({
@@ -79,6 +84,8 @@ const permissionStateMock = vi.hoisted(() => ({
   loadingAtom: Symbol('workspacePermissionKeysLoadingAtom'),
   retry: vi.fn(),
   retryAtom: Symbol('retryWorkspacePermissionKeysAtom'),
+  refreshAfterDenial: vi.fn(),
+  refreshAfterDenialAtom: Symbol('refreshWorkspacePermissionKeysAfterMutationDenialAtom'),
 }))
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
@@ -88,6 +95,7 @@ const toastMock = vi.hoisted(() => ({
 
 vi.mock('@/context/permission-state', () => ({
   datasetDefaultPermissionKeysAtom: permissionStateMock.datasetAtom,
+  refreshWorkspacePermissionKeysAfterMutationDenialAtom: permissionStateMock.refreshAfterDenialAtom,
   retryWorkspacePermissionKeysAtom: permissionStateMock.retryAtom,
   workspacePermissionKeysErrorAtom: permissionStateMock.errorAtom,
   workspacePermissionKeysFetchingAtom: permissionStateMock.fetchingAtom,
@@ -108,7 +116,9 @@ vi.mock('jotai', async (importOriginal) => {
     useSetAtom: (atom: unknown) =>
       atom === permissionStateMock.retryAtom
         ? permissionStateMock.retry
-        : original.useSetAtom(atom as Parameters<typeof original.useSetAtom>[0]),
+        : atom === permissionStateMock.refreshAfterDenialAtom
+          ? permissionStateMock.refreshAfterDenial
+          : original.useSetAtom(atom as Parameters<typeof original.useSetAtom>[0]),
   }
 })
 
@@ -281,6 +291,7 @@ describe('DocumentsPage', () => {
     documentsQuery.isRefetching = false
     tasksQuery.data = { pages: [{ items: [] }] }
     tasksQuery.dataUpdatedAt = 0
+    tasksQuery.dataUpdateCount = 0
     tasksQuery.error = null
     tasksQuery.hasNextPage = false
     tasksQuery.isFetchNextPageError = false
@@ -299,6 +310,12 @@ describe('DocumentsPage', () => {
     permissionStateMock.fetching = false
     permissionStateMock.loading = false
     permissionStateMock.retry.mockResolvedValue({
+      data: {
+        dataset: { default_permission_keys: ['dataset.acl.edit'] },
+      },
+      error: null,
+    })
+    permissionStateMock.refreshAfterDenial.mockResolvedValue({
       data: {
         dataset: { default_permission_keys: ['dataset.acl.edit'] },
       },
@@ -545,6 +562,9 @@ describe('DocumentsPage', () => {
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('dialog')).getByText('dataset.newKnowledge.permissionRestricted'),
+    ).toBeInTheDocument()
   })
 
   it('keeps permission lookup failures distinct from read-only access and retries them', async () => {
@@ -918,7 +938,7 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
     const reindex = within(
-      screen.getByRole('toolbar', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+      screen.getByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
     ).getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' })
     act(() => reindex.focus())
 
@@ -1444,7 +1464,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
 
-    const actions = screen.getByRole('toolbar', {
+    const actions = screen.getByRole('group', {
       name: 'dataset.newKnowledge.bulkDocumentActions',
     })
     expect(
@@ -1533,7 +1553,7 @@ describe('DocumentsPage', () => {
 
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toBeChecked()
     expect(
-      screen.queryByRole('toolbar', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+      screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
     ).not.toBeInTheDocument()
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
     expect(toastMock.error).toHaveBeenCalledWith(
@@ -2269,6 +2289,90 @@ describe('DocumentsPage', () => {
       expect(signals[1]?.aborted).toBe(true)
       await act(async () => vi.advanceTimersByTime(60000))
       expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('retries a terminal reconciliation after its request deadline', async () => {
+    vi.useFakeTimers()
+    const signals: AbortSignal[] = []
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'timed-reconciliation' })] }] }
+    getTaskSnapshot
+      .mockImplementationOnce(
+        (_input: unknown, options: { signal: AbortSignal }) =>
+          new Promise<DocumentProcessingTask>((_resolve, reject) => {
+            signals.push(options.signal)
+            options.signal.addEventListener(
+              'abort',
+              () => reject(new DOMException('Aborted', 'AbortError')),
+              { once: true },
+            )
+          }),
+      )
+      .mockResolvedValueOnce(
+        task({
+          errorCode: 'TERMINAL_CONFIRMED',
+          id: 'timed-reconciliation',
+          state: 'failed',
+          updatedAt: '2026-07-20T10:03:00Z',
+        }),
+      )
+    streamFailedTaskThenWait('timed-reconciliation')
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => {})
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+
+      await act(async () => vi.advanceTimersByTime(3000))
+      expect(signals[0]?.aborted).toBe(true)
+      await act(async () => vi.advanceTimersByTime(1000))
+
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('replaces an older reconciliation backoff with the latest generation retry', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'latest-reconciliation' })] }] }
+    getTaskSnapshot
+      .mockRejectedValueOnce(new Error('first snapshot unavailable'))
+      .mockRejectedValueOnce(new Error('second snapshot unavailable'))
+      .mockResolvedValueOnce(
+        task({
+          id: 'latest-reconciliation',
+          state: 'dispatch_pending',
+          updatedAt: '2026-07-20T10:03:00Z',
+        }),
+      )
+    streamFailedTaskThenWait('latest-reconciliation')
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => {})
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [task({ id: 'latest-reconciliation', updatedAt: '2026-07-20T10:03:00Z' })],
+          },
+        ],
+      }
+      tasksQuery.dataUpdateCount += 1
+      rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await act(async () => {})
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
+
+      await act(async () => vi.advanceTimersByTime(1000))
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(3)
     } finally {
       rendered.unmount()
       vi.useRealTimers()
@@ -4350,7 +4454,7 @@ describe('DocumentsPage', () => {
   it('locks uploads after a write mutation reveals revoked permission', async () => {
     const user = userEvent.setup()
     uploadMutation.mutateAsync.mockRejectedValueOnce(new Response(null, { status: 403 }))
-    permissionStateMock.retry.mockResolvedValueOnce({
+    permissionStateMock.refreshAfterDenial.mockResolvedValueOnce({
       data: { dataset: { default_permission_keys: ['dataset.acl.readonly'] } },
       error: null,
     })
@@ -4361,13 +4465,30 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
 
-    await waitFor(() => expect(permissionStateMock.retry).toHaveBeenCalledOnce())
+    await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
     expect(screen.getByText('dataset.newKnowledge.permissionRestricted')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
 
+    permissionStateMock.datasetKeys = ['dataset.acl.readonly']
     permissionStateMock.fetching = true
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     permissionStateMock.fetching = false
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
+
+    permissionStateMock.error = new Error('permission service unavailable')
+    permissionStateMock.datasetKeys = ['dataset.acl.edit']
+    permissionStateMock.retry.mockResolvedValueOnce({
+      data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
+      error: null,
+    })
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.permissionLoadFailed',
+      }),
+    )
+    permissionStateMock.error = null
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(
@@ -4380,7 +4501,7 @@ describe('DocumentsPage', () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
     reindexMutation.mutateAsync.mockRejectedValueOnce(new Response(null, { status: 403 }))
-    permissionStateMock.retry.mockResolvedValueOnce({
+    permissionStateMock.refreshAfterDenial.mockResolvedValueOnce({
       data: { dataset: { default_permission_keys: ['dataset.acl.readonly'] } },
       error: null,
     })
@@ -4388,9 +4509,9 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
 
-    await waitFor(() => expect(permissionStateMock.retry).toHaveBeenCalledOnce())
+    await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
     expect(
-      screen.queryByRole('toolbar', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+      screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
@@ -4404,7 +4525,7 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = { pages: [{ items: [task()] }] }
     cancelMutation.mutateAsync.mockRejectedValueOnce(new Response(null, { status: 403 }))
-    permissionStateMock.retry.mockResolvedValueOnce({
+    permissionStateMock.refreshAfterDenial.mockResolvedValueOnce({
       data: { dataset: { default_permission_keys: ['dataset.acl.readonly'] } },
       error: null,
     })
@@ -4416,14 +4537,90 @@ describe('DocumentsPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
 
-    await waitFor(() => expect(permissionStateMock.retry).toHaveBeenCalledOnce())
+    await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
+    expect(
+      within(screen.getByRole('dialog')).getByText('dataset.newKnowledge.permissionRestricted'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.close' })).toHaveFocus()
   })
 
-  it('observes a structurally shared same-version retry from a later task response', async () => {
+  it('does not let an older permission refresh release the latest write lock', async () => {
+    const user = userEvent.setup()
+    let rejectUpload: ((reason: unknown) => void) | undefined
+    let rejectCancel: ((reason: unknown) => void) | undefined
+    let resolveFirstRefresh: ((value: unknown) => void) | undefined
+    let resolveSecondRefresh: ((value: unknown) => void) | undefined
+    uploadMutation.mutateAsync.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectUpload = reject
+        }),
+    )
+    cancelMutation.mutateAsync.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectCancel = reject
+        }),
+    )
+    permissionStateMock.refreshAfterDenial
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirstRefresh = resolve
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecondRefresh = resolve
+          }),
+      )
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task()] }] }
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+      target: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
+    })
+    expect(cancelMutation.mutateAsync).toHaveBeenCalledOnce()
+    expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce()
+
+    await act(async () => rejectUpload?.(new Response(null, { status: 403 })))
+    await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
+    await act(async () => rejectCancel?.(new Response(null, { status: 403 })))
+    await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledTimes(2))
+
+    await act(async () =>
+      resolveFirstRefresh?.({
+        data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
+        error: null,
+      }),
+    )
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).not.toBeInTheDocument()
+
+    await act(async () =>
+      resolveSecondRefresh?.({
+        data: { dataset: { default_permission_keys: ['dataset.acl.readonly'] } },
+        error: null,
+      }),
+    )
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('observes a structurally shared same-version retry when response timestamps collide', async () => {
     const user = userEvent.setup()
     const taskVersion = '2026-07-20T10:03:00Z'
     const sharedTaskData = {
@@ -4432,6 +4629,7 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = sharedTaskData
     tasksQuery.dataUpdatedAt = 100
+    tasksQuery.dataUpdateCount = 1
     getTaskSnapshot
       .mockRejectedValueOnce(new Error('snapshot unavailable'))
       .mockResolvedValueOnce(
@@ -4448,7 +4646,8 @@ describe('DocumentsPage', () => {
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = sharedTaskData
-    tasksQuery.dataUpdatedAt = 200
+    tasksQuery.dataUpdatedAt = 100
+    tasksQuery.dataUpdateCount = 2
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))

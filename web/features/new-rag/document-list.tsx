@@ -601,8 +601,8 @@ export function DocumentBulkActions({
   return (
     <div
       aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
-      className="fixed bottom-7 left-1/2 z-20 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg px-3 py-2.5 shadow-xl"
-      role="toolbar"
+      className="fixed bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-1/2 z-20 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg px-3 py-2.5 shadow-xl"
+      role="group"
       onBlurCapture={onBlurCapture}
       onFocusCapture={onFocusCapture}
     >

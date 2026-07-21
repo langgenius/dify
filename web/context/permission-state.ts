@@ -38,3 +38,10 @@ export const workspacePermissionKeysErrorAtom = atom((get) => {
 export const retryWorkspacePermissionKeysAtom = atom(null, (get) => {
   return get(workspacePermissionKeysQueryAtom).refetch({ cancelRefetch: false })
 })
+
+export const refreshWorkspacePermissionKeysAfterMutationDenialAtom = atom(null, async (get) => {
+  const currentQuery = get(workspacePermissionKeysQueryAtom)
+  if (currentQuery.isFetching) await currentQuery.refetch({ cancelRefetch: false })
+
+  return get(workspacePermissionKeysQueryAtom).refetch({ cancelRefetch: true })
+})

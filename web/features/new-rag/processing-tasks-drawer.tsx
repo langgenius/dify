@@ -96,6 +96,7 @@ export function ProcessingTasksDrawer({
   onTaskUpdated,
   onWritePermissionDenied,
   open,
+  readOnlyReason,
   taskQueryError,
   taskQueryFetching,
   taskQueryPending,
@@ -123,6 +124,7 @@ export function ProcessingTasksDrawer({
   onTaskUpdated: (task: DocumentProcessingTask) => void
   onWritePermissionDenied: () => void
   open: boolean
+  readOnlyReason?: string
   taskQueryError: boolean
   taskQueryFetching: boolean
   taskQueryPending: boolean
@@ -330,8 +332,10 @@ export function ProcessingTasksDrawer({
       )
         drawerCloseButtonRef.current?.focus()
     } catch (error) {
-      if (responseStatus(error) === 403) onWritePermissionDenied()
+      const permissionDenied = responseStatus(error) === 403
+      if (permissionDenied) onWritePermissionDenied()
       if (
+        !permissionDenied &&
         actionResultsValidRef.current &&
         openRef.current &&
         openCycleRef.current === actionOpenCycle &&
@@ -378,8 +382,17 @@ export function ProcessingTasksDrawer({
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
                   {t(($) => $['newKnowledge.backgroundTasksDescription'])}
                 </DrawerDescription>
+                {readOnlyReason && (
+                  <p
+                    className="mt-2 inline-flex items-center gap-1.5 system-xs-regular text-text-warning"
+                    role="status"
+                  >
+                    <span aria-hidden className="i-ri-lock-line size-3.5" />
+                    {readOnlyReason}
+                  </p>
+                )}
               </header>
-              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
                 {taskQueryError && (
                   <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
                     <p className="system-xs-regular text-text-destructive">

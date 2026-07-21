@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import {
   datasetDefaultPermissionKeysAtom,
+  refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   retryWorkspacePermissionKeysAtom,
   workspacePermissionKeysErrorAtom,
   workspacePermissionKeysFetchingAtom,
@@ -41,6 +42,7 @@ const TASK_PAGE_SIZE = 100
 const MAX_TASK_EVENT_STREAMS = 6
 const MAX_AUTO_CURSOR_PAGES = 20
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
+const TERMINAL_RECONCILIATION_REQUEST_TIMEOUT = 3000
 const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.md,.markdown,.html,.htm,.xls,.xlsx,.txt'
 const documentFilterParser = parseAsStringLiteral([
   'all',
@@ -136,6 +138,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const workspacePermissionKeysFetching = useAtomValue(workspacePermissionKeysFetchingAtom)
   const workspacePermissionKeysError = useAtomValue(workspacePermissionKeysErrorAtom)
   const retryWorkspacePermissionKeys = useSetAtom(retryWorkspacePermissionKeysAtom)
+  const refreshWorkspacePermissionKeysAfterMutationDenial = useSetAtom(
+    refreshWorkspacePermissionKeysAfterMutationDenialAtom,
+  )
   const canEdit = hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
   const permissionPending = workspacePermissionKeysLoading
   const permissionQueryError = Boolean(workspacePermissionKeysError)
@@ -149,7 +154,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
   const [tasksOpen, setTasksOpen] = useState(false)
   const [writePermissionRevoked, setWritePermissionRevoked] = useState(false)
-  const writePermissionRefreshSeenRef = useRef(false)
+  const writePermissionDenialGenerationRef = useRef(0)
   const [blockingDependencyRetries, setBlockingDependencyRetries] = useState({
     sources: false,
     tasks: false,
@@ -201,7 +206,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }),
   )
   const documentPermissionDenied = responseStatus(documentsQuery.error) === 403
-  const tasksQuery = useInfiniteQuery(
+  const tasksQueryOptions =
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
       enabled: !documentPermissionDenied,
       input: (pageParam) => ({
@@ -213,8 +218,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       initialPageParam: null as string | null,
-    }),
-  )
+    })
+  const tasksQuery = useInfiniteQuery({ ...tasksQueryOptions, notifyOnChangeProps: 'all' })
   const sourcesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.infiniteOptions({
       enabled: !documentPermissionDenied,
@@ -289,17 +294,21 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ),
     [baseTasks, documentIds],
   )
+  const taskDataUpdateCount = queryClient.getQueryState(tasksQueryOptions.queryKey)?.dataUpdateCount
   const taskListSnapshotRef = useRef({
     data: tasksQuery.data,
+    dataUpdateCount: taskDataUpdateCount,
     dataUpdatedAt: tasksQuery.dataUpdatedAt,
   })
   const taskListGenerationRef = useRef(0)
   if (
+    taskListSnapshotRef.current.dataUpdateCount !== taskDataUpdateCount ||
     taskListSnapshotRef.current.dataUpdatedAt !== tasksQuery.dataUpdatedAt ||
-    (tasksQuery.dataUpdatedAt === 0 && taskListSnapshotRef.current.data !== tasksQuery.data)
+    taskListSnapshotRef.current.data !== tasksQuery.data
   ) {
     taskListSnapshotRef.current = {
       data: tasksQuery.data,
+      dataUpdateCount: taskDataUpdateCount,
       dataUpdatedAt: tasksQuery.dataUpdatedAt,
     }
     taskListGenerationRef.current += 1
@@ -660,33 +669,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [permissionDenialMask, permissionDenied, refetchSourcesQuery, refetchTasksQuery, tasksOpen])
 
   useEffect(() => {
-    if (!writePermissionRevoked) {
-      writePermissionRefreshSeenRef.current = false
-      return
-    }
-    if (workspacePermissionKeysFetching) {
-      writePermissionRefreshSeenRef.current = true
-      return
-    }
-    if (
-      !writePermissionRefreshSeenRef.current ||
-      permissionQueryError ||
-      permissionPending ||
-      !canEdit
-    )
-      return
-    writePermissionRefreshSeenRef.current = false
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A completed authoritative permission refresh is the only event that releases the local 403 write lock.
-    setWritePermissionRevoked(false)
-  }, [
-    canEdit,
-    permissionPending,
-    permissionQueryError,
-    workspacePermissionKeysFetching,
-    writePermissionRevoked,
-  ])
-
-  useEffect(() => {
     if (!mainRetryFocusRequestedRef.current) return
     if (mainRecoveryVisible) {
       if (permissionQueryError) permissionRetryButtonRef.current?.focus()
@@ -792,25 +774,43 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const refreshWorkspacePermissions = useCallback(
     async (releaseWriteLockOnSuccess: boolean) => {
-      const result = await retryWorkspacePermissionKeys()
+      const denialGeneration = writePermissionDenialGenerationRef.current
+      const result = await (releaseWriteLockOnSuccess && writePermissionRevoked
+        ? refreshWorkspacePermissionKeysAfterMutationDenial()
+        : retryWorkspacePermissionKeys())
       const refreshedPermissionKeys = result.data?.dataset?.default_permission_keys
       if (
         releaseWriteLockOnSuccess &&
+        writePermissionDenialGenerationRef.current === denialGeneration &&
         !result.error &&
         refreshedPermissionKeys &&
         hasPermission(refreshedPermissionKeys, DatasetACLPermission.Edit)
       ) {
-        writePermissionRefreshSeenRef.current = false
         setWritePermissionRevoked(false)
       }
     },
-    [retryWorkspacePermissionKeys],
+    [
+      refreshWorkspacePermissionKeysAfterMutationDenial,
+      retryWorkspacePermissionKeys,
+      writePermissionRevoked,
+    ],
   )
 
   const handleWritePermissionDenied = useCallback(() => {
+    const denialGeneration = writePermissionDenialGenerationRef.current + 1
+    writePermissionDenialGenerationRef.current = denialGeneration
     setWritePermissionRevoked(true)
-    void refreshWorkspacePermissions(true)
-  }, [refreshWorkspacePermissions])
+    void refreshWorkspacePermissionKeysAfterMutationDenial().then((result) => {
+      const refreshedPermissionKeys = result.data?.dataset?.default_permission_keys
+      if (
+        writePermissionDenialGenerationRef.current === denialGeneration &&
+        !result.error &&
+        refreshedPermissionKeys &&
+        hasPermission(refreshedPermissionKeys, DatasetACLPermission.Edit)
+      )
+        setWritePermissionRevoked(false)
+    })
+  }, [refreshWorkspacePermissionKeysAfterMutationDenial])
 
   const reconcileTerminalTask = useCallback(
     async function reconcileTerminalTaskRequest(
@@ -821,9 +821,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     ) {
       const currentTask = baseTaskByIdRef.current.get(taskId)
       if (!currentTask) return
+      const pendingRetryTimeout = terminalReconciliationTimeoutsRef.current.get(taskId)
+      if (pendingRetryTimeout !== undefined) window.clearTimeout(pendingRetryTimeout)
+      terminalReconciliationTimeoutsRef.current.delete(taskId)
       terminalReconciliationControllersRef.current.get(taskId)?.abort()
       const controller = new AbortController()
       terminalReconciliationControllersRef.current.set(taskId, controller)
+      const requestTimeout = window.setTimeout(
+        () => controller.abort(),
+        TERMINAL_RECONCILIATION_REQUEST_TIMEOUT,
+      )
       try {
         const snapshot =
           await consoleClient.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId(
@@ -882,8 +889,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         if (
           retryAttempt >= 4 ||
           !taskSnapshotErrorIsTransient(error) ||
-          terminalReconciliationGenerationsRef.current.get(taskId) !== reconciliationGeneration ||
-          terminalReconciliationTimeoutsRef.current.has(taskId)
+          terminalReconciliationGenerationsRef.current.get(taskId) !== reconciliationGeneration
         )
           return
         const timeout = window.setTimeout(
@@ -902,6 +908,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           Math.min(1000 * 2 ** retryAttempt, 30000),
         )
         terminalReconciliationTimeoutsRef.current.set(taskId, timeout)
+      } finally {
+        window.clearTimeout(requestTimeout)
       }
     },
     [knowledgeSpaceId, taskProgressStore],
@@ -1865,6 +1873,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         onTaskUpdated={handleTaskUpdated}
         onWritePermissionDenied={handleWritePermissionDenied}
         open={tasksOpen && !permissionDenied}
+        readOnlyReason={
+          !permissionPending && !permissionQueryError && (!canEdit || writePermissionRevoked)
+            ? t(($) => $['newKnowledge.permissionRestricted'])
+            : undefined
+        }
         taskQueryPending={tasksQuery.isPending}
         taskQueryError={Boolean(tasksQuery.error || tasksQuery.isFetchNextPageError)}
         taskQueryFetching={tasksQuery.isFetching}
