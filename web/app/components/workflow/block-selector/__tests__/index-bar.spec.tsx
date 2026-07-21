@@ -8,7 +8,7 @@ import {
   groupItems,
   WORKFLOW_GROUP_NAME,
 } from '../group-items'
-import IndexBar from '../index-bar'
+import { IndexBar } from '../index-bar'
 
 const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
   id: 'provider-1',
@@ -74,7 +74,7 @@ describe('IndexBar', () => {
 
   // Clicking a letter should scroll the matching section into view.
   describe('Rendering', () => {
-    it('should call scrollIntoView for the selected letter', async () => {
+    it('should let keyboard users scroll to the selected letter', async () => {
       const user = userEvent.setup()
       const scrollIntoView = vi.fn()
       const itemRefs = {
@@ -85,7 +85,9 @@ describe('IndexBar', () => {
 
       render(<IndexBar letters={['A']} itemRefs={itemRefs} />)
 
-      await user.click(screen.getByRole('button', { name: 'A' }))
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'A' })).toHaveFocus()
+      await user.keyboard('{Enter}')
 
       expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
     })

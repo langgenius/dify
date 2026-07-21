@@ -355,16 +355,14 @@ describe('MultipleToolSelector', () => {
 
   // ==================== Collapse Functionality Tests ====================
   describe('Collapse Functionality', () => {
-    it('should not render collapse arrow when supportCollapse is false', () => {
-      // Arrange & Act
-      const { container } = renderComponent({ supportCollapse: false })
+    it('should render a non-interactive label when collapsing is unavailable', () => {
+      renderComponent({ supportCollapse: false })
 
-      // Assert
-      const collapseArrows = container.querySelectorAll('svg[class*="rotate"]')
-      expect(collapseArrows).toHaveLength(0)
+      expect(screen.getByText('Tools')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Tools' })).not.toBeInTheDocument()
     })
 
-    it('should expose and toggle the collapsible tools region through its button', async () => {
+    it('should expose and toggle the collapsible tools region from the keyboard', async () => {
       const user = userEvent.setup()
       const tools = [createToolValue()]
       renderComponent({ supportCollapse: true, value: tools })
@@ -373,7 +371,9 @@ describe('MultipleToolSelector', () => {
       expect(collapseButton).toHaveAttribute('aria-expanded', 'true')
       expect(screen.getByTestId('tool-selector-edit')).toBeInTheDocument()
 
-      await user.click(collapseButton)
+      await user.tab()
+      expect(collapseButton).toHaveFocus()
+      await user.keyboard('{Enter}')
 
       expect(collapseButton).toHaveAttribute('aria-expanded', 'false')
       expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()

@@ -1,4 +1,4 @@
-import type { FC, RefObject } from 'react'
+import type { RefObject } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
 type IndexBarProps = {
@@ -7,7 +7,7 @@ type IndexBarProps = {
   className?: string
 }
 
-const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className }) => {
+export function IndexBar({ letters, itemRefs, className }: IndexBarProps) {
   const handleIndexClick = (letter: string) => {
     const element = itemRefs.current?.[letter]
     if (element) element.scrollIntoView({ behavior: 'smooth' })
@@ -26,7 +26,7 @@ const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className }) => {
       {letters.map((letter) => (
         <button
           type="button"
-          className="cursor-pointer rounded-sm border-0 bg-transparent p-0 text-left outline-hidden hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+          className="flex h-4 w-5 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           key={letter}
           onClick={() => handleIndexClick(letter)}
         >
@@ -36,5 +36,3 @@ const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className }) => {
     </div>
   )
 }
-
-export default IndexBar
