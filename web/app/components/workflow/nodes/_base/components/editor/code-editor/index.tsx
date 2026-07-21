@@ -20,7 +20,7 @@ if (typeof window !== 'undefined') {
   // Configure worker URL to prevent the worker label from being appended as a URL fragment.
   // Without this, Monaco generates URLs like workerMain.js#editorWorkerService, which browsers
   // encode to %23, causing a 404 and forcing the worker to fall back to the main thread.
-  self.MonacoEnvironment = {
+  ;(self as any).MonacoEnvironment = {
     getWorkerUrl: () => `${window.location.origin}${basePath}/vs/base/worker/workerMain.js`,
   }
 }
