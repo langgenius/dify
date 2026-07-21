@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { VariableLabelInText } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
@@ -9,13 +8,13 @@ import { getNodeInfoById, isSystemVar } from './variable/utils'
 
 type Props = Readonly<{
   nodeId: string
-  value: string
+  value?: string
   className?: string
 }>
 
 const VAR_PLACEHOLDER = '@#!@#!'
 
-const ReadonlyInputWithSelectVar: FC<Props> = ({ nodeId, value, className }) => {
+function ReadonlyInputWithSelectVar({ nodeId, value = '', className }: Props) {
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const availableNodes = getBeforeNodesInSameBranchIncludeParent(nodeId)
   const startNode = availableNodes.find((node: any) => {
@@ -61,4 +60,5 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({ nodeId, value, className }) => 
 
   return <div className={cn('text-xs break-all', className)}>{res}</div>
 }
+
 export default React.memo(ReadonlyInputWithSelectVar)

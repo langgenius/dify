@@ -42,6 +42,13 @@ describe('AnswerNode', () => {
       expect(screen.getByText('Plain answer')).toBeInTheDocument()
     })
 
+    it('should render an empty panel when a saved answer is missing', () => {
+      renderNodeComponent(Node, createNodeData({ answer: undefined }))
+
+      expect(screen.getByText('workflow.nodes.answer.answer')).toBeInTheDocument()
+      expect(screen.queryByText('Plain answer')).not.toBeInTheDocument()
+    })
+
     it('should render referenced variables inside the readonly content', () => {
       mockUseWorkflow.mockReturnValue({
         getBeforeNodesInSameBranchIncludeParent: () => [
