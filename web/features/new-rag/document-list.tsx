@@ -211,6 +211,7 @@ export function DocumentsList({
   onSelectAll,
   onSelectDocument,
   readOnlyReasonId,
+  resultsIncomplete,
   search,
   selectionDisabled,
   selectedDocumentIds,
@@ -243,6 +244,7 @@ export function DocumentsList({
   onSelectAll: () => void
   onSelectDocument: (documentId: string) => void
   readOnlyReasonId?: string
+  resultsIncomplete: boolean
   search: string
   selectionDisabled: boolean
   selectedDocumentIds: Set<string>
@@ -384,12 +386,14 @@ export function DocumentsList({
                   sourcesPending && document.sourceId && !sourceNames.has(document.sourceId),
                 )}
                 status={statuses.get(document.id) ?? 'queued'}
-                statusPending={statusPending}
+                statusPending={Boolean(
+                  statusPending && document.sourceId && !sourceNames.has(document.sourceId),
+                )}
               />
             ))}
           </tbody>
         </table>
-        {!documents.length && !completingResults && !isFetchNextPageError && (
+        {!documents.length && !completingResults && !isFetchNextPageError && !resultsIncomplete && (
           <p
             aria-live="polite"
             className="py-16 text-center body-sm-regular text-text-tertiary"

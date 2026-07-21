@@ -52,7 +52,6 @@ export function TaskEventObserver({
             taskId,
           })) {
             if (controller.signal.aborted) return
-            reconnectDelay = TASK_EVENT_RECONNECT_DELAY
             lastEventIdRef.current = event.id
             if (event.event === 'progress') streamTaskVersionRef.current = event.data.updatedAt
             const accepted = onEvent(taskId, streamTaskVersionRef.current, event)
@@ -61,6 +60,7 @@ export function TaskEventObserver({
               streamTaskVersionRef.current = latestTaskVersionRef.current
               break
             }
+            reconnectDelay = TASK_EVENT_RECONNECT_DELAY
             if (event.event === 'terminal') return
           }
         } catch {

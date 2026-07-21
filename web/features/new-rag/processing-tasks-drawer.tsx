@@ -249,7 +249,7 @@ export function ProcessingTasksDrawer({
                               )}
                             </p>
                             {taskError && (
-                              <p className="mt-1 truncate system-2xs-regular text-text-destructive">
+                              <p className="mt-1 system-2xs-regular break-words whitespace-pre-wrap text-text-destructive">
                                 {taskError}
                               </p>
                             )}

@@ -1,7 +1,6 @@
 'use client'
 
 import type { DocumentProcessingTask } from '@dify/contracts/knowledge-fs/types.gen'
-import type { DocumentFilter } from './document-list'
 import type {
   ProcessingTaskEvent,
   ProcessingTaskProgressEvent,
@@ -10,6 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -39,6 +39,19 @@ const TASK_PAGE_SIZE = 100
 const MAX_TASK_EVENT_STREAMS = 6
 const MAX_AUTO_CURSOR_PAGES = 20
 const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.md,.markdown,.html,.htm,.xls,.xlsx,.txt'
+const documentFilterParser = parseAsStringLiteral([
+  'all',
+  'ready',
+  'queued',
+  'processing',
+  'failed',
+  'disabled',
+] as const)
+  .withDefault('all')
+  .withOptions({ history: 'push' })
+const documentSearchParser = parseAsString.withDefault('').withOptions({
+  limitUrlUpdates: debounce(300),
+})
 
 const uploadExclusionReasonKey = {
   batch_byte_limit_exceeded: 'batchLimit',
@@ -106,8 +119,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const uploadPendingRef = useRef(false)
   const reindexPendingRef = useRef(false)
-  const [filter, setFilter] = useState<DocumentFilter>('all')
-  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useQueryState('status', documentFilterParser)
+  const [search, setSearch] = useQueryState('query', documentSearchParser)
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
   const [tasksOpen, setTasksOpen] = useState(false)
   const [taskStreamOffset, setTaskStreamOffset] = useState(0)
@@ -232,6 +245,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ),
     [sourcesQuery.data],
   )
+  const unresolvedDocumentSourceIds = useMemo(
+    () =>
+      new Set(
+        documents.flatMap((document) =>
+          document.sourceId && !sourceNames.has(document.sourceId) ? [document.sourceId] : [],
+        ),
+      ),
+    [documents, sourceNames],
+  )
   const disabledSourceIds = useMemo(
     () =>
       new Set(
@@ -247,8 +269,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const baseTaskByIdRef = useRef(baseTaskById)
   baseTaskByIdRef.current = baseTaskById
-  const baseTaskUpdatedAtRef = useRef(baseTaskUpdatedAt)
-  baseTaskUpdatedAtRef.current = baseTaskUpdatedAt
   const tasks = useMemo(
     () =>
       baseTasks.map((task) => {
@@ -272,6 +292,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
   currentTaskStateRef.current = new Map(tasks.map((task) => [task.id, task.state]))
+  const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
+  const currentTaskIds = new Set(tasks.map((task) => task.id))
+  for (const task of tasks) {
+    const currentVersion = currentTaskVersionRef.current.get(task.id)
+    if (!currentVersion || taskVersionIsAfter(task.updatedAt, currentVersion))
+      currentTaskVersionRef.current.set(task.id, task.updatedAt)
+  }
+  for (const taskId of currentTaskVersionRef.current.keys()) {
+    if (!currentTaskIds.has(taskId)) currentTaskVersionRef.current.delete(taskId)
+  }
 
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
   const documentStatuses = useMemo(
@@ -341,23 +371,26 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (sourcesQuery.error && sourcesQuery.data) ||
     sourcesQuery.isFetchNextPageError,
   )
-  const taskResultsIncomplete = Boolean(
-    !tasksQuery.data ||
-    tasksQuery.isPending ||
-    hasNextTaskPage ||
-    tasksQuery.isFetchingNextPage ||
-    tasksQuery.isFetchNextPageError,
-  )
+  const taskResultsIncomplete = Boolean(!tasksQuery.data || tasksQuery.isPending)
   const sourceResultsIncomplete = Boolean(
     !sourcesQuery.data ||
     sourcesQuery.isPending ||
-    hasNextSourcePage ||
-    sourcesQuery.isFetchingNextPage ||
-    sourcesQuery.isFetchNextPageError,
+    (unresolvedDocumentSourceIds.size &&
+      (hasNextSourcePage || sourcesQuery.isFetchingNextPage || sourcesQuery.isFetchNextPageError)),
   )
-  const dependencyResultsIncomplete = taskResultsIncomplete || sourceResultsIncomplete
+  const sourceQueryWarning = Boolean(
+    (sourcesQuery.error && sourcesQuery.data) || sourcesQuery.isFetchNextPageError,
+  )
+  const taskQueryWarning = Boolean(
+    (tasksQuery.error && tasksQuery.data) || tasksQuery.isFetchNextPageError,
+  )
+  const dependencyResultsIncomplete = sourceResultsIncomplete
   const selectionDisabled =
-    !canWrite || dependencyResultsIncomplete || dependencyQueryWarning || filteredResultsIncomplete
+    !canWrite ||
+    dependencyResultsIncomplete ||
+    taskQueryWarning ||
+    (sourceQueryWarning && unresolvedDocumentSourceIds.size > 0) ||
+    filteredResultsIncomplete
   const selectableFilteredDocuments = filteredDocuments.filter(
     (document) => documentStatuses.get(document.id) !== 'disabled',
   )
@@ -503,6 +536,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         if (taskVersionIsAfter(terminalVersion, snapshot.updatedAt)) return
         const normalizedSnapshot = normalizedTaskSnapshot(snapshot)
         taskProgressStore.delete(taskId)
+        currentTaskStateRef.current.set(taskId, snapshot.state)
+        currentTaskVersionRef.current.set(taskId, snapshot.updatedAt)
         setTaskOverrides((current) => {
           const currentVersion = current[taskId]?.updatedAt
           if (currentVersion && taskVersionIsAfter(currentVersion, snapshot.updatedAt))
@@ -571,12 +606,46 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   useEffect(() => {
     const strictRetries = new Map<string, DocumentProcessingTask>()
     const equalTimestampRetries = new Map<string, TerminalTaskPin>()
+    const confirmedTerminals = new Map<string, DocumentProcessingTask>()
     for (const task of baseTasks) {
       const pin = terminalTaskPins[task.id]
-      if (!pin || !taskIsActive(task) || taskListGeneration <= pin.taskListGeneration) continue
+      if (!pin || taskListGeneration <= pin.taskListGeneration) continue
+      if (!taskIsActive(task)) {
+        if (!taskVersionIsAfter(pin.observedAt, task.updatedAt))
+          confirmedTerminals.set(task.id, task)
+        continue
+      }
       if (taskVersionIsAfter(task.updatedAt, pin.observedAt)) strictRetries.set(task.id, task)
       else if (!taskVersionIsAfter(pin.observedAt, task.updatedAt))
         equalTimestampRetries.set(task.id, pin)
+    }
+
+    for (const taskId of confirmedTerminals.keys()) {
+      const generation = terminalReconciliationGenerationsRef.current.get(taskId) ?? 0
+      terminalReconciliationGenerationsRef.current.set(taskId, generation + 1)
+      terminalReconciliationControllersRef.current.get(taskId)?.abort()
+      terminalReconciliationControllersRef.current.delete(taskId)
+      const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
+      if (timeout !== undefined) window.clearTimeout(timeout)
+      terminalReconciliationTimeoutsRef.current.delete(taskId)
+    }
+    if (confirmedTerminals.size) {
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- A current terminal list snapshot supersedes the partial SSE terminal payload.
+      setTerminalTaskPins((current) => {
+        const next = { ...current }
+        for (const taskId of confirmedTerminals.keys()) delete next[taskId]
+        return next
+      })
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Restore complete server error details from the authoritative terminal list snapshot.
+      setTaskOverrides((current) => {
+        const next = { ...current }
+        for (const [taskId, task] of confirmedTerminals) {
+          const overrideVersion = current[taskId]?.updatedAt
+          if (!overrideVersion || !taskVersionIsAfter(overrideVersion, task.updatedAt))
+            delete next[taskId]
+        }
+        return next
+      })
     }
 
     for (const taskId of strictRetries.keys()) {
@@ -747,13 +816,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => {
       const eventVersion = event.event === 'progress' ? event.data.updatedAt : taskVersion
       const terminalSnapshot = !ACTIVE_TASK_STATES.has(event.data.state)
-      const serverVersion = baseTaskUpdatedAtRef.current.get(taskId)
-      if (terminalSnapshot && serverVersion && taskVersionIsAfter(serverVersion, eventVersion)) {
-        pendingTerminalProgressRef.current.delete(taskId)
+      const currentVersion = currentTaskVersionRef.current.get(taskId)
+      if (currentVersion && taskVersionIsAfter(currentVersion, eventVersion)) {
+        if (terminalSnapshot) pendingTerminalProgressRef.current.delete(taskId)
         return false
       }
 
       if (event.event === 'progress' && terminalSnapshot) {
+        currentTaskVersionRef.current.set(taskId, eventVersion)
         taskProgressStore.set(taskId, event.data)
         pendingTerminalProgressRef.current.set(taskId, event)
         return true
@@ -767,6 +837,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       else taskProgressStore.delete(taskId)
 
       const currentTaskState = currentTaskStateRef.current.get(taskId)
+      currentTaskVersionRef.current.set(taskId, eventVersion)
       if (event.event === 'progress' && currentTaskState === event.data.state) return true
       currentTaskStateRef.current.set(taskId, event.data.state)
 
@@ -834,6 +905,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (task: DocumentProcessingTask) => {
       taskProgressStore.delete(task.id)
       currentTaskStateRef.current.set(task.id, task.state)
+      currentTaskVersionRef.current.set(task.id, task.updatedAt)
       setTaskOverrides((current) => ({ ...current, [task.id]: normalizedTaskSnapshot(task) }))
       if (taskIsActive(task)) {
         blockedFailedTaskPollsRef.current.delete(task.id)
@@ -856,9 +928,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
 
   useEffect(() => {
+    for (const task of activeTasks) {
+      if (!blockedFailedTaskPollsRef.current.delete(task.id)) continue
+      const generation = failedTaskPollGenerationsRef.current.get(task.id) ?? 0
+      failedTaskPollGenerationsRef.current.set(task.id, generation + 1)
+    }
+  }, [activeTasks])
+
+  useEffect(() => {
     if (!orderedFailedTasksRef.current.length) return
     let canceled = false
     let timeout: number | undefined
+    const controller = new AbortController()
     const pollNextBatch = async () => {
       const failedTasks = orderedFailedTasksRef.current
       const pollableTasks = failedTasks.filter(
@@ -886,6 +967,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                       taskId: task.id,
                     },
                   },
+                  { signal: controller.signal },
                 )
               if (
                 canceled ||
@@ -910,6 +992,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     timeout = window.setTimeout(() => void pollNextBatch(), 5000)
     return () => {
       canceled = true
+      controller.abort()
       if (timeout !== undefined) window.clearTimeout(timeout)
     }
   }, [failedTaskPollSignature, handleTaskUpdated, knowledgeSpaceId])
@@ -1114,6 +1197,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   ? 'documents-readonly-reason'
                   : undefined
               }
+              resultsIncomplete={filteredResultsIncomplete}
               search={search}
               selectionDisabled={selectionDisabled}
               selectedDocumentIds={validSelectedDocumentIds}
