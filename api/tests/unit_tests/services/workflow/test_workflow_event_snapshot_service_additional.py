@@ -13,9 +13,12 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import StreamEvent
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.app.layers.pause_state_persist_layer import (
+    WorkflowResumptionContext,
+    _WorkflowGenerateEntityWrapper,
+)
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
@@ -153,7 +156,7 @@ class TestWorkflowEventSnapshotHelpers:
 
         result = service_module._get_message_context(
             cast(sessionmaker[Session], session_maker),
-            app_id="app-1",
+            conversation_id="conv-1",
             workflow_run_id="run-1",
         )
 
@@ -171,7 +174,7 @@ class TestWorkflowEventSnapshotHelpers:
 
         result = service_module._get_message_context(
             cast(sessionmaker[Session], session_maker),
-            app_id="app-1",
+            conversation_id="conv-1",
             workflow_run_id="run-1",
         )
 
@@ -332,9 +335,10 @@ class TestBuildWorkflowEventStream:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        workflow_run = _build_workflow_run(status=WorkflowExecutionStatus.RUNNING)
+        workflow_run = _build_workflow_run(status=WorkflowExecutionStatus.PAUSED)
         topic = _Topic(_StaticSubscription())
-        workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
+        pause_entity = _PauseEntity(state=b"state")
+        workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(return_value=pause_entity))
         node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
         factory = SimpleNamespace(
             create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
@@ -347,7 +351,15 @@ class TestBuildWorkflowEventStream:
             "_get_message_context",
             MagicMock(return_value=MessageContext("conv-1", "msg-1", 1700000000)),
         )
-        monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
+        generate_entity = AdvancedChatAppGenerateEntity.model_construct(conversation_id="conv-1")
+        resumption_context = SimpleNamespace(
+            get_generate_entity=MagicMock(return_value=generate_entity),
+        )
+        monkeypatch.setattr(
+            service_module,
+            "_load_resumption_context",
+            MagicMock(return_value=resumption_context),
+        )
         buffer_state = BufferState(
             queue=queue.Queue(),
             stop_event=Event(),
