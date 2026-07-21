@@ -495,21 +495,35 @@ class TestWorkflowTrace:
         assert attrs["dify.event.signal"] == "span_detail"
         assert record.__dict__["tenant_id"] == "tenant-abc"
 
-    def test_companion_log_includes_content_when_enabled(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+    def test_companion_log_includes_content_when_enabled(
+        self,
+        trace_handler: EnterpriseOtelTrace,
+        mock_exporter,
+        caplog: pytest.LogCaptureFixture,
+    ):
         mock_exporter.include_content = True
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
             trace_handler._workflow_trace(make_workflow_info())
 
-        log_attrs = mock_log.call_args[1]["attributes"]
+        records = [r for r in caplog.records if r.name == "dify.telemetry"]
+        assert len(records) == 1
+        log_attrs = records[0].__dict__["attributes"]
         assert log_attrs["dify.workflow.inputs"] == json.dumps({"query": "hello"})
         assert log_attrs["dify.workflow.outputs"] == json.dumps({"answer": "world"})
 
-    def test_companion_log_uses_ref_when_content_disabled(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+    def test_companion_log_uses_ref_when_content_disabled(
+        self,
+        trace_handler: EnterpriseOtelTrace,
+        mock_exporter,
+        caplog: pytest.LogCaptureFixture,
+    ):
         mock_exporter.include_content = False
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
             trace_handler._workflow_trace(make_workflow_info())
 
-        log_attrs = mock_log.call_args[1]["attributes"]
+        records = [r for r in caplog.records if r.name == "dify.telemetry"]
+        assert len(records) == 1
+        log_attrs = records[0].__dict__["attributes"]
         assert log_attrs["dify.workflow.inputs"].startswith("ref:workflow_run_id=")
         assert log_attrs["dify.workflow.outputs"].startswith("ref:workflow_run_id=")
 
@@ -669,12 +683,18 @@ class TestNodeExecutionTrace:
         ]
         assert len(error_calls) == 1
 
-    def test_emits_companion_log_with_span_name_as_event(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
+    def test_emits_companion_log_with_span_name_as_event(
+        self,
+        trace_handler: EnterpriseOtelTrace,
+        mock_exporter,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
             trace_handler._node_execution_trace(make_node_info())
 
-        mock_log.assert_called_once()
-        assert mock_log.call_args[1]["event_name"] == EnterpriseTelemetrySpan.NODE_EXECUTION.value
+        records = [r for r in caplog.records if r.name == "dify.telemetry"]
+        assert len(records) == 1
+        assert records[0].__dict__["attributes"]["dify.event.name"] == EnterpriseTelemetrySpan.NODE_EXECUTION.value
 
     def test_plugin_name_added_to_duration_labels_for_tool_node(
         self, trace_handler: EnterpriseOtelTrace, mock_exporter
@@ -711,15 +731,20 @@ class TestNodeExecutionTrace:
         assert "plugin_name" not in duration_labels
 
     def test_companion_log_inputs_use_ref_when_content_disabled(
-        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+        self,
+        trace_handler: EnterpriseOtelTrace,
+        mock_exporter,
+        caplog: pytest.LogCaptureFixture,
     ):
         mock_exporter.include_content = False
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
             trace_handler._node_execution_trace(
                 make_node_info(node_inputs={"prompt": "hello"}, node_outputs={"text": "world"})
             )
 
-        log_attrs = mock_log.call_args[1]["attributes"]
+        records = [r for r in caplog.records if r.name == "dify.telemetry"]
+        assert len(records) == 1
+        log_attrs = records[0].__dict__["attributes"]
         assert log_attrs["dify.node.inputs"].startswith("ref:node_execution_id=")
         assert log_attrs["dify.node.outputs"].startswith("ref:node_execution_id=")
 
@@ -753,11 +778,18 @@ class TestDraftNodeExecutionTrace:
         span_call = mock_exporter.export_span.call_args
         assert span_call[1]["trace_correlation_override"] == "run-draft-001"
 
-    def test_companion_log_uses_draft_span_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
+    def test_companion_log_uses_draft_span_name(
+        self,
+        trace_handler: EnterpriseOtelTrace,
+        mock_exporter,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
             trace_handler._draft_node_execution_trace(make_draft_node_info())
 
-        assert mock_log.call_args[1]["event_name"] == EnterpriseTelemetrySpan.DRAFT_NODE_EXECUTION.value
+        records = [r for r in caplog.records if r.name == "dify.telemetry"]
+        assert len(records) == 1
+        assert records[0].__dict__["attributes"]["dify.event.name"] == EnterpriseTelemetrySpan.DRAFT_NODE_EXECUTION.value
 
 
 # ---------------------------------------------------------------------------
