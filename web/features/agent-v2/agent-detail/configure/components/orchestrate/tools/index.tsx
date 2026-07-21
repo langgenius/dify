@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useAtomValue, useSetAtom } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import { useGetLanguage } from '@/context/i18n'
@@ -211,7 +212,7 @@ function useDisplayTools(tools: AgentTool[], providerById: Map<string, ToolWithP
         displayName: tool.displayName ?? getLocalizedText(provider.label, language) ?? tool.name,
         icon: tool.icon ?? provider.icon,
         iconDark: tool.iconDark ?? provider.icon_dark,
-        providerType: tool.providerType ?? provider.type,
+        providerType: tool.providerType,
         allowDelete: tool.allowDelete ?? provider.allow_delete,
         credentialKey: providerCredentialType
           ? (tool.credentialKey ?? 'agentDetail.configure.tools.credential.authOne')
@@ -314,6 +315,7 @@ function AddToolMenu({
   const toAgentToolDefaultValue = useCallback(
     (tool: ToolDefaultValue): AgentProviderToolDefaultValue => ({
       ...tool,
+      provider_type: parseToolProviderType(tool.provider_type),
       allowDelete: (
         providerById.get(tool.provider_id) ??
         providerById.get(tool.provider_name) ??

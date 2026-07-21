@@ -106,7 +106,7 @@ const createData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNode
   desc: '',
   type: BlockEnum.DataSource,
   plugin_id: 'plugin-1',
-  provider_type: 'remote',
+  provider_type: 'online_document',
   provider_name: 'provider',
   datasource_name: 'source-a',
   datasource_label: 'Source A',

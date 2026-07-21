@@ -7,6 +7,7 @@ from typing import Annotated, Any, Final, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 
 from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
+from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod, FileType
 
@@ -653,11 +654,7 @@ class AgentSoulDifyToolConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     enabled: bool = True
-    # ``plugin`` remains the default for legacy Agent Soul payloads. The runtime
-    # now also accepts ``builtin`` / ``api`` / ``workflow`` / ``mcp`` here and
-    # routes them through ``dify.core.tools``; keeping the default narrow still
-    # makes a missing field resolve against the plugin provider table.
-    provider_type: str = "plugin"
+    provider_type: ToolProviderType
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)
