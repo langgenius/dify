@@ -775,6 +775,19 @@ describe('DocumentsPage', () => {
     tasksQuery.isPending = false
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: 'common.operation.retry · dataset.newKnowledge.sourcesErrorDescription',
+        }),
+      ).toHaveFocus(),
+    )
+
+    sourcesQuery.error = null
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
+    )
   })
 
   it('closes a task drawer permanently and restores focus when document permission is revoked', async () => {
@@ -804,8 +817,28 @@ describe('DocumentsPage', () => {
     })
 
     documentsQuery.error = null
+    tasksQuery.refetch.mockClear()
+    sourcesQuery.refetch.mockClear()
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(tasksQuery.refetch).toHaveBeenCalledOnce()
+    expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
+  })
+
+  it('moves focus from document controls to the permission alert after dynamic revocation', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const searchbox = screen.getByRole('searchbox', {
+      name: 'dataset.newKnowledge.searchDocuments',
+    })
+    await user.click(searchbox)
+    expect(searchbox).toHaveFocus()
+
+    documentsQuery.error = { status: 403 }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveFocus())
   })
 
   it('stops background pagination and failed-task polling while document permission is denied', async () => {
@@ -918,6 +951,27 @@ describe('DocumentsPage', () => {
 
     expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(tasksQuery.refetch).not.toHaveBeenCalled()
+  })
+
+  it('returns focus to the drawer close button after a query retry succeeds', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.error = new Error('task refresh failed')
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    const panel = screen.getByRole('dialog')
+    await user.click(
+      within(panel).getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+      }),
+    )
+
+    tasksQuery.error = null
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(within(panel).getByRole('button', { name: 'common.operation.close' })).toHaveFocus(),
+    )
   })
 
   it('continues remote task pagination from an empty cached drawer after the automatic cap', async () => {
@@ -1221,6 +1275,34 @@ describe('DocumentsPage', () => {
         name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
       }),
     ).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('moves pagination focus from load more to retry and then to final results', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()], nextCursor: 'next' }] }
+    documentsQuery.hasNextPage = true
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+
+    documentsQuery.isFetchNextPageError = true
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const retry = screen.getByRole('button', {
+      name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+    })
+    await waitFor(() => expect(retry).toHaveFocus())
+    await user.click(retry)
+
+    documentsQuery.data = {
+      pages: [
+        { items: [document()] },
+        { items: [document({ id: 'last-document', title: 'Last.pdf' })] },
+      ],
+    }
+    documentsQuery.hasNextPage = false
+    documentsQuery.isFetchNextPageError = false
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(screen.getByRole('table').parentElement).toHaveFocus())
   })
 
   it('re-indexes selected documents and keeps unsupported actions unavailable', async () => {
@@ -2587,6 +2669,39 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' })).toBeInTheDocument()
+  })
+
+  it('lets an equal-timestamp terminal list row replace an active stream override', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'equal-terminal', state: 'queued' })] }] }
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      yield {
+        data: {
+          progressPercent: 60,
+          stage: 'parsed' as const,
+          state: 'running' as const,
+          updatedAt: '2026-07-20T10:01:00Z',
+        },
+        event: 'progress' as const,
+        id: 'equal-terminal:running',
+      }
+      await new Promise<void>(() => {})
+    })
+
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledOnce())
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'equal-terminal', state: 'failed' })] }],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' })).toBeEnabled()
   })
 
   it('limits rendered task history while retaining an active retry for an old document', async () => {

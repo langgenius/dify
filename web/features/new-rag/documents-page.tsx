@@ -138,6 +138,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
   const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
   const taskEventCursorsRef = useRef(new Map<string, string>())
+  const streamActiveOverrideTaskIdsRef = useRef(new Set<string>())
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
   if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
   const taskProgressStore = taskProgressStoreRef.current
@@ -167,7 +168,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }),
   )
   const documentPermissionDenied = responseStatus(documentsQuery.error) === 403
+  const previousDocumentPermissionDeniedRef = useRef(documentPermissionDenied)
   const canWrite = hasWorkspaceWritePermission && !documentPermissionDenied
+  const documentsSectionRef = useRef<HTMLElement>(null)
+  const documentsTitleRef = useRef<HTMLHeadingElement>(null)
+  const documentSurfaceHadFocusRef = useRef(false)
+  const mainRetryFocusRequestedRef = useRef(false)
+  const mainRetryButtonRef = useRef<HTMLButtonElement>(null)
   const tasksQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
       enabled: !documentPermissionDenied,
@@ -207,12 +214,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     hasNextPage: hasNextTaskPage,
     isFetchNextPageError: isFetchNextTaskPageError,
     isFetchingNextPage: isFetchingNextTaskPage,
+    refetch: refetchTasksQuery,
   } = tasksQuery
   const {
     fetchNextPage: fetchNextSourcePage,
     hasNextPage: hasNextSourcePage,
     isFetchNextPageError: isFetchNextSourcePageError,
     isFetchingNextPage: isFetchingNextSourcePage,
+    refetch: refetchSourcesQuery,
   } = sourcesQuery
   const canAutoFetchDocumentPage = Boolean(
     hasNextDocumentPage && (documentsQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
@@ -297,13 +306,24 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           return { ...task, ...override }
         if (!override?.updatedAt) return override ? { ...task, ...override } : task
         if (taskVersionIsAfter(task.updatedAt, override.updatedAt)) return task
-        return { ...task, ...override }
+        const mergedTask = { ...task, ...override }
+        if (
+          !taskIsActive(task) &&
+          taskIsActive(mergedTask) &&
+          !taskVersionIsAfter(override.updatedAt, task.updatedAt) &&
+          streamActiveOverrideTaskIdsRef.current.has(task.id)
+        )
+          return task
+        return mergedTask
       }),
     [baseTasks, taskOverrides, terminalTaskPins],
   )
   useEffect(() => {
     for (const task of tasks) {
-      if (!taskIsActive(task)) taskEventCursorsRef.current.delete(task.id)
+      if (!taskIsActive(task)) {
+        taskEventCursorsRef.current.delete(task.id)
+        streamActiveOverrideTaskIdsRef.current.delete(task.id)
+      }
     }
   }, [tasks])
   const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
@@ -433,6 +453,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (taskQueryBlockingError && tasksQuery.isFetching) ||
     (sourceQueryBlockingError && sourcesQuery.isFetching),
   )
+  const mainRecoveryVisible = Boolean(
+    permissionQueryError ||
+    documentsQuery.error ||
+    dependencyQueryBlockingError ||
+    dependencyQueryWarning,
+  )
+  const mainRecoveryIdentity = [
+    permissionQueryError ? 'permission' : '',
+    documentsQuery.error ? 'documents' : '',
+    taskQueryBlockingError ? 'tasks-blocking' : '',
+    sourceQueryBlockingError ? 'sources-blocking' : '',
+    taskQueryWarning ? 'tasks-warning' : '',
+    sourceQueryWarning ? 'sources-warning' : '',
+  ].join(':')
   const dependencyResultsIncomplete = taskResultsIncomplete || sourceResultsIncomplete
   const selectionDisabled =
     !canWrite ||
@@ -518,11 +552,30 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [documentPermissionDenied, orderedActiveTasks.length])
 
   useEffect(() => {
-    if (!documentPermissionDenied || !tasksOpen) return
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission revocation permanently closes the controlled task drawer.
-    setTasksOpen(false)
-    documentPermissionAlertRef.current?.focus()
-  }, [documentPermissionDenied, tasksOpen])
+    const wasDenied = previousDocumentPermissionDeniedRef.current
+    previousDocumentPermissionDeniedRef.current = documentPermissionDenied
+    if (wasDenied && !documentPermissionDenied) {
+      void refetchTasksQuery()
+      void refetchSourcesQuery()
+      return
+    }
+    if (wasDenied || !documentPermissionDenied) return
+    if (tasksOpen) {
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission revocation permanently closes the controlled task drawer.
+      setTasksOpen(false)
+    }
+    if (tasksOpen || documentSurfaceHadFocusRef.current) documentPermissionAlertRef.current?.focus()
+  }, [documentPermissionDenied, refetchSourcesQuery, refetchTasksQuery, tasksOpen])
+
+  useEffect(() => {
+    if (!mainRetryFocusRequestedRef.current) return
+    if (mainRecoveryVisible) {
+      mainRetryButtonRef.current?.focus()
+      return
+    }
+    mainRetryFocusRequestedRef.current = false
+    documentsTitleRef.current?.focus()
+  }, [mainRecoveryIdentity, mainRecoveryVisible])
 
   useEffect(() => {
     if (!blockingDependencyRetries.tasks && !blockingDependencyRetries.sources) return
@@ -752,6 +805,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     pruneMap(equalRetryListGenerationsRef.current)
     pruneMap(pendingTerminalProgressRef.current)
     pruneMap(taskEventCursorsRef.current)
+    for (const taskId of streamActiveOverrideTaskIdsRef.current) {
+      if (!taskIds.has(taskId)) streamActiveOverrideTaskIdsRef.current.delete(taskId)
+    }
     taskProgressStore.retain(taskIds)
 
     const retainTaskState = <Value,>(current: Record<string, Value>) => {
@@ -997,6 +1053,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         return false
       }
 
+      if (event.event === 'progress' && ACTIVE_TASK_STATES.has(event.data.state))
+        streamActiveOverrideTaskIdsRef.current.add(taskId)
+      else streamActiveOverrideTaskIdsRef.current.delete(taskId)
+
       if (event.event === 'progress' && terminalSnapshot) {
         currentTaskVersionRef.current.set(taskId, eventVersion)
         taskProgressStore.set(taskId, event.data)
@@ -1080,6 +1140,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (task: DocumentProcessingTask) => {
       const currentVersion = currentTaskVersionRef.current.get(task.id)
       if (currentVersion && taskVersionIsAfter(currentVersion, task.updatedAt)) return
+      streamActiveOverrideTaskIdsRef.current.delete(task.id)
       taskProgressStore.delete(task.id)
       currentTaskStateRef.current.set(task.id, task.state)
       currentTaskVersionRef.current.set(task.id, task.updatedAt)
@@ -1286,11 +1347,24 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         />
       )}
       <section
+        ref={documentsSectionRef}
         aria-labelledby="new-knowledge-documents-title"
         className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7"
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+            documentSurfaceHadFocusRef.current = false
+        }}
+        onFocusCapture={() => {
+          documentSurfaceHadFocusRef.current = true
+        }}
       >
         <header>
-          <h2 id="new-knowledge-documents-title" className="title-xl-semi-bold text-text-primary">
+          <h2
+            ref={documentsTitleRef}
+            id="new-knowledge-documents-title"
+            className="title-xl-semi-bold text-text-primary"
+            tabIndex={-1}
+          >
             {t(($) => $['newKnowledge.documents'])}
           </h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
@@ -1315,10 +1389,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               {t(($) => $['newKnowledge.permissionLoadFailed'])}
             </span>
             <Button
+              ref={mainRetryButtonRef}
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
+              aria-busy={workspacePermissionKeysFetching}
               loading={workspacePermissionKeysFetching}
               size="small"
-              onClick={retryWorkspacePermissionKeys}
+              onBlur={(event) => {
+                if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
+              }}
+              onClick={() => {
+                mainRetryFocusRequestedRef.current = true
+                retryWorkspacePermissionKeys()
+              }}
             >
               {tCommon(($) => $['operation.retry'])}
             </Button>
@@ -1341,10 +1423,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               </span>
               {responseStatus(documentsQuery.error) !== 403 && (
                 <Button
+                  ref={mainRetryButtonRef}
                   aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+                  aria-busy={documentsQuery.isRefetching}
                   loading={documentsQuery.isRefetching}
                   size="small"
-                  onClick={() => void documentsQuery.refetch()}
+                  onBlur={(event) => {
+                    if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
+                  }}
+                  onClick={() => {
+                    mainRetryFocusRequestedRef.current = true
+                    void documentsQuery.refetch()
+                  }}
                 >
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
@@ -1362,14 +1452,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 : t(($) => $['newKnowledge.tasksErrorDescription'])}
             </span>
             <Button
+              ref={mainRetryButtonRef}
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${
                 sourcesQuery.error || sourcesQuery.isFetchNextPageError
                   ? t(($) => $['newKnowledge.sourcesErrorDescription'])
                   : t(($) => $['newKnowledge.tasksErrorDescription'])
               }`}
+              aria-busy={dependencyRetryFetching}
               loading={dependencyRetryFetching}
               size="small"
-              onClick={retryDependencyQueries}
+              onBlur={(event) => {
+                if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
+              }}
+              onClick={() => {
+                mainRetryFocusRequestedRef.current = true
+                retryDependencyQueries()
+              }}
             >
               {tCommon(($) => $['operation.retry'])}
             </Button>
@@ -1403,10 +1501,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             </p>
             {responseStatus(documentsQuery.error) !== 403 && (
               <Button
+                ref={mainRetryButtonRef}
                 aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+                aria-busy={documentsQuery.isFetching}
                 className="mt-4"
                 loading={documentsQuery.isFetching}
-                onClick={() => void documentsQuery.refetch()}
+                onBlur={(event) => {
+                  if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
+                }}
+                onClick={() => {
+                  mainRetryFocusRequestedRef.current = true
+                  void documentsQuery.refetch()
+                }}
               >
                 {tCommon(($) => $['operation.retry'])}
               </Button>
@@ -1424,14 +1530,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 : t(($) => $['newKnowledge.sourcesErrorDescription'])}
             </p>
             <Button
+              ref={mainRetryButtonRef}
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${
                 taskQueryBlockingError
                   ? t(($) => $['newKnowledge.tasksErrorDescription'])
                   : t(($) => $['newKnowledge.sourcesErrorDescription'])
               }`}
+              aria-busy={blockingDependencyRetryFetching}
               className="mt-4"
               loading={blockingDependencyRetryFetching}
-              onClick={retryDependencyQueries}
+              onBlur={(event) => {
+                if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
+              }}
+              onClick={() => {
+                mainRetryFocusRequestedRef.current = true
+                retryDependencyQueries()
+              }}
             >
               {tCommon(($) => $['operation.retry'])}
             </Button>

@@ -127,6 +127,7 @@ export function ProcessingTasksDrawer({
   const pendingActionsRef = useRef(new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const loadMoreRequestedRef = useRef(false)
+  const queryRetryFocusRequestedRef = useRef(false)
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
   const openCycleRef = useRef(0)
   const openRef = useRef(open)
@@ -248,6 +249,13 @@ export function ProcessingTasksDrawer({
     drawerCloseButtonRef.current?.focus()
   }, [hasMoreTasks, open])
 
+  useEffect(() => {
+    const queryRetryVisible = taskQueryError || (documentQueryError && hasUnresolvedTaskDocuments)
+    if (!open || queryRetryVisible || !queryRetryFocusRequestedRef.current) return
+    queryRetryFocusRequestedRef.current = false
+    drawerCloseButtonRef.current?.focus()
+  }, [documentQueryError, hasUnresolvedTaskDocuments, open, taskQueryError])
+
   const refreshDocumentsAndTasks = () =>
     Promise.allSettled([
       queryClient.invalidateQueries({
@@ -357,10 +365,17 @@ export function ProcessingTasksDrawer({
                     </p>
                     <Button
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.tasksErrorDescription'])}`}
+                      aria-busy={taskQueryFetching}
                       className="mt-3"
                       loading={taskQueryFetching}
                       size="small"
-                      onClick={onRetryTaskQuery}
+                      onBlur={(event) => {
+                        if (event.relatedTarget) queryRetryFocusRequestedRef.current = false
+                      }}
+                      onClick={() => {
+                        queryRetryFocusRequestedRef.current = true
+                        onRetryTaskQuery()
+                      }}
                     >
                       {tCommon(($) => $['operation.retry'])}
                     </Button>
@@ -373,10 +388,17 @@ export function ProcessingTasksDrawer({
                     </p>
                     <Button
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+                      aria-busy={documentQueryFetching}
                       className="mt-3"
                       loading={documentQueryFetching}
                       size="small"
-                      onClick={onRetryDocumentQuery}
+                      onBlur={(event) => {
+                        if (event.relatedTarget) queryRetryFocusRequestedRef.current = false
+                      }}
+                      onClick={() => {
+                        queryRetryFocusRequestedRef.current = true
+                        onRetryDocumentQuery()
+                      }}
                     >
                       {tCommon(($) => $['operation.retry'])}
                     </Button>
@@ -450,6 +472,7 @@ export function ProcessingTasksDrawer({
                                   : undefined
                               }
                               size="small"
+                              aria-busy={pendingActions.has(task.id)}
                               disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}
                               onClick={() => void performAction(task, 'cancel')}
@@ -464,6 +487,7 @@ export function ProcessingTasksDrawer({
                                   : undefined
                               }
                               size="small"
+                              aria-busy={pendingActions.has(task.id)}
                               disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}
                               onClick={() => void performAction(task, 'retry')}
@@ -484,6 +508,7 @@ export function ProcessingTasksDrawer({
                   <div className="mt-4 flex justify-center">
                     <Button
                       ref={loadMoreButtonRef}
+                      aria-busy={isFetchingNextTaskPage || isFetchingNextDocumentPage}
                       loading={isFetchingNextTaskPage || isFetchingNextDocumentPage}
                       onBlur={() => {
                         loadMoreRequestedRef.current = false

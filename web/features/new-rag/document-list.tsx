@@ -345,15 +345,18 @@ export function DocumentsList({
   const hasHiddenDocuments = visibleDocuments.length < documents.length
 
   useEffect(() => {
-    if (hasHiddenDocuments || hasNextPage || isFetchingNextPage || !restoreLoadMoreFocusRef.current)
+    if (isFetchingNextPage || !restoreLoadMoreFocusRef.current) return
+    if (hasHiddenDocuments || hasNextPage || isFetchNextPageError) {
+      loadMoreButtonRef.current?.focus()
       return
+    }
     restoreLoadMoreFocusRef.current = false
     resultsContainerRef.current?.focus()
-  }, [hasHiddenDocuments, hasNextPage, isFetchingNextPage])
+  }, [hasHiddenDocuments, hasNextPage, isFetchNextPageError, isFetchingNextPage])
 
   return (
     <>
-      <div className="mt-5 flex flex-col gap-2 lg:flex-row lg:items-center">
+      <div className="mt-5 flex flex-col gap-2 2xl:flex-row 2xl:items-center">
         <label className="sr-only" htmlFor="document-filter">
           {t(($) => $['newKnowledge.documentFilterLabel'])}
         </label>
@@ -365,7 +368,7 @@ export function DocumentsList({
             setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
             onFilterChange(event.target.value as DocumentFilter)
           }}
-          className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid lg:w-36"
+          className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid 2xl:w-36"
         >
           <option value="all">{t(($) => $['newKnowledge.allDocumentStatuses'])}</option>
           {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
@@ -374,7 +377,7 @@ export function DocumentsList({
             </option>
           ))}
         </select>
-        <label className="relative lg:w-60">
+        <label className="relative 2xl:w-60">
           <span className="sr-only">{t(($) => $['newKnowledge.searchDocuments'])}</span>
           <span
             aria-hidden
@@ -535,9 +538,17 @@ export function DocumentsList({
             {t(($) => $['newKnowledge.documentsErrorDescription'])}
           </span>
           <Button
+            ref={loadMoreButtonRef}
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+            aria-busy={isFetchingNextDocumentPage}
             loading={isFetchingNextDocumentPage}
-            onClick={onLoadMore}
+            onBlur={(event) => {
+              if (event.relatedTarget) restoreLoadMoreFocusRef.current = false
+            }}
+            onClick={() => {
+              restoreLoadMoreFocusRef.current = document.activeElement === loadMoreButtonRef.current
+              onLoadMore()
+            }}
           >
             {tCommon(($) => $['operation.retry'])}
           </Button>
@@ -546,9 +557,10 @@ export function DocumentsList({
         <div className="mt-5 flex justify-center">
           <Button
             ref={loadMoreButtonRef}
+            aria-busy={isFetchingNextPage}
             loading={isFetchingNextPage}
-            onBlur={() => {
-              restoreLoadMoreFocusRef.current = false
+            onBlur={(event) => {
+              if (event.relatedTarget) restoreLoadMoreFocusRef.current = false
             }}
             onClick={() => {
               restoreLoadMoreFocusRef.current = document.activeElement === loadMoreButtonRef.current
