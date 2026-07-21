@@ -269,6 +269,7 @@ describe('FeaturesTrigger', () => {
     })
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockUseNodesSyncDraft.mockReturnValue({ handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft })
+    mockHandleSyncWorkflowDraft.mockResolvedValue({ hash: 'draft-hash', updatedAt: 1 })
     mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
       selector({ features: { file: {} } }),
     )
@@ -472,6 +473,43 @@ describe('FeaturesTrigger', () => {
 
   // Verifies publishing behavior across warnings, validation, and success.
   describe('Publishing', () => {
+    it('should wait for the draft save barrier before publishing', async () => {
+      const user = userEvent.setup()
+      let resolveDraftSync: ((value: { hash: string; updatedAt: number }) => void) | undefined
+      mockHandleSyncWorkflowDraft.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDraftSync = resolve
+        }),
+      )
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      await waitFor(() => {
+        expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+      })
+      expect(mockPublishWorkflow).not.toHaveBeenCalled()
+
+      resolveDraftSync?.({ hash: 'saved-hash', updatedAt: 2 })
+
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+    })
+
+    it('should not publish when the draft save barrier fails', async () => {
+      const user = userEvent.setup()
+      mockHandleSyncWorkflowDraft.mockResolvedValueOnce(null)
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      await waitFor(() => {
+        expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+      })
+      expect(mockPublishWorkflow).not.toHaveBeenCalled()
+    })
+
     it('should notify error and reject publish when checklist has warning nodes', async () => {
       // Arrange
       const user = userEvent.setup()

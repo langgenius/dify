@@ -298,6 +298,7 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
 
 def test_delete_snippet_deletes_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
+    user = _account()
     session = SimpleNamespace(merge=Mock(return_value=snippet), commit=Mock())
     delete_snippet = Mock()
 
@@ -314,11 +315,11 @@ def test_delete_snippet_deletes_and_commits(app: Flask, monkeypatch: pytest.Monk
     handler = unwrap(api.delete)
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1", method="DELETE"):
-        response, status_code = handler(api, "tenant-1", snippet_id="snippet-1")
+        response, status_code = handler(api, "tenant-1", user, snippet_id="snippet-1")
 
     assert status_code == 204
     assert response == ""
-    delete_snippet.assert_called_once_with(session=session, snippet=snippet)
+    delete_snippet.assert_called_once_with(session=session, snippet=snippet, account_id=user.id)
     session.commit.assert_called_once()
 
 
@@ -357,7 +358,7 @@ def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeyp
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.PENDING, imported_dsl_version="999.0.0")
     import_snippet = Mock(return_value=result)
-    session = SimpleNamespace(commit=Mock())
+    session = SimpleNamespace(commit=Mock(), rollback=Mock())
 
     class _SessionContext:
         def __init__(self, engine):
@@ -385,19 +386,20 @@ def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeyp
         method="POST",
         json={"mode": "yaml-content", "yaml_content": "kind: snippet"},
     ):
-        response, status_code = handler(api, user)
+        response, status_code = handler(api, session, user)
 
     assert status_code == 202
     assert response["status"] == ImportStatus.PENDING.value
     import_snippet.assert_called_once()
-    session.commit.assert_called_once()
+    session.rollback.assert_not_called()
+    session.commit.assert_not_called()
 
 
 def test_import_snippet_returns_400_for_failed_import(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.FAILED, error="Invalid DSL")
     import_snippet = Mock(return_value=result)
-    session = SimpleNamespace(commit=Mock())
+    session = SimpleNamespace(commit=Mock(), rollback=Mock())
 
     class SessionContext(_SessionContext):
         def __init__(self, engine, *args, **kwargs):
@@ -419,18 +421,19 @@ def test_import_snippet_returns_400_for_failed_import(app: Flask, monkeypatch: p
         method="POST",
         json={"mode": "yaml-content", "yaml_content": "kind: snippet"},
     ):
-        response, status_code = handler(api, user)
+        response, status_code = handler(api, session, user)
 
     assert status_code == 400
     assert response["error"] == "Invalid DSL"
-    session.commit.assert_called_once()
+    session.rollback.assert_not_called()
+    session.commit.assert_not_called()
 
 
 def test_import_confirm_returns_200_for_completed_import(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.COMPLETED, snippet_id="snippet-1")
     confirm_import = Mock(return_value=result)
-    session = SimpleNamespace(commit=Mock())
+    session = SimpleNamespace(commit=Mock(), rollback=Mock())
 
     class SessionContext(_SessionContext):
         def __init__(self, engine, *args, **kwargs):
@@ -451,12 +454,12 @@ def test_import_confirm_returns_200_for_completed_import(app: Flask, monkeypatch
         "/workspaces/current/customized-snippets/imports/import-1/confirm",
         method="POST",
     ):
-        response, status_code = handler(api, user, import_id="import-1")
+        response, status_code = handler(api, session, user, import_id="import-1")
 
     assert status_code == 200
     assert response["snippet_id"] == "snippet-1"
     confirm_import.assert_called_once_with(import_id="import-1", account=user)
-    session.commit.assert_called_once()
+    session.commit.assert_not_called()
 
 
 def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):

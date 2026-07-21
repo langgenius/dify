@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, override
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.model_manager import ModelManager
@@ -15,7 +16,6 @@ from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.otel import trace_span
@@ -99,7 +99,7 @@ class _LazyEmbeddings(Embeddings):
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list | None = None):
+    def __init__(self, dataset: Dataset, attributes: list | None = None, *, session: Session):
         if attributes is None:
             # `is_summary` and `original_chunk_id` are stored on summary vectors
             # by `SummaryIndexService` and read back by `RetrievalService` to
@@ -120,14 +120,15 @@ class Vector:
             ]
         self._dataset = dataset
         # Use a lazy proxy so cleanup paths (delete_by_ids / delete / text_exists)
-        # never transitively trigger billing API calls during ``Vector(dataset)``
+        # never transitively trigger billing API calls during ``Vector(dataset, session=...)``
         # construction. The real embedding model is materialized only when an
         # ``embed_*`` method is actually invoked (i.e. create / search paths).
         self._embeddings: Embeddings = _LazyEmbeddings(dataset)
         self._attributes = attributes
-        self._vector_processor = self._init_vector()
+        self._session = session
+        self._vector_processor = self._init_vector(session=session)
 
-    def _init_vector(self) -> BaseVector:
+    def _init_vector(self, *, session: Session) -> BaseVector:
         vector_type = dify_config.VECTOR_STORE
 
         if self._dataset.index_struct_dict:
@@ -137,7 +138,7 @@ class Vector:
                 stmt = select(Whitelist).where(
                     Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
                 )
-                whitelist = db.session.scalars(stmt).one_or_none()
+                whitelist = session.scalars(stmt).one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
@@ -194,7 +195,7 @@ class Vector:
                 # Batch query all upload files to avoid N+1 queries
                 attachment_ids = [doc.metadata["doc_id"] for doc in batch]
                 stmt = select(UploadFile).where(UploadFile.id.in_(attachment_ids))
-                upload_files = db.session.scalars(stmt).all()
+                upload_files = self._session.scalars(stmt).all()
                 upload_file_map = {str(f.id): f for f in upload_files}
 
                 file_base64_list = []
@@ -252,7 +253,7 @@ class Vector:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        upload_file: UploadFile | None = db.session.get(UploadFile, file_id)
+        upload_file: UploadFile | None = self._session.get(UploadFile, file_id)
 
         if not upload_file:
             return []

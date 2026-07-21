@@ -155,7 +155,7 @@ export function AgentMonitoringTimeRangePicker({
 
   const selectedOption = timeRangeOptions.find((option) => option.value === selectedRange)
 
-  const handleRangeChange = (nextValue: string | null) => {
+  const handleRangeChange = (nextValue: TimeRangeKey | null) => {
     if (!nextValue) return
 
     const option = timeRangeOptions.find((item) => item.value === nextValue)
@@ -196,37 +196,25 @@ export function AgentMonitoringTimeRangePicker({
 
   return (
     <div className="flex min-w-0 items-center">
-      <Select
+      <Select<TimeRangeKey>
         value={selectedRange === 'custom' ? null : selectedRange}
         onValueChange={handleRangeChange}
       >
         <SelectTrigger
           aria-label={t(($) => $['agentDetail.monitoring.timeRangeLabel'])}
-          className="mt-0 h-auto w-20 shrink-0 border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
+          className="w-fit shrink-0 cursor-pointer gap-1.5 pr-2 pl-3"
         >
-          <div className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2 pl-3 group-data-popup-open:bg-state-base-hover-alt">
-            <div className="system-sm-regular text-components-input-text-filled">
-              {selectedRange === 'custom'
-                ? t(($) => $['agentDetail.monitoring.timeRanges.custom'])
-                : selectedOption
-                  ? t(($) => $[selectedOption.nameKey])
-                  : value.name}
-            </div>
-            <span
-              aria-hidden
-              className="i-ri-arrow-down-s-line size-4 text-text-quaternary group-data-popup-open:text-text-secondary"
-            />
-          </div>
+          {selectedRange === 'custom'
+            ? t(($) => $['agentDetail.monitoring.timeRanges.custom'])
+            : selectedOption
+              ? t(($) => $[selectedOption.nameKey])
+              : value.name}
         </SelectTrigger>
-        <SelectContent className="translate-x-[-24px]" popupClassName="w-50" listClassName="p-1">
+        <SelectContent popupClassName="w-50">
           {timeRangeOptions.map((option) => (
-            <SelectItem
-              key={option.value}
-              value={option.value}
-              className="h-8 py-0 pr-2 pl-7 system-md-regular"
-            >
-              <SelectItemText className="px-0">{t(($) => $[option.nameKey])}</SelectItemText>
-              <SelectItemIndicator className="absolute top-2 left-2 ml-0" />
+            <SelectItem key={option.value} value={option.value}>
+              <SelectItemText>{t(($) => $[option.nameKey])}</SelectItemText>
+              <SelectItemIndicator />
             </SelectItem>
           ))}
         </SelectContent>

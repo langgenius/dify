@@ -30,7 +30,7 @@ def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], 
             if installed_app is None:
                 raise NotFound("Installed app not found")
 
-            if not installed_app.app:
+            if not installed_app.app_with_session(session=db.session()):
                 db.session.delete(installed_app)
                 db.session.commit()
 
@@ -74,17 +74,18 @@ def trial_app_required[**P, R](view: Callable[Concatenate[App, P], R] | None = N
         @wraps(view)
         def decorated(app_id: str, *args: P.args, **kwargs: P.kwargs):
             current_user, _ = current_account_with_tenant()
+            session = db.session()
 
-            trial_app = db.session.scalar(select(TrialApp).where(TrialApp.app_id == str(app_id)).limit(1))
+            trial_app = session.scalar(select(TrialApp).where(TrialApp.app_id == str(app_id)).limit(1))
 
             if trial_app is None:
                 raise TrialAppNotAllowed()
-            app = trial_app.app
+            app = trial_app.app_with_session(session=session)
 
             if app is None:
                 raise TrialAppNotAllowed()
 
-            account_trial_app_record = db.session.scalar(
+            account_trial_app_record = session.scalar(
                 select(AccountTrialAppRecord)
                 .where(AccountTrialAppRecord.account_id == current_user.id, AccountTrialAppRecord.app_id == app_id)
                 .limit(1)

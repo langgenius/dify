@@ -461,6 +461,94 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
       },
+      snippets: {
+        bySnippetId: {
+          workflows: {
+            draft: {
+              nodes: {
+                byNodeId: {
+                  agentComposer: {
+                    put: {
+                      mutationOptions: {
+                        onSuccess: (composerState, variables, _onMutateResult, context) => {
+                          context.client.setQueryData(
+                            consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+                              {
+                                input: {
+                                  params: variables.params,
+                                },
+                              },
+                            ),
+                            composerState,
+                          )
+                        },
+                      },
+                    },
+                    copyFromRoster: {
+                      post: {
+                        mutationOptions: {
+                          onSuccess: (composerState, variables, _onMutateResult, context) => {
+                            context.client.setQueryData(
+                              consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+                                {
+                                  input: {
+                                    params: variables.params,
+                                  },
+                                },
+                              ),
+                              composerState,
+                            )
+                          },
+                        },
+                      },
+                    },
+                    saveToRoster: {
+                      post: {
+                        mutationOptions: {
+                          onSuccess: (composerState, variables, _onMutateResult, context) => {
+                            context.client.setQueryData(
+                              consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+                                {
+                                  input: {
+                                    params: variables.params,
+                                  },
+                                },
+                              ),
+                              composerState,
+                            )
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.agent.get.key(),
+                            })
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                            })
+
+                            const agentId =
+                              composerState.binding?.binding_type === 'roster_agent'
+                                ? composerState.binding.agent_id
+                                : undefined
+                            if (agentId) {
+                              context.client.invalidateQueries({
+                                queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+                                  input: {
+                                    params: {
+                                      agent_id: agentId,
+                                    },
+                                  },
+                                }),
+                              })
+                            }
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       agent: {
         post: {
           mutationOptions: {
@@ -745,6 +833,19 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
       enterprise: {
+        webAppAuth: {
+          updateWebAppWhitelistSubjects: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _result, context) => {
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
+                  consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
+                  consoleQuery.agent.byAgentId.get.key(),
+                ])
+              },
+            },
+          },
+        },
         appInstanceService: {
           createAppInstance: {
             mutationOptions: {

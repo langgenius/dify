@@ -42,6 +42,23 @@ const feedbackTooltipClassName = 'max-w-[260px]'
 const answerActiveFlexClassName = 'group-hover:flex group-has-[[data-popup-open]]:flex'
 const answerActiveBlockClassName = 'group-hover:block group-has-[[data-popup-open]]:block'
 
+function joinPublicContent(blocks: Array<string | undefined>) {
+  return blocks.filter((block): block is string => !!block?.trim()).join('\n\n')
+}
+
+function getPublicResponseContent(item: ChatItem) {
+  if (item.content.trim()) return item.content
+
+  const responseContent = joinPublicContent(
+    item.agent_response_parts?.map((part) =>
+      part.type === 'message' ? part.content : undefined,
+    ) ?? [],
+  )
+  if (responseContent) return responseContent
+
+  return joinPublicContent(item.agent_thoughts?.map((thought) => thought.answer) ?? [])
+}
+
 const FeedbackTooltip = ({ content, children }: FeedbackTooltipProps) => {
   return (
     <Tooltip>
@@ -69,21 +86,14 @@ function Operation({
     onAnnotationRemoved,
     onFeedback,
     onRegenerate,
+    showRegenerate,
     readonly,
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   const [isShowFeedbackModal, setIsShowFeedbackModal] = useState(false)
   const [feedbackContent, setFeedbackContent] = useState('')
-  const {
-    id,
-    isOpeningStatement,
-    content: messageContent,
-    annotation,
-    feedback,
-    adminFeedback,
-    agent_thoughts,
-    humanInputFormDataList,
-  } = item
+  const { id, isOpeningStatement, annotation, feedback, adminFeedback, humanInputFormDataList } =
+    item
   const [userLocalFeedback, setUserLocalFeedback] = useState(feedback)
   const [adminLocalFeedback, setAdminLocalFeedback] = useState(adminFeedback)
   const [feedbackTarget, setFeedbackTarget] = useState<'user' | 'admin'>('user')
@@ -91,11 +101,8 @@ function Operation({
 
   const userFeedback = feedback
 
-  const content = useMemo(() => {
-    if (agent_thoughts?.length) return agent_thoughts.reduce((acc, cur) => acc + cur.thought, '')
-
-    return messageContent
-  }, [agent_thoughts, messageContent])
+  const content = getPublicResponseContent(item)
+  const hasPublicContent = !!content.trim()
 
   const displayUserFeedback = userLocalFeedback ?? userFeedback
 
@@ -110,6 +117,7 @@ function Operation({
     !readonly && !!onAnnotationAdded && !!onAnnotationEdited && !!onAnnotationRemoved
   const shouldShowAnnotationAction =
     canManageAnnotation &&
+    hasPublicContent &&
     !!config?.supportAnnotation &&
     !!config.annotation_reply?.enabled &&
     !humanInputFormDataList?.length
@@ -177,7 +185,7 @@ function Operation({
     let width = 0
     if (!isOpeningStatement) width += 26
     if (!isOpeningStatement && showPromptLog) width += 28 + 8
-    if (!isOpeningStatement && config?.text_to_speech?.enabled) width += 26
+    if (!isOpeningStatement && config?.text_to_speech?.enabled && hasPublicContent) width += 26
     if (!isOpeningStatement && shouldShowAnnotationAction) width += 26
     if (shouldShowUserFeedbackBar) width += hasUserFeedback ? 28 + 8 : 60 + 8
     if (shouldShowAdminFeedbackBar)
@@ -187,6 +195,7 @@ function Operation({
   }, [
     config?.text_to_speech?.enabled,
     hasAdminFeedback,
+    hasPublicContent,
     hasUserFeedback,
     isOpeningStatement,
     shouldShowAdminFeedbackBar,
@@ -365,10 +374,12 @@ function Operation({
             )}
             data-testid="operation-actions"
           >
-            {config?.text_to_speech?.enabled && !humanInputFormDataList?.length && (
-              <NewAudioButton id={id} value={content} voice={config?.text_to_speech?.voice} />
-            )}
-            {!humanInputFormDataList?.length && (
+            {config?.text_to_speech?.enabled &&
+              hasPublicContent &&
+              !humanInputFormDataList?.length && (
+                <NewAudioButton id={id} value={content} voice={config?.text_to_speech?.voice} />
+              )}
+            {hasPublicContent && !humanInputFormDataList?.length && (
               <ActionButton
                 aria-label={copyLabel}
                 onClick={() => {
@@ -379,7 +390,7 @@ function Operation({
                 <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
               </ActionButton>
             )}
-            {!noChatInput && (
+            {(!noChatInput || showRegenerate) && (
               <ActionButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)}>
                 <span aria-hidden="true" className="i-ri-reset-left-line size-4" />
               </ActionButton>

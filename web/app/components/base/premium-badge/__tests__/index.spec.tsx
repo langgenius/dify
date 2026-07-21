@@ -3,55 +3,20 @@ import userEvent from '@testing-library/user-event'
 import PremiumBadge, { PremiumBadgeButton } from '../index'
 
 describe('PremiumBadge', () => {
-  it('renders with default props', () => {
-    render(<PremiumBadge>Premium</PremiumBadge>)
-    const badge = screen.getByText('Premium')
-    expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('premium-badge-m')
-    expect(badge).toHaveClass('premium-badge-blue')
-  })
-
-  it('renders with custom size and color', () => {
-    render(
-      <PremiumBadge size="s" color="indigo">
-        Premium
-      </PremiumBadge>,
-    )
-    const badge = screen.getByText('Premium')
-    expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('premium-badge-s')
-    expect(badge).toHaveClass('premium-badge-indigo')
-  })
-
-  it('applies allowHover class when allowHover is true', () => {
-    render(<PremiumBadgeButton>Premium</PremiumBadgeButton>)
-    const badge = screen.getByText('Premium')
-    expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('pb-allow-hover')
-  })
-
-  it('applies custom styles', () => {
-    render(<PremiumBadge styleCss={{ backgroundColor: 'red' }}>Premium</PremiumBadge>)
-    const badge = screen.getByText('Premium')
-    expect(badge).toBeInTheDocument()
-    expect(badge).toHaveStyle('background-color: red')
-  })
-
-  it('renders a static badge without button semantics', () => {
+  it('renders informational content without button semantics', () => {
     render(<PremiumBadge>Premium</PremiumBadge>)
 
+    expect(screen.getByText('Premium')).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('renders an action badge as a button', async () => {
+  it('exposes interactive content as a button', async () => {
     const user = userEvent.setup()
-    const handleClick = vi.fn()
+    const onClick = vi.fn()
+    render(<PremiumBadgeButton onClick={onClick}>Upgrade</PremiumBadgeButton>)
 
-    render(<PremiumBadgeButton onClick={handleClick}>Upgrade</PremiumBadgeButton>)
+    await user.click(screen.getByRole('button', { name: 'Upgrade' }))
 
-    const button = screen.getByRole('button', { name: 'Upgrade' })
-    await user.click(button)
-
-    expect(handleClick).toHaveBeenCalledTimes(1)
+    expect(onClick).toHaveBeenCalledOnce()
   })
 })

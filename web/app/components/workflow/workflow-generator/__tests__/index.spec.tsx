@@ -1,6 +1,6 @@
 import type { WorkflowGenerateErrorResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import type { GenerateWorkflowStreamCallbacks } from '@/service/workflow-generator'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import WorkflowGeneratorModal from '../index'
 import { useWorkflowGeneratorStore } from '../store'
@@ -92,6 +92,19 @@ describe('WorkflowGeneratorModal', () => {
       await user.type(instruction, 'Summarize a URL')
 
       expect(instruction).toHaveValue('Summarize a URL')
+    })
+
+    it('should generate from the instruction shortcut', async () => {
+      const user = userEvent.setup()
+      render(<WorkflowGeneratorModal />)
+
+      const instruction = screen.getByRole('textbox', {
+        name: /workflowGenerator\.instruction/i,
+      })
+      await user.type(instruction, 'Summarize a URL')
+      fireEvent.keyDown(instruction, { key: 'Enter', ctrlKey: true })
+
+      await waitFor(() => expect(mockGenerateWorkflowStream).toHaveBeenCalledOnce())
     })
   })
 

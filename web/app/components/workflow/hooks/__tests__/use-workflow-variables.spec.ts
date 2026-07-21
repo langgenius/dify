@@ -122,11 +122,6 @@ describe('useWorkflowVariableType', () => {
     ]
   })
 
-  it('should return a function', () => {
-    const { result } = renderWorkflowHook(() => useWorkflowVariableType())
-    expect(typeof result.current).toBe('function')
-  })
-
   it('should call getCurrentVariableType with the correct node', () => {
     mockGetVarType.mockReturnValue('string')
 

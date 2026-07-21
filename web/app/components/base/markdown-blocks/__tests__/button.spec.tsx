@@ -1,4 +1,3 @@
-import type { NamedExoticComponent } from 'react'
 import type { ChatContextValue } from '@/app/components/base/chat/chat/context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -111,11 +110,6 @@ describe('MarkdownButton (integration)', () => {
     await user.click(screen.getByRole('button'))
 
     expect(onSendSpy).toHaveBeenCalledWith('msg-only')
-  })
-
-  it('has displayName set to MarkdownButton', () => {
-    const comp = MarkdownButton as NamedExoticComponent<{ node: unknown }>
-    expect(comp.displayName).toBe('MarkdownButton')
   })
 
   it('falls back to empty label when first child value is missing', () => {

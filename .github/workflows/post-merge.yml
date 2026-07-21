@@ -38,6 +38,7 @@ jobs:
               - '.github/workflows/web-e2e.yml'
               - '.github/actions/setup-web/**'
               - 'dify-agent/**'
+              - 'dify-agent-runtime/**'
               - 'api/clients/agent_backend/**'
               - 'api/core/app/apps/agent_app/**'
               - 'api/core/workflow/nodes/agent_v2/**'

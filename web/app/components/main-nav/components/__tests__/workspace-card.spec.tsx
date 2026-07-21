@@ -2,16 +2,13 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import {
-  createTestQueryClient,
-  renderWithSystemFeatures,
-} from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { WorkspaceCard } from '../workspace-card'
 
 const {
@@ -25,7 +22,7 @@ const {
   mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
   mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
 }))
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   current: {
     workspacePermissionKeys: [] as string[],
   },
@@ -45,31 +42,13 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState.current)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
 vi.mock('@/context/modal-context', () => ({
@@ -130,6 +109,7 @@ const currentWorkspaceValue: ICurrentWorkspace = {
   providers: [],
   trial_credits: 10000,
   trial_credits_used: 2500,
+  trial_credits_exhausted_at: 0,
   next_credit_reset_date: 0,
 }
 
@@ -145,26 +125,27 @@ const mockCurrentWorkspaceQuery = (
   mockCurrentWorkspace = isPending ? undefined : data
 }
 
-type RenderWorkspaceCardOptions = Parameters<typeof renderWithSystemFeatures>[1] & {
+type RenderWorkspaceCardOptions = Parameters<typeof renderWithConsoleQuery>[1] & {
   seedWorkspaces?: boolean
 }
 
 const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
   const { seedWorkspaces = true, ...renderOptions } = options ?? {}
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   if (mockCurrentWorkspace)
     queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), mockCurrentWorkspace)
   if (seedWorkspaces)
     queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
 
-  return renderWithSystemFeatures(<WorkspaceCard />, {
+  return renderWithConsoleQuery(<WorkspaceCard />, {
     ...renderOptions,
     queryClient,
+    currentWorkspace: mockCurrentWorkspace ? undefined : null,
   })
 }
 
 const mockWorkspacePermissionKeys = (workspacePermissionKeys: string[]) => {
-  mockAppContextState.current = {
+  mockConsoleState.current = {
     workspacePermissionKeys,
   }
 }

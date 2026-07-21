@@ -1,6 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import SnippetList from '..'
 
@@ -73,62 +73,32 @@ const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/service/use-common', () => ({
@@ -184,7 +154,7 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
 }))
 
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  default: () => null,
+  CreateSnippetDialog: () => null,
 }))
 
 vi.mock('@/features/tag-management/components/tag-selector', () => ({
@@ -271,14 +241,14 @@ const renderList = ({
 }: {
   brandingEnabled?: boolean
 } = {}) => {
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 
   return renderWithNuqs(
-    <SystemFeaturesWrapper>
+    <ConsoleQueryWrapper>
       <SnippetList />
-    </SystemFeaturesWrapper>,
+    </ConsoleQueryWrapper>,
   )
 }
 

@@ -83,6 +83,7 @@ export function ChangeBlockMenuTrigger({
       ignoreNodeIds={ignoreNodeIds}
       forceEnableStartTab={nodeData.type === BlockEnum.Start}
       allowUserInputSelection={allowStartNodeSelection}
+      isolateKeyboardEvents
     />
   )
 }

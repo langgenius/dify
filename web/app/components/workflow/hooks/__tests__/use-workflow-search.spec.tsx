@@ -1,7 +1,7 @@
 import type { CommonNodeType, Node, ToolWithProvider } from '../../types'
 import { act, renderHook } from '@testing-library/react'
-import { workflowNodesAction } from '@/app/components/goto-anything/actions/workflow-nodes'
 import { CollectionType } from '@/app/components/tools/types'
+import { findWorkflowNodes } from '../../goto-anything-search'
 import { BlockEnum } from '../../types'
 import { useWorkflowSearch } from '../use-workflow-search'
 
@@ -49,7 +49,6 @@ describe('useWorkflowSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     runtimeNodes.length = 0
-    workflowNodesAction.searchFn = undefined
   })
 
   it('registers workflow node search results with tool icons and llm metadata scoring', async () => {
@@ -89,17 +88,17 @@ describe('useWorkflowSearch', () => {
 
     const { unmount } = renderHook(() => useWorkflowSearch())
 
-    const llmResults = await workflowNodesAction.search('', 'gpt')
+    const llmResults = findWorkflowNodes('gpt')
     expect(llmResults.map((item) => item.id)).toEqual(['llm-1'])
     expect(llmResults[0]?.title).toBe('Writer')
 
-    const toolResults = await workflowNodesAction.search('', 'search')
+    const toolResults = findWorkflowNodes('search')
     expect(toolResults.map((item) => item.id)).toEqual(['tool-1'])
     expect(toolResults[0]?.description).toBe('Search the web')
 
     unmount()
 
-    expect(workflowNodesAction.searchFn).toBeUndefined()
+    expect(findWorkflowNodes('gpt')).toEqual([])
   })
 
   it('binds the node selection listener to handleNodeSelect', () => {
