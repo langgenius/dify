@@ -109,6 +109,24 @@ def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.Mon
     ]
 
 
+def test_plugin_remote_install_port_rejects_host_port_spec(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A 'host:port' compose publish spec must produce an actionable error, not an opaque int_parsing traceback."""
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("PLUGIN_REMOTE_INSTALL_PORT", "127.0.0.1:5003")
+
+    with pytest.raises(ValueError, match="must be a bare port number"):
+        DifyConfig(_env_file=None)
+
+
+def test_plugin_remote_install_port_accepts_bare_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("PLUGIN_REMOTE_INSTALL_PORT", "5003")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.PLUGIN_REMOTE_INSTALL_PORT == 5003
+
+
 def test_new_user_default_models_are_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_basic_config_env(monkeypatch)
     monkeypatch.setenv(
