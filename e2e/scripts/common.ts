@@ -13,6 +13,7 @@ type RunCommandOptions = {
   args: string[]
   cwd: string
   env?: NodeJS.ProcessEnv
+  inheritEnv?: boolean
   stdio?: 'inherit' | 'pipe'
 }
 
@@ -63,14 +64,12 @@ export const runCommand = async ({
   args,
   cwd,
   env,
+  inheritEnv = true,
   stdio = 'inherit',
 }: RunCommandOptions): Promise<RunCommandResult> => {
   const childProcess = spawn(command, args, {
     cwd,
-    env: {
-      ...process.env,
-      ...env,
-    },
+    env: inheritEnv ? { ...process.env, ...env } : env,
     stdio: stdio === 'inherit' ? 'inherit' : 'pipe',
   })
 

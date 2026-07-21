@@ -114,7 +114,20 @@ Behavior depends on instance state:
 - uninitialized instance: completes install and stores authenticated state
 - initialized instance: signs in and reuses authenticated state
 
-The `pnpm -C e2e e2e:full*` flows prove reset and authentication bootstrap by failing setup when initialization cannot complete; they do not model bootstrap state as a Gherkin scenario. Deterministic runs exclude `@prepared`, `@external-model`, and `@external-tool`. Post-merge first seeds required fixtures, then runs prepared and external scenarios.
+The `pnpm -C e2e e2e:full*` flows prove reset and authentication bootstrap by failing setup when initialization cannot complete; they do not model bootstrap state as a Gherkin scenario. Deterministic runs exclude `@prepared`, `@external-model`, `@external-tool`, and `@new-rag-smoke`. Post-merge first seeds required fixtures, then runs prepared and external scenarios.
+
+The New RAG release smoke is an opt-in live integration matrix. It starts fresh Dify API and web processes for the default-disabled, explicit-disabled, and enabled configurations, while reusing a running KnowledgeFS service and a real website-source provider. Run it with:
+
+```bash
+E2E_NEW_RAG_KNOWLEDGE_FS_BASE_URL=http://127.0.0.1:8788 \
+E2E_NEW_RAG_KNOWLEDGE_FS_JWT_SECRET='<shared-jwt-secret>' \
+E2E_NEW_RAG_CRAWL_URL=https://example.com \
+E2E_NEW_RAG_CONNECTION_CREDENTIALS_JSON='{"base_url":"<firecrawl-base-url>","firecrawl_api_key":"<provider-key>"}' \
+pnpm -C e2e e2e:new-rag
+```
+
+Keep `@new-rag-smoke` scenarios out of the default suite. They require a reachable KnowledgeFS `/health` endpoint, valid provider credentials, and real external crawling; the runner fails before starting Dify when any live input is missing or invalid.
+Credential object keys must match the fields exposed by the live datasource provider catalog.
 
 Reset all persisted E2E state:
 

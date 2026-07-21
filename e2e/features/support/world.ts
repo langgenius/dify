@@ -74,6 +74,23 @@ export const createAgentBuilderWorldState = () => ({
 
 export type AgentBuilderWorldState = ReturnType<typeof createAgentBuilderWorldState>
 
+export const createNewRagWorldState = () => ({
+  documentTitle: undefined as string | undefined,
+  documentUrl: undefined as string | undefined,
+  knowledgeFsRequests: [] as string[],
+  knowledgeFsResponses: [] as Array<{
+    method: string
+    status: number
+    traceId?: string
+    url: string
+  }>,
+  knowledgeSpaceId: undefined as string | undefined,
+  knowledgeSpaceName: undefined as string | undefined,
+  sourceName: undefined as string | undefined,
+})
+
+export type NewRagWorldState = ReturnType<typeof createNewRagWorldState>
+
 export class DifyWorld extends World {
   context: BrowserContext | undefined
   page: Page | undefined
@@ -93,6 +110,7 @@ export class DifyWorld extends World {
   createdAgentDriveFiles: CreatedAgentDriveFile[] = []
   createdBuiltinToolCredentials: CreatedBuiltinToolCredential[] = []
   agentBuilder: AgentBuilderWorldState = createAgentBuilderWorldState()
+  newRag: NewRagWorldState = createNewRagWorldState()
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
@@ -117,6 +135,7 @@ export class DifyWorld extends World {
     this.createdAgentDriveFiles = []
     this.createdBuiltinToolCredentials = []
     this.agentBuilder = createAgentBuilderWorldState()
+    this.newRag = createNewRagWorldState()
     this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined

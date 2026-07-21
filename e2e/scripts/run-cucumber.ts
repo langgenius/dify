@@ -46,7 +46,8 @@ const parseArgs = (argv: string[]): RunOptions => {
 const hasCustomTags = (forwardArgs: string[]) =>
   forwardArgs.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
 
-const fullNonExternalTags = 'not @prepared and not @external-model and not @external-tool'
+const fullNonExternalTags =
+  'not @prepared and not @external-model and not @external-tool and not @new-rag-smoke'
 
 const isTruthyEnv = (value: string | undefined) => value === '1' || value === 'true'
 
