@@ -823,8 +823,6 @@ _FILENAME_TRANS_TABLE = _make_filename_trans_table()
 
 
 class DraftVariableSaver:
-    """Persist draft outputs under the tenant that owns the app or pipeline."""
-
     # _DUMMY_OUTPUT_IDENTITY is a placeholder output for workflow nodes.
     # Its sole possible value is `None`.
     #
@@ -843,10 +841,6 @@ class DraftVariableSaver:
 
     # Database session used for persisting draft variables.
     _session: Session
-
-    # Resource owner tenant. An account's current tenant may be unset or point elsewhere
-    # when draft variables are persisted by an asynchronous workflow execution.
-    _tenant_id: str
 
     # The application ID associated with the draft variables.
     # This should match the `Workflow.app_id` of the workflow to which the current node belongs.
@@ -873,7 +867,6 @@ class DraftVariableSaver:
     def __init__(
         self,
         session: Session,
-        tenant_id: str,
         app_id: str,
         node_id: str,
         node_type: NodeType,
@@ -885,13 +878,18 @@ class DraftVariableSaver:
         # WorkflowNodeExecutionModel/WorkflowNodeExecution, not their `node_execution_id`
         # field. These are distinct database fields with different purposes.
         self._session = session
-        self._tenant_id = tenant_id
         self._app_id = app_id
         self._node_id = node_id
         self._node_type = node_type
         self._node_execution_id = node_execution_id
         self._user = user
         self._enclosing_node_id = enclosing_node_id
+
+    def _resolve_app_tenant_id(self) -> str:
+        tenant_id = self._session.scalar(select(App.tenant_id).where(App.id == self._app_id))
+        if not tenant_id:
+            raise ValueError(f"Unable to resolve tenant_id for app {self._app_id}")
+        return tenant_id
 
     def _create_dummy_output_variable(self):
         return WorkflowDraftVariable.new_node_variable(
@@ -951,10 +949,11 @@ class DraftVariableSaver:
                 if name == SystemVariableKey.FILES:
                     # Here we know the type of variable must be `array[file]`, we
                     # just rebuild files from the serialized payload.
+                    tenant_id = self._resolve_app_tenant_id()
                     files = [
                         build_file_from_stored_mapping(
                             file_mapping=v,
-                            tenant_id=self._tenant_id,
+                            tenant_id=tenant_id,
                         )
                         for v in value
                     ]
@@ -1092,12 +1091,15 @@ class DraftVariableSaver:
         assert isinstance(bind, Engine)
         file_srv = FileService(bind)
 
+        # Prefer the app tenant over Account.current_tenant_id. Debugger/background
+        # contexts often leave current_tenant unset even when the app tenant is known.
+        tenant_id = self._resolve_app_tenant_id()
         upload_file = file_srv.upload_file(
             filename=filename,
             content=original_content_serialized.encode(),
             mimetype=content_type,
             user=self._user,
-            tenant_id=self._tenant_id,
+            tenant_id=tenant_id,
         )
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
@@ -1106,7 +1108,7 @@ class DraftVariableSaver:
             length=original_length,
             value_type=value_seg.value_type,
             app_id=self._app_id,
-            tenant_id=self._tenant_id,
+            tenant_id=tenant_id,
             user_id=self._user.id,
         )
         variable_file.id = str(uuidv7())

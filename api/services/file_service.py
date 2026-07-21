@@ -86,15 +86,17 @@ class FileService:
         file_uuid = str(uuid.uuid4())
 
         resource_tenant_id = tenant_id if tenant_id is not None else extract_tenant_id(user)
+        if not resource_tenant_id:
+            raise ValueError("tenant_id is required to upload a file")
 
-        file_key = "upload_files/" + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
+        file_key = "upload_files/" + resource_tenant_id + "/" + file_uuid + "." + extension
 
         # save file to storage
         storage.save(file_key, content)
 
         # save file to db
         upload_file = UploadFile(
-            tenant_id=resource_tenant_id or "",
+            tenant_id=resource_tenant_id,
             storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=file_key,
             name=filename,
