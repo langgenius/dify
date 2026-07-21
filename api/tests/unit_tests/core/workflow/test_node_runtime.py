@@ -171,7 +171,12 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
     model_schema = _build_model_schema()
     model_instance = _ModelInstanceStub(model_schema=model_schema)
     model_type_instance = model_instance.model_type_instance
-    prepared = DifyPreparedLLM(model_instance, request_metadata={"app_id": "app-id"})
+    before_invoke = Mock(return_value={"temperature": 0.05})
+    prepared = DifyPreparedLLM(
+        model_instance,
+        request_metadata={"app_id": "app-id"},
+        before_invoke=before_invoke,
+    )
 
     assert prepared.provider == "langgenius/openai/openai"
     assert prepared.model_name == "gpt-4o-mini"
@@ -191,9 +196,10 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
     )
 
     model_type_instance.get_model_schema.assert_called_once_with("gpt-4o-mini", {"api_key": "secret"})
+    before_invoke.assert_called_once_with([], {"temperature": 0.1})
     model_instance.invoke_llm.assert_called_once_with(
         prompt_messages=[],
-        model_parameters={"temperature": 0.1},
+        model_parameters={"temperature": 0.05},
         tools=[],
         stop=[],
         stream=False,
@@ -212,7 +218,8 @@ def test_dify_prepared_llm_requires_model_schema() -> None:
 
 def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytest.MonkeyPatch) -> None:
     model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
-    prepared = DifyPreparedLLM(model_instance)
+    before_invoke = Mock(return_value={"temperature": 0.15})
+    prepared = DifyPreparedLLM(model_instance, before_invoke=before_invoke)
     invoke_structured = MagicMock(return_value=sentinel.structured)
     monkeypatch.setattr(node_runtime, "invoke_llm_with_structured_output", invoke_structured)
 
@@ -225,13 +232,14 @@ def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytes
     )
 
     assert result is sentinel.structured
+    before_invoke.assert_called_once_with([], {"temperature": 0.2})
     invoke_structured.assert_called_once_with(
         provider="langgenius/openai/openai",
         model_schema=prepared.get_model_schema(),
         model_instance=model_instance,
         prompt_messages=[],
         json_schema={"type": "object"},
-        model_parameters={"temperature": 0.2},
+        model_parameters={"temperature": 0.15},
         stop=["done"],
         stream=True,
     )
@@ -263,7 +271,8 @@ def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
         model_runtime=plugin_runtime,
     )
 
-    prepared = DifyPreparedPollingLLM(model_instance)
+    before_invoke = Mock(return_value={"temperature": 0.05})
+    prepared = DifyPreparedPollingLLM(model_instance, before_invoke=before_invoke)
 
     assert isinstance(prepared, LLMPollingCapableProtocol)
     assert (
@@ -276,6 +285,7 @@ def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
         )
         == polling_result
     )
+    before_invoke.assert_called_once_with([], {"temperature": 0.1})
     assert (
         prepared.check_llm_polling(
             plugin_state={"task_id": "poll-1"},
@@ -287,7 +297,7 @@ def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
         model="gpt-4o-mini",
         credentials={"api_key": "secret"},
         prompt_messages=[],
-        model_parameters={"temperature": 0.1},
+        model_parameters={"temperature": 0.05},
         tools=[],
         stop=("END",),
         json_schema={"type": "object"},
