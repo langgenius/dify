@@ -1,15 +1,12 @@
 import logging
 from collections.abc import Iterator
-from unittest.mock import Mock, patch
-
-import pytest
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session
 from contextlib import contextmanager, nullcontext
 from unittest.mock import Mock, patch
 
 import pytest
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from models.base import TypeBase
 from models.model import App, AppMode, IconType
