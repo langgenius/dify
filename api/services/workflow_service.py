@@ -1060,6 +1060,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
@@ -1210,6 +1211,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=node_id,
                 node_type=BuiltinNodeTypes.HUMAN_INPUT,

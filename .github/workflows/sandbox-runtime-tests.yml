@@ -13,7 +13,7 @@ concurrency:
 jobs:
   sandbox-runtime-unit:
     name: Sandbox Runtime Unit Tests
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         shell: bash
@@ -37,7 +37,7 @@ jobs:
 
   sandbox-runtime-lint:
     name: Sandbox Runtime Lint
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         shell: bash
@@ -64,7 +64,7 @@ jobs:
 
   sandbox-runtime-integration:
     name: Sandbox Runtime Integration Tests
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         shell: bash
