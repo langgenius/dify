@@ -16,8 +16,8 @@ For a new workspace consumer, add:
 ```jsonc
 {
   "dependencies": {
-    "@langgenius/dify-ui": "workspace:*"
-  }
+    "@langgenius/dify-ui": "workspace:*",
+  },
 }
 ```
 
@@ -30,7 +30,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -40,6 +40,8 @@ import '@langgenius/dify-ui/styles.css' // once, in the app root
 ```
 
 Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported — it keeps tree-shaking trivial and makes Storybook / test coverage attribution per-primitive.
+
+The canonical boundary exported from a primitive subpath uses the primitive name without a `Root` suffix, and its public types follow the same name (`Select` / `SelectProps`, `Drawer` / `DrawerProps`). Keep `Root` only when the subpath exposes both a low-level anatomy root and a higher-level convenience component, such as `CheckboxRoot` / `Checkbox` or `PaginationRoot` / `Pagination`. Implementation code should continue to reference the upstream Base UI anatomy explicitly through names such as `BaseSelect.Root.Props`.
 
 ## Primitives
 
@@ -79,15 +81,15 @@ Dify UI's form primitives are a Base UI composition layer for native form semant
 
 Use `Form` for the submit boundary. It renders a native `<form>`, preserves Enter-to-submit and submit-button behavior, and adds Base UI's `onFormSubmit`, `errors`, `actionsRef`, and `validationMode` APIs for structured values and consolidated field validation. Prefer it over a bare `<form>` when the form is composed with Dify UI fields.
 
-Use `FieldRoot` for each standalone named field. A field must have a stable `name`, a label relationship, and either a `FieldControl` or another control that participates in the same Base UI field context. Prefer a visible label for normal form rows; when the surrounding UI already supplies the visible text, use the matching label primitive visually hidden or put `aria-label` on the actual interactive control. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
+Use `Field` for each standalone named field. A field must have a stable `name`, a label relationship, and either a `FieldControl` or another control that participates in the same Base UI field context. Prefer a visible label for normal form rows; when the surrounding UI already supplies the visible text, use the matching label primitive visually hidden or put `aria-label` on the actual interactive control. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
 
 Choose the label primitive by the control semantics. Text-like inputs, `Textarea`, input-based `Combobox` / `Autocomplete`, single `Checkbox` / `Radio`, `Switch`, and `NumberField` use `FieldLabel`. Trigger-based `Select` fields use `SelectLabel`; `Slider` fields use `SliderLabel`, with per-thumb `aria-label` only when the thumbs need distinct names. `SelectGroupLabel` and `AutocompleteGroupLabel` only label grouped options inside their popup content; they are not field labels.
 
-Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group of related controls, such as checkbox groups, radio groups, multi-thumb sliders, or a section that combines several inputs. For checkbox and radio groups, wrap each option with `FieldItem` and give each option its own label:
+Use `Fieldset` and `FieldsetLegend` when one field is represented by a group of related controls, such as checkbox groups, radio groups, multi-thumb sliders, or a section that combines several inputs. For checkbox and radio groups, wrap each option with `FieldItem` and give each option its own label:
 
 ```tsx
-<FieldRoot name="allowedNetworkProtocols">
-  <FieldsetRoot render={<CheckboxGroup />}>
+<Field name="allowedNetworkProtocols">
+  <Fieldset render={<CheckboxGroup />}>
     <FieldsetLegend>Allowed network protocols</FieldsetLegend>
     <FieldItem>
       <FieldLabel className="flex items-center gap-2">
@@ -95,11 +97,11 @@ Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group
         HTTPS
       </FieldLabel>
     </FieldItem>
-  </FieldsetRoot>
-</FieldRoot>
+  </Fieldset>
+</Field>
 ```
 
-`FieldsetRoot` provides the group semantics and legend relationship. It does not own the interactive state of the grouped control. Pass `disabled`, `value`, `defaultValue`, and change handlers to the actual group primitive (`CheckboxGroup`, radio group, slider root, etc.) instead of relying on the fieldset wrapper to manage them.
+`Fieldset` provides the group semantics and legend relationship. It does not own the interactive state of the grouped control. Pass `disabled`, `value`, `defaultValue`, and change handlers to the actual group primitive (`CheckboxGroup`, radio group, slider root, etc.) instead of relying on the fieldset wrapper to manage them.
 
 ## Typed value contracts
 
@@ -127,6 +129,16 @@ For complex business forms, keep state ownership outside these primitives. TanSt
 
 Migration rule for `web/`: if a UI has a save/submit action, do not leave it as unrelated `Input` and `Button` pieces. Give it a real submit boundary with `Form` or a native `<form>`, attach visible field names through the appropriate label primitive (`FieldLabel`, `SelectLabel`, `SliderLabel`, or `FieldsetLegend`), expose helper/error text through `FieldDescription` / `FieldError`, and keep non-submit buttons as `type="button"`.
 
+## Search and picker selection
+
+Choose the primitive by its value contract:
+
+- `Autocomplete` accepts free-form text with optional suggestions or completions.
+- `Combobox` selects and remembers one or more values from a searchable collection.
+- `Select` chooses from a closed, scannable list without text entry.
+
+Keep Base UI anatomy visible in public APIs instead of wrapping a picker into one business component. Multiple-selection comboboxes follow the official chips composition: chips and input share the input group, chips wrap, and the group grows vertically. Autocomplete and Combobox popups own their portals, use the package overlay layer, and size from `--anchor-width` with viewport-aware maximum width; do not force a minimum width that defeats viewport clamping.
+
 ## Tailwind CSS v4 integration
 
 This package uses Tailwind CSS v4's CSS-first configuration model. Consumers should import Tailwind from their own root stylesheet, then import this package's CSS entry:
@@ -141,6 +153,23 @@ If a consumer uses Dify UI source files through the workspace, add an explicit s
 ```css
 @source '../packages/dify-ui/src';
 ```
+
+Figma radius tokens are offset by one step from Tailwind CSS v4 defaults. Use this mapping rather than adding custom theme values or `radius-*` utilities:
+
+| Figma token     | Tailwind class   |
+| --------------- | ---------------- |
+| `--radius/2xs`  | `rounded-xs`     |
+| `--radius/xs`   | `rounded-sm`     |
+| `--radius/sm`   | `rounded-md`     |
+| `--radius/md`   | `rounded-lg`     |
+| `--radius/lg`   | `rounded-[10px]` |
+| `--radius/xl`   | `rounded-xl`     |
+| `--radius/2xl`  | `rounded-2xl`    |
+| `--radius/3xl`  | `rounded-[20px]` |
+| `--radius/6xl`  | `rounded-[28px]` |
+| `--radius/full` | `rounded-full`   |
+
+Convert Figma output such as `rounded-[var(--radius/sm, 6px)]` to the mapped Tailwind class. Use an arbitrary value only when no standard class matches.
 
 ## Overlay & portal contract
 
@@ -177,15 +206,17 @@ See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay b
 - Never create an extra manual portal on top of our primitives — use the exported content / portal parts such as `DialogContent`, `PopoverContent`, and `DrawerPortal`. Base UI handles focus management, scroll-locking, and dismissal.
 - When a primitive needs additional presentation chrome (e.g. a custom backdrop), add it **inside** the exported component, not at call sites.
 
-### Tooltip, infotip, and popover semantics
+### Tooltip, preview card, infotip, and popover semantics
 
 - Use `Tooltip` only for short, non-interactive visual labels. The trigger must already have visible text or an `aria-label`; the tooltip is not the accessible name and must not contain links, buttons, forms, or structured prose.
+- Use `PreviewCard` as a visual enhancement for a link that previews its destination. Its popup must remain non-interactive and must not contain unique or essential information unless that information is also available at the linked destination. Use `Popover` when opening the popup is the trigger's purpose or when users need to access its content on touch or with assistive technology.
 - Use `Popover` for explanatory content, long text, rich layout, or anything users may need to reach on touch or with assistive technology. In `web/`, the `Infotip` wrapper is the preferred pattern for a `?` help glyph backed by `Popover`.
 - Pick a `placement` and let the primitive own spacing. Avoid per-call-site offsets unless the component API explicitly needs a measured layout exception.
 - When passing a Base UI trigger `render` prop, render a real `<button type="button">` for button-like triggers. If a Popover trigger must render a `div`, `span`, or another non-button element, pass `nativeButton={false}`.
 
 ## Development
 
+- `vp check packages/dify-ui` (from the repository root) — formatting, lint, and TypeScript diagnostics for the package.
 - `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
 - `pnpm -C packages/dify-ui test:storybook` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
@@ -212,7 +243,7 @@ Base UI can wait for `element.getAnimations()` to finish before it unmounts over
 Set the Base UI test flag in a Vitest setup file to skip those waits:
 
 ```ts
-(
+;(
   globalThis as typeof globalThis & {
     BASE_UI_ANIMATIONS_DISABLED: boolean
   }
@@ -224,7 +255,6 @@ Set the Base UI test flag in a Vitest setup file to skip those waits:
 See `[AGENTS.md](./AGENTS.md)` for:
 
 - Component authoring rules (one-component-per-folder, `cva` + `cn`, relative imports inside the package, subpath imports from consumers).
-- Figma `--radius/`* token → Tailwind `rounded-*` class mapping.
 
 ## Not part of this package
 

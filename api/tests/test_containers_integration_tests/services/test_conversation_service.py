@@ -853,11 +853,7 @@ class TestConversationServiceMessageAnnotation:
 
         # Act
         result_items, result_total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_id=app_model.id,
-            page=1,
-            limit=10,
-            keyword="",
-            session=db_session_with_containers,
+            app_id=app_model.id, page=1, limit=10, keyword="", session=db_session_with_containers
         )
 
         # Assert
@@ -934,9 +930,7 @@ class TestConversationServiceMessageAnnotation:
         }
 
         # Act
-        result = AppAnnotationService.insert_app_annotation_directly(
-            args, app_model.id, session=db_session_with_containers
-        )
+        result = AppAnnotationService.insert_app_annotation_directly(args, app_model.id, db_session_with_containers)
 
         # Assert
         assert result.question == args["question"]
@@ -1011,7 +1005,7 @@ class TestConversationServiceExport:
         mock_current_account.return_value = (account, app_model.tenant_id)
 
         # Act
-        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id, session=db_session_with_containers)
+        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id, db_session_with_containers)
 
         # Assert
         assert len(result) == 10

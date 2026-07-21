@@ -1,10 +1,15 @@
 import type { SimpleDetail } from '../../../store'
-import type { TriggerOAuthConfig, TriggerProviderApiEntity, TriggerSubscription, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import type {
+  TriggerOAuthConfig,
+  TriggerProviderApiEntity,
+  TriggerSubscription,
+  TriggerSubscriptionBuilder,
+} from '@/app/components/workflow/block-selector/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { CreateSubscriptionButton } from '../index'
 import { CreateButtonType, DEFAULT_METHOD } from '../types'
 
@@ -22,8 +27,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 let mockStoreDetail: SimpleDetail | undefined
 vi.mock('../../../store', () => ({
-  usePluginStore: (selector: (state: { detail: SimpleDetail | undefined }) => SimpleDetail | undefined) =>
-    selector({ detail: mockStoreDetail }),
+  usePluginStore: (
+    selector: (state: { detail: SimpleDetail | undefined }) => SimpleDetail | undefined,
+  ) => selector({ detail: mockStoreDetail }),
 }))
 
 const mockSubscriptions: TriggerSubscription[] = []
@@ -36,7 +42,10 @@ vi.mock('../../use-subscription-list', () => ({
 }))
 
 let mockProviderInfo: { data: TriggerProviderApiEntity | undefined } = { data: undefined }
-let mockOAuthConfig: { data: TriggerOAuthConfig | undefined, refetch: () => void } = { data: undefined, refetch: vi.fn() }
+let mockOAuthConfig: { data: TriggerOAuthConfig | undefined; refetch: () => void } = {
+  data: undefined,
+  refetch: vi.fn(),
+}
 const mockInitiateOAuth = vi.fn()
 
 vi.mock('@/service/use-triggers', () => ({
@@ -54,14 +63,18 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 vi.mock('../common-modal', () => ({
-  CommonCreateModal: ({ open, createType, onClose, builder }: {
+  CommonCreateModal: ({
+    open,
+    createType,
+    onClose,
+    builder,
+  }: {
     open?: boolean
     createType: SupportedCreationMethods
     onClose: () => void
     builder?: TriggerSubscriptionBuilder
   }) => {
-    if (open === false)
-      return null
+    if (open === false) return null
 
     return (
       <div
@@ -69,10 +82,7 @@ vi.mock('../common-modal', () => ({
         data-create-type={createType}
         data-has-builder={!!builder}
       >
-        <button
-          data-testid="close-modal"
-          onClick={onClose}
-        >
+        <button data-testid="close-modal" onClick={onClose}>
           Close
         </button>
       </div>
@@ -81,34 +91,39 @@ vi.mock('../common-modal', () => ({
 }))
 
 vi.mock('../oauth-client', () => ({
-  OAuthClientSettingsModal: ({ open, oauthConfig, onOpenChange, showOAuthCreateModal }: {
+  OAuthClientSettingsModal: ({
+    open,
+    oauthConfig,
+    onOpenChange,
+    showOAuthCreateModal,
+  }: {
     open: boolean
     oauthConfig?: TriggerOAuthConfig
     onOpenChange: (open: boolean) => void
     showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
   }) => {
-    if (!open)
-      return null
+    if (!open) return null
 
     return (
-      <div
-        data-testid="oauth-client-modal"
-        data-has-config={!!oauthConfig}
-      >
-        <button data-testid="close-oauth-modal" onClick={() => onOpenChange(false)}>Close</button>
+      <div data-testid="oauth-client-modal" data-has-config={!!oauthConfig}>
+        <button data-testid="close-oauth-modal" onClick={() => onOpenChange(false)}>
+          Close
+        </button>
         <button
           data-testid="show-create-modal"
-          onClick={() => showOAuthCreateModal({
-            id: 'test-builder',
-            name: 'test',
-            provider: 'test-provider',
-            credential_type: TriggerCredentialTypeEnum.Oauth2,
-            credentials: {},
-            endpoint: 'https://test.com',
-            parameters: {},
-            properties: {},
-            workflows_in_use: 0,
-          })}
+          onClick={() =>
+            showOAuthCreateModal({
+              id: 'test-builder',
+              name: 'test',
+              provider: 'test-provider',
+              credential_type: TriggerCredentialType.Oauth2,
+              credentials: {},
+              endpoint: 'https://test.com',
+              parameters: {},
+              properties: {},
+              workflows_in_use: 0,
+            })
+          }
         >
           Show Create Modal
         </button>
@@ -127,12 +142,16 @@ vi.mock('@langgenius/dify-ui/select', async () => {
 
   const countOptions = (children: React.ReactNode): number => {
     return React.Children.toArray(children).reduce<number>((count, child) => {
-      if (!React.isValidElement<{ children?: React.ReactNode }>(child))
-        return count
+      if (!React.isValidElement<{ children?: React.ReactNode }>(child)) return count
 
-      return count + React.Children.toArray(child.props.children).filter((nestedChild) => {
-        return React.isValidElement<{ value?: string }>(nestedChild) && 'value' in nestedChild.props
-      }).length
+      return (
+        count +
+        React.Children.toArray(child.props.children).filter((nestedChild) => {
+          return (
+            React.isValidElement<{ value?: string }>(nestedChild) && 'value' in nestedChild.props
+          )
+        }).length
+      )
     }, 0)
   }
 
@@ -152,8 +171,9 @@ vi.mock('@langgenius/dify-ui/select', async () => {
     }) => {
       const currentValue = value ?? DEFAULT_METHOD
       const optionsCount = countOptions(children)
-      const containerOpen
-        = currentValue === DEFAULT_METHOD || (currentValue === SupportedCreationMethods.OAUTH && optionsCount === 1)
+      const containerOpen =
+        currentValue === DEFAULT_METHOD ||
+        (currentValue === SupportedCreationMethods.OAUTH && optionsCount === 1)
           ? undefined
           : String(open ?? false)
 
@@ -171,13 +191,26 @@ vi.mock('@langgenius/dify-ui/select', async () => {
         </SelectContext.Provider>
       )
     },
-    SelectTrigger: ({ children, className }: { children: React.ReactNode, render?: React.ReactNode, className?: string }) => {
+    SelectTrigger: ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode
+      render?: React.ReactNode
+      className?: string
+    }) => {
       const context = React.useContext(SelectContext)
       return (
         <div
           data-testid="custom-trigger"
+          role="button"
+          aria-label="custom trigger"
+          tabIndex={0}
           className={className}
           onClick={() => context.onOpenChange?.(true)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') context.onOpenChange?.(true)
+          }}
         >
           {children}
         </div>
@@ -186,12 +219,18 @@ vi.mock('@langgenius/dify-ui/select', async () => {
     SelectContent: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="options-container">{children}</div>
     ),
-    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
       const context = React.useContext(SelectContext)
       return (
         <div
           data-testid={`option-${value}`}
+          role="button"
+          aria-label={`option ${value}`}
+          tabIndex={0}
           onClick={() => context.onValueChange?.(value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') context.onValueChange?.(value)
+          }}
         >
           {children}
         </div>
@@ -202,7 +241,9 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   }
 })
 
-const createProviderInfo = (overrides: Partial<TriggerProviderApiEntity> = {}): TriggerProviderApiEntity => ({
+const createProviderInfo = (
+  overrides: Partial<TriggerProviderApiEntity> = {},
+): TriggerProviderApiEntity => ({
   author: 'test-author',
   name: 'test-provider',
   label: { en_US: 'Test Provider', zh_Hans: 'Test Provider' },
@@ -244,7 +285,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'test-subscription',
   name: 'Test Subscription',
   provider: 'test-provider',
-  credential_type: TriggerCredentialTypeEnum.ApiKey,
+  credential_type: TriggerCredentialType.ApiKey,
   credentials: {},
   endpoint: 'https://test.com',
   parameters: {},
@@ -253,26 +294,30 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   ...overrides,
 })
 
-const createDefaultProps = (overrides: Partial<Parameters<typeof CreateSubscriptionButton>[0]> = {}) => ({
+const createDefaultProps = (
+  overrides: Partial<Parameters<typeof CreateSubscriptionButton>[0]> = {},
+) => ({
   ...overrides,
 })
 
-const getCreateButton = () => screen.getByRole('button', {
-  name: /pluginTrigger\.subscription\.(createButton|empty\.button)/,
-})
+const getCreateButton = () =>
+  screen.getByRole('button', {
+    name: /pluginTrigger\.subscription\.(createButton|empty\.button)/,
+  })
 
-const setupMocks = (config: {
-  providerInfo?: TriggerProviderApiEntity
-  oauthConfig?: TriggerOAuthConfig
-  storeDetail?: SimpleDetail
-  subscriptions?: TriggerSubscription[]
-} = {}) => {
+const setupMocks = (
+  config: {
+    providerInfo?: TriggerProviderApiEntity
+    oauthConfig?: TriggerOAuthConfig
+    storeDetail?: SimpleDetail
+    subscriptions?: TriggerSubscription[]
+  } = {},
+) => {
   mockProviderInfo = { data: config.providerInfo }
   mockOAuthConfig = { data: config.oauthConfig, refetch: vi.fn() }
   mockStoreDetail = config.storeDetail
   mockSubscriptions.length = 0
-  if (config.subscriptions)
-    mockSubscriptions.push(...config.subscriptions)
+  if (config.subscriptions) mockSubscriptions.push(...config.subscriptions)
 }
 
 describe('CreateSubscriptionButton', () => {
@@ -298,57 +343,13 @@ describe('CreateSubscriptionButton', () => {
       expect(container)!.toBeEmptyDOMElement()
     })
 
-    it('should render without crashing when supportedMethods is provided', () => {
-      // Arrange
-      setupMocks({
-        storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
-      })
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<CreateSubscriptionButton {...props} />)
-
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      expect(container).not.toBeEmptyDOMElement()
-    })
-
     it('should render full button by default', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
       })
       const props = createDefaultProps()
 
@@ -364,7 +365,9 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
       })
       const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON })
 
@@ -382,7 +385,9 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
       })
       const props = createDefaultProps()
 
@@ -398,9 +403,14 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
       })
-      const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON, shape: 'circle' })
+      const props = createDefaultProps({
+        buttonType: CreateButtonType.ICON_BUTTON,
+        shape: 'circle',
+      })
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
@@ -417,7 +427,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+          supported_creation_methods: [
+            SupportedCreationMethods.MANUAL,
+            SupportedCreationMethods.APIKEY,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -432,7 +445,10 @@ describe('CreateSubscriptionButton', () => {
       // Assert
       await waitFor(() => {
         expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute('data-create-type', SupportedCreationMethods.MANUAL)
+        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
+          'data-create-type',
+          SupportedCreationMethods.MANUAL,
+        )
       })
     })
 
@@ -441,7 +457,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+          supported_creation_methods: [
+            SupportedCreationMethods.MANUAL,
+            SupportedCreationMethods.APIKEY,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -511,9 +530,11 @@ describe('CreateSubscriptionButton', () => {
       fireEvent.click(screen.getByTestId('custom-trigger'))
       expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-open', 'true')
 
-      fireEvent.click(screen.getByRole('button', {
-        name: 'pluginTrigger.subscription.addType.options.oauth.clientSettings',
-      }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'pluginTrigger.subscription.addType.options.oauth.clientSettings',
+        }),
+      )
 
       // Assert
       await waitFor(() => {
@@ -525,7 +546,10 @@ describe('CreateSubscriptionButton', () => {
     it('should close OAuthClientSettingsModal and refetch config when closed', async () => {
       // Arrange
       const mockRefetchOAuth = vi.fn()
-      mockOAuthConfig = { data: createOAuthConfig({ configured: false }), refetch: mockRefetchOAuth }
+      mockOAuthConfig = {
+        data: createOAuthConfig({ configured: false }),
+        refetch: mockRefetchOAuth,
+      }
 
       setupMocks({
         storeDetail: createStoreDetail(),
@@ -622,7 +646,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+          supported_creation_methods: [
+            SupportedCreationMethods.MANUAL,
+            SupportedCreationMethods.APIKEY,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -732,7 +759,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+          supported_creation_methods: [
+            SupportedCreationMethods.MANUAL,
+            SupportedCreationMethods.APIKEY,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -933,7 +963,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
+          supported_creation_methods: [
+            SupportedCreationMethods.OAUTH,
+            SupportedCreationMethods.MANUAL,
+          ],
         }),
         oauthConfig: createOAuthConfig({ configured: false }),
       })
@@ -957,7 +990,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
+          supported_creation_methods: [
+            SupportedCreationMethods.OAUTH,
+            SupportedCreationMethods.MANUAL,
+          ],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -981,7 +1017,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.APIKEY, SupportedCreationMethods.MANUAL],
+          supported_creation_methods: [
+            SupportedCreationMethods.APIKEY,
+            SupportedCreationMethods.MANUAL,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -996,7 +1035,10 @@ describe('CreateSubscriptionButton', () => {
       // Assert
       await waitFor(() => {
         expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute('data-create-type', SupportedCreationMethods.APIKEY)
+        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
+          'data-create-type',
+          SupportedCreationMethods.APIKEY,
+        )
       })
     })
 
@@ -1005,7 +1047,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+          supported_creation_methods: [
+            SupportedCreationMethods.MANUAL,
+            SupportedCreationMethods.APIKEY,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -1020,7 +1065,10 @@ describe('CreateSubscriptionButton', () => {
       // Assert
       await waitFor(() => {
         expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute('data-create-type', SupportedCreationMethods.MANUAL)
+        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
+          'data-create-type',
+          SupportedCreationMethods.MANUAL,
+        )
       })
     })
   })
@@ -1065,7 +1113,9 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail({ provider: 'my-provider' }),
-        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
       })
       const props = createDefaultProps()
 
@@ -1083,7 +1133,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credential_type: TriggerCredentialType.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1107,7 +1157,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
+          supported_creation_methods: [
+            SupportedCreationMethods.OAUTH,
+            SupportedCreationMethods.MANUAL,
+          ],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -1123,20 +1176,28 @@ describe('CreateSubscriptionButton', () => {
       // Assert - modal should open with OAuth type and builder
       await waitFor(() => {
         expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute('data-has-builder', 'true')
+        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
+          'data-has-builder',
+          'true',
+        )
       })
     })
 
     it('should handle OAuth initiation error', async () => {
       // Arrange
-      mockInitiateOAuth.mockImplementation((_provider: string, callbacks: { onError: () => void }) => {
-        callbacks.onError()
-      })
+      mockInitiateOAuth.mockImplementation(
+        (_provider: string, callbacks: { onError: () => void }) => {
+          callbacks.onError()
+        },
+      )
 
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
+          supported_creation_methods: [
+            SupportedCreationMethods.OAUTH,
+            SupportedCreationMethods.MANUAL,
+          ],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -1162,7 +1223,9 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
         subscriptions: undefined,
       })
       const props = createDefaultProps()
@@ -1209,7 +1272,9 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: undefined,
-        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
       })
       const props = createDefaultProps()
 
@@ -1243,7 +1308,8 @@ describe('CreateSubscriptionButton', () => {
     it('should show max count tooltip when subscriptions reach limit', () => {
       // Arrange
       const maxSubscriptions = Array.from({ length: 10 }, (_, i) =>
-        createSubscription({ id: `sub-${i}` }))
+        createSubscription({ id: `sub-${i}` }),
+      )
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
@@ -1289,8 +1355,14 @@ describe('CreateSubscriptionButton', () => {
       // Assert - CommonCreateModal should be shown with OAuth type and builder
       await waitFor(() => {
         expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute('data-create-type', SupportedCreationMethods.OAUTH)
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute('data-has-builder', 'true')
+        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
+          'data-create-type',
+          SupportedCreationMethods.OAUTH,
+        )
+        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
+          'data-has-builder',
+          'true',
+        )
       })
     })
   })
@@ -1340,7 +1412,8 @@ describe('CreateSubscriptionButton', () => {
     it('should apply disabled state when subscription count reaches max', () => {
       // Arrange
       const maxSubscriptions = Array.from({ length: 10 }, (_, i) =>
-        createSubscription({ id: `sub-${i}` }))
+        createSubscription({ id: `sub-${i}` }),
+      )
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
@@ -1366,7 +1439,10 @@ describe('CreateSubscriptionButton', () => {
           supported_creation_methods: [SupportedCreationMethods.MANUAL],
         }),
       })
-      const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON, shape: 'circle' })
+      const props = createDefaultProps({
+        buttonType: CreateButtonType.ICON_BUTTON,
+        shape: 'circle',
+      })
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
@@ -1384,7 +1460,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+          supported_creation_methods: [
+            SupportedCreationMethods.MANUAL,
+            SupportedCreationMethods.APIKEY,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -1437,24 +1516,6 @@ describe('CreateSubscriptionButton', () => {
 
   // ==================== Button Type Variations ====================
   describe('Button Type Variations', () => {
-    it('should render full button with grow class', () => {
-      // Arrange
-      setupMocks({
-        storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
-      })
-      const props = createDefaultProps({ buttonType: CreateButtonType.FULL_BUTTON })
-
-      // Act
-      render(<CreateSubscriptionButton {...props} />)
-
-      // Assert
-      const button = getCreateButton()
-      expect(button)!.toHaveClass('w-full')
-    })
-
     it('should render icon button with float-right class', () => {
       // Arrange
       setupMocks({
@@ -1474,25 +1535,6 @@ describe('CreateSubscriptionButton', () => {
     })
   })
 
-  // ==================== Export Verification ====================
-  describe('Export Verification', () => {
-    it('should export CreateButtonType enum', () => {
-      // Assert
-      expect(CreateButtonType.FULL_BUTTON).toBe('full-button')
-      expect(CreateButtonType.ICON_BUTTON).toBe('icon-button')
-    })
-
-    it('should export DEFAULT_METHOD constant', () => {
-      // Assert
-      expect(DEFAULT_METHOD).toBe('default')
-    })
-
-    it('should export CreateSubscriptionButton component', () => {
-      // Assert
-      expect(typeof CreateSubscriptionButton).toBe('function')
-    })
-  })
-
   // ==================== CommonCreateModal Integration Tests ====================
   // These tests verify that CreateSubscriptionButton correctly interacts with CommonCreateModal
   describe('CommonCreateModal Integration', () => {
@@ -1501,7 +1543,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+          supported_creation_methods: [
+            SupportedCreationMethods.MANUAL,
+            SupportedCreationMethods.APIKEY,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -1525,7 +1570,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+          supported_creation_methods: [
+            SupportedCreationMethods.MANUAL,
+            SupportedCreationMethods.APIKEY,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -1550,7 +1598,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credential_type: TriggerCredentialType.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1574,7 +1622,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
+          supported_creation_methods: [
+            SupportedCreationMethods.OAUTH,
+            SupportedCreationMethods.MANUAL,
+          ],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -1626,7 +1677,10 @@ describe('CreateSubscriptionButton', () => {
     it('should refetch OAuth config when OAuthClientSettingsModal is closed', async () => {
       // Arrange
       const mockRefetchOAuth = vi.fn()
-      mockOAuthConfig = { data: createOAuthConfig({ configured: false }), refetch: mockRefetchOAuth }
+      mockOAuthConfig = {
+        data: createOAuthConfig({ configured: false }),
+        refetch: mockRefetchOAuth,
+      }
 
       setupMocks({
         storeDetail: createStoreDetail(),
@@ -1688,8 +1742,14 @@ describe('CreateSubscriptionButton', () => {
       // Assert - CommonCreateModal should appear with OAuth type and builder
       await waitFor(() => {
         expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute('data-create-type', SupportedCreationMethods.OAUTH)
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute('data-has-builder', 'true')
+        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
+          'data-create-type',
+          SupportedCreationMethods.OAUTH,
+        )
+        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
+          'data-has-builder',
+          'true',
+        )
       })
     })
   })
@@ -1699,16 +1759,18 @@ describe('CreateSubscriptionButton', () => {
     it('should not open modal when OAuth callback returns falsy data', async () => {
       // Arrange
       const { openOAuthPopup } = await import('@/hooks/use-oauth')
-      vi.mocked(openOAuthPopup).mockImplementation((url: string, callback: (data?: unknown) => void) => {
-        callback(undefined) // falsy callback data
-        return null
-      })
+      vi.mocked(openOAuthPopup).mockImplementation(
+        (url: string, callback: (data?: unknown) => void) => {
+          callback(undefined) // falsy callback data
+          return null
+        },
+      )
 
       const mockBuilder: TriggerSubscriptionBuilder = {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credential_type: TriggerCredentialType.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1716,17 +1778,30 @@ describe('CreateSubscriptionButton', () => {
         workflows_in_use: 0,
       }
 
-      mockInitiateOAuth.mockImplementation((_provider: string, callbacks: { onSuccess: (response: { authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }) => void }) => {
-        callbacks.onSuccess({
-          authorization_url: 'https://oauth.test.com/authorize',
-          subscription_builder: mockBuilder,
-        })
-      })
+      mockInitiateOAuth.mockImplementation(
+        (
+          _provider: string,
+          callbacks: {
+            onSuccess: (response: {
+              authorization_url: string
+              subscription_builder: TriggerSubscriptionBuilder
+            }) => void
+          },
+        ) => {
+          callbacks.onSuccess({
+            authorization_url: 'https://oauth.test.com/authorize',
+            subscription_builder: mockBuilder,
+          })
+        },
+      )
 
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
+          supported_creation_methods: [
+            SupportedCreationMethods.OAUTH,
+            SupportedCreationMethods.MANUAL,
+          ],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -1754,7 +1829,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.APIKEY, SupportedCreationMethods.MANUAL],
+          supported_creation_methods: [
+            SupportedCreationMethods.APIKEY,
+            SupportedCreationMethods.MANUAL,
+          ],
         }),
       })
       const props = createDefaultProps()
@@ -1796,7 +1874,10 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+          supported_creation_methods: [
+            SupportedCreationMethods.MANUAL,
+            SupportedCreationMethods.APIKEY,
+          ],
         }),
         subscriptions: [createSubscription()], // Not at max
       })
@@ -1876,7 +1957,12 @@ describe('CreateSubscriptionButton', () => {
 
     it('should handle providerInfo with null supported_creation_methods', () => {
       // Arrange
-      mockProviderInfo = { data: { ...createProviderInfo(), supported_creation_methods: null as unknown as SupportedCreationMethods[] } }
+      mockProviderInfo = {
+        data: {
+          ...createProviderInfo(),
+          supported_creation_methods: null as unknown as SupportedCreationMethods[],
+        },
+      }
       mockOAuthConfig = { data: undefined, refetch: vi.fn() }
       mockStoreDetail = createStoreDetail()
       const props = createDefaultProps()

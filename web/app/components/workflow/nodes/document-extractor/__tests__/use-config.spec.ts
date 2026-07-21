@@ -1,14 +1,10 @@
 import type { DocExtractorNodeType } from '../types'
 import { renderHook } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-  useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
+import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
 import useConfig from '../use-config'
 
 const mockUseStoreApi = vi.mocked(useStoreApi)
@@ -26,12 +22,25 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: vi.fn(),
-  useNodesReadOnly: vi.fn(),
-  useWorkflow: vi.fn(),
-  useWorkflowVariables: vi.fn(),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: vi.fn(),
+    useNodesReadOnly: vi.fn(),
+    useWorkflow: vi.fn(),
+  }
+})
+
+vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariables: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,
@@ -83,10 +92,12 @@ describe('document-extractor/use-config', () => {
     result.current.handleVarChanges(['node-2', 'files'])
 
     expect(getCurrentVariableType).toHaveBeenCalled()
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variable_selector: ['node-2', 'files'],
-      is_array_file: true,
-    }))
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variable_selector: ['node-2', 'files'],
+        is_array_file: true,
+      }),
+    )
   })
 
   it('only accepts file variables in the picker filter', () => {

@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CONFIG_FILE_NAME } from '@/store/manager'
-import {
-  ALLOWED_FORMATS,
-  ConfigFileSchema,
-  CURRENT_SCHEMA_VERSION,
-  emptyConfig,
-} from './schema'
+import { ALLOWED_FORMATS, ConfigFileSchema, CURRENT_SCHEMA_VERSION, emptyConfig } from './schema'
 
 describe('config schema', () => {
   it('CURRENT_SCHEMA_VERSION is 1', () => {
@@ -17,9 +12,7 @@ describe('config schema', () => {
   })
 
   it('ALLOWED_FORMATS matches Go set (json/yaml/table/wide/name/text)', () => {
-    expect([...ALLOWED_FORMATS].sort()).toEqual(
-      ['json', 'name', 'table', 'text', 'wide', 'yaml'],
-    )
+    expect([...ALLOWED_FORMATS].sort()).toEqual(['json', 'name', 'table', 'text', 'wide', 'yaml'])
   })
 
   it('emptyConfig fills defaults + state with empty objects', () => {
@@ -57,7 +50,6 @@ describe('config schema', () => {
   it('parses an empty object into emptyConfig() shape', () => {
     const r = ConfigFileSchema.safeParse({})
     expect(r.success).toBe(true)
-    if (r.success)
-      expect(r.data).toEqual(emptyConfig())
+    if (r.success) expect(r.data).toEqual(emptyConfig())
   })
 })

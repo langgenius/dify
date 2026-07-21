@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,23 +7,29 @@ import {
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import {
-  useAvailableBlocks,
-  useIsChatMode,
-  useNodeMetaData,
-  useNodesInteractions,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { FlowType } from '@/types/common'
+import { useAvailableBlocks } from '../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
+import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
+import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
 import { ChangeBlockMenuTrigger } from '../change-block-menu-trigger'
 import { NodeActionsDropdownContent } from '../dropdown-content'
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ trigger, onSelect, availableBlocksTypes, showStartTab, ignoreNodeIds, forceEnableStartTab, allowUserInputSelection }: any) => (
+  default: ({
+    trigger,
+    onSelect,
+    availableBlocksTypes,
+    showStartTab,
+    ignoreNodeIds,
+    forceEnableStartTab,
+    allowUserInputSelection,
+    isolateKeyboardEvents,
+  }: any) => (
     <div>
       <div>{trigger()}</div>
       <div>{`available:${(availableBlocksTypes || []).join(',')}`}</div>
@@ -31,19 +37,47 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
       <div>{`ignore:${(ignoreNodeIds || []).join(',')}`}</div>
       <div>{`force-start:${String(forceEnableStartTab)}`}</div>
       <div>{`allow-start:${String(allowUserInputSelection)}`}</div>
-      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>select-http</button>
+      <div>{`isolate-keyboard:${String(isolateKeyboardEvents)}`}</div>
+      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
+        select-http
+      </button>
     </div>
   ),
 }))
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
+vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-available-blocks')>()
+
   return {
     ...actual,
     useAvailableBlocks: vi.fn(),
-    useIsChatMode: vi.fn(),
-    useNodeMetaData: vi.fn(),
+  }
+})
+
+vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
     useNodesInteractions: vi.fn(),
+  }
+})
+
+vi.mock('../../hooks/use-nodes-meta-data', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-meta-data')>()
+
+  return {
+    ...actual,
+    useNodeMetaData: vi.fn(),
+  }
+})
+
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: vi.fn(),
     useNodesReadOnly: vi.fn(),
   }
 })
@@ -130,12 +164,18 @@ describe('node actions menu details', () => {
       handleNodeSelect,
       handleNodesCopy,
     } as unknown as ReturnType<typeof useNodesInteractions>)
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false } as ReturnType<typeof useNodesReadOnly>)
-    mockUseHooksStore.mockImplementation((selector: any) => selector({
-      configsMap: { flowType: FlowType.appFlow },
-      accessControl: { canRun: true },
-    }))
-    mockUseNodes.mockReturnValue([{ id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any }] as any)
+    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false } as ReturnType<
+      typeof useNodesReadOnly
+    >)
+    mockUseHooksStore.mockImplementation((selector: any) =>
+      selector({
+        configsMap: { flowType: FlowType.appFlow },
+        accessControl: { canRun: true },
+      }),
+    )
+    mockUseNodes.mockReturnValue([
+      { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
+    ] as any)
     mockUseAllWorkflowTools.mockReturnValue({ data: [] } as any)
   })
 
@@ -156,7 +196,13 @@ describe('node actions menu details', () => {
     expect(screen.getByText('ignore:')).toBeInTheDocument()
     expect(screen.getByText('force-start:false')).toBeInTheDocument()
     expect(screen.getByText('allow-start:false')).toBeInTheDocument()
-    expect(handleNodeChange).toHaveBeenCalledWith('node-1', BlockEnum.HttpRequest, 'source', undefined)
+    expect(screen.getByText('isolate-keyboard:true')).toBeInTheDocument()
+    expect(handleNodeChange).toHaveBeenCalledWith(
+      'node-1',
+      BlockEnum.HttpRequest,
+      'source',
+      undefined,
+    )
   })
 
   it('should expose trigger and start-node specific block selector options', () => {
@@ -169,7 +215,9 @@ describe('node actions menu details', () => {
       availableNextBlocks: [BlockEnum.HttpRequest],
     } as ReturnType<typeof useAvailableBlocks>)
     mockUseIsChatMode.mockReturnValueOnce(true)
-    mockUseHooksStore.mockImplementationOnce((selector: any) => selector({ configsMap: { flowType: FlowType.appFlow } }))
+    mockUseHooksStore.mockImplementationOnce((selector: any) =>
+      selector({ configsMap: { flowType: FlowType.appFlow } }),
+    )
     mockUseNodes.mockReturnValueOnce([] as any)
 
     const { rerender } = render(
@@ -193,8 +241,12 @@ describe('node actions menu details', () => {
       availablePrevBlocks: [BlockEnum.Code],
       availableNextBlocks: [],
     } as ReturnType<typeof useAvailableBlocks>)
-    mockUseHooksStore.mockImplementationOnce((selector: any) => selector({ configsMap: { flowType: FlowType.ragPipeline } }))
-    mockUseNodes.mockReturnValueOnce([{ id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any }] as any)
+    mockUseHooksStore.mockImplementationOnce((selector: any) =>
+      selector({ configsMap: { flowType: FlowType.ragPipeline } }),
+    )
+    mockUseNodes.mockReturnValueOnce([
+      { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
+    ] as any)
 
     rerender(
       <ChangeBlockMenuTrigger
@@ -230,7 +282,10 @@ describe('node actions menu details', () => {
     expect(handleNodesCopy).toHaveBeenCalledWith('node-1')
     expect(handleNodesDuplicate).toHaveBeenCalledWith('node-1')
     expect(handleNodeDelete).toHaveBeenCalledWith('node-1')
-    expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute('href', 'https://docs.example.com/node')
+    expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute(
+      'href',
+      'https://docs.example.com/node',
+    )
   })
 
   it('should stop the current single run from the run action when the node is running', async () => {
@@ -275,7 +330,15 @@ describe('node actions menu details', () => {
         <DropdownMenuContent>
           <NodeActionsDropdownContent
             id="node-2"
-            data={{ type: BlockEnum.Tool, title: 'Workflow Tool', desc: '', provider_type: 'workflow', provider_id: 'workflow-tool' } as any}
+            data={
+              {
+                type: BlockEnum.Tool,
+                title: 'Workflow Tool',
+                desc: '',
+                provider_type: 'workflow',
+                provider_id: 'workflow-tool',
+              } as any
+            }
             onClose={vi.fn()}
             showHelpLink={false}
           />
@@ -287,9 +350,14 @@ describe('node actions menu details', () => {
       },
     )
 
-    expect(screen.getByRole('menuitem', { name: 'workflow.panel.openWorkflow' })).toHaveAttribute('href', '/app/app-123/workflow')
+    expect(screen.getByRole('menuitem', { name: 'workflow.panel.openWorkflow' })).toHaveAttribute(
+      'href',
+      '/app/app-123/workflow',
+    )
 
-    mockUseNodesReadOnly.mockReturnValueOnce({ nodesReadOnly: true } as ReturnType<typeof useNodesReadOnly>)
+    mockUseNodesReadOnly.mockReturnValueOnce({ nodesReadOnly: true } as ReturnType<
+      typeof useNodesReadOnly
+    >)
     mockUseNodeMetaData.mockReturnValueOnce({
       isTypeFixed: true,
       isSingleton: true,

@@ -5,8 +5,8 @@ import { useTranslation } from '#i18n'
 import { getDocLanguage } from '@/i18n-config/language'
 import { defaultDocBaseUrl, useDocLink } from './i18n'
 
-const mockConfig = vi.hoisted(() => ({
-  IS_CLOUD_EDITION: true,
+const mockDeploymentEdition = vi.hoisted(() => ({
+  value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD',
 }))
 
 // Mock dependencies
@@ -16,10 +16,9 @@ vi.mock('#i18n', () => ({
   })),
 }))
 
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() {
-    return mockConfig.IS_CLOUD_EDITION
-  },
+vi.mock('jotai', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('jotai')>()),
+  useAtomValue: () => mockDeploymentEdition.value,
 }))
 
 vi.mock('@/i18n-config/language', () => ({
@@ -38,18 +37,11 @@ vi.mock('@/i18n-config/language', () => ({
 describe('useDocLink', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.IS_CLOUD_EDITION = true
+    mockDeploymentEdition.value = 'CLOUD'
     vi.mocked(useTranslation).mockReturnValue({
       i18n: { language: 'en-US' },
     } as ReturnType<typeof useTranslation>)
     vi.mocked(getDocLanguage).mockReturnValue('en')
-  })
-
-  describe('Rendering', () => {
-    it('should return a function', () => {
-      const { result } = renderHook(() => useDocLink())
-      expect(typeof result.current).toBe('function')
-    })
   })
 
   describe('Base URL handling', () => {
@@ -108,7 +100,9 @@ describe('useDocLink', () => {
 
     it('should keep explicit product docs path without adding another product prefix', () => {
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/cloud/use-dify/getting-started/introduction' as DocPathWithoutLang)
+      const url = result.current(
+        '/cloud/use-dify/getting-started/introduction' as DocPathWithoutLang,
+      )
       expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction`)
     })
   })
@@ -155,7 +149,7 @@ describe('useDocLink', () => {
 
   describe('Product prefix handling', () => {
     it('should add cloud product prefix for product docs available in both editions', () => {
-      mockConfig.IS_CLOUD_EDITION = true
+      mockDeploymentEdition.value = 'CLOUD'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/workspace/tools#mcp')
@@ -163,7 +157,7 @@ describe('useDocLink', () => {
     })
 
     it('should add self-host product prefix for product docs available in both editions outside cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/workspace/tools#mcp')
@@ -171,15 +165,17 @@ describe('useDocLink', () => {
     })
 
     it('should use the existing cloud docs path for cloud-only product docs outside cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/workspace/subscription-management#dify-for-education')
-      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/workspace/subscription-management#dify-for-education`)
+      expect(url).toBe(
+        `${defaultDocBaseUrl}/en/cloud/use-dify/workspace/subscription-management#dify-for-education`,
+      )
     })
 
     it('should use the self-host Start node docs path outside cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/nodes/start')
@@ -187,7 +183,7 @@ describe('useDocLink', () => {
     })
 
     it('should use the existing self-host docs path for self-host-only product docs in cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = true
+      mockDeploymentEdition.value = 'CLOUD'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/deploy/overview')
@@ -195,7 +191,7 @@ describe('useDocLink', () => {
     })
 
     it('should not add a product prefix for unknown productless paths', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/unknown-page' as DocPathWithoutLang)
@@ -203,7 +199,7 @@ describe('useDocLink', () => {
     })
 
     it('should open shared docs home when no path is provided outside cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current()
@@ -211,7 +207,7 @@ describe('useDocLink', () => {
     })
 
     it('should keep self-host deploy paths without adding use-dify product prefix', () => {
-      mockConfig.IS_CLOUD_EDITION = true
+      mockDeploymentEdition.value = 'CLOUD'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/self-host/deploy/overview' as DocPathWithoutLang)
@@ -336,8 +332,12 @@ describe('useDocLink', () => {
   describe('Edge Cases', () => {
     it('should handle path with anchor', () => {
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/introduction#overview' as DocPathWithoutLang)
-      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction#overview`)
+      const url = result.current(
+        '/use-dify/getting-started/introduction#overview' as DocPathWithoutLang,
+      )
+      expect(url).toBe(
+        `${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction#overview`,
+      )
     })
 
     it('should handle multiple calls with same hook instance', () => {

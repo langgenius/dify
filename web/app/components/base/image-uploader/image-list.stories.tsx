@@ -5,14 +5,10 @@ import { TransferMethod } from '@/types/app'
 import ImageLinkInput from './image-link-input'
 import ImageList from './image-list'
 
-const SAMPLE_BASE64
-  = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAACXBIWXMAAAsSAAALEgHS3X78AAABbElEQVR4nO3SsQkAIBDARMT+V20sTg6LXhWEATnnMHDx4sWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFu2r/H3n4BG518Gr4AAAAASUVORK5CYII='
+const SAMPLE_BASE64 =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAACXBIWXMAAAsSAAALEgHS3X78AAABbElEQVR4nO3SsQkAIBDARMT+V20sTg6LXhWEATnnMHDx4sWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFu2r/H3n4BG518Gr4AAAAASUVORK5CYII='
 
-const createRemoteImage = (
-  id: string,
-  progress: number,
-  url: string,
-): ImageFile => ({
+const createRemoteImage = (id: string, progress: number, url: string): ImageFile => ({
   type: TransferMethod.remote_url,
   _id: id,
   fileId: `remote-${id}`,
@@ -37,11 +33,7 @@ const initialImages: ImageFile[] = [
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=300&q=80',
   ),
   {
-    ...createRemoteImage(
-      'remote-error',
-      -1,
-      'https://example.com/not-an-image.jpg',
-    ),
+    ...createRemoteImage('remote-error', -1, 'https://example.com/not-an-image.jpg'),
     url: 'https://example.com/not-an-image.jpg',
   },
 ]
@@ -53,7 +45,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Renders thumbnails for uploaded images and manages their states like uploading, error, and deletion.',
+        component:
+          'Renders thumbnails for uploaded images and manages their states like uploading, error, and deletion.',
       },
     },
   },
@@ -73,46 +66,48 @@ type Story = StoryObj<typeof meta>
 const ImageUploaderPlayground = ({ readonly }: Story['args']) => {
   const [images, setImages] = useState<ImageFile[]>(() => initialImages)
 
-  const activeImages = useMemo(() => images.filter(item => !item.deleted), [images])
+  const activeImages = useMemo(() => images.filter((item) => !item.deleted), [images])
 
   const handleRemove = (id: string) => {
-    setImages(prev => prev.map(item => (item._id === id ? { ...item, deleted: true } : item)))
+    setImages((prev) => prev.map((item) => (item._id === id ? { ...item, deleted: true } : item)))
   }
 
   const handleReUpload = (id: string) => {
-    setImages(prev => prev.map((item) => {
-      if (item._id !== id)
-        return item
-
-      return {
-        ...item,
-        progress: 60,
-      }
-    }))
-
-    setTimeout(() => {
-      setImages(prev => prev.map((item) => {
-        if (item._id !== id)
-          return item
+    setImages((prev) =>
+      prev.map((item) => {
+        if (item._id !== id) return item
 
         return {
           ...item,
-          progress: 100,
+          progress: 60,
         }
-      }))
+      }),
+    )
+
+    setTimeout(() => {
+      setImages((prev) =>
+        prev.map((item) => {
+          if (item._id !== id) return item
+
+          return {
+            ...item,
+            progress: 100,
+          }
+        }),
+      )
     }, 1200)
   }
 
   const handleImageLinkLoadSuccess = (id: string) => {
-    setImages(prev => prev.map(item => (item._id === id ? { ...item, progress: 100 } : item)))
+    setImages((prev) => prev.map((item) => (item._id === id ? { ...item, progress: 100 } : item)))
   }
 
   const handleImageLinkLoadError = (id: string) => {
-    setImages(prev => prev.map(item => (item._id === id ? { ...item, progress: -1 } : item)))
+    setImages((prev) => prev.map((item) => (item._id === id ? { ...item, progress: -1 } : item)))
   }
 
   const handleUploadFromLink = (imageFile: ImageFile) => {
-    setImages(prev => [
+    setImages((prev) => [
       ...prev,
       {
         ...imageFile,
@@ -123,16 +118,15 @@ const ImageUploaderPlayground = ({ readonly }: Story['args']) => {
 
   const handleAddLocalImage = () => {
     const id = `local-${Date.now()}`
-    setImages(prev => [
-      ...prev,
-      createLocalImage(id, 100),
-    ])
+    setImages((prev) => [...prev, createLocalImage(id, 100)])
   }
 
   return (
     <div className="flex w-[360px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium tracking-[0.18em] text-text-tertiary uppercase">Add images</span>
+        <span className="text-xs font-medium tracking-[0.18em] text-text-tertiary uppercase">
+          Add images
+        </span>
         <div className="flex items-center gap-2">
           <ImageLinkInput onUpload={handleUploadFromLink} disabled={readonly} />
           <button
@@ -168,14 +162,14 @@ const ImageUploaderPlayground = ({ readonly }: Story['args']) => {
 }
 
 export const Playground: Story = {
-  render: args => <ImageUploaderPlayground {...args} />,
+  render: (args) => <ImageUploaderPlayground {...args} />,
   args: {
     list: [],
   },
 }
 
 export const ReadonlyList: Story = {
-  render: args => <ImageUploaderPlayground {...args} />,
+  render: (args) => <ImageUploaderPlayground {...args} />,
   args: {
     list: [],
   },

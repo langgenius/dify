@@ -12,34 +12,42 @@ const createData = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNode
   title: 'Human Input',
   desc: '',
   type: BlockEnum.HumanInput,
-  delivery_methods: [{
-    id: 'dm-webapp',
-    type: DeliveryMethodType.WebApp,
-    enabled: true,
-  }, {
-    id: 'dm-email',
-    type: DeliveryMethodType.Email,
-    enabled: true,
-  }],
-  form_content: 'Please review this request',
-  inputs: [{
-    type: InputVarType.paragraph,
-    output_variable_name: 'review_result',
-    default: {
-      selector: [],
-      type: 'constant',
-      value: '',
+  delivery_methods: [
+    {
+      id: 'dm-webapp',
+      type: DeliveryMethodType.WebApp,
+      enabled: true,
     },
-  }],
-  user_actions: [{
-    id: 'approve',
-    title: 'Approve',
-    button_style: UserActionButtonType.Primary,
-  }, {
-    id: 'reject',
-    title: 'Reject',
-    button_style: UserActionButtonType.Default,
-  }],
+    {
+      id: 'dm-email',
+      type: DeliveryMethodType.Email,
+      enabled: true,
+    },
+  ],
+  form_content: 'Please review this request',
+  inputs: [
+    {
+      type: InputVarType.paragraph,
+      output_variable_name: 'review_result',
+      default: {
+        selector: [],
+        type: 'constant',
+        value: '',
+      },
+    },
+  ],
+  user_actions: [
+    {
+      id: 'approve',
+      title: 'Approve',
+      button_style: UserActionButtonType.Primary,
+    },
+    {
+      id: 'reject',
+      title: 'Reject',
+      button_style: UserActionButtonType.Default,
+    },
+  ],
   timeout: 3,
   timeout_unit: 'day',
   ...overrides,
@@ -47,12 +55,7 @@ const createData = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNode
 
 describe('human-input/node', () => {
   it('renders delivery methods, user action handles, and the timeout handle', () => {
-    render(
-      <Node
-        id="human-input-node"
-        data={createData()}
-      />,
-    )
+    render(<Node id="human-input-node" data={createData()} />)
 
     expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.title')).toBeInTheDocument()
     expect(screen.getByText('webapp')).toBeInTheDocument()
@@ -76,7 +79,9 @@ describe('human-input/node', () => {
       />,
     )
 
-    expect(screen.queryByText('workflow.nodes.humanInput.deliveryMethod.title')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('workflow.nodes.humanInput.deliveryMethod.title'),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('Timeout')).toBeInTheDocument()
     expect(screen.getByText('handle:__timeout')).toBeInTheDocument()
   })

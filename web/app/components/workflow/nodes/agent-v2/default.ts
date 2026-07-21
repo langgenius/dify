@@ -24,9 +24,9 @@ const nodeDefault: NodeDefault<AgentV2NodeType> = {
     if (!hasValidAgentBinding(payload)) {
       return {
         isValid: false,
-        errorMessage: t($ => $['errorMsg.fieldRequired'], {
+        errorMessage: t(($) => $['errorMsg.fieldRequired'], {
           ns: 'workflow',
-          field: t($ => $['nodes.agent.roster.label'], { ns: 'workflow' }),
+          field: t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' }),
         }),
       }
     }

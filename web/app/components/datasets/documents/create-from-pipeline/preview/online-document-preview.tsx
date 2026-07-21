@@ -26,40 +26,45 @@ const OnlineDocumentPreview = ({
 }: OnlineDocumentPreviewProps) => {
   const { t } = useTranslation()
   const [content, setContent] = useState('')
-  const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
+  const pipelineId = useDatasetDetailContextWithSelector((state) => state.dataset?.pipeline_id)
   const { mutateAsync: getOnlineDocumentContent, isPending } = usePreviewOnlineDocument()
   const dataSourceStore = useDataSourceStore()
 
   useEffect(() => {
     const { currentCredentialId } = dataSourceStore.getState()
-    getOnlineDocumentContent({
-      workspaceID: currentPage.workspace_id,
-      pageID: currentPage.page_id,
-      pageType: currentPage.type,
-      pipelineId: pipelineId || '',
-      datasourceNodeId,
-      credentialId: currentCredentialId,
-    }, {
-      onSuccess(data) {
-        setContent(data.content)
+    getOnlineDocumentContent(
+      {
+        workspaceID: currentPage.workspace_id,
+        pageID: currentPage.page_id,
+        pageType: currentPage.type,
+        pipelineId: pipelineId || '',
+        datasourceNodeId,
+        credentialId: currentCredentialId,
       },
-      onError(error) {
-        toast.error(error.message)
+      {
+        onSuccess(data) {
+          setContent(data.content)
+        },
+        onError(error) {
+          toast.error(error.message)
+        },
       },
-    })
+    )
   }, [currentPage.page_id])
 
   return (
     <div className="flex size-full flex-col rounded-t-xl border-t border-l border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">
       <div className="flex gap-x-2 border-b border-divider-subtle pt-4 pr-4 pb-3 pl-6">
         <div className="flex grow flex-col gap-y-1">
-          <div className="system-2xs-semibold-uppercase text-text-accent">{t($ => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}</div>
+          <div className="system-2xs-semibold-uppercase text-text-accent">
+            {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}
+          </div>
           <div className="text-tex-primary title-md-semi-bold">{currentPage?.page_name}</div>
           <div className="flex items-center gap-x-1 system-xs-medium text-text-tertiary">
             <Notion className="size-3.5" />
             <span>{currentPage.type}</span>
             <span>·</span>
-            <span>{`${formatNumberAbbreviated(content.length)} ${t($ => $['addDocuments.characters'], { ns: 'datasetPipeline' })}`}</span>
+            <span>{`${formatNumberAbbreviated(content.length)} ${t(($) => $['addDocuments.characters'], { ns: 'datasetPipeline' })}`}</span>
           </div>
         </div>
         <button

@@ -6,12 +6,7 @@ describe('ArrayBoolList', () => {
   it('toggles, appends, and removes boolean values', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const { container } = render(
-      <ArrayBoolList
-        list={[true]}
-        onChange={onChange}
-      />,
-    )
+    const { container } = render(<ArrayBoolList list={[true]} onChange={onChange} />)
 
     await user.click(screen.getByText('False'))
     await user.click(screen.getByText('workflow.chatVariable.modal.addArrayValue'))

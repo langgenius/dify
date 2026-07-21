@@ -19,18 +19,18 @@ const ReasoningFormatConfig: FC<ReasoningFormatConfigProps> = ({
 
   return (
     <Field
-      title={t($ => $['nodes.llm.reasoningFormat.title'], { ns: 'workflow' })}
-      tooltip={t($ => $['nodes.llm.reasoningFormat.tooltip'], { ns: 'workflow' })}
-      operations={(
+      title={t(($) => $['nodes.llm.reasoningFormat.title'], { ns: 'workflow' })}
+      tooltip={t(($) => $['nodes.llm.reasoningFormat.tooltip'], { ns: 'workflow' })}
+      operations={
         // ON = separated, OFF = tagged
         <Switch
           checked={value === 'separated'}
-          onCheckedChange={enabled => onChange(enabled ? 'separated' : 'tagged')}
+          onCheckedChange={(enabled) => onChange(enabled ? 'separated' : 'tagged')}
           size="md"
           disabled={readonly}
           key={value}
         />
-      )}
+      }
     >
       <div />
     </Field>

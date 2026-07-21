@@ -52,6 +52,7 @@ def resume_agent_app_execution(*, conversation_id: str, form_id: str) -> None:
             user=user,
             conversation_id=conversation_id,
             invoke_from=_resolve_invoke_from(conversation),
+            session=db.session(),
         )
     except Exception:
         logger.exception("Agent App resume failed for conversation %s form %s", conversation_id, form_id)
@@ -63,7 +64,7 @@ def _resolve_conversation_user(*, app_model: App, conversation: Conversation) ->
     if conversation.from_account_id:
         account = db.session.get(Account, conversation.from_account_id)
         if account is not None:
-            account.set_tenant_id(app_model.tenant_id)
+            account.set_tenant_id_with_session(app_model.tenant_id, session=db.session())
         return account
     if conversation.from_end_user_id:
         return db.session.get(EndUser, conversation.from_end_user_id)

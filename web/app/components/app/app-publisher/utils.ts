@@ -4,10 +4,13 @@ import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 
-type AccessSubjectsLike = {
-  groups?: unknown[]
-  members?: unknown[]
-} | null | undefined
+type AccessSubjectsLike =
+  | {
+      groups?: unknown[]
+      members?: unknown[]
+    }
+  | null
+  | undefined
 
 type AppDetailLike = {
   access_mode?: AccessMode
@@ -16,7 +19,7 @@ type AppDetailLike = {
 
 type AccessModeLabel = I18nKeysByPrefix<'app', 'accessControlDialog.accessItems.'>
 
-export const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel, icon: string }> = {
+export const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel; icon: string }> = {
   [AccessMode.ORGANIZATION]: {
     label: 'organization',
     icon: 'i-ri-building-line',
@@ -36,8 +39,7 @@ export const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel, icon:
 }
 
 export const getPublisherAppMode = (mode?: AppModeEnum) => {
-  if (mode !== AppModeEnum.COMPLETION && mode !== AppModeEnum.WORKFLOW)
-    return AppModeEnum.CHAT
+  if (mode !== AppModeEnum.COMPLETION && mode !== AppModeEnum.WORKFLOW) return AppModeEnum.CHAT
 
   return mode
 }
@@ -52,12 +54,13 @@ export const getPublisherAppUrl = ({
   mode?: AppModeEnum
 }) => `${appBaseUrl}${basePath}/${getPublisherAppMode(mode)}/${accessToken}`
 
-export const isPublisherAccessConfigured = (appDetail: AppDetailLike | null | undefined, appAccessSubjects: AccessSubjectsLike) => {
-  if (!appDetail || !appAccessSubjects)
-    return true
+export const isPublisherAccessConfigured = (
+  appDetail: AppDetailLike | null | undefined,
+  appAccessSubjects: AccessSubjectsLike,
+) => {
+  if (!appDetail || !appAccessSubjects) return true
 
-  if (appDetail.access_mode !== AccessMode.SPECIFIC_GROUPS_MEMBERS)
-    return true
+  if (appDetail.access_mode !== AccessMode.SPECIFIC_GROUPS_MEMBERS) return true
 
   return Boolean(appAccessSubjects.groups?.length || appAccessSubjects.members?.length)
 }
@@ -73,12 +76,9 @@ export const getDisabledFunctionTooltip = ({
   missingStartNode: boolean
   noAccessPermission: boolean
 }) => {
-  if (!publishedAt)
-    return t($ => $.notPublishedYet, { ns: 'app' })
-  if (missingStartNode)
-    return t($ => $.noUserInputNode, { ns: 'app' })
-  if (noAccessPermission)
-    return t($ => $.noAccessPermission, { ns: 'app' })
+  if (!publishedAt) return t(($) => $.notPublishedYet, { ns: 'app' })
+  if (missingStartNode) return t(($) => $.noUserInputNode, { ns: 'app' })
+  if (noAccessPermission) return t(($) => $.noAccessPermission, { ns: 'app' })
 
   return undefined
 }

@@ -11,8 +11,7 @@ type Props = Readonly<{
 }>
 
 const clamp = (value: number, min: number, max: number) => {
-  if (!Number.isFinite(value))
-    return min
+  if (!Number.isFinite(value)) return min
 
   return Math.min(Math.max(value, min), max)
 }
@@ -20,11 +19,7 @@ const clamp = (value: number, min: number, max: number) => {
 const SCORE_MIN = 0
 const SCORE_MAX = 100
 
-const ScoreSlider: FC<Props> = ({
-  className,
-  value,
-  onChange,
-}) => {
+const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
   const { t } = useTranslation()
   const safeValue = clamp(value, SCORE_MIN, SCORE_MAX)
 
@@ -38,7 +33,7 @@ const ScoreSlider: FC<Props> = ({
           max={SCORE_MAX}
           step={1}
           onValueChange={onChange}
-          aria-label={t($ => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
+          aria-label={t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
         />
         <div
           className="pointer-events-none absolute top-[-16px] system-sm-semibold text-text-primary"
@@ -54,12 +49,16 @@ const ScoreSlider: FC<Props> = ({
         <div className="flex space-x-1 text-util-colors-cyan-cyan-500">
           <div>0.0</div>
           <div>·</div>
-          <div>{t($ => $['feature.annotation.scoreThreshold.easyMatch'], { ns: 'appDebug' })}</div>
+          <div>
+            {t(($) => $['feature.annotation.scoreThreshold.easyMatch'], { ns: 'appDebug' })}
+          </div>
         </div>
         <div className="flex space-x-1 text-util-colors-blue-blue-500">
           <div>1.0</div>
           <div>·</div>
-          <div>{t($ => $['feature.annotation.scoreThreshold.accurateMatch'], { ns: 'appDebug' })}</div>
+          <div>
+            {t(($) => $['feature.annotation.scoreThreshold.accurateMatch'], { ns: 'appDebug' })}
+          </div>
         </div>
       </div>
     </div>

@@ -10,9 +10,7 @@ import {
 } from '../atoms'
 
 const createWrapper = () => {
-  return ({ children }: { children: ReactNode }) => (
-    <Provider>{children}</Provider>
-  )
+  return ({ children }: { children: ReactNode }) => <Provider>{children}</Provider>
 }
 
 describe('atoms', () => {
@@ -25,19 +23,15 @@ describe('atoms', () => {
   // Read hook: returns whether a specific provider is expanded
   describe('useModelProviderListExpanded', () => {
     it('should return false when provider has not been expanded', () => {
-      const { result } = renderHook(
-        () => useModelProviderListExpanded('openai'),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useModelProviderListExpanded('openai'), { wrapper })
 
       expect(result.current).toBe(false)
     })
 
     it('should return false for any unknown provider name', () => {
-      const { result } = renderHook(
-        () => useModelProviderListExpanded('nonexistent-provider'),
-        { wrapper },
-      )
+      const { result } = renderHook(() => useModelProviderListExpanded('nonexistent-provider'), {
+        wrapper,
+      })
 
       expect(result.current).toBe(false)
     })
@@ -383,10 +377,9 @@ describe('atoms', () => {
         { wrapper: wrapper1 },
       )
 
-      const { result: result2 } = renderHook(
-        () => useModelProviderListExpanded('openai'),
-        { wrapper: wrapper2 },
-      )
+      const { result: result2 } = renderHook(() => useModelProviderListExpanded('openai'), {
+        wrapper: wrapper2,
+      })
 
       act(() => {
         result1.current.setExpanded(true)

@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Szukaj grup i członków",
   "accessControlDialog.title": "Kontrola dostępu do aplikacji internetowej",
   "accessControlDialog.updateSuccess": "Aktualizacja powiodła się",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Dostęp publiczny został wyłączony przez administratora.",
   "accessControlDialog.webAppSSONotEnabledTip": "Proszę skontaktować się z administratorem przedsiębiorstwa, aby skonfigurować metodę uwierzytelniania aplikacji internetowej.",
   "accessItemsDescription.anyone": "Każdy może uzyskać dostęp do aplikacji webowej",
   "accessItemsDescription.external": "Tylko uwierzytelnieni zewnętrzni użytkownicy mogą uzyskać dostęp do aplikacji internetowej.",

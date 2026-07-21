@@ -40,8 +40,7 @@ export function AppListCreationModals({
   onSetShowNewAppModal: (show: boolean) => void
   onSetShowNewAppTemplateDialog: (show: boolean) => void
 }) {
-  if (!canCreateApp)
-    return null
+  if (!canCreateApp) return null
 
   return (
     <>

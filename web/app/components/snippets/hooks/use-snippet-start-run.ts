@@ -1,6 +1,6 @@
 import type { SnippetDraftRunPayload } from '@/types/snippet'
 import { useCallback } from 'react'
-import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
+import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useSnippetDraftStore } from '../draft-store'
@@ -9,9 +9,7 @@ type UseSnippetStartRunOptions = {
   handleRun: (params: SnippetDraftRunPayload) => void
 }
 
-export const useSnippetStartRun = ({
-  handleRun,
-}: UseSnippetStartRunOptions) => {
+export const useSnippetStartRun = ({ handleRun }: UseSnippetStartRunOptions) => {
   const workflowStore = useWorkflowStore()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
 
@@ -25,8 +23,7 @@ export const useSnippetStartRun = ({
       setShowGlobalVariablePanel,
     } = workflowStore.getState()
 
-    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
-      return
+    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running) return
 
     setShowEnvPanel(false)
     setShowGlobalVariablePanel(false)

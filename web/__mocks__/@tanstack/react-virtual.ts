@@ -10,7 +10,8 @@ const mockVirtualizer = ({
   const getSize = (index: number) => estimateSize?.(index) ?? 0
 
   return {
-    getTotalSize: () => Array.from({ length: count }).reduce<number>((total, _, index) => total + getSize(index), 0),
+    getTotalSize: () =>
+      Array.from({ length: count }).reduce<number>((total, _, index) => total + getSize(index), 0),
     getVirtualItems: () => {
       let start = 0
 

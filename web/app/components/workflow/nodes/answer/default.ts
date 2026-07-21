@@ -19,7 +19,10 @@ const nodeDefault: NodeDefault<AnswerNodeType> = {
     let errorMessages = ''
     const { answer } = payload
     if (!answer)
-      errorMessages = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: t($ => $['nodes.answer.answer'], { ns: 'workflow' }) })
+      errorMessages = t(($) => $['errorMsg.fieldRequired'], {
+        ns: 'workflow',
+        field: t(($) => $['nodes.answer.answer'], { ns: 'workflow' }),
+      })
 
     return {
       isValid: !errorMessages,

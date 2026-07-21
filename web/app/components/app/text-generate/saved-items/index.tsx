@@ -3,10 +3,7 @@ import type { FC } from 'react'
 import type { SavedMessage } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiClipboardLine,
-  RiDeleteBinLine,
-} from '@remixicon/react'
+import { RiClipboardLine, RiDeleteBinLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,50 +31,44 @@ const SavedItems: FC<ISavedItemsProps> = ({
 
   return (
     <div className={cn('space-y-4', className)}>
-      {list.length === 0
-        ? (
-            <NoData onStartCreateContent={onStartCreateContent} />
-          )
-        : (
-            <>
-              {list.map(({ id, answer }) => (
-                <div key={id} className="relative">
-                  <div className={cn(
-                    'rounded-2xl bg-background-section-burn p-4',
-                  )}
+      {list.length === 0 ? (
+        <NoData onStartCreateContent={onStartCreateContent} />
+      ) : (
+        <>
+          {list.map(({ id, answer }) => (
+            <div key={id} className="relative">
+              <div className={cn('rounded-2xl bg-background-section-burn p-4')}>
+                <Markdown content={answer} />
+              </div>
+              <div className="mt-1 h-4 px-4 system-xs-regular text-text-quaternary">
+                <span>
+                  {answer.length} {t(($) => $['unit.char'], { ns: 'common' })}
+                </span>
+              </div>
+              <div className="absolute right-2 bottom-1">
+                <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+                  {isShowTextToSpeech && <NewAudioButton value={answer} />}
+                  <ActionButton
+                    onClick={() => {
+                      copy(answer)
+                      toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
+                    }}
                   >
-                    <Markdown content={answer} />
-                  </div>
-                  <div className="mt-1 h-4 px-4 system-xs-regular text-text-quaternary">
-                    <span>
-                      {answer.length}
-                      {' '}
-                      {t($ => $['unit.char'], { ns: 'common' })}
-                    </span>
-                  </div>
-                  <div className="absolute right-2 bottom-1">
-                    <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
-                      {isShowTextToSpeech && <NewAudioButton value={answer} />}
-                      <ActionButton onClick={() => {
-                        copy(answer)
-                        toast.success(t($ => $['actionMsg.copySuccessfully'], { ns: 'common' }))
-                      }}
-                      >
-                        <RiClipboardLine className="size-4" />
-                      </ActionButton>
-                      <ActionButton onClick={() => {
-                        onRemove(id)
-                      }}
-                      >
-                        <RiDeleteBinLine className="size-4" />
-                      </ActionButton>
-                    </div>
-                  </div>
+                    <RiClipboardLine className="size-4" />
+                  </ActionButton>
+                  <ActionButton
+                    onClick={() => {
+                      onRemove(id)
+                    }}
+                  >
+                    <RiDeleteBinLine className="size-4" />
+                  </ActionButton>
                 </div>
-              ))}
-            </>
-          )}
-
+              </div>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   )
 }

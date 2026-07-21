@@ -13,8 +13,7 @@ export type ReasoningChunk = {
 // reasoning_chunk nests its payload under `data` (not top-level like `message`).
 export function parseReasoningChunk(parsed: Record<string, unknown>): ReasoningChunk | undefined {
   const data = parsed.data
-  if (data === null || typeof data !== 'object' || Array.isArray(data))
-    return undefined
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) return undefined
   const rec = data as Record<string, unknown>
   return {
     reasoning: typeof rec.reasoning === 'string' ? rec.reasoning : '',
@@ -31,8 +30,7 @@ export function reasoningKey(chunk: ReasoningChunk): string {
 
 // Appends a reasoning delta to a per-node accumulator.
 export function accumulateReasoning(acc: Record<string, string>, chunk: ReasoningChunk): void {
-  if (chunk.reasoning === '')
-    return
+  if (chunk.reasoning === '') return
   const key = reasoningKey(chunk)
   acc[key] = (acc[key] ?? '') + chunk.reasoning
 }
@@ -55,8 +53,7 @@ export class ReasoningChunkRenderer {
       }
       errOut.write(chunk.reasoning)
     }
-    if (chunk.isFinal && this.openNode === key)
-      this.closeActive(errOut)
+    if (chunk.isFinal && this.openNode === key) this.closeActive(errOut)
   }
 
   // Close a block left open by a truncated stream.
@@ -65,8 +62,7 @@ export class ReasoningChunkRenderer {
   }
 
   private closeActive(errOut: NodeJS.WritableStream): void {
-    if (this.openNode === undefined)
-      return
+    if (this.openNode === undefined) return
     errOut.write(`${THINK_CLOSE}\n`)
     this.openNode = undefined
   }
@@ -77,23 +73,19 @@ export function formatReasoningBlocks(reasoning: Record<string, string>): string
   const blocks: string[] = []
   for (const text of Object.values(reasoning)) {
     const trimmed = text.trim()
-    if (trimmed !== '')
-      blocks.push(`${THINK_OPEN}\n${trimmed}\n${THINK_CLOSE}`)
+    if (trimmed !== '') blocks.push(`${THINK_OPEN}\n${trimmed}\n${THINK_CLOSE}`)
   }
   return blocks.join('\n---\n')
 }
 
 // Frames per-node reasoning from a message_end `metadata` object; '' when absent.
 export function reasoningBlocksFromMetadata(metadata: unknown): string {
-  if (metadata === null || typeof metadata !== 'object' || Array.isArray(metadata))
-    return ''
+  if (metadata === null || typeof metadata !== 'object' || Array.isArray(metadata)) return ''
   const reasoning = (metadata as Record<string, unknown>).reasoning
-  if (reasoning === null || typeof reasoning !== 'object' || Array.isArray(reasoning))
-    return ''
+  if (reasoning === null || typeof reasoning !== 'object' || Array.isArray(reasoning)) return ''
   const map: Record<string, string> = {}
   for (const [key, value] of Object.entries(reasoning as Record<string, unknown>)) {
-    if (typeof value === 'string')
-      map[key] = value
+    if (typeof value === 'string') map[key] = value
   }
   return formatReasoningBlocks(map)
 }

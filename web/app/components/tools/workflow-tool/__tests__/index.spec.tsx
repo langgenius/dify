@@ -5,31 +5,44 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { WorkflowToolDrawer } from '../index'
 
 vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick, icon }: { onClick?: () => void, icon: string }) => (
-    <button data-testid="app-icon" onClick={onClick}>{icon}</button>
+  default: ({ onClick, icon }: { onClick?: () => void; icon: string }) => (
+    <button data-testid="app-icon" onClick={onClick}>
+      {icon}
+    </button>
   ),
 }))
 
 vi.mock('@/app/components/tools/labels/selector', () => ({
-  default: ({ value, onChange }: { value: string[], onChange: (labels: string[]) => void }) => (
+  default: ({ value, onChange }: { value: string[]; onChange: (labels: string[]) => void }) => (
     <div data-testid="label-selector">
       <span>{value.join(',')}</span>
-      <button data-testid="append-label" onClick={() => onChange([...value, 'new-label'])}>Add</button>
+      <button data-testid="append-label" onClick={() => onChange([...value, 'new-label'])}>
+        Add
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../confirm-modal', () => ({
-  default: ({ show, onClose, onConfirm }: { show: boolean, onClose: () => void, onConfirm: () => void }) => (
-    show
-      ? (
-          <div data-testid="confirm-modal">
-            <button data-testid="confirm-save" onClick={onConfirm}>Confirm</button>
-            <button data-testid="close-confirm" onClick={onClose}>Close</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({
+    show,
+    onClose,
+    onConfirm,
+  }: {
+    show: boolean
+    onClose: () => void
+    onConfirm: () => void
+  }) =>
+    show ? (
+      <div data-testid="confirm-modal">
+        <button data-testid="confirm-save" onClick={onConfirm}>
+          Confirm
+        </button>
+        <button data-testid="close-confirm" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    ) : null,
 }))
 
 const mockToastNotify = vi.fn()
@@ -49,7 +62,9 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-const createPayload = (overrides: Partial<WorkflowToolDrawerPayload> = {}): WorkflowToolDrawerPayload => ({
+const createPayload = (
+  overrides: Partial<WorkflowToolDrawerPayload> = {},
+): WorkflowToolDrawerPayload => ({
   icon: { content: '🔧', background: '#ffffff' },
   label: 'My Tool',
   name: 'my_tool',
@@ -78,25 +93,25 @@ describe('WorkflowToolDrawer', () => {
     const onCreate = vi.fn()
 
     render(
-      <WorkflowToolDrawer
-        isAdd
-        payload={createPayload()}
-        onHide={vi.fn()}
-        onCreate={onCreate}
-      />,
+      <WorkflowToolDrawer isAdd payload={createPayload()} onHide={vi.fn()} onCreate={onCreate} />,
     )
 
     await user.clear(screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'))
-    await user.type(screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'), 'Created Tool')
+    await user.type(
+      screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'),
+      'Created Tool',
+    )
     await user.click(screen.getByTestId('append-label'))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
-      workflow_app_id: 'workflow-app-1',
-      label: 'Created Tool',
-      icon: { content: '🔧', background: '#ffffff' },
-      labels: ['label1', 'new-label'],
-    }))
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflow_app_id: 'workflow-app-1',
+        label: 'Created Tool',
+        icon: { content: '🔧', background: '#ffffff' },
+        labels: ['label1', 'new-label'],
+      }),
+    )
   })
 
   it('should block invalid tool-call names before saving', async () => {
@@ -115,22 +130,18 @@ describe('WorkflowToolDrawer', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onCreate).not.toHaveBeenCalled()
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-    }))
+    expect(mockToastNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+      }),
+    )
   })
 
   it('should require confirmation before saving existing workflow tools', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
 
-    render(
-      <WorkflowToolDrawer
-        payload={createPayload()}
-        onHide={vi.fn()}
-        onSave={onSave}
-      />,
-    )
+    render(<WorkflowToolDrawer payload={createPayload()} onHide={vi.fn()} onSave={onSave} />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
@@ -138,21 +149,18 @@ describe('WorkflowToolDrawer', () => {
     await user.click(screen.getByTestId('confirm-save'))
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-        workflow_tool_id: 'workflow-tool-1',
-        name: 'my_tool',
-      }))
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workflow_tool_id: 'workflow-tool-1',
+          name: 'my_tool',
+        }),
+      )
     })
   })
 
   it('should show duplicate reserved output warnings', () => {
     render(
-      <WorkflowToolDrawer
-        isAdd
-        payload={createPayload()}
-        onHide={vi.fn()}
-        onCreate={vi.fn()}
-      />,
+      <WorkflowToolDrawer isAdd payload={createPayload()} onHide={vi.fn()} onCreate={vi.fn()} />,
     )
 
     expect(screen.getAllByTestId('reserved-output-warning').length).toBeGreaterThan(0)

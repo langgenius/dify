@@ -26,18 +26,20 @@ export type AgentBuildDraftChangeSummary = {
   envVariables: readonly AgentBuildDraftChangeItem[]
 }
 
-export type AgentBuildDraftChangeSection
-  = | 'skills'
-    | 'files'
-    | 'advancedSettings'
+export type AgentBuildDraftChangeSection = 'skills' | 'files' | 'advancedSettings'
 
-const changedKeysBySection: Record<AgentBuildDraftChangeSection, readonly AgentBuildDraftChangedKey[]> = {
+const changedKeysBySection: Record<
+  AgentBuildDraftChangeSection,
+  readonly AgentBuildDraftChangedKey[]
+> = {
   skills: ['skills'],
   files: ['files'],
   advancedSettings: ['envVariables'],
 }
 
-const AgentBuildDraftChangedKeysContext = createContext<ReadonlySet<AgentBuildDraftChangedKey>>(new Set())
+const AgentBuildDraftChangedKeysContext = createContext<ReadonlySet<AgentBuildDraftChangedKey>>(
+  new Set(),
+)
 
 export function AgentBuildDraftChangedKeysProvider({
   changedKeys,
@@ -58,8 +60,7 @@ export function AgentBuildDraftChangedKeysProvider({
 export function useIsAgentBuildDraftSectionChanged(section?: AgentBuildDraftChangeSection) {
   const changedKeys = useContext(AgentBuildDraftChangedKeysContext)
 
-  if (!section)
-    return false
+  if (!section) return false
 
-  return changedKeysBySection[section].some(key => changedKeys.has(key))
+  return changedKeysBySection[section].some((key) => changedKeys.has(key))
 }

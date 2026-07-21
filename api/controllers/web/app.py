@@ -15,7 +15,7 @@ from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPu
 from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
-from models.model import App, AppMode, EndUser
+from models.model import App, AppMode, EndUser, load_annotation_reply_config
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -77,28 +77,36 @@ class AppParameterApi(WebApiResource):
     @web_ns.response(200, "Success", web_ns.models[fields.Parameters.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters."""
+        session = db.session()
         features_dict: dict[str, Any]
         user_input_form: list[dict[str, Any]]
         if app_model.mode == AppMode.AGENT:
             try:
-                features_dict, user_input_form = get_published_agent_app_feature_dict_and_user_input_form(app_model)
+                features_dict, user_input_form = get_published_agent_app_feature_dict_and_user_input_form(
+                    app_model,
+                    session=session,
+                )
             except AgentAppNotPublishedError:
                 raise AgentNotPublishedError()
             except AgentAppGeneratorError:
                 raise AppUnavailableError()
         elif app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
+            workflow = app_model.workflow_with_session(session=session)
             if workflow is None:
                 raise AppUnavailableError()
 
             features_dict = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
-            app_model_config = app_model.app_model_config
+            app_model_config = app_model.app_model_config_with_session(session=session)
             if app_model_config is None:
                 raise AppUnavailableError()
 
-            features_dict = cast(dict[str, Any], app_model_config.to_dict())
+            annotation_reply = load_annotation_reply_config(session, app_model.id)
+            features_dict = cast(
+                dict[str, Any],
+                app_model_config.to_dict(annotation_reply=annotation_reply),
+            )
 
             user_input_form = features_dict.get("user_input_form", [])
 

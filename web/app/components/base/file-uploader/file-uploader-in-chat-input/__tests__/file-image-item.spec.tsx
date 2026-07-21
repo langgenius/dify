@@ -62,7 +62,7 @@ describe('FileImageItem', () => {
     )
 
     const svgs = container.querySelectorAll('svg')
-    const progressSvg = Array.from(svgs).find(svg => svg.querySelector('circle'))
+    const progressSvg = Array.from(svgs).find((svg) => svg.querySelector('circle'))
     expect(progressSvg)!.toBeInTheDocument()
   })
 
@@ -74,9 +74,7 @@ describe('FileImageItem', () => {
 
   it('should call onReUpload when replay icon is clicked', () => {
     const onReUpload = vi.fn()
-    render(
-      <FileImageItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />,
-    )
+    render(<FileImageItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
@@ -141,7 +139,11 @@ describe('FileImageItem', () => {
   })
 
   it('should use url when both base64Url and url fallback for image render', () => {
-    render(<FileImageItem file={createFile({ base64Url: undefined, url: 'https://example.com/img.png' })} />)
+    render(
+      <FileImageItem
+        file={createFile({ base64Url: undefined, url: 'https://example.com/img.png' })}
+      />,
+    )
 
     const img = screen.getByRole('img')
     expect(img)!.toHaveAttribute('src', 'https://example.com/img.png')
@@ -160,9 +162,11 @@ describe('FileImageItem', () => {
     render(<FileImageItem file={file} showDownloadAction />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
-    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
-      url: expect.stringContaining('as_attachment=true'),
-    }))
+    expect(downloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: expect.stringContaining('as_attachment=true'),
+      }),
+    )
   })
 
   it('should use base64Url for download_url when url is not available', async () => {
@@ -172,13 +176,23 @@ describe('FileImageItem', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
 
-    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
-      url: 'data:image/png;base64,abc',
-    }))
+    expect(downloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'data:image/png;base64,abc',
+      }),
+    )
   })
 
   it('should set preview url using base64Url when available', () => {
-    render(<FileImageItem file={createFile({ base64Url: 'data:image/png;base64,abc', url: 'https://example.com/photo.png' })} canPreview />)
+    render(
+      <FileImageItem
+        file={createFile({
+          base64Url: 'data:image/png;base64,abc',
+          url: 'https://example.com/photo.png',
+        })}
+        canPreview
+      />,
+    )
 
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
@@ -187,7 +201,12 @@ describe('FileImageItem', () => {
   })
 
   it('should set preview url using url when base64Url is not available', () => {
-    render(<FileImageItem file={createFile({ base64Url: undefined, url: 'https://example.com/photo.png' })} canPreview />)
+    render(
+      <FileImageItem
+        file={createFile({ base64Url: undefined, url: 'https://example.com/photo.png' })}
+        canPreview
+      />,
+    )
 
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
@@ -212,9 +231,11 @@ describe('FileImageItem', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
 
-    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
-      url: expect.stringContaining('as_attachment=true'),
-      fileName: 'photo.png',
-    }))
+    expect(downloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: expect.stringContaining('as_attachment=true'),
+        fileName: 'photo.png',
+      }),
+    )
   })
 })

@@ -1,14 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import {
-  ENV_REGISTRY,
-  getEnv,
-  lookupEnv,
-  resolveEnv,
-} from './registry'
+import { ENV_REGISTRY, getEnv, lookupEnv, resolveEnv } from './registry'
 
 describe('env registry', () => {
   it('contains every DIFY_* var from the v1.0 spec', () => {
-    const names = ENV_REGISTRY.map(e => e.name)
+    const names = ENV_REGISTRY.map((e) => e.name)
     expect(names).toContain('DIFY_TOKEN')
     expect(names).toContain('DIFY_HOST')
     expect(names).toContain('DIFY_WORKSPACE_ID')
@@ -20,7 +15,7 @@ describe('env registry', () => {
   })
 
   it('is sorted alphabetically (matches Go init() ordering)', () => {
-    const names = ENV_REGISTRY.map(e => e.name)
+    const names = ENV_REGISTRY.map((e) => e.name)
     const sorted = [...names].sort()
     expect(names).toEqual(sorted)
   })
@@ -54,8 +49,7 @@ describe('env registry', () => {
     })
     afterEach(() => {
       for (const [k, v] of Object.entries(originals)) {
-        if (v === undefined)
-          delete process.env[k]
+        if (v === undefined) delete process.env[k]
         else process.env[k] = v
       }
     })

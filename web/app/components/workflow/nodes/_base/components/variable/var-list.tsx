@@ -42,79 +42,101 @@ const VarList: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const listWithIds = useMemo(() => list.map((item) => {
-    const id = uuid4()
-    return {
-      id,
-      variable: { ...item },
-    }
-  }), [list])
+  const listWithIds = useMemo(
+    () =>
+      list.map((item) => {
+        const id = uuid4()
+        return {
+          id,
+          variable: { ...item },
+        }
+      }),
+    [list],
+  )
 
-  const { run: validateVarInput } = useDebounceFn((list: Variable[], newKey: string) => {
-    const result = checkKeys([newKey], true)
-    if (!result.isValid) {
-      toast.error(t($ => $[`varKeyError.${result.errorMessageKey}`], { ns: 'appDebug', key: result.errorKey }))
-      return
-    }
-    if (list.some(item => item.variable?.trim() === newKey.trim())) {
-      toast.error(t($ => $['varKeyError.keyAlreadyExists'], { ns: 'appDebug', key: newKey }))
-    }
-  }, { wait: 500 })
+  const { run: validateVarInput } = useDebounceFn(
+    (list: Variable[], newKey: string) => {
+      const result = checkKeys([newKey], true)
+      if (!result.isValid) {
+        toast.error(
+          t(($) => $[`varKeyError.${result.errorMessageKey}`], {
+            ns: 'appDebug',
+            key: result.errorKey,
+          }),
+        )
+        return
+      }
+      if (list.some((item) => item.variable?.trim() === newKey.trim())) {
+        toast.error(t(($) => $['varKeyError.keyAlreadyExists'], { ns: 'appDebug', key: newKey }))
+      }
+    },
+    { wait: 500 },
+  )
 
-  const handleVarNameChange = useCallback((index: number) => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      replaceSpaceWithUnderscoreInVarNameInput(e.target)
+  const handleVarNameChange = useCallback(
+    (index: number) => {
+      return (e: React.ChangeEvent<HTMLInputElement>) => {
+        replaceSpaceWithUnderscoreInVarNameInput(e.target)
 
-      const newKey = e.target.value
+        const newKey = e.target.value
 
-      validateVarInput(list.filter((_, itemIndex) => itemIndex !== index), newKey)
+        validateVarInput(
+          list.filter((_, itemIndex) => itemIndex !== index),
+          newKey,
+        )
 
-      onVarNameChange?.(list[index]!.variable, newKey)
-      const newList = produce(list, (draft) => {
-        draft[index]!.variable = newKey
-      })
-      onChange(newList)
-    }
-  }, [list, onVarNameChange, onChange, validateVarInput])
+        onVarNameChange?.(list[index]!.variable, newKey)
+        const newList = produce(list, (draft) => {
+          draft[index]!.variable = newKey
+        })
+        onChange(newList)
+      }
+    },
+    [list, onVarNameChange, onChange, validateVarInput],
+  )
 
-  const handleVarReferenceChange = useCallback((index: number) => {
-    return (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => {
-      const newList = produce(list, (draft) => {
-        if (!isSupportConstantValue || varKindType === VarKindType.variable) {
-          draft[index]!.value_selector = value as ValueSelector
-          draft[index]!.value_type = varInfo?.type
-          if (isSupportConstantValue)
-            draft[index]!.variable_type = VarKindType.variable
+  const handleVarReferenceChange = useCallback(
+    (index: number) => {
+      return (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => {
+        const newList = produce(list, (draft) => {
+          if (!isSupportConstantValue || varKindType === VarKindType.variable) {
+            draft[index]!.value_selector = value as ValueSelector
+            draft[index]!.value_type = varInfo?.type
+            if (isSupportConstantValue) draft[index]!.variable_type = VarKindType.variable
 
-          if (!draft[index]!.variable) {
-            const variables = draft.map(v => v.variable)
-            let newVarName = value[value.length - 1]!
-            let count = 1
-            while (variables.includes(newVarName!)) {
-              newVarName = `${value[value.length - 1]}_${count}`
-              count++
+            if (!draft[index]!.variable) {
+              const variables = draft.map((v) => v.variable)
+              let newVarName = value[value.length - 1]!
+              let count = 1
+              while (variables.includes(newVarName!)) {
+                newVarName = `${value[value.length - 1]}_${count}`
+                count++
+              }
+              draft[index]!.variable = newVarName
             }
-            draft[index]!.variable = newVarName
+          } else {
+            draft[index]!.variable_type = VarKindType.constant
+            draft[index]!.value_selector = value as ValueSelector
+            draft[index]!.value = value as string
           }
-        }
-        else {
-          draft[index]!.variable_type = VarKindType.constant
-          draft[index]!.value_selector = value as ValueSelector
-          draft[index]!.value = value as string
-        }
-      })
-      onChange(newList)
-    }
-  }, [isSupportConstantValue, list, onChange])
+        })
+        onChange(newList)
+      }
+    },
+    [isSupportConstantValue, list, onChange],
+  )
 
-  const handleVarRemove = useCallback((index: number) => {
-    return () => {
-      const newList = produce(list, (draft) => {
-        draft.splice(index, 1)
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleVarRemove = useCallback(
+    (index: number) => {
+      return () => {
+        const newList = produce(list, (draft) => {
+          draft.splice(index, 1)
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
   const varCount = list.length
 
@@ -122,15 +144,16 @@ const VarList: FC<Props> = ({
     <ReactSortable
       className="space-y-2"
       list={listWithIds}
-      setList={(list) => { onChange(list.map(item => item.variable)) }}
+      setList={(list) => {
+        onChange(list.map((item) => item.variable))
+      }}
       handle=".handle"
       ghostClass="opacity-50"
       animation={150}
     >
       {list.map((variable, index) => {
         const canDrag = (() => {
-          if (readonly)
-            return false
+          if (readonly) return false
           return varCount > 1
         })()
         return (
@@ -140,14 +163,18 @@ const VarList: FC<Props> = ({
               disabled={readonly}
               value={variable.variable}
               onChange={handleVarNameChange(index)}
-              placeholder={t($ => $['common.variableNamePlaceholder'], { ns: 'workflow' })!}
+              placeholder={t(($) => $['common.variableNamePlaceholder'], { ns: 'workflow' })!}
             />
             <VarReferencePicker
               nodeId={nodeId}
               readonly={readonly}
               isShowNodeName
               className="grow"
-              value={variable.variable_type === VarKindType.constant ? (variable.value || '') : (variable.value_selector || [])}
+              value={
+                variable.variable_type === VarKindType.constant
+                  ? variable.value || ''
+                  : variable.value_selector || []
+              }
               isSupportConstantValue={isSupportConstantValue}
               onChange={handleVarReferenceChange(index)}
               defaultVarKindType={variable.variable_type}
@@ -155,14 +182,13 @@ const VarList: FC<Props> = ({
               filterVar={filterVar}
               isSupportFileVar={isSupportFileVar}
             />
-            {!readonly && (
-              <RemoveButton onClick={handleVarRemove(index)} />
-            )}
+            {!readonly && <RemoveButton onClick={handleVarRemove(index)} />}
             {canDrag && (
-              <RiDraggable className={cn(
-                'handle absolute top-2.5 -left-4 hidden size-3 cursor-pointer text-text-quaternary',
-                'group-hover:block',
-              )}
+              <RiDraggable
+                className={cn(
+                  'handle absolute top-2.5 -left-4 hidden size-3 cursor-pointer text-text-quaternary',
+                  'group-hover:block',
+                )}
               />
             )}
           </div>

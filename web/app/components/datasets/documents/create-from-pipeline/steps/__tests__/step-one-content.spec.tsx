@@ -1,18 +1,14 @@
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DatasourceType } from '@/models/pipeline'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOneContent from '../step-one-content'
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 // Mock context providers and hooks (底层依赖)
 vi.mock('@/context/modal-context', () => ({
@@ -28,7 +24,9 @@ vi.mock('@/app/components/billing/vector-space-full', () => ({
 
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
   default: ({ onClick }: { onClick?: () => void }) => (
-    <button data-testid="upgrade-btn" onClick={onClick}>Upgrade</button>
+    <button data-testid="upgrade-btn" onClick={onClick}>
+      Upgrade
+    </button>
   ),
 }))
 
@@ -78,7 +76,10 @@ vi.mock('../../data-source-options/hooks', () => ({
 
 // Mock the entire local-file component since it has deep context dependencies
 vi.mock('../../data-source/local-file', () => ({
-  default: ({ allowedExtensions, supportBatchUpload }: {
+  default: ({
+    allowedExtensions,
+    supportBatchUpload,
+  }: {
     allowedExtensions: string[]
     supportBatchUpload: boolean
   }) => (
@@ -92,13 +93,19 @@ vi.mock('../../data-source/local-file', () => ({
 
 // Mock online documents since it has complex OAuth/API dependencies
 vi.mock('../../data-source/online-documents', () => ({
-  default: ({ nodeId, onCredentialChange }: {
+  default: ({
+    nodeId,
+    onCredentialChange,
+  }: {
     nodeId: string
     onCredentialChange: (credentialId: string) => void
   }) => (
     <div data-testid="online-documents">
       <span data-testid="online-doc-node-id">{nodeId}</span>
-      <button data-testid="credential-change-btn" onClick={() => onCredentialChange('new-credential')}>
+      <button
+        data-testid="credential-change-btn"
+        onClick={() => onCredentialChange('new-credential')}
+      >
         Change Credential
       </button>
     </div>
@@ -107,13 +114,19 @@ vi.mock('../../data-source/online-documents', () => ({
 
 // Mock website crawl
 vi.mock('../../data-source/website-crawl', () => ({
-  default: ({ nodeId, onCredentialChange }: {
+  default: ({
+    nodeId,
+    onCredentialChange,
+  }: {
     nodeId: string
     onCredentialChange: (credentialId: string) => void
   }) => (
     <div data-testid="website-crawl">
       <span data-testid="website-crawl-node-id">{nodeId}</span>
-      <button data-testid="website-credential-btn" onClick={() => onCredentialChange('website-credential')}>
+      <button
+        data-testid="website-credential-btn"
+        onClick={() => onCredentialChange('website-credential')}
+      >
         Change Website Credential
       </button>
     </div>
@@ -122,13 +135,19 @@ vi.mock('../../data-source/website-crawl', () => ({
 
 // Mock online drive
 vi.mock('../../data-source/online-drive', () => ({
-  default: ({ nodeId, onCredentialChange }: {
+  default: ({
+    nodeId,
+    onCredentialChange,
+  }: {
     nodeId: string
     onCredentialChange: (credentialId: string) => void
   }) => (
     <div data-testid="online-drive">
       <span data-testid="online-drive-node-id">{nodeId}</span>
-      <button data-testid="drive-credential-btn" onClick={() => onCredentialChange('drive-credential')}>
+      <button
+        data-testid="drive-credential-btn"
+        onClick={() => onCredentialChange('drive-credential')}
+      >
         Change Drive Credential
       </button>
     </div>
@@ -253,11 +272,6 @@ describe('StepOneContent', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<StepOneContent {...defaultProps} />)
-      expect(container.querySelector('.flex.flex-col')).toBeInTheDocument()
-    })
-
     it('should render DataSourceOptions component', () => {
       render(<StepOneContent {...defaultProps} />)
       // DataSourceOptions renders option cards

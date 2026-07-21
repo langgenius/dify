@@ -29,6 +29,7 @@ from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
+from dify_agent.server.auth import create_bearer_token_dependency
 from dify_agent.server.observability import configure_server_observability
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.sandbox_files import create_sandbox_files_router
@@ -66,6 +67,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         inner_api_url=resolved_settings.inner_api_url,
         inner_api_key=resolved_settings.inner_api_key or "",
         shell_provider=shell_provider,
+        shell_home_root=resolved_settings.shell_home_root,
+        shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
     )
@@ -121,7 +124,13 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     def get_scheduler() -> RunScheduler:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
-    app.include_router(create_runs_router(get_store, get_scheduler))
+    app.include_router(
+        create_runs_router(
+            get_store,
+            get_scheduler,
+            auth_dependency=create_bearer_token_dependency(resolved_settings.api_token),
+        )
+    )
     app.include_router(create_sandbox_files_router(lambda: sandbox_file_service))
     app.include_router(
         create_agent_stub_router(

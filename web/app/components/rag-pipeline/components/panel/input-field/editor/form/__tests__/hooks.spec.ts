@@ -138,7 +138,7 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const typeConfig = result.current.find(c => c.variable === 'type')
+    const typeConfig = result.current.find((c) => c.variable === 'type')
     expect(typeConfig).toBeDefined()
     expect(typeConfig?.required).toBe(true)
   })
@@ -152,7 +152,7 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const varConfig = result.current.find(c => c.variable === 'variable')
+    const varConfig = result.current.find((c) => c.variable === 'variable')
     expect(varConfig).toBeDefined()
     expect(varConfig?.required).toBe(true)
   })
@@ -166,7 +166,7 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const labelConfig = result.current.find(c => c.variable === 'label')
+    const labelConfig = result.current.find((c) => c.variable === 'label')
     expect(labelConfig).toBeDefined()
     expect(labelConfig?.required).toBe(false)
   })
@@ -180,7 +180,7 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const requiredConfig = result.current.find(c => c.variable === 'required')
+    const requiredConfig = result.current.find((c) => c.variable === 'required')
     expect(requiredConfig).toBeDefined()
   })
 
@@ -193,10 +193,16 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const typeConfig = result.current.find(c => c.variable === 'type')
-    typeConfig?.listeners?.onChange?.({ value: PipelineInputVarType.singleFile, fieldApi: {} as never })
+    const typeConfig = result.current.find((c) => c.variable === 'type')
+    typeConfig?.listeners?.onChange?.({
+      value: PipelineInputVarType.singleFile,
+      fieldApi: {} as never,
+    })
 
-    expect(mockSetFieldValue).toHaveBeenCalledWith('allowedFileUploadMethods', ['local_file', 'remote_url'])
+    expect(mockSetFieldValue).toHaveBeenCalledWith('allowedFileUploadMethods', [
+      'local_file',
+      'remote_url',
+    ])
     expect(mockSetFieldValue).toHaveBeenCalledWith('allowedTypesAndExtensions', {
       allowedFileTypes: ['image', 'document'],
       allowedFileExtensions: ['.jpg', '.png', '.pdf'],
@@ -212,8 +218,11 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const typeConfig = result.current.find(c => c.variable === 'type')
-    typeConfig?.listeners?.onChange?.({ value: PipelineInputVarType.multiFiles, fieldApi: {} as never })
+    const typeConfig = result.current.find((c) => c.variable === 'type')
+    typeConfig?.listeners?.onChange?.({
+      value: PipelineInputVarType.multiFiles,
+      fieldApi: {} as never,
+    })
 
     expect(mockSetFieldValue).toHaveBeenCalledWith('maxLength', 5)
   })
@@ -227,8 +236,11 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const typeConfig = result.current.find(c => c.variable === 'type')
-    typeConfig?.listeners?.onChange?.({ value: PipelineInputVarType.textInput, fieldApi: {} as never })
+    const typeConfig = result.current.find((c) => c.variable === 'type')
+    typeConfig?.listeners?.onChange?.({
+      value: PipelineInputVarType.textInput,
+      fieldApi: {} as never,
+    })
 
     expect(mockSetFieldValue).not.toHaveBeenCalled()
   })
@@ -244,7 +256,7 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const varConfig = result.current.find(c => c.variable === 'variable')
+    const varConfig = result.current.find((c) => c.variable === 'variable')
     varConfig?.listeners?.onBlur?.({ value: 'myVariable', fieldApi: {} as never })
 
     expect(mockSetFieldValue).toHaveBeenCalledWith('label', 'myVariable')
@@ -261,7 +273,7 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const varConfig = result.current.find(c => c.variable === 'variable')
+    const varConfig = result.current.find((c) => c.variable === 'variable')
     varConfig?.listeners?.onBlur?.({ value: 'myVariable', fieldApi: {} as never })
 
     expect(mockSetFieldValue).not.toHaveBeenCalled()
@@ -278,7 +290,7 @@ describe('useConfigurations', () => {
       }),
     )
 
-    const labelConfig = result.current.find(c => c.variable === 'label')
+    const labelConfig = result.current.find((c) => c.variable === 'label')
     labelConfig?.listeners?.onBlur?.({ value: '', fieldApi: {} as never })
 
     expect(mockSetFieldValue).toHaveBeenCalledWith('label', 'existingVar')
@@ -291,40 +303,34 @@ describe('useHiddenConfigurations', () => {
   })
 
   it('should return array of hidden configurations', () => {
-    const { result } = renderHook(() =>
-      useHiddenConfigurations({ options: undefined }),
-    )
+    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
 
     expect(Array.isArray(result.current)).toBe(true)
     expect(result.current.length).toBeGreaterThan(0)
   })
 
   it('should include default value config for textInput', () => {
-    const { result } = renderHook(() =>
-      useHiddenConfigurations({ options: undefined }),
-    )
+    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
 
-    const defaultConfigs = result.current.filter(c => c.variable === 'default')
+    const defaultConfigs = result.current.filter((c) => c.variable === 'default')
     expect(defaultConfigs.length).toBeGreaterThan(0)
   })
 
   it('should include tooltips configuration for all types', () => {
-    const { result } = renderHook(() =>
-      useHiddenConfigurations({ options: undefined }),
-    )
+    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
 
-    const tooltipsConfig = result.current.find(c => c.variable === 'tooltips')
+    const tooltipsConfig = result.current.find((c) => c.variable === 'tooltips')
     expect(tooltipsConfig).toBeDefined()
     expect(tooltipsConfig?.showConditions).toEqual([])
   })
 
   it('should build select options from provided options', () => {
-    const { result } = renderHook(() =>
-      useHiddenConfigurations({ options: ['opt1', 'opt2'] }),
-    )
+    const { result } = renderHook(() => useHiddenConfigurations({ options: ['opt1', 'opt2'] }))
 
     const selectDefault = result.current.find(
-      c => c.variable === 'default' && c.showConditions?.some(sc => sc.value === PipelineInputVarType.select),
+      (c) =>
+        c.variable === 'default' &&
+        c.showConditions?.some((sc) => sc.value === PipelineInputVarType.select),
     )
     expect(selectDefault?.options).toBeDefined()
     expect(selectDefault?.options?.[0]?.value).toBe('')
@@ -333,32 +339,30 @@ describe('useHiddenConfigurations', () => {
   })
 
   it('should return empty options when options prop is undefined', () => {
-    const { result } = renderHook(() =>
-      useHiddenConfigurations({ options: undefined }),
-    )
+    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
 
     const selectDefault = result.current.find(
-      c => c.variable === 'default' && c.showConditions?.some(sc => sc.value === PipelineInputVarType.select),
+      (c) =>
+        c.variable === 'default' &&
+        c.showConditions?.some((sc) => sc.value === PipelineInputVarType.select),
     )
     expect(selectDefault?.options).toEqual([])
   })
 
   it('should include upload method configs for file types', () => {
-    const { result } = renderHook(() =>
-      useHiddenConfigurations({ options: undefined }),
-    )
+    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
 
-    const uploadMethods = result.current.filter(c => c.variable === 'allowedFileUploadMethods')
+    const uploadMethods = result.current.filter((c) => c.variable === 'allowedFileUploadMethods')
     expect(uploadMethods.length).toBe(2) // singleFile + multiFiles
   })
 
   it('should include maxLength slider for multiFiles', () => {
-    const { result } = renderHook(() =>
-      useHiddenConfigurations({ options: undefined }),
-    )
+    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
 
     const maxLength = result.current.find(
-      c => c.variable === 'maxLength' && c.showConditions?.some(sc => sc.value === PipelineInputVarType.multiFiles),
+      (c) =>
+        c.variable === 'maxLength' &&
+        c.showConditions?.some((sc) => sc.value === PipelineInputVarType.multiFiles),
     )
     expect(maxLength).toBeDefined()
     expect(maxLength?.description).toBeDefined()
