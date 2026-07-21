@@ -62,7 +62,10 @@ function newestTasks(
 export function ProcessingTasksDrawer({
   canEdit,
   documents,
+  hasNextTaskPage,
+  isFetchingNextTaskPage,
   knowledgeSpaceId,
+  onLoadMoreTasks,
   onOpenChange,
   onTaskUpdated,
   open,
@@ -74,7 +77,10 @@ export function ProcessingTasksDrawer({
 }: {
   canEdit: boolean
   documents: LogicalDocument[]
+  hasNextTaskPage: boolean
+  isFetchingNextTaskPage: boolean
   knowledgeSpaceId: string
+  onLoadMoreTasks: () => void
   onOpenChange: (open: boolean) => void
   onTaskUpdated: (task: DocumentProcessingTask) => void
   open: boolean
@@ -131,7 +137,7 @@ export function ProcessingTasksDrawer({
       compareTaskRecency,
     )
   }, [open, tasks, visibleTaskLimit])
-  const hasMoreTasks = open && tasks.length > orderedBaseTasks.length
+  const hasMoreTasks = open && (tasks.length > orderedBaseTasks.length || hasNextTaskPage)
   const orderedTasks = orderedBaseTasks.map((task) => {
     const progress = taskProgressStore.get(task.id)
     if (!progress || !taskIsActive(task) || task.updatedAt > progress.updatedAt) return task
@@ -309,9 +315,12 @@ export function ProcessingTasksDrawer({
                     {hasMoreTasks && (
                       <div className="mt-4 flex justify-center">
                         <Button
-                          onClick={() =>
+                          loading={isFetchingNextTaskPage}
+                          onClick={() => {
+                            if (tasks.length <= orderedBaseTasks.length && hasNextTaskPage)
+                              onLoadMoreTasks()
                             setVisibleTaskLimit((current) => current + TASK_DRAWER_LIMIT)
-                          }
+                          }}
                         >
                           {t(($) => $['newKnowledge.loadMore'])}
                         </Button>

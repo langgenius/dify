@@ -378,7 +378,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (sourcesQuery.error && sourcesQuery.data) ||
     sourcesQuery.isFetchNextPageError,
   )
-  const taskResultsIncomplete = Boolean(!tasksQuery.data || tasksQuery.isPending)
+  const taskResultsIncomplete = Boolean(
+    !tasksQuery.data || tasksQuery.isPending || tasksQuery.isFetchingNextPage,
+  )
   const sourceResultsIncomplete = Boolean(
     !sourcesQuery.data ||
     sourcesQuery.isPending ||
@@ -1249,7 +1251,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       <ProcessingTasksDrawer
         canEdit={canWrite && !taskResultsIncomplete && !tasksQuery.error}
         documents={documents}
+        hasNextTaskPage={Boolean(hasNextTaskPage)}
+        isFetchingNextTaskPage={isFetchingNextTaskPage}
         knowledgeSpaceId={knowledgeSpaceId}
+        onLoadMoreTasks={() => void fetchNextTaskPage()}
         onOpenChange={setTasksOpen}
         onRetryTaskQuery={() => {
           if (tasksQuery.isFetchNextPageError) void tasksQuery.fetchNextPage()

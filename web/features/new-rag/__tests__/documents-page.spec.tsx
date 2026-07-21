@@ -700,6 +700,28 @@ describe('DocumentsPage', () => {
     expect(tasksQuery.refetch).not.toHaveBeenCalled()
   })
 
+  it('continues remote task pagination from the task drawer after the automatic cap', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: Array.from({ length: 20 }, (_, index) => ({
+        items: index === 0 ? [task({ state: 'succeeded' })] : [],
+        nextCursor: 'next',
+      })),
+    }
+    tasksQuery.hasNextPage = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'dataset.newKnowledge.loadMore',
+      }),
+    )
+
+    expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
   it('keeps an unresolved source pending when a background source refresh fails', () => {
     documentsQuery.data = {
       pages: [{ items: [document({ sourceId: 'unresolved-source' })] }],
@@ -774,6 +796,24 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = undefined
     tasksQuery.isPending = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
+    expect(
+      within(documentRow).queryByText('dataset.newKnowledge.documentStatus.ready'),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
+  it('keeps document state pending while the next task cursor page is loading', () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [], nextCursor: 'next' }] }
+    tasksQuery.hasNextPage = true
+    tasksQuery.isFetchingNextPage = true
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
