@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Поиск групп и участников",
   "accessControlDialog.title": "Управление доступом к веб-приложению",
   "accessControlDialog.updateSuccess": "Обновление прошло успешно",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Публичный доступ был отключён администратором.",
   "accessControlDialog.webAppSSONotEnabledTip": "Обратитесь к администратору организации, чтобы настроить внешнюю аутентификацию для веб-приложения.",
   "accessItemsDescription.anyone": "Любой может получить доступ к веб-приложению (не требуется вход в систему)",
   "accessItemsDescription.external": "Только аутентифицированные внешние пользователи могут получить доступ к веб-приложению.",

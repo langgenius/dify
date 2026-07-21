@@ -87,11 +87,17 @@ describe('CardWrapper', () => {
       </ThemeProvider>,
     )
 
-  it('renders a non-navigating card when install button is hidden', () => {
+  it('renders a non-navigating card by default when install button is hidden', () => {
     renderCardWrapper()
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.getByTestId('card-more-info')).toHaveTextContent('42:tag:search|tag:agent')
+  })
+
+  it('links the card to its marketplace detail when explicitly enabled', () => {
+    renderCardWrapper({ linkToMarketplaceDetail: true })
+
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/detail/dify/plugin-a')
   })
 
   it('renders install and marketplace detail actions when install button is shown', () => {

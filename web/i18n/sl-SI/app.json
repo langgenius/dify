@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Išči skupine in člane",
   "accessControlDialog.title": "Nadzor dostopa do spletne aplikacije",
   "accessControlDialog.updateSuccess": "Posodobitev uspešna",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Javni dostop je onemogočil skrbnik.",
   "accessControlDialog.webAppSSONotEnabledTip": "Prosimo, da se obrnete na skrbnika podjetja, da konfigurira način avtentikacije spletne aplikacije.",
   "accessItemsDescription.anyone": "Vsakdo lahko dostopa do spletne aplikacije",
   "accessItemsDescription.external": "Samo avtentificirani zunanji uporabniki lahko dostopajo do spletne aplikacije.",
