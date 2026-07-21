@@ -1,7 +1,61 @@
 import type { CredentialTypeEnum, PluginPayload } from '../types'
+import { CollectionType } from '@/app/components/tools/types'
 import { AuthCategory } from '../types'
 
-export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayload) => {
+/**
+ * Empty URL set returned to `usePluginAuth` whenever the requested route is
+ * guaranteed not to exist on the backend.
+ *
+ * The plugin-auth hooks (credential-info, credential-schema, OAuth client
+ * schema) all key off `useQuery({ enabled: !!url, ... })`, so handing back
+ * empty strings is the canonical way to opt the call out — no request is
+ * fired and `isAuthorized` stays `false`. See `use-get-api.spec.ts` and the
+ * `useGetPluginCredentialInfo`/`useGetPluginCredentialSchema` hooks in
+ * `web/service/use-plugins-auth.ts`.
+ */
+const EMPTY_API = {
+  getCredentialInfo: '',
+  setDefaultCredential: '',
+  getCredentials: '',
+  addCredential: '',
+  updateCredential: '',
+  deleteCredential: '',
+  getCredentialSchema: () => '',
+  getOauthUrl: '',
+  getOauthClientSchema: '',
+  setCustomOauthClient: '',
+  getCustomOAuthClientValues: '',
+  deleteCustomOAuthClient: '',
+} as const
+
+export const useGetApi = ({
+  category = AuthCategory.tool,
+  provider,
+  providerType,
+}: PluginPayload) => {
+  // `category === tool` URLs always live under
+  // `/workspaces/current/tool-provider/builtin/<provider>/...` and there is
+  // no equivalent for custom (api) tool providers — they use the
+  // provider-level credentials stored on the `tool_api_providers` row, not
+  // the plugin credential model. Sending an api-type provider id (e.g. the
+  // row id from `tool_api_providers`) to the builtin route makes the api
+  // container ask the plugin daemon for a plugin that can never exist, and
+  // the daemon raises `PluginNotFoundError` — surfacing as a 500 toast on
+  // every /agents/<id>/configure page load (langgenius/dify#39169).
+  //
+  // Treat an explicitly-set non-builtin providerType as if no plugin auth
+  // route applies, matching the established pattern for datasource/model
+  // categories and for `web/app/components/workflow/nodes/tool/auth.ts`
+  // (`isToolAuthorizationRequired`). We only gate when `providerType` is
+  // explicitly provided (not undefined) so legacy call sites that pre-date
+  // the `providerType` field keep working as before.
+  if (
+    category === AuthCategory.tool &&
+    providerType !== undefined &&
+    providerType !== CollectionType.builtIn
+  )
+    return EMPTY_API
+
   if (category === AuthCategory.tool) {
     return {
       getCredentialInfo: `/workspaces/current/tool-provider/builtin/${provider}/credential/info`,
@@ -36,18 +90,5 @@ export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayl
     }
   }
 
-  return {
-    getCredentialInfo: '',
-    setDefaultCredential: '',
-    getCredentials: '',
-    addCredential: '',
-    updateCredential: '',
-    deleteCredential: '',
-    getCredentialSchema: () => '',
-    getOauthUrl: '',
-    getOauthClientSchema: '',
-    setCustomOauthClient: '',
-    getCustomOAuthClientValues: '',
-    deleteCustomOAuthClient: '',
-  }
+  return EMPTY_API
 }
