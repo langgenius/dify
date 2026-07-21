@@ -195,6 +195,18 @@ describe('AddBlock', () => {
 
       expect(latestBlockSelectorProps?.isolateKeyboardEvents).toBe(true)
     })
+
+    it('should keep the read-only trigger focusable', async () => {
+      mockNodesReadOnly = true
+
+      renderWithReactFlow([])
+
+      const trigger = screen.getByRole('button')
+      expect(trigger).toHaveAttribute('aria-disabled', 'true')
+
+      trigger.focus()
+      expect(trigger).toHaveFocus()
+    })
   })
 
   // User interactions that bridge selector state and workflow state.

@@ -93,6 +93,8 @@ const AddBlock = ({
         <Button
           variant="ghost"
           size="small"
+          disabled={nodesReadOnly}
+          focusableWhenDisabled
           className={cn(
             'size-8 p-0 text-text-tertiary hover:text-text-secondary',
             nodesReadOnly && 'text-text-disabled hover:bg-transparent hover:text-text-disabled',

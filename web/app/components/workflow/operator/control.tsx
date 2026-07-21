@@ -42,6 +42,7 @@ const Control = () => {
           size="small"
           aria-label={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
+          focusableWhenDisabled
           className={cn(
             'ml-px size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
             nodesReadOnly &&
@@ -62,6 +63,7 @@ const Control = () => {
           size="small"
           aria-label={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
+          focusableWhenDisabled
           className={cn(
             'mr-px size-8 p-0 text-text-tertiary',
             controlMode === ControlMode.Pointer
@@ -84,6 +86,7 @@ const Control = () => {
           size="small"
           aria-label={t(($) => $['common.handMode'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
+          focusableWhenDisabled
           className={cn(
             'size-8 p-0 text-text-tertiary',
             controlMode === ControlMode.Hand
@@ -107,6 +110,7 @@ const Control = () => {
             size="small"
             aria-label={t(($) => $['common.commentMode'], { ns: 'workflow' })}
             disabled={!canUseCommentMode}
+            focusableWhenDisabled
             className={cn(
               'ml-px size-8 p-0 text-text-tertiary',
               controlMode === ControlMode.Comment
@@ -131,6 +135,7 @@ const Control = () => {
           size="small"
           aria-label={t(($) => $['panel.organizeBlocks'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
+          focusableWhenDisabled
           className={cn(
             'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
             nodesReadOnly &&

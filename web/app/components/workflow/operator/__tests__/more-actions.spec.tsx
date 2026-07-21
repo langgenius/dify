@@ -209,7 +209,12 @@ describe('MoreActions', () => {
 
     render(<MoreActions />)
 
-    await user.click(screen.getByRole('button'))
+    const trigger = screen.getByRole('button', { name: 'workflow.common.moreActions' })
+    expect(trigger).toHaveAttribute('aria-disabled', 'true')
+
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{Enter}')
 
     expect(screen.queryByText('workflow.common.exportImage')).not.toBeInTheDocument()
   })

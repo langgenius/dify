@@ -155,24 +155,26 @@ function MoreActions() {
           setOpen(nextOpen)
         }}
       >
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="small"
-              disabled={isReadOnly}
-              className={cn(
-                'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                isReadOnly &&
-                  'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-              )}
-            />
-          }
-        >
-          <TipPopup title={t(($) => $['common.moreActions'], { ns: 'workflow' })}>
+        <TipPopup title={t(($) => $['common.moreActions'], { ns: 'workflow' })}>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="small"
+                aria-label={t(($) => $['common.moreActions'], { ns: 'workflow' })}
+                disabled={isReadOnly}
+                focusableWhenDisabled
+                className={cn(
+                  'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                  isReadOnly &&
+                    'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+                )}
+              />
+            }
+          >
             <span aria-hidden className="i-ri-more-fill size-4" />
-          </TipPopup>
-        </DropdownMenuTrigger>
+          </DropdownMenuTrigger>
+        </TipPopup>
         <DropdownMenuContent placement="right-end" popupClassName="min-w-[180px]">
           <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
             <span aria-hidden className="i-ri-export-line size-3" />

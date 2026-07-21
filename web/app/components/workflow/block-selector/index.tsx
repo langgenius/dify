@@ -1,11 +1,5 @@
 import type { Placement } from '@langgenius/dify-ui/popover'
-import type {
-  CSSProperties,
-  KeyboardEvent,
-  MouseEventHandler,
-  ReactElement,
-  ReactNode,
-} from 'react'
+import type { CSSProperties, KeyboardEvent, MouseEventHandler, ReactElement } from 'react'
 import type {
   CommonNodeType,
   NodeDefault,
@@ -23,12 +17,12 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { FlowType } from '@/types/common'
+import TipPopup from '../operator/tip-popup'
 import { useStore } from '../store'
 import { BlockEnum, isTriggerNode } from '../types'
 import { useTabs } from './hooks'
@@ -39,7 +33,7 @@ export type BlockSelectorProps = {
   onOpenChange?: (open: boolean) => void
   onSelect: OnSelectBlock
   trigger?: (open: boolean) => ReactElement
-  triggerTooltip?: ReactNode
+  triggerTooltip?: string
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -152,10 +146,7 @@ function BlockSelector({
     </PopoverTrigger>
   )
   const triggerWithTooltip = triggerTooltip ? (
-    <Tooltip>
-      <TooltipTrigger render={triggerControl} />
-      <TooltipContent sideOffset={4}>{triggerTooltip}</TooltipContent>
-    </Tooltip>
+    <TipPopup title={triggerTooltip}>{triggerControl}</TipPopup>
   ) : (
     triggerControl
   )
