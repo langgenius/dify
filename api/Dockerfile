@@ -72,7 +72,9 @@ RUN \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g npm@latest
+# Pinned to the 11.x line: npm@latest floats, and 12.x requires node >=22.22.2,
+# which the pinned NODE_PACKAGE_VERSION above does not satisfy.
+RUN npm install -g npm@11
 
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
