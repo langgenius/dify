@@ -1,5 +1,6 @@
 import type {
   DatasourceProviderType,
+  ToolParameter as ApiToolParameter,
   ToolProviderType,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { VarType } from '../workflow/types'
@@ -105,7 +106,7 @@ export type ToolParameter = {
   llm_description: string
   required: boolean
   multiple: boolean
-  default: string | string[]
+  default?: ApiToolParameter['default']
   options?: {
     label: LocalizedText
     value: string

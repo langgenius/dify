@@ -12,13 +12,15 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
 
-const { mockFetchDynamicOptions, mockTriggerDynamicOptionsState } = vi.hoisted(() => ({
-  mockFetchDynamicOptions: vi.fn(),
-  mockTriggerDynamicOptionsState: {
-    data: undefined as { options: FormOption[] } | undefined,
-    isLoading: false,
-  },
-}))
+const { mockFetchDynamicOptions, mockTriggerDynamicOptions, mockTriggerDynamicOptionsState } =
+  vi.hoisted(() => ({
+    mockFetchDynamicOptions: vi.fn(),
+    mockTriggerDynamicOptions: vi.fn(),
+    mockTriggerDynamicOptionsState: {
+      data: undefined as { options: FormOption[] } | undefined,
+      isLoading: false,
+    },
+  }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
@@ -31,7 +33,7 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 vi.mock('@/service/use-triggers', () => ({
-  useTriggerPluginDynamicOptions: () => mockTriggerDynamicOptionsState,
+  useTriggerPluginDynamicOptions: mockTriggerDynamicOptions,
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({
@@ -114,34 +116,37 @@ const createOption = (value: string, overrides: Partial<FormOption> = {}): FormO
 
 const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>> = {}) => {
   const onChange = vi.fn()
-  const result = renderWorkflowFlowComponent(
-    <FormInputItem
-      readOnly={false}
-      nodeId="node-1"
-      schema={createSchema()}
-      value={{
-        field: {
-          type: VarKindType.constant,
-          value: '',
-        },
-      }}
-      onChange={onChange}
-      {...props}
-    />,
-    {
-      edges: [],
-      hooksStoreProps: {},
-      nodes: [],
+  const defaultProps: ComponentProps<typeof FormInputItem> = {
+    readOnly: false,
+    nodeId: 'node-1',
+    schema: createSchema(),
+    value: {
+      field: {
+        type: VarKindType.constant,
+        value: '',
+      },
     },
-  )
+    onChange,
+  }
+  const result = renderWorkflowFlowComponent(<FormInputItem {...defaultProps} {...props} />, {
+    edges: [],
+    hooksStoreProps: {},
+    nodes: [],
+  })
 
-  return { ...result, onChange }
+  return {
+    ...result,
+    onChange,
+    rerenderFormInputItem: (nextProps: Partial<ComponentProps<typeof FormInputItem>>) =>
+      result.rerender(<FormInputItem {...defaultProps} {...props} {...nextProps} />),
+  }
 }
 
 describe('FormInputItem branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFetchDynamicOptions.mockResolvedValue({ options: [] })
+    mockTriggerDynamicOptions.mockImplementation(() => mockTriggerDynamicOptionsState)
     mockTriggerDynamicOptionsState.data = undefined
     mockTriggerDynamicOptionsState.isLoading = false
   })
@@ -162,9 +167,9 @@ describe('FormInputItem branches', () => {
   })
 
   it('should switch from variable mode back to constant mode with the schema default value', () => {
-    const { container, onChange } = renderFormInputItem({
+    const { onChange } = renderFormInputItem({
       schema: createSchema({
-        default: 7 as never,
+        default: 7,
         type: FormTypeEnum.textNumber,
       }),
       value: {
@@ -175,9 +180,7 @@ describe('FormInputItem branches', () => {
       },
     })
 
-    const switchRoot = container.querySelector('.inline-flex.h-8.shrink-0.gap-px')
-    const clickableItems = switchRoot?.querySelectorAll('.cursor-pointer') ?? []
-    fireEvent.click(clickableItems[1] as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.common.typeSwitch.input' }))
 
     expect(onChange).toHaveBeenCalledWith({
       field: {
@@ -185,6 +188,41 @@ describe('FormInputItem branches', () => {
         value: 7,
       },
     })
+  })
+
+  it('should not reset a field when its active input mode is clicked', () => {
+    const { onChange } = renderFormInputItem({
+      schema: createSchema({ type: FormTypeEnum.textNumber }),
+      value: {
+        field: {
+          type: VarKindType.constant,
+          value: 7,
+        },
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.common.typeSwitch.input' }))
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('should disable input mode changes when read only', () => {
+    const { onChange } = renderFormInputItem({
+      readOnly: true,
+      schema: createSchema({ type: FormTypeEnum.textNumber }),
+    })
+
+    const inputMode = screen.getByRole('button', {
+      name: 'workflow.nodes.common.typeSwitch.input',
+    })
+    const variableMode = screen.getByRole('button', {
+      name: 'workflow.nodes.common.typeSwitch.variable',
+    })
+    expect(inputMode).toBeDisabled()
+    expect(variableMode).toBeDisabled()
+
+    fireEvent.click(variableMode)
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('should render static select options with icons and update the selected item', () => {
@@ -230,7 +268,7 @@ describe('FormInputItem branches', () => {
     })
 
     expect(screen.getByText('alpha')).toBeInTheDocument()
-    await user.click(screen.getByRole('combobox', { name: 'alpha' }))
+    await user.click(screen.getByRole('combobox', { name: 'Field' }))
     await user.click(await screen.findByRole('option', { name: 'beta' }))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -325,9 +363,11 @@ describe('FormInputItem branches', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('Select options').closest('button')).not.toBeDisabled()
+      expect(screen.getByText('common.placeholder.select').closest('button')).not.toBeDisabled()
     })
-    fireEvent.click(screen.getByText('Select options').closest('button') as HTMLButtonElement)
+    fireEvent.click(
+      screen.getByText('common.placeholder.select').closest('button') as HTMLButtonElement,
+    )
     fireEvent.click(screen.getByText('trigger-option'))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -336,6 +376,74 @@ describe('FormInputItem branches', () => {
         value: ['trigger-option'],
       },
     })
+    expect(mockFetchDynamicOptions).not.toHaveBeenCalled()
+  })
+
+  it('should not reuse legacy trigger options after a credential is selected', async () => {
+    mockFetchDynamicOptions.mockResolvedValueOnce({
+      options: [createOption('legacy-option')],
+    })
+    const schema = createSchema({
+      multiple: true,
+      type: FormTypeEnum.dynamicSelect,
+    })
+    const value = {
+      field: {
+        type: VarKindType.constant,
+        value: ['legacy-option'],
+      },
+    }
+    const currentTool = { name: 'trigger-tool' } as never
+    const { rerenderFormInputItem } = renderFormInputItem({
+      schema,
+      currentProvider: {
+        plugin_id: 'provider-2',
+        name: 'provider-2',
+      } as never,
+      currentTool,
+      providerType: PluginCategoryEnum.trigger,
+      value,
+    })
+
+    expect(await screen.findByText('legacy-option')).toBeInTheDocument()
+
+    rerenderFormInputItem({
+      currentProvider: {
+        plugin_id: 'provider-2',
+        name: 'provider-2',
+        credential_id: 'credential-1',
+      } as never,
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('legacy-option')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should not fetch dynamic options while a multi-select uses a variable', () => {
+    renderFormInputItem({
+      schema: createSchema({
+        multiple: true,
+        type: FormTypeEnum.dynamicSelect,
+      }),
+      currentProvider: {
+        plugin_id: 'provider-2',
+        name: 'provider-2',
+        credential_id: 'credential-1',
+      } as never,
+      currentTool: { name: 'trigger-tool' } as never,
+      providerType: PluginCategoryEnum.trigger,
+      value: {
+        field: {
+          type: VarKindType.variable,
+          value: ['node-1', 'formats'],
+        },
+      },
+    })
+
+    expect(screen.getByText('variable-picker')).toBeInTheDocument()
+    expect(mockTriggerDynamicOptions).toHaveBeenCalledWith(expect.anything(), false)
+    expect(mockFetchDynamicOptions).not.toHaveBeenCalled()
   })
 
   it('should delegate app and model selection to their dedicated controls', () => {

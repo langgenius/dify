@@ -27,7 +27,6 @@ from core.plugin.entities.parameters import (
     PluginParameterType,
     as_normal_type,
     cast_parameter_value,
-    init_frontend_parameter,
 )
 from core.rag.entities import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
@@ -292,9 +291,7 @@ class ToolInvokeMessageBinary(BaseModel):
 
 
 class ToolParameter(PluginParameter):
-    """
-    Overrides type
-    """
+    """Tool-specific parameter declaration and invocation-value normalization."""
 
     class ToolParameterType(StrEnum):
         """
@@ -333,11 +330,27 @@ class ToolParameter(PluginParameter):
         LLM = auto()  # will be set by LLM
 
     type: ToolParameterType = Field(..., description="The type of the parameter")
+    multiple: bool = Field(
+        default=False,
+        description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
+    )
     human_description: I18nObject | None = Field(default=None, description="The description presented to the user")
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: str | None = None
     # MCP object and array type parameters use this field to store the schema
     input_schema: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def validate_multiple(self) -> ToolParameter:
+        supports_multiple = self.type in {
+            self.ToolParameterType.SELECT,
+            self.ToolParameterType.DYNAMIC_SELECT,
+        }
+        if self.multiple and not supports_multiple:
+            raise ValueError("multiple is only valid for select and dynamic-select parameters")
+        if supports_multiple and self.default is not None and (isinstance(self.default, list) != self.multiple):
+            raise ValueError("default must be a list exactly when multiple is true")
+        return self
 
     @classmethod
     def get_simple_instance(
@@ -378,8 +391,56 @@ class ToolParameter(PluginParameter):
             options=option_objs,
         )
 
-    def init_frontend_parameter(self, value: Any):
-        return init_frontend_parameter(self, self.type, value)
+    def init_frontend_parameter(self, value: Any) -> Any:
+        """Normalize a value against this tool parameter's full declaration."""
+        if not self.multiple:
+            parameter_value = self.default if value is None else value
+            is_valid_empty_container = (
+                (
+                    self.type == self.ToolParameterType.ARRAY
+                    and isinstance(parameter_value, list)
+                    and not parameter_value
+                )
+                or (
+                    self.type == self.ToolParameterType.OBJECT
+                    and isinstance(parameter_value, dict)
+                    and not parameter_value
+                )
+                or (
+                    self.type == self.ToolParameterType.ANY
+                    and isinstance(parameter_value, list | dict)
+                    and not parameter_value
+                )
+            )
+            if self.required and (
+                parameter_value is None
+                or (not is_valid_empty_container and not parameter_value and parameter_value != 0)
+            ):
+                raise ValueError(f"tool parameter {self.name} not found in tool config")
+            if self.type in {self.ToolParameterType.SELECT, self.ToolParameterType.DYNAMIC_SELECT} and isinstance(
+                parameter_value, list
+            ):
+                raise ValueError(f"tool parameter {self.name} does not accept a list when multiple is false")
+            if self.type == self.ToolParameterType.SELECT:
+                options = [option.value for option in self.options]
+                if parameter_value is not None and parameter_value not in options:
+                    raise ValueError(f"tool parameter {self.name} value {parameter_value} not in options {options}")
+            return cast_parameter_value(self.type, parameter_value)
+
+        parameter_value = self.default if value is None else value
+        if parameter_value is None:
+            parameter_value = []
+        if not isinstance(parameter_value, list):
+            raise ValueError(f"tool parameter {self.name} must be a list when multiple is true")
+        if not all(isinstance(item, str) for item in parameter_value):
+            raise ValueError(f"tool parameter {self.name} must contain only strings")
+        if self.required and not parameter_value:
+            raise ValueError(f"tool parameter {self.name} not found in tool config")
+        if self.type == self.ToolParameterType.SELECT:
+            options = [option.value for option in self.options]
+            if any(item not in options for item in parameter_value):
+                raise ValueError(f"tool parameter {self.name} value {parameter_value} not in options {options}")
+        return parameter_value
 
 
 class ToolProviderIdentity(BaseModel):

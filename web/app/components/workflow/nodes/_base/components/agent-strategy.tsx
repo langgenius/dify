@@ -140,8 +140,13 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           const def = schema as CredentialFormSchemaNumberInput
           if (def.max == null || def.min == null) return false
 
-          const defaultValue =
-            typeof schema.default === 'string' ? Number.parseInt(schema.default) : 1
+          const parsedDefaultValue =
+            typeof schema.default === 'number'
+              ? schema.default
+              : typeof schema.default === 'string'
+                ? Number.parseFloat(schema.default)
+                : Number.NaN
+          const defaultValue = Number.isNaN(parsedDefaultValue) ? 1 : parsedDefaultValue
           const value = props.value[schema.variable] ?? defaultValue
           const label = renderI18nObject(def.label)
           const onChange = (value: number) => {

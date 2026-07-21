@@ -10,13 +10,35 @@ describe('form-input-item sections', () => {
         disabled={false}
         isLoading
         items={[{ name: 'Alpha', value: 'alpha' }]}
+        label="Formats"
         onChange={vi.fn()}
-        selectedLabel=""
+        required={false}
+        selectedLabels={[]}
         value={[]}
       />,
     )
 
-    expect(screen.getByRole('combobox', { name: 'Options' })).toHaveTextContent('Loading')
+    expect(screen.getByRole('combobox', { name: 'Formats' })).toHaveTextContent(
+      'common.dynamicSelect.loading',
+    )
+  })
+
+  it('should localize the selected count without changing the accessible name', () => {
+    renderWorkflowComponent(
+      <MultiSelectField
+        disabled={false}
+        items={[]}
+        label="Formats"
+        onChange={vi.fn()}
+        required={false}
+        selectedLabels={['Alpha', 'Beta', 'Gamma']}
+        value={['alpha', 'beta', 'gamma']}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Formats' })).toHaveTextContent(
+      'common.dynamicSelect.selected',
+    )
   })
 
   it('should render the shared json editor section', () => {
@@ -42,15 +64,17 @@ describe('form-input-item sections', () => {
           { name: 'Alpha', value: 'alpha', icon: '/alpha.svg' },
           { name: 'Beta', value: 'beta' },
         ]}
+        label="Formats"
         onChange={onChange}
         placeholder="Choose options"
-        selectedLabel=""
+        required={false}
+        selectedLabels={[]}
         value={[]}
       />,
     )
 
     expect(screen.getByText('Choose options')).toBeInTheDocument()
-    await user.click(screen.getByRole('combobox', { name: 'Choose options' }))
+    await user.click(screen.getByRole('combobox', { name: 'Formats' }))
     await user.click(await screen.findByRole('option', { name: 'Alpha' }))
 
     expect(document.querySelector('img[src="/alpha.svg"]')).toBeInTheDocument()

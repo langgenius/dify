@@ -72,8 +72,11 @@ describe('form-input-item helpers', () => {
       createSchema({ multiple: true, type: FormTypeEnum.select }),
       { type: VarKindType.variable, value: ['node', 'formats'] },
     )
-    expect(getTargetVarType(multipleSelectState)).toBe(VarType.array)
+    expect(getTargetVarType(multipleSelectState)).toBe(VarType.arrayString)
     expect(getFilterVar(multipleSelectState)?.({ type: VarType.arrayString } as Var)).toBe(true)
+    expect(getFilterVar(multipleSelectState)?.({ type: VarType.array } as Var)).toBe(true)
+    expect(getFilterVar(multipleSelectState)?.({ type: VarType.arrayNumber } as Var)).toBe(false)
+    expect(getFilterVar(multipleSelectState)?.({ type: VarType.arrayObject } as Var)).toBe(false)
     expect(getFilterVar(multipleSelectState)?.({ type: VarType.string } as Var)).toBe(false)
 
     const multipleDynamicSelectState = getFormInputState(
@@ -82,7 +85,7 @@ describe('form-input-item helpers', () => {
     )
     expect(multipleDynamicSelectState.showTypeSwitch).toBe(true)
     expect(multipleDynamicSelectState.showVariableSelector).toBe(true)
-    expect(getTargetVarType(multipleDynamicSelectState)).toBe(VarType.array)
+    expect(getTargetVarType(multipleDynamicSelectState)).toBe(VarType.arrayString)
   })
 
   it('should return filter functions and var kind types by schema mode', () => {
@@ -153,8 +156,12 @@ describe('form-input-item helpers', () => {
   it('should compute selected labels and checkbox state from visible options', () => {
     const options = [createOption('alpha'), createOption('beta'), createOption('gamma')]
 
-    expect(getSelectedLabels(['alpha', 'beta'], options, 'en_US')).toBe('alpha, beta')
-    expect(getSelectedLabels(['alpha', 'beta', 'gamma'], options, 'en_US')).toBe('3 selected')
+    expect(getSelectedLabels(['alpha', 'beta'], options, 'en_US')).toEqual(['alpha', 'beta'])
+    expect(getSelectedLabels(['alpha', 'beta', 'gamma'], options, 'en_US')).toEqual([
+      'alpha',
+      'beta',
+      'gamma',
+    ])
     expect(getCheckboxListOptions(options, 'en_US')).toEqual([
       { label: 'alpha', value: 'alpha' },
       { label: 'beta', value: 'beta' },
@@ -179,7 +186,7 @@ describe('form-input-item helpers', () => {
 
     expect(getTargetVarType(objectState)).toBe(VarType.object)
     expect(getTargetVarType(arrayState)).toBe(VarType.arrayObject)
-    expect(getSelectedLabels(undefined, [], 'en_US')).toBe('')
+    expect(getSelectedLabels(undefined, [], 'en_US')).toEqual([])
     expect(getCheckboxListValue('alpha', [], [createOption('alpha')])).toEqual(['alpha'])
   })
 })

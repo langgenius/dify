@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { Node } from 'reactflow'
 import type {
   CredentialFormSchema,
+  CredentialFormSchemaBase,
   CredentialFormSchemaNumberInput,
   CredentialFormSchemaRadio,
   CredentialFormSchemaSecretInput,
@@ -53,7 +54,7 @@ const radioGridColumnsClassNames: Record<number, string> = {
 type ModelSelectorValue = Record<string, unknown>
 
 type FormProps<
-  CustomFormSchema extends Omit<CredentialFormSchema, 'type'> & { type: string } = never,
+  CustomFormSchema extends Omit<CredentialFormSchemaBase, 'type'> & { type: string } = never,
 > = {
   className?: string
   itemClassName?: string
@@ -88,7 +89,7 @@ type FormProps<
 }
 
 function Form<
-  CustomFormSchema extends Omit<CredentialFormSchema, 'type'> & { type: string } = never,
+  CustomFormSchema extends Omit<CredentialFormSchemaBase, 'type'> & { type: string } = never,
 >({
   className,
   itemClassName,
@@ -134,7 +135,7 @@ function Form<
     if (isEditMode && (key === '__model_type' || key === '__model_name')) return
 
     setChangeKey(key)
-    const shouldClearVariable: Record<string, string | string[] | undefined> = {}
+    const shouldClearVariable: Record<string, CredentialFormSchemaBase['default']> = {}
     if (showOnVariableMap[key]?.length) {
       showOnVariableMap[key].forEach((clearVariable) => {
         const schema = formSchemas.find((it) => it.variable === clearVariable)

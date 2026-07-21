@@ -17,6 +17,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.errors import ToolParameterValidationError
 
 
 class Tool(ABC):
@@ -58,8 +59,14 @@ class Tool(ABC):
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
-        # try parse tool parameters into the correct type
-        tool_parameters = self._transform_tool_parameters_type(tool_parameters)
+        tool_parameters = self._normalize_tool_parameters(
+            tool_parameters,
+            self.get_merged_runtime_parameters(
+                conversation_id=conversation_id,
+                app_id=app_id,
+                message_id=message_id,
+            ),
+        )
 
         result = self._invoke(
             session=session,
@@ -86,15 +93,20 @@ class Tool(ABC):
             case _:
                 return result
 
-    def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
-        """
-        Transform tool parameters type
-        """
-        # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
+    def _normalize_tool_parameters(
+        self,
+        tool_parameters: dict[str, Any],
+        parameters: list[ToolParameter],
+    ) -> dict[str, Any]:
+        """Normalize provided values against their complete tool parameter declarations."""
+        # Optional omissions stay absent because plugins may distinguish omitted from empty.
         result = deepcopy(tool_parameters)
-        for parameter in self.entity.parameters or []:
-            if parameter.name in tool_parameters:
-                result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
+        for parameter in parameters:
+            if parameter.name in result or parameter.required:
+                try:
+                    result[parameter.name] = parameter.init_frontend_parameter(result.get(parameter.name))
+                except ValueError as error:
+                    raise ToolParameterValidationError(str(error)) from error
 
         return result
 
@@ -196,17 +208,31 @@ class Tool(ABC):
             }:
                 continue
 
-            parameter_schema: dict[str, Any] = (
-                {
-                    "type": parameter.type.as_normal_type(),
-                    "description": parameter.llm_description or "",
-                }
-                if parameter.input_schema is None
-                else deepcopy(parameter.input_schema)
-            )
+            is_multiple_select = parameter.multiple and parameter.type in {
+                ToolParameter.ToolParameterType.SELECT,
+                ToolParameter.ToolParameterType.DYNAMIC_SELECT,
+            }
+            if is_multiple_select:
+                item_schema: dict[str, Any] = {"type": "string"}
+                if parameter.type == ToolParameter.ToolParameterType.SELECT and parameter.options:
+                    item_schema["enum"] = [option.value for option in parameter.options]
+                parameter_schema: dict[str, Any] = {"type": "array", "items": item_schema}
+            else:
+                parameter_schema = (
+                    {
+                        "type": parameter.type.as_normal_type(),
+                        "description": parameter.llm_description or "",
+                    }
+                    if parameter.input_schema is None
+                    else deepcopy(parameter.input_schema)
+                )
             parameter_schema.setdefault("description", parameter.llm_description or "")
 
-            if parameter.type == ToolParameter.ToolParameterType.SELECT and parameter.options:
+            if (
+                not is_multiple_select
+                and parameter.type == ToolParameter.ToolParameterType.SELECT
+                and parameter.options
+            ):
                 parameter_schema["enum"] = [option.value for option in parameter.options]
 
             schema["properties"][parameter.name] = parameter_schema

@@ -11,6 +11,13 @@ import { Type } from '../llm/types'
 import { resolveVarType } from './output-schema-utils'
 
 const i18nPrefix = 'errorMsg'
+const allowsEmptyArray = (field: { _type?: string; type?: string }) =>
+  ['any', 'array'].includes(field._type ?? field.type ?? '')
+const isMissingValue = (value: unknown, allowEmptyArray = false) =>
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (Array.isArray(value) && !value.length && !allowEmptyArray)
 
 const metaData = genNodeMetaData({
   sort: -1,
@@ -43,20 +50,17 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
             })
             return
           }
-          const { type: variable_type, value } = targetVar
-          if (variable_type === VarKindType.variable) {
-            if (!errorMessages && (!value || value.length === 0))
-              errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
-                ns: 'workflow',
-                field: field.label,
-              })
-          } else {
-            if (!errorMessages && (value === undefined || value === null || value === ''))
-              errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
-                ns: 'workflow',
-                field: field.label,
-              })
-          }
+          if (
+            !errorMessages &&
+            isMissingValue(
+              targetVar.value,
+              targetVar.type !== VarKindType.variable && allowsEmptyArray(field),
+            )
+          )
+            errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+              ns: 'workflow',
+              field: field.label,
+            })
         })
     }
 
@@ -67,19 +71,20 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
         })
         .forEach((field: any) => {
           const value = payload.tool_configurations[field.variable]
-          if (!errorMessages && (value === undefined || value === null || value === ''))
+          if (!errorMessages && isMissingValue(value, allowsEmptyArray(field)))
             errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
               ns: 'workflow',
               field: field.label[language],
             })
           if (
             !errorMessages &&
+            value &&
             typeof value === 'object' &&
-            !!value.type &&
-            (value.value === undefined ||
-              value.value === null ||
-              value.value === '' ||
-              (Array.isArray(value.value) && value.value.length === 0))
+            'type' in value &&
+            isMissingValue(
+              value.value,
+              value.type !== VarKindType.variable && allowsEmptyArray(field),
+            )
           )
             errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
               ns: 'workflow',
