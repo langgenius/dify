@@ -1,6 +1,8 @@
 import { atom } from 'jotai'
 
-export type AgentConfigureRightPanelMode = 'build' | 'preview'
+export const AGENT_CONFIGURE_RIGHT_PANEL_MODES = ['build', 'preview'] as const
+
+export type AgentConfigureRightPanelMode = (typeof AGENT_CONFIGURE_RIGHT_PANEL_MODES)[number]
 export type AgentConfigureConversationIds = Record<AgentConfigureRightPanelMode, string | null>
 export type AgentConfigureSoulSource = 'draft' | 'build-draft' | 'view-version'
 
@@ -17,9 +19,7 @@ export const agentConfigureConversationIdsAtom = atom<AgentConfigureConversation
 })
 
 export const agentConfigureRightPanelChatModeAtom = atom((get): AgentConfigureRightPanelMode => {
-  const mode = get(agentConfigureRightPanelModeAtom)
-
-  return mode === 'preview' ? 'build' : mode
+  return get(agentConfigureRightPanelModeAtom)
 })
 
 export const agentConfigureSelectVersionAtom = atom(null, (_get, set, versionId: string | null) => {

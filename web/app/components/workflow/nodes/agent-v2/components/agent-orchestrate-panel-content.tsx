@@ -230,6 +230,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
     agentId,
     activeVersionId: activeConfigSnapshot?.id,
     composerAgentSoulConfig: agentSoulConfig,
+    isBuildMode: true,
     isViewingVersion: false,
     normalAgentSoulConfig: agentSoulConfig,
     setSoulSourceOverride,

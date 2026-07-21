@@ -2,7 +2,11 @@
 
 import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
-import type { AgentPreviewChatController, AgentPreviewChatRuntimeState } from './chat-conversation'
+import type {
+  AgentChatMessageSender,
+  AgentPreviewChatController,
+  AgentPreviewChatRuntimeState,
+} from './chat-conversation'
 import type { AgentChatRuntimeEmptyStateProps } from './chat-runtime'
 import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
@@ -33,6 +37,7 @@ export function AgentPreviewChatSession({
   inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
+  sendMessage,
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
@@ -56,6 +61,7 @@ export function AgentPreviewChatSession({
   inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
+  sendMessage: AgentChatMessageSender
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
@@ -157,6 +163,7 @@ export function AgentPreviewChatSession({
           inputs={inputs}
           inputsForm={inputsForm}
           sendButtonLabel={sendButtonLabel}
+          sendMessage={sendMessage}
           speechToTextTarget={speechToTextTarget}
           onBeforeSpeechToText={onBeforeSpeechToText}
           onClearChatListChange={onClearChatListChange}

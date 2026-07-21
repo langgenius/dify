@@ -12,7 +12,9 @@ import { consoleQuery } from '@/service/client'
 import { render } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { TransferMethod } from '@/types/app'
+import { sendBuildChatMessage } from '../build-chat-request'
 import { AgentChatRuntime } from '../chat-runtime'
+import { sendPreviewChatMessage } from '../preview-chat-request'
 
 const useChatMock = vi.hoisted(() => vi.fn())
 const handleSendMock = vi.hoisted(() => vi.fn())
@@ -250,6 +252,7 @@ function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntim
             clearChatList={false}
             inputPlaceholder="Message agent"
             renderEmptyState={() => null}
+            sendMessage={sendPreviewChatMessage}
             onClearChatListChange={vi.fn()}
             {...props}
           />
@@ -269,6 +272,7 @@ function RuntimeConversationHarness() {
       conversationId={conversationId}
       inputPlaceholder="Message agent"
       renderEmptyState={() => null}
+      sendMessage={sendPreviewChatMessage}
       onClearChatListChange={vi.fn()}
       onConversationIdChange={setConversationId}
     />
@@ -284,6 +288,7 @@ function RuntimeClearCommandHarness({ inputPlaceholder }: { inputPlaceholder: st
       clearChatList={clearChatList}
       inputPlaceholder={inputPlaceholder}
       renderEmptyState={() => null}
+      sendMessage={sendPreviewChatMessage}
       onClearChatListChange={setClearChatList}
     />
   )
@@ -353,6 +358,48 @@ describe('AgentPreviewChat', () => {
     stopPostMock.mockResolvedValue({ result: 'success' })
     stopCallbackRef.current = undefined
     sendResultRef.current = undefined
+  })
+
+  it('should keep build and preview chat requests independently replaceable', () => {
+    const buildHandleSend = vi.fn()
+    const previewHandleSend = vi.fn()
+    const callbacks = {
+      onSendSettled: vi.fn(),
+    }
+    const buildData = {
+      query: 'Build an agent',
+      draft_type: 'debug_build',
+    }
+    const previewData = {
+      query: 'Preview the agent',
+      draft_type: 'debug_build',
+    }
+
+    expect(sendBuildChatMessage).not.toBe(sendPreviewChatMessage)
+
+    sendBuildChatMessage({
+      agentId: 'agent-1',
+      callbacks,
+      data: buildData,
+      handleSend: buildHandleSend,
+    })
+    sendPreviewChatMessage({
+      agentId: 'agent-1',
+      callbacks,
+      data: previewData,
+      handleSend: previewHandleSend,
+    })
+
+    expect(buildHandleSend).toHaveBeenCalledWith(
+      'agent/agent-1/chat-messages',
+      buildData,
+      callbacks,
+    )
+    expect(previewHandleSend).toHaveBeenCalledWith(
+      'agent/agent-1/chat-messages',
+      previewData,
+      callbacks,
+    )
   })
 
   it('should bind Agent preview voice input to the normal Agent draft', () => {
@@ -1050,6 +1097,7 @@ describe('AgentPreviewChat', () => {
   it('should send build chat with the debug build draft type', async () => {
     renderPreviewChat({
       draftType: 'debug_build',
+      sendMessage: sendBuildChatMessage,
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'send' }))
@@ -1125,6 +1173,7 @@ describe('AgentPreviewChat', () => {
         ],
       },
       draftType: 'debug_build',
+      sendMessage: sendBuildChatMessage,
       onSaveDraftBeforeRun: saveDraftBeforeRun,
     })
 

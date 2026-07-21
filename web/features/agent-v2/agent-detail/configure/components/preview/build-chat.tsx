@@ -3,6 +3,7 @@
 import type { AgentChatRuntimeProps } from './chat-runtime'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
+import { sendBuildChatMessage } from './build-chat-request'
 import { AgentChatRuntime } from './chat-runtime'
 
 const buildIconGridCellOpacities = [
@@ -23,7 +24,7 @@ const buildIconGridCells = buildIconGridCellOpacities.map((opacity, index) => ({
 
 type AgentBuildChatProps = Omit<
   AgentChatRuntimeProps,
-  'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel'
+  'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel' | 'sendMessage'
 >
 
 function AgentBuildChatEmptyState() {
@@ -95,6 +96,7 @@ export function AgentBuildChat(props: AgentBuildChatProps) {
       inputPlaceholder={t(($) => $['agentDetail.configure.build.inputPlaceholder'])}
       inputAutoFocus={false}
       sendButtonLabel={t(($) => $['agentDetail.configure.build.startBuild'])}
+      sendMessage={sendBuildChatMessage}
       renderEmptyState={() => <AgentBuildChatEmptyState />}
     />
   )

@@ -4,8 +4,12 @@ import type { AgentChatRuntimeEmptyStateProps, AgentChatRuntimeProps } from './c
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentChatRuntime } from './chat-runtime'
+import { sendPreviewChatMessage } from './preview-chat-request'
 
-type AgentPreviewChatProps = Omit<AgentChatRuntimeProps, 'inputPlaceholder' | 'renderEmptyState'>
+type AgentPreviewChatProps = Omit<
+  AgentChatRuntimeProps,
+  'inputPlaceholder' | 'renderEmptyState' | 'sendMessage'
+>
 
 function AgentPreviewChatEmptyState({
   agentIcon,
@@ -57,6 +61,7 @@ export function AgentPreviewChat(props: AgentPreviewChatProps) {
       inputPlaceholder={t(($) => $['agentDetail.configure.preview.inputPlaceholder'], {
         name: agentName,
       })}
+      sendMessage={sendPreviewChatMessage}
       renderEmptyState={(emptyStateProps) => <AgentPreviewChatEmptyState {...emptyStateProps} />}
     />
   )

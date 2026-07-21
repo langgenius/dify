@@ -141,6 +141,7 @@ export function useAgentConfigureBuildDraftData({
   agentId,
   activeVersionId,
   composerAgentSoulConfig,
+  isBuildMode,
   isViewingVersion,
   normalAgentSoulConfig,
   setSoulSourceOverride,
@@ -149,6 +150,7 @@ export function useAgentConfigureBuildDraftData({
   agentId: string
   activeVersionId: string | null | undefined
   composerAgentSoulConfig?: AgentSoulConfig
+  isBuildMode: boolean
   isViewingVersion: boolean
   normalAgentSoulConfig?: AgentSoulConfig
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
@@ -178,7 +180,10 @@ export function useAgentConfigureBuildDraftData({
   const buildDraftQuery = useQuery({
     ...buildDraftQueryOptions,
     enabled:
-      !isViewingVersion && soulSourceOverride !== 'draft' && soulSourceOverride !== 'view-version',
+      isBuildMode &&
+      !isViewingVersion &&
+      soulSourceOverride !== 'draft' &&
+      soulSourceOverride !== 'view-version',
     queryFn: async (context) => {
       try {
         const queryOptions = shouldSilenceBuildDraftCheckRef.current
@@ -205,10 +210,12 @@ export function useAgentConfigureBuildDraftData({
     refetch: refetchBuildDraft,
   } = buildDraftQuery
   const buildDraftNotFound = isNotFoundResponse(buildDraftError)
-  const soulSource: AgentConfigureSoulSource = isViewingVersion
+  const resolvedSoulSource: AgentConfigureSoulSource = isViewingVersion
     ? 'view-version'
     : (soulSourceOverride ??
       (!buildDraftNotFound && !!buildDraftData && !isBuildDraftError ? 'build-draft' : 'draft'))
+  const hasActiveBuildDraft = resolvedSoulSource === 'build-draft'
+  const soulSource = !isBuildMode && hasActiveBuildDraft ? 'draft' : resolvedSoulSource
   const isBuildDraftActive = soulSource === 'build-draft'
   const buildDraftAgentSoulConfig = buildDraftData?.agent_soul as AgentSoulConfig | undefined
   const visibleAgentSoulConfig = isBuildDraftActive
@@ -244,11 +251,14 @@ export function useAgentConfigureBuildDraftData({
       ? `build-draft:${buildDraftDataUpdatedAt}`
       : activeVersionId,
     agentSoulConfig: visibleAgentSoulConfig,
+    buildDraftAgentSoulConfig,
     changedKeys: buildDraftChangeSummary.changedKeys,
     changeSummary: buildDraftChangeSummary,
     changesCount: buildDraftChangeSummary.changesCount,
+    hasActiveBuildDraft,
     isActive: isBuildDraftActive,
     isPending:
+      isBuildMode &&
       !isViewingVersion &&
       soulSourceOverride !== 'draft' &&
       soulSourceOverride !== 'view-version' &&

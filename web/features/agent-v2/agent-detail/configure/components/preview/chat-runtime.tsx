@@ -2,6 +2,7 @@
 
 import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
+import type { AgentChatMessageSender } from './chat-conversation'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Loading from '@/app/components/base/loading'
@@ -31,6 +32,7 @@ export type AgentChatRuntimeProps = {
   inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
+  sendMessage: AgentChatMessageSender
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
@@ -54,6 +56,7 @@ export function AgentChatRuntime({
   inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
+  sendMessage,
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
@@ -130,6 +133,7 @@ export function AgentChatRuntime({
       inputAutoFocus={inputAutoFocus}
       sendButtonLabel={sendButtonLabel}
       renderEmptyState={renderEmptyState}
+      sendMessage={sendMessage}
       onClearChatListChange={handleClearChatListChange}
       onConversationComplete={onConversationComplete}
       onConversationIdChange={onConversationIdChange}
