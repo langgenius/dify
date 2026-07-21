@@ -77,6 +77,7 @@ const defaultProviderContext = {
 }
 
 const defaultModalContext: ModalContextState = {
+  hasBlockingModalOpen: false,
   setShowAccountSettingModal: noop,
   setShowModerationSettingModal: noop,
   setShowExternalDataToolModal: noop,

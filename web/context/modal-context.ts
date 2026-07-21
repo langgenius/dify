@@ -45,6 +45,7 @@ export type ModelModalType = {
 }
 
 export type ModalContextState = {
+  hasBlockingModalOpen: boolean
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<SettingsTab> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
@@ -74,6 +75,7 @@ export type ModalContextState = {
 }
 
 export const ModalContext = createContext<ModalContextState>({
+  hasBlockingModalOpen: false,
   setShowAccountSettingModal: noop,
   setShowModerationSettingModal: noop,
   setShowExternalDataToolModal: noop,
