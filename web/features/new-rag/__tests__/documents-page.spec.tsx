@@ -2577,6 +2577,75 @@ describe('DocumentsPage', () => {
     expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
   })
 
+  it('bounds task-list recovery polling and resumes a denied stream at a newer version', async () => {
+    vi.useFakeTimers()
+    let resolveDocumentsRefetch!: (result: { error: null }) => void
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    documentsQuery.refetch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDocumentsRefetch = resolve
+        }),
+    )
+    tasksQuery.dataUpdateCount = 1
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ id: 'recovering-stream', updatedAt: '2026-07-20T10:01:00Z' })],
+        },
+      ],
+    }
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) {
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: 'running' as const,
+            updatedAt: '2026-07-20T10:02:00Z',
+          },
+          event: 'progress' as const,
+          id: 'recovering-stream:version-2',
+        }
+        throw new Response(null, { status: 403 })
+      }
+      await new Promise<void>(() => {})
+    })
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => {})
+      expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+      await act(async () => resolveDocumentsRefetch({ error: null }))
+      tasksQuery.refetch.mockClear()
+
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(tasksQuery.refetch).toHaveBeenCalledWith({ cancelRefetch: false })
+      expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [task({ id: 'recovering-stream', updatedAt: '2026-07-20T10:03:00Z' })],
+          },
+        ],
+      }
+      tasksQuery.dataUpdateCount = 2
+      act(() => notifyTaskQuerySuccess())
+      await act(async () => {})
+
+      expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2)
+      tasksQuery.refetch.mockClear()
+      await act(async () => vi.advanceTimersByTime(60000))
+      expect(tasksQuery.refetch).not.toHaveBeenCalled()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('focuses the permission alert when an auxiliary retry becomes a document denial', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
@@ -3820,6 +3889,37 @@ describe('DocumentsPage', () => {
     expect(streamCursors).toEqual([undefined, 'task-1:cursor'])
   })
 
+  it('does not retain a reconnect timer for an already-aborted observer', async () => {
+    vi.useFakeTimers()
+    let finishStream!: () => void
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      await new Promise<void>((resolve) => {
+        finishStream = resolve
+      })
+    })
+    const rendered = render(
+      <TaskEventObserver
+        documentId="document-1"
+        knowledgeSpaceId="space-1"
+        onEvent={vi.fn(() => true)}
+        onLastEventIdChange={vi.fn()}
+        onPermissionDenied={vi.fn()}
+        taskId="task-1"
+        taskVersion="2026-07-20T10:01:00Z"
+      />,
+    )
+    try {
+      await act(async () => {})
+      rendered.unmount()
+      await act(async () => finishStream())
+
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('blocks the latest streamed task version when a reconnect loses permission', async () => {
     vi.useFakeTimers()
     let streamCount = 0
@@ -4370,6 +4470,50 @@ describe('DocumentsPage', () => {
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
       await act(async () => vi.advanceTimersByTime(60000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('accepts a same-version active list lifecycle after a failed poll is denied', async () => {
+    vi.useFakeTimers()
+    const taskVersion = '2026-07-20T10:01:00Z'
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.dataUpdateCount = 1
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({ id: 'denied-failed-poll-retry', state: 'failed', updatedAt: taskVersion }),
+          ],
+        },
+      ],
+    }
+    getTaskSnapshot.mockRejectedValueOnce(new Response(null, { status: 403 }))
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      await new Promise<void>(() => {})
+    })
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [
+              task({ id: 'denied-failed-poll-retry', state: 'running', updatedAt: taskVersion }),
+            ],
+          },
+        ],
+      }
+      tasksQuery.dataUpdateCount = 2
+      act(() => notifyTaskQuerySuccess())
+      await act(async () => {})
+
+      expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
     } finally {
       rendered.unmount()
       vi.useRealTimers()

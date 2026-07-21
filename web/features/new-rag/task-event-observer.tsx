@@ -1,7 +1,7 @@
 'use client'
 
 import type { ProcessingTaskEvent } from './services/processing-task-events'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { taskVersionIsAfter } from './document-model'
 import { streamProcessingTaskEvents } from './services/processing-task-events'
 
@@ -9,11 +9,16 @@ const TASK_EVENT_RECONNECT_DELAY = 1000
 const TASK_EVENT_MAX_RECONNECT_DELAY = 30000
 
 function waitForTaskEventReconnect(signal: AbortSignal, delay: number) {
+  if (signal.aborted) return Promise.resolve()
   return new Promise<void>((resolve) => {
+    let settled = false
     const timeout = window.setTimeout(finish, delay)
     signal.addEventListener('abort', finish, { once: true })
+    if (signal.aborted) finish()
 
     function finish() {
+      if (settled) return
+      settled = true
       window.clearTimeout(timeout)
       signal.removeEventListener('abort', finish)
       resolve()
@@ -52,11 +57,15 @@ export function TaskEventObserver({
   taskVersion: string
 }) {
   const resumeEventIdRef = useRef(lastEventId)
-  resumeEventIdRef.current = lastEventId
+  useLayoutEffect(() => {
+    resumeEventIdRef.current = lastEventId
+  }, [lastEventId])
   const latestTaskVersionRef = useRef(taskVersion)
   const streamTaskVersionRef = useRef(taskVersion)
-  if (taskVersionIsAfter(taskVersion, latestTaskVersionRef.current))
-    latestTaskVersionRef.current = taskVersion
+  useLayoutEffect(() => {
+    if (taskVersionIsAfter(taskVersion, latestTaskVersionRef.current))
+      latestTaskVersionRef.current = taskVersion
+  }, [taskVersion])
 
   useEffect(() => {
     const controller = new AbortController()

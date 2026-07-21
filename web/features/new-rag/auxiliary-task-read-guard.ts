@@ -21,7 +21,8 @@ export function createAuxiliaryTaskReadGuard() {
       blockedVersions.delete(taskId)
     },
     isBlocked(taskId: string, taskVersion: string) {
-      return blockedVersions.get(taskId) === taskVersion
+      const blockedVersion = blockedVersions.get(taskId)
+      return Boolean(blockedVersion && !taskVersionIsAfter(taskVersion, blockedVersion))
     },
     retain(taskIds: Set<string>) {
       for (const taskId of blockedVersions.keys()) {

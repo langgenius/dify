@@ -46,6 +46,8 @@ const MAX_TASK_EVENT_STREAMS = 6
 const MAX_AUTO_CURSOR_PAGES = 20
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
 const TERMINAL_RECONCILIATION_REQUEST_TIMEOUT = 3000
+const BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 5000
+const MAX_BLOCKED_ACTIVE_TASK_REFRESHES = 6
 const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.md,.markdown,.html,.htm,.xls,.xlsx,.txt'
 const documentFilterParser = parseAsStringLiteral([
   'all',
@@ -82,6 +84,11 @@ type TerminalTaskPin = {
 type TrustedActiveOverride = {
   taskListGeneration: number
   updatedAt: string
+}
+
+type FailedPollAuxiliaryDenial = {
+  taskListGeneration: number
+  taskVersion: string
 }
 
 const DOCUMENT_PERMISSION_DENIED = 1
@@ -178,6 +185,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
   const failedTaskPollGenerationsRef = useRef(new Map<string, number>())
   const blockedFailedTaskPollVersionsRef = useRef(new Map<string, string>())
+  const failedPollAuxiliaryDenialsRef = useRef(new Map<string, FailedPollAuxiliaryDenial>())
   const equalRetryListGenerationsRef = useRef(new Map<string, number>())
   const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
   const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
@@ -333,19 +341,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     dataUpdatedAt: tasksQuery.dataUpdatedAt,
   })
   const taskListGenerationRef = useRef(0)
-  if (
-    taskListSnapshotRef.current.dataUpdateCount !== taskDataUpdateCount ||
-    taskListSnapshotRef.current.dataUpdatedAt !== tasksQuery.dataUpdatedAt ||
-    taskListSnapshotRef.current.data !== tasksQuery.data
-  ) {
+  const [taskListGeneration, setTaskListGeneration] = useState(0)
+  useLayoutEffect(() => {
+    if (
+      taskListSnapshotRef.current.dataUpdateCount === taskDataUpdateCount &&
+      taskListSnapshotRef.current.dataUpdatedAt === tasksQuery.dataUpdatedAt &&
+      taskListSnapshotRef.current.data === tasksQuery.data
+    )
+      return
     taskListSnapshotRef.current = {
       data: tasksQuery.data,
       dataUpdateCount: taskDataUpdateCount,
       dataUpdatedAt: tasksQuery.dataUpdatedAt,
     }
     taskListGenerationRef.current += 1
-  }
-  const taskListGeneration = taskListGenerationRef.current
+    setTaskListGeneration(taskListGenerationRef.current)
+  }, [taskDataUpdateCount, tasksQuery.data, tasksQuery.dataUpdatedAt])
   const baseTaskById = useMemo(() => new Map(baseTasks.map((task) => [task.id, task])), [baseTasks])
   const sourceNames = useMemo(
     () =>
@@ -385,7 +396,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [sourcesQuery.data],
   )
   const baseTaskByIdRef = useRef(baseTaskById)
-  baseTaskByIdRef.current = baseTaskById
+  useLayoutEffect(() => {
+    baseTaskByIdRef.current = baseTaskById
+  }, [baseTaskById])
   const tasks = useMemo(
     () =>
       baseTasks.map((task) => {
@@ -423,17 +436,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }
   }, [tasks])
   const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
-  currentTaskStateRef.current = new Map(tasks.map((task) => [task.id, task.state]))
   const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
-  const currentTaskIds = new Set(tasks.map((task) => task.id))
-  for (const task of tasks) {
-    const currentVersion = currentTaskVersionRef.current.get(task.id)
-    if (!currentVersion || taskVersionIsAfter(task.updatedAt, currentVersion))
-      currentTaskVersionRef.current.set(task.id, task.updatedAt)
-  }
-  for (const taskId of currentTaskVersionRef.current.keys()) {
-    if (!currentTaskIds.has(taskId)) currentTaskVersionRef.current.delete(taskId)
-  }
+  useLayoutEffect(() => {
+    const currentTaskIds = new Set(tasks.map((task) => task.id))
+    for (const task of tasks) {
+      const currentVersion = currentTaskVersionRef.current.get(task.id)
+      if (!currentVersion || !taskVersionIsAfter(currentVersion, task.updatedAt)) {
+        currentTaskStateRef.current.set(task.id, task.state)
+        currentTaskVersionRef.current.set(task.id, task.updatedAt)
+      }
+    }
+    for (const taskId of currentTaskVersionRef.current.keys()) {
+      if (currentTaskIds.has(taskId)) continue
+      currentTaskStateRef.current.delete(taskId)
+      currentTaskVersionRef.current.delete(taskId)
+    }
+  }, [tasks])
 
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
   const documentStatuses = useMemo(
@@ -622,6 +640,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       (_, index) => streamableActiveTasks[(offset + index) % streamableActiveTasks.length]!,
     )
   })()
+  const blockedActiveTaskSignature = orderedActiveTasks
+    .map((task) => [task.id, taskObserverVersion(task)] as const)
+    .filter(([taskId, taskVersion]) => auxiliaryTaskReadGuard.isBlocked(taskId, taskVersion))
+    .map(([taskId, taskVersion]) => `${taskId}:${taskVersion}`)
+    .join('|')
   const orderedFailedTasks = useMemo(
     () =>
       tasks
@@ -634,7 +657,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [tasks],
   )
   const orderedFailedTasksRef = useRef(orderedFailedTasks)
-  orderedFailedTasksRef.current = orderedFailedTasks
+  useLayoutEffect(() => {
+    orderedFailedTasksRef.current = orderedFailedTasks
+  }, [orderedFailedTasks])
   const failedTaskPollSignature = orderedFailedTasks
     .map((task) => `${task.id}:${task.updatedAt}`)
     .join('|')
@@ -683,6 +708,25 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     )
     return () => window.clearInterval(interval)
   }, [orderedActiveTasks.length, permissionDenied])
+
+  useEffect(() => {
+    if (permissionDenied || !blockedActiveTaskSignature) return
+    let canceled = false
+    let refreshCount = 0
+    let timeout: number | undefined
+    const refreshBlockedTasks = () => {
+      if (canceled || refreshCount >= MAX_BLOCKED_ACTIVE_TASK_REFRESHES) return
+      refreshCount += 1
+      void refetchTasksQuery({ cancelRefetch: false })
+      if (refreshCount < MAX_BLOCKED_ACTIVE_TASK_REFRESHES)
+        timeout = window.setTimeout(refreshBlockedTasks, BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL)
+    }
+    timeout = window.setTimeout(refreshBlockedTasks, BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL)
+    return () => {
+      canceled = true
+      if (timeout !== undefined) window.clearTimeout(timeout)
+    }
+  }, [blockedActiveTaskSignature, permissionDenied, refetchTasksQuery])
 
   useLayoutEffect(() => {
     if (!writePermissionRevoked || !writePermissionFocusRecoveryRequestedRef.current) return
@@ -960,6 +1004,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         )
           return
         terminalReconciliationControllersRef.current.delete(taskId)
+        const currentTaskVersion = currentTaskVersionRef.current.get(taskId)
+        if (currentTaskVersion && taskVersionIsAfter(currentTaskVersion, snapshot.updatedAt)) return
         if (taskVersionIsAfter(terminalVersion, snapshot.updatedAt)) return
         auxiliaryTaskReadGuard.clearTask(taskId)
         const normalizedSnapshot = normalizedTaskSnapshot(snapshot)
@@ -999,7 +1045,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         if (terminalReconciliationControllersRef.current.get(taskId) !== controller) return
         terminalReconciliationControllersRef.current.delete(taskId)
         if (responseStatus(error) === 403) {
-          denyAuxiliaryTaskRead(taskId, terminalVersion)
+          const currentTaskVersion = currentTaskVersionRef.current.get(taskId)
+          denyAuxiliaryTaskRead(
+            taskId,
+            currentTaskVersion && taskVersionIsAfter(currentTaskVersion, terminalVersion)
+              ? currentTaskVersion
+              : terminalVersion,
+          )
           return
         }
         if (
@@ -1109,6 +1161,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     pruneMap(terminalReconciliationGenerationsRef.current)
     pruneMap(failedTaskPollGenerationsRef.current)
     pruneMap(blockedFailedTaskPollVersionsRef.current)
+    pruneMap(failedPollAuxiliaryDenialsRef.current)
     auxiliaryTaskReadGuard.retain(taskIds)
     pruneMap(equalRetryListGenerationsRef.current)
     pruneMap(pendingTerminalProgressRef.current)
@@ -1479,6 +1532,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       if (currentVersion && taskVersionIsAfter(currentVersion, task.updatedAt)) return
       streamActiveOverrideVersionsRef.current.delete(task.id)
       auxiliaryTaskReadGuard.clearTask(task.id)
+      failedPollAuxiliaryDenialsRef.current.delete(task.id)
       if (taskIsActive(task))
         trustedActiveOverrideVersionsRef.current.set(task.id, {
           taskListGeneration: taskListGenerationRef.current,
@@ -1489,6 +1543,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       taskProgressStore.delete(task.id)
       currentTaskStateRef.current.set(task.id, task.state)
       currentTaskVersionRef.current.set(task.id, task.updatedAt)
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- A committed active list lifecycle retires the denied failed snapshot.
       setTaskOverrides((current) => ({ ...current, [task.id]: normalizedTaskSnapshot(task) }))
       if (taskIsActive(task)) {
         blockedFailedTaskPollVersionsRef.current.delete(task.id)
@@ -1503,6 +1558,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         const pollGeneration = failedTaskPollGenerationsRef.current.get(task.id) ?? 0
         failedTaskPollGenerationsRef.current.set(task.id, pollGeneration + 1)
         pendingTerminalProgressRef.current.delete(task.id)
+        // oxlint-disable-next-line eslint-react/set-state-in-effect -- The authoritative active lifecycle supersedes the terminal pin.
         setTerminalTaskPins((current) => {
           const next = { ...current }
           delete next[task.id]
@@ -1512,6 +1568,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     },
     [auxiliaryTaskReadGuard, taskProgressStore],
   )
+
+  useEffect(() => {
+    if (permissionDenied) return
+    for (const task of baseTasks) {
+      if (!taskIsActive(task)) continue
+      const denial = failedPollAuxiliaryDenialsRef.current.get(task.id)
+      if (!denial || taskListGeneration <= denial.taskListGeneration) continue
+      if (taskVersionIsAfter(denial.taskVersion, task.updatedAt)) continue
+      failedPollAuxiliaryDenialsRef.current.delete(task.id)
+      handleTaskUpdated(task)
+    }
+  }, [baseTasks, handleTaskUpdated, permissionDenied, taskListGeneration])
 
   useEffect(() => {
     for (const task of activeTasks) {
@@ -1589,7 +1657,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               )
                 return
               if (responseStatus(error) === 403) {
-                denyAuxiliaryTaskRead(task.id, task.updatedAt)
+                const currentTaskVersion = currentTaskVersionRef.current.get(task.id)
+                const deniedVersion =
+                  currentTaskVersion && taskVersionIsAfter(currentTaskVersion, task.updatedAt)
+                    ? currentTaskVersion
+                    : task.updatedAt
+                failedPollAuxiliaryDenialsRef.current.set(task.id, {
+                  taskListGeneration: taskListGenerationRef.current,
+                  taskVersion: deniedVersion,
+                })
+                denyAuxiliaryTaskRead(task.id, deniedVersion)
                 return
               }
               if (!taskSnapshotErrorIsTransient(error))

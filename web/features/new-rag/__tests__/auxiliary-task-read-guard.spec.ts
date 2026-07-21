@@ -7,16 +7,20 @@ import {
 describe('createAuxiliaryTaskReadGuard', () => {
   it('blocks every auxiliary reader for the denied task version', () => {
     const guard = createAuxiliaryTaskReadGuard()
+    const olderVersion = '2026-07-20T10:01:00Z'
+    const deniedVersion = '2026-07-20T10:02:00Z'
+    const newerVersion = '2026-07-20T10:03:00Z'
 
-    guard.block('task-1', 'version-1')
+    guard.block('task-1', deniedVersion)
 
-    expect(guard.isBlocked('task-1', 'version-1')).toBe(true)
-    expect(guard.isBlocked('task-1', 'version-2')).toBe(false)
-    expect(guard.isBlocked('task-2', 'version-1')).toBe(false)
+    expect(guard.isBlocked('task-1', olderVersion)).toBe(true)
+    expect(guard.isBlocked('task-1', deniedVersion)).toBe(true)
+    expect(guard.isBlocked('task-1', newerVersion)).toBe(false)
+    expect(guard.isBlocked('task-2', deniedVersion)).toBe(false)
 
-    guard.block('task-1', 'version-0')
-    expect(guard.isBlocked('task-1', 'version-1')).toBe(true)
-    expect(guard.isBlocked('task-1', 'version-0')).toBe(false)
+    guard.block('task-1', olderVersion)
+    expect(guard.isBlocked('task-1', olderVersion)).toBe(true)
+    expect(guard.isBlocked('task-1', deniedVersion)).toBe(true)
   })
 
   it('retires blocks after task or document authority changes', () => {
