@@ -202,18 +202,18 @@ describe('Tabs', () => {
       />,
     )
 
-    const blocksSearch = screen.getByPlaceholderText('workflow.tabs.searchBlock')
+    const blocksSearch = screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })
     await user.type(blocksSearch, 'llm')
     await user.click(screen.getByRole('tab', { name: 'Tools' }))
 
-    const toolsSearch = screen.getByPlaceholderText('plugin.searchTools')
+    const toolsSearch = screen.getByRole('searchbox', { name: 'plugin.searchTools' })
     expect(toolsSearch).toHaveValue('')
     await user.type(toolsSearch, 'slack')
     await user.click(screen.getByRole('tab', { name: 'Blocks' }))
 
-    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toHaveValue('llm')
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toHaveValue('llm')
     await user.click(screen.getByRole('tab', { name: 'Tools' }))
-    expect(screen.getByPlaceholderText('plugin.searchTools')).toHaveValue('slack')
+    expect(screen.getByRole('searchbox', { name: 'plugin.searchTools' })).toHaveValue('slack')
   })
 
   it('should force start content to render and invalidate built-in tools after featured installs', async () => {

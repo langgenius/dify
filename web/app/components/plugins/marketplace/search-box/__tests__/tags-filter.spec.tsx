@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TagsFilter from '../tags-filter'
 
@@ -34,46 +35,12 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 
 vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
-vi.mock('../trigger/marketplace', async () => {
-  const { PopoverTrigger } = await import('@langgenius/dify-ui/popover')
-
-  return {
-    default: ({ selectedTagsLength }: { selectedTagsLength: number }) => (
-      <PopoverTrigger
-        render={
-          <button type="button" data-testid="marketplace-trigger">
-            marketplace:
-            {selectedTagsLength}
-          </button>
-        }
-      />
-    ),
-  }
-})
-
-vi.mock('../trigger/tool-selector', async () => {
-  const { PopoverTrigger } = await import('@langgenius/dify-ui/popover')
-
-  return {
-    default: ({ selectedTagsLength }: { selectedTagsLength: number }) => (
-      <PopoverTrigger
-        render={
-          <button type="button" data-testid="tool-trigger">
-            tool:
-            {selectedTagsLength}
-          </button>
-        }
-      />
-    ),
-  }
-})
-
 describe('TagsFilter', () => {
-  const ensurePopoverOpen = () => {
-    if (!screen.queryByTestId('popover-content'))
-      fireEvent.click(screen.getByTestId('tool-trigger'))
+  const ensurePopoverOpen = async (user: ReturnType<typeof userEvent.setup>) => {
+    if (!screen.queryByRole('searchbox', { name: 'pluginTags.searchTags' }))
+      await user.click(screen.getByRole('button', { name: 'pluginTags.allTags' }))
 
-    return screen.getByTestId('popover-content')
+    return screen.getByRole('searchbox', { name: 'pluginTags.searchTags' })
   }
 
   beforeEach(() => {
@@ -83,54 +50,42 @@ describe('TagsFilter', () => {
     )
   })
 
-  it('renders marketplace trigger when used in marketplace', () => {
-    render(<TagsFilter tags={['agent']} onTagsChange={vi.fn()} usedInMarketplace />)
-
-    expect(screen.getByTestId('marketplace-trigger')).toHaveTextContent('marketplace:1')
-    expect(screen.queryByTestId('tool-trigger')).not.toBeInTheDocument()
-  })
-
-  it('renders tool selector trigger when used outside marketplace', () => {
-    render(<TagsFilter tags={['agent']} onTagsChange={vi.fn()} />)
-
-    expect(screen.getByTestId('tool-trigger')).toHaveTextContent('tool:1')
-    expect(screen.queryByTestId('marketplace-trigger')).not.toBeInTheDocument()
-  })
-
-  it('filters tag options by search text', () => {
+  it('filters tag options by search text', async () => {
+    const user = userEvent.setup()
     render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
-    fireEvent.click(screen.getByTestId('tool-trigger'))
+    const search = await ensurePopoverOpen(user)
 
-    expect(screen.getByText('Agent')).toBeInTheDocument()
-    expect(screen.getByText('RAG')).toBeInTheDocument()
-    expect(screen.getByText('Search')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Agent' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Search' })).toBeInTheDocument()
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'pluginTags.searchTags' }), {
-      target: { value: 'ra' },
-    })
+    await user.type(search, 'ra')
 
-    expect(screen.queryByText('Agent')).not.toBeInTheDocument()
-    expect(screen.getByText('RAG')).toBeInTheDocument()
-    expect(screen.queryByText('Search')).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Agent' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Search' })).not.toBeInTheDocument()
   })
 
-  it('adds and removes selected tags when options are clicked', () => {
+  it('adds and removes selected tags when options are clicked', async () => {
+    const user = userEvent.setup()
     const onTagsChange = vi.fn()
     const { rerender } = render(<TagsFilter tags={['agent']} onTagsChange={onTagsChange} />)
 
-    fireEvent.click(within(ensurePopoverOpen()).getByText('Agent'))
+    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Agent' }))
     expect(onTagsChange).toHaveBeenCalledWith([])
 
     rerender(<TagsFilter tags={['agent']} onTagsChange={onTagsChange} />)
-    fireEvent.click(within(ensurePopoverOpen()).getByText('RAG'))
+    await user.click(screen.getByRole('checkbox', { name: 'RAG' }))
     expect(onTagsChange).toHaveBeenCalledWith(['agent', 'rag'])
   })
 
-  it('falls back to an empty placeholder when translation is missing', () => {
+  it('falls back to an empty placeholder when translation is missing', async () => {
+    const user = userEvent.setup()
     mockTranslate.mockImplementation(() => undefined as unknown as string)
 
     render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
-    fireEvent.click(screen.getByTestId('tool-trigger'))
+    await user.click(screen.getByRole('button'))
 
     expect(screen.getByRole('searchbox')).toHaveAttribute('placeholder', '')
   })

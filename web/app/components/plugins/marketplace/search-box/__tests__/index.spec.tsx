@@ -28,7 +28,7 @@ describe('SearchBox', () => {
     const user = userEvent.setup()
     render(<SearchHarness usedInMarketplace={mode} />)
 
-    const input = screen.getByPlaceholderText('Search plugins')
+    const input = screen.getByRole('searchbox', { name: 'Search plugins' })
     await user.type(input, 'agent')
     expect(input).toHaveValue('agent')
 
@@ -79,6 +79,6 @@ describe('SearchBox', () => {
       />,
     )
 
-    expect(ref.current).toBe(screen.getByPlaceholderText('Search plugins'))
+    expect(ref.current).toBe(screen.getByRole('searchbox', { name: 'Search plugins' }))
   })
 })

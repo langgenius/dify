@@ -120,7 +120,7 @@ describe('BlockSelector', () => {
 
     expect(screen.getByRole('dialog', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
 
-    const searchInput = screen.getByPlaceholderText('workflow.tabs.searchBlock')
+    const searchInput = screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })
     expect(screen.getByText('LLM')).toBeInTheDocument()
     expect(screen.getByText('End')).toBeInTheDocument()
 
@@ -132,14 +132,16 @@ describe('BlockSelector', () => {
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.LLM, undefined)
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('workflow.tabs.searchBlock')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('searchbox', { name: 'workflow.tabs.searchBlock' }),
+      ).not.toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: 'selector-closed' }))
 
-    const reopenedInput = screen.getByPlaceholderText(
-      'workflow.tabs.searchBlock',
-    ) as HTMLInputElement
+    const reopenedInput = screen.getByRole('searchbox', {
+      name: 'workflow.tabs.searchBlock',
+    }) as HTMLInputElement
     expect(reopenedInput.value).toBe('')
     expect(screen.getByText('End')).toBeInTheDocument()
   })
@@ -162,16 +164,20 @@ describe('BlockSelector', () => {
     await user.click(screen.getByRole('button', { name: 'selector-closed' }))
     await user.click(screen.getByText('workflow.tabs.start'))
 
-    expect(screen.getByPlaceholderText('workflow.tabs.searchTrigger')).toBeInTheDocument()
+    expect(
+      screen.getByRole('searchbox', { name: 'workflow.tabs.searchTrigger' }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'selector-open' }))
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('workflow.tabs.searchTrigger')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('searchbox', { name: 'workflow.tabs.searchTrigger' }),
+      ).not.toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: 'selector-closed' }))
 
-    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toBeInTheDocument()
   })
 
   it('preserves the current popup session until a controlled close actually unmounts it', async () => {
@@ -191,7 +197,7 @@ describe('BlockSelector', () => {
     )
 
     await user.click(screen.getByRole('tab', { name: 'workflow.tabs.start' }))
-    const searchInput = screen.getByPlaceholderText('workflow.tabs.searchTrigger')
+    const searchInput = screen.getByRole('searchbox', { name: 'workflow.tabs.searchTrigger' })
     await user.type(searchInput, 'webhook')
     await user.click(screen.getByRole('button', { name: 'selector-open' }))
 
@@ -219,7 +225,7 @@ describe('BlockSelector', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'selector-closed' }))
-    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toHaveFocus()
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toHaveFocus()
     await waitFor(() => {
       expect(screen.getByRole('dialog').parentElement).toHaveStyle({ position: 'fixed' })
     })
@@ -235,7 +241,7 @@ describe('BlockSelector', () => {
     await user.click(startTab)
 
     expect(startTab).toHaveFocus()
-    expect(screen.getByPlaceholderText('workflow.tabs.searchTrigger')).not.toHaveFocus()
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchTrigger' })).not.toHaveFocus()
   })
 
   it('does not open or emit open changes when disabled', async () => {
@@ -260,7 +266,9 @@ describe('BlockSelector', () => {
     await user.click(trigger)
 
     expect(onOpenChange).not.toHaveBeenCalled()
-    expect(screen.queryByPlaceholderText('workflow.tabs.searchBlock')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('searchbox', { name: 'workflow.tabs.searchBlock' }),
+    ).not.toBeInTheDocument()
   })
 
   it('allows an open selector to close after it becomes disabled', async () => {
@@ -312,7 +320,7 @@ describe('BlockSelector', () => {
 
     const trigger = screen.getByRole('button', { name: 'selector-trigger' })
     await user.click(trigger)
-    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toHaveFocus()
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toHaveFocus()
 
     await user.keyboard('{Escape}')
 
@@ -342,7 +350,7 @@ describe('BlockSelector', () => {
     await user.click(screen.getByRole('button', { name: 'open-selector' }))
 
     expect(onTriggerClick).toHaveBeenCalledTimes(1)
-    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toBeInTheDocument()
   })
 
   it('can render a prop-forwarding button component as the popover root', async () => {
@@ -350,7 +358,7 @@ describe('BlockSelector', () => {
 
     function ForwardingButtonTrigger(props: ButtonHTMLAttributes<HTMLButtonElement>) {
       return (
-        <button type="button" data-testid="selector-root-trigger" {...props}>
+        <button type="button" {...props}>
           open-selector-root
         </button>
       )
@@ -365,11 +373,11 @@ describe('BlockSelector', () => {
       />,
     )
 
-    const trigger = screen.getByTestId('selector-root-trigger')
+    const trigger = screen.getByRole('button', { name: 'open-selector-root' })
     await user.click(trigger)
 
     expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
-    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toBeInTheDocument()
   })
 
   it('can render the shared Button trigger as the popover root', async () => {
@@ -388,7 +396,7 @@ describe('BlockSelector', () => {
     await user.click(trigger)
 
     expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
-    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toBeInTheDocument()
   })
 
   it('isolates popup keyboard events when opened from another keyboard-managed overlay', async () => {
@@ -405,7 +413,9 @@ describe('BlockSelector', () => {
       />,
     )
 
-    const searchInput = screen.getByPlaceholderText('workflow.tabs.searchBlock') as HTMLInputElement
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'workflow.tabs.searchBlock',
+    }) as HTMLInputElement
     document.body.addEventListener('keydown', handleParentKeyDown)
 
     try {
@@ -452,7 +462,7 @@ describe('BlockSelector', () => {
       await screen.findByText('workflow.tabs.unconfiguredStartDisabledTip'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
-    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toBeInTheDocument()
   })
 
   it('keeps the start tab enabled when a configured user input start node is on the canvas', () => {

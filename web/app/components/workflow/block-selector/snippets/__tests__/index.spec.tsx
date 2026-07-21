@@ -155,7 +155,10 @@ describe('Snippets', () => {
 
       render(<Harness />)
 
-      await user.type(screen.getByPlaceholderText('workflow.tabs.searchSnippets'), 'review')
+      await user.type(
+        screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' }),
+        'review',
+      )
 
       expect(onSearchTextChange).toHaveBeenLastCalledWith('review')
 

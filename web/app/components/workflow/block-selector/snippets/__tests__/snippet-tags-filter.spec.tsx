@@ -53,13 +53,14 @@ describe('SnippetTagsFilter', () => {
     const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
     trigger.focus()
     await user.keyboard('{Enter}')
-    await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'sup')
+    const search = screen.getByRole('textbox', { name: 'pluginTags.searchTags' })
+    await user.type(search, 'sup')
 
     expect(screen.getByText('Support')).toBeInTheDocument()
     expect(screen.queryByText('Sales')).not.toBeInTheDocument()
 
-    await user.clear(screen.getByPlaceholderText('pluginTags.searchTags'))
-    await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'missing')
+    await user.clear(search)
+    await user.type(search, 'missing')
 
     expect(screen.getByText('common.tag.noTag')).toBeInTheDocument()
   })
@@ -72,7 +73,7 @@ describe('SnippetTagsFilter', () => {
     const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
     await user.click(trigger)
     expect(screen.getByRole('dialog', { name: 'common.tag.placeholder' })).toBeInTheDocument()
-    await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'sup')
+    await user.type(screen.getByRole('textbox', { name: 'pluginTags.searchTags' }), 'sup')
     expect(screen.queryByText('Sales')).not.toBeInTheDocument()
 
     await user.keyboard('{Escape}')
