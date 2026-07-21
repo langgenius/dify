@@ -15,7 +15,7 @@ export function IndexBar({ letters, itemRefs, className }: IndexBarProps) {
   return (
     <div
       className={cn(
-        'sticky top-5 flex h-full w-6 flex-col items-center justify-center text-xs font-medium text-text-quaternary',
+        'sticky top-5 flex h-full w-6 shrink-0 flex-col items-center justify-center text-xs font-medium text-text-quaternary',
         className,
       )}
     >
