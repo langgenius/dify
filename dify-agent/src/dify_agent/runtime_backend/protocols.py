@@ -14,53 +14,42 @@ from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 
 
 @dataclass(frozen=True, slots=True)
-class HomeSnapshotFile:
-    """One home-relative file materialized while building an immutable snapshot."""
-
-    path: str
-    content: bytes
-
-
-@dataclass(frozen=True, slots=True)
-class HomeSnapshotSource:
-    """Canonical Home content supplied by Dify API for one config version."""
-
-    files: tuple[HomeSnapshotFile, ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class CreateHomeSnapshotRequest:
-    """Canonical config-version source used to create one immutable Home resource."""
+class InitializeHomeSnapshotSpec:
+    """Stable product identity for one backend-native initial Home."""
 
     tenant_id: str
     agent_id: str
-    agent_config_version_id: str
-    source_digest: str
-    source: HomeSnapshotSource
+    home_snapshot_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class HomeSnapshotCreateSpec:
+    """Stable product identity for a Home captured from an existing Sandbox."""
+
+    tenant_id: str
+    agent_id: str
+    home_snapshot_id: str
 
 
 class HomeSnapshotDriver(Protocol):
     """Manage backend-native immutable Home resources without storing their refs.
 
-    Dify API owns the config-version-to-ref mapping. Implementations may perform
+    Dify API owns the logical Home-to-ref mapping. Implementations may perform
     remote I/O, but credentials and clients stay inside the selected backend.
     """
 
-    async def create(self, request: CreateHomeSnapshotRequest) -> str:
-        """Materialize Home and return its stable, non-sensitive native ref.
+    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str:
+        """Create a backend-native initial Home and return its opaque ref."""
+        ...
 
-        The source is immutable for its config version. Implementations release
-        temporary clients or builders best-effort on cancellation or failure,
-        but the public contract does not guarantee orphan rollback; manual
-        backend cleanup may be required. Backend failures raise
-        ``HomeSnapshotCreateError``.
-        """
+    async def create_from_sandbox(self, *, spec: HomeSnapshotCreateSpec, source: "SandboxLease") -> str:
+        """Snapshot exactly ``source`` and return its opaque immutable ref."""
         ...
 
     async def delete(self, snapshot_ref: str) -> None:
         """Delete one Home resource, treating an already-absent ref as success.
 
-        This operation is driven by config lifecycle, never runtime-session
+        This operation is driven by Agent lifecycle, never runtime-session
         cleanup. Backend cleanup failures use a runtime-backend domain error.
         """
         ...
@@ -265,11 +254,10 @@ class RuntimeBackendProfile:
 
 
 __all__ = [
-    "CreateHomeSnapshotRequest",
     "FileSystem",
+    "HomeSnapshotCreateSpec",
     "HomeSnapshotDriver",
-    "HomeSnapshotFile",
-    "HomeSnapshotSource",
+    "InitializeHomeSnapshotSpec",
     "RuntimeBackendProfile",
     "SandboxCreateSpec",
     "SandboxDriver",

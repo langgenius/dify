@@ -14,11 +14,10 @@ from .errors import (
     WorkspaceUnavailableError,
 )
 from .protocols import (
-    CreateHomeSnapshotRequest,
     FileSystem,
+    HomeSnapshotCreateSpec,
     HomeSnapshotDriver,
-    HomeSnapshotFile,
-    HomeSnapshotSource,
+    InitializeHomeSnapshotSpec,
     RuntimeBackendProfile,
     SandboxCreateSpec,
     SandboxDriver,
@@ -31,13 +30,12 @@ from .protocols import (
 )
 
 __all__ = [
-    "CreateHomeSnapshotRequest",
     "FileSystem",
     "HomeSnapshotCreateError",
+    "HomeSnapshotCreateSpec",
     "HomeSnapshotDriver",
-    "HomeSnapshotFile",
     "HomeSnapshotNotFoundError",
-    "HomeSnapshotSource",
+    "InitializeHomeSnapshotSpec",
     "RuntimeBackendError",
     "RuntimeBackendProfile",
     "SandboxBackendUnavailableError",

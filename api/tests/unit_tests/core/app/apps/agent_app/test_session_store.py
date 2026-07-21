@@ -26,7 +26,10 @@ from models.agent import AgentRuntimeSession, AgentRuntimeSessionOwnerType, Agen
 
 
 def _scope(
-    conversation_id: str = "conv-1", agent_id: str = "agent-1", agent_config_snapshot_id: str | None = "snap-1"
+    conversation_id: str = "conv-1",
+    agent_id: str = "agent-1",
+    agent_config_snapshot_id: str | None = "snap-1",
+    home_snapshot_id: str = "home-1",
 ) -> AgentAppSessionScope:
     return AgentAppSessionScope(
         tenant_id="tenant-1",
@@ -34,6 +37,7 @@ def _scope(
         conversation_id=conversation_id,
         agent_id=agent_id,
         agent_config_snapshot_id=agent_config_snapshot_id,
+        home_snapshot_id=home_snapshot_id,
     )
 
 
@@ -146,6 +150,7 @@ def test_save_creates_conversation_owned_row_and_round_trips():
         assert row.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION
         assert row.conversation_id == "conv-1"
         assert row.agent_config_snapshot_id == "snap-1"
+        assert row.home_snapshot_id == "home-1"
         assert row.workflow_run_id is None  # conversation owner leaves workflow cols NULL
         assert row.backend_run_id == "run-1"
         assert "execution_context" in row.composition_layer_specs
@@ -366,6 +371,38 @@ def test_distinct_agent_config_snapshots_keep_only_latest_active_session():
         assert [row.status for row in rows] == [AgentRuntimeSessionStatus.CLEANED, AgentRuntimeSessionStatus.ACTIVE]
 
 
+def test_distinct_homes_do_not_reuse_runtime_identity_for_same_mutable_draft() -> None:
+    store = AgentAppRuntimeSessionStore()
+    first_scope = _scope(agent_config_snapshot_id="draft-1", home_snapshot_id="home-1")
+    second_scope = _scope(agent_config_snapshot_id="draft-1", home_snapshot_id="home-2")
+    _save_active_snapshot(
+        store,
+        scope=first_scope,
+        runtime_session_id="runtime-home-1",
+        backend_run_id="run-1",
+        snapshot=_snapshot(),
+        runtime_layer_specs=_runtime_layer_specs(),
+    )
+
+    second_runtime_session_id = store.resolve_runtime_session_id(second_scope)
+    assert second_runtime_session_id != "runtime-home-1"
+    _save_active_snapshot(
+        store,
+        scope=second_scope,
+        runtime_session_id=second_runtime_session_id,
+        backend_run_id="run-2",
+        snapshot=_snapshot(messages=2),
+        runtime_layer_specs=_runtime_layer_specs(),
+    )
+
+    assert store.load_active_snapshot(first_scope) is None
+    assert store.load_active_snapshot(second_scope) is not None
+    with session_factory.create_session() as session:
+        rows = session.query(AgentRuntimeSession).order_by(AgentRuntimeSession.backend_run_id).all()
+        assert [row.home_snapshot_id for row in rows] == ["home-1", "home-2"]
+        assert [row.status for row in rows] == [AgentRuntimeSessionStatus.CLEANED, AgentRuntimeSessionStatus.ACTIVE]
+
+
 def test_load_active_session_for_conversation_resolves_without_agent_or_config_scope():
     store = AgentAppRuntimeSessionStore()
     _save_active_snapshot(
@@ -462,6 +499,7 @@ def test_list_active_sessions_for_conversation_returns_all_active_rows():
                 app_id="app-1",
                 owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
                 agent_id="agent-1",
+                home_snapshot_id="home-1",
                 agent_config_snapshot_id="snap-1",
                 conversation_id="conv-1",
                 backend_run_id="run-1",
@@ -476,6 +514,7 @@ def test_list_active_sessions_for_conversation_returns_all_active_rows():
                 app_id="app-1",
                 owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
                 agent_id="agent-2",
+                home_snapshot_id="home-2",
                 agent_config_snapshot_id="snap-2",
                 conversation_id="conv-1",
                 backend_run_id="run-2",

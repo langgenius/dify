@@ -5,7 +5,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from dify_agent.protocol.home_snapshot import CreateHomeSnapshotRequest, CreateHomeSnapshotResponse
+from dify_agent.protocol.home_snapshot import (
+    CreateHomeSnapshotFromSandboxRequest,
+    HomeSnapshotResponse,
+    InitializeHomeSnapshotRequest,
+)
 from dify_agent.server.home_snapshots import HomeSnapshotService, HomeSnapshotServiceError
 
 
@@ -21,16 +25,30 @@ def create_home_snapshots_router(get_service: Callable[[], HomeSnapshotService |
             )
         return service
 
-    @router.post("", response_model=CreateHomeSnapshotResponse, status_code=status.HTTP_201_CREATED)
-    async def create_snapshot(
-        request: CreateHomeSnapshotRequest,
+    @router.post("/initialize", response_model=HomeSnapshotResponse, status_code=status.HTTP_201_CREATED)
+    async def initialize_snapshot(
+        request: InitializeHomeSnapshotRequest,
         service: Annotated[HomeSnapshotService, Depends(service_dep)],
-    ) -> CreateHomeSnapshotResponse:
+    ) -> HomeSnapshotResponse:
         try:
-            return await service.create(request)
+            return await service.initialize(request)
         except HomeSnapshotServiceError as exc:
             raise HTTPException(
-                status_code=exc.status_code, detail={"code": exc.code, "message": exc.message}
+                status_code=exc.status_code,
+                detail={"code": exc.code, "message": exc.message},
+            ) from exc
+
+    @router.post("/from-sandbox", response_model=HomeSnapshotResponse, status_code=status.HTTP_201_CREATED)
+    async def create_snapshot_from_sandbox(
+        request: CreateHomeSnapshotFromSandboxRequest,
+        service: Annotated[HomeSnapshotService, Depends(service_dep)],
+    ) -> HomeSnapshotResponse:
+        try:
+            return await service.create_from_sandbox(request)
+        except HomeSnapshotServiceError as exc:
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail={"code": exc.code, "message": exc.message},
             ) from exc
 
     @router.delete("/{snapshot_ref:path}", status_code=status.HTTP_204_NO_CONTENT)
@@ -42,7 +60,8 @@ def create_home_snapshots_router(get_service: Callable[[], HomeSnapshotService |
             await service.delete(snapshot_ref)
         except HomeSnapshotServiceError as exc:
             raise HTTPException(
-                status_code=exc.status_code, detail={"code": exc.code, "message": exc.message}
+                status_code=exc.status_code,
+                detail={"code": exc.code, "message": exc.message},
             ) from exc
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 

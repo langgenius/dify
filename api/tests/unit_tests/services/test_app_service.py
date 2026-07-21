@@ -547,12 +547,22 @@ class TestAgentAppType:
             patch("services.app_service.dify_config"),
             patch("services.app_service.remove_app_and_related_data_task"),
             patch("services.app_service.cleanup_agent_home_snapshots") as mock_home_cleanup,
+            patch(
+                "services.app_service.WorkflowAgentRetirementService.schedule_after_commit"
+            ) as mock_workflow_retirement,
         ):
             mock_db.session.scalar.return_value = backing_agent
+            mock_db.session.scalars.return_value.all.return_value = ["workflow-agent-1", "workflow-agent-2"]
             AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
 
         assert backing_agent.status == AgentStatus.ARCHIVED
         assert backing_agent.archived_by == "account-2"
         assert backing_agent.archived_at is not None
         mock_db.session.delete.assert_called_once_with(app)
+        mock_workflow_retirement.assert_called_once()
+        retirement_call = mock_workflow_retirement.call_args.kwargs
+        assert retirement_call["session"] is mock_db.session
+        assert retirement_call["tenant_id"] == "tenant-1"
+        assert set(retirement_call["agent_ids"]) == {"workflow-agent-1", "workflow-agent-2"}
+        assert retirement_call["account_id"] == "account-2"
         mock_home_cleanup.delay.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")

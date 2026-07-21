@@ -221,6 +221,27 @@ class Agent(DefaultFieldsMixin, Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class AgentHomeSnapshot(Base):
+    """Append-only mapping from one Agent-owned Home identity to its backend ref.
+
+    Product tables reference ``id``. ``snapshot_ref`` remains an opaque
+    deployment-specific handle and is only consumed at Dify Agent boundaries.
+    Physical cleanup does not mutate or delete this immutable ledger row.
+    """
+
+    __tablename__ = "agent_home_snapshots"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_home_snapshot_pkey"),
+        Index("agent_home_snapshot_tenant_agent_idx", "tenant_id", "agent_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    snapshot_ref: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+
 class AgentDebugConversation(DefaultFieldsMixin, Base):
     """Per-account console debug conversation for an Agent App.
 
@@ -272,6 +293,7 @@ class AgentConfigDraft(DefaultFieldsMixin, Base):
     account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     draft_owner_key: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     base_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    home_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -307,7 +329,7 @@ class AgentConfigSnapshot(DefaultFieldsMixin, Base):
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False)
-    home_snapshot_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    home_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
     version_note: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -462,6 +484,7 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
             "conversation_id",
             "agent_id",
             "agent_config_snapshot_id",
+            "home_snapshot_id",
             unique=True,
             postgresql_where=sa.text("conversation_id IS NOT NULL"),
         ),
@@ -487,6 +510,7 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
         EnumText(AgentRuntimeSessionOwnerType, length=32), nullable=False
     )
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    home_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     backend_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     session_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
     # Workflow-owner columns (NULL for conversation owner).

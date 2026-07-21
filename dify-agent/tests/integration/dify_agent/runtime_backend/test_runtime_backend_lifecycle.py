@@ -38,9 +38,7 @@ import httpx2 as httpx
 import pytest
 
 from dify_agent.runtime_backend import (
-    CreateHomeSnapshotRequest,
-    HomeSnapshotFile,
-    HomeSnapshotSource,
+    InitializeHomeSnapshotSpec,
     SandboxCreateSpec,
     SandboxLease,
 )
@@ -75,15 +73,11 @@ async def test_local_two_runtime_sessions_remain_isolated_through_resume_and_del
     sandbox_driver = LocalSandboxDriver(endpoint=endpoint, auth_token=token)
 
     try:
-        snapshot_ref = await home_driver.create(
-            CreateHomeSnapshotRequest(
+        snapshot_ref = await home_driver.initialize(
+            InitializeHomeSnapshotSpec(
                 tenant_id="integration-tenant",
                 agent_id="integration-agent",
-                agent_config_version_id=marker,
-                source_digest=marker,
-                source=HomeSnapshotSource(
-                    files=(HomeSnapshotFile(path=".dify/integration.txt", content=b"immutable-home"),)
-                ),
+                home_snapshot_id=marker,
             )
         )
         for session_id, content in ((session_a, b"content-a"), (session_b, b"content-b")):
@@ -291,15 +285,11 @@ async def test_e2b_snapshot_and_workspace_survive_new_driver_instance() -> None:
     )
 
     try:
-        snapshot_ref = await home_driver.create(
-            CreateHomeSnapshotRequest(
+        snapshot_ref = await home_driver.initialize(
+            InitializeHomeSnapshotSpec(
                 tenant_id="integration-tenant",
                 agent_id="integration-agent",
-                agent_config_version_id=marker,
-                source_digest=marker,
-                source=HomeSnapshotSource(
-                    files=(HomeSnapshotFile(path=".dify/integration.txt", content=b"immutable-home"),)
-                ),
+                home_snapshot_id=marker,
             )
         )
         first_lease = await first_driver.create(

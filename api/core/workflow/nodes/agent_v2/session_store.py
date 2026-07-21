@@ -156,6 +156,7 @@ class WorkflowAgentRuntimeSessionStore:
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
+        home_snapshot_id: str,
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
     ) -> None:
@@ -196,6 +197,7 @@ class WorkflowAgentRuntimeSessionStore:
                     node_execution_id=scope.node_execution_id,
                     binding_id=scope.binding_id,
                     agent_id=scope.agent_id,
+                    home_snapshot_id=home_snapshot_id,
                     agent_config_snapshot_id=scope.agent_config_snapshot_id,
                     backend_run_id=backend_run_id,
                     session_snapshot=snapshot_json,
@@ -210,6 +212,7 @@ class WorkflowAgentRuntimeSessionStore:
                     raise ValueError("runtime_session_id must match the existing AgentRuntimeSession.id")
                 row.node_execution_id = scope.node_execution_id
                 row.agent_config_snapshot_id = scope.agent_config_snapshot_id
+                row.home_snapshot_id = home_snapshot_id
                 row.backend_run_id = backend_run_id
                 row.session_snapshot = snapshot_json
                 row.composition_layer_specs = specs_json

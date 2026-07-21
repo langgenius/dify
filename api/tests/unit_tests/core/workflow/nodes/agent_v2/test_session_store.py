@@ -79,6 +79,7 @@ def _save_active_snapshot(
     snapshot: CompositorSessionSnapshot | None,
     runtime_layer_specs: list[RuntimeLayerSpec],
     runtime_session_id: str | None = None,
+    home_snapshot_id: str = "home-1",
 ) -> None:
     resolved_runtime_session_id = (
         runtime_session_id if runtime_session_id is not None else store.resolve_runtime_session_id(scope)
@@ -89,6 +90,7 @@ def _save_active_snapshot(
         backend_run_id=backend_run_id,
         snapshot=snapshot,
         runtime_layer_specs=runtime_layer_specs,
+        home_snapshot_id=home_snapshot_id,
     )
 
 
@@ -133,6 +135,7 @@ def test_save_rejects_empty_runtime_session_id() -> None:
             backend_run_id="run-1",
             snapshot=_snapshot(),
             runtime_layer_specs=_specs(),
+            home_snapshot_id="home-1",
         )
 
 
@@ -150,6 +153,7 @@ def test_save_active_snapshot_creates_row_and_load_round_trips():
     assert loaded.layers[0].runtime_state["messages"] == snapshot.layers[0].runtime_state["messages"]
     with session_factory.create_session() as session:
         row = session.query(WorkflowAgentRuntimeSession).one()
+        assert row.home_snapshot_id == "home-1"
         assert "workflow_node_job_prompt" in row.composition_layer_specs
         assert "history" in row.composition_layer_specs
 

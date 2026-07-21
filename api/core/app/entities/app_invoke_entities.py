@@ -232,7 +232,7 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
 
     ``agent_runtime_exit_intent`` is API-internal lifecycle policy for the
     Agent backend session after this turn finishes. Normal chat/resume turns
-    suspend on exit; build-chat finalization deletes the backend runtime.
+    and build-chat finalization suspend on exit so later requests can resume it.
 
     ``prompt_file_mappings`` preserves the raw request ``files`` array for the
     Agent backend prompt. These references are appended to the backend prompt

@@ -27,6 +27,7 @@ from clients.agent_backend import (
     extract_runtime_layer_specs,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.db.session_factory import session_factory
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
@@ -37,7 +38,7 @@ from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEven
 from graphon.nodes.base.node import Node
 from libs.uuid_utils import uuidv7
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.home_snapshot_service import require_runtime_home_snapshot_ref
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from tasks.agent_backend_session_cleanup_task import cleanup_workflow_agent_runtime_session
 
@@ -233,7 +234,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 else str(uuidv7())
             )
         )
-        home_snapshot_ref = AgentHomeSnapshotService.require_ref(bundle.snapshot)
+        with session_factory.create_session() as session:
+            home_snapshot_ref = require_runtime_home_snapshot_ref(
+                session=session,
+                agent=bundle.agent,
+                home_snapshot_id=bundle.snapshot.home_snapshot_id,
+            )
 
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
@@ -369,6 +375,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     backend_run_id=terminal_event.run_id,
                     snapshot=terminal_event.session_snapshot,
                     runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
+                    home_snapshot_id=bundle.snapshot.home_snapshot_id,
                     metadata=metadata,
                     pending_form_id=pending_form_id,
                     pending_tool_call_id=pending_tool_call_id,
@@ -405,6 +412,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 backend_run_id=terminal_event.run_id,
                 snapshot=terminal_event.session_snapshot,
                 runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
+                home_snapshot_id=bundle.snapshot.home_snapshot_id,
                 metadata=metadata,
             )
 
@@ -618,6 +626,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
+        home_snapshot_id: str,
         metadata: dict[str, Any],
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
@@ -631,6 +640,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 backend_run_id=backend_run_id,
                 snapshot=snapshot,
                 runtime_layer_specs=runtime_layer_specs,
+                home_snapshot_id=home_snapshot_id,
                 pending_form_id=pending_form_id,
                 pending_tool_call_id=pending_tool_call_id,
             )

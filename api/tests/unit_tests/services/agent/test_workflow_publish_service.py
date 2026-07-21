@@ -2,11 +2,16 @@ from types import SimpleNamespace
 from unittest.mock import ANY, Mock
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import Agent, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
+from models.enums import AppStatus
+from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.agent.dsl_service import AgentDslService
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService, _InlineAgentOwnershipError
 
 
@@ -63,16 +68,28 @@ def test_inline_binding_from_another_node_is_cloned(monkeypatch) -> None:
     assert binding.node_job_config.workflow_prompt == "Summarize the input"
 
 
-def test_restore_replaces_draft_bindings_with_published_bindings() -> None:
-    existing = WorkflowAgentNodeBinding(
+def test_restore_replaces_bindings_and_schedules_only_replaced_inline_agent(monkeypatch) -> None:
+    existing_inline = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="draft-workflow",
         workflow_version=Workflow.VERSION_DRAFT,
-        node_id="old-node",
+        node_id="old-inline-node",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="old-inline-agent",
+        current_snapshot_id="old-inline-snapshot",
+        node_job_config={},
+        created_by="account-1",
+    )
+    existing_roster = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="draft-workflow",
+        workflow_version=Workflow.VERSION_DRAFT,
+        node_id="old-roster-node",
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
-        agent_id="old-agent",
-        current_snapshot_id="old-snapshot",
+        agent_id="old-roster-agent",
+        current_snapshot_id="old-roster-snapshot",
         node_job_config={},
         created_by="account-1",
     )
@@ -89,7 +106,12 @@ def test_restore_replaces_draft_bindings_with_published_bindings() -> None:
         created_by="account-1",
     )
     session = Mock()
-    session.scalars.side_effect = [SimpleNamespace(all=lambda: [existing]), SimpleNamespace(all=lambda: [source])]
+    session.scalars.side_effect = [
+        SimpleNamespace(all=lambda: [existing_inline, existing_roster]),
+        SimpleNamespace(all=lambda: [source]),
+    ]
+    schedule_retirement = Mock()
+    monkeypatch.setattr(WorkflowAgentRetirementService, "schedule_after_commit", schedule_retirement)
 
     WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
         session=session,
@@ -98,7 +120,10 @@ def test_restore_replaces_draft_bindings_with_published_bindings() -> None:
         account_id="account-2",
     )
 
-    session.delete.assert_called_once_with(existing)
+    assert {item.args[0].agent_id for item in session.delete.call_args_list} == {
+        "old-inline-agent",
+        "old-roster-agent",
+    }
     restored = session.add.call_args.args[0]
     assert isinstance(restored, WorkflowAgentNodeBinding)
     assert restored.workflow_id == "draft-workflow"
@@ -107,6 +132,104 @@ def test_restore_replaces_draft_bindings_with_published_bindings() -> None:
     assert restored.current_snapshot_id == "published-snapshot"
     assert restored.node_job_config.workflow_prompt == "Use the roster agent"
     session.flush.assert_called_once()
+    schedule_retirement.assert_called_once_with(
+        session=session,
+        tenant_id="tenant-1",
+        agent_ids={"old-inline-agent"},
+        account_id="account-2",
+    )
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(App, Agent, WorkflowAgentNodeBinding)],
+    indirect=True,
+)
+def test_publish_binding_replacement_schedules_only_previous_inline_agent(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    draft_workflow = _workflow()
+    draft_workflow.graph = '{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2"}}],"edges":[]}'
+    published_workflow = _workflow(workflow_id="published-new", version="published-new")
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        mode=AppMode.WORKFLOW,
+        workflow_id="published-previous",
+        status=AppStatus.NORMAL,
+        enable_site=False,
+        enable_api=False,
+        api_rpm=0,
+        api_rph=0,
+    )
+    previous_inline_binding = WorkflowAgentNodeBinding(
+        id="previous-inline-binding",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="published-previous",
+        workflow_version="published-previous",
+        node_id="previous-inline-node",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="previous-inline-agent",
+        current_snapshot_id="previous-inline-snapshot",
+        node_job_config={},
+        created_by="account-1",
+    )
+    previous_roster_binding = WorkflowAgentNodeBinding(
+        id="previous-roster-binding",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="published-previous",
+        workflow_version="published-previous",
+        node_id="previous-roster-node",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="previous-roster-agent",
+        current_snapshot_id="previous-roster-snapshot",
+        node_job_config={},
+        created_by="account-1",
+    )
+    draft_binding = WorkflowAgentNodeBinding(
+        id="draft-binding",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version=Workflow.VERSION_DRAFT,
+        node_id="agent-node",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="draft-inline-agent",
+        current_snapshot_id="draft-inline-snapshot",
+        node_job_config={"workflow_prompt": "work"},
+        created_by="account-1",
+    )
+    sqlite_session.add_all([app, previous_inline_binding, previous_roster_binding, draft_binding])
+    sqlite_session.commit()
+    schedule_retirement = Mock()
+    monkeypatch.setattr(WorkflowAgentRetirementService, "schedule_after_commit", schedule_retirement)
+
+    WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        session=sqlite_session,
+        draft_workflow=draft_workflow,
+        published_workflow=published_workflow,
+    )
+
+    schedule_retirement.assert_called_once_with(
+        session=sqlite_session,
+        tenant_id="tenant-1",
+        agent_ids={"previous-inline-agent"},
+        account_id="account-1",
+    )
+    copied = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(
+            WorkflowAgentNodeBinding.workflow_id == "published-new",
+            WorkflowAgentNodeBinding.workflow_version == "published-new",
+        )
+    )
+    assert copied is not None
+    assert copied.agent_id == "draft-inline-agent"
+    assert copied.current_snapshot_id == "draft-inline-snapshot"
 
 
 def test_inline_binding_reuses_existing_node_owned_agent(monkeypatch) -> None:

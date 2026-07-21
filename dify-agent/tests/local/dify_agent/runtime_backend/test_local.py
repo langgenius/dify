@@ -11,12 +11,13 @@ import pytest
 from dify_agent.adapters.shell.protocols import CompleteShellCommandResult, ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
 from dify_agent.runtime_backend import (
-    CreateHomeSnapshotRequest,
-    HomeSnapshotFile,
-    HomeSnapshotSource,
+    HomeSnapshotCreateError,
+    HomeSnapshotCreateSpec,
+    InitializeHomeSnapshotSpec,
     SandboxCreateError,
     SandboxCreateSpec,
     SandboxLayout,
+    SandboxLease,
     SandboxLostError,
 )
 from dify_agent.runtime_backend.local import LocalHomeSnapshotDriver, LocalSandboxDriver
@@ -254,7 +255,7 @@ async def test_suspend_closes_local_shellctl_lease_exactly_once() -> None:
 
 
 @pytest.mark.anyio
-async def test_home_snapshot_create_upload_and_delete_contract(
+async def test_home_snapshot_initialize_capture_and_delete_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     driver = LocalHomeSnapshotDriver(
@@ -262,19 +263,25 @@ async def test_home_snapshot_create_upload_and_delete_contract(
         auth_token="secret",
         snapshot_root="/snapshots",
     )
-    create_lease = _FakeLease(handle="home-digest-1")
-    delete_lease = _FakeLease(handle="home-digest-1")
-    leases = iter([create_lease, delete_lease])
+    initialize_lease = _FakeLease(handle="home-home-1")
+    source_lease = cast(SandboxLease, cast(object, _FakeLease(handle="session-1")))
+    delete_lease = _FakeLease(handle="home-home-2")
+    leases = iter([initialize_lease, delete_lease])
     control = _ControlPlan(
         [
             _control_step(
                 "home_snapshot_create",
-                "/snapshots/home-digest-1",
+                "/snapshots/home-home-1",
+                outcome=_result(exit_code=0),
+            ),
+            _control_step(
+                "home_snapshot_create",
+                "/snapshots/home-home-2",
                 outcome=_result(exit_code=0),
             ),
             _control_step(
                 "home_snapshot_delete",
-                "/snapshots/home-digest-1",
+                "/snapshots/home-home-2",
                 outcome=_result(exit_code=0),
             ),
         ]
@@ -286,39 +293,45 @@ async def test_home_snapshot_create_upload_and_delete_contract(
     )
     monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
 
-    snapshot_ref = await driver.create(
-        CreateHomeSnapshotRequest(
+    initialized_ref = await driver.initialize(
+        InitializeHomeSnapshotSpec(
             tenant_id="tenant-1",
             agent_id="agent-1",
-            agent_config_version_id="config-1",
-            source_digest="digest-1",
-            source=HomeSnapshotSource(files=(HomeSnapshotFile(path=".dify/config.txt", content=b"home"),)),
+            home_snapshot_id="home-1",
         )
     )
-    await driver.delete(snapshot_ref)
+    captured_ref = await driver.create_from_sandbox(
+        spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
+        source=source_lease,
+    )
+    await driver.delete(captured_ref)
 
-    assert snapshot_ref == "home-digest-1"
-    assert create_lease.files.uploads == [(b"home", "/snapshots/home-digest-1/.dify/config.txt", None)]
-    assert create_lease.closed is True
+    assert initialized_ref == "home-home-1"
+    assert captured_ref == "home-home-2"
+    assert initialize_lease.closed is True
     assert delete_lease.closed is True
-    assert control.calls == 2
+    assert control.calls == 3
     assert control.steps == []
 
 
 @pytest.mark.anyio
-async def test_home_snapshot_materialization_cancellation_closes_shellctl_lease(
+async def test_home_snapshot_initialization_cancellation_closes_shellctl_lease(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     driver = LocalHomeSnapshotDriver(endpoint="http://shellctl", auth_token="secret", snapshot_root="/snapshots")
-    lease = _FakeLease(handle="home-digest-1")
-    lease.files.upload_error = asyncio.CancelledError()
+    lease = _FakeLease(handle="home-home-1")
     control = _ControlPlan(
         [
             _control_step(
                 "home_snapshot_create",
-                "/snapshots/home-digest-1",
-                outcome=_result(exit_code=0),
-            )
+                "/snapshots/home-home-1",
+                outcome=asyncio.CancelledError(),
+            ),
+            _control_step(
+                "partial_sandbox_cleanup",
+                "/snapshots/home-home-1",
+                outcome=RuntimeError("cleanup failed"),
+            ),
         ]
     )
 
@@ -329,18 +342,52 @@ async def test_home_snapshot_materialization_cancellation_closes_shellctl_lease(
     monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
 
     with pytest.raises(asyncio.CancelledError):
-        _ = await driver.create(
-            CreateHomeSnapshotRequest(
+        _ = await driver.initialize(
+            InitializeHomeSnapshotSpec(
                 tenant_id="tenant-1",
                 agent_id="agent-1",
-                agent_config_version_id="config-1",
-                source_digest="digest-1",
-                source=HomeSnapshotSource(files=(HomeSnapshotFile(path="config.txt", content=b"home"),)),
+                home_snapshot_id="home-1",
             )
         )
 
     assert lease.closed is True
-    assert control.calls == 1
+    assert control.calls == 2
+    assert control.steps == []
+
+
+@pytest.mark.anyio
+async def test_home_snapshot_copy_failure_removes_partial_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    driver = LocalHomeSnapshotDriver(endpoint="http://shellctl", auth_token="secret", snapshot_root="/snapshots")
+    source_lease = cast(SandboxLease, cast(object, _FakeLease(handle="session-1")))
+    control = _ControlPlan(
+        [
+            _control_step(
+                "home_snapshot_create",
+                "/snapshots/home-home-2",
+                outcome=_result(exit_code=1, output="copy failed"),
+            ),
+            _control_step(
+                "partial_sandbox_cleanup",
+                "/snapshots/home-home-2",
+                outcome=_result(exit_code=0),
+            ),
+        ]
+    )
+    monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
+
+    with pytest.raises(HomeSnapshotCreateError, match="copy failed"):
+        await driver.create_from_sandbox(
+            spec=HomeSnapshotCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                home_snapshot_id="home-2",
+            ),
+            source=source_lease,
+        )
+
+    assert control.calls == 2
     assert control.steps == []
 
 

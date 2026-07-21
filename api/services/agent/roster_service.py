@@ -329,17 +329,22 @@ class AgentRosterService:
             self._session.rollback()
             raise AgentNameConflictError() from exc
 
+        home_snapshot = AgentHomeSnapshotService.create_initial(
+            session=self._session,
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+        )
         version = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=1,
             config_snapshot=payload.agent_soul,
+            home_snapshot_id=home_snapshot.id,
             version_note=payload.version_note,
             created_by=account_id,
         )
         self._session.add(version)
         self._session.flush()
-        AgentHomeSnapshotService.materialize(session=self._session, snapshot=version)
 
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
@@ -412,16 +417,21 @@ class AgentRosterService:
             self._session.rollback()
             raise AgentNameConflictError() from exc
 
+        home_snapshot = AgentHomeSnapshotService.create_initial(
+            session=self._session,
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+        )
         version = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=1,
             config_snapshot=soul,
+            home_snapshot_id=home_snapshot.id,
             created_by=account_id,
         )
         self._session.add(version)
         self._session.flush()
-        AgentHomeSnapshotService.materialize(session=self._session, snapshot=version)
 
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
@@ -1306,9 +1316,11 @@ class AgentRosterService:
                 account_id=None,
                 draft_owner_key="",
                 created_by=account_id,
+                home_snapshot_id=version.home_snapshot_id,
             )
             self._session.add(draft)
         draft.base_snapshot_id = version.id
+        draft.home_snapshot_id = version.home_snapshot_id
         draft.config_snapshot = AgentSoulConfig.model_validate(version.config_snapshot_dict)
         draft.updated_by = account_id
         agent.active_config_is_published = version.id == agent.active_config_snapshot_id

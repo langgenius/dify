@@ -57,22 +57,22 @@ def test_cleanup_agent_home_snapshots_uses_api_database_lifecycle(monkeypatch) -
     session = MagicMock()
     session_context = MagicMock()
     session_context.__enter__.return_value = session
-    delete_agent_snapshots = MagicMock()
+    delete_all_for_agent = MagicMock()
     monkeypatch.setattr(cleanup_task_module.session_factory, "create_session", lambda: session_context)
     monkeypatch.setattr(
         cleanup_task_module.AgentHomeSnapshotService,
-        "delete_agent_snapshots",
-        delete_agent_snapshots,
+        "delete_all_for_agent",
+        delete_all_for_agent,
     )
 
     cleanup_task_module.cleanup_agent_home_snapshots.run(tenant_id="tenant-1", agent_id="agent-1")
 
-    delete_agent_snapshots.assert_called_once_with(
+    delete_all_for_agent.assert_called_once_with(
         session=session,
         tenant_id="tenant-1",
         agent_id="agent-1",
     )
-    session.commit.assert_called_once_with()
+    session.commit.assert_not_called()
 
 
 def test_cleanup_agent_home_snapshots_propagates_delete_failure_without_commit(monkeypatch) -> None:
@@ -80,12 +80,12 @@ def test_cleanup_agent_home_snapshots_propagates_delete_failure_without_commit(m
     session_context = MagicMock()
     session_context.__enter__.return_value = session
     delete_error = RuntimeError("backend delete failed")
-    delete_agent_snapshots = MagicMock(side_effect=delete_error)
+    delete_all_for_agent = MagicMock(side_effect=delete_error)
     monkeypatch.setattr(cleanup_task_module.session_factory, "create_session", lambda: session_context)
     monkeypatch.setattr(
         cleanup_task_module.AgentHomeSnapshotService,
-        "delete_agent_snapshots",
-        delete_agent_snapshots,
+        "delete_all_for_agent",
+        delete_all_for_agent,
     )
 
     with pytest.raises(RuntimeError, match="backend delete failed"):

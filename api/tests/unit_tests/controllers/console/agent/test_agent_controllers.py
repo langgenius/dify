@@ -1466,7 +1466,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     assert args["conversation_id"] == "debug-conversation-1"
     assert args["inputs"] == {}
     assert args["auto_generate_name"] is False
-    assert args[completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG] == "delete"
+    assert args[completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG] == "suspend"
     assert args["external_trace_id"] == "trace-1"
 
 

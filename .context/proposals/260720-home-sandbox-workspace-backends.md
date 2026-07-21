@@ -5,12 +5,17 @@
 - 日期：2026-07-20
 - 范围：Dify API、Dify Agent、Agenton layers、Local / Enterprise / E2B runtime backend
 - 核心边界：Dify API 保存所有跨请求逻辑状态；Dify Agent 不连接数据库，只执行一次 Agent request 并返回下一份 session snapshot
+- 本文仍是 Home / Workspace / Sandbox / Shell 分层与 Runtime Backend Profile 的基础架构文档。
+- **Home Snapshot 资源模型与生命周期已经被
+  `.context/proposals/260721-agent-home-snapshot-lifecycle.md` 直接替代。** 本文曾采用的
+  config-version ownership、file-source create、Publish materialization、Config Snapshot ref/status、
+  base-snapshot fallback、per-version delete 和 E2B builder 方案只代表中间设计，不是当前支持的 contract。
 
 ## 1. 摘要
 
 目标架构将当前 `DifyShellLayer` 中混合的职责拆成四个独立领域层：
 
-- **Home Layer**：绑定跟随 Agent config version 的不可变 Home Snapshot。
+- **Home Layer**：绑定由 `home_snapshot_id` 解析出的不可变 backend Home Snapshot。
 - **Workspace Layer**：绑定当前 runtime session 的可变 workspace；`workspace_id` 直接等于 `runtime_session_id`。
 - **Sandbox Layer**：创建或恢复物理 sandbox，并管理单次请求期间的 live lease。
 - **Shell Layer**：只提供 commands、files、jobs、prompt 和 tools，不管理 sandbox 生命周期。
@@ -40,12 +45,16 @@ composition + previous session snapshot + request
 ### 2.1 Home Snapshot
 
 - Home Snapshot 不可变。
-- 生命周期跟随 Agent config version。
+- `agent_home_snapshots` 是 Dify API 保存的 append-only 资源账本；row 保存 Agent owner 与 opaque
+  `snapshot_ref`，Draft / Config Snapshot 只保存 `home_snapshot_id`。
 - 多个 runtime session 可以从同一个 Home Snapshot 创建 sandbox。
 - Sandbox 内对 `$HOME` 的修改不回写 Home Snapshot。
-- Agent 配置持久化通过显式配置 API 完成，并产生新的 config version 和 Home Snapshot。
-- Agent 初始 backing config snapshot 即使尚未发布，也必须通过当前部署 backend materialize Home。
-- Draft / build-draft 不创建独立 Home；运行时通过 `base_snapshot_id` 使用对应 immutable snapshot 的 ref。
+- Agent 初始化通过 backend-native initialize 创建初始 Home。
+- Build Draft save 不创建 Home；Build Draft Apply 从该 Draft 的 retained Sandbox 创建新 Home，并让 Normal Draft
+  指向新的 `home_snapshot_id`。
+- Publish 只把 Normal Draft 的 `home_snapshot_id` 复制到新的 Config Snapshot，不创建新的物理 Home。
+- `base_snapshot_id` 只描述 config ancestry，不能作为 Home fallback。
+- Config version 删除不删除 Home；Agent retirement 才按 ledger 清理该 Agent 的 physical refs，ledger rows 保持不变。
 - 不存在跨 Local / Enterprise / E2B 通用的默认 Home ref 或 E2B template fallback。
 - Runtime base 假定稳定。
 
@@ -77,7 +86,8 @@ composition + previous session snapshot + request
 - 可以继续使用现有 Redis 处理 run scheduling/event stream，但 Redis 不是 Layer session state 的 source of truth。
 - 任意 Dify Agent 实例都应能根据请求携带的 composition 和 session snapshot 恢复执行。
 - 复用现有 `SandboxFileService` 为 Dify API 提供 Workspace list/read/upload；不新增 Workspace registry 或 Workspace 管理服务。
-- 新增无状态 Home Snapshot control-plane service，供 Dify API 在 Agent config version 生命周期中调用 create/delete。
+- Dify Agent 提供无状态 Home Snapshot control-plane service：backend-native initialize、从 retained Build Sandbox
+  创建 Snapshot，以及按 opaque ref 删除物理资源。
 
 ## 3. 目标与非目标
 
@@ -108,7 +118,7 @@ composition + previous session snapshot + request
 1. Dify API 是 Agent config 和 runtime session 状态的唯一持久化 owner。
 2. Dify Agent 只消费 previous snapshot，并返回 next snapshot。
 3. Home Snapshot 的创建和删除不由 Agenton runtime session lifecycle 驱动。
-4. Home Snapshot 删除只由 Agent config version lifecycle 驱动。
+4. Home Snapshot 不由 config version 删除；Agent retirement 按 `agent_home_snapshots` ledger 发起物理清理。
 5. `workspace_id` 等于 `runtime_session_id`，在 session 内保持稳定。
 6. Shell Layer 不知道当前使用 Local、Enterprise 还是 E2B。
 7. Sandbox Layer 不解析 backend-specific Home ref，只将其传给当前部署的 Sandbox Driver。
@@ -142,7 +152,8 @@ flowchart LR
 | 状态 | Owner | 保存位置 |
 |---|---|---|
 | Agent config | Dify API | 现有产品数据库 |
-| Home Snapshot ref | Dify API | Agent config snapshot 或其关联记录 |
+| Home Snapshot identity / owner / opaque ref | Dify API | `agent_home_snapshots` |
+| Draft / Config Snapshot 的 Home binding | Dify API | `home_snapshot_id` |
 | Runtime session ID | Dify API | `agent_runtime_sessions.id` |
 | Workspace ID | Dify API | 直接使用 runtime session ID |
 | Agenton session snapshot | Dify API | `agent_runtime_sessions.session_snapshot` |
@@ -178,9 +189,14 @@ Dify Agent 保留两类独立的无状态操作入口：
 | 操作入口 | 来源 | 职责 | 不负责 |
 |---|---|---|---|
 | `SandboxFileService` + `/sandbox/files/list|read|upload` | 复用现有实现 | 根据 Dify API 提供的 locator 恢复 sandbox，访问当前 workspace | 保存 workspace 映射、管理 workspace 生命周期 |
-| `HomeSnapshotService` | 新增 | 调用当前 `HomeSnapshotDriver` create/delete，返回或消费稳定 `snapshot_ref` | 保存 snapshot ref、判断 config version 生命周期、引用计数 |
+| `HomeSnapshotService` | 新增 | 调用当前 `HomeSnapshotDriver` initialize/from-sandbox/delete，返回或消费稳定 `snapshot_ref` | 保存 snapshot ref、判断 Build Apply/Agent retirement 产品生命周期、引用计数 |
 
-Dify API 负责从产品 owner locator 查询 `AgentRuntimeSession` 并构造 Workspace locator；Dify Agent 不根据 `workspace_id` 查询数据库。Home Snapshot create/delete 由 Dify API 的 Agent config version 生命周期触发，不进入 Agenton runtime session hooks。
+Dify API 负责从产品 owner locator 查询 `AgentRuntimeSession` 并构造 Workspace locator；Dify Agent 不根据
+`workspace_id` 查询数据库。Dify API 还负责从 `agent_home_snapshots` 解析 owner-scoped Home ref。Home 动作不由
+普通 runtime-session lifecycle 驱动：initialize/delete 是直接的 control-plane driver 操作；from-sandbox 则会按
+Dify API 提供的 locator 构建 compositor，恢复准确的 source Sandbox lease，并在 snapshot 后将 source suspend。
+初始化、Build Apply 与 Agent retirement 的最终语义以
+`.context/proposals/260721-agent-home-snapshot-lifecycle.md` 为准。
 
 ## 6. Agenton Layer graph
 
@@ -240,8 +256,8 @@ Profile 在 Dify Agent application composition root 中由服务端 settings 创
 
 它不是注入所有 Layer 的 god object：
 
-- Home Snapshot 管理接口用于 Dify API 发起的 create/delete 管理请求。
-- Home Layer 本身只持有 Dify API 传入的 snapshot ref。
+- Home Snapshot 管理接口用于 Dify API 发起的 initialize/from-sandbox/delete 管理请求。
+- Home Layer 本身只持有 Dify API 在 owner scope 内由 `home_snapshot_id` 解析出的 snapshot ref。
 - Sandbox Layer 只注入 `SandboxDriver`。
 - Workspace Layer 不需要 backend dependency；它只绑定 runtime session ID。
 - Shell Layer 不注入 backend。
@@ -260,20 +276,32 @@ Home Snapshot 的逻辑记录由 Dify API 保存。Dify Agent 只提供无状态
 
 ```python
 @dataclass(frozen=True, slots=True)
-class CreateHomeSnapshotRequest:
+class InitializeHomeSnapshotSpec:
     tenant_id: str
     agent_id: str
-    agent_config_version_id: str
-    source_digest: str
-    source: HomeSnapshotSource
+    home_snapshot_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class HomeSnapshotCreateSpec:
+    tenant_id: str
+    agent_id: str
+    home_snapshot_id: str
 
 
 class HomeSnapshotDriver(Protocol):
-    async def create(self, request: CreateHomeSnapshotRequest) -> str: ...
+    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str: ...
+    async def create_from_sandbox(self, *, spec: HomeSnapshotCreateSpec, source: SandboxLease) -> str: ...
     async def delete(self, snapshot_ref: str) -> None: ...
 ```
 
-`HomeSnapshotService` 是 Dify Agent 面向 Dify API 的 application facade：选择当前 backend profile 的 `HomeSnapshotDriver`、执行 create/delete、完成错误映射，并保持 backend credentials 在 Dify Agent 内。它不建立 snapshot catalog，不持久化 `snapshot_ref`。
+`HomeSnapshotService` 是 Dify Agent 面向 Dify API 的 application facade：选择当前 backend profile 的
+`HomeSnapshotDriver`，分别执行 backend-native initialize、从调用方提供的 retained Build Sandbox locator
+进入 lease 并 snapshot、以及 delete。它完成错误映射并保持 backend credentials 在 Dify Agent 内，
+但不建立 snapshot catalog，也不持久化 `snapshot_ref`。
+
+这里没有通用 file-source create contract：Dify API 不发送 canonical files、skill ZIP、manifest 或 digest。
+Build Apply 的唯一内容来源是 owner-scoped retained Build Sandbox。
 
 要求：
 
@@ -367,7 +395,8 @@ Dependencies：`execution_context`。
 
 行为：
 
-- 提供不可变 `HomeSnapshotBinding(snapshot_ref=...)`。
+- 提供不可变 `HomeSnapshotBinding(snapshot_ref=...)`；该 ref 已在 Dify API 侧通过 `home_snapshot_id` 和 owner
+  scope 解析。
 - 不调用数据库。
 - 不在 request lifecycle 中创建或删除 snapshot。
 - `on_context_delete()` 不调用 Home Snapshot Driver。
@@ -454,29 +483,37 @@ Dependencies：`execution_context`、`sandbox`。
 
 ### 10.1 Agent config 与 Home Snapshot
 
-Dify API 保存 Home Snapshot ref。可以放在 Agent config snapshot 字段或其关联表中，具体 schema 由现有 config lifecycle 决定。
-
-最小逻辑字段：
+Dify API 使用独立 ledger 保存 Home Snapshot identity、owner 与 backend ref：
 
 ```text
-agent_config_snapshot
+agent_home_snapshots
   id
   tenant_id
   agent_id
-  home_snapshot_ref
-  home_snapshot_status
+  snapshot_ref
+  created_at
 ```
 
-Dify API 在 config version 发布时：
+Draft 与 immutable Config Snapshot 只保存产品层 identity：
 
-1. 调用 Dify Agent Home Snapshot create 接口。
-2. Dify Agent 调用当前 backend driver。
-3. Dify Agent 返回 snapshot ref。
-4. Dify API 保存 ref。
+```text
+agent_config_drafts.home_snapshot_id
+agent_config_snapshots.home_snapshot_id
+```
 
-Agent 初始 backing config snapshot 在创建时同样执行上述 materialize，即使它的产品发布状态仍是 draft。Normal draft 和 account build-draft 均通过 `base_snapshot_id` 解析这份 backend-native ref。这里禁止的是 Dify API 用 E2B template 或其他跨 backend 默认值代替真实 Home materialize；E2B 部署在 Dify Agent 服务端使用 `difys-default-team/dify-agent-local-sandbox` 作为默认构建 template 是合法且预期的部署配置。
+`snapshot_ref` 是 backend opaque handle，只能在 Dify API 的 runtime/control-plane 边界按完整 owner scope
+解析。Config Snapshot 不保存 ref/status，也不拥有 Home。
 
-删除 config version 时，由 Dify API 发起 Home Snapshot delete；runtime session cleanup 不删除 Home Snapshot。
+创建边界只有两种：
+
+1. Agent provisioning 调用 backend-native initialize，创建 ledger row，并让初始 Draft / Config Snapshot 指向其
+   `home_snapshot_id`。
+2. Build Draft Apply 解析该 Draft 的 retained Sandbox locator，从该 Sandbox 创建 Home ledger row，再让 Normal
+   Draft 指向新 ID。
+
+Build Draft save 不创建 Home。Publish 只复用 Normal Draft 的 `home_snapshot_id`；restore/save-version 也只传递
+已验证的 ID。`base_snapshot_id` 不参与 Home 解析。删除 config version 不删除 Home；Agent retirement 查询 ledger，
+通过 one-shot cleanup task 幂等删除所有 physical refs，ledger rows 不变。Runtime session cleanup 也不删除 Home。
 
 ### 10.2 AgentRuntimeSession
 
@@ -573,7 +610,7 @@ sequenceDiagram
     participant Driver as Sandbox Driver
 
     API->>API: generate runtime_session_id
-    API->>DB: load Agent config and Home snapshot ref
+    API->>DB: load config home_snapshot_id + owner-scoped ledger ref
     API->>Agent: composition(workspace_id=runtime_session_id), snapshot=None
     Agent->>Driver: create(home ref, runtime_session_id)
     Driver-->>Agent: live lease + stable handle
@@ -710,6 +747,8 @@ sequenceDiagram
 
 - `SandboxDriver.delete()` 幂等。
 - Session cleanup 不删除 Home Snapshot。
+- Agent retirement 通过 Dify API one-shot Celery task 查询 `agent_home_snapshots`，幂等删除该 Agent 的
+  physical refs；immutable ledger rows 不被清空或删除。
 - Runtime-session / app lifecycle 只尽力发出一次显式 cleanup；不提供 Celery 自动重试、cleanup 状态机或最终成功保证。
 - 第一阶段不新增 Dify Agent Reconciler。
 - Backend not-found 视为 cleanup 成功。
@@ -784,7 +823,9 @@ RuntimeBackendProfile
 
 行为：
 
-- Home Snapshot Driver 从已准备的 template 创建构建 sandbox，materialize Agent Home 后生成 E2B Snapshot。
+- E2B 的 backend-native initialize 可以从已准备的 template 创建初始 E2B Snapshot。
+- Build Apply 不创建第二个 builder、不重放文件；它恢复 Dify API 指定的 retained Build Sandbox，并直接对该
+  Sandbox 调用 snapshot。
 - Home Snapshot ref 是生成的 E2B Snapshot ID。
 - create 从该 snapshot 创建 E2B sandbox。
 - workspace 位于 sandbox filesystem，目录身份来自 runtime session ID。
@@ -792,7 +833,8 @@ RuntimeBackendProfile
 - 请求退出 pause sandbox，而不是 kill。
 - 后续请求和文件浏览根据稳定 sandbox ID resume/connect。
 - 操作结束后再次 pause。
-- Runtime sandbox 的 E2B active timeout 到期时执行 pause；Home Snapshot 构建 sandbox 的 active timeout 到期时执行 kill。
+- Runtime sandbox 的 E2B active timeout 到期时执行 pause；initialize 内部若使用临时 builder，其 active timeout
+  到期时执行 kill。
 - Active timeout 每次 create/connect 时设置，只约束连续 running 时间，不是资源保留期限或删除 TTL。
 - Session / app cleanup 显式调用 kill；paused E2B sandbox 在当前阶段不会因为年龄自动删除。
 - E2B credentials 只存在于 Dify Agent server settings。
@@ -835,7 +877,10 @@ Workspace upload:
   DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES=52428800
 ```
 
-`DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` 最大为 E2B 当前支持的 3600 秒。Runtime sandbox 超时动作是 pause，临时 Home-build sandbox 超时动作是 kill；该配置不提供 paused sandbox 的 age TTL。Local / Enterprise 若需要额外回收策略，由各自部署后端配置，不进入公共 Dify Agent contract。
+`DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` 最大为 E2B 当前支持的 3600 秒。Runtime sandbox 超时动作是 pause；
+initialize 内部若创建临时 builder，其超时动作是 kill。Build Apply 使用 retained Sandbox，不创建 builder。
+该配置不提供 paused sandbox 的 age TTL。Local / Enterprise 若需要额外回收策略，由各自部署后端配置，
+不进入公共 Dify Agent contract。
 
 废弃 `DIFY_AGENT_SHELL_PROVIDER`。
 
@@ -864,7 +909,8 @@ SandboxCleanupError
 - Dify API 可以将对应 runtime session 标记为不可继续或 cleaned。
 - Suspend 失败：Dify Agent 返回失败，不产生一个虚假的成功 terminal snapshot。
 - Delete not-found：视为成功。
-- Home Snapshot create 成功但 Dify API 尚未保存 ref 时，不实现 publication rollback compensation；资源可能泄漏，backend metadata 仅用于诊断或人工清理。
+- Home Snapshot physical create 成功但 ledger 尚未提交时，Dify API 在可观察到的失败/rollback 路径执行一次
+  compensation delete；进程不可恢复中断仍可能留下 orphan，当前不提供 eventual cleanup 保证。
 
 ## 17. 安全边界
 
@@ -874,7 +920,8 @@ SandboxCleanupError
 - Backend credentials、临时 tokens、clients 不进入数据库和 snapshot。
 - Workspace 文件访问执行 canonical containment 和 symlink containment。
 - Local/Enterprise/E2B 的 network 和 isolation policy 由 deployment backend 负责。
-- Home Snapshot build 输入来自 canonical Agent config，不从任意 runtime filesystem diff 自动回写。
+- 初始化 Home 由 backend-native initialize 决定；Build Apply 只接受 owner-scoped retained Build Sandbox，
+  不接受任意 runtime filesystem，也不接受 file replay fallback。
 - Shell secrets 只在 command invocation 注入。
 
 ## 18. 水平扩展与故障窗口
@@ -941,7 +988,7 @@ Dify Agent 已创建 sandbox
 
 ### Phase 4：E2B Backend
 
-- 实现 E2B Home Snapshot create/delete。
+- 实现 E2B Home Snapshot initialize/from-retained-sandbox/delete。
 - 实现 Sandbox create/pause/resume/kill。
 - 复用 shellctl command/file adapters，并实现 E2B endpoint discovery/connection wiring。
 - 验证跨 Dify Agent 实例恢复和请求后 workspace 浏览。
@@ -989,6 +1036,8 @@ workspace_id == runtime_session_id
 - 文件浏览从 product owner locator 解析最新 active session。
 - 现有 Workspace/Sandbox 文件 controller 和 Dify Agent client 继续使用同一调用链。
 - Cleanup 加载 snapshot、调用 Dify Agent DELETE、再标记 CLEANED；失败时不承诺重试或最终回收。
+- Home lifecycle 测试覆盖 ledger owner scope、initialize、Build Apply from retained Sandbox、Publish reuse 与 Agent
+  retirement；不再验证 file payload、digest、Publish materialization 或 E2B unified builder。
 
 ### 20.4 Workspace 文件安全测试
 
@@ -1002,9 +1051,10 @@ workspace_id == runtime_session_id
 
 - Local：两个 runtime session 的 workspace 隔离。
 - Enterprise：create/detach/attach/delete。
-- E2B：snapshot create、pause、resume、browse、re-pause、kill。
+- E2B：initialize、retained Build Sandbox snapshot、pause、resume、browse、re-pause、kill。
 - Dify Agent instance A 创建、instance B 恢复。
-- E2B active timeout：runtime sandbox 使用 pause，临时 Home-build sandbox 使用 kill，并拒绝超过平台上限的配置。
+- E2B active timeout：runtime sandbox 使用 pause；initialize 临时 builder（若有）使用 kill；Build Apply 不创建
+  builder；配置拒绝超过平台上限。
 - Runtime-session / app cleanup 显式删除物理 sandbox，backend not-found 保持幂等成功。
 
 ## 21. 验收标准
@@ -1024,13 +1074,17 @@ workspace_id == runtime_session_id
 13. 旧 ShellProvider 和 `DIFY_AGENT_SHELL_PROVIDER` 完成迁移后删除。
 14. Workspace 文件访问复用现有 service、路由和 client；不新增 Workspace registry 或第二套 Workspace service。
 15. E2B backend 默认使用 `difys-default-team/dify-agent-local-sandbox` template，并通过部署配置覆盖。
+16. `agent_home_snapshots` 保存 owner-scoped opaque ref；Draft / Config Snapshot 只保存 `home_snapshot_id`。
+17. Build Apply 从 retained Build Sandbox 创建 Home，Publish 复用 Home，Agent retirement 才清理 physical refs。
 
 ## 22. 最终架构
 
 ```text
 Dify API Database
-  ├── Agent config snapshot
-  │     └── immutable Home Snapshot ref
+  ├── agent_home_snapshots
+  │     └── immutable owner + opaque backend ref
+  ├── Agent Draft / Config Snapshot
+  │     └── home_snapshot_id
   │
   └── AgentRuntimeSession
         ├── id = runtime_session_id = workspace_id

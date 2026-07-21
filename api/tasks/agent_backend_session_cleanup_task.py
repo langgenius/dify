@@ -15,20 +15,40 @@ from clients.agent_backend.session_cleanup import (
 from configs import dify_config
 from core.db.session_factory import session_factory
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.retirement_service import WorkflowAgentRetirementService
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="workflow_storage")
 def cleanup_agent_home_snapshots(*, tenant_id: str, agent_id: str) -> None:
-    """Make one best-effort delete attempt after an Agent is archived."""
+    """Delete every physical Home in the immutable Agent-owned ledger."""
     with session_factory.create_session() as session:
-        AgentHomeSnapshotService.delete_agent_snapshots(
+        AgentHomeSnapshotService.delete_all_for_agent(
             session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
         )
+
+
+@shared_task(queue="workflow_storage")
+def retire_workflow_agents_if_unowned(
+    *,
+    tenant_id: str,
+    agent_ids: list[str],
+    account_id: str | None,
+) -> None:
+    """Archive unowned workflow-only Agents, then retire their physical Homes."""
+    with session_factory.create_session() as session:
+        cleanup_candidate_ids = WorkflowAgentRetirementService.archive_unowned(
+            session=session,
+            tenant_id=tenant_id,
+            agent_ids=agent_ids,
+            account_id=account_id,
+        )
         session.commit()
+    for agent_id in cleanup_candidate_ids:
+        cleanup_agent_home_snapshots.delay(tenant_id=tenant_id, agent_id=agent_id)
 
 
 def _create_agent_backend_client():

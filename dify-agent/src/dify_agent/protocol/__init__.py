@@ -52,7 +52,11 @@ from .sandbox import (
     build_sandbox_locator_from_run_request,
     extract_runtime_layer_specs,
 )
-from .home_snapshot import CreateHomeSnapshotRequest, CreateHomeSnapshotResponse, HomeSnapshotSourceFile
+from .home_snapshot import (
+    CreateHomeSnapshotFromSandboxRequest,
+    HomeSnapshotResponse,
+    InitializeHomeSnapshotRequest,
+)
 
 __all__ = [
     "BaseRunEvent",
@@ -61,8 +65,7 @@ __all__ = [
     "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
-    "CreateHomeSnapshotRequest",
-    "CreateHomeSnapshotResponse",
+    "CreateHomeSnapshotFromSandboxRequest",
     "DeferredToolCallPayload",
     "DeferredToolResultsPayload",
     "DIFY_AGENT_HISTORY_LAYER_ID",
@@ -70,7 +73,8 @@ __all__ = [
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
     "LayerExitSignals",
-    "HomeSnapshotSourceFile",
+    "HomeSnapshotResponse",
+    "InitializeHomeSnapshotRequest",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",
     "RunCancelledEvent",

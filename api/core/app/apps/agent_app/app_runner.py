@@ -637,6 +637,7 @@ class AgentAppRunner:
         agent_config_snapshot_id: str,
         agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
         agent_soul: AgentSoulConfig,
+        home_snapshot_id: str,
         home_snapshot_ref: str,
         conversation_id: str,
         query: str,
@@ -651,6 +652,7 @@ class AgentAppRunner:
             dify_context=dify_context,
             agent_id=agent_id,
             agent_config_snapshot_id=agent_config_snapshot_id,
+            home_snapshot_id=home_snapshot_id,
             conversation_id=conversation_id,
             session_scope_snapshot_id=session_scope_snapshot_id,
         )
@@ -765,6 +767,7 @@ class AgentAppRunner:
         dify_context: DifyRunContext,
         agent_id: str,
         agent_config_snapshot_id: str,
+        home_snapshot_id: str,
         conversation_id: str,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId,
     ) -> AgentAppSessionScope:
@@ -778,6 +781,7 @@ class AgentAppRunner:
             conversation_id=conversation_id,
             agent_id=agent_id,
             agent_config_snapshot_id=effective_session_scope_snapshot_id,
+            home_snapshot_id=home_snapshot_id,
         )
 
     def _build_runtime(

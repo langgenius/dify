@@ -30,8 +30,9 @@ from dify_agent.protocol import (
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
-    CreateHomeSnapshotRequest,
-    CreateHomeSnapshotResponse,
+    CreateHomeSnapshotFromSandboxRequest,
+    HomeSnapshotResponse,
+    InitializeHomeSnapshotRequest,
     RUN_EVENT_ADAPTER,
     RunEvent,
     RunEventsResponse,
@@ -527,15 +528,47 @@ class Client:
         response = self._post_sync_json("upload_sandbox_file_sync", "/sandbox/files/upload", request_model)
         return _parse_model_response(response, SandboxUploadResponse)
 
-    async def create_home_snapshot(self, request: CreateHomeSnapshotRequest) -> CreateHomeSnapshotResponse:
-        """Create an immutable Home Snapshot through the selected runtime backend."""
-        response = await self._post_async_json("create_home_snapshot", "/home-snapshots", request)
-        return _parse_model_response(response, CreateHomeSnapshotResponse)
+    async def initialize_home_snapshot(self, request: InitializeHomeSnapshotRequest) -> HomeSnapshotResponse:
+        """Create a backend-native initial Home Snapshot."""
+        response = await self._post_async_json(
+            "initialize_home_snapshot",
+            "/home-snapshots/initialize",
+            request,
+        )
+        return _parse_model_response(response, HomeSnapshotResponse)
 
-    def create_home_snapshot_sync(self, request: CreateHomeSnapshotRequest) -> CreateHomeSnapshotResponse:
-        """Synchronous variant of ``create_home_snapshot``."""
-        response = self._post_sync_json("create_home_snapshot_sync", "/home-snapshots", request)
-        return _parse_model_response(response, CreateHomeSnapshotResponse)
+    def initialize_home_snapshot_sync(self, request: InitializeHomeSnapshotRequest) -> HomeSnapshotResponse:
+        """Synchronous variant of ``initialize_home_snapshot``."""
+        response = self._post_sync_json(
+            "initialize_home_snapshot_sync",
+            "/home-snapshots/initialize",
+            request,
+        )
+        return _parse_model_response(response, HomeSnapshotResponse)
+
+    async def create_home_snapshot_from_sandbox(
+        self,
+        request: CreateHomeSnapshotFromSandboxRequest,
+    ) -> HomeSnapshotResponse:
+        """Snapshot the exact retained Sandbox identified by the request."""
+        response = await self._post_async_json(
+            "create_home_snapshot_from_sandbox",
+            "/home-snapshots/from-sandbox",
+            request,
+        )
+        return _parse_model_response(response, HomeSnapshotResponse)
+
+    def create_home_snapshot_from_sandbox_sync(
+        self,
+        request: CreateHomeSnapshotFromSandboxRequest,
+    ) -> HomeSnapshotResponse:
+        """Synchronous variant of ``create_home_snapshot_from_sandbox``."""
+        response = self._post_sync_json(
+            "create_home_snapshot_from_sandbox_sync",
+            "/home-snapshots/from-sandbox",
+            request,
+        )
+        return _parse_model_response(response, HomeSnapshotResponse)
 
     async def delete_home_snapshot(self, snapshot_ref: str) -> None:
         """Idempotently delete one backend Home Snapshot."""

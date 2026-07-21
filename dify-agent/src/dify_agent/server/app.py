@@ -86,7 +86,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         else None
     )
     home_snapshot_service = (
-        HomeSnapshotService(driver=runtime_backend_profile.home_snapshots)
+        HomeSnapshotService(driver=runtime_backend_profile.home_snapshots, layer_providers=layer_providers)
         if runtime_backend_profile is not None
         else None
     )

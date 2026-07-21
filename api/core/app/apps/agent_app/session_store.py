@@ -47,6 +47,7 @@ class AgentAppSessionScope:
     conversation_id: str
     agent_id: str
     agent_config_snapshot_id: str | None
+    home_snapshot_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +138,7 @@ class AgentAppRuntimeSessionStore:
                     conversation_id=row.conversation_id or "",
                     agent_id=row.agent_id,
                     agent_config_snapshot_id=row.agent_config_snapshot_id or "",
+                    home_snapshot_id=row.home_snapshot_id,
                 ),
                 runtime_session_id=row.id,
                 session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
@@ -169,6 +171,7 @@ class AgentAppRuntimeSessionStore:
                         conversation_id=row.conversation_id or "",
                         agent_id=row.agent_id,
                         agent_config_snapshot_id=row.agent_config_snapshot_id,
+                        home_snapshot_id=row.home_snapshot_id,
                     ),
                     runtime_session_id=row.id,
                     session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
@@ -223,6 +226,7 @@ class AgentAppRuntimeSessionStore:
                     app_id=scope.app_id,
                     owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
                     agent_id=scope.agent_id,
+                    home_snapshot_id=scope.home_snapshot_id,
                     agent_config_snapshot_id=scope.agent_config_snapshot_id,
                     conversation_id=scope.conversation_id,
                     backend_run_id=backend_run_id,
@@ -278,6 +282,7 @@ class AgentAppRuntimeSessionStore:
             AgentRuntimeSession.tenant_id == scope.tenant_id,
             AgentRuntimeSession.conversation_id == scope.conversation_id,
             AgentRuntimeSession.agent_id == scope.agent_id,
+            AgentRuntimeSession.home_snapshot_id == scope.home_snapshot_id,
         )
         if scope.agent_config_snapshot_id is None:
             return stmt.where(AgentRuntimeSession.agent_config_snapshot_id.is_(None))

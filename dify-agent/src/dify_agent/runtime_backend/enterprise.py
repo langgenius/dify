@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import logging
 import shlex
 from dataclasses import dataclass, field
@@ -21,7 +20,8 @@ from dify_agent.runtime_backend.errors import (
     SandboxResumeError,
 )
 from dify_agent.runtime_backend.protocols import (
-    CreateHomeSnapshotRequest,
+    HomeSnapshotCreateSpec,
+    InitializeHomeSnapshotSpec,
     SandboxCreateSpec,
     SandboxLayout,
     SandboxLease,
@@ -69,19 +69,32 @@ class EnterpriseGatewayClient:
             timeout=httpx.Timeout(self.timeout),
         )
 
-    async def create_home_snapshot(self, request: CreateHomeSnapshotRequest) -> str:
+    async def initialize_home_snapshot(self, spec: InitializeHomeSnapshotSpec) -> str:
         response = await self._request(
             "POST",
-            "/v1/home-snapshots",
+            "/v1/home-snapshots/initialize",
             json_body={
-                "tenantId": request.tenant_id,
-                "agentId": request.agent_id,
-                "agentConfigVersionId": request.agent_config_version_id,
-                "sourceDigest": request.source_digest,
-                "files": [
-                    {"path": item.path, "contentBase64": base64.b64encode(item.content).decode("ascii")}
-                    for item in request.source.files
-                ],
+                "tenantId": spec.tenant_id,
+                "agentId": spec.agent_id,
+                "homeSnapshotId": spec.home_snapshot_id,
+            },
+        )
+        return cast(_HomeSnapshotReply, response.json())["snapshotRef"]
+
+    async def create_home_snapshot_from_sandbox(
+        self,
+        *,
+        spec: HomeSnapshotCreateSpec,
+        source_sandbox_handle: str,
+    ) -> str:
+        response = await self._request(
+            "POST",
+            "/v1/home-snapshots/from-sandbox",
+            json_body={
+                "tenantId": spec.tenant_id,
+                "agentId": spec.agent_id,
+                "homeSnapshotId": spec.home_snapshot_id,
+                "sourceSandboxId": source_sandbox_handle,
             },
         )
         return cast(_HomeSnapshotReply, response.json())["snapshotRef"]
@@ -150,10 +163,22 @@ class EnterpriseHomeSnapshotDriver:
     auth_token: str
     gateway_timeout: float = 30.0
 
-    async def create(self, request: CreateHomeSnapshotRequest) -> str:
+    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str:
         gateway = self._gateway()
         try:
-            return await gateway.create_home_snapshot(request)
+            return await gateway.initialize_home_snapshot(spec)
+        except Exception as exc:
+            raise HomeSnapshotCreateError(str(exc)) from exc
+        finally:
+            await gateway.close()
+
+    async def create_from_sandbox(self, *, spec: HomeSnapshotCreateSpec, source: SandboxLease) -> str:
+        gateway = self._gateway()
+        try:
+            return await gateway.create_home_snapshot_from_sandbox(
+                spec=spec,
+                source_sandbox_handle=source.handle,
+            )
         except Exception as exc:
             raise HomeSnapshotCreateError(str(exc)) from exc
         finally:

@@ -2,11 +2,16 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol import RuntimeLayerSpec, SandboxLocator, build_sandbox_locator_from_layer_specs
+from pydantic import TypeAdapter
+from sqlalchemy import and_, event, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
+from clients.agent_backend.session_cleanup import AgentBackendSessionCleanupPayload
+from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models import Account
 from models.agent import (
@@ -17,9 +22,13 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDebugConversation,
     AgentDriveFile,
     AgentIconType,
     AgentKind,
+    AgentRuntimeSession,
+    AgentRuntimeSessionOwnerType,
+    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -34,6 +43,7 @@ from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
+    AgentBuildSandboxNotFoundError,
     AgentModelNotConfiguredError,
     AgentNameConflictError,
     AgentNotFoundError,
@@ -41,11 +51,16 @@ from services.agent.errors import (
     AgentVersionNotFoundError,
     InvalidComposerConfigError,
 )
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.home_snapshot_service import (
+    AgentHomeSnapshotService,
+    AgentHomeSnapshotSourceError,
+    validate_home_snapshot_binding,
+)
 from services.agent.knowledge_datasets import (
     get_tenant_knowledge_dataset_rows,
     list_missing_tenant_knowledge_dataset_ids,
 )
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
@@ -56,6 +71,7 @@ from services.entities.agent_entities import (
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
+from tasks.agent_backend_session_cleanup_task import cleanup_conversation_agent_runtime_session
 
 # WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
 # Mirrors Workflow.version when it is "draft" (see models/workflow.py).
@@ -69,6 +85,7 @@ _PUBLISH_SAVE_STRATEGIES = frozenset(
 )
 
 logger = logging.getLogger(__name__)
+_RUNTIME_LAYER_SPECS_ADAPTER: TypeAdapter[list[RuntimeLayerSpec]] = TypeAdapter(list[RuntimeLayerSpec])
 
 
 def _backfill_cli_tool_ids(agent_soul: AgentSoulConfig | None) -> None:
@@ -446,6 +463,24 @@ class AgentComposerService:
             except IntegrityError as exc:
                 session.rollback()
                 raise AgentNameConflictError() from exc
+            home_snapshot = AgentHomeSnapshotService.create_initial(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent.id,
+            )
+            initial_version = cls._create_config_version(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent.id,
+                account_id=account_id,
+                agent_soul=AgentSoulConfig(),
+                operation=AgentConfigRevisionOperation.CREATE_VERSION,
+                version_note=None,
+                home_snapshot_id=home_snapshot.id,
+            )
+            agent.active_config_snapshot_id = initial_version.id
+            agent.active_config_has_model = False
+            agent.active_config_is_published = False
         return cls._save_agent_composer_for_agent(
             session=session,
             tenant_id=tenant_id,
@@ -483,7 +518,7 @@ class AgentComposerService:
     ) -> dict[str, Any]:
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
-        cls._save_agent_draft(
+        draft = cls._save_agent_draft(
             session=session,
             tenant_id=tenant_id,
             agent=agent,
@@ -498,6 +533,7 @@ class AgentComposerService:
             tenant_id=tenant_id,
             agent=agent,
             agent_soul=payload.agent_soul,
+            home_snapshot_id=draft.home_snapshot_id,
         )
 
         session.flush()
@@ -518,6 +554,7 @@ class AgentComposerService:
         tenant_id: str,
         agent: Agent,
         agent_soul: AgentSoulConfig,
+        home_snapshot_id: str,
     ) -> bool:
         if not agent.active_config_snapshot_id:
             return False
@@ -538,7 +575,10 @@ class AgentComposerService:
         ):
             return False
 
-        return _agent_soul_config_json(agent_soul) == _agent_soul_config_json(active_version.config_snapshot_dict)
+        return (
+            home_snapshot_id == active_version.home_snapshot_id
+            and _agent_soul_config_json(agent_soul) == _agent_soul_config_json(active_version.config_snapshot_dict)
+        )
 
     @classmethod
     def _has_publish_visible_revision(
@@ -590,6 +630,11 @@ class AgentComposerService:
         if not agent_soul_has_model(agent_soul):
             raise AgentModelNotConfiguredError()
         cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=agent_soul)
+        validate_home_snapshot_binding(
+            session=session,
+            agent=agent,
+            home_snapshot_id=draft.home_snapshot_id,
+        )
         version = cls._create_config_version(
             session=session,
             tenant_id=tenant_id,
@@ -599,6 +644,7 @@ class AgentComposerService:
             operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
             version_note=version_note,
             previous_snapshot_id=agent.active_config_snapshot_id,
+            home_snapshot_id=draft.home_snapshot_id,
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
@@ -647,6 +693,7 @@ class AgentComposerService:
             )
             session.add(build_draft)
         build_draft.base_snapshot_id = normal_draft.base_snapshot_id
+        build_draft.home_snapshot_id = normal_draft.home_snapshot_id
         build_draft.config_snapshot = AgentSoulConfig.model_validate(normal_draft.config_snapshot_dict)
         build_draft.updated_by = account_id
         session.flush()
@@ -703,25 +750,73 @@ class AgentComposerService:
         if build_draft is None:
             raise AgentVersionNotFoundError()
         applied_agent_soul = AgentSoulConfig.model_validate(build_draft.config_snapshot_dict)
-        normal_draft = cls._save_agent_draft(
+        ComposerConfigValidator.validate_publish_payload(
+            ComposerSavePayload(
+                variant=ComposerVariant.AGENT_APP,
+                agent_soul=applied_agent_soul,
+                save_strategy=ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+            )
+        )
+        cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=applied_agent_soul)
+        source_sandbox = cls._require_build_sandbox_locator(
             session=session,
             tenant_id=tenant_id,
-            agent=agent,
-            draft_type=AgentConfigDraftType.DRAFT,
-            account_id=None,
-            agent_soul=applied_agent_soul,
-            account_id_for_audit=account_id,
-            base_snapshot_id=build_draft.base_snapshot_id,
+            agent_id=agent.id,
+            account_id=account_id,
+            build_draft=build_draft,
         )
-        agent.active_config_is_published = cls._agent_soul_matches_active_config(
+        home_snapshot = AgentHomeSnapshotService.create_for_build_apply(
             session=session,
-            tenant_id=tenant_id,
-            agent=agent,
-            agent_soul=applied_agent_soul,
+            build_draft=build_draft,
+            source_sandbox=source_sandbox,
         )
-        agent.updated_by = account_id
-        session.delete(build_draft)
-        session.flush()
+        created_home_snapshot_id = home_snapshot.id
+        created_snapshot_ref = home_snapshot.snapshot_ref
+        try:
+            normal_draft = cls._save_agent_draft(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                draft_type=AgentConfigDraftType.DRAFT,
+                account_id=None,
+                agent_soul=applied_agent_soul,
+                account_id_for_audit=account_id,
+                base_snapshot_id=build_draft.base_snapshot_id,
+            )
+            normal_draft.home_snapshot_id = created_home_snapshot_id
+            agent.active_config_is_published = cls._agent_soul_matches_active_config(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                agent_soul=applied_agent_soul,
+                home_snapshot_id=created_home_snapshot_id,
+            )
+            agent.updated_by = account_id
+            cleanup_payloads = cls._retire_replaced_draft_sessions(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent.id,
+                draft_ids=(build_draft.id, normal_draft.id),
+                retained_home_snapshot_id=created_home_snapshot_id,
+            )
+            session.delete(build_draft)
+            session.commit()
+        except Exception:
+            session.rollback()
+            try:
+                AgentHomeSnapshotService.delete(snapshot_ref=created_snapshot_ref)
+            except Exception:
+                logger.exception(
+                    "Failed to compensate Build Apply Home Snapshot",
+                    extra={
+                        "tenant_id": tenant_id,
+                        "agent_id": agent.id,
+                        "home_snapshot_id": created_home_snapshot_id,
+                        "snapshot_ref": created_snapshot_ref,
+                    },
+                )
+            raise
+        cls._dispatch_runtime_session_cleanup(cleanup_payloads)
         return {"result": "success", "draft": cls._serialize_draft(normal_draft)}
 
     @classmethod
@@ -736,6 +831,17 @@ class AgentComposerService:
             account_id=account_id,
         )
         if build_draft is not None:
+            cleanup_payloads = cls._retire_replaced_draft_sessions(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                draft_ids=(build_draft.id,),
+                retained_home_snapshot_id=None,
+            )
+            cls._schedule_runtime_session_cleanup_after_commit(
+                session=session,
+                payloads=cleanup_payloads,
+            )
             session.delete(build_draft)
             session.flush()
         return {"result": "success"}
@@ -1288,6 +1394,12 @@ class AgentComposerService:
         binding = cls._require_binding(binding)
         if not binding.agent_id or payload.agent_soul is None:
             raise ValueError("agent_id and agent_soul are required")
+        current_snapshot = cls._require_version(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=binding.agent_id,
+            version_id=binding.current_snapshot_id,
+        )
         version = cls._create_config_version(
             session=session,
             tenant_id=tenant_id,
@@ -1296,6 +1408,7 @@ class AgentComposerService:
             agent_soul=payload.agent_soul,
             operation=AgentConfigRevisionOperation.SAVE_NEW_VERSION,
             version_note=payload.version_note,
+            home_snapshot_id=current_snapshot.home_snapshot_id,
         )
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
@@ -1323,6 +1436,13 @@ class AgentComposerService:
     ) -> WorkflowAgentNodeBinding:
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
+        retirement_candidates = (
+            {binding.agent_id}
+            if binding is not None
+            and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+            and binding.agent_id
+            else set()
+        )
         agent_name = payload.new_agent_name or "Untitled Agent"
         agent = cls._create_roster_agent_for_composer(
             session=session,
@@ -1355,6 +1475,12 @@ class AgentComposerService:
         binding.node_job_config = node_job
         binding.updated_by = account_id
         session.flush()
+        WorkflowAgentRetirementService.schedule_after_commit(
+            session=session,
+            tenant_id=tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=account_id,
+        )
         return binding
 
     @classmethod
@@ -1408,6 +1534,12 @@ class AgentComposerService:
         binding.updated_by = account_id
         if payload.node_job is not None:
             binding.node_job_config = payload.node_job
+        WorkflowAgentRetirementService.schedule_after_commit(
+            session=session,
+            tenant_id=tenant_id,
+            agent_ids={source_agent.id} if source_agent.scope == AgentScope.WORKFLOW_ONLY else set(),
+            account_id=account_id,
+        )
         return binding
 
     @classmethod
@@ -1458,6 +1590,11 @@ class AgentComposerService:
         )
         session.add(agent)
         session.flush()
+        home_snapshot = AgentHomeSnapshotService.create_initial(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+        )
         version = cls._create_config_version(
             session=session,
             tenant_id=tenant_id,
@@ -1466,6 +1603,7 @@ class AgentComposerService:
             agent_soul=agent_soul,
             operation=AgentConfigRevisionOperation.CREATE_VERSION,
             version_note=None,
+            home_snapshot_id=home_snapshot.id,
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
@@ -1637,6 +1775,7 @@ class AgentComposerService:
         agent_soul: AgentSoulConfig,
         operation: AgentConfigRevisionOperation,
         version_note: str | None,
+        home_snapshot_id: str,
         previous_snapshot_id: str | None = None,
     ) -> AgentConfigSnapshot:
         next_version = (
@@ -1653,12 +1792,12 @@ class AgentComposerService:
             agent_id=agent_id,
             version=next_version,
             config_snapshot=agent_soul,
+            home_snapshot_id=home_snapshot_id,
             version_note=version_note,
             created_by=account_id,
         )
         session.add(version)
         session.flush()
-        AgentHomeSnapshotService.materialize(session=session, snapshot=version)
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -1693,6 +1832,7 @@ class AgentComposerService:
             operation=operation,
             version_note=version_note,
             previous_snapshot_id=current_snapshot.id,
+            home_snapshot_id=current_snapshot.home_snapshot_id,
         )
 
     @classmethod
@@ -1750,6 +1890,135 @@ class AgentComposerService:
             stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
         return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
 
+    @staticmethod
+    def _require_build_sandbox_locator(
+        *,
+        session: Session,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        build_draft: AgentConfigDraft,
+    ) -> SandboxLocator:
+        """Load only this account-owned Build Draft's latest retained Sandbox."""
+        row = session.scalar(
+            select(AgentRuntimeSession)
+            .join(
+                AgentDebugConversation,
+                and_(
+                    AgentDebugConversation.tenant_id == AgentRuntimeSession.tenant_id,
+                    AgentDebugConversation.agent_id == AgentRuntimeSession.agent_id,
+                    AgentDebugConversation.conversation_id == AgentRuntimeSession.conversation_id,
+                ),
+            )
+            .where(
+                AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
+                AgentRuntimeSession.tenant_id == tenant_id,
+                AgentRuntimeSession.agent_id == agent_id,
+                AgentRuntimeSession.agent_config_snapshot_id == build_draft.id,
+                AgentRuntimeSession.home_snapshot_id == build_draft.home_snapshot_id,
+                AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+                AgentDebugConversation.account_id == account_id,
+            )
+            .order_by(AgentRuntimeSession.updated_at.desc())
+            .limit(1)
+        )
+        if row is None:
+            raise AgentBuildSandboxNotFoundError()
+        try:
+            return build_sandbox_locator_from_layer_specs(
+                layer_specs=_RUNTIME_LAYER_SPECS_ADAPTER.validate_json(row.composition_layer_specs),
+                session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
+            )
+        except ValueError as exc:
+            raise AgentHomeSnapshotSourceError("Build Draft retained Sandbox is not recoverable.") from exc
+
+    @classmethod
+    def _retire_replaced_draft_sessions(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent_id: str,
+        draft_ids: tuple[str, ...],
+        retained_home_snapshot_id: str | None,
+    ) -> list[dict[str, object]]:
+        """Retire matching Draft sessions and return their physical cleanup payloads."""
+        stmt = select(AgentRuntimeSession).where(
+            AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
+            AgentRuntimeSession.tenant_id == tenant_id,
+            AgentRuntimeSession.agent_id == agent_id,
+            AgentRuntimeSession.agent_config_snapshot_id.in_(draft_ids),
+            AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+        )
+        if retained_home_snapshot_id is not None:
+            stmt = stmt.where(AgentRuntimeSession.home_snapshot_id != retained_home_snapshot_id)
+        rows = session.scalars(stmt).all()
+        payloads: list[dict[str, object]] = []
+        for row in rows:
+            try:
+                payloads.append(cls._runtime_session_cleanup_payload(row))
+            except ValueError:
+                logger.warning(
+                    "Failed to build cleanup payload for retired Draft Sandbox: tenant_id=%s agent_id=%s "
+                    "runtime_session_id=%s",
+                    tenant_id,
+                    agent_id,
+                    row.id,
+                    exc_info=True,
+                )
+            row.status = AgentRuntimeSessionStatus.CLEANED
+            row.cleaned_at = naive_utc_now()
+        return payloads
+
+    @staticmethod
+    def _runtime_session_cleanup_payload(row: AgentRuntimeSession) -> dict[str, object]:
+        payload = AgentBackendSessionCleanupPayload(
+            session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
+            runtime_layer_specs=_RUNTIME_LAYER_SPECS_ADAPTER.validate_json(row.composition_layer_specs),
+            idempotency_key=(
+                f"{row.tenant_id}:{row.agent_id}:draft-session-cleanup:{row.id}:"
+                f"{row.backend_run_id or 'no-run'}"
+            ),
+            metadata={
+                "tenant_id": row.tenant_id,
+                "app_id": row.app_id,
+                "conversation_id": row.conversation_id,
+                "agent_id": row.agent_id,
+                "agent_config_snapshot_id": row.agent_config_snapshot_id,
+                "previous_agent_backend_run_id": row.backend_run_id,
+            },
+        )
+        return payload.model_dump(mode="json")
+
+    @staticmethod
+    def _dispatch_runtime_session_cleanup(payloads: list[dict[str, object]]) -> None:
+        for payload in payloads:
+            try:
+                cleanup_conversation_agent_runtime_session.delay(payload)
+            except Exception:
+                logger.warning("Failed to enqueue retired Draft Sandbox cleanup", exc_info=True)
+
+    @classmethod
+    def _schedule_runtime_session_cleanup_after_commit(
+        cls,
+        *,
+        session: Session,
+        payloads: list[dict[str, object]],
+    ) -> None:
+        if not payloads:
+            return
+        state = {"rolled_back": False}
+
+        def cancel(_session: Session) -> None:
+            state["rolled_back"] = True
+
+        def dispatch(_session: Session) -> None:
+            if not state["rolled_back"]:
+                cls._dispatch_runtime_session_cleanup(payloads)
+
+        event.listen(session, "after_rollback", cancel, once=True)
+        event.listen(session, "after_commit", dispatch, once=True)
+
     @classmethod
     def _get_or_create_agent_draft(
         cls,
@@ -1776,18 +2045,17 @@ class AgentComposerService:
             agent_id=agent.id,
             version_id=agent.active_config_snapshot_id,
         )
-        agent_soul = (
-            AgentSoulConfig.model_validate(base_snapshot.config_snapshot_dict)
-            if base_snapshot is not None
-            else AgentSoulConfig()
-        )
+        if base_snapshot is None:
+            raise AgentVersionNotFoundError()
+        agent_soul = AgentSoulConfig.model_validate(base_snapshot.config_snapshot_dict)
         draft = AgentConfigDraft(
             tenant_id=tenant_id,
             agent_id=agent.id,
             draft_type=draft_type,
             account_id=account_id if draft_type == AgentConfigDraftType.DEBUG_BUILD else None,
             draft_owner_key=account_id if draft_type == AgentConfigDraftType.DEBUG_BUILD and account_id else "",
-            base_snapshot_id=base_snapshot.id if base_snapshot else None,
+            base_snapshot_id=base_snapshot.id,
+            home_snapshot_id=base_snapshot.home_snapshot_id,
             config_snapshot=agent_soul,
             created_by=created_by,
             updated_by=created_by,

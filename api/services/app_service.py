@@ -30,6 +30,7 @@ from models.model import App, AppMode, AppModelConfig, IconType, Site, load_anno
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
 from services.agent.errors import AgentNameConflictError
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
@@ -860,6 +861,20 @@ class AppService:
         app_was_deleted.send(app)
 
         backing_agent = self._get_backing_agent_for_update(app, session=session)
+        workflow_agent_ids = session.scalars(
+            select(Agent.id).where(
+                Agent.tenant_id == app.tenant_id,
+                Agent.app_id == app.id,
+                Agent.scope == AgentScope.WORKFLOW_ONLY,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        ).all()
+        WorkflowAgentRetirementService.schedule_after_commit(
+            session=session,
+            tenant_id=app.tenant_id,
+            agent_ids=workflow_agent_ids,
+            account_id=getattr(current_user, "id", None),
+        )
         if backing_agent is not None:
             now = naive_utc_now()
             account_id = getattr(current_user, "id", None)

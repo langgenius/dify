@@ -27,6 +27,7 @@ from services.agent.dsl_entities import (
     make_portable_agent_package,
 )
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.entities.dsl_entities import DslImportWarning
 
 
@@ -51,6 +52,7 @@ def _snapshot(*, snapshot_id: str = "snapshot-1", soul: AgentSoulConfig | None =
         tenant_id="tenant-1",
         agent_id="agent-1",
         version=1,
+        home_snapshot_id="home-1",
         config_snapshot=soul or AgentSoulConfig(),
         created_by="account-1",
     )
@@ -360,7 +362,9 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypat
     assert session.flush.call_count == 2
 
 
-def test_import_workflow_packages_materializes_every_package_binding_as_inline() -> None:
+def test_import_workflow_packages_materializes_every_package_binding_as_inline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     package = make_portable_agent_package(_agent(), AgentSoulConfig())
     graph = {
         "nodes": [
@@ -383,7 +387,11 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline()
     }
     for node in graph["nodes"][:3]:
         node["data"][AGENT_NODE_JOB_DSL_KEY] = {"workflow_prompt": node["id"]}
-    old_binding = SimpleNamespace(id="old-binding")
+    old_binding = SimpleNamespace(
+        id="old-binding",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="old-inline-agent",
+    )
     session = Mock()
     session.scalars.return_value.all.return_value = [old_binding]
     service = AgentDslService(session)
@@ -396,6 +404,8 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline()
         for index in range(1, 4)
     ]
     service._create_imported_inline_agent = Mock(side_effect=imported_results)
+    schedule_retirement = Mock()
+    monkeypatch.setattr(WorkflowAgentRetirementService, "schedule_after_commit", schedule_retirement)
     workflow = SimpleNamespace(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -412,6 +422,12 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline()
     )
 
     session.delete.assert_called_once_with(old_binding)
+    schedule_retirement.assert_called_once_with(
+        session=session,
+        tenant_id="tenant-1",
+        agent_ids={"old-inline-agent"},
+        account_id="account-1",
+    )
     assert service._create_imported_inline_agent.call_count == 3
     assert [call.kwargs["node_id"] for call in service._create_imported_inline_agent.call_args_list] == [
         "roster-1",
@@ -675,15 +691,8 @@ def test_create_snapshot_increments_version_and_records_revision(monkeypatch: py
     session = Mock()
     session.scalar.return_value = 2
     service = AgentDslService(session)
-    materialized: list[AgentConfigSnapshot] = []
-
-    def materialize(*, session, snapshot):
-        del session
-        snapshot.home_snapshot_ref = "home-3"
-        materialized.append(snapshot)
-        return snapshot.home_snapshot_ref
-
-    monkeypatch.setattr("services.agent.dsl_service.AgentHomeSnapshotService.materialize", materialize)
+    create_initial = Mock(return_value=SimpleNamespace(id="home-3"))
+    monkeypatch.setattr("services.agent.dsl_service.AgentHomeSnapshotService.create_initial", create_initial)
 
     snapshot = service._create_snapshot(
         tenant_id="tenant-1",
@@ -694,12 +703,13 @@ def test_create_snapshot_increments_version_and_records_revision(monkeypatch: py
     )
 
     assert snapshot.version == 3
+    assert snapshot.home_snapshot_id == "home-3"
+    create_initial.assert_called_once_with(session=session, tenant_id="tenant-1", agent_id="agent-1")
     assert isinstance(session.add.call_args_list[0].args[0], AgentConfigSnapshot)
     revision = session.add.call_args_list[1].args[0]
     assert isinstance(revision, AgentConfigRevision)
     assert revision.operation == AgentConfigRevisionOperation.IMPORT_PACKAGE
     assert session.flush.call_count == 2
-    assert materialized == [snapshot]
 
 
 def test_unique_roster_name_uses_first_available_suffix() -> None:

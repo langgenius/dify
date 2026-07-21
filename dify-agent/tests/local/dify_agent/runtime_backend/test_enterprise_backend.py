@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 from collections.abc import Callable
 from dataclasses import dataclass, field
 import json
@@ -12,9 +11,8 @@ import pytest
 
 from dify_agent.adapters.shell.protocols import CompleteShellCommandResult, ShellCommandProtocol, ShellProviderError
 from dify_agent.runtime_backend import (
-    CreateHomeSnapshotRequest,
-    HomeSnapshotFile,
-    HomeSnapshotSource,
+    HomeSnapshotCreateSpec,
+    InitializeHomeSnapshotSpec,
     SandboxCreateError,
     SandboxCreateSpec,
     SandboxLayout,
@@ -67,8 +65,16 @@ class _FakeGateway:
     deleted: list[str] = field(default_factory=list)
     close_calls: int = 0
 
-    async def create_home_snapshot(self, request: CreateHomeSnapshotRequest) -> str:
-        del request
+    async def initialize_home_snapshot(self, spec: InitializeHomeSnapshotSpec) -> str:
+        del spec
+        if self.create_error is not None:
+            raise self.create_error
+        return "snapshot-1"
+
+    async def create_home_snapshot_from_sandbox(
+        self, *, spec: HomeSnapshotCreateSpec, source_sandbox_handle: str
+    ) -> str:
+        del spec, source_sandbox_handle
         if self.create_error is not None:
             raise self.create_error
         return "snapshot-1"
@@ -119,7 +125,7 @@ async def test_gateway_sends_auth_and_exact_home_and_sandbox_payloads(monkeypatc
         assert request.headers["X-Inner-Api-Key"] == "secret"
         payload = json.loads(request.content) if request.content else None
         requests.append((request.method, request.url.path, payload))
-        if request.url.path == "/v1/home-snapshots" and request.method == "POST":
+        if request.url.path.startswith("/v1/home-snapshots/") and request.method == "POST":
             return httpx.Response(201, json={"snapshotRef": "home-1"})
         if request.url.path == "/v1/sandboxes" and request.method == "POST":
             return httpx.Response(201, json={"sandboxId": "sandbox-1"})
@@ -127,15 +133,20 @@ async def test_gateway_sends_auth_and_exact_home_and_sandbox_payloads(monkeypatc
 
     _patch_gateway_transport(monkeypatch, handler)
     gateway = EnterpriseGatewayClient("http://gateway/", "secret")
-    home_request = CreateHomeSnapshotRequest(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        agent_config_version_id="config-1",
-        source_digest="digest-1",
-        source=HomeSnapshotSource(files=(HomeSnapshotFile(path=".dify/config", content=b"home"),)),
+    initialize_spec = InitializeHomeSnapshotSpec(
+        tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-1"
+    )
+    capture_spec = HomeSnapshotCreateSpec(
+        tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"
     )
 
-    assert await gateway.create_home_snapshot(home_request) == "home-1"
+    assert await gateway.initialize_home_snapshot(initialize_spec) == "home-1"
+    assert (
+        await gateway.create_home_snapshot_from_sandbox(
+            spec=capture_spec, source_sandbox_handle="source-sandbox-1"
+        )
+        == "home-1"
+    )
     await gateway.delete_home_snapshot("home-1")
     assert await gateway.create_sandbox(_create_spec()) == "sandbox-1"
     await gateway.delete_sandbox("sandbox-1")
@@ -144,13 +155,21 @@ async def test_gateway_sends_auth_and_exact_home_and_sandbox_payloads(monkeypatc
     assert requests == [
         (
             "POST",
-            "/v1/home-snapshots",
+            "/v1/home-snapshots/initialize",
             {
                 "tenantId": "tenant-1",
                 "agentId": "agent-1",
-                "agentConfigVersionId": "config-1",
-                "sourceDigest": "digest-1",
-                "files": [{"path": ".dify/config", "contentBase64": base64.b64encode(b"home").decode("ascii")}],
+                "homeSnapshotId": "home-1",
+            },
+        ),
+        (
+            "POST",
+            "/v1/home-snapshots/from-sandbox",
+            {
+                "tenantId": "tenant-1",
+                "agentId": "agent-1",
+                "homeSnapshotId": "home-2",
+                "sourceSandboxId": "source-sandbox-1",
             },
         ),
         ("DELETE", "/v1/home-snapshots/home-1", None),
@@ -228,16 +247,10 @@ async def test_home_snapshot_create_cancellation_closes_gateway_and_is_not_wrapp
         "_gateway",
         lambda _driver: cast(EnterpriseGatewayClient, cast(object, gateway)),
     )
-    request = CreateHomeSnapshotRequest(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        agent_config_version_id="config-1",
-        source_digest="digest-1",
-        source=HomeSnapshotSource(),
-    )
+    spec = InitializeHomeSnapshotSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-1")
 
     with pytest.raises(asyncio.CancelledError):
-        _ = await driver.create(request)
+        _ = await driver.initialize(spec)
 
     assert gateway.close_calls == 1
 

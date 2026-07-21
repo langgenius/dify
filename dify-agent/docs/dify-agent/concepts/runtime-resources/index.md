@@ -30,7 +30,7 @@ The layers have deliberately narrow responsibilities:
 | Layer | Persistent data | Request-local data | Responsibility |
 | --- | --- | --- | --- |
 | Execution Context | Product and invocation identity in its config | Plugin-daemon context | Supplies trusted request identity. |
-| Home | Immutable backend-native `snapshot_ref` in its config | A binding object | Binds a config-version-owned Home Snapshot; never creates or deletes it. |
+| Home | Dify API `home_snapshot_id` plus an `agent_home_snapshots` ledger row | A binding containing the owner-scoped resolved `snapshot_ref` | Binds an Agent-owned immutable Home Snapshot; never creates or deletes it. |
 | Workspace | `workspace_id` in its config | A binding object | Names the current mutable Workspace. `workspace_id == runtime_session_id`; `workspace_dir` is also the temporary directory. |
 | Sandbox | Stable, non-sensitive `handle` in runtime state | `SandboxLease` | Creates or resumes the physical resource and suspends or deletes it on exit. |
 | Shell | None | Tracked job ids/offsets plus lease commands, files, and layout | Exposes shell prompt/tools. Suspend/delete performs best-effort job cleanup; Shell does not manage the Sandbox. |
@@ -48,10 +48,16 @@ is part of `DifySandboxLayerConfig`.
 
 Dify API is the cross-request state owner. It stores:
 
-- the Home Snapshot ref on the Agent config snapshot;
+- immutable `agent_home_snapshots` rows containing the Home identity, Agent owner,
+  opaque backend `snapshot_ref`, and creation time;
+- `home_snapshot_id` on mutable Agent drafts, immutable config snapshots, and
+  runtime session scope; Draft and Config Snapshot records do not store the
+  backend ref;
 - `AgentRuntimeSession.id`, which is both `runtime_session_id` and
   `workspace_id`;
-- the composition layer specs and latest Agenton session snapshot;
+- the composition layer specs (including the already owner-validated,
+  non-sensitive Home ref needed to resume execution) and latest Agenton session
+  snapshot;
 - the Sandbox handle inside the Sandbox layer runtime state.
 
 Dify Agent does not connect to the Dify product database and does not keep a
@@ -68,10 +74,21 @@ separate.
 
 ## Resource lifecycle
 
-Home Snapshot creation is a config-version control-plane operation. Dify API
-calls the stateless Dify Agent Home Snapshot service, saves the returned native
-ref, and later requests deletion when the owning Agent config is retired. A
-runtime-session cleanup must not delete Home.
+Home Snapshot creation has two explicit control-plane entry points. Agent
+provisioning uses backend-native initialization. Build Draft Apply locates that
+draft's exact retained Sandbox and asks Dify Agent to snapshot its live lease.
+Dify API records each result as a new immutable `agent_home_snapshots` row and
+stores only its `home_snapshot_id` on product records. Build Draft save does not
+create Home, and Build Apply fails if the retained owner-scoped Sandbox is not
+available; it does not fall back to initialization, file replay, or another
+Sandbox.
+
+Publish does not create a Home Snapshot. It copies the Normal Draft's existing
+`home_snapshot_id` into the new immutable config snapshot. Config version
+deletion, Build Draft discard, and runtime-session cleanup do not delete Home.
+When an Agent is retired, Dify API reads all of that Agent's opaque refs from
+the ledger and submits one-shot Celery cleanup work. Physical deletion is
+idempotent and the immutable ledger rows remain unchanged.
 
 On the first runtime request, Sandbox creates a physical resource from the Home
 ref and `runtime_session_id`. It stores the returned stable handle in the
@@ -87,11 +104,11 @@ releases the lease, deletes the physical Sandbox, and clears the handle only
 after deletion succeeds. The latest Workspace lives in the retained Sandbox and
 remains browseable between Agent requests.
 
-Cleanup is an explicit, one-shot, best-effort request from the Dify API
-runtime-session or app lifecycle. There is currently no Dify Agent database,
-resource-age TTL, cleanup queue, reconciler, retry state machine, or eventual
-deletion guarantee. Backend-native operational cleanup may exist, but it is not
-part of this public contract.
+Runtime Sandbox cleanup and Agent Home retirement use explicit one-shot Celery
+tasks from Dify API. There is currently no Dify Agent database, resource-age
+TTL, reconciler, complex retry/state machine, or eventual deletion guarantee.
+Backend-native operational cleanup may exist, but it is not part of this public
+contract.
 
 ## E2B timeout semantics
 
@@ -99,11 +116,14 @@ part of this public contract.
 passed to E2B on create or connect. Its timeout action depends on the resource:
 
 - a runtime Sandbox is paused;
-- a temporary Home Snapshot builder is killed.
+- a temporary builder used internally by Home initialization, if any, is
+  killed.
 
 The setting does not age or delete paused sandboxes and does not expire
 immutable snapshots. Explicit runtime-session cleanup kills a retained E2B
-Sandbox; explicit config lifecycle cleanup deletes an E2B Home Snapshot.
+Sandbox; Agent retirement deletes the Agent's E2B Home Snapshots. Build Apply
+does not start a builder: it snapshots the exact retained E2B Build Sandbox and
+then suspends that source Sandbox again.
 
 ## Workspace file boundary
 

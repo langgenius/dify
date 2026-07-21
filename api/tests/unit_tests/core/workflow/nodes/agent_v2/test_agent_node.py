@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
+import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
@@ -29,6 +30,7 @@ from clients.agent_backend import (
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
+from core.workflow.nodes.agent_v2 import agent_node as agent_node_module
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
@@ -101,7 +103,7 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
             tenant_id="tenant-1",
             agent_id="agent-1",
             version=1,
-            home_snapshot_ref="home-snapshot-1",
+            home_snapshot_id="home-1",
             config_snapshot=AgentSoulConfig(
                 prompt={"system_prompt": "You are careful."},
                 model=AgentSoulModelConfig(
@@ -145,6 +147,7 @@ class FakeSessionStore:
         # ENG-638: set to simulate resume after a submitted/timed-out form.
         self.loaded_session: StoredWorkflowAgentSession | None = None
         self.saved_runtime_session_ids: list[str] = []
+        self.saved_home_snapshot_ids: list[str] = []
         self.saved: list[
             tuple[
                 WorkflowAgentSessionScope,
@@ -175,11 +178,13 @@ class FakeSessionStore:
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
+        home_snapshot_id: str,
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
     ) -> None:
         assert runtime_session_id
         self.saved_runtime_session_ids.append(runtime_session_id)
+        self.saved_home_snapshot_ids.append(home_snapshot_id)
         self.saved.append(
             (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
         )
@@ -191,6 +196,13 @@ class FakeSessionStore:
         backend_run_id: str | None = None,
     ) -> None:
         self.cleaned.append((scope, backend_run_id))
+
+
+@pytest.fixture(autouse=True)
+def runtime_home_ref(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    resolver = MagicMock(return_value="backend-home-1")
+    monkeypatch.setattr(agent_node_module, "require_runtime_home_snapshot_ref", resolver)
+    return resolver
 
 
 class FileOutputBackendClient(FakeAgentBackendRunClient):
@@ -368,7 +380,7 @@ def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_
     }
 
 
-def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
+def test_agent_node_run_maps_successful_agent_backend_run_to_node_result(runtime_home_ref: MagicMock):
     events = list(_node()._run())
 
     assert len(events) == 1
@@ -381,6 +393,8 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert result.process_data["agent_id"] == "agent-1"
     layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
     assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
+    assert runtime_home_ref.call_args.kwargs["agent"].id == "agent-1"
+    assert runtime_home_ref.call_args.kwargs["home_snapshot_id"] == "home-1"
 
 
 def test_agent_node_uses_resolved_row_id_for_workspace_before_backend_invocation() -> None:

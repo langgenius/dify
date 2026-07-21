@@ -426,7 +426,7 @@ def _create_build_chat_finalization_message(
         "draft_type": "debug_build",
         "conversation_id": debug_conversation_id,
         "auto_generate_name": False,
-        AGENT_RUNTIME_EXIT_INTENT_ARG: "delete",
+        AGENT_RUNTIME_EXIT_INTENT_ARG: "suspend",
     }
     external_trace_id = get_external_trace_id(request)
     if external_trace_id:

@@ -10,8 +10,8 @@ import logging
 import re
 import shlex
 from dataclasses import dataclass
-from pathlib import PurePosixPath
 
+from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientFactory
 from dify_agent.runtime_backend.errors import (
     HomeSnapshotCreateError,
@@ -21,7 +21,8 @@ from dify_agent.runtime_backend.errors import (
     SandboxResumeError,
 )
 from dify_agent.runtime_backend.protocols import (
-    CreateHomeSnapshotRequest,
+    HomeSnapshotCreateSpec,
+    InitializeHomeSnapshotSpec,
     SandboxCreateSpec,
     SandboxLayout,
     SandboxLease,
@@ -45,8 +46,9 @@ class LocalHomeSnapshotDriver:
     snapshot_root: str = "/home/dify/.dify-agent-home-snapshots"
     client_factory: ShellctlClientFactory | None = None
 
-    async def create(self, request: CreateHomeSnapshotRequest) -> str:
-        snapshot_ref = _local_snapshot_ref(request.source_digest)
+    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str:
+        """Create an empty backend-native Home directory for a new Agent."""
+        snapshot_ref = _local_snapshot_ref(spec.home_snapshot_id)
         layout = SandboxLayout(home_dir=self.snapshot_root, workspace_dir=self.snapshot_root)
         lease = create_shellctl_lease(
             handle=snapshot_ref,
@@ -63,19 +65,57 @@ class LocalHomeSnapshotDriver:
             )
             if result.exit_code != 0:
                 raise HomeSnapshotCreateError(result.output)
-            for source_file in request.source.files:
-                relative_path = _validated_relative_path(source_file.path)
-                await lease.files.upload(
-                    content=source_file.content,
-                    remote_path=f"{target}/{relative_path}",
-                )
-            return snapshot_ref
-        except HomeSnapshotCreateError:
-            raise
-        except Exception as exc:
-            raise HomeSnapshotCreateError(str(exc)) from exc
-        finally:
             await lease.close()
+            return snapshot_ref
+        except BaseException as exc:
+            await _remove_partial_home_snapshot(
+                commands=lease.commands,
+                target=target,
+                snapshot_ref=snapshot_ref,
+            )
+            try:
+                await lease.close()
+            except BaseException:
+                logger.warning(
+                    "failed to close local Home Snapshot lease after create failure",
+                    exc_info=True,
+                    extra={"snapshot_ref": snapshot_ref},
+                )
+            if isinstance(exc, HomeSnapshotCreateError):
+                raise
+            if isinstance(exc, Exception):
+                raise HomeSnapshotCreateError(str(exc)) from exc
+            raise
+
+    async def create_from_sandbox(self, *, spec: HomeSnapshotCreateSpec, source: SandboxLease) -> str:
+        """Copy the exact source lease Home into a new immutable directory."""
+        snapshot_ref = _local_snapshot_ref(spec.home_snapshot_id)
+        target = f"{self.snapshot_root.rstrip('/')}/{snapshot_ref}"
+        script = "\n".join(
+            [
+                "set -eu",
+                f"test -d {shlex.quote(source.layout.home_dir)}",
+                f"mkdir -p {shlex.quote(target)}",
+                f"cp -a {shlex.quote(source.layout.home_dir)}/. {shlex.quote(target)}/",
+                f"chmod 700 {shlex.quote(target)}",
+            ]
+        )
+        try:
+            result = await run_shellctl_control_command(source.commands, script)
+            if result.exit_code != 0:
+                raise HomeSnapshotCreateError(result.output)
+            return snapshot_ref
+        except BaseException as exc:
+            await _remove_partial_home_snapshot(
+                commands=source.commands,
+                target=target,
+                snapshot_ref=snapshot_ref,
+            )
+            if isinstance(exc, HomeSnapshotCreateError):
+                raise
+            if isinstance(exc, Exception):
+                raise HomeSnapshotCreateError(str(exc)) from exc
+            raise
 
     async def delete(self, snapshot_ref: str) -> None:
         _validated_handle(snapshot_ref)
@@ -220,24 +260,35 @@ class LocalSandboxDriver:
         return f"{self.session_root.rstrip('/')}/{handle}"
 
 
-def _local_snapshot_ref(source_digest: str) -> str:
-    normalized = re.sub(r"[^A-Za-z0-9._-]", "-", source_digest.strip())
-    if not normalized:
-        raise HomeSnapshotCreateError("source_digest must identify the immutable Home Snapshot source")
-    return f"home-{normalized[:80]}"
+def _local_snapshot_ref(home_snapshot_id: str) -> str:
+    return f"home-{_validated_handle(home_snapshot_id)}"
+
+
+async def _remove_partial_home_snapshot(
+    *,
+    commands: ShellCommandProtocol,
+    target: str,
+    snapshot_ref: str,
+) -> None:
+    try:
+        result = await run_shellctl_control_command(commands, f"rm -rf -- {shlex.quote(target)}")
+        if result.exit_code != 0:
+            logger.warning(
+                "failed to remove partial local Home Snapshot",
+                extra={"snapshot_ref": snapshot_ref, "cleanup_output": result.output},
+            )
+    except BaseException:
+        logger.warning(
+            "failed to remove partial local Home Snapshot",
+            exc_info=True,
+            extra={"snapshot_ref": snapshot_ref},
+        )
 
 
 def _validated_handle(value: str) -> str:
     if value in {".", ".."} or _SAFE_HANDLE.fullmatch(value) is None:
         raise ValueError("runtime backend handle must be a safe path segment")
     return value
-
-
-def _validated_relative_path(value: str) -> str:
-    path = PurePosixPath(value)
-    if path.is_absolute() or not path.parts or ".." in path.parts or "~" in path.parts:
-        raise HomeSnapshotCreateError("Home Snapshot file paths must be home-relative")
-    return str(path)
 
 
 __all__ = ["LocalHomeSnapshotDriver", "LocalSandboxDriver"]

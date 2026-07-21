@@ -8,7 +8,6 @@ objects, and shellctl clients remain invocation-local.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 import httpx2 as httpx
@@ -22,7 +21,8 @@ from dify_agent.runtime_backend.errors import (
     SandboxResumeError,
 )
 from dify_agent.runtime_backend.protocols import (
-    CreateHomeSnapshotRequest,
+    HomeSnapshotCreateSpec,
+    InitializeHomeSnapshotSpec,
     SandboxCreateSpec,
     SandboxLayout,
     SandboxLease,
@@ -40,11 +40,11 @@ class _E2BControlPlaneNotFoundError(RuntimeError):
 
 
 class _E2BFileSystem(Protocol):
-    async def write(self, path: str, data: bytes) -> object: ...
-
     async def make_dir(self, path: str) -> bool: ...
 
     async def exists(self, path: str) -> bool: ...
+
+    async def remove(self, path: str) -> None: ...
 
 
 class _E2BSnapshotInfo(Protocol):
@@ -154,12 +154,12 @@ class E2BSDKControlPlane:
 
 @dataclass(slots=True)
 class E2BHomeSnapshotDriver:
-    """Build immutable E2B Home Snapshots from the prepared deployment template.
+    """Create initial E2B Homes and snapshot retained runtime Sandboxes.
 
-    Create starts a temporary Sandbox, writes canonical Home files, snapshots
-    it, and best-effort kills the builder even on cancellation or failure. The
-    Dify API owns the returned snapshot id. Builder timeout uses ``kill``;
-    delete removes only the immutable snapshot and treats not found as success.
+    Initialization snapshots the prepared deployment template and releases its
+    temporary Sandbox. Build Apply snapshots the exact source lease and leaves
+    source lifecycle to the compositor. Dify API owns every returned snapshot
+    id; this driver keeps no cross-request state.
     """
 
     control_plane: E2BControlPlane
@@ -167,39 +167,46 @@ class E2BHomeSnapshotDriver:
     active_timeout_seconds: int
     home_dir: str = "/home/dify"
 
-    async def create(self, request: CreateHomeSnapshotRequest) -> str:
+    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str:
         sandbox: _E2BSandbox | None = None
         try:
             sandbox = await self.control_plane.create(
                 self.template,
                 timeout=self.active_timeout_seconds,
                 metadata={
-                    "dify.resource": "home-snapshot-build",
-                    "dify.tenant_id": request.tenant_id,
-                    "dify.agent_id": request.agent_id,
-                    "dify.agent_config_version_id": request.agent_config_version_id,
-                    "dify.source_digest": request.source_digest,
+                    "dify.resource": "home-snapshot-initialize",
+                    "dify.tenant_id": spec.tenant_id,
+                    "dify.agent_id": spec.agent_id,
+                    "dify.home_snapshot_id": spec.home_snapshot_id,
                 },
                 on_timeout="kill",
             )
             _ = await sandbox.files.make_dir(self.home_dir)
-            for source_file in request.source.files:
-                relative_path = _validated_home_relative_path(source_file.path)
-                destination = f"{self.home_dir.rstrip('/')}/{relative_path}"
-                parent = str(PurePosixPath(destination).parent)
-                _ = await sandbox.files.make_dir(parent)
-                _ = await sandbox.files.write(destination, source_file.content)
             snapshot = await sandbox.create_snapshot()
             return snapshot.snapshot_id
-        except Exception as exc:
-            raise HomeSnapshotCreateError(str(exc)) from exc
+        except BaseException as exc:
+            if isinstance(exc, Exception):
+                raise HomeSnapshotCreateError(str(exc)) from exc
+            raise
         finally:
             if sandbox is not None:
                 try:
                     _ = await sandbox.kill()
-                except Exception:
-                    # Metadata keeps a failed build sandbox diagnosable when best-effort kill fails.
+                except BaseException:
                     pass
+
+    async def create_from_sandbox(self, *, spec: HomeSnapshotCreateSpec, source: SandboxLease) -> str:
+        """Create an E2B Snapshot directly from the retained source Sandbox."""
+        del spec
+        if not isinstance(source, E2BSandboxLease):
+            raise HomeSnapshotCreateError("E2B Home Snapshot requires an E2B Sandbox lease")
+        try:
+            snapshot = await source.sandbox.create_snapshot()
+            return snapshot.snapshot_id
+        except BaseException as exc:
+            if isinstance(exc, Exception):
+                raise HomeSnapshotCreateError(str(exc)) from exc
+            raise
 
     async def delete(self, snapshot_ref: str) -> None:
         try:
@@ -245,6 +252,8 @@ class E2BSandboxDriver:
                 },
                 on_timeout="pause",
             )
+            if await sandbox.files.exists(self.layout.workspace_dir):
+                await sandbox.files.remove(self.layout.workspace_dir)
             _ = await sandbox.files.make_dir(self.layout.workspace_dir)
             return await self._lease(sandbox)
         except BaseException as exc:
@@ -353,13 +362,6 @@ class E2BSandboxLease:
     @property
     def files(self):
         return self.data_plane.files
-
-
-def _validated_home_relative_path(value: str) -> str:
-    path = PurePosixPath(value)
-    if path.is_absolute() or not path.parts or ".." in path.parts or "~" in path.parts:
-        raise HomeSnapshotCreateError("Home Snapshot file paths must be home-relative")
-    return str(path)
 
 
 async def _best_effort_pause(sandbox: _E2BSandbox | None) -> None:

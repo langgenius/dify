@@ -51,6 +51,7 @@ from services.agent.dsl_entities import (
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
@@ -225,6 +226,7 @@ class AgentDslService:
                 account_id=None,
                 draft_owner_key="",
                 base_snapshot_id=snapshot.id,
+                home_snapshot_id=snapshot.home_snapshot_id,
                 config_snapshot=soul,
                 created_by=account.id,
                 updated_by=account.id,
@@ -257,6 +259,11 @@ class AgentDslService:
                 WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
             )
         ).all()
+        retirement_candidates = {
+            binding.agent_id
+            for binding in previous_bindings
+            if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id
+        }
         for binding in previous_bindings:
             self.session.delete(binding)
         self.session.flush()
@@ -313,6 +320,12 @@ class AgentDslService:
 
         workflow.graph = json.dumps(graph)
         self.session.flush()
+        WorkflowAgentRetirementService.schedule_after_commit(
+            session=self.session,
+            tenant_id=workflow.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=account.id,
+        )
         return graph, warnings
 
     def clone_inline_binding_for_node(
@@ -563,16 +576,21 @@ class AgentDslService:
             )
             or 0
         ) + 1
+        home_snapshot = AgentHomeSnapshotService.create_initial(
+            session=self.session,
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+        )
         snapshot = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=next_version,
             config_snapshot=soul,
+            home_snapshot_id=home_snapshot.id,
             created_by=account_id,
         )
         self.session.add(snapshot)
         self.session.flush()
-        AgentHomeSnapshotService.materialize(session=self.session, snapshot=snapshot)
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
             agent_id=agent.id,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import pytest
 from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
@@ -17,30 +17,25 @@ from dify_agent.runtime_backend.e2b import (
     E2BSandboxLease,
 )
 from dify_agent.runtime_backend.errors import (
-    HomeSnapshotCreateError,
     SandboxCleanupError,
     SandboxCreateError,
     SandboxLostError,
     SandboxResumeError,
 )
 from dify_agent.runtime_backend.protocols import (
-    CreateHomeSnapshotRequest,
-    HomeSnapshotFile,
-    HomeSnapshotSource,
+    HomeSnapshotCreateSpec,
+    InitializeHomeSnapshotSpec,
     SandboxCreateSpec,
 )
+from dify_agent.runtime_backend.shellctl import ShellctlSandboxLease
 
 
 @dataclass(slots=True)
 class _FakeFiles:
     made_directories: list[str] = field(default_factory=list)
+    removed_paths: list[str] = field(default_factory=list)
     exists_error: BaseException | None = None
     make_dir_error: BaseException | None = None
-    writes: list[tuple[str, bytes]] = field(default_factory=list)
-
-    async def write(self, path: str, data: bytes) -> object:
-        self.writes.append((path, data))
-        return (path, data)
 
     async def make_dir(self, path: str) -> bool:
         self.made_directories.append(path)
@@ -52,6 +47,11 @@ class _FakeFiles:
         if self.exists_error is not None:
             raise self.exists_error
         return path in self.made_directories
+
+    async def remove(self, path: str) -> None:
+        self.removed_paths.append(path)
+        if path in self.made_directories:
+            self.made_directories.remove(path)
 
 
 @dataclass(slots=True)
@@ -142,7 +142,7 @@ class _TrackingTransport(httpx.MockTransport):
         await super().aclose()
 
 
-def test_home_snapshot_build_uses_active_timeout_with_kill_policy() -> None:
+def test_home_snapshot_initialization_uses_template_and_kill_policy() -> None:
     control_plane = _FakeControlPlane()
     driver = E2BHomeSnapshotDriver(
         control_plane=cast(E2BControlPlane, cast(object, control_plane)),
@@ -151,13 +151,11 @@ def test_home_snapshot_build_uses_active_timeout_with_kill_policy() -> None:
     )
 
     snapshot_ref = asyncio.run(
-        driver.create(
-            CreateHomeSnapshotRequest(
+        driver.initialize(
+            InitializeHomeSnapshotSpec(
                 tenant_id="tenant",
                 agent_id="agent",
-                agent_config_version_id="config",
-                source_digest="digest",
-                source=HomeSnapshotSource(),
+                home_snapshot_id="home-1",
             )
         )
     )
@@ -170,18 +168,17 @@ def test_home_snapshot_build_uses_active_timeout_with_kill_policy() -> None:
             template="prepared-template",
             timeout=900,
             metadata={
-                "dify.resource": "home-snapshot-build",
+                "dify.resource": "home-snapshot-initialize",
                 "dify.tenant_id": "tenant",
                 "dify.agent_id": "agent",
-                "dify.agent_config_version_id": "config",
-                "dify.source_digest": "digest",
+                "dify.home_snapshot_id": "home-1",
             },
             on_timeout="kill",
         )
     ]
 
 
-def test_home_snapshot_materializes_source_files_under_home() -> None:
+def test_home_snapshot_capture_snapshots_exact_e2b_source_without_killing_it() -> None:
     control_plane = _FakeControlPlane()
     driver = E2BHomeSnapshotDriver(
         control_plane=cast(E2BControlPlane, cast(object, control_plane)),
@@ -189,48 +186,22 @@ def test_home_snapshot_materializes_source_files_under_home() -> None:
         active_timeout_seconds=900,
     )
 
+    source = E2BSandboxLease(
+        sandbox=cast(Any, control_plane.sandbox),
+        data_plane=cast(ShellctlSandboxLease, cast(object, object())),
+    )
+
     snapshot_ref = asyncio.run(
-        driver.create(
-            CreateHomeSnapshotRequest(
-                tenant_id="tenant",
-                agent_id="agent",
-                agent_config_version_id="config",
-                source_digest="digest",
-                source=HomeSnapshotSource(files=(HomeSnapshotFile(path=".dify/config/settings.json", content=b"{}"),)),
-            )
+        driver.create_from_sandbox(
+            spec=HomeSnapshotCreateSpec(tenant_id="tenant", agent_id="agent", home_snapshot_id="home-2"),
+            source=source,
         )
     )
 
     assert snapshot_ref == "snapshot-immutable-id"
-    assert control_plane.sandbox.files.made_directories == ["/home/dify", "/home/dify/.dify/config"]
-    assert control_plane.sandbox.files.writes == [("/home/dify/.dify/config/settings.json", b"{}")]
-    assert control_plane.sandbox.killed is True
-
-
-@pytest.mark.parametrize("path", ["/etc/passwd", "../secret", "dir/../../secret", "~/secret"])
-def test_home_snapshot_rejects_non_home_relative_source_paths(path: str) -> None:
-    control_plane = _FakeControlPlane()
-    driver = E2BHomeSnapshotDriver(
-        control_plane=cast(E2BControlPlane, cast(object, control_plane)),
-        template="prepared-template",
-        active_timeout_seconds=900,
-    )
-
-    with pytest.raises(HomeSnapshotCreateError, match="home-relative"):
-        asyncio.run(
-            driver.create(
-                CreateHomeSnapshotRequest(
-                    tenant_id="tenant",
-                    agent_id="agent",
-                    agent_config_version_id="config",
-                    source_digest="digest",
-                    source=HomeSnapshotSource(files=(HomeSnapshotFile(path=path, content=b"secret"),)),
-                )
-            )
-        )
-
-    assert control_plane.sandbox.files.writes == []
-    assert control_plane.sandbox.killed is True
+    assert control_plane.sandbox.snapshot_names == [None]
+    assert control_plane.sandbox.killed is False
+    assert control_plane.create_calls == []
 
 
 def test_home_snapshot_cancellation_after_build_creation_kills_sandbox() -> None:
@@ -244,13 +215,11 @@ def test_home_snapshot_cancellation_after_build_creation_kills_sandbox() -> None
 
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(
-            driver.create(
-                CreateHomeSnapshotRequest(
+            driver.initialize(
+                InitializeHomeSnapshotSpec(
                     tenant_id="tenant",
                     agent_id="agent",
-                    agent_config_version_id="config",
-                    source_digest="digest",
-                    source=HomeSnapshotSource(),
+                    home_snapshot_id="home-1",
                 )
             )
         )
@@ -260,6 +229,7 @@ def test_home_snapshot_cancellation_after_build_creation_kills_sandbox() -> None
 
 def test_runtime_sandbox_active_timeout_pauses_and_applies_on_resume() -> None:
     control_plane = _FakeControlPlane()
+    control_plane.sandbox.files.made_directories.append("/home/dify/workspace")
     driver = E2BSandboxDriver(
         control_plane=cast(E2BControlPlane, cast(object, control_plane)),
         active_timeout_seconds=1200,
@@ -294,6 +264,8 @@ def test_runtime_sandbox_active_timeout_pauses_and_applies_on_resume() -> None:
         )
     ]
     assert control_plane.connect_calls == [("sandbox-id", 1200)]
+    assert control_plane.sandbox.files.removed_paths == ["/home/dify/workspace"]
+    assert control_plane.sandbox.files.made_directories == ["/home/dify/workspace"]
 
 
 @pytest.mark.anyio
