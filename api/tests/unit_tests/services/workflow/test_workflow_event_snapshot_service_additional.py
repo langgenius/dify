@@ -13,9 +13,12 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import StreamEvent
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.app.layers.pause_state_persist_layer import (
+    WorkflowResumptionContext,
+    _WorkflowGenerateEntityWrapper,
+)
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
@@ -147,15 +150,21 @@ class _PauseEntity(WorkflowPauseEntity):
 
 
 class TestWorkflowEventSnapshotHelpers:
-    def test_get_message_context_should_return_none_when_no_message(self) -> None:
+    def test_get_message_context_by_conversation_should_return_none_when_no_message(self) -> None:
         session = SimpleNamespace(scalar=MagicMock(return_value=None))
         session_maker = _SessionMaker(session)
 
-        result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
+        result = service_module._get_message_context_by_conversation(
+            cast(sessionmaker[Session], session_maker),
+            conversation_id="conv-1",
+            workflow_run_id="run-1",
+        )
 
         assert result is None
 
-    def test_get_message_context_should_default_created_at_to_zero_when_message_has_no_timestamp(self) -> None:
+    def test_get_message_context_by_conversation_should_default_created_at_to_zero_when_message_has_no_timestamp(
+        self,
+    ) -> None:
         message = SimpleNamespace(
             id="msg-1",
             conversation_id="conv-1",
@@ -165,7 +174,11 @@ class TestWorkflowEventSnapshotHelpers:
         session = SimpleNamespace(scalar=MagicMock(return_value=message))
         session_maker = _SessionMaker(session)
 
-        result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
+        result = service_module._get_message_context_by_conversation(
+            cast(sessionmaker[Session], session_maker),
+            conversation_id="conv-1",
+            workflow_run_id="run-1",
+        )
 
         assert result is not None
         assert result.created_at == 0
@@ -324,9 +337,10 @@ class TestBuildWorkflowEventStream:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        workflow_run = _build_workflow_run(status=WorkflowExecutionStatus.RUNNING)
+        workflow_run = _build_workflow_run(status=WorkflowExecutionStatus.PAUSED)
         topic = _Topic(_StaticSubscription())
-        workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
+        pause_entity = _PauseEntity(state=b"state")
+        workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(return_value=pause_entity))
         node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
         factory = SimpleNamespace(
             create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
@@ -336,10 +350,18 @@ class TestBuildWorkflowEventStream:
         monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
         monkeypatch.setattr(
             service_module,
-            "_get_message_context",
+            "_get_message_context_by_conversation",
             MagicMock(return_value=MessageContext("conv-1", "msg-1", 1700000000)),
         )
-        monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
+        generate_entity = AdvancedChatAppGenerateEntity.model_construct(conversation_id="conv-1")
+        resumption_context = SimpleNamespace(
+            get_generate_entity=MagicMock(return_value=generate_entity),
+        )
+        monkeypatch.setattr(
+            service_module,
+            "_load_resumption_context",
+            MagicMock(return_value=resumption_context),
+        )
         buffer_state = BufferState(
             queue=queue.Queue(),
             stop_event=Event(),
