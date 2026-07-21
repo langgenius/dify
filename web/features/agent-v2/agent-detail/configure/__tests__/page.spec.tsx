@@ -627,7 +627,7 @@ describe('AgentConfigurePage', () => {
       expect(urlUpdate?.searchParams.get('source')).toBe('shared-link')
     })
 
-    it('should run preview with the build chat API without entering build draft mode outside community edition', async () => {
+    it('should run preview with the shared chat API without entering build draft mode outside community edition', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
       mocks.queryState.composer = {
@@ -657,7 +657,7 @@ describe('AgentConfigurePage', () => {
         )
       })
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
-        'draftType:debug_build',
+        'draftType:draft',
       )
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:no',

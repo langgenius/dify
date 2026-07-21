@@ -24,7 +24,7 @@ const buildIconGridCells = buildIconGridCellOpacities.map((opacity, index) => ({
 
 type AgentBuildChatProps = Omit<
   AgentChatRuntimeProps,
-  'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel' | 'sendMessage'
+  'draftType' | 'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel' | 'sendMessage'
 >
 
 function AgentBuildChatEmptyState() {
@@ -93,6 +93,7 @@ export function AgentBuildChat(props: AgentBuildChatProps) {
   return (
     <AgentChatRuntime
       {...props}
+      draftType="debug_build"
       inputPlaceholder={t(($) => $['agentDetail.configure.build.inputPlaceholder'])}
       inputAutoFocus={false}
       sendButtonLabel={t(($) => $['agentDetail.configure.build.startBuild'])}

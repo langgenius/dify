@@ -1,4 +1,5 @@
 import type { AgentChatMessageSender } from '../chat-conversation'
+import type { AgentChatRuntimeProps } from '../chat-runtime'
 import { render } from '@/test/console/render'
 import { AgentBuildChat } from '../build-chat'
 import { sendBuildChatMessage } from '../build-chat-request'
@@ -8,7 +9,9 @@ import { sendPreviewChatMessage } from '../preview-chat-request'
 const runtimePropsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../chat-runtime', () => ({
-  AgentChatRuntime: (props: { sendMessage: AgentChatMessageSender }) => {
+  AgentChatRuntime: (
+    props: Pick<AgentChatRuntimeProps, 'draftType'> & { sendMessage: AgentChatMessageSender },
+  ) => {
     runtimePropsMock(props)
     return null
   },
@@ -30,6 +33,7 @@ describe('Agent chat mode request routing', () => {
 
     expect(runtimePropsMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        draftType: 'debug_build',
         sendMessage: sendBuildChatMessage,
       }),
     )
@@ -43,5 +47,6 @@ describe('Agent chat mode request routing', () => {
         sendMessage: sendPreviewChatMessage,
       }),
     )
+    expect(runtimePropsMock.mock.calls.at(-1)?.[0]).not.toHaveProperty('draftType')
   })
 })

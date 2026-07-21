@@ -8,7 +8,7 @@ import { sendPreviewChatMessage } from './preview-chat-request'
 
 type AgentPreviewChatProps = Omit<
   AgentChatRuntimeProps,
-  'inputPlaceholder' | 'renderEmptyState' | 'sendMessage'
+  'draftType' | 'inputPlaceholder' | 'renderEmptyState' | 'sendMessage'
 >
 
 function AgentPreviewChatEmptyState({

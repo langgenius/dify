@@ -372,7 +372,6 @@ describe('AgentPreviewChat', () => {
     }
     const previewData = {
       query: 'Preview the agent',
-      draft_type: 'debug_build',
     }
 
     expect(sendBuildChatMessage).not.toBe(sendPreviewChatMessage)
@@ -667,6 +666,7 @@ describe('AgentPreviewChat', () => {
     expect(handleSendMock).toHaveBeenCalledWith(
       'agent/agent-1/chat-messages',
       expect.not.objectContaining({
+        draft_type: expect.anything(),
         model_config: expect.anything(),
       }),
       expect.objectContaining({
