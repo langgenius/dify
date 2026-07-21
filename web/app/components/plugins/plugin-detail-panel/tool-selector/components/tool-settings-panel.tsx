@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { TabType } from '../hooks/use-tool-selector'
 import type { ReasoningConfigValue } from './reasoning-config-form'
@@ -35,7 +34,7 @@ type ToolSettingsPanelProps = {
 /**
  * Renders the settings/params tips section
  */
-const ParamsTips: FC = () => {
+function ParamsTips() {
   const { t } = useTranslation()
   return (
     <div className="pb-1">
@@ -49,7 +48,7 @@ const ParamsTips: FC = () => {
   )
 }
 
-const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
+export function ToolSettingsPanel({
   value,
   currentProvider,
   nodeId,
@@ -65,7 +64,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
   onCurrTypeChange,
   onSettingsFormChange,
   onParamsFormChange,
-}) => {
+}: ToolSettingsPanelProps) {
   const { t } = useTranslation()
 
   // Check if panel should be shown
@@ -157,5 +156,3 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
     </>
   )
 }
-
-export default ToolSettingsPanel

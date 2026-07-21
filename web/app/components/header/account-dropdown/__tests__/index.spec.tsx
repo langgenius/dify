@@ -224,6 +224,7 @@ describe('AccountDropdown', () => {
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
     vi.mocked(useRouter).mockReturnValue({
+      bfcacheId: '0',
       push: mockPush,
       replace: vi.fn(),
       prefetch: vi.fn(),

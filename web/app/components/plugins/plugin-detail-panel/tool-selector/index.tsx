@@ -1,6 +1,6 @@
 'use client'
 import type { Placement } from '@langgenius/dify-ui/popover'
-import type { ReactElement } from 'react'
+import type { ReactElement, Ref } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
@@ -10,23 +10,23 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
 import Link from '@/next/link'
-import {
-  ToolAuthorizationSection,
-  ToolBaseForm,
-  ToolItem,
-  ToolSettingsPanel,
-  ToolTrigger,
-} from './components'
+import { ToolAuthorizationSection } from './components/tool-authorization-section'
+import { ToolBaseForm } from './components/tool-base-form'
+import { ToolItem } from './components/tool-item'
+import { ToolSettingsPanel } from './components/tool-settings-panel'
+import { ToolTrigger } from './components/tool-trigger'
 import { useToolSelector } from './hooks/use-tool-selector'
 
 type TriggerProps =
   | {
       trigger: ReactElement
+      triggerRef?: never
       controlledState: boolean
       onControlledStateChange: (state: boolean) => void
     }
   | {
       trigger?: never
+      triggerRef?: Ref<HTMLButtonElement>
       controlledState?: never
       onControlledStateChange?: never
     }
@@ -69,6 +69,7 @@ function ToolSelector({
   nodeOutputVars,
   availableNodes,
   nodeId = '',
+  triggerRef,
 }: Props) {
   const { t } = useTranslation()
   const {
@@ -134,13 +135,20 @@ function ToolSelector({
       {!trigger && !value?.provider_name ? (
         <PopoverTrigger
           render={
-            <ToolTrigger isConfigure open={isShow} value={value} provider={currentProvider} />
+            <ToolTrigger
+              ref={triggerRef}
+              isConfigure
+              open={isShow}
+              value={value}
+              provider={currentProvider}
+            />
           }
         />
       ) : null}
 
       {!trigger && value?.provider_name ? (
         <ToolItem
+          triggerRef={triggerRef}
           triggerLabel={value.tool_label || value.tool_name}
           open={isShow}
           icon={currentProvider?.icon || manifestIcon}

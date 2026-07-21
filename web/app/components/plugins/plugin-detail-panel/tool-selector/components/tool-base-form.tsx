@@ -7,7 +7,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { ReadmeEntrance } from '../../../readme-panel/entrance'
-import ToolTrigger from './tool-trigger'
+import { ToolTrigger } from './tool-trigger'
 
 type ToolBaseFormProps = {
   value?: ToolValue
@@ -29,7 +29,7 @@ function resolveToolPickerScope(scope?: string): ToolPickerScope {
   return 'all'
 }
 
-function ToolBaseForm({
+export function ToolBaseForm({
   value,
   currentProvider,
   scope,
@@ -97,5 +97,3 @@ function ToolBaseForm({
     </div>
   )
 }
-
-export default ToolBaseForm

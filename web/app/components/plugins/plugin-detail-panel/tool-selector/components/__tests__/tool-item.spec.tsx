@@ -3,7 +3,7 @@ import { Popover } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import ToolItem from '../tool-item'
+import { ToolItem } from '../tool-item'
 
 const renderToolItem = (item: ReactElement) => {
   const view = render(<Popover>{item}</Popover>)

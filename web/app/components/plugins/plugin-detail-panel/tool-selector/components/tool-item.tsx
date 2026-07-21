@@ -14,6 +14,7 @@ import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/comp
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 
 type Props = Readonly<{
+  triggerRef?: React.Ref<HTMLButtonElement>
   triggerLabel?: string
   icon?: string | { content?: string; background?: string }
   providerName?: string
@@ -35,7 +36,8 @@ type Props = Readonly<{
   authRemoved?: boolean
 }>
 
-const ToolItem = ({
+export function ToolItem({
+  triggerRef,
   triggerLabel,
   open,
   icon,
@@ -55,7 +57,7 @@ const ToolItem = ({
   errorTip,
   versionMismatch,
   authRemoved,
-}: Props) => {
+}: Props) {
   const { t } = useTranslation()
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const providerNameText = isMCPTool ? providerShowName : providerName?.split('/').pop()
@@ -78,6 +80,7 @@ const ToolItem = ({
       <PopoverTrigger
         render={
           <button
+            ref={triggerRef}
             type="button"
             aria-label={accessibleTriggerLabel}
             className="absolute inset-0 z-0 cursor-pointer rounded-lg border-0 bg-transparent outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
@@ -247,5 +250,3 @@ const ToolItem = ({
     </div>
   )
 }
-
-export default ToolItem

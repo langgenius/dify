@@ -20,7 +20,14 @@ type Props = Readonly<
   } & Omit<ButtonProps, 'children' | 'size' | 'value' | 'variant'>
 >
 
-function ToolTrigger({ open, provider, value, isConfigure, className, ...buttonProps }: Props) {
+export function ToolTrigger({
+  open,
+  provider,
+  value,
+  isConfigure,
+  className,
+  ...buttonProps
+}: Props) {
   const { t } = useTranslation()
   return (
     <Button
@@ -72,5 +79,3 @@ function ToolTrigger({ open, provider, value, isConfigure, className, ...buttonP
     </Button>
   )
 }
-
-export default ToolTrigger

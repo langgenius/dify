@@ -25,6 +25,8 @@ type Props = Readonly<{
   nodeId?: string
 }>
 
+const getToolKey = (tool: ToolValue) => `${tool.provider_name}:${tool.tool_name}`
+
 const MultipleToolSelector = ({
   disabled,
   value = [],
@@ -41,6 +43,9 @@ const MultipleToolSelector = ({
   const { t } = useTranslation()
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const { data: mcpTools } = useAllMCPTools()
+  const addToolButtonRef = React.useRef<HTMLButtonElement>(null)
+  const toolItemTriggerByKeyRef = React.useRef(new Map<string, HTMLButtonElement>())
+  const pendingFocusTargetRef = React.useRef<{ toolKey?: string } | null>(null)
   const enabledCount = value.filter((item) => {
     const isMCPTool = mcpTools?.find((tool) => tool.id === item.provider_name)
     if (isMCPTool) return item.enabled && isMCPToolAllowed
@@ -48,9 +53,20 @@ const MultipleToolSelector = ({
   }).length
   // collapse control
   const [collapse, setCollapse] = React.useState(false)
-  const handleCollapse = () => {
-    if (supportCollapse) setCollapse(!collapse)
-  }
+  const handleCollapse = () => setCollapse(!collapse)
+
+  React.useLayoutEffect(() => {
+    const pendingFocusTarget = pendingFocusTargetRef.current
+    if (!pendingFocusTarget) return
+
+    const focusTarget = pendingFocusTarget.toolKey
+      ? toolItemTriggerByKeyRef.current.get(pendingFocusTarget.toolKey)
+      : addToolButtonRef.current
+    const resolvedFocusTarget = focusTarget ?? addToolButtonRef.current
+
+    resolvedFocusTarget?.focus()
+    pendingFocusTargetRef.current = null
+  }, [value])
 
   // add tool
   const [open, setOpen] = React.useState(false)
@@ -93,6 +109,10 @@ const MultipleToolSelector = ({
   const handleDelete = (index: number) => {
     const newValue = [...value]
     newValue.splice(index, 1)
+    const nextFocusTool = value[index + 1] ?? value[index - 1]
+    pendingFocusTargetRef.current = {
+      toolKey: nextFocusTool ? getToolKey(nextFocusTool) : undefined,
+    }
     onChange(newValue)
   }
 
@@ -106,21 +126,24 @@ const MultipleToolSelector = ({
   return (
     <>
       <div className="mb-1 flex items-center">
-        <div
-          className={cn(
-            'relative flex grow items-center gap-0.5',
-            supportCollapse && 'cursor-pointer',
+        <div className="group/collapse relative flex grow items-center gap-0.5">
+          {supportCollapse && (
+            <button
+              type="button"
+              aria-expanded={!collapse}
+              aria-label={label}
+              className="absolute inset-0 cursor-pointer rounded-md outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+              onClick={handleCollapse}
+            />
           )}
-          onClick={handleCollapse}
-        >
-          <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
+          <div className="pointer-events-none relative flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
             {label}
           </div>
-          {required && <div className="text-red-500">*</div>}
+          {required && <div className="pointer-events-none relative text-red-500">*</div>}
           {tooltip ? (
             <Infotip
               aria-label={typeof tooltip === 'string' ? tooltip : label}
-              className="size-3.5"
+              className="relative size-3.5"
             >
               {tooltip}
             </Infotip>
@@ -129,7 +152,7 @@ const MultipleToolSelector = ({
             <span
               aria-hidden
               className={cn(
-                'i-custom-vender-solid-general-arrow-down-round-fill size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+                'pointer-events-none relative i-custom-vender-solid-general-arrow-down-round-fill size-4 text-text-quaternary group-hover/collapse:text-text-secondary',
                 collapse && 'rotate-270',
               )}
             />
@@ -157,6 +180,7 @@ const MultipleToolSelector = ({
             onControlledStateChange={setOpen}
             trigger={
               <Button
+                ref={addToolButtonRef}
                 variant="ghost"
                 size="small"
                 aria-label={t(($) => $['detailPanel.toolSelector.title'], { ns: 'plugin' })}
@@ -184,23 +208,31 @@ const MultipleToolSelector = ({
             </div>
           )}
           {value.length > 0 &&
-            value.map((item, index) => (
-              <div className="mb-1" key={`${item.provider_name}:${item.tool_name}`}>
-                <ToolSelector
-                  nodeId={nodeId}
-                  nodeOutputVars={nodeOutputVars}
-                  availableNodes={availableNodes}
-                  scope={scope}
-                  value={item}
-                  selectedTools={value}
-                  onSelect={(item) => handleConfigure(item, index)}
-                  onSelectMultiple={handleAddMultiple}
-                  onDelete={() => handleDelete(index)}
-                  supportEnableSwitch
-                  isEdit
-                />
-              </div>
-            ))}
+            value.map((item, index) => {
+              const toolKey = getToolKey(item)
+
+              return (
+                <div className="mb-1" key={toolKey}>
+                  <ToolSelector
+                    nodeId={nodeId}
+                    nodeOutputVars={nodeOutputVars}
+                    availableNodes={availableNodes}
+                    scope={scope}
+                    value={item}
+                    selectedTools={value}
+                    onSelect={(item) => handleConfigure(item, index)}
+                    onSelectMultiple={handleAddMultiple}
+                    onDelete={() => handleDelete(index)}
+                    triggerRef={(element) => {
+                      if (element) toolItemTriggerByKeyRef.current.set(toolKey, element)
+                      else toolItemTriggerByKeyRef.current.delete(toolKey)
+                    }}
+                    supportEnableSwitch
+                    isEdit
+                  />
+                </div>
+              )
+            })}
         </>
       )}
     </>

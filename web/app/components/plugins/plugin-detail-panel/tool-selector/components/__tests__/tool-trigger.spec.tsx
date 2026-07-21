@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import ToolTrigger from '../tool-trigger'
+import { ToolTrigger } from '../tool-trigger'
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon" />,

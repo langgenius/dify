@@ -71,6 +71,7 @@ describe('DatasetDetailLayout', () => {
     mockIsRbacEnabled = true
     mockUsePathname.mockReturnValue('/datasets/dataset-1/documents')
     mockUseRouter.mockReturnValue({
+      bfcacheId: '0',
       back: vi.fn(),
       forward: vi.fn(),
       refresh: vi.fn(),

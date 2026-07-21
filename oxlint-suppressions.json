@@ -3369,14 +3369,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -3450,22 +3442,6 @@
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/tool-selector/components/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 6
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/tool-selector/components/reasoning-config-form.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -5234,11 +5210,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/tool/components/tool-form/item.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/tool/default.ts": {
     "typescript/no-explicit-any": {
       "count": 6
@@ -5273,11 +5244,6 @@
     }
   },
   "web/app/components/workflow/nodes/trigger-plugin/components/trigger-form/index.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/trigger-plugin/components/trigger-form/item.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
     }

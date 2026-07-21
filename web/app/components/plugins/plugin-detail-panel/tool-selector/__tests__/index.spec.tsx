@@ -4,15 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import ToolSelector from '../index'
 
-vi.mock('../components', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../components')>()
-  return {
-    ...actual,
-    ToolAuthorizationSection: () => null,
-    ToolBaseForm: () => null,
-    ToolSettingsPanel: () => null,
-  }
-})
+vi.mock('../components/tool-authorization-section', () => ({
+  ToolAuthorizationSection: () => null,
+}))
+vi.mock('../components/tool-base-form', () => ({ ToolBaseForm: () => null }))
+vi.mock('../components/tool-settings-panel', () => ({ ToolSettingsPanel: () => null }))
 
 vi.mock('../hooks/use-tool-selector', () => ({
   useToolSelector: () => ({

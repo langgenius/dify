@@ -83,6 +83,7 @@ describe('AppDetailLayout', () => {
     mockConsoleState.workspacePermissionKeys = []
     mockUsePathname.mockImplementation(() => mockPathname)
     mockUseRouter.mockReturnValue({
+      bfcacheId: '0',
       back: vi.fn(),
       forward: vi.fn(),
       refresh: vi.fn(),

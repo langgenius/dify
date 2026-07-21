@@ -364,19 +364,18 @@ describe('MultipleToolSelector', () => {
       expect(collapseArrows).toHaveLength(0)
     })
 
-    it('should toggle collapse state when clicking header with supportCollapse enabled', () => {
-      // Arrange
+    it('should expose and toggle the collapsible tools region through its button', async () => {
+      const user = userEvent.setup()
       const tools = [createToolValue()]
-      const { container } = renderComponent({ supportCollapse: true, value: tools })
-      const headerArea = container.querySelector('[class*="cursor-pointer"]')
+      renderComponent({ supportCollapse: true, value: tools })
+      const collapseButton = screen.getByRole('button', { name: 'Tools' })
 
-      // Act - Initially visible
+      expect(collapseButton).toHaveAttribute('aria-expanded', 'true')
       expect(screen.getByTestId('tool-selector-edit')).toBeInTheDocument()
 
-      // Click to collapse
-      fireEvent.click(headerArea!)
+      await user.click(collapseButton)
 
-      // Assert - Should be collapsed
+      expect(collapseButton).toHaveAttribute('aria-expanded', 'false')
       expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()
     })
 
@@ -393,13 +392,11 @@ describe('MultipleToolSelector', () => {
     })
 
     it('should expand when add button is clicked while collapsed', async () => {
-      // Arrange
       const tools = [createToolValue()]
-      const { container } = renderComponent({ supportCollapse: true, value: tools })
-      const headerArea = container.querySelector('[class*="cursor-pointer"]')
+      renderComponent({ supportCollapse: true, value: tools })
+      const collapseButton = screen.getByRole('button', { name: 'Tools' })
 
-      // Collapse first
-      fireEvent.click(headerArea!)
+      fireEvent.click(collapseButton)
       expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()
 
       // Act - Click add button
@@ -630,25 +627,6 @@ describe('MultipleToolSelector', () => {
 
       // Assert - Add tool panel should open
       expect(screen.getByTestId('tool-selector-add')).toBeInTheDocument()
-    })
-
-    it('should handle collapse click with supportCollapse', () => {
-      // Arrange
-      const tools = [createToolValue()]
-      const { container } = renderComponent({ supportCollapse: true, value: tools })
-      const labelArea = container.querySelector('[class*="cursor-pointer"]')
-
-      // Act
-      fireEvent.click(labelArea!)
-
-      // Assert - Tools should be hidden
-      expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()
-
-      // Click again to expand
-      fireEvent.click(labelArea!)
-
-      // Assert - Tools should be visible again
-      expect(screen.getByTestId('tool-selector-edit')).toBeInTheDocument()
     })
   })
 
