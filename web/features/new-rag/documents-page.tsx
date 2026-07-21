@@ -571,6 +571,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     taskQueryWarning ||
     (sourceQueryWarning && unresolvedDocumentSourceIds.size > 0) ||
     filteredResultsIncomplete
+  const reindexUnavailableReason = dependencyResultsIncomplete
+    ? tCommon(($) => $.loading)
+    : taskQueryWarning
+      ? t(($) => $['newKnowledge.tasksErrorDescription'])
+      : sourceQueryWarning && unresolvedDocumentSourceIds.size > 0
+        ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+        : filteredResultsIncomplete
+          ? t(($) => $['newKnowledge.partialDocumentResults'])
+          : undefined
   const selectableFilteredDocuments = filteredDocuments.filter(
     (document) => documentStatuses.get(document.id) !== 'disabled',
   )
@@ -1865,6 +1874,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       {bulkActionsVisible && (
         <DocumentBulkActions
           disabled={selectionDisabled}
+          disabledReason={reindexUnavailableReason}
           onClear={() => setSelectedDocumentIds(new Set())}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null))

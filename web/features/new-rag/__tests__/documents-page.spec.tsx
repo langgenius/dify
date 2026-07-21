@@ -641,7 +641,11 @@ describe('DocumentsPage', () => {
       }),
     )
 
-    expect(within(screen.getByRole('dialog')).getByText('common.loading')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('dialog')).getByText(
+        'dataset.newKnowledge.permission · common.loading',
+      ),
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).not.toBeInTheDocument()
@@ -1537,7 +1541,9 @@ describe('DocumentsPage', () => {
     })
     expect(reindex).toBeEnabled()
     expect(
-      within(actions).getByText('dataset.newKnowledge.documentActionsUnavailable'),
+      within(actions).getByText(
+        'dataset.newKnowledge.downloadDocuments / dataset.newKnowledge.deleteDocuments · dataset.cornerLabel.unavailable',
+      ),
     ).toBeVisible()
     await user.dblClick(reindex)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
@@ -1569,9 +1575,9 @@ describe('DocumentsPage', () => {
     })
     expect(
       within(actions).getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }),
-    ).toHaveAttribute('aria-describedby', 'document-actions-unavailable')
+    ).toHaveAttribute('aria-describedby', 'document-reindex-unavailable')
     expect(
-      within(actions).getByText('dataset.newKnowledge.documentActionsUnavailable'),
+      within(actions).getByText('dataset.newKnowledge.reindexDocuments · common.loading'),
     ).toBeVisible()
   })
 

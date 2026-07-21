@@ -175,17 +175,6 @@ const DocumentRow = memo(
         <td className="w-40 py-3 pr-6 system-xs-regular text-text-tertiary">
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
         </td>
-        <td className="w-10 py-3 text-right">
-          <button
-            type="button"
-            disabled
-            aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
-            title={t(($) => $['newKnowledge.documentActionsUnavailable'])}
-            className="inline-flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden"
-          >
-            <span aria-hidden className="i-ri-more-fill size-4" />
-          </button>
-        </td>
       </tr>
     )
   },
@@ -405,10 +394,6 @@ export function DocumentsList({
           tasksButtonLabel={tasksButtonLabel}
           tasksLiveStatus={tasksLiveStatus}
         />
-        <Button disabled title={t(($) => $['newKnowledge.documentActionsUnavailable'])}>
-          <span aria-hidden className="i-ri-price-tag-3-line size-4" />
-          {t(($) => $['newKnowledge.metadata'])}
-        </Button>
         <Button
           variant="primary"
           aria-busy={uploading}
@@ -452,7 +437,6 @@ export function DocumentsList({
               <th className="pb-2 font-medium">{t(($) => $['newKnowledge.sourceColumn'])}</th>
               <th className="pb-2 font-medium">{t(($) => $['newKnowledge.statusColumn'])}</th>
               <th className="pb-2 font-medium">{t(($) => $['newKnowledge.updatedColumn'])}</th>
-              <th aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
             </tr>
           </thead>
           <tbody>
@@ -582,6 +566,7 @@ export function DocumentsList({
 
 export function DocumentBulkActions({
   disabled,
+  disabledReason,
   onClear,
   onBlurCapture,
   onFocusCapture,
@@ -590,6 +575,7 @@ export function DocumentBulkActions({
   selectedCount,
 }: {
   disabled: boolean
+  disabledReason?: string
   onClear: () => void
   onBlurCapture: FocusEventHandler<HTMLDivElement>
   onFocusCapture: FocusEventHandler<HTMLDivElement>
@@ -614,10 +600,25 @@ export function DocumentBulkActions({
           id="document-actions-unavailable"
           className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
         >
-          {t(($) => $['newKnowledge.documentActionsUnavailable'])}
+          {t(($) => $['newKnowledge.downloadDocuments'])}
+          {' / '}
+          {t(($) => $['newKnowledge.deleteDocuments'])}
+          {' · '}
+          {t(($) => $['cornerLabel.unavailable'])}
         </span>
+        {disabled && disabledReason && (
+          <span
+            id="document-reindex-unavailable"
+            className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
+            role="status"
+          >
+            {t(($) => $['newKnowledge.reindexDocuments'])}
+            {' · '}
+            {disabledReason}
+          </span>
+        )}
         <Button
-          aria-describedby={disabled ? 'document-actions-unavailable' : undefined}
+          aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
           aria-busy={reindexing}
           className="shrink-0"
           disabled={disabled}

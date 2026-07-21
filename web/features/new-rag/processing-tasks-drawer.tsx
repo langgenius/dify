@@ -413,6 +413,8 @@ export function ProcessingTasksDrawer({
                 )}
                 {permissionQueryPending && (
                   <p className="mt-2 system-xs-regular text-text-tertiary" role="status">
+                    {t(($) => $['newKnowledge.permission'])}
+                    {' · '}
                     {tCommon(($) => $.loading)}
                   </p>
                 )}
