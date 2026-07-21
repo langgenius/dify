@@ -329,34 +329,39 @@ class TestRbacPermissionRequired:
 
         with (
             app.test_request_context("/agent/agent-1/chat-messages"),
-            patch("controllers.common.wraps.db") as mock_db,
+            patch("controllers.common.wraps.AgentRosterService") as mock_service,
         ):
             request.view_args = {"agent_id": "agent-1"}
-            mock_db.session.execute.return_value.first.return_value = ("backing-app-1", "parent-app-1")
+            mock_service.return_value.peek_runtime_backing_app_id.return_value = "backing-app-1"
 
             assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "backing-app-1"
 
-    def test_extract_resource_id_falls_back_to_agent_app_id(self):
+    def test_extract_resource_id_scopes_agent_resolution_to_the_calling_tenant(self):
+        """The tenant must reach the resolver, or an Agent id from any tenant resolves."""
         app = Flask(__name__)
 
         with (
             app.test_request_context("/agent/agent-1/chat-messages"),
-            patch("controllers.common.wraps.db") as mock_db,
+            patch("controllers.common.wraps.AgentRosterService") as mock_service,
         ):
             request.view_args = {"agent_id": "agent-1"}
-            mock_db.session.execute.return_value.first.return_value = (None, "roster-app-1")
+            mock_service.return_value.peek_runtime_backing_app_id.return_value = "backing-app-1"
 
-            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "roster-app-1"
+            _extract_resource_id(RBACResourceScope.APP, "tenant-9")
 
-    def test_extract_resource_id_keeps_agent_id_when_no_agent_row_matches(self):
+            mock_service.return_value.peek_runtime_backing_app_id.assert_called_once_with(
+                tenant_id="tenant-9", agent_id="agent-1"
+            )
+
+    def test_extract_resource_id_keeps_agent_id_when_the_agent_does_not_resolve(self):
         app = Flask(__name__)
 
         with (
             app.test_request_context("/agent/agent-1/chat-messages"),
-            patch("controllers.common.wraps.db") as mock_db,
+            patch("controllers.common.wraps.AgentRosterService") as mock_service,
         ):
             request.view_args = {"agent_id": "agent-1"}
-            mock_db.session.execute.return_value.first.return_value = None
+            mock_service.return_value.peek_runtime_backing_app_id.return_value = None
 
             assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "agent-1"
 

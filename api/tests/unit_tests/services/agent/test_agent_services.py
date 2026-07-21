@@ -135,6 +135,37 @@ def test_get_published_agent_soul_for_app_returns_none_without_backing_agent():
     assert result is None
 
 
+def test_peek_runtime_backing_app_id_prefers_the_hidden_backing_app():
+    agent = SimpleNamespace(id="agent-1", backing_app_id="backing-app-1", app_id="parent-app-1")
+    service = AgentRosterService(FakeSession(scalar=[agent]))
+
+    result = service.peek_runtime_backing_app_id(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert result == "backing-app-1"
+
+
+def test_peek_runtime_backing_app_id_falls_back_to_the_roster_app():
+    agent = SimpleNamespace(id="agent-1", backing_app_id=None, app_id="roster-app-1")
+    service = AgentRosterService(FakeSession(scalar=[agent]))
+
+    result = service.peek_runtime_backing_app_id(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert result == "roster-app-1"
+
+
+def test_peek_runtime_backing_app_id_returns_none_without_creating_a_backing_app():
+    """Authorization checks must not materialize the hidden backing App."""
+    session = FakeSession(scalar=[None])
+    service = AgentRosterService(session)
+
+    result = service.peek_runtime_backing_app_id(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert result is None
+    assert session.added == []
+    assert session.commits == 0
+    assert session.flushes == 0
+
+
 def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPatch):
     session = FakeSession()
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
