@@ -38,6 +38,7 @@ const collaborationBridge = vi.hoisted(() => ({
 }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
+const toastErrorMock = vi.hoisted(() => vi.fn())
 
 const workflowCommentState = vi.hoisted(() => ({
   comments: [] as Array<Record<string, unknown>>,
@@ -188,6 +189,7 @@ vi.mock('@/service/workflow', () => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
+    error: toastErrorMock,
     info: toastInfoMock,
   },
 }))
@@ -604,6 +606,22 @@ describe('Workflow edge event wiring', () => {
     })
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
+  })
+
+  it('should show a persistent error toast when saving the draft on unmount fails', () => {
+    workflowHookMocks.handleSyncWorkflowDraft.mockImplementationOnce(
+      (_sync, _notRefreshWhenSyncError, callback) => {
+        callback?.onError?.()
+      },
+    )
+
+    const { unmount } = renderSubject()
+
+    unmount()
+
+    expect(toastErrorMock).toHaveBeenCalledWith('workflow.common.draftSaveFailed', {
+      timeout: 0,
+    })
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {

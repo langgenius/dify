@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
@@ -124,13 +125,19 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
         )}
       {!isLoading &&
         !!filteredApiBasedExtensions.length &&
-        filteredApiBasedExtensions.map((item) => (
-          <Item
+        filteredApiBasedExtensions.map((item, index) => (
+          <div
             key={item.id}
-            apiBasedExtension={item}
-            onEdit={handleEditApiBasedExtension}
-            canManage={canManage}
-          />
+            data-step-by-step-tour-target={
+              index === 0 ? STEP_BY_STEP_TOUR_TARGETS.integrationCustomEndpointEmpty : undefined
+            }
+          >
+            <Item
+              apiBasedExtension={item}
+              onEdit={handleEditApiBasedExtension}
+              canManage={canManage}
+            />
+          </div>
         ))}
       {dialogState?.mode === 'create' && (
         <ApiBasedExtensionModal
