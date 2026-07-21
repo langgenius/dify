@@ -11,24 +11,33 @@ from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
+from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: str | None):
+def clean_document_task(
+    document_id: str,
+    dataset_id: str,
+    doc_form: str,
+    file_id: str | None,
+    tenant_id: str | None = None,
+) -> None:
     """
     Clean document when document deleted.
     :param document_id: document id
     :param dataset_id: dataset id
     :param doc_form: doc_form
     :param file_id: file id
+    :param tenant_id: tenant id
 
     Usage: clean_document_task.delay(document_id, dataset_id)
     """
     logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
     total_attachment_files = []
+    vector_cleanup_succeeded = False
 
     with session_factory.create_session() as session:
         try:
@@ -36,6 +45,8 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
             if not dataset:
                 raise Exception("Document has no dataset")
+
+            tenant_id = tenant_id or dataset.tenant_id
 
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
             # Use JOIN to fetch attachments with bindings in a single query
@@ -82,6 +93,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                         delete_summaries=True,
                         session=session,
                     )
+                    vector_cleanup_succeeded = True
         except Exception:
             logger.exception(
                 "Failed to clean vector / keyword index in clean_document_task, "
@@ -153,6 +165,9 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 DatasetMetadataBinding.document_id == document_id,
             )
         )
+
+    if vector_cleanup_succeeded and tenant_id:
+        schedule_billing_vector_space_refresh(tenant_id)
 
     end_at = time.perf_counter()
     logger.info(

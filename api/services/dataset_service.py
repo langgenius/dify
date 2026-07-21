@@ -1974,7 +1974,11 @@ class DocumentService:
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_id = data_source_info["upload_file_id"]
         document_was_deleted.send(
-            document.id, dataset_id=document.dataset_id, doc_form=document.doc_form, file_id=file_id
+            document.id,
+            dataset_id=document.dataset_id,
+            doc_form=document.doc_form,
+            file_id=file_id,
+            tenant_id=document.tenant_id,
         )
 
         session.delete(document)
@@ -2013,7 +2017,13 @@ class DocumentService:
         # Dispatch cleanup task after commit to avoid lock contention
         # Task cleans up segments, files, and vector indexes
         if deleted_document_ids and doc_form is not None:
-            batch_clean_document_task.delay(deleted_document_ids, dataset_ref.dataset_id, doc_form, file_ids)
+            batch_clean_document_task.delay(
+                deleted_document_ids,
+                dataset_ref.dataset_id,
+                doc_form,
+                file_ids,
+                dataset_ref.tenant_id,
+            )
 
     @staticmethod
     def rename_document(dataset_id: str, document_id: str, name: str, session: Session) -> Document:

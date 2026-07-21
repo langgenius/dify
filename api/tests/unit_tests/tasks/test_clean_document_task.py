@@ -169,12 +169,14 @@ class TestVectorCleanupResilience:
         )
 
         # Act — must not raise out of the task even though clean() raises.
-        clean_document_task(
-            document_id=document_id,
-            dataset_id=dataset_id,
-            doc_form="paragraph",
-            file_id=None,
-        )
+        with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh:
+            clean_document_task(
+                document_id=document_id,
+                dataset_id=dataset_id,
+                doc_form="paragraph",
+                file_id=None,
+                tenant_id=tenant_id,
+            )
 
         # Assert
         # 1. Vector cleanup was attempted.
@@ -187,6 +189,7 @@ class TestVectorCleanupResilience:
             "Step 3+ DB cleanup did not run after vector cleanup failure; "
             "this regression would re-introduce the orphan-segment bug."
         )
+        schedule_refresh.assert_not_called()
 
     def test_vector_cleanup_success_path_remains_unaffected(
         self,
@@ -229,12 +232,14 @@ class TestVectorCleanupResilience:
 
         mock_sf.create_session.side_effect = [cm1, cm2] + [_default_cm() for _ in range(10)]
 
-        clean_document_task(
-            document_id=document_id,
-            dataset_id=dataset_id,
-            doc_form="paragraph",
-            file_id=None,
-        )
+        with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh:
+            clean_document_task(
+                document_id=document_id,
+                dataset_id=dataset_id,
+                doc_form="paragraph",
+                file_id=None,
+                tenant_id=tenant_id,
+            )
 
         assert mock_index_processor_factory["processor"].clean.call_count == 1
         # Index cleanup invoked with the expected delete_summaries / delete_child_chunks flags.
@@ -242,6 +247,7 @@ class TestVectorCleanupResilience:
         assert kwargs.get("with_keywords") is True
         assert kwargs.get("delete_child_chunks") is True
         assert kwargs.get("delete_summaries") is True
+        schedule_refresh.assert_called_once_with(tenant_id)
 
     def test_no_segments_skips_vector_cleanup(
         self,
@@ -279,13 +285,16 @@ class TestVectorCleanupResilience:
 
         mock_sf.create_session.side_effect = [cm1] + [_default_cm() for _ in range(10)]
 
-        clean_document_task(
-            document_id=document_id,
-            dataset_id=dataset_id,
-            doc_form="paragraph",
-            file_id=None,
-        )
+        with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh:
+            clean_document_task(
+                document_id=document_id,
+                dataset_id=dataset_id,
+                doc_form="paragraph",
+                file_id=None,
+                tenant_id=tenant_id,
+            )
 
         # Vector cleanup is gated on ``index_node_ids``; when there are no
         # segments the IndexProcessorFactory path is never entered.
         mock_index_processor_factory["factory_cls"].assert_not_called()
+        schedule_refresh.assert_not_called()
