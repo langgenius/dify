@@ -60,6 +60,17 @@ export const getPluginLinkInMarketplace = (
   return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
 }
 
+export const getPluginDetailLinkInMarketplace = (
+  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
+) => {
+  const org = encodeURIComponent(plugin.org)
+  const name = encodeURIComponent(plugin.name)
+
+  if (plugin.type === 'bundle')
+    return `/bundles/${org}/${name}`
+  return `/plugin/${org}/${name}`
+}
+
 export const getMarketplaceCategoryUrl = (
   category?: string,
   params?: Record<string, string | undefined>,
