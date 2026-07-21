@@ -3,14 +3,15 @@ import type { Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useEffect } from 'react'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import { useUpdateAccessMode } from '@/service/access-control'
+import { consoleQuery } from '@/service/client'
 import useAccessControlStore from '../../../../context/access-control-store'
 import { Infotip } from '../../base/infotip'
 import AccessControlDialog from './access-control-dialog'
@@ -18,13 +19,15 @@ import AccessControlItem from './access-control-item'
 import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
 
 type AccessControlProps = {
-  app: App
+  app: Pick<App, 'id' | 'access_mode'>
   onClose: () => void
   onConfirm?: () => void
 }
 
 export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
+  const { id: appId, access_mode: appAccessMode } = app
+  const accessControlOptionsLabelId = useId()
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const setAppId = useAccessControlStore((s) => s.setAppId)
@@ -40,11 +43,13 @@ export default function AccessControl(props: AccessControlProps) {
   const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
 
   useEffect(() => {
-    setAppId(app.id)
-    setCurrentMenu(app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS)
-  }, [app, setAppId, setCurrentMenu])
+    setAppId(appId)
+    setCurrentMenu(appAccessMode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  }, [appAccessMode, appId, setAppId, setCurrentMenu])
 
-  const { isPending, mutateAsync: updateAccessMode } = useUpdateAccessMode()
+  const { isPending, mutateAsync: updateAccessMode } = useMutation(
+    consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
+  )
   const confirmDisabled = isPending || (currentMenu === AccessMode.PUBLIC && publicAccessDisabled)
   const handleConfirm = useCallback(async () => {
     if (confirmDisabled) return
@@ -52,7 +57,7 @@ export default function AccessControl(props: AccessControlProps) {
       appId: string
       accessMode: AccessMode
       subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
-    } = { appId: app.id, accessMode: currentMenu }
+    } = { appId, accessMode: currentMenu }
     if (currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
       const subjects: Pick<Subject, 'subjectId' | 'subjectType'>[] = []
       specificGroups.forEach((group) => {
@@ -66,12 +71,12 @@ export default function AccessControl(props: AccessControlProps) {
       })
       submitData.subjects = subjects
     }
-    await updateAccessMode(submitData)
+    await updateAccessMode({ body: submitData })
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm?.()
   }, [
     updateAccessMode,
-    app,
+    appId,
     specificGroups,
     specificMembers,
     t,
@@ -90,9 +95,14 @@ export default function AccessControl(props: AccessControlProps) {
             {t(($) => $['accessControlDialog.description'], { ns: 'app' })}
           </DialogDescription>
         </div>
-        <div className="flex flex-col gap-y-1 px-6 pb-3">
+        <RadioGroup<AccessMode>
+          value={currentMenu}
+          onValueChange={setCurrentMenu}
+          className="flex flex-col items-stretch gap-y-1 px-6 pb-3"
+          aria-labelledby={accessControlOptionsLabelId}
+        >
           <div className="leading-6">
-            <p className="system-sm-medium text-text-tertiary">
+            <p id={accessControlOptionsLabelId} className="system-sm-medium text-text-tertiary">
               {t(($) => $['accessControlDialog.accessLabel'], { ns: 'app' })}
             </p>
           </div>
@@ -138,7 +148,7 @@ export default function AccessControl(props: AccessControlProps) {
               )}
             </div>
           </AccessControlItem>
-        </div>
+        </RadioGroup>
         <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
           <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button

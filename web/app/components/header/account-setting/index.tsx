@@ -14,10 +14,13 @@ import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { IS_CLOUD_EDITION } from '@/config'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import {
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceManagerAtom,
+} from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { BillingPermission, hasPermission } from '@/utils/permission'
+import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
@@ -58,11 +61,11 @@ export default function AccountSetting({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
-  const canViewBilling =
-    enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
+  const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives = IS_CLOUD_EDITION && isCurrentWorkspaceManager
   // Keep legacy `language` deep links opening Preferences during the tab rename migration.
   const normalizedActiveTab =

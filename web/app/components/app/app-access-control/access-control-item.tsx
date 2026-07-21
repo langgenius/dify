@@ -1,51 +1,30 @@
 'use client'
-import type { FC, PropsWithChildren } from 'react'
+import type { PropsWithChildren } from 'react'
 import type { AccessMode } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
-import useAccessControlStore from '@/context/access-control-store'
+import { RadioItem } from '@langgenius/dify-ui/radio'
 
 type AccessControlItemProps = PropsWithChildren<{
   type: AccessMode
   disabled?: boolean
 }>
 
-const AccessControlItem: FC<AccessControlItemProps> = ({ type, children, disabled }) => {
-  const currentMenu = useAccessControlStore((s) => s.currentMenu)
-  const setCurrentMenu = useAccessControlStore((s) => s.setCurrentMenu)
-  if (currentMenu !== type) {
-    const selectOption = () => !disabled && setCurrentMenu(type)
-    return (
-      <div
-        role="button"
-        tabIndex={disabled ? -1 : 0}
-        className={cn(
-          'rounded-[10px] border border-components-option-card-option-border bg-components-option-card-option-bg',
-          'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-          disabled
-            ? 'cursor-not-allowed opacity-60'
-            : 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover',
-        )}
-        aria-disabled={disabled}
-        onClick={selectOption}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            selectOption()
-          }
-        }}
-      >
-        {children}
-      </div>
-    )
-  }
-
+export default function AccessControlItem({ type, children, disabled }: AccessControlItemProps) {
   return (
-    <div className="rounded-[10px] border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm">
+    <RadioItem<AccessMode>
+      value={type}
+      disabled={disabled}
+      render={<div />}
+      className={cn(
+        'rounded-[10px] border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg shadow-xs transition-colors',
+        'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:inset-ring-[0.5px] data-checked:inset-ring-components-option-card-option-selected-border',
+        disabled
+          ? 'cursor-not-allowed opacity-60'
+          : 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover',
+      )}
+    >
       {children}
-    </div>
+    </RadioItem>
   )
 }
-
-AccessControlItem.displayName = 'AccessControlItem'
-
-export default AccessControlItem

@@ -1,11 +1,11 @@
 import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
 import AllTools from '../all-tools'
 import { createToolProvider } from './factories'
@@ -33,12 +33,20 @@ vi.mock('@/utils/var', async (importOriginal) => ({
   getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
 }))
 
+vi.mock('../rag-tool-recommendations', () => ({
+  RAGToolRecommendations: ({ onLoadMore }: { onLoadMore: () => void }) => (
+    <button type="button" onClick={onLoadMore}>
+      Load more RAG tools
+    </button>
+  ),
+}))
+
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
 
 const render = (ui: ReactElement, enableMarketplace = false) =>
-  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: enableMarketplace } })
+  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: enableMarketplace } })
 
 const createMarketplacePluginsMock = () => ({
   plugins: [],
@@ -192,5 +200,28 @@ describe('AllTools', () => {
     await waitFor(() => {
       expect(screen.getByText('workflow.tabs.noPluginsFound')).toBeInTheDocument()
     })
+  })
+
+  it('returns the next tag value when loading more RAG tools', async () => {
+    const user = userEvent.setup()
+    const onTagsChange = vi.fn()
+
+    render(
+      <AllTools
+        searchText=""
+        tags={[]}
+        onTagsChange={onTagsChange}
+        onSelect={vi.fn()}
+        buildInTools={[createToolProvider({ id: 'provider-built-in' })]}
+        customTools={[]}
+        workflowTools={[]}
+        mcpTools={[]}
+        isInRAGPipeline
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Load more RAG tools' }))
+
+    expect(onTagsChange).toHaveBeenCalledWith(['rag'])
   })
 })

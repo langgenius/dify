@@ -10,7 +10,6 @@ import {
   resolveServerConsoleApiUrl,
   serverConsoleQuery,
 } from '@/service/server'
-import { basePath } from '@/utils/var'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
@@ -35,22 +34,22 @@ const parseConsoleErrorPayload = async (error: Response): Promise<ConsoleErrorPa
 
 const getCurrentPath = async () => {
   const requestHeaders = await headers()
-  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || `${basePath}/`
+  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || '/'
   const search = requestHeaders.get(CURRENT_SEARCH_HEADER) || ''
   return `${pathname}${search}`
 }
 
 const redirectToAuthRefresh = async () => {
   const currentPath = await getCurrentPath()
-  redirect(`${basePath}${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
+  redirect(`${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
 }
 
 const handleProfileError = async (error: unknown) => {
   if (!(error instanceof Response)) throw error
 
   const errorData = await parseConsoleErrorPayload(error)
-  if (errorData?.code === 'not_setup') redirect(`${basePath}/install`)
-  if (errorData?.code === 'not_init_validated') redirect(`${basePath}/init`)
+  if (errorData?.code === 'not_setup') redirect('/install')
+  if (errorData?.code === 'not_init_validated') redirect('/init')
   if (error.status === 401) await redirectToAuthRefresh()
 
   throw error

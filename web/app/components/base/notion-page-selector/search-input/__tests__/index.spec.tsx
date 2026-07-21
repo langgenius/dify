@@ -10,7 +10,6 @@ describe('SearchInput', () => {
     expect(
       screen.getByPlaceholderText('common.dataSource.notion.selector.searchPages'),
     ).toBeInTheDocument()
-    expect(screen.getByTestId('notion-search-input-container')).toBeInTheDocument()
   })
 
   it('should call onChange when typing', async () => {

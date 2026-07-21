@@ -16,6 +16,12 @@ export const AccessMode = {
 
 export type AccessMode = (typeof AccessMode)[keyof typeof AccessMode]
 
+const accessModes = new Set<string>(Object.values(AccessMode))
+
+export function isAccessMode(accessMode: string | null | undefined): accessMode is AccessMode {
+  return !!accessMode && accessModes.has(accessMode)
+}
+
 export type AccessControlGroup = {
   id: string
   name: string
@@ -53,10 +59,6 @@ export type PermissionGroup = {
   group_name: string
   description: string
   permissions: Permission[]
-}
-
-export type PermissionGroups = {
-  groups: PermissionGroup[]
 }
 
 export type PermissionKey = string

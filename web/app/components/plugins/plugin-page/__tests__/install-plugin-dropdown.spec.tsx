@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InstallPluginDropdown from '../install-plugin-dropdown'
 
 const { mockSystemFeatures } = vi.hoisted(() => ({
@@ -22,7 +22,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: mockSystemFeatures })
+  renderWithConsoleQuery(ui, { systemFeatures: mockSystemFeatures })
 
 vi.mock('@/app/components/base/icons/src/vender/solid/files', () => ({
   FileZip: () => <span data-testid="file-zip-icon">file</span>,

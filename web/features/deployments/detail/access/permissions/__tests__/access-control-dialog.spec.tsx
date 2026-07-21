@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { AccessSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DeploymentAccessControlDialog } from '../access-control-dialog'
 
 const mockUseSearchAccessSubjects = vi.hoisted(() => vi.fn())
@@ -12,7 +12,7 @@ vi.mock('@/service/access-control/use-access-subjects', () => ({
 }))
 
 const render = (ui: ReactElement, allowPublicAccess = true) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { webapp_auth: { allow_public_access: allowPublicAccess } },
   })
 
