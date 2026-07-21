@@ -78,6 +78,11 @@ export const createNewRagWorldState = () => ({
   documentTitle: undefined as string | undefined,
   documentUrl: undefined as string | undefined,
   knowledgeFsRequests: [] as string[],
+  knowledgeFsRequestFailures: [] as Array<{
+    error: string
+    method: string
+    url: string
+  }>,
   knowledgeFsResponses: [] as Array<{
     method: string
     status: number
@@ -86,6 +91,7 @@ export const createNewRagWorldState = () => ({
   }>,
   knowledgeSpaceId: undefined as string | undefined,
   knowledgeSpaceName: undefined as string | undefined,
+  legacyDatasetName: undefined as string | undefined,
   sourceName: undefined as string | undefined,
 })
 

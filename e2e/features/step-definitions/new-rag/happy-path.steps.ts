@@ -4,6 +4,7 @@ import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { resolveNewRagSmokeConfig } from '../../../scripts/run-new-rag-smoke'
 import { createApiContext, expectApiResponseOK } from '../../../support/api'
+import { createTestDataset } from '../../../support/datasets'
 import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins'
 import { createE2EResourceName } from '../../../support/naming'
 import {
@@ -30,6 +31,13 @@ const readSystemFeatures = async () => {
   }
 }
 
+Given('a Legacy Knowledge dataset exists', async function (this: DifyWorld) {
+  const name = createE2EResourceName('Legacy KB')
+  const dataset = await createTestDataset(name)
+  this.createdDatasetIds.push(dataset.id)
+  this.newRag.legacyDatasetName = name
+})
+
 Given(
   'the Firecrawl datasource plugin is installed',
   { timeout: 360_000 },
@@ -55,6 +63,15 @@ Given('I monitor New RAG network requests', async function (this: DifyWorld) {
     if (url.pathname.includes(knowledgeFsProxyPath))
       this.newRag.knowledgeFsRequests.push(request.url())
   })
+  page.on('requestfailed', (request) => {
+    const url = new URL(request.url())
+    if (!url.pathname.includes(knowledgeFsProxyPath)) return
+    this.newRag.knowledgeFsRequestFailures.push({
+      error: request.failure()?.errorText ?? 'Unknown browser request failure',
+      method: request.method(),
+      url: request.url(),
+    })
+  })
   page.on('response', (response) => {
     const url = new URL(response.url())
     if (!url.pathname.includes(knowledgeFsProxyPath)) return
@@ -75,10 +92,14 @@ When('I open the Knowledge console', async function (this: DifyWorld) {
   ).toBeVisible()
 })
 
-Then('the New RAG feature should be disabled by {string}', async (expectedMode: string) => {
-  expect(process.env.E2E_NEW_RAG_EXPECTED_FLAG_MODE).toBe(expectedMode)
-  expect((await readSystemFeatures()).knowledge_fs_enabled).toBe(false)
-})
+Then(
+  'the New RAG feature should be disabled by {string}',
+  async function (this: DifyWorld, expectedMode: string) {
+    void this
+    expect(process.env.E2E_NEW_RAG_EXPECTED_FLAG_MODE).toBe(expectedMode)
+    expect((await readSystemFeatures()).knowledge_fs_enabled).toBe(false)
+  },
+)
 
 Then('the New RAG feature should be enabled', async function (this: DifyWorld) {
   expect(process.env.E2E_NEW_RAG_EXPECTED_FLAG_MODE).toBe('enabled')
@@ -90,6 +111,12 @@ Then('the Legacy Knowledge view should remain available', async function (this: 
   const legacyView = this.getPage().getByRole('button', { name: 'Legacy', exact: true })
   await expect(legacyView).toBeVisible()
   await expect(legacyView).toHaveAttribute('aria-pressed', 'true')
+})
+
+Then('the Legacy Knowledge dataset should remain available', async function (this: DifyWorld) {
+  const name = this.newRag.legacyDatasetName
+  if (!name) throw new Error('The Legacy Knowledge smoke dataset name is missing.')
+  await expect(this.getPage().getByText(name, { exact: true })).toBeVisible()
 })
 
 Then('the New Knowledge view should be unavailable', async function (this: DifyWorld) {
@@ -109,6 +136,7 @@ Then('I should return to the Legacy Knowledge console', async function (this: Di
 
 Then('no KnowledgeFS request should leave the browser', async function (this: DifyWorld) {
   expect(this.newRag.knowledgeFsRequests).toEqual([])
+  expect(this.newRag.knowledgeFsRequestFailures).toEqual([])
   expect(this.newRag.knowledgeFsResponses).toEqual([])
 })
 
@@ -170,9 +198,18 @@ When('I crawl the configured website', { timeout: 210_000 }, async function (thi
   await page.getByLabel('Root URL').fill(config.crawlUrl)
   await page.getByLabel('Source name').fill(sourceName)
   await page.getByRole('button', { name: 'Crawl & preview' }).click()
-  await expect(page.getByRole('checkbox', { name: 'Select all' })).toBeVisible({
-    timeout: 180_000,
-  })
+  const selectAll = page.getByRole('checkbox', { name: 'Select all' })
+  const crawlFailure = page.getByRole('alert').filter({ hasText: "Couldn't crawl" })
+  await selectAll.or(crawlFailure).waitFor({ state: 'visible', timeout: 180_000 })
+  if (await crawlFailure.isVisible()) {
+    const failure = this.newRag.knowledgeFsRequestFailures.at(-1)
+    const requestDiagnostic = failure
+      ? `${failure.method} ${new URL(failure.url).pathname}: ${failure.error}`
+      : 'No failed KnowledgeFS browser request was captured.'
+    const failureText = (await crawlFailure.textContent()) ?? 'Crawl preview failed.'
+    const message = failureText.replaceAll(/\s+/g, ' ').trim()
+    throw new Error(`${message} ${requestDiagnostic}`)
+  }
 })
 
 When('I select every crawled page with a manual sync policy', async function (this: DifyWorld) {
@@ -240,6 +277,39 @@ Then('the same document detail should be restored', async function (this: DifyWo
   await expect(this.getPage().getByRole('tree')).toBeVisible()
 })
 
+When('I return to the source Documents', async function (this: DifyWorld) {
+  const page = this.getPage()
+  await page.getByRole('link', { name: 'Documents' }).click()
+  await expect(page.getByRole('heading', { name: 'Documents' })).toBeVisible()
+})
+
+Then('the same ready document should remain available', async function (this: DifyWorld) {
+  const title = this.newRag.documentTitle
+  if (!title) throw new Error('The ready New RAG document title is missing.')
+  const documentLink = this.getPage().getByRole('table').getByRole('link', { name: title })
+  await expect(documentLink).toBeVisible()
+  await expect(this.getPage().getByRole('row').filter({ has: documentLink })).toContainText('Ready')
+})
+
+When('I reopen the ready document', async function (this: DifyWorld) {
+  const title = this.newRag.documentTitle
+  if (!title) throw new Error('The ready New RAG document title is missing.')
+  const page = this.getPage()
+  await page.getByRole('table').getByRole('link', { name: title }).click()
+  await expect(page).toHaveURL(
+    this.newRag.documentUrl ?? /\/datasets\/new\/[^/]+\/documents\/[^/]+$/,
+  )
+})
+
+When('I return to Legacy Knowledge', async function (this: DifyWorld) {
+  const page = this.getPage()
+  await page.goto('/datasets')
+  await expect(page.getByRole('button', { name: 'Legacy', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+})
+
 Then(
   'the KnowledgeFS tenant and read-only boundaries should hold',
   async function (this: DifyWorld) {
@@ -252,6 +322,7 @@ Then(
 Then('the New RAG requests should be proxied with diagnostics', async function (this: DifyWorld) {
   const config = resolveNewRagSmokeConfig(process.env)
   expect(this.newRag.knowledgeFsRequests.length).toBeGreaterThan(0)
+  expect(this.newRag.knowledgeFsRequestFailures).toEqual([])
   expect(
     this.newRag.knowledgeFsRequests.every((url) =>
       new URL(url).pathname.includes(knowledgeFsProxyPath),

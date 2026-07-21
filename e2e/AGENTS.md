@@ -122,7 +122,7 @@ The New RAG release smoke is an opt-in live integration matrix. Each matrix entr
 E2E_NEW_RAG_KNOWLEDGE_FS_BASE_URL=http://127.0.0.1:8788 \
 E2E_NEW_RAG_KNOWLEDGE_FS_JWT_SECRET='<shared-jwt-secret>' \
 E2E_NEW_RAG_CRAWL_URL=https://example.com \
-E2E_NEW_RAG_CONNECTION_CREDENTIALS_JSON='{"base_url":"<firecrawl-base-url>","firecrawl_api_key":"<provider-key>"}' \
+E2E_NEW_RAG_CONNECTION_CREDENTIALS_JSON='{"apiKey":"<provider-key>"}' \
 pnpm -C e2e e2e:new-rag
 ```
 
