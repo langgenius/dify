@@ -31,13 +31,11 @@ const FormStatusCard = ({
           </div>
           <div className="grow">
             <div className="title-4xl-semi-bold text-text-primary">{title}</div>
-            {!!subtitle && (
-              <div className="title-4xl-semi-bold text-text-primary">{subtitle}</div>
-            )}
+            {!!subtitle && <div className="title-4xl-semi-bold text-text-primary">{subtitle}</div>}
           </div>
           {submissionID && (
             <div className="shrink-0 system-2xs-regular-uppercase text-text-tertiary">
-              {t($ => $['humanInput.submissionID'], { id: submissionID, ns: 'share' })}
+              {t(($) => $['humanInput.submissionID'], { id: submissionID, ns: 'share' })}
             </div>
           )}
         </div>

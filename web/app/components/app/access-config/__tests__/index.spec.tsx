@@ -1,26 +1,27 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
 import { screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useStore } from '@/app/components/app/store'
 import {
   useAppAccessRules,
   useAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import AppAccessConfigPage from '../index'
 
-const mockAppContext = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
 
 let mockIsRbacEnabled = true
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    rbac_enabled: mockIsRbacEnabled,
-  },
-})
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, {
+    systemFeatures: {
+      rbac_enabled: mockIsRbacEnabled,
+    },
+  })
 
 const mockAppAccessRules = vi.hoisted(() => ({
   items: [] as AccessRulesEditorProps['rules'],
@@ -43,36 +44,13 @@ const mockMutations = vi.hoisted(() => ({
   removeMemberBindings: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/service/access-control/use-app-access-config', () => ({
@@ -101,17 +79,15 @@ vi.mock('@/service/access-control/use-app-access-config', () => ({
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
     mockAccessRulesEditor.props = props
-    return (
-      <div data-testid="access-rules-editor" />
-    )
+    return <div data-testid="access-rules-editor" />
   },
 }))
 
 describe('AppAccessConfigPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContext.userProfile = { id: 'user-1' }
-    mockAppContext.workspacePermissionKeys = []
+    mockConsoleState.userProfile = { id: 'user-1' }
+    mockConsoleState.workspacePermissionKeys = []
     mockIsRbacEnabled = true
     mockAppAccessRules.items = []
     mockAppAccessRules.isLoading = false
@@ -133,7 +109,9 @@ describe('AppAccessConfigPage', () => {
     it('should render access config title and pass app rules to the editor', () => {
       render(<AppAccessConfigPage appId="app-1" />)
 
-      expect(screen.getByRole('heading', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'common.settings.resourceAccess' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('permission.accessRule.appDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
       expect(mockAccessRulesEditor.props?.className).toBe('w-full max-w-200')
@@ -188,33 +166,45 @@ describe('AppAccessConfigPage', () => {
       render(<AppAccessConfigPage appId="app-1" />)
 
       mockAccessRulesEditor.props?.onOpenScopeChange?.('all')
-      expect(mockMutations.updateOpenScope).toHaveBeenCalledWith('all', expect.objectContaining({
-        onError: expect.any(Function),
-      }))
+      expect(mockMutations.updateOpenScope).toHaveBeenCalledWith(
+        'all',
+        expect.objectContaining({
+          onError: expect.any(Function),
+        }),
+      )
 
       mockAccessRulesEditor.props?.onUserAccessPoliciesChange?.('account-1', ['policy-1'])
-      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
-        accountId: 'account-1',
-        accessPolicyIds: ['policy-1'],
-      }, expect.objectContaining({
-        onSettled: expect.any(Function),
-      }))
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
+        {
+          accountId: 'account-1',
+          accessPolicyIds: ['policy-1'],
+        },
+        expect.objectContaining({
+          onSettled: expect.any(Function),
+        }),
+      )
 
       mockAccessRulesEditor.props?.onAddAccessSubject?.('account-2', ['default'])
-      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
-        accountId: 'account-2',
-        accessPolicyIds: ['default'],
-      }, expect.objectContaining({
-        onSettled: expect.any(Function),
-      }))
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
+        {
+          accountId: 'account-2',
+          accessPolicyIds: ['default'],
+        },
+        expect.objectContaining({
+          onSettled: expect.any(Function),
+        }),
+      )
 
       mockAccessRulesEditor.props?.onRemoveAccessPolicyMemberBinding?.('account-3', 'policy-3')
-      expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
-        accessPolicyId: 'policy-3',
-        accountIds: ['account-3'],
-      }, expect.objectContaining({
-        onSettled: expect.any(Function),
-      }))
+      expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith(
+        {
+          accessPolicyId: 'policy-3',
+          accountIds: ['account-3'],
+        },
+        expect.objectContaining({
+          onSettled: expect.any(Function),
+        }),
+      )
     })
 
     it('should not mount access config data hooks when access config permission is missing', () => {
@@ -244,8 +234,8 @@ describe('AppAccessConfigPage', () => {
     })
 
     it('should allow the app maintainer with app management workspace permission', () => {
-      mockAppContext.userProfile = { id: 'account-1' }
-      mockAppContext.workspacePermissionKeys = ['app.create_and_management']
+      mockConsoleState.userProfile = { id: 'account-1' }
+      mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
       useStore.setState({
         appDetail: {
           id: 'app-1',

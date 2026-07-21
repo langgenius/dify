@@ -4,9 +4,9 @@ on:
   workflow_call:
     inputs:
       run-external-runtime:
-        required: false
+        description: Run only the prepared and external runtime suite instead of the core suites.
+        required: true
         type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -19,6 +19,7 @@ jobs:
   test:
     name: Web Full-Stack E2E
     runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 120
     defaults:
       run:
         shell: bash
@@ -33,7 +34,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           enable-cache: true
           python-version: "3.12"
@@ -45,6 +46,7 @@ jobs:
         run: uv sync --project api --dev
 
       - name: Run E2E support unit tests
+        if: ${{ !inputs.run-external-runtime }}
         working-directory: ./e2e
         run: vp run test:unit
 
@@ -53,6 +55,7 @@ jobs:
         run: vp run e2e:install
 
       - name: Run isolated source-api and built-web Cucumber E2E tests
+        if: ${{ !inputs.run-external-runtime }}
         working-directory: ./e2e
         env:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
@@ -62,7 +65,53 @@ jobs:
           E2E_INIT_PASSWORD: E2eInit12345
         run: vp run e2e:full
 
-      - name: Run external runtime E2E tests
+      - name: Preserve Chromium E2E report and logs
+        if: ${{ !cancelled() && !inputs.run-external-runtime }}
+        run: |
+          if [[ -d e2e/cucumber-report ]]; then
+            mv e2e/cucumber-report e2e/cucumber-report-non-external
+          fi
+          if [[ -d e2e/.logs ]]; then
+            mv e2e/.logs e2e/.logs-non-external
+          fi
+
+      - name: Run WebKit keyboard and browser smoke tests
+        if: ${{ !inputs.run-external-runtime }}
+        working-directory: ./e2e
+        env:
+          E2E_ADMIN_EMAIL: e2e-admin@example.com
+          E2E_ADMIN_NAME: E2E Admin
+          E2E_ADMIN_PASSWORD: E2eAdmin12345
+          E2E_BROWSER: webkit
+          E2E_INIT_PASSWORD: E2eInit12345
+        run: |
+          teardown_webkit_smoke() {
+            local run_status=$?
+            trap - EXIT
+            if ! vp run e2e:middleware:down; then
+              echo "::error title=E2E teardown failed::WebKit smoke middleware did not shut down cleanly."
+              if [[ "$run_status" -eq 0 ]]; then
+                run_status=1
+              fi
+            fi
+            exit "$run_status"
+          }
+
+          trap teardown_webkit_smoke EXIT
+          vp run e2e:middleware:up
+          vp run e2e -- --tags '@browser-smoke'
+
+      - name: Preserve WebKit E2E report and logs
+        if: ${{ !cancelled() && !inputs.run-external-runtime }}
+        run: |
+          if [[ -d e2e/cucumber-report ]]; then
+            mv e2e/cucumber-report e2e/cucumber-report-webkit
+          fi
+          if [[ -d e2e/.logs ]]; then
+            mv e2e/.logs e2e/.logs-webkit
+          fi
+
+      - name: Run prepared and external runtime E2E tests
         if: ${{ inputs.run-external-runtime }}
         working-directory: ./e2e
         env:
@@ -72,14 +121,13 @@ jobs:
           E2E_AGENT_DECISION_MODEL_NAME: ${{ vars.E2E_AGENT_DECISION_MODEL_NAME || 'gpt-5.5' }}
           E2E_AGENT_DECISION_MODEL_PROVIDER: ${{ vars.E2E_AGENT_DECISION_MODEL_PROVIDER || 'openai' }}
           E2E_AGENT_DECISION_MODEL_TYPE: ${{ vars.E2E_AGENT_DECISION_MODEL_TYPE || 'llm' }}
-          E2E_EXTERNAL_RUNTIME_SEED_SPECS: ${{ vars.E2E_EXTERNAL_RUNTIME_SEED_SPECS }}
-          E2E_EXTERNAL_RUNTIME_TAGS: ${{ vars.E2E_EXTERNAL_RUNTIME_TAGS }}
           E2E_FORCE_WEB_BUILD: "1"
           E2E_INIT_PASSWORD: E2eInit12345
           E2E_MARKETPLACE_API_URL: ${{ vars.E2E_MARKETPLACE_API_URL }}
           E2E_MARKETPLACE_PLUGIN_IDS: ${{ vars.E2E_MARKETPLACE_PLUGIN_IDS }}
-          E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS: ${{ vars.E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS }}
           E2E_MODEL_PROVIDER_CREDENTIALS_JSON: ${{ secrets.E2E_MODEL_PROVIDER_CREDENTIALS_JSON }}
+          E2E_SPEECH_TO_TEXT_MODEL_NAME: ${{ vars.E2E_SPEECH_TO_TEXT_MODEL_NAME || 'gpt-4o-mini-transcribe' }}
+          E2E_SPEECH_TO_TEXT_MODEL_PROVIDER: ${{ vars.E2E_SPEECH_TO_TEXT_MODEL_PROVIDER || 'openai' }}
           E2E_START_AGENT_BACKEND: ${{ vars.E2E_START_AGENT_BACKEND || '1' }}
           E2E_STABLE_MODEL_NAME: ${{ vars.E2E_STABLE_MODEL_NAME || 'gpt-5-nano' }}
           E2E_STABLE_MODEL_PROVIDER: ${{ vars.E2E_STABLE_MODEL_PROVIDER || 'openai' }}
@@ -90,15 +138,22 @@ jobs:
             exit 1
           fi
 
-          if [[ -d cucumber-report ]]; then
-            rm -rf cucumber-report-non-external
-            mv cucumber-report cucumber-report-non-external
-          fi
+          teardown_external_runtime() {
+            local run_status=$?
+            trap - EXIT
+            if ! vp run e2e:middleware:down; then
+              echo "::error title=E2E teardown failed::External runtime middleware did not shut down cleanly."
+              if [[ "$run_status" -eq 0 ]]; then
+                run_status=1
+              fi
+            fi
+            exit "$run_status"
+          }
 
-          trap 'vp run e2e:middleware:down' EXIT
+          trap teardown_external_runtime EXIT
           vp run e2e:middleware:up
-          vp run e2e:external:prepare
-          vp run e2e:external
+          vp run e2e:post-merge:prepare
+          vp run e2e:post-merge
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
@@ -108,6 +163,7 @@ jobs:
           path: |
             e2e/cucumber-report
             e2e/cucumber-report-non-external
+            e2e/cucumber-report-webkit
           retention-days: 7
 
       - name: Upload E2E logs
@@ -115,5 +171,18 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-logs
-          path: e2e/.logs
+          path: |
+            e2e/.logs/*.log
+            e2e/.logs-non-external/*.log
+            e2e/.logs-webkit/*.log
+          include-hidden-files: true
+          retention-days: 7
+
+      - name: Upload E2E seed report
+        if: ${{ !cancelled() && inputs.run-external-runtime }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-seed-report
+          path: e2e/seed-report
+          if-no-files-found: ignore
           retention-days: 7

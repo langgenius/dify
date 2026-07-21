@@ -199,6 +199,18 @@ export const zDevicePollRequest = z.object({
 })
 
 /**
+ * DslImportWarning
+ *
+ * Portable DSL reference that could not be restored in the target workspace.
+ */
+export const zDslImportWarning = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  path: z.string(),
+})
+
+/**
  * ErrorDetail
  */
 export const zErrorDetail = z.object({
@@ -301,12 +313,13 @@ export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'fa
 export const zImport = z.object({
   app_id: z.string().nullish(),
   app_mode: z.string().nullish(),
-  current_dsl_version: z.string().optional().default('0.6.0'),
+  current_dsl_version: z.string().optional().default('0.7.0'),
   error: z.string().optional().default(''),
   id: z.string(),
   imported_dsl_version: z.string().optional().default(''),
   permission_keys: z.array(z.string()).optional(),
   status: zImportStatus,
+  warnings: z.array(zDslImportWarning).optional(),
 })
 
 export const zJsonValue = z.unknown()

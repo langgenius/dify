@@ -8,10 +8,13 @@ const GlobalInputs = () => {
   return (
     <div className="flex items-center gap-x-1">
       <span className="system-sm-semibold-uppercase text-text-secondary">
-        {t($ => $['inputFieldPanel.globalInputs.title'], { ns: 'datasetPipeline' })}
+        {t(($) => $['inputFieldPanel.globalInputs.title'], { ns: 'datasetPipeline' })}
       </span>
-      <Infotip aria-label={t($ => $['inputFieldPanel.globalInputs.tooltip'], { ns: 'datasetPipeline' })} popupClassName="w-[240px]">
-        {t($ => $['inputFieldPanel.globalInputs.tooltip'], { ns: 'datasetPipeline' })}
+      <Infotip
+        aria-label={t(($) => $['inputFieldPanel.globalInputs.tooltip'], { ns: 'datasetPipeline' })}
+        popupClassName="w-[240px]"
+      >
+        {t(($) => $['inputFieldPanel.globalInputs.tooltip'], { ns: 'datasetPipeline' })}
       </Infotip>
     </div>
   )

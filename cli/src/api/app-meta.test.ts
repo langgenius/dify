@@ -24,10 +24,8 @@ describe('AppMetaClient', () => {
     process.env[ENV_CACHE_DIR] = dir
   })
   afterEach(async () => {
-    if (prevCacheDir === undefined)
-      delete process.env[ENV_CACHE_DIR]
-    else
-      process.env[ENV_CACHE_DIR] = prevCacheDir
+    if (prevCacheDir === undefined) delete process.env[ENV_CACHE_DIR]
+    else process.env[ENV_CACHE_DIR] = prevCacheDir
     await mock.stop()
     await rm(dir, { recursive: true, force: true })
   })
@@ -62,15 +60,29 @@ describe('AppMetaClient', () => {
   })
 
   it('expired cache entry refetches', async () => {
-    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO), ttlMs: 100, now: () => new Date('2026-05-09T00:00:00Z') })
+    const cache = await loadAppInfoCache({
+      store: getCache(CACHE_APP_INFO),
+      ttlMs: 100,
+      now: () => new Date('2026-05-09T00:00:00Z'),
+    })
     const apps = new AppsClient(testHttpClient(mock.url, 'dfoa_test'))
     const spy = vi.spyOn(apps, 'describe')
-    const client = new AppMetaClient({ apps, host: mock.url, cache, now: () => new Date('2026-05-09T00:00:00Z') })
+    const client = new AppMetaClient({
+      apps,
+      host: mock.url,
+      cache,
+      now: () => new Date('2026-05-09T00:00:00Z'),
+    })
 
     await client.get('app-1', [FieldInfo])
     expect(spy).toHaveBeenCalledTimes(1)
 
-    const client2 = new AppMetaClient({ apps, host: mock.url, cache, now: () => new Date('2026-05-09T00:00:01Z') })
+    const client2 = new AppMetaClient({
+      apps,
+      host: mock.url,
+      cache,
+      now: () => new Date('2026-05-09T00:00:01Z'),
+    })
     await client2.get('app-1', [FieldInfo])
     expect(spy).toHaveBeenCalledTimes(2)
   })
@@ -113,10 +125,12 @@ describe('AppMetaClient', () => {
     const validEntry = file.entries[`${mock.url}::app-1`]
     await writeFile(
       path,
-      dump({ entries: {
-        [`${mock.url}::app-1`]: 'corrupted-string',
-        [`${mock.url}::sibling`]: validEntry,
-      } }),
+      dump({
+        entries: {
+          [`${mock.url}::app-1`]: 'corrupted-string',
+          [`${mock.url}::sibling`]: validEntry,
+        },
+      }),
       'utf8',
     )
 

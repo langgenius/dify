@@ -5,11 +5,6 @@ import { createTestEditor, withEditorUpdate } from './utils'
 
 describe('Prompt Editor Test Utils', () => {
   describe('createTestEditor', () => {
-    it('should create an editor without crashing', () => {
-      const editor = createTestEditor()
-      expect(editor).toBeDefined()
-    })
-
     it('should create an editor with no nodes by default', () => {
       const editor = createTestEditor()
       expect(editor).toBeDefined()
@@ -32,9 +27,12 @@ describe('Prompt Editor Test Utils', () => {
       const editor = createTestEditor(nodes)
 
       expect(() => {
-        editor.update(() => {
-          throw new Error('Test error')
-        }, { discrete: true })
+        editor.update(
+          () => {
+            throw new Error('Test error')
+          },
+          { discrete: true },
+        )
       }).toThrow('Test error')
     })
 
@@ -50,30 +48,24 @@ describe('Prompt Editor Test Utils', () => {
       const editor = createTestEditor(nodes)
 
       let content: string = ''
-      editor.update(() => {
-        const root = $getRoot()
-        const paragraph = $createParagraphNode()
-        const text = $createTextNode('Hello World')
-        paragraph.append(text)
-        root.append(paragraph)
+      editor.update(
+        () => {
+          const root = $getRoot()
+          const paragraph = $createParagraphNode()
+          const text = $createTextNode('Hello World')
+          paragraph.append(text)
+          root.append(paragraph)
 
-        content = root.getTextContent()
-      }, { discrete: true })
+          content = root.getTextContent()
+        },
+        { discrete: true },
+      )
 
       expect(content).toBe('Hello World')
     })
   })
 
   describe('withEditorUpdate', () => {
-    it('should execute update function without crashing', () => {
-      const editor = createTestEditor([ParagraphNode, TextNode])
-      const updateFn = vi.fn()
-
-      withEditorUpdate(editor, updateFn)
-
-      expect(updateFn).toHaveBeenCalled()
-    })
-
     it('should pass discrete: true option to editor.update', () => {
       const editor = createTestEditor([ParagraphNode, TextNode])
       const updateSpy = vi.spyOn(editor, 'update')

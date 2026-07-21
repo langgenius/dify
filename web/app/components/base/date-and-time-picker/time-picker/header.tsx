@@ -4,15 +4,13 @@ import { useTranslation } from 'react-i18next'
 type Props = Readonly<{
   title?: string
 }>
-const Header = ({
-  title,
-}: Props) => {
+const Header = ({ title }: Props) => {
   const { t } = useTranslation()
 
   return (
     <div className="flex flex-col border-b-[0.5px] border-divider-regular">
       <div className="flex items-center px-2 py-1.5 system-md-semibold text-text-primary">
-        {title || t($ => $['title.pickTime'], { ns: 'time' })}
+        {title || t(($) => $['title.pickTime'], { ns: 'time' })}
       </div>
     </div>
   )

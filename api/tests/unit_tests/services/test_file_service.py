@@ -84,6 +84,27 @@ class TestFileService:
         mock_db_session.add.assert_called_once_with(result)
         mock_db_session.commit.assert_called_once()
 
+    def test_upload_file_uses_explicit_resource_tenant(self, file_service: FileService):
+        user = MagicMock(spec=Account)
+        user.id = "user-id"
+
+        with (
+            patch("services.file_service.storage") as mock_storage,
+            patch("services.file_service.extract_tenant_id") as mock_extract_tenant_id,
+            patch("services.file_service.file_helpers.get_signed_file_url"),
+        ):
+            result = file_service.upload_file(
+                filename="test.txt",
+                content=b"test",
+                mimetype="text/plain",
+                user=user,
+                tenant_id="resource-tenant-id",
+            )
+
+        assert result.tenant_id == "resource-tenant-id"
+        assert mock_storage.save.call_args.args[0].startswith("upload_files/resource-tenant-id/")
+        mock_extract_tenant_id.assert_not_called()
+
     def test_upload_file_invalid_characters(self, file_service):
         with pytest.raises(ValueError, match="Filename contains invalid characters"):
             file_service.upload_file(filename="invalid/file.txt", content=b"", mimetype="text/plain", user=MagicMock())
@@ -181,6 +202,33 @@ class TestFileService:
         mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_base64("non_existent")
+
+    def test_get_file_presigned_url_success(self, file_service: FileService, mock_db_session):
+        upload_file = MagicMock(spec=UploadFile)
+        upload_file.key = "upload_files/tenant_id/icon.png"
+        upload_file.mime_type = "image/png"
+        mock_db_session.scalar.return_value = upload_file
+
+        with (
+            patch.object(dify_config, "FILES_ACCESS_TIMEOUT", 300),
+            patch("services.file_service.storage") as mock_storage,
+        ):
+            mock_storage.generate_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
+
+            result = file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
+
+        assert result == "https://s3.example.com/icon.png?signature=test"
+        mock_storage.generate_presigned_url.assert_called_once_with(
+            "upload_files/tenant_id/icon.png",
+            expires_in=300,
+            content_type="image/png",
+        )
+
+    def test_get_file_presigned_url_not_found(self, file_service: FileService, mock_db_session):
+        mock_db_session.scalar.return_value = None
+
+        with pytest.raises(NotFound, match="File not found"):
+            file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
 
     def test_upload_text_success(self, file_service: FileService, mock_db_session):
         # Setup

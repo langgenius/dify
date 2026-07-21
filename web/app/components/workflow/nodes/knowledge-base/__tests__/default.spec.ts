@@ -1,5 +1,8 @@
 import type { KnowledgeBaseNodeType } from '../types'
-import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  Model,
+  ModelItem,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -11,11 +14,28 @@ import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '
 
 const t = withSelectorKey((key: string, _options?: Record<string, unknown>) => key)
 
-const makeEmbeddingModelList = (status: ModelStatusEnum): Model[] => [{
-  provider: 'openai',
-  icon_small: { en_US: '', zh_Hans: '' },
-  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-  models: [{
+const makeEmbeddingModelList = (status: ModelStatusEnum): Model[] => [
+  {
+    provider: 'openai',
+    icon_small: { en_US: '', zh_Hans: '' },
+    label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+    models: [
+      {
+        model: 'text-embedding-3-large',
+        label: { en_US: 'Text Embedding 3 Large', zh_Hans: 'Text Embedding 3 Large' },
+        model_type: ModelTypeEnum.textEmbedding,
+        fetch_from: ConfigurationMethodEnum.predefinedModel,
+        status,
+        model_properties: {},
+        load_balancing_enabled: false,
+      },
+    ],
+    status,
+  },
+]
+
+const makeEmbeddingProviderModelList = (status: ModelStatusEnum): ModelItem[] => [
+  {
     model: 'text-embedding-3-large',
     label: { en_US: 'Text Embedding 3 Large', zh_Hans: 'Text Embedding 3 Large' },
     model_type: ModelTypeEnum.textEmbedding,
@@ -23,36 +43,26 @@ const makeEmbeddingModelList = (status: ModelStatusEnum): Model[] => [{
     status,
     model_properties: {},
     load_balancing_enabled: false,
-  }],
-  status,
-}]
-
-const makeEmbeddingProviderModelList = (status: ModelStatusEnum): ModelItem[] => [{
-  model: 'text-embedding-3-large',
-  label: { en_US: 'Text Embedding 3 Large', zh_Hans: 'Text Embedding 3 Large' },
-  model_type: ModelTypeEnum.textEmbedding,
-  fetch_from: ConfigurationMethodEnum.predefinedModel,
-  status,
-  model_properties: {},
-  load_balancing_enabled: false,
-}]
-
-const createPayload = (overrides: Partial<KnowledgeBaseNodeType> = {}): KnowledgeBaseNodeType => ({
-  ...nodeDefault.defaultValue,
-  index_chunk_variable_selector: ['chunks', 'results'],
-  chunk_structure: ChunkStructureEnum.general,
-  indexing_technique: IndexMethodEnum.QUALIFIED,
-  embedding_model: 'text-embedding-3-large',
-  embedding_model_provider: 'openai',
-  retrieval_model: {
-    ...nodeDefault.defaultValue.retrieval_model,
-    search_method: RetrievalSearchMethodEnum.semantic,
   },
-  _embeddingModelList: makeEmbeddingModelList(ModelStatusEnum.active),
-  _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.active),
-  _rerankModelList: [],
-  ...overrides,
-}) as KnowledgeBaseNodeType
+]
+
+const createPayload = (overrides: Partial<KnowledgeBaseNodeType> = {}): KnowledgeBaseNodeType =>
+  ({
+    ...nodeDefault.defaultValue,
+    index_chunk_variable_selector: ['chunks', 'results'],
+    chunk_structure: ChunkStructureEnum.general,
+    indexing_technique: IndexMethodEnum.QUALIFIED,
+    embedding_model: 'text-embedding-3-large',
+    embedding_model_provider: 'openai',
+    retrieval_model: {
+      ...nodeDefault.defaultValue.retrieval_model,
+      search_method: RetrievalSearchMethodEnum.semantic,
+    },
+    _embeddingModelList: makeEmbeddingModelList(ModelStatusEnum.active),
+    _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.active),
+    _rerankModelList: [],
+    ...overrides,
+  }) as KnowledgeBaseNodeType
 
 describe('knowledge-base default node validation', () => {
   it('should return an invalid result when the payload has a validation issue', () => {

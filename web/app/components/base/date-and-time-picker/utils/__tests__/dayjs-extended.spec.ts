@@ -55,8 +55,8 @@ describe('dayjs extended utilities', () => {
       const date = dayjs('2024-06-15') // June 2024 starts on Saturday
       const days = getDaysInMonth(date)
 
-      const prevMonthDays = days.filter(d => !d.isCurrentMonth && d.date.month() < date.month())
-      const nextMonthDays = days.filter(d => !d.isCurrentMonth && d.date.month() > date.month())
+      const prevMonthDays = days.filter((d) => !d.isCurrentMonth && d.date.month() < date.month())
+      const nextMonthDays = days.filter((d) => !d.isCurrentMonth && d.date.month() > date.month())
 
       // June 2024 starts on Saturday (6), so there are 6 days from previous month
       expect(prevMonthDays.length).toBeGreaterThan(0)
@@ -67,7 +67,7 @@ describe('dayjs extended utilities', () => {
       const date = dayjs('2024-06-15')
       const days = getDaysInMonth(date)
 
-      const currentMonthDays = days.filter(d => d.isCurrentMonth)
+      const currentMonthDays = days.filter((d) => d.isCurrentMonth)
       // June has 30 days
       expect(currentMonthDays).toHaveLength(30)
     })

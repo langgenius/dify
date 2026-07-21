@@ -11,7 +11,7 @@ import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
 import { BlockEnum } from '../../types'
 import Blocks from '../blocks'
-import { BlockClassificationEnum } from '../types'
+import { BlockClassification } from '../types'
 
 const runtimeState = vi.hoisted(() => ({
   appType: 'workflow' as string | undefined,
@@ -32,11 +32,12 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) => selector({
-    appDetail: {
-      type: runtimeState.appType,
-    },
-  }),
+  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) =>
+    selector({
+      appDetail: {
+        type: runtimeState.appType,
+      },
+    }),
 }))
 
 vi.mock('@/service/base', () => ({
@@ -49,10 +50,16 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+// Permission-dependent selector actions are covered by agent-selector.spec.tsx;
+// this suite is about block insertion.
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => true,
+}))
+
 const createBlock = (
   type: BlockEnum,
   title: string,
-  classification = BlockClassificationEnum.Default,
+  classification: BlockClassification = BlockClassification.Default,
   sort = 0,
 ): NodeDefault => ({
   metaData: {
@@ -108,7 +115,9 @@ const createJsonResponse = (body: unknown) =>
   })
 
 const mockInviteOptionsResponse = (agents: AgentInviteOptionResponse[]) => {
-  queryMocks.request.mockImplementation(() => Promise.resolve(createJsonResponse(createInviteOptionsResponse(agents))))
+  queryMocks.request.mockImplementation(() =>
+    Promise.resolve(createJsonResponse(createInviteOptionsResponse(agents))),
+  )
 }
 
 const expectLastInviteOptionsRequest = () => {
@@ -139,18 +148,20 @@ describe('Blocks', () => {
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.LoopEnd, BlockEnum.KnowledgeBase]}
         blocks={[
           createBlock(BlockEnum.LLM, 'LLM'),
-          createBlock(BlockEnum.LoopEnd, 'Exit Loop', BlockClassificationEnum.Logic),
+          createBlock(BlockEnum.LoopEnd, 'Exit Loop', BlockClassification.Logic),
           createBlock(BlockEnum.KnowledgeBase, 'Knowledge Retrieval'),
         ]}
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'LLM' })).toBeInTheDocument()
+    const llmButton = screen.getByRole('button', { name: 'LLM' })
+    expect(llmButton).toBeInTheDocument()
+    expect(llmButton).toHaveAccessibleDescription('LLM description')
     expect(screen.getByText('Exit Loop')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.loop.loopNode')).toBeInTheDocument()
     expect(screen.queryByText('Knowledge Retrieval')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'LLM' }))
+    await user.click(llmButton)
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.LLM)
   })
@@ -204,7 +215,9 @@ describe('Blocks', () => {
 
     await user.hover(agentBlock)
 
-    expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+    ).toBeInTheDocument()
   })
 
   it('opens the agent selector from the Agent block and selects an agent', async () => {
@@ -240,8 +253,8 @@ describe('Blocks', () => {
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.LLM, BlockEnum.AgentV2]}
             blocks={[
-              createBlock(BlockEnum.LLM, 'LLM', BlockClassificationEnum.Default, 0),
-              createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3),
+              createBlock(BlockEnum.LLM, 'LLM', BlockClassification.Default, 0),
+              createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3),
             ]}
           />
         </HooksStoreContext>
@@ -249,12 +262,15 @@ describe('Blocks', () => {
     )
 
     expect(
-      screen.getByText('Agent').compareDocumentPosition(screen.getByText('LLM')) & Node.DOCUMENT_POSITION_FOLLOWING,
+      screen.getByText('Agent').compareDocumentPosition(screen.getByText('LLM')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
 
-    expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' })).toBeInTheDocument()
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('Researcher')).toBeInTheDocument()
@@ -278,19 +294,31 @@ describe('Blocks', () => {
   it('should refresh Agent v2 roster options when the selector is reopened', async () => {
     const user = userEvent.setup()
     queryMocks.request
-      .mockImplementationOnce(() => Promise.resolve(createJsonResponse(createInviteOptionsResponse([
-        createInviteOption({
-          id: 'agent-1',
-          name: 'Nadia',
-        }),
-      ]))))
-      .mockImplementation(() => Promise.resolve(createJsonResponse(createInviteOptionsResponse([
-        createInviteOption({
-          id: 'agent-2',
-          name: 'Bruno',
-          role: 'Planner',
-        }),
-      ]))))
+      .mockImplementationOnce(() =>
+        Promise.resolve(
+          createJsonResponse(
+            createInviteOptionsResponse([
+              createInviteOption({
+                id: 'agent-1',
+                name: 'Nadia',
+              }),
+            ]),
+          ),
+        ),
+      )
+      .mockImplementation(() =>
+        Promise.resolve(
+          createJsonResponse(
+            createInviteOptionsResponse([
+              createInviteOption({
+                id: 'agent-2',
+                name: 'Bruno',
+                role: 'Planner',
+              }),
+            ]),
+          ),
+        ),
+      )
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -314,7 +342,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={vi.fn()}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
@@ -326,7 +354,9 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
     await user.keyboard('{Escape}')
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      ).not.toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
@@ -370,7 +400,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
@@ -381,7 +411,9 @@ describe('Blocks', () => {
 
     await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
 
-    await waitFor(() => expect(queryMocks.toastError).toHaveBeenCalledWith('workflow.nodes.agent.modelNotSelected'))
+    await waitFor(() =>
+      expect(queryMocks.toastError).toHaveBeenCalledWith('workflow.nodes.agent.modelNotSelected'),
+    )
     expect(onSelect).not.toHaveBeenCalled()
   })
 
@@ -411,18 +443,22 @@ describe('Blocks', () => {
             searchText=""
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
     )
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
-    const consoleLink = await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.manageInAgentConsole' })
+    const consoleLink = await screen.findByRole('option', {
+      name: 'agentV2.roster.nodeSelector.manageInAgentConsole',
+    })
     expect(consoleLink).toHaveAttribute('href', '/agents')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
-    await user.click(await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.startFromScratch' }))
+    await user.click(
+      await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.startFromScratch' }),
+    )
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {
@@ -466,13 +502,17 @@ describe('Blocks', () => {
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
 
-    expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
     await user.keyboard('{Escape}')
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

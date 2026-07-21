@@ -1,3 +1,4 @@
+import uuid
 from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -25,12 +26,19 @@ def user():
 
 @pytest.fixture
 def completion_app():
-    return MagicMock(app=MagicMock(mode=AppMode.COMPLETION))
+    return _installed_app(AppMode.COMPLETION)
 
 
 @pytest.fixture
 def chat_app():
-    return MagicMock(app=MagicMock(mode=AppMode.CHAT))
+    return _installed_app(AppMode.CHAT)
+
+
+def _installed_app(mode: AppMode):
+    app = MagicMock(mode=mode)
+    installed_app = MagicMock(app=app)
+    installed_app.app_with_session.return_value = app
+    return installed_app
 
 
 @pytest.fixture
@@ -75,7 +83,7 @@ class TestCompletionApi:
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
-        installed_app = MagicMock(app=MagicMock(mode=AppMode.CHAT))
+        installed_app = _installed_app(AppMode.CHAT)
 
         with pytest.raises(NotCompletionAppError):
             method(api, MagicMock(), user, installed_app)
@@ -215,7 +223,7 @@ class TestCompletionStopApi:
         method = unwrap(api.post)
 
         with patch.object(completion_module.AppTaskService, "stop_task"):
-            resp, status = method(api, "u1", completion_app, "task-1")
+            resp, status = method(api, MagicMock(), "u1", completion_app, "task-1")
 
         assert status == 200
         assert resp == {"result": "success"}
@@ -224,10 +232,10 @@ class TestCompletionStopApi:
         api = completion_module.CompletionStopApi()
         method = unwrap(api.post)
 
-        installed_app = MagicMock(app=MagicMock(mode=AppMode.CHAT))
+        installed_app = _installed_app(AppMode.CHAT)
 
         with pytest.raises(NotCompletionAppError):
-            method(api, "u1", installed_app, "task")
+            method(api, MagicMock(), "u1", installed_app, "task")
 
 
 class TestChatApi:
@@ -257,7 +265,7 @@ class TestChatApi:
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
-        installed_app = MagicMock(app=MagicMock(mode=AppMode.COMPLETION))
+        installed_app = _installed_app(AppMode.COMPLETION)
 
         with pytest.raises(NotChatAppError):
             method(api, MagicMock(), user, installed_app)
@@ -309,6 +317,43 @@ class TestChatApi:
         ):
             with pytest.raises(completion_module.NotFound):
                 method(api, MagicMock(), user, chat_app)
+
+    def test_invalid_conversation_id_fails_fast_as_not_found(self, app: Flask, chat_app, user) -> None:
+        # A nonexistent conversation_id must fail fast as 404, before the streaming
+        # generator is created. Previously the lookup only ran inside the generator,
+        # so an invalid id surfaced as a hang instead of a clean error.
+        conversation_id = str(uuid.uuid4())
+        payload_patch = patch.object(
+            type(completion_module.console_ns),
+            "payload",
+            new_callable=PropertyMock,
+            return_value={"inputs": {}, "query": "hi", "conversation_id": conversation_id},
+        )
+        generate_mock = MagicMock(return_value={"ok": True})
+        get_conversation_mock = MagicMock(
+            side_effect=completion_module.services.errors.conversation.ConversationNotExistsError()
+        )
+        session = MagicMock()
+
+        api = completion_module.ChatApi()
+        method = unwrap(api.post)
+
+        with (
+            app.test_request_context("/", json={}),
+            payload_patch,
+            patch.object(
+                completion_module.ConversationService,
+                "get_conversation",
+                get_conversation_mock,
+            ),
+            patch.object(completion_module.AppGenerateService, "generate", generate_mock),
+        ):
+            with pytest.raises(completion_module.NotFound):
+                method(api, session, user, chat_app)
+
+        # The lookup must run before generation, so the generator is never started.
+        generate_mock.assert_not_called()
+        assert get_conversation_mock.call_args.kwargs["session"] is session
 
     def test_app_unavailable_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -412,7 +457,7 @@ class TestChatStopApi:
         api = completion_module.ChatStopApi()
         method = unwrap(api.post)
         with patch.object(completion_module.AppTaskService, "stop_task"):
-            resp, status = method(api, "u1", chat_app, "task-1")
+            resp, status = method(api, MagicMock(), "u1", chat_app, "task-1")
 
         assert status == 200
         assert resp == {"result": "success"}
@@ -421,7 +466,7 @@ class TestChatStopApi:
         api = completion_module.ChatStopApi()
         method = unwrap(api.post)
 
-        installed_app = MagicMock(app=MagicMock(mode=AppMode.COMPLETION))
+        installed_app = _installed_app(AppMode.COMPLETION)
 
         with pytest.raises(NotChatAppError):
-            method(api, "u1", installed_app, "task")
+            method(api, MagicMock(), "u1", installed_app, "task")

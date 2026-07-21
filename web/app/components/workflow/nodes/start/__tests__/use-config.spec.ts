@@ -96,10 +96,12 @@ describe('start/use-config', () => {
     mockUseInspectVarsCrud.mockReturnValue({
       deleteNodeInspectorVars: mockDeleteNodeInspectorVars,
       renameInspectVarName: mockRenameInspectVarName,
-      nodesWithInspectVars: [{
-        nodeId: 'start-node',
-        vars: [{ id: 'inspect-query', name: 'query' }],
-      }],
+      nodesWithInspectVars: [
+        {
+          nodeId: 'start-node',
+          vars: [{ id: 'inspect-query', name: 'query' }],
+        },
+      ],
       deleteInspectVar: mockDeleteInspectVar,
     })
     mockIsVarUsedInNodes.mockReturnValue(false)
@@ -132,10 +134,16 @@ describe('start/use-config', () => {
       })
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variables: renamedList,
-    }))
-    expect(mockHandleOutVarRenameChange).toHaveBeenCalledWith('start-node', ['start-node', 'query'], ['start-node', 'prompt'])
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: renamedList,
+      }),
+    )
+    expect(mockHandleOutVarRenameChange).toHaveBeenCalledWith(
+      'start-node',
+      ['start-node', 'query'],
+      ['start-node', 'prompt'],
+    )
     expect(mockRenameInspectVarName).toHaveBeenCalledWith('start-node', 'query', 'prompt')
     expect(result.current.readOnly).toBe(false)
     expect(result.current.isChatMode).toBe(false)
@@ -166,9 +174,11 @@ describe('start/use-config', () => {
       result.current.onRemoveVarConfirm()
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variables: [expect.objectContaining({ variable: 'age' })],
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: [expect.objectContaining({ variable: 'age' })],
+      }),
+    )
     expect(mockRemoveUsedVarInNodes).toHaveBeenCalledWith(['start-node', 'query'] as ValueSelector)
     expect(result.current.isShowRemoveVarConfirm).toBe(false)
   })
@@ -178,34 +188,40 @@ describe('start/use-config', () => {
 
     let added = true
     act(() => {
-      added = result.current.handleAddVariable(createInputVar({
-        label: 'Different Label',
-        variable: 'query',
-      }))
+      added = result.current.handleAddVariable(
+        createInputVar({
+          label: 'Different Label',
+          variable: 'query',
+        }),
+      )
     })
 
     expect(added).toBe(false)
-    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'varKeyError.keyAlreadyExists',
-    }))
+    expect(toastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: 'varKeyError.keyAlreadyExists',
+      }),
+    )
 
     mockSetInputs.mockClear()
     let addedUnique = false
     act(() => {
-      addedUnique = result.current.handleAddVariable(createInputVar({
-        label: 'Locale',
-        variable: 'locale',
-        required: false,
-      }))
+      addedUnique = result.current.handleAddVariable(
+        createInputVar({
+          label: 'Locale',
+          variable: 'locale',
+          required: false,
+        }),
+      )
     })
 
     expect(addedUnique).toBe(true)
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variables: expect.arrayContaining([
-        expect.objectContaining({ variable: 'locale' }),
-      ]),
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: expect.arrayContaining([expect.objectContaining({ variable: 'locale' })]),
+      }),
+    )
   })
 
   it('should clear inspector vars for non-remove list updates and reject duplicate labels', () => {
@@ -223,24 +239,30 @@ describe('start/use-config', () => {
       result.current.handleVarListChange(typeEditedList)
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variables: typeEditedList,
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: typeEditedList,
+      }),
+    )
     expect(mockDeleteNodeInspectorVars).toHaveBeenCalledWith('start-node')
 
     toastSpy.mockClear()
     let added = true
     act(() => {
-      added = result.current.handleAddVariable(createInputVar({
-        label: 'Age',
-        variable: 'new_age',
-      }))
+      added = result.current.handleAddVariable(
+        createInputVar({
+          label: 'Age',
+          variable: 'new_age',
+        }),
+      )
     })
 
     expect(added).toBe(false)
-    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'varKeyError.keyAlreadyExists',
-    }))
+    expect(toastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: 'varKeyError.keyAlreadyExists',
+      }),
+    )
   })
 })

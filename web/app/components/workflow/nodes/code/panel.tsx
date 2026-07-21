@@ -27,10 +27,7 @@ const codeLanguages = [
     value: CodeLanguage.javascript,
   },
 ]
-const Panel: FC<NodePanelProps<CodeNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<CodeNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
 
   const {
@@ -68,32 +65,37 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t($ => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}
           operations={
-            !readOnly
-              ? (
-                  <div className="flex gap-2">
-                    <Tooltip>
-                      <TooltipTrigger
-                        className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                        onClick={handleSyncFunctionSignature}
-                        aria-label={t($ => $[`${i18nPrefix}.syncFunctionSignature`], { ns: 'workflow' })}
-                      >
-                        <span className="i-ri-refresh-line size-4 text-text-tertiary" aria-hidden="true" />
-                      </TooltipTrigger>
-                      <TooltipContent>{t($ => $[`${i18nPrefix}.syncFunctionSignature`], { ns: 'workflow' })}</TooltipContent>
-                    </Tooltip>
-                    <button
-                      type="button"
-                      aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}`}
-                      className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                      onClick={handleAddVariable}
-                    >
-                      <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-                    </button>
-                  </div>
-                )
-              : undefined
+            !readOnly ? (
+              <div className="flex gap-2">
+                <Tooltip>
+                  <TooltipTrigger
+                    className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                    onClick={handleSyncFunctionSignature}
+                    aria-label={t(($) => $[`${i18nPrefix}.syncFunctionSignature`], {
+                      ns: 'workflow',
+                    })}
+                  >
+                    <span
+                      className="i-ri-refresh-line size-4 text-text-tertiary"
+                      aria-hidden="true"
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t(($) => $[`${i18nPrefix}.syncFunctionSignature`], { ns: 'workflow' })}
+                  </TooltipContent>
+                </Tooltip>
+                <button
+                  type="button"
+                  aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}`}
+                  className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={handleAddVariable}
+                >
+                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                </button>
+              </div>
+            ) : undefined
           }
         >
           <VarList
@@ -110,13 +112,13 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           nodeId={id}
           isInNode
           readOnly={readOnly}
-          title={(
+          title={
             <TypeSelector
               options={codeLanguages}
               value={inputs.code_language}
               onChange={handleCodeLanguageChange}
             />
-          )}
+          }
           language={inputs.code_language}
           value={inputs.code}
           onChange={handleCodeChange}
@@ -127,17 +129,17 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
       <Split />
       <div className="px-4 pt-4 pb-2">
         <Field
-          title={t($ => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}
-          operations={(
+          title={t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}
+          operations={
             <button
               type="button"
-              aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}`}
+              aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}`}
               className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleAddOutputVariable}
             >
               <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
             </button>
-          )}
+          }
           required
         >
           <OutputVarList

@@ -1,13 +1,16 @@
 import { renderHook } from '@testing-library/react'
 import { useInputVariables } from '../hooks'
 
-const mockUseDraftPipelineProcessingParams = vi.hoisted(() => vi.fn(() => ({
-  data: { variables: [{ variable: 'chunkSize' }] },
-  isFetching: true,
-})))
+const mockUseDraftPipelineProcessingParams = vi.hoisted(() =>
+  vi.fn(() => ({
+    data: { variables: [{ variable: 'chunkSize' }] },
+    isFetching: true,
+  })),
+)
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { pipelineId: string }) => string) => selector({ pipelineId: 'pipeline-1' }),
+  useStore: (selector: (state: { pipelineId: string }) => string) =>
+    selector({ pipelineId: 'pipeline-1' }),
 }))
 
 vi.mock('@/service/use-pipeline', () => ({

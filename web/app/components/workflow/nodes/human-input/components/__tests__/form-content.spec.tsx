@@ -13,22 +13,18 @@ const mockOnInsert = vi.hoisted(() => vi.fn())
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKeyProps } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => mockUseTranslation(),
-    Trans: withSelectorKeyProps(({
-      i18nKey,
-      components,
-    }: {
-      i18nKey: string
-      components?: Record<string, ReactNode>
-    }) => (
-      <div>
-        <div>{i18nKey}</div>
-        {components?.CtrlKey}
-        {components?.Key}
-      </div>
-    )),
-  })
+    Trans: withSelectorKeyProps(
+      ({ i18nKey, components }: { i18nKey: string; components?: Record<string, ReactNode> }) => (
+        <div>
+          <div>{i18nKey}</div>
+          {components?.CtrlKey}
+          {components?.Key}
+        </div>
+      ),
+    ),
+  }
 })
 
 vi.mock('@/app/components/workflow/hooks', () => ({
@@ -50,7 +46,7 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
     onFocus: () => void
     onBlur: () => void
     shortcutPopups?: Array<{
-      Popup: (props: { onClose: () => void, onInsert: typeof mockOnInsert }) => ReactNode
+      Popup: (props: { onClose: () => void; onInsert: typeof mockOnInsert }) => ReactNode
     }>
     editable?: boolean
     hitlInputBlock: {
@@ -62,9 +58,15 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
     const Popup = popup?.Popup
     return (
       <div>
-        <button type="button" onClick={props.onFocus}>focus-editor</button>
-        <button type="button" onClick={props.onBlur}>blur-editor</button>
-        <button type="button" onClick={() => props.onChange('updated value')}>change-editor</button>
+        <button type="button" onClick={props.onFocus}>
+          focus-editor
+        </button>
+        <button type="button" onClick={props.onBlur}>
+          blur-editor
+        </button>
+        <button type="button" onClick={() => props.onChange('updated value')}>
+          change-editor
+        </button>
         {Popup && <Popup onClose={vi.fn()} onInsert={mockOnInsert} />}
       </div>
     )
@@ -94,23 +96,27 @@ vi.mock('../add-input-field', () => ({
         <input
           aria-label="field-name"
           value={draftName}
-          onChange={event => setDraftName(event.target.value)}
+          onChange={(event) => setDraftName(event.target.value)}
         />
         <button
           type="button"
-          onClick={() => props.onSave({
-            type: 'text-input',
-            output_variable_name: 'approval',
-            default: {
-              type: 'variable',
-              selector: ['node-1', 'answer'],
-              value: '',
-            },
-          })}
+          onClick={() =>
+            props.onSave({
+              type: 'text-input',
+              output_variable_name: 'approval',
+              default: {
+                type: 'variable',
+                selector: ['node-1', 'answer'],
+                value: '',
+              },
+            })
+          }
         >
           save-input
         </button>
-        <button type="button" onClick={props.onCancel}>cancel-input</button>
+        <button type="button" onClick={props.onCancel}>
+          cancel-input
+        </button>
       </div>
     )
   },
@@ -167,35 +173,40 @@ describe('FormContent', () => {
       />,
     )
 
-    expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
-      editable: true,
-      shortcutPopups: [
-        expect.objectContaining({
-          hotkey: ['mod', '/'],
-          displayMode: 'workflow-panel-adjacent-center',
-        }),
-      ],
-      hitlInputBlock: expect.objectContaining({
-        workflowNodesMap: expect.objectContaining({
-          'node-1': expect.objectContaining({ title: 'Start' }),
-          'node-2': expect.objectContaining({ title: 'Classifier' }),
-          'sys': expect.objectContaining({ title: 'blocks.start' }),
+    expect(mockPromptEditor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editable: true,
+        shortcutPopups: [
+          expect.objectContaining({
+            hotkey: ['mod', '/'],
+            displayMode: 'workflow-panel-adjacent-center',
+          }),
+        ],
+        hitlInputBlock: expect.objectContaining({
+          workflowNodesMap: expect.objectContaining({
+            'node-1': expect.objectContaining({ title: 'Start' }),
+            'node-2': expect.objectContaining({ title: 'Classifier' }),
+            sys: expect.objectContaining({ title: 'blocks.start' }),
+          }),
         }),
       }),
-    }))
+    )
 
     fireEvent.click(screen.getByText('focus-editor'))
     expect(screen.getByText('nodes.humanInput.formContent.hotkeyTip')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('save-input'))
-    expect(mockOnInsert).toHaveBeenCalledWith('INSERT_HITL_INPUT_BLOCK_COMMAND', expect.objectContaining({
-      variableName: 'approval',
-      nodeId: 'node-2',
-      formInputs: [expect.objectContaining({ output_variable_name: 'approval' })],
-      onFormInputsChange,
-      onFormInputItemRename,
-      onFormInputItemRemove,
-    }))
+    expect(mockOnInsert).toHaveBeenCalledWith(
+      'INSERT_HITL_INPUT_BLOCK_COMMAND',
+      expect.objectContaining({
+        variableName: 'approval',
+        nodeId: 'node-2',
+        formInputs: [expect.objectContaining({ output_variable_name: 'approval' })],
+        onFormInputsChange,
+        onFormInputItemRename,
+        onFormInputItemRemove,
+      }),
+    )
     expect(onFormInputsChange).not.toHaveBeenCalled()
 
     rerender(
@@ -247,10 +258,12 @@ describe('FormContent', () => {
       />,
     )
 
-    expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
-      editable: false,
-      shortcutPopups: [],
-    }))
+    expect(mockPromptEditor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editable: false,
+        shortcutPopups: [],
+      }),
+    )
     expect(screen.queryByText('save-input')).not.toBeInTheDocument()
     expect(container.firstChild).toHaveClass('pointer-events-none')
   })
@@ -261,15 +274,17 @@ describe('FormContent', () => {
         nodeId="node-2"
         value="Initial content"
         onChange={onChange}
-        formInputs={[{
-          type: 'paragraph',
-          output_variable_name: 'approval',
-          default: {
-            type: 'constant',
-            selector: [],
-            value: '',
-          },
-        } as never]}
+        formInputs={[
+          {
+            type: 'paragraph',
+            output_variable_name: 'approval',
+            default: {
+              type: 'constant',
+              selector: [],
+              value: '',
+            },
+          } as never,
+        ]}
         onFormInputsChange={onFormInputsChange}
         onFormInputItemRename={onFormInputItemRename}
         onFormInputItemRemove={onFormInputItemRemove}
@@ -280,9 +295,11 @@ describe('FormContent', () => {
       />,
     )
 
-    expect(mockAddInputField).toHaveBeenCalledWith(expect.objectContaining({
-      unavailableVariableNames: ['approval'],
-    }))
+    expect(mockAddInputField).toHaveBeenCalledWith(
+      expect.objectContaining({
+        unavailableVariableNames: ['approval'],
+      }),
+    )
 
     fireEvent.click(screen.getByText('save-input'))
 

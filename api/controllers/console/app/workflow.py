@@ -58,6 +58,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
 from fields.base import ResponseModel
+from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.member_fields import SimpleAccount
 from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.enums import NodeType
@@ -104,6 +105,7 @@ class SyncDraftWorkflowPayload(BaseModel):
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
+    is_collaborative: bool = Field(default=False, alias="_is_collaborative")
     environment_variables: list[dict[str, Any]] = Field(
         default_factory=list,
     )
@@ -238,21 +240,6 @@ class WorkflowOnlineUsersPayload(BaseModel):
         return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
 
 
-class WorkflowConversationVariableResponse(ResponseModel):
-    id: str
-    name: str
-    value_type: str
-    value: Any
-    description: str
-
-    @field_validator("value_type", mode="before")
-    @classmethod
-    def _serialize_value_type(cls, value: Any) -> str:
-        if hasattr(value, "exposed_type"):
-            return str(value.exposed_type())
-        return str(value)
-
-
 class PipelineVariableResponse(ResponseModel):
     label: str
     variable: str
@@ -324,6 +311,27 @@ class WorkflowResponse(ResponseModel):
         return [_serialize_environment_variable(item) for item in value]
 
 
+class _WorkflowResponseSource:
+    def __init__(self, workflow: Workflow, *, session: Session) -> None:
+        self._workflow = workflow
+        self._session = session
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._workflow, name)  # noqa: no-new-getattr response adapter delegates model fields
+
+    @property
+    def created_by_account(self) -> Account | None:
+        return self._workflow.get_created_by_account(session=self._session)
+
+    @property
+    def updated_by_account(self) -> Account | None:
+        return self._workflow.get_updated_by_account(session=self._session)
+
+    @property
+    def tool_published(self) -> bool:
+        return self._workflow.get_tool_published(session=self._session)
+
+
 class WorkflowPaginationResponse(ResponseModel):
     items: list[WorkflowResponse]
     page: int
@@ -349,6 +357,12 @@ class WorkflowOnlineUsersResponse(ResponseModel):
 class WorkflowPublishResponse(ResponseModel):
     result: str
     created_at: int
+
+
+class SyncDraftWorkflowResponse(ResponseModel):
+    result: str
+    hash: str
+    updated_at: int
 
 
 class WorkflowRestoreResponse(ResponseModel):
@@ -433,6 +447,7 @@ register_response_schema_models(
     WorkflowOnlineUsersByApp,
     WorkflowOnlineUsersResponse,
     WorkflowPublishResponse,
+    SyncDraftWorkflowResponse,
     WorkflowRestoreResponse,
     DefaultBlockConfigsResponse,
     DefaultBlockConfigResponse,
@@ -548,14 +563,7 @@ class DraftWorkflowApi(Resource):
     @console_ns.response(
         200,
         "Draft workflow synced successfully",
-        console_ns.model(
-            "SyncDraftWorkflowResponse",
-            {
-                "result": fields.String,
-                "hash": fields.String,
-                "updated_at": fields.String,
-            },
-        ),
+        console_ns.models[SyncDraftWorkflowResponse.__name__],
     )
     @console_ns.response(400, "Invalid workflow configuration")
     @console_ns.response(403, "Permission denied")
@@ -603,17 +611,21 @@ class DraftWorkflowApi(Resource):
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
                 session=db.session(),
+                graph_only=args["is_collaborative"],
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
         except VariableError as e:
             raise InvalidArgumentError(description=str(e))
 
-        return {
-            "result": "success",
-            "hash": workflow.unique_hash,
-            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
-        }
+        return dump_response(
+            SyncDraftWorkflowResponse,
+            {
+                "result": "success",
+                "hash": workflow.unique_hash,
+                "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+            },
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
@@ -629,10 +641,10 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
     @with_session
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
@@ -1074,10 +1086,10 @@ class DraftWorkflowRunApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
     @with_session
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
@@ -1438,7 +1450,7 @@ class PublishedAllWorkflowApi(Resource):
             )
             return WorkflowPaginationResponse.model_validate(
                 {
-                    "items": workflows,
+                    "items": [_WorkflowResponseSource(workflow, session=session) for workflow in workflows],
                     "page": page,
                     "limit": limit,
                     "has_more": has_more,
@@ -1532,7 +1544,9 @@ class WorkflowByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-        return dump_response(WorkflowResponse, workflow)
+            response = dump_response(WorkflowResponse, _WorkflowResponseSource(workflow, session=session))
+
+        return response
 
     @setup_required
     @login_required
@@ -1626,10 +1640,10 @@ class DraftWorkflowTriggerRunApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
     @with_session
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, session: Session, current_user: Account, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
@@ -1637,7 +1651,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         args = DraftWorkflowTriggerRunPayload.model_validate(console_ns.payload or {})
         node_id = args.node_id
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session())
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=session)
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
@@ -1777,11 +1791,11 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_session
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, session: Session, current_user: Account, app_model: App):
         """
         Full workflow debug when the start node is a trigger
@@ -1790,7 +1804,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         args = DraftWorkflowTriggerRunAllPayload.model_validate(console_ns.payload or {})
         node_ids = args.node_ids
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session())
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=session)
         if not draft_workflow:
             raise ValueError("Workflow not found")
 

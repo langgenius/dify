@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AppACLPermission } from '@/utils/permission'
 import OverviewView from '../view'
 
@@ -14,10 +15,18 @@ const testState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T => selector({
-    appDetail: testState.appDetail,
-  }),
+  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
+    selector({
+      appDetail: testState.appDetail,
+    }),
 }))
 
 vi.mock('@/app/components/app/overview/apikey-info-panel', () => ({
@@ -25,11 +34,9 @@ vi.mock('@/app/components/app/overview/apikey-info-panel', () => ({
 }))
 
 vi.mock('../chart-view', () => ({
-  default: ({ appId, headerRight }: { appId: string, headerRight: ReactNode }) => (
+  default: ({ appId, headerRight }: { appId: string; headerRight: ReactNode }) => (
     <div>
-      chart view
-      {' '}
-      {appId}
+      chart view {appId}
       {headerRight}
     </div>
   ),
@@ -38,6 +45,14 @@ vi.mock('../chart-view', () => ({
 vi.mock('../tracing/panel', () => ({
   default: () => <button type="button">tracing</button>,
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('OverviewView monitor permission', () => {
   beforeEach(() => {
@@ -73,7 +88,10 @@ describe('OverviewView monitor permission', () => {
     })
 
     it('should render tracing entry when app tracing config permission is granted with monitor access', () => {
-      testState.appDetail.permission_keys = [AppACLPermission.Monitor, AppACLPermission.TracingConfig]
+      testState.appDetail.permission_keys = [
+        AppACLPermission.Monitor,
+        AppACLPermission.TracingConfig,
+      ]
 
       render(<OverviewView appId="app-1" />)
 

@@ -1,15 +1,11 @@
 import type { VarType } from '@/app/components/workflow/types'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 type ConditionCommonVariableSelectorProps = {
-  variables?: { name: string, type: string, value: string }[]
+  variables?: { name: string; type: string; value: string }[]
   value?: string | number
   varType?: VarType
   onChange: (v: string) => void
@@ -24,16 +20,19 @@ const ConditionCommonVariableSelector = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const selected = variables.find(v => v.value === value)
-  const handleChange = useCallback((v: string) => {
-    onChange(v)
-    setOpen(false)
-  }, [onChange])
+  const selected = variables.find((v) => v.value === value)
+  const handleChange = useCallback(
+    (v: string) => {
+      onChange(v)
+      setOpen(false)
+    },
+    [onChange],
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <div className="flex h-6 grow cursor-pointer items-center">
             {selected && (
               <div className="inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-[5px] system-xs-medium text-text-secondary shadow-xs">
@@ -45,7 +44,9 @@ const ConditionCommonVariableSelector = ({
               <>
                 <div className="flex grow items-center system-sm-regular text-components-input-text-placeholder">
                   <Variable02 className="mr-1 size-4" />
-                  {t($ => $['nodes.knowledgeRetrieval.metadata.panel.select'], { ns: 'workflow' })}
+                  {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.select'], {
+                    ns: 'workflow',
+                  })}
                 </div>
                 <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] system-2xs-medium text-text-tertiary">
                   {varType}
@@ -53,10 +54,9 @@ const ConditionCommonVariableSelector = ({
               </>
             )}
           </div>
-        )}
+        }
         onClick={(e) => {
-          if (!variables.length)
-            e.preventDefault()
+          if (!variables.length) e.preventDefault()
         }}
       />
       <PopoverContent
@@ -65,7 +65,7 @@ const ConditionCommonVariableSelector = ({
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-          {variables.map(v => (
+          {variables.map((v) => (
             <div
               key={v.value}
               className="flex h-6 cursor-pointer items-center rounded-md px-2 system-xs-medium text-text-secondary hover:bg-state-base-hover"

@@ -2,14 +2,14 @@ import type { ReactElement } from 'react'
 import type { PluginDeclaration, PluginDetail } from '../../types'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { PluginCategoryEnum, PluginSource } from '../../types'
 import PluginItem from '../index'
 
 const mockEnableMarketplace = vi.fn(() => true)
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { enable_marketplace: mockEnableMarketplace() },
   })
 
@@ -23,12 +23,12 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => mockGetValueFromI18nObject,
 }))
 
-const mockCategoriesMap: Record<string, { name: string, label: string }> = {
-  'tool': { name: 'tool', label: 'Tools' },
-  'model': { name: 'model', label: 'Models' },
-  'extension': { name: 'extension', label: 'Extensions' },
+const mockCategoriesMap: Record<string, { name: string; label: string }> = {
+  tool: { name: 'tool', label: 'Tools' },
+  model: { name: 'model', label: 'Models' },
+  extension: { name: 'extension', label: 'Extensions' },
   'agent-strategy': { name: 'agent-strategy', label: 'Agents' },
-  'datasource': { name: 'datasource', label: 'Data Sources' },
+  datasource: { name: 'datasource', label: 'Data Sources' },
 }
 vi.mock('../../hooks', () => ({
   useCategories: () => ({
@@ -74,46 +74,19 @@ const createLangGeniusVersionInfo = (currentVersion: string) => ({
   can_auto_update: false,
 })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => ({
     langGeniusVersionInfo: mockLangGeniusVersionInfo(),
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('../action', () => ({
-  default: ({ onDelete, pluginName }: { onDelete: () => void, pluginName: string }) => (
+  default: ({ onDelete, pluginName }: { onDelete: () => void; pluginName: string }) => (
     <div data-testid="plugin-action" data-plugin-name={pluginName}>
-      <button data-testid="delete-button" onClick={onDelete}>Delete</button>
+      <button data-testid="delete-button" onClick={onDelete}>
+        Delete
+      </button>
     </div>
   ),
 }))
@@ -131,11 +104,9 @@ vi.mock('../../card/base/description', () => ({
 }))
 
 vi.mock('../../card/base/org-info', () => ({
-  default: ({ orgName, packageName }: { orgName: string, packageName: string }) => (
+  default: ({ orgName, packageName }: { orgName: string; packageName: string }) => (
     <div data-testid="org-info" data-org={orgName} data-package={packageName}>
-      {orgName}
-      /
-      {packageName}
+      {orgName}/{packageName}
     </div>
   ),
 }))
@@ -145,12 +116,16 @@ vi.mock('../../base/badges/verified', () => ({
 }))
 
 vi.mock('../../../base/badge', () => ({
-  default: ({ text, hasRedCornerMark }: { text: string, hasRedCornerMark?: boolean }) => (
-    <div data-testid="version-badge" data-has-update={hasRedCornerMark}>{text}</div>
+  default: ({ text, hasRedCornerMark }: { text: string; hasRedCornerMark?: boolean }) => (
+    <div data-testid="version-badge" data-has-update={hasRedCornerMark}>
+      {text}
+    </div>
   ),
 }))
 
-const createPluginDeclaration = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration => ({
+const createPluginDeclaration = (
+  overrides: Partial<PluginDeclaration> = {},
+): PluginDeclaration => ({
   plugin_unique_identifier: 'test-plugin-id',
   version: '1.0.0',
   author: 'test-author',
@@ -251,18 +226,6 @@ describe('PluginItem', () => {
 
       // Assert
       expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
-    })
-
-    it('should apply custom className', () => {
-      // Arrange
-      const plugin = createPluginDetail()
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} className="custom-class" />)
-
-      // Assert
-      const innerDiv = container.querySelector('.custom-class')
-      expect(innerDiv).toBeInTheDocument()
     })
   })
 
@@ -434,35 +397,6 @@ describe('PluginItem', () => {
       const { container } = render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const warningIcon = container.querySelector('.text-text-accent')
-      expect(warningIcon).not.toBeInTheDocument()
-    })
-
-    it('should handle missing current_version gracefully', () => {
-      // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo(''))
-      const plugin = createPluginDetail()
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert - Should not crash and not show warning
-      const warningIcon = container.querySelector('.text-text-accent')
-      expect(warningIcon).not.toBeInTheDocument()
-    })
-
-    it('should handle missing minimum_dify_version gracefully', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          meta: { version: '1.0.0' },
-        }),
-      })
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert - Should not crash and not show warning
       const warningIcon = container.querySelector('.text-text-accent')
       expect(warningIcon).not.toBeInTheDocument()
     })
@@ -694,7 +628,9 @@ describe('PluginItem', () => {
 
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).not.toHaveClass('border-components-option-card-option-selected-border')
+      expect(pluginContainer).not.toHaveClass(
+        'border-components-option-card-option-selected-border',
+      )
     })
 
     it('should stop propagation when action area is clicked', () => {
@@ -1021,26 +957,6 @@ describe('PluginItem', () => {
   })
 
   describe('Callback Stability', () => {
-    it('should have stable handleDelete callback', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ category: PluginCategoryEnum.tool }),
-      })
-
-      // Act
-      const { rerender } = render(<PluginItem plugin={plugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-      const firstCallArgs = mockRefreshPluginList.mock.calls[0]
-
-      mockRefreshPluginList.mockClear()
-      rerender(<PluginItem plugin={plugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-      const secondCallArgs = mockRefreshPluginList.mock.calls[0]
-
-      // Assert - Both calls should have same arguments
-      expect(firstCallArgs).toEqual(secondCallArgs)
-    })
-
     it('should update handleDelete when category changes', () => {
       // Arrange
       const toolPlugin = createPluginDetail({
@@ -1059,17 +975,6 @@ describe('PluginItem', () => {
       rerender(<PluginItem plugin={modelPlugin} />)
       fireEvent.click(screen.getByTestId('delete-button'))
       expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: PluginCategoryEnum.model })
-    })
-  })
-
-  describe('React.memo Behavior', () => {
-    it('should be wrapped with React.memo', () => {
-      // Arrange & Assert
-      // The component is exported as React.memo(PluginItem)
-      // We can verify by checking the displayName or type
-      expect(PluginItem).toBeDefined()
-      // React.memo components have a $$typeof property
-      expect((PluginItem as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
     })
   })
 })

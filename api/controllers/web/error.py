@@ -103,6 +103,12 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     code = 400
 
 
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
+    code = 400
+
+
 class WebAppAuthRequiredError(BaseHTTPException):
     error_code = "web_sso_auth_required"
     description = "Web app authentication required."

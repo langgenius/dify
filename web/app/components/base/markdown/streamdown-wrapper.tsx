@@ -35,7 +35,9 @@ type SanitizeSchema = {
   [key: string]: unknown
 }
 
-const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), { ssr: false })
+const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), {
+  ssr: false,
+})
 
 const mathPlugin = createMathPlugin({
   singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX,
@@ -77,8 +79,10 @@ const ALLOWED_TAGS: Record<string, string[]> = {
  * when `rehypePlugins` is the exact default reference (identity check).
  */
 function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
-  const [sanitizePlugin, defaultSanitizeSchema]
-    = defaultRehypePlugins.sanitize as [Pluggable, SanitizeSchema]
+  const [sanitizePlugin, defaultSanitizeSchema] = defaultRehypePlugins.sanitize as [
+    Pluggable,
+    SanitizeSchema,
+  ]
 
   const tagNamesSet = new Set([
     ...(defaultSanitizeSchema.tagNames ?? []),
@@ -102,21 +106,19 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
         return !overrideNames.has(name as string)
       })
       mergedAttributes[tag] = [...filtered, ...(ALLOWED_TAGS[tag] ?? [])]
-    }
-    else {
+    } else {
       mergedAttributes[tag] = ALLOWED_TAGS[tag]!
     }
   }
 
   // The default schema forces `input` to be `{disabled:true, type:'checkbox'}`
   // via `required`.  Drop that so form inputs keep their original attributes.
-  const { input: _inputRequired, ...requiredRest }
-    = (defaultSanitizeSchema.required ?? {})
+  const { input: _inputRequired, ...requiredRest } = defaultSanitizeSchema.required ?? {}
 
   // `name` is in the default `clobber` list, which prefixes every `name` value
   // with `user-content-`.  Form fields need the original `name`, and our form
   // component validates names with `isSafeName()`, so remove it.
-  const clobber = (defaultSanitizeSchema.clobber ?? []).filter(k => k !== 'name')
+  const clobber = (defaultSanitizeSchema.clobber ?? []).filter((k) => k !== 'name')
 
   if (ALLOW_INLINE_STYLES) {
     const globalAttrs = mergedAttributes['*'] ?? []
@@ -168,7 +170,12 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
 
   const remarkPlugins = useMemo(
     () => [
-      [Array.isArray(defaultRemarkPlugins.gfm) ? defaultRemarkPlugins.gfm[0] : defaultRemarkPlugins.gfm, { singleTilde: false }] as Pluggable,
+      [
+        Array.isArray(defaultRemarkPlugins.gfm)
+          ? defaultRemarkPlugins.gfm[0]
+          : defaultRemarkPlugins.gfm,
+        { singleTilde: false },
+      ] as Pluggable,
       RemarkBreaks,
       ...(props.remarkPlugins ?? []),
     ],
@@ -188,18 +195,37 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
   )
 
   const disallowedElements = useMemo(
-    () => ['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])],
+    () => [
+      'iframe',
+      'head',
+      'html',
+      'meta',
+      'link',
+      'style',
+      'body',
+      ...(props.customDisallowedElements || []),
+    ],
     [props.customDisallowedElements],
   )
 
   const components: Components = useMemo(
     () => ({
       code: CodeBlock,
-      img: imgProps => pluginInfo ? <PluginImg src={String(imgProps.src ?? '')} pluginInfo={pluginInfo} /> : <Img src={String(imgProps.src ?? '')} />,
+      img: (imgProps) =>
+        pluginInfo ? (
+          <PluginImg src={String(imgProps.src ?? '')} pluginInfo={pluginInfo} />
+        ) : (
+          <Img src={String(imgProps.src ?? '')} />
+        ),
       video: VideoBlock,
       audio: AudioBlock,
       a: Link,
-      p: pProps => pluginInfo ? <PluginParagraph {...pProps} pluginInfo={pluginInfo} /> : <Paragraph {...pProps} />,
+      p: (pProps) =>
+        pluginInfo ? (
+          <PluginParagraph {...pProps} pluginInfo={pluginInfo} />
+        ) : (
+          <Paragraph {...pProps} />
+        ),
       button: MarkdownButton,
       form: MarkdownForm as ComponentType,
       details: ThinkBlock as ComponentType,

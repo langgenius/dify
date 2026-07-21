@@ -1,8 +1,6 @@
 'use client'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiVolumeUpLine,
-} from '@remixicon/react'
+import { RiVolumeUpLine } from '@remixicon/react'
 import { t } from 'i18next'
 import { useState } from 'react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
@@ -18,11 +16,7 @@ type AudioBtnProps = Readonly<{
 
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
-const AudioBtn = ({
-  id,
-  voice,
-  value,
-}: AudioBtnProps) => {
+const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
   const [audioState, setAudioState] = useState<AudioState>('initial')
 
   const params = useParams()
@@ -52,36 +46,36 @@ const AudioBtn = ({
   if (params.token) {
     url = '/text-to-audio'
     isPublic = true
-  }
-  else if (params.appId) {
-    if (isInstalledAppPath(pathname))
-      url = `/installed-apps/${params.appId}/text-to-audio`
-    else
-      url = `/apps/${params.appId}/text-to-audio`
+  } else if (params.appId) {
+    if (isInstalledAppPath(pathname)) url = `/installed-apps/${params.appId}/text-to-audio`
+    else url = `/apps/${params.appId}/text-to-audio`
   }
   const handleToggle = async () => {
     if (audioState === 'playing' || audioState === 'loading') {
       setTimeout(() => setAudioState('paused'), 1)
-      AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).pauseAudio()
-    }
-    else {
+      AudioPlayerManager.getInstance()
+        .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
+        .pauseAudio()
+    } else {
       setTimeout(() => setAudioState('loading'), 1)
-      AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).playAudio()
+      AudioPlayerManager.getInstance()
+        .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
+        .playAudio()
     }
   }
 
   const tooltipContent = {
-    initial: t($ => $.play, { ns: 'appApi' }),
-    ended: t($ => $.play, { ns: 'appApi' }),
-    paused: t($ => $.pause, { ns: 'appApi' }),
-    playing: t($ => $.playing, { ns: 'appApi' }),
-    loading: t($ => $.loading, { ns: 'appApi' }),
+    initial: t(($) => $.play, { ns: 'appApi' }),
+    ended: t(($) => $.play, { ns: 'appApi' }),
+    paused: t(($) => $.pause, { ns: 'appApi' }),
+    playing: t(($) => $.playing, { ns: 'appApi' }),
+    loading: t(($) => $.loading, { ns: 'appApi' }),
   }[audioState]
 
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <span className="inline-flex">
             <ActionButton
               state={
@@ -96,11 +90,9 @@ const AudioBtn = ({
               <RiVolumeUpLine className="size-4" aria-hidden="true" />
             </ActionButton>
           </span>
-        )}
+        }
       />
-      <TooltipContent>
-        {tooltipContent}
-      </TooltipContent>
+      <TooltipContent>{tooltipContent}</TooltipContent>
     </Tooltip>
   )
 }

@@ -37,21 +37,21 @@ const createAvailableBlocksResult = (): ReturnType<typeof useAvailableBlocks> =>
   availableNextBlocks: [],
 })
 
-const FlowNode = (props: NodeProps<CommonNodeType>) => (
-  <IterationStartNode {...props} />
-)
+const FlowNode = (props: NodeProps<CommonNodeType>) => <IterationStartNode {...props} />
 
 const renderFlowNode = () =>
   renderWorkflowFlowComponent(<div />, {
-    nodes: [createNode({
-      id: 'iteration-start-node',
-      type: 'iterationStartNode',
-      data: {
-        title: 'Iteration Start',
-        desc: '',
-        type: BlockEnum.IterationStart,
-      },
-    })],
+    nodes: [
+      createNode({
+        id: 'iteration-start-node',
+        type: 'iterationStartNode',
+        data: {
+          title: 'Iteration Start',
+          desc: '',
+          type: BlockEnum.IterationStart,
+        },
+      }),
+    ],
     edges: [],
     reactFlowProps: {
       nodeTypes: { iterationStartNode: FlowNode },

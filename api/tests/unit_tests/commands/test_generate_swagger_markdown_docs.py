@@ -237,6 +237,51 @@ def test_patch_union_schema_markdown_fills_regular_schema_union_property(tmp_pat
     assert "| value | string<br>integer<br>number<br>boolean |  | No |" in patched
 
 
+def test_patch_union_schema_markdown_fills_array_item_union_property(tmp_path: Path):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-openapi.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "components": {
+                    "schemas": {
+                        "MemberInviteResponse": {
+                            "properties": {
+                                "invitation_results": {
+                                    "type": "array",
+                                    "items": {
+                                        "oneOf": [
+                                            {"$ref": "#/components/schemas/MemberInviteSuccessResponse"},
+                                            {"$ref": "#/components/schemas/MemberInviteAlreadyMemberResponse"},
+                                            {"$ref": "#/components/schemas/MemberInviteFailedResponse"},
+                                        ],
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    markdown = """#### MemberInviteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invitation_results | [  ] |  | Yes |
+"""
+
+    patched = module._patch_union_schema_markdown(markdown, spec_path)
+
+    assert (
+        "| invitation_results | [ "
+        "[MemberInviteSuccessResponse](#memberinvitesuccessresponse)<br>"
+        "[MemberInviteAlreadyMemberResponse](#memberinvitealreadymemberresponse)<br>"
+        "[MemberInviteFailedResponse](#memberinvitefailedresponse) ] |  | Yes |"
+    ) in patched
+
+
 def test_patch_union_schema_markdown_ignores_specs_without_schemas(tmp_path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-openapi.json"

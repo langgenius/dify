@@ -17,32 +17,33 @@ import VariableTypeSelect from './variable-type-select'
 type ItemProps = {
   item: LoopVariable
 } & LoopVariablesComponentShape
-const Item = ({
-  nodeId,
-  item,
-  handleRemoveLoopVariable,
-  handleUpdateLoopVariable,
-}: ItemProps) => {
+const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable }: ItemProps) => {
   const { t } = useTranslation()
 
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      toast.error(t($ => $[`varKeyError.${errorMessageKey}`], { ns: 'appDebug', key: t($ => $['env.modal.name'], { ns: 'workflow' }) }))
+      toast.error(
+        t(($) => $[`varKeyError.${errorMessageKey}`], {
+          ns: 'appDebug',
+          key: t(($) => $['env.modal.name'], { ns: 'workflow' }),
+        }),
+      )
       return false
     }
     return true
   }
-  const handleUpdateItemLabel = useCallback((e: any) => {
-    replaceSpaceWithUnderscoreInVarNameInput(e.target)
-    if (!!e.target.value && !checkVariableName(e.target.value))
-      return
-    handleUpdateLoopVariable(item.id, { label: e.target.value })
-  }, [item.id, handleUpdateLoopVariable])
+  const handleUpdateItemLabel = useCallback(
+    (e: any) => {
+      replaceSpaceWithUnderscoreInVarNameInput(e.target)
+      if (!!e.target.value && !checkVariableName(e.target.value)) return
+      handleUpdateLoopVariable(item.id, { label: e.target.value })
+    },
+    [item.id, handleUpdateLoopVariable],
+  )
 
   const getDefaultValue = useCallback((varType: VarType, valueType: ValueType) => {
-    if (valueType === ValueType.variable)
-      return undefined
+    if (valueType === ValueType.variable) return undefined
     switch (varType) {
       case VarType.boolean:
         return false
@@ -53,17 +54,32 @@ const Item = ({
     }
   }, [])
 
-  const handleUpdateItemVarType = useCallback((value: any) => {
-    handleUpdateLoopVariable(item.id, { var_type: value, value: getDefaultValue(value, item.value_type) })
-  }, [item.id, handleUpdateLoopVariable])
+  const handleUpdateItemVarType = useCallback(
+    (value: any) => {
+      handleUpdateLoopVariable(item.id, {
+        var_type: value,
+        value: getDefaultValue(value, item.value_type),
+      })
+    },
+    [item.id, handleUpdateLoopVariable],
+  )
 
-  const handleUpdateItemValueType = useCallback((value: any) => {
-    handleUpdateLoopVariable(item.id, { value_type: value, value: getDefaultValue(item.var_type, value) })
-  }, [item.id, handleUpdateLoopVariable])
+  const handleUpdateItemValueType = useCallback(
+    (value: any) => {
+      handleUpdateLoopVariable(item.id, {
+        value_type: value,
+        value: getDefaultValue(item.var_type, value),
+      })
+    },
+    [item.id, handleUpdateLoopVariable],
+  )
 
-  const handleUpdateItemValue = useCallback((value: any) => {
-    handleUpdateLoopVariable(item.id, { value })
-  }, [item.id, handleUpdateLoopVariable])
+  const handleUpdateItemValue = useCallback(
+    (value: any) => {
+      handleUpdateLoopVariable(item.id, { value })
+    },
+    [item.id, handleUpdateLoopVariable],
+  )
 
   return (
     <div className="mb-4 flex last-of-type:mb-0">
@@ -72,32 +88,18 @@ const Item = ({
           <Input
             value={item.label}
             onChange={handleUpdateItemLabel}
-            onBlur={e => checkVariableName(e.target.value)}
+            onBlur={(e) => checkVariableName(e.target.value)}
             autoFocus={!item.label}
-            placeholder={t($ => $['nodes.loop.variableName'], { ns: 'workflow' })}
+            placeholder={t(($) => $['nodes.loop.variableName'], { ns: 'workflow' })}
           />
-          <VariableTypeSelect
-            value={item.var_type}
-            onChange={handleUpdateItemVarType}
-          />
-          <InputModeSelect
-            value={item.value_type}
-            onChange={handleUpdateItemValueType}
-          />
+          <VariableTypeSelect value={item.var_type} onChange={handleUpdateItemVarType} />
+          <InputModeSelect value={item.value_type} onChange={handleUpdateItemValueType} />
         </div>
         <div>
-          <FormItem
-            nodeId={nodeId}
-            item={item}
-            onChange={handleUpdateItemValue}
-          />
+          <FormItem nodeId={nodeId} item={item} onChange={handleUpdateItemValue} />
         </div>
       </div>
-      <ActionButton
-        className="shrink-0"
-        size="l"
-        onClick={() => handleRemoveLoopVariable(item.id)}
-      >
+      <ActionButton className="shrink-0" size="l" onClick={() => handleRemoveLoopVariable(item.id)}>
         <RiDeleteBinLine className="size-4 text-text-tertiary" />
       </ActionButton>
     </div>

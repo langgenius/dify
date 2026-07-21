@@ -40,7 +40,7 @@ export function CreateReleaseActions() {
             requestCloseDialog()
           }}
         >
-          {t($ => $['versions.cancelCreate'])}
+          {t(($) => $['versions.cancelCreate'])}
         </Button>
         <Button
           type="submit"
@@ -49,7 +49,11 @@ export function CreateReleaseActions() {
           disabled={!hasReleaseName || !releaseContentReady || hasReleaseNameConflict}
           loading={isSubmitting}
         >
-          {isSubmitting ? t($ => $['versions.creating']) : isCheckingReleaseContent ? t($ => $['versions.checkingReleaseContent']) : t($ => $['versions.create'])}
+          {isSubmitting
+            ? t(($) => $['versions.creating'])
+            : isCheckingReleaseContent
+              ? t(($) => $['versions.checkingReleaseContent'])
+              : t(($) => $['versions.create'])}
         </Button>
       </div>
     </div>

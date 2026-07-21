@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -156,6 +158,24 @@ class TestChatApi:
         with app.test_request_context("/chat-messages", method="POST"):
             with pytest.raises(AgentNotPublishedError):
                 ChatApi().post(app_model, _end_user())
+
+    @patch("controllers.web.completion.AppGenerateService.generate", return_value="response")
+    @patch("controllers.web.completion.ConversationService.get_conversation")
+    @patch("controllers.web.completion.web_ns")
+    def test_conversation_validation_uses_request_session(
+        self,
+        mock_ns: MagicMock,
+        mock_get_conversation: MagicMock,
+        mock_generate: MagicMock,
+        app: Flask,
+    ) -> None:
+        mock_ns.payload = {"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())}
+        session = MagicMock()
+
+        with app.test_request_context("/chat-messages", method="POST"):
+            unwrap(ChatApi.post)(ChatApi(), session, _chat_app(), _end_user())
+
+        assert mock_get_conversation.call_args.kwargs["session"] is session
 
 
 # ---------------------------------------------------------------------------

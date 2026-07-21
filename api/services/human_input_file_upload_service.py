@@ -192,7 +192,7 @@ class HumanInputFileUploadService:
 
         # HITL upload runs outside the normal account auth flow, so hydrate the
         # account tenant context explicitly before delegating to FileService.
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=session)
         return account
 
     def _resolve_delivery_test_upload_owner(
@@ -220,7 +220,7 @@ class HumanInputFileUploadService:
         if tenant is None:
             raise InvalidUploadTokenError()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=session)
         if account.current_tenant_id != form_model.tenant_id:
             raise InvalidUploadTokenError()
         return account

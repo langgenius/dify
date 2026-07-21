@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import override
 
 import pytest
@@ -47,6 +47,8 @@ def _request():
 
 
 class _SuccessfulClient:
+    stream_options: tuple[int | None, float | None, Callable[[], bool] | None] | None = None
+
     def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
         assert isinstance(request, CreateRunRequest)
         return CreateRunResponse(run_id="run-1", status="running")
@@ -55,8 +57,17 @@ class _SuccessfulClient:
         del request
         return CancelRunResponse(run_id=run_id, status="cancelled")
 
-    def stream_events_sync(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events_sync(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        max_reconnects: int | None = None,
+        timeout_seconds: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
         del after
+        self.stream_options = (max_reconnects, timeout_seconds, should_stop)
         yield RunStartedEvent(id="1-0", run_id=run_id)
 
     def wait_run_sync(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
@@ -72,17 +83,22 @@ class _SuccessfulClient:
 
 
 def test_dify_agent_backend_run_client_delegates_sync_methods():
-    client = DifyAgentBackendRunClient(_SuccessfulClient())
+    wrapped = _SuccessfulClient()
+    client = DifyAgentBackendRunClient(wrapped, stream_max_reconnects=2, stream_timeout_seconds=45)
+
+    def should_stop() -> bool:
+        return False
 
     created = client.create_run(_request())
     cancelled = client.cancel_run(created.run_id)
-    events = list(client.stream_events(created.run_id))
+    events = list(client.stream_events(created.run_id, should_stop=should_stop))
     status = client.wait_run(created.run_id)
 
     assert created.run_id == "run-1"
     assert cancelled.status == "cancelled"
     assert events[0].type == "run_started"
     assert status.status == "succeeded"
+    assert wrapped.stream_options == (2, 45, should_stop)
 
 
 def test_dify_agent_backend_run_client_maps_validation_error():
@@ -125,7 +141,16 @@ def test_dify_agent_backend_run_client_maps_timeout_error():
 def test_dify_agent_backend_run_client_maps_stream_error():
     class StreamClient(_SuccessfulClient):
         @override
-        def stream_events_sync(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        def stream_events_sync(
+            self,
+            run_id: str,
+            *,
+            after: str | None = None,
+            max_reconnects: int | None = None,
+            timeout_seconds: float | None = None,
+            should_stop: Callable[[], bool] | None = None,
+        ) -> Iterator[RunEvent]:
+            del run_id, after, max_reconnects, timeout_seconds, should_stop
             raise DifyAgentStreamError("bad stream")
             yield
 

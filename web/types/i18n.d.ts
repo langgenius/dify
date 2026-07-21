@@ -11,10 +11,7 @@ declare module 'i18next' {
   }
 }
 
-export type I18nKeysByPrefix<
-  NS extends Namespace,
-  Prefix extends string = '',
-> = Prefix extends ''
+export type I18nKeysByPrefix<NS extends Namespace, Prefix extends string = ''> = Prefix extends ''
   ? keyof Resources[NS]
   : keyof Resources[NS] extends infer K
     ? K extends `${Prefix}${infer Rest}`
@@ -22,9 +19,6 @@ export type I18nKeysByPrefix<
       : never
     : never
 
-export type I18nKeysWithPrefix<
-  NS extends Namespace,
-  Prefix extends string = '',
-> = Prefix extends ''
+export type I18nKeysWithPrefix<NS extends Namespace, Prefix extends string = ''> = Prefix extends ''
   ? keyof Resources[NS]
   : Extract<keyof Resources[NS], `${Prefix}${string}`>

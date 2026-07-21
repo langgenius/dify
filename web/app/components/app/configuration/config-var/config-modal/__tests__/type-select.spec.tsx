@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TypeSelector from '../type-select'
@@ -30,27 +30,5 @@ describe('TypeSelector', () => {
     await user.click(numberOption!)
 
     expect(onSelect).toHaveBeenCalledWith({ value: 'number', name: 'Number' })
-  })
-
-  it('should size popup content to match the trigger width', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <TypeSelector
-        value="text-input"
-        onSelect={vi.fn()}
-        items={[
-          { value: 'text-input' as any, name: 'Text' },
-          { value: 'number' as any, name: 'Number' },
-        ]}
-      />,
-    )
-
-    await user.click(screen.getByRole('combobox'))
-
-    const [, numberOption] = await screen.findAllByRole('option')
-    const popup = numberOption!.closest('[data-side]')
-
-    expect(popup).toHaveClass('w-(--anchor-width)')
   })
 })

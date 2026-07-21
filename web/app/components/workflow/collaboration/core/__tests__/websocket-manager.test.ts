@@ -34,8 +34,7 @@ const createMockSocket = (id: string): MockSocket => {
     }),
     trigger: (event: string, ...args: unknown[]) => {
       const handler = handlers.get(event)
-      if (handler)
-        handler(...args)
+      if (handler) handler(...args)
     },
   }
 
@@ -95,7 +94,9 @@ describe('WebSocketClient', () => {
     const client = new WebSocketClient()
     client.connect('app-auth')
 
-    const connectHandler = mockSocket.on.mock.calls.find(call => call[0] === 'connect')?.[1] as () => void
+    const connectHandler = mockSocket.on.mock.calls.find(
+      (call) => call[0] === 'connect',
+    )?.[1] as () => void
     expect(connectHandler).toBeDefined()
     connectHandler()
 

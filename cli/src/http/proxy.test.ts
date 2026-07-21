@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const PROXY_KEYS = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'no_proxy'] as const
+const PROXY_KEYS = [
+  'HTTP_PROXY',
+  'http_proxy',
+  'HTTPS_PROXY',
+  'https_proxy',
+  'NO_PROXY',
+  'no_proxy',
+] as const
 
 describe('proxyDispatcher', () => {
   const saved = new Map<string, string | undefined>()
@@ -17,10 +24,8 @@ describe('proxyDispatcher', () => {
   afterEach(() => {
     for (const k of PROXY_KEYS) {
       const v = saved.get(k)
-      if (v === undefined)
-        delete process.env[k]
-      else
-        process.env[k] = v
+      if (v === undefined) delete process.env[k]
+      else process.env[k] = v
     }
   })
 

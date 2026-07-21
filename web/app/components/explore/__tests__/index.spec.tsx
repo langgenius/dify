@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { MediaType } from '@/hooks/use-breakpoints'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Explore from '../index'
 
 const mockReplace = vi.fn()
@@ -48,21 +49,21 @@ describe('Explore', () => {
 
   describe('Rendering', () => {
     it('should render children', () => {
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(screen.getByText('child')).toBeInTheDocument()
     })
 
     it('should not render the legacy explore sidebar on desktop', () => {
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(screen.queryByText('explore.sidebar.title')).not.toBeInTheDocument()
     })
@@ -70,11 +71,11 @@ describe('Explore', () => {
     it('should keep the legacy explore sidebar on mobile', () => {
       mockMediaType = MediaType.mobile
 
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
     })
@@ -82,11 +83,11 @@ describe('Explore', () => {
 
   describe('Effects', () => {
     it('should not redirect at component level', () => {
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(mockReplace).not.toHaveBeenCalled()
     })
@@ -94,11 +95,11 @@ describe('Explore', () => {
     it('should not redirect on mobile', () => {
       mockMediaType = MediaType.mobile
 
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(mockReplace).not.toHaveBeenCalled()
     })

@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { IPromptValuePanelProps } from '../index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -33,14 +33,27 @@ vi.mock('@langgenius/dify-ui/button', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal }) => unknown) => selector({
-    setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
-  }),
+  useStore: (
+    selector: (state: {
+      setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal
+    }) => unknown,
+  ) =>
+    selector({
+      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
+    }),
 }))
 
 // Use real store - global zustand mock will auto-reset between tests
 vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
-  default: ({ onFeatureBarClick, disabled, hideEditEntrance }: { onFeatureBarClick: () => void, disabled?: boolean, hideEditEntrance?: boolean }) => (
+  default: ({
+    onFeatureBarClick,
+    disabled,
+    hideEditEntrance,
+  }: {
+    onFeatureBarClick: () => void
+    disabled?: boolean
+    hideEditEntrance?: boolean
+  }) => (
     <button
       type="button"
       disabled={disabled}
@@ -59,7 +72,10 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   }>({})
 
   return {
-    Select: ({ children, onValueChange }: {
+    Select: ({
+      children,
+      onValueChange,
+    }: {
       children: React.ReactNode
       onValueChange?: (value: string) => void
     }) => (
@@ -72,14 +88,18 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       return (
         <div>
           <button type="button">{children}</button>
-          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
+          <button
+            data-testid="select-empty"
+            type="button"
+            onClick={() => context.onValueChange?.('')}
+          >
             empty select value
           </button>
         </div>
       )
     },
     SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
       const context = React.useContext(SelectContext)
       return (
         <button type="button" onClick={() => context.onValueChange?.(value)}>
@@ -93,7 +113,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
 })
 
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({ name, onChange }: { name: string, onChange: (value: boolean) => void }) => (
+  default: ({ name, onChange }: { name: string; onChange: (value: boolean) => void }) => (
     <button type="button" data-testid={`bool-input-${name}`} onClick={() => onChange(true)}>
       bool-input
     </button>
@@ -101,13 +121,19 @@ vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-i
 }))
 
 vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => ({
-  default: ({ onFilesChange }: { onFilesChange: (files: Array<Record<string, unknown>>) => void }) => (
+  default: ({
+    onFilesChange,
+  }: {
+    onFilesChange: (files: Array<Record<string, unknown>>) => void
+  }) => (
     <button
       type="button"
-      onClick={() => onFilesChange([
-        { progress: 100, type: 'local_file', url: 'https://example.com/a.png', fileId: 'file-1' },
-        { progress: -1, type: 'remote_url', url: 'https://example.com/b.png', fileId: 'file-2' },
-      ])}
+      onClick={() =>
+        onFilesChange([
+          { progress: 100, type: 'local_file', url: 'https://example.com/a.png', fileId: 'file-1' },
+          { progress: -1, type: 'remote_url', url: 'https://example.com/b.png', fileId: 'file-2' },
+        ])
+      }
     >
       image-uploader
     </button>
@@ -149,10 +175,12 @@ const defaultProps: IPromptValuePanelProps = {
   onVisionFilesChange: vi.fn(),
 }
 
-const renderPanel = (options: {
-  context?: Partial<typeof baseContextValue>
-  props?: Partial<IPromptValuePanelProps>
-} = {}) => {
+const renderPanel = (
+  options: {
+    context?: Partial<typeof baseContextValue>
+    props?: Partial<IPromptValuePanelProps>
+  } = {},
+) => {
   const contextValue = { ...baseContextValue, ...options.context }
   const props = { ...defaultProps, ...options.props }
   return render(
@@ -230,7 +258,13 @@ describe('PromptValuePanel', () => {
           configs: {
             prompt_template: '',
             prompt_variables: [
-              { key: 'textVar', name: 'Text Var', type: 'string', default: 'default text', required: true },
+              {
+                key: 'textVar',
+                name: 'Text Var',
+                type: 'string',
+                default: 'default text',
+                required: true,
+              },
             ],
           },
         },
@@ -241,7 +275,10 @@ describe('PromptValuePanel', () => {
     })
 
     expect(mockSetInputs).toHaveBeenCalledWith({ textVar: 'default text' })
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
+      'data-disabled',
+      'true',
+    )
 
     fireEvent.click(screen.getByText('feature bar'))
     expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalled()
@@ -265,7 +302,10 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
+      'data-disabled',
+      'true',
+    )
   })
 
   it('renders paragraph, select, number, checkbox, and vision inputs', () => {
@@ -277,7 +317,13 @@ describe('PromptValuePanel', () => {
             prompt_template: 'prompt template',
             prompt_variables: [
               { key: 'paragraphVar', name: 'Paragraph Var', type: 'paragraph', required: false },
-              { key: 'selectVar', name: 'Select Var', type: 'select', options: ['a', 'b'], required: false },
+              {
+                key: 'selectVar',
+                name: 'Select Var',
+                type: 'select',
+                options: ['a', 'b'],
+                required: false,
+              },
               { key: 'numberVar', name: 'Number Var', type: 'number', required: true },
               { key: 'boolVar', name: 'Boolean Var', type: 'checkbox', required: false },
             ],
@@ -301,13 +347,17 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    fireEvent.change(screen.getByPlaceholderText('Paragraph Var'), { target: { value: 'updated paragraph' } })
+    fireEvent.change(screen.getByPlaceholderText('Paragraph Var'), {
+      target: { value: 'updated paragraph' },
+    })
     fireEvent.click(screen.getByText('b'))
     fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
     fireEvent.click(screen.getByText('bool-input'))
     fireEvent.click(screen.getByText('image-uploader'))
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ paragraphVar: 'updated paragraph' }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({ paragraphVar: 'updated paragraph' }),
+    )
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ selectVar: 'b' }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ numberVar: '2' }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ boolVar: true }))
@@ -328,7 +378,13 @@ describe('PromptValuePanel', () => {
           configs: {
             prompt_template: 'prompt template',
             prompt_variables: [
-              { key: 'selectVar', name: 'Select Var', type: 'select', options: ['a', 'b'], required: false },
+              {
+                key: 'selectVar',
+                name: 'Select Var',
+                type: 'select',
+                options: ['a', 'b'],
+                required: false,
+              },
             ],
           },
         },
@@ -349,9 +405,12 @@ describe('PromptValuePanel', () => {
     const filteredPromptVariables = {
       length: 1,
       forEach: vi.fn(),
-      map: (callback: (value: { key: string, name: string, type: string, required: boolean }, index: number) => unknown) => [
-        callback({ key: 'textVar', name: 'Text Var', type: 'string', required: true }, 0),
-      ],
+      map: (
+        callback: (
+          value: { key: string; name: string; type: string; required: boolean },
+          index: number,
+        ) => unknown,
+      ) => [callback({ key: 'textVar', name: 'Text Var', type: 'string', required: true }, 0)],
     }
 
     renderPanel({
@@ -405,9 +464,12 @@ describe('PromptValuePanel', () => {
     const filteredPromptVariables = {
       length: 1,
       forEach: vi.fn(),
-      map: (callback: (value: { key: string, name: string, type: string, required: boolean }, index: number) => unknown) => [
-        callback({ key: 'boolVar', name: '', type: 'checkbox', required: false }, 0),
-      ],
+      map: (
+        callback: (
+          value: { key: string; name: string; type: string; required: boolean },
+          index: number,
+        ) => unknown,
+      ) => [callback({ key: 'boolVar', name: '', type: 'checkbox', required: false }, 0)],
     }
 
     renderPanel({
@@ -439,10 +501,19 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute('data-disabled', 'false')
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute('data-disabled', 'false')
+    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute(
+      'data-disabled',
+      'false',
+    )
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
+      'data-disabled',
+      'false',
+    )
     expect(screen.getByRole('button', { name: 'feature bar' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'feature bar' })).toHaveAttribute('data-hide-edit-entrance', 'true')
+    expect(screen.getByRole('button', { name: 'feature bar' })).toHaveAttribute(
+      'data-hide-edit-entrance',
+      'true',
+    )
   })
 
   it('marks debug inputs and actions as disabled when test/run permission is missing even if configuration is editable', () => {
@@ -454,8 +525,14 @@ describe('PromptValuePanel', () => {
     })
 
     expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
-    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute('data-disabled', 'true')
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute(
+      'data-disabled',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
+      'data-disabled',
+      'true',
+    )
   })
 
   it('marks debug inputs and actions as disabled when configuration is readonly and test/run permission is missing', () => {
@@ -467,8 +544,14 @@ describe('PromptValuePanel', () => {
     })
 
     expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
-    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute('data-disabled', 'true')
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute(
+      'data-disabled',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
+      'data-disabled',
+      'true',
+    )
   })
 
   it('collapses the user input panel and hides the clear and run actions', () => {

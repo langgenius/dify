@@ -15,21 +15,16 @@ function getVersionFromMarketplaceIdentifier(identifier: string): string | undef
   return version || undefined
 }
 
-export const ChecklistPluginGroup = memo(({
-  items,
-}: {
-  items: ChecklistItem[]
-}) => {
+export const ChecklistPluginGroup = memo(({ items }: { items: ChecklistItem[] }) => {
   const { t } = useTranslation()
 
   const identifiers = useMemo(
-    () => Array.from(
-      new Set(
-        items
-          .map(i => i.pluginUniqueIdentifier)
-          .filter((id): id is string => Boolean(id)),
+    () =>
+      Array.from(
+        new Set(
+          items.map((i) => i.pluginUniqueIdentifier).filter((id): id is string => Boolean(id)),
+        ),
       ),
-    ),
     [items],
   )
 
@@ -47,8 +42,7 @@ export const ChecklistPluginGroup = memo(({
   }, [identifiers])
 
   const handleInstallAll = () => {
-    if (dependencies.length === 0)
-      return
+    if (dependencies.length === 0) return
     const { setDependencies } = usePluginDependencyStore.getState()
     setDependencies(dependencies)
   }
@@ -60,36 +54,27 @@ export const ChecklistPluginGroup = memo(({
           <span className="i-ri-download-line size-3.5 text-white" />
         </div>
         <span className="min-w-0 grow truncate text-sm/5 font-medium text-text-primary">
-          {t($ => $['nodes.common.pluginsNotInstalled'], { ns: 'workflow', count: items.length })}
+          {t(($) => $['nodes.common.pluginsNotInstalled'], { ns: 'workflow', count: items.length })}
         </span>
         <PopoverClose
-          render={(
+          render={
             <Button
               variant="secondary"
               size="small"
               onClick={handleInstallAll}
               disabled={dependencies.length === 0}
             />
-          )}
+          }
         >
-          {t($ => $['nodes.agent.pluginInstaller.install'], { ns: 'workflow' })}
+          {t(($) => $['nodes.agent.pluginInstaller.install'], { ns: 'workflow' })}
         </PopoverClose>
       </div>
       <div className="p-1">
-        {items.map(item => (
-          <div
-            key={item.id}
-            className="flex items-center gap-2 rounded-lg px-1"
-          >
+        {items.map((item) => (
+          <div key={item.id} className="flex items-center gap-2 rounded-lg px-1">
             <ItemIndicator />
-            <BlockIcon
-              type={item.type as BlockEnum}
-              size="xs"
-              toolIcon={item.toolIcon}
-            />
-            <span className="min-w-0 grow truncate text-xs/4 text-text-warning">
-              {item.title}
-            </span>
+            <BlockIcon type={item.type as BlockEnum} size="xs" toolIcon={item.toolIcon} />
+            <span className="min-w-0 grow truncate text-xs/4 text-text-warning">{item.title}</span>
           </div>
         ))}
       </div>

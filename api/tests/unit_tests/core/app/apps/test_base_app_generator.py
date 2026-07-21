@@ -485,7 +485,11 @@ class TestBaseAppGeneratorExtras:
         account.id = "account-id"
         account.tenant_id = "tenant-id"
 
-        factory = base_app_generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, account)
+        factory = base_app_generator._get_draft_var_saver_factory(
+            InvokeFrom.DEBUGGER,
+            account,
+            tenant_id="tenant-id",
+        )
         saver = factory(
             app_id="app-id",
             node_id="node-id",

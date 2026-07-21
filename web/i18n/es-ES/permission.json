@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "Permiso de excepción para {{name}}",
   "accessRule.expandSection": "Expandir {{title}}",
   "accessRule.individualPermissionSettings": "Ajustes de permisos individuales",
-  "accessRule.individualPermissionSettingsTip": "Establece excepciones de permisos para colaboradores o grupos específicos. Estos ajustes anulan el nivel de acceso predeterminado.",
+  "accessRule.individualPermissionSettingsTip": "Establece excepciones de permisos para colaboradores o grupos específicos. Estos ajustes anulan sus permisos de rol.",
   "accessRule.maintainer": "Mantenedor",
   "accessRule.member": "Miembro",
   "accessRule.newPermissionSet": "Nuevo conjunto de permisos",

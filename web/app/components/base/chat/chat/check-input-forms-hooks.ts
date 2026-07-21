@@ -7,37 +7,47 @@ import { TransferMethod } from '@/types/app'
 
 export const useCheckInputsForms = () => {
   const { t } = useTranslation()
-  const checkInputsForm = useCallback((inputs: Record<string, any>, inputsForm: InputForm[]) => {
-    let hasEmptyInput = ''
-    let fileIsUploading = false
-    const requiredVars = inputsForm.filter(({ required, type }) => required && type !== InputVarType.checkbox) // boolean can be not checked
-    if (requiredVars?.length) {
-      requiredVars.forEach(({ variable, label, type }) => {
-        if (hasEmptyInput)
-          return
-        if (fileIsUploading)
-          return
-        if (!inputs[variable])
-          hasEmptyInput = label as string
-        if ((type === InputVarType.singleFile || type === InputVarType.multiFiles) && inputs[variable]) {
-          const files = inputs[variable]
-          if (Array.isArray(files))
-            fileIsUploading = files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
-          else
-            fileIsUploading = files.transferMethod === TransferMethod.local_file && !files.uploadedId
-        }
-      })
-    }
-    if (hasEmptyInput) {
-      toast.error(t($ => $['errorMessage.valueOfVarRequired'], { ns: 'appDebug', key: hasEmptyInput }))
-      return false
-    }
-    if (fileIsUploading) {
-      toast.info(t($ => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }))
-      return
-    }
-    return true
-  }, [t])
+  const checkInputsForm = useCallback(
+    (inputs: Record<string, any>, inputsForm: InputForm[]) => {
+      let hasEmptyInput = ''
+      let fileIsUploading = false
+      const requiredVars = inputsForm.filter(
+        ({ required, type }) => required && type !== InputVarType.checkbox,
+      ) // boolean can be not checked
+      if (requiredVars?.length) {
+        requiredVars.forEach(({ variable, label, type }) => {
+          if (hasEmptyInput) return
+          if (fileIsUploading) return
+          if (!inputs[variable]) hasEmptyInput = label as string
+          if (
+            (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
+            inputs[variable]
+          ) {
+            const files = inputs[variable]
+            if (Array.isArray(files))
+              fileIsUploading = files.find(
+                (item) => item.transferMethod === TransferMethod.local_file && !item.uploadedId,
+              )
+            else
+              fileIsUploading =
+                files.transferMethod === TransferMethod.local_file && !files.uploadedId
+          }
+        })
+      }
+      if (hasEmptyInput) {
+        toast.error(
+          t(($) => $['errorMessage.valueOfVarRequired'], { ns: 'appDebug', key: hasEmptyInput }),
+        )
+        return false
+      }
+      if (fileIsUploading) {
+        toast.info(t(($) => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }))
+        return
+      }
+      return true
+    },
+    [t],
+  )
   return {
     checkInputsForm,
   }

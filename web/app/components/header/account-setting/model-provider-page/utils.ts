@@ -12,8 +12,14 @@ import type {
   ModelItem,
   TypeWithI18N,
 } from './declarations'
-import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall, Tongyi } from '@/app/components/base/icons/src/public/llm'
-
+import {
+  AnthropicShortLight,
+  Deepseek,
+  Gemini,
+  Grok,
+  OpenaiSmall,
+  Tongyi,
+} from '@/app/components/base/icons/src/public/llm'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import {
   ConfigurationMethodEnum,
@@ -31,9 +37,19 @@ export const providerToPluginId = (providerKey: string): string => {
   return lastSlash > 0 ? providerKey.slice(0, lastSlash) : ''
 }
 
-export const MODEL_PROVIDER_QUOTA_GET_PAID = [ModelProviderQuotaGetPaid.OPENAI, ModelProviderQuotaGetPaid.ANTHROPIC, ModelProviderQuotaGetPaid.GEMINI, ModelProviderQuotaGetPaid.X, ModelProviderQuotaGetPaid.DEEPSEEK, ModelProviderQuotaGetPaid.TONGYI]
+export const MODEL_PROVIDER_QUOTA_GET_PAID = [
+  ModelProviderQuotaGetPaid.OPENAI,
+  ModelProviderQuotaGetPaid.ANTHROPIC,
+  ModelProviderQuotaGetPaid.GEMINI,
+  ModelProviderQuotaGetPaid.X,
+  ModelProviderQuotaGetPaid.DEEPSEEK,
+  ModelProviderQuotaGetPaid.TONGYI,
+]
 
-export const providerIconMap: Record<ModelProviderQuotaGetPaid, ComponentType<{ className?: string }>> = {
+export const providerIconMap: Record<
+  ModelProviderQuotaGetPaid,
+  ComponentType<{ className?: string }>
+> = {
   [ModelProviderQuotaGetPaid.OPENAI]: OpenaiSmall,
   [ModelProviderQuotaGetPaid.ANTHROPIC]: AnthropicShortLight,
   [ModelProviderQuotaGetPaid.GEMINI]: Gemini,
@@ -66,20 +82,19 @@ export const isNullOrUndefined = (value: unknown): value is null | undefined => 
 
 export const sizeFormat = (size: number) => {
   const remainder = Math.floor(size / 1000)
-  if (remainder < 1)
-    return `${size}`
-  else
-    return `${remainder}K`
+  if (remainder < 1) return `${size}`
+  else return `${remainder}K`
 }
 
 export const modelTypeFormat = (modelType: ModelTypeEnum) => {
-  if (modelType === ModelTypeEnum.textEmbedding)
-    return 'TEXT EMBEDDING'
+  if (modelType === ModelTypeEnum.textEmbedding) return 'TEXT EMBEDDING'
 
   return modelType.toLocaleUpperCase()
 }
 
-export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]): Omit<CredentialFormSchemaSelect, 'name'> => {
+export const genModelTypeFormSchema = (
+  modelTypes: ModelTypeEnum[],
+): Omit<CredentialFormSchemaSelect, 'name'> => {
   return {
     type: FormTypeEnum.select,
     label: {
@@ -103,7 +118,9 @@ export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]): Omit<Creden
   }
 }
 
-export const genModelNameFormSchema = (model?: Pick<CredentialFormSchemaTextInput, 'label' | 'placeholder'>): Omit<CredentialFormSchemaTextInput, 'name'> => {
+export const genModelNameFormSchema = (
+  model?: Pick<CredentialFormSchemaTextInput, 'label' | 'placeholder'>,
+): Omit<CredentialFormSchemaTextInput, 'name'> => {
   return {
     type: FormTypeEnum.textInput,
     label: model?.label || {
@@ -121,25 +138,25 @@ export const genModelNameFormSchema = (model?: Pick<CredentialFormSchemaTextInpu
 }
 
 const modelTypeMap: Record<ModelType, ModelTypeEnum> = {
-  'llm': ModelTypeEnum.textGeneration,
-  'moderation': ModelTypeEnum.moderation,
-  'rerank': ModelTypeEnum.rerank,
-  'speech2text': ModelTypeEnum.speech2text,
+  llm: ModelTypeEnum.textGeneration,
+  moderation: ModelTypeEnum.moderation,
+  rerank: ModelTypeEnum.rerank,
+  speech2text: ModelTypeEnum.speech2text,
   'text-embedding': ModelTypeEnum.textEmbedding,
-  'tts': ModelTypeEnum.tts,
+  tts: ModelTypeEnum.tts,
 }
 
 const modelFeatureMap: Record<ModelFeature, ModelFeatureEnum> = {
   'agent-thought': ModelFeatureEnum.agentThought,
-  'audio': ModelFeatureEnum.audio,
-  'document': ModelFeatureEnum.document,
+  audio: ModelFeatureEnum.audio,
+  document: ModelFeatureEnum.document,
   'multi-tool-call': ModelFeatureEnum.multiToolCall,
-  'polling': ModelFeatureEnum.polling,
+  polling: ModelFeatureEnum.polling,
   'stream-tool-call': ModelFeatureEnum.streamToolCall,
   'structured-output': ModelFeatureEnum.StructuredOutput,
   'tool-call': ModelFeatureEnum.toolCall,
-  'video': ModelFeatureEnum.video,
-  'vision': ModelFeatureEnum.vision,
+  video: ModelFeatureEnum.video,
+  vision: ModelFeatureEnum.vision,
 }
 
 const fetchFromMap: Record<FetchFrom, ConfigurationMethodEnum> = {
@@ -148,9 +165,9 @@ const fetchFromMap: Record<FetchFrom, ConfigurationMethodEnum> = {
 }
 
 const modelStatusMap: Record<ModelStatus, ModelStatusEnum> = {
-  'active': ModelStatusEnum.active,
+  active: ModelStatusEnum.active,
   'credential-removed': ModelStatusEnum.credentialRemoved,
-  'disabled': ModelStatusEnum.disabled,
+  disabled: ModelStatusEnum.disabled,
   'no-configure': ModelStatusEnum.noConfigure,
   'no-permission': ModelStatusEnum.noPermission,
   'quota-exceeded': ModelStatusEnum.quotaExceeded,
@@ -167,8 +184,7 @@ const normalizeModelProperties = (
   const normalized: ModelItem['model_properties'] = {}
 
   Object.entries(modelProperties).forEach(([key, value]) => {
-    if (typeof value === 'string' || typeof value === 'number')
-      normalized[key] = value
+    if (typeof value === 'string' || typeof value === 'number') normalized[key] = value
   })
 
   return normalized
@@ -178,7 +194,7 @@ const normalizeModelProviderModel = (model: ModelWithProviderEntityResponse): Mo
   model: model.model,
   label: normalizeModelLabel(model.label),
   model_type: modelTypeMap[model.model_type],
-  features: model.features?.map(feature => modelFeatureMap[feature]),
+  features: model.features?.map((feature) => modelFeatureMap[feature]),
   fetch_from: fetchFromMap[model.fetch_from],
   status: modelStatusMap[model.status],
   model_properties: normalizeModelProperties(model.model_properties),
@@ -187,6 +203,6 @@ const normalizeModelProviderModel = (model: ModelWithProviderEntityResponse): Mo
   has_invalid_load_balancing_configs: model.has_invalid_load_balancing_configs,
 })
 
-export const normalizeModelProviderModelsResponse = (
-  response: { data: ModelWithProviderEntityResponse[] },
-): ModelItem[] => response.data.map(normalizeModelProviderModel)
+export const normalizeModelProviderModelsResponse = (response: {
+  data: ModelWithProviderEntityResponse[]
+}): ModelItem[] => response.data.map(normalizeModelProviderModel)

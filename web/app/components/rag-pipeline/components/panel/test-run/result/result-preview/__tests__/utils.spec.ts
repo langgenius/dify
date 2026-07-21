@@ -44,16 +44,24 @@ describe('result preview utils', () => {
     const fullDoc = formatPreviewChunks({
       chunk_structure: ChunkingMode.parentChild,
       parent_mode: 'full-doc',
-      preview: [
-        { content: 'Parent 1', child_chunks: ['c1', 'c2', 'c3'] },
-      ],
+      preview: [{ content: 'Parent 1', child_chunks: ['c1', 'c2', 'c3'] }],
     })
 
     expect(paragraph).toEqual({
       parent_mode: 'paragraph',
       parent_child_chunks: [
-        { parent_content: 'Parent 1', parent_summary: undefined, child_contents: ['c1', 'c2', 'c3'], parent_mode: 'paragraph' },
-        { parent_content: 'Parent 2', parent_summary: undefined, child_contents: ['c4'], parent_mode: 'paragraph' },
+        {
+          parent_content: 'Parent 1',
+          parent_summary: undefined,
+          child_contents: ['c1', 'c2', 'c3'],
+          parent_mode: 'paragraph',
+        },
+        {
+          parent_content: 'Parent 2',
+          parent_summary: undefined,
+          child_contents: ['c4'],
+          parent_mode: 'paragraph',
+        },
       ],
     })
     expect(fullDoc).toEqual({

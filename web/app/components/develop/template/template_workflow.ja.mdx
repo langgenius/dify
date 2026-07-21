@@ -1,5 +1,6 @@
 import { CodeGroup } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
+import { WorkflowVersionApiContent, WorkflowVersionApiUpgradeNotice } from '../workflow-version-api-upgrade-notice.tsx'
 
 # ワークフローアプリ API
 
@@ -642,7 +643,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   method='POST'
   title='特定バージョンのワークフローを実行'
   name='#Execute-Specific-Workflow'
+  titleAction={<WorkflowVersionApiUpgradeNotice />}
 />
+<WorkflowVersionApiContent>
 <Row>
   <Col>
     パスパラメータでワークフローIDを指定して、特定バージョンのワークフローを実行します。
@@ -818,6 +821,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - 400，`draft_workflow_error`，ドラフトワークフローバージョンを使用できません
     - 400，`workflow_id_format_error`，ワークフローID形式エラー、UUID形式が必要です
     - 400，`workflow_request_error`，ワークフロー実行に失敗しました
+    - 403，`workflow_version_execution_not_allowed`，現在のプランではワークフローバージョンを実行できません。有料プランにアップグレードしてください
     - 500，サービス内部異常
 
   </Col>
@@ -887,6 +891,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+</WorkflowVersionApiContent>
 
 ---
 

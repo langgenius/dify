@@ -19,10 +19,19 @@ type Props = Readonly<{
   onAdded: (annotationId: string, authorName: string) => void
   onEdit: () => void
 }>
-const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, messageId, onAdded, onEdit }) => {
+const AnnotationCtrlButton: FC<Props> = ({
+  cached,
+  query,
+  answer,
+  appId,
+  messageId,
+  onAdded,
+  onEdit,
+}) => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
-  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
+  const isAnnotationFull =
+    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
   const { setShowAnnotationFullModal } = useModalContext()
   const handleAdd = async () => {
     if (isAnnotationFull) {
@@ -34,7 +43,7 @@ const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, message
       question: query,
       answer,
     })
-    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }) as string)
+    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
     onAdded(res.id, res.account?.name ?? '')
   }
   return (
@@ -42,28 +51,28 @@ const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, message
       {cached && (
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <ActionButton onClick={onEdit}>
                 <RiEditLine className="size-4" />
               </ActionButton>
-            )}
+            }
           />
           <TooltipContent>
-            {t($ => $['feature.annotation.edit'], { ns: 'appDebug' })}
+            {t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}
           </TooltipContent>
         </Tooltip>
       )}
       {!cached && answer && (
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <ActionButton onClick={handleAdd}>
                 <RiFileEditLine className="size-4" />
               </ActionButton>
-            )}
+            }
           />
           <TooltipContent>
-            {t($ => $['feature.annotation.add'], { ns: 'appDebug' })}
+            {t(($) => $['feature.annotation.add'], { ns: 'appDebug' })}
           </TooltipContent>
         </Tooltip>
       )}

@@ -32,20 +32,18 @@ const marketplacePluginTabs = new Set<string>([
 ])
 
 const getFirstSearchParamValue = (value: string | string[] | undefined) => {
-  if (Array.isArray(value))
-    return value[0]
+  if (Array.isArray(value)) return value[0]
 
   return value
 }
 
 const hasInstallSearchParams = (searchParams: LegacyPluginsSearchParams) => {
-  return Object.keys(searchParams).some(key => installSearchParamKeys.has(key))
+  return Object.keys(searchParams).some((key) => installSearchParamKeys.has(key))
 }
 
 export const getFirstPackageIdFromSearchParams = (searchParams: LegacyPluginsSearchParams) => {
   const value = getFirstSearchParamValue(searchParams[PACKAGE_IDS_SEARCH_PARAM])
-  if (!value)
-    return null
+  if (!value) return null
 
   try {
     const parsed: unknown = JSON.parse(value)
@@ -53,8 +51,7 @@ export const getFirstPackageIdFromSearchParams = (searchParams: LegacyPluginsSea
       const first = parsed[0]
       return typeof first === 'string' ? first : null
     }
-  }
-  catch {
+  } catch {
     return value
   }
 
@@ -63,7 +60,9 @@ export const getFirstPackageIdFromSearchParams = (searchParams: LegacyPluginsSea
 
 export const shouldResolveInstallCategoryRedirect = (searchParams: LegacyPluginsSearchParams) => {
   const tab = getFirstSearchParamValue(searchParams.tab)
-  return (!tab || tab === INSTALLED_PLUGINS_TAB) && !!getFirstPackageIdFromSearchParams(searchParams)
+  return (
+    (!tab || tab === INSTALLED_PLUGINS_TAB) && !!getFirstPackageIdFromSearchParams(searchParams)
+  )
 }
 
 const buildPreservedSearchParams = (
@@ -73,11 +72,10 @@ const buildPreservedSearchParams = (
   const preservedSearchParams = new URLSearchParams()
 
   Object.entries(searchParams).forEach(([key, value]) => {
-    if (ignoredKeys.has(key) || value === undefined)
-      return
+    if (ignoredKeys.has(key) || value === undefined) return
 
     if (Array.isArray(value)) {
-      value.forEach(item => preservedSearchParams.append(key, item))
+      value.forEach((item) => preservedSearchParams.append(key, item))
       return
     }
 
@@ -96,15 +94,11 @@ const buildRedirectPath = (
   return query ? `${path}?${query}` : path
 }
 
-const buildInstallRedirectPath = (
-  path: string,
-  searchParams: LegacyPluginsSearchParams,
-) => {
+const buildInstallRedirectPath = (path: string, searchParams: LegacyPluginsSearchParams) => {
   const installSearchParams: LegacyPluginsSearchParams = {}
 
   Object.entries(searchParams).forEach(([key, value]) => {
-    if (installSearchParamKeys.has(key))
-      installSearchParams[key] = value
+    if (installSearchParamKeys.has(key)) installSearchParams[key] = value
   })
 
   return buildRedirectPath(path, installSearchParams, new Set())
@@ -114,35 +108,26 @@ export const getInstallRedirectPathByPluginCategory = (
   category: string | undefined,
   searchParams: LegacyPluginsSearchParams,
 ) => {
-  if (!category)
-    return undefined
+  if (!category) return undefined
 
   const path = integrationPluginPathByInstallCategory.get(category)
-  if (!path)
-    return undefined
+  if (!path) return undefined
 
   return buildInstallRedirectPath(path, searchParams)
 }
 
-export const getInstallRedirectPathFromSearchParams = (
-  searchParams: LegacyPluginsSearchParams,
-) => {
-  if (!hasInstallSearchParams(searchParams))
-    return undefined
+export const getInstallRedirectPathFromSearchParams = (searchParams: LegacyPluginsSearchParams) => {
+  if (!hasInstallSearchParams(searchParams)) return undefined
 
   const category = getFirstSearchParamValue(searchParams.category)
   const pathByCategory = getInstallRedirectPathByPluginCategory(category, searchParams)
-  if (pathByCategory)
-    return pathByCategory
+  if (pathByCategory) return pathByCategory
 
   const tab = getFirstSearchParamValue(searchParams.tab)
   return getInstallRedirectPathByPluginCategory(tab, searchParams)
 }
 
-const buildMarketplaceRedirectPath = (
-  searchParams: LegacyPluginsSearchParams,
-  tab: string,
-) => {
+const buildMarketplaceRedirectPath = (searchParams: LegacyPluginsSearchParams, tab: string) => {
   const path = '/marketplace'
   const ignoredKeys = new Set(['tab'])
   const preservedSearchParams = buildPreservedSearchParams(searchParams, ignoredKeys)
@@ -154,16 +139,13 @@ const buildMarketplaceRedirectPath = (
   return query ? `${path}?${query}` : path
 }
 
-export const getLegacyPluginRedirectPath = (
-  searchParams: LegacyPluginsSearchParams = {},
-) => {
+export const getLegacyPluginRedirectPath = (searchParams: LegacyPluginsSearchParams = {}) => {
   const tab = getFirstSearchParamValue(searchParams.tab)
 
   if ((!tab || tab === INSTALLED_PLUGINS_TAB) && hasInstallSearchParams(searchParams))
     return undefined
 
-  if (!tab || tab === INSTALLED_PLUGINS_TAB)
-    return '/integrations'
+  if (!tab || tab === INSTALLED_PLUGINS_TAB) return '/integrations'
 
   const integrationPluginPath = getIntegrationPluginPathByTab(tab)
   if (integrationPluginPath) {
@@ -172,8 +154,7 @@ export const getLegacyPluginRedirectPath = (
       : buildRedirectPath(integrationPluginPath, searchParams, new Set(['tab']))
   }
 
-  if (marketplacePluginTabs.has(tab))
-    return buildMarketplaceRedirectPath(searchParams, tab)
+  if (marketplacePluginTabs.has(tab)) return buildMarketplaceRedirectPath(searchParams, tab)
 
   return undefined
 }

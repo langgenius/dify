@@ -35,7 +35,8 @@ from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.enums import MessageFileBelongsTo
-from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
+from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
+from services.account_service import AccountService
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
@@ -115,48 +116,50 @@ class MessageCycleManager:
 
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():
-            # get conversation and message
-            stmt = select(Conversation).where(Conversation.id == conversation_id)
-            conversation = db.session.scalar(stmt)
+            with session_factory.create_session() as session:
+                # get conversation and message
+                stmt = select(Conversation).where(Conversation.id == conversation_id)
+                conversation = session.scalar(stmt)
 
-            if not conversation:
-                return
-
-            if conversation.mode != AppMode.COMPLETION:
-                app_model = conversation.app
-                if not app_model:
+                if not conversation:
                     return
 
-                # generate conversation name
-                query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
-                cache_key = f"conv_name:{conversation_id}:{query_hash}"
+                if conversation.mode != AppMode.COMPLETION:
+                    app_model = session.get(App, conversation.app_id)
+                    if not app_model:
+                        return
 
-                cached_name = redis_client.get(cache_key)
-                if cached_name:
-                    name = cached_name.decode("utf-8")
-                else:
-                    try:
-                        name = LLMGenerator.generate_conversation_name(
-                            app_model.tenant_id, query, conversation_id, conversation.app_id
-                        )
-                        redis_client.setex(cache_key, 3600, name)
-                    except Exception:
-                        if dify_config.DEBUG:
-                            logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
-                        name = query[:47] + "..." if len(query) > 50 else query
-                conversation.name = name
-                db.session.commit()
-                db.session.close()
+                    # generate conversation name
+                    query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
+                    cache_key = f"conv_name:{conversation_id}:{query_hash}"
 
-    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> MessageAnnotation | None:
+                    cached_name = redis_client.get(cache_key)
+                    if cached_name:
+                        name = cached_name.decode("utf-8")
+                    else:
+                        try:
+                            name = LLMGenerator.generate_conversation_name(
+                                app_model.tenant_id, query, conversation_id, conversation.app_id
+                            )
+                            redis_client.setex(cache_key, 3600, name)
+                        except Exception:
+                            if dify_config.DEBUG:
+                                logger.exception(
+                                    "generate conversation name failed, conversation_id: %s", conversation_id
+                                )
+                            name = query[:47] + "..." if len(query) > 50 else query
+                    conversation.name = name
+                    session.commit()
+
+    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent, session: Session) -> MessageAnnotation | None:
         """
         Handle annotation reply.
         :param event: event
         :return:
         """
-        annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id, session=db.session())
+        annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id, session)
         if annotation:
-            account = annotation.account
+            account = AccountService.get_account_by_id(annotation.account_id, session=session)
             self._task_state.metadata.annotation_reply = AnnotationReply(
                 id=annotation.id,
                 account=AnnotationReplyAccount(

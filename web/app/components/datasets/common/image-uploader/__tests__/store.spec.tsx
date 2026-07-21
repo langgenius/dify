@@ -137,11 +137,7 @@ describe('image-uploader store', () => {
 
       const TestComponent = () => {
         const store = useFileStore()
-        return (
-          <button onClick={() => store.getState().setFiles(newFiles)}>
-            Set Files
-          </button>
-        )
+        return <button onClick={() => store.getState().setFiles(newFiles)}>Set Files</button>
       }
 
       render(
@@ -215,10 +211,9 @@ describe('image-uploader store', () => {
     it('should throw error when used outside provider', () => {
       const TestComponent = () => {
         try {
-          useFileStoreWithSelector(state => state.files)
+          useFileStoreWithSelector((state) => state.files)
           return <div>No Error</div>
-        }
-        catch {
+        } catch {
           return <div>Error</div>
         }
       }
@@ -231,7 +226,7 @@ describe('image-uploader store', () => {
       const initialFiles = [createMockFile('1'), createMockFile('2')]
 
       const TestComponent = () => {
-        const files = useFileStoreWithSelector(state => state.files)
+        const files = useFileStoreWithSelector((state) => state.files)
         return <div data-testid="files-count">{files.length}</div>
       }
 
@@ -248,12 +243,8 @@ describe('image-uploader store', () => {
       const onChange = vi.fn()
 
       const TestComponent = () => {
-        const setFiles = useFileStoreWithSelector(state => state.setFiles)
-        return (
-          <button onClick={() => setFiles([createMockFile('new')])}>
-            Update
-          </button>
-        )
+        const setFiles = useFileStoreWithSelector((state) => state.setFiles)
+        return <button onClick={() => setFiles([createMockFile('new')])}>Update</button>
       }
 
       render(
@@ -273,16 +264,14 @@ describe('image-uploader store', () => {
       const renderCount = { current: 0 }
 
       const TestComponent = () => {
-        const files = useFileStoreWithSelector(state => state.files)
-        const setFiles = useFileStoreWithSelector(state => state.setFiles)
+        const files = useFileStoreWithSelector((state) => state.files)
+        const setFiles = useFileStoreWithSelector((state) => state.setFiles)
         renderCount.current++
 
         return (
           <div>
             <span data-testid="count">{files.length}</span>
-            <button onClick={() => setFiles([...files, createMockFile('new')])}>
-              Add
-            </button>
+            <button onClick={() => setFiles([...files, createMockFile('new')])}>Add</button>
           </div>
         )
       }

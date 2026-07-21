@@ -8,20 +8,21 @@ type ProcessDocumentsProps = {
   dataSourceNodeId: string
 }
 
-const ProcessDocuments = ({
-  dataSourceNodeId,
-}: ProcessDocumentsProps) => {
+const ProcessDocuments = ({ dataSourceNodeId }: ProcessDocumentsProps) => {
   const { t } = useTranslation()
-  const pipelineId = useStore(state => state.pipelineId)
-  const { data: paramsConfig } = useDraftPipelineProcessingParams({
-    pipeline_id: pipelineId!,
-    node_id: dataSourceNodeId,
-  }, !!pipelineId && !!dataSourceNodeId)
+  const pipelineId = useStore((state) => state.pipelineId)
+  const { data: paramsConfig } = useDraftPipelineProcessingParams(
+    {
+      pipeline_id: pipelineId!,
+      node_id: dataSourceNodeId,
+    },
+    !!pipelineId && !!dataSourceNodeId,
+  )
 
   return (
     <div className="flex flex-col">
       <div className="px-4 pt-2 system-sm-semibold-uppercase text-text-secondary">
-        {t($ => $['inputFieldPanel.preview.stepTwoTitle'], { ns: 'datasetPipeline' })}
+        {t(($) => $['inputFieldPanel.preview.stepTwoTitle'], { ns: 'datasetPipeline' })}
       </div>
       <Form variables={paramsConfig?.variables || []} />
     </div>
