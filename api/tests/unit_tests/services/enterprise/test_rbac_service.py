@@ -47,7 +47,7 @@ class TestCatalog:
         assert call.tenant_id == "tenant-1"
         assert call.account_id == "acct-1"
         assert call.json is None
-        assert call.params == {"billing_enabled": svc.dify_config.BILLING_ENABLED}
+        assert call.params is None
         assert len(out.groups) == 1
         assert out.groups[0].group_key == "workspace"
 
@@ -628,12 +628,12 @@ class TestMyPermissions:
         assert out.app.overrides == []
         assert out.dataset.overrides == []
         if role == "owner":
-            assert "billing.view" in out.workspace.permission_keys
             assert "snippets.management" in out.workspace.permission_keys
             assert "app.acl.preview" in out.workspace.permission_keys
             assert "dataset.acl.preview" in out.workspace.permission_keys
             assert "app.acl.preview" in out.app.default_permission_keys
             assert "dataset.acl.preview" in out.dataset.default_permission_keys
+        assert not any(key.startswith("billing.") for key in out.workspace.permission_keys)
         if role == "editor":
             assert "app.acl.log_and_annotation" in out.app.default_permission_keys
 

@@ -50,12 +50,33 @@ type CollaborationEventType =
   | 'workflow_restore_intent'
   | 'workflow_restore_complete'
   | 'workflow_history_action'
+  | 'graph_view_state'
 
 export type CollaborationUpdate = {
   type: CollaborationEventType
   userId: string
   data: Record<string, unknown>
   timestamp: number
+}
+
+export type WorkflowSyncResult = {
+  hash: string
+  updatedAt: number
+}
+
+export type WorkflowSyncAcknowledgement =
+  | ({ success: true } & WorkflowSyncResult)
+  | { success: false; error?: string }
+
+export type WorkflowSyncRequest = {
+  requestId?: string
+  acknowledge: (result: WorkflowSyncAcknowledgement) => void
+}
+
+export type GraphReloadRequest = {
+  generation: number
+  token: number
+  attempt: number
 }
 
 export type RestoreIntentData = {

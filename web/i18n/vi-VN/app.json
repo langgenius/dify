@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Tìm kiếm nhóm và thành viên",
   "accessControlDialog.title": "Kiểm soát truy cập ứng dụng web",
   "accessControlDialog.updateSuccess": "Cập nhật thành công",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Quyền truy cập công khai đã bị quản trị viên vô hiệu hóa.",
   "accessControlDialog.webAppSSONotEnabledTip": "Vui lòng liên hệ với quản trị viên doanh nghiệp để cấu hình phương thức xác thực ứng dụng web.",
   "accessItemsDescription.anyone": "Mọi người đều có thể truy cập ứng dụng web.",
   "accessItemsDescription.external": "Chỉ những người dùng bên ngoài đã xác thực mới có thể truy cập vào ứng dụng Web.",

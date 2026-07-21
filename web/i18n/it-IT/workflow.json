@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Flusso di lavoro corrente",
   "common.debugAndPreview": "Anteprima",
   "common.disconnect": "Disconnettere",
+  "common.draftSaveFailed": "Salvataggio della bozza non riuscito",
   "common.duplicate": "Duplica",
   "common.editing": "Modifica in corso",
   "common.effectVarConfirm.content": "La variabile è utilizzata in altri nodi. Vuoi comunque rimuoverla?",

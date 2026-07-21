@@ -214,20 +214,6 @@ describe('ContextBlock', () => {
     })
   })
 
-  describe('Exports', () => {
-    it('should export INSERT_CONTEXT_BLOCK_COMMAND', () => {
-      expect(INSERT_CONTEXT_BLOCK_COMMAND).toBeDefined()
-    })
-
-    it('should export DELETE_CONTEXT_BLOCK_COMMAND', () => {
-      expect(DELETE_CONTEXT_BLOCK_COMMAND).toBeDefined()
-    })
-
-    it('should export ContextBlock component', () => {
-      expect(ContextBlock).toBeDefined()
-    })
-  })
-
   describe('Edge Cases', () => {
     it('should handle undefined datasets prop', () => {
       renderWithEditor(<ContextBlock datasets={undefined} />)

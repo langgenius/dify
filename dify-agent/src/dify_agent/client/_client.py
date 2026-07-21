@@ -15,7 +15,7 @@ import asyncio
 import inspect
 import json
 import time
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from json import JSONDecodeError
 from types import TracebackType
 from typing import Any, Self, TypeVar, cast
@@ -277,7 +277,7 @@ class Client:
         *,
         base_url: str,
         timeout: float | httpx.Timeout = 30.0,
-        stream_timeout: float | httpx.Timeout | None = None,
+        stream_timeout: float | httpx.Timeout | None = 30.0,
         headers: dict[str, str] | None = None,
         sync_http_client: httpx.Client | None = None,
         async_http_client: httpx.AsyncClient | None = None,
@@ -531,9 +531,11 @@ class Client:
         *,
         after: str | None = None,
         reconnect: bool = True,
-        max_reconnects: int | None = None,
+        max_reconnects: int | None = 3,
         reconnect_delay_seconds: float = 1.0,
         until_terminal: bool = True,
+        timeout_seconds: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
     ) -> AsyncIterator[RunEvent]:
         """Yield typed events from SSE with cursor-based reconnect.
 
@@ -541,14 +543,21 @@ class Client:
         with an id, reconnects resume from that id using the ``after`` query
         parameter. HTTP 5xx stream responses are retried, but HTTP 4xx responses,
         DTO validation failures, and malformed SSE frames are not retried. By
-        default iteration stops after ``run_succeeded`` or ``run_failed``.
+        default iteration stops after a succeeded, failed, or cancelled terminal event.
         """
-        _validate_stream_options(max_reconnects, reconnect_delay_seconds)
+        _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
         cursor = after or "0-0"
         reconnect_attempts = 0
+        deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         while True:
+            _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
             try:
-                async for event in self._stream_events_once(run_id, after=cursor):
+                async for event in self._stream_events_once(
+                    run_id,
+                    after=cursor,
+                    deadline=deadline,
+                    should_stop=should_stop,
+                ):
                     if event.id is not None:
                         cursor = event.id
                     yield event
@@ -562,7 +571,8 @@ class Client:
                     max_reconnects=max_reconnects,
                     error=exc.error,
                 )
-                await _sleep_async(reconnect_delay_seconds)
+                _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                await _sleep_async(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
                 continue
             if not reconnect:
                 return
@@ -571,7 +581,8 @@ class Client:
                 max_reconnects=max_reconnects,
                 error=DifyAgentStreamError("SSE stream ended before a terminal event"),
             )
-            await _sleep_async(reconnect_delay_seconds)
+            _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+            await _sleep_async(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
 
     def stream_events_sync(
         self,
@@ -579,17 +590,26 @@ class Client:
         *,
         after: str | None = None,
         reconnect: bool = True,
-        max_reconnects: int | None = None,
+        max_reconnects: int | None = 3,
         reconnect_delay_seconds: float = 1.0,
         until_terminal: bool = True,
+        timeout_seconds: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
         """Synchronous variant of ``stream_events`` with the same reconnect rules."""
-        _validate_stream_options(max_reconnects, reconnect_delay_seconds)
+        _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
         cursor = after or "0-0"
         reconnect_attempts = 0
+        deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         while True:
+            _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
             try:
-                for event in self._stream_events_once_sync(run_id, after=cursor):
+                for event in self._stream_events_once_sync(
+                    run_id,
+                    after=cursor,
+                    deadline=deadline,
+                    should_stop=should_stop,
+                ):
                     if event.id is not None:
                         cursor = event.id
                     yield event
@@ -603,7 +623,8 @@ class Client:
                     max_reconnects=max_reconnects,
                     error=exc.error,
                 )
-                _sleep_sync(reconnect_delay_seconds)
+                _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                _sleep_sync(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
                 continue
             if not reconnect:
                 return
@@ -612,7 +633,8 @@ class Client:
                 max_reconnects=max_reconnects,
                 error=DifyAgentStreamError("SSE stream ended before a terminal event"),
             )
-            _sleep_sync(reconnect_delay_seconds)
+            _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+            _sleep_sync(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
 
     async def wait_run(
         self,
@@ -652,7 +674,14 @@ class Client:
                 raise DifyAgentTimeoutError(f"run {run_id!r} did not finish before timeout")
             _sleep_sync(sleep_for)
 
-    async def _stream_events_once(self, run_id: str, *, after: str) -> AsyncIterator[RunEvent]:
+    async def _stream_events_once(
+        self,
+        run_id: str,
+        *,
+        after: str,
+        deadline: float | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> AsyncIterator[RunEvent]:
         """Open one SSE connection and yield events until it ends or fails."""
         try:
             async with self._get_async_http_client().stream(
@@ -668,6 +697,7 @@ class Client:
                 decoder = _SSEDecoder()
                 line_decoder = _SSELineDecoder()
                 async for text in response.aiter_text():
+                    _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                     for line in line_decoder.decode(text):
                         event = decoder.feed_line(line)
                         if event is not None:
@@ -687,7 +717,14 @@ class Client:
         except httpx.StreamError as exc:
             raise _ReconnectableStreamError(DifyAgentStreamError(f"SSE stream failed: {exc}")) from exc
 
-    def _stream_events_once_sync(self, run_id: str, *, after: str) -> Iterator[RunEvent]:
+    def _stream_events_once_sync(
+        self,
+        run_id: str,
+        *,
+        after: str,
+        deadline: float | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> Iterator[RunEvent]:
         """Open one synchronous SSE connection and yield events until it ends or fails."""
         try:
             with self._get_sync_http_client().stream(
@@ -703,6 +740,7 @@ class Client:
                 decoder = _SSEDecoder()
                 line_decoder = _SSELineDecoder()
                 for text in response.iter_text():
+                    _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                     for line in line_decoder.decode(text):
                         event = decoder.feed_line(line)
                         if event is not None:
@@ -852,12 +890,38 @@ def _next_reconnect_attempt(
     return reconnect_attempts + 1
 
 
-def _validate_stream_options(max_reconnects: int | None, reconnect_delay_seconds: float) -> None:
+def _validate_stream_options(
+    max_reconnects: int | None,
+    reconnect_delay_seconds: float,
+    timeout_seconds: float | None,
+) -> None:
     """Reject stream options that cannot produce deterministic reconnect behavior."""
     if max_reconnects is not None and max_reconnects < 0:
         raise DifyAgentValidationError(detail="max_reconnects must be non-negative")
     if reconnect_delay_seconds < 0:
         raise DifyAgentValidationError(detail="reconnect_delay_seconds must be non-negative")
+    if timeout_seconds is not None and timeout_seconds < 0:
+        raise DifyAgentValidationError(detail="timeout_seconds must be non-negative")
+
+
+def _raise_if_stream_stopped(
+    run_id: str,
+    *,
+    deadline: float | None,
+    should_stop: Callable[[], bool] | None,
+) -> None:
+    """Stop a live stream when its caller cancels or its total deadline expires."""
+    if should_stop is not None and should_stop():
+        raise DifyAgentStreamError(f"SSE stream for run {run_id!r} was cancelled by the caller")
+    if deadline is not None and time.monotonic() >= deadline:
+        raise DifyAgentTimeoutError(f"SSE stream for run {run_id!r} exceeded its timeout")
+
+
+def _bounded_sleep_seconds(seconds: float, deadline: float | None) -> float:
+    """Keep reconnect backoff inside the total stream deadline."""
+    if deadline is None:
+        return seconds
+    return max(0.0, min(seconds, deadline - time.monotonic()))
 
 
 def _validate_wait_options(poll_interval_seconds: float, timeout_seconds: float | None) -> None:

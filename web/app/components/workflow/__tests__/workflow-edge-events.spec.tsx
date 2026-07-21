@@ -25,6 +25,7 @@ const reactFlowBridge = vi.hoisted(() => ({
 }))
 
 const collaborationBridge = vi.hoisted(() => ({
+  canPersistLocalGraph: vi.fn(),
   graphImportHandler: null as null | ((payload: { nodes: Node[]; edges: Edge[] }) => void),
   historyActionHandler: null as null | ((payload: unknown) => void),
   restoreIntentHandler: null as
@@ -38,6 +39,7 @@ const collaborationBridge = vi.hoisted(() => ({
 }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
+const toastErrorMock = vi.hoisted(() => vi.fn())
 
 const workflowCommentState = vi.hoisted(() => ({
   comments: [] as Array<Record<string, unknown>>,
@@ -145,6 +147,13 @@ const baseEdges = [
   },
 ] as unknown as Edge[]
 
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
@@ -181,12 +190,14 @@ vi.mock('@/service/workflow', () => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
+    error: toastErrorMock,
     info: toastInfoMock,
   },
 }))
 
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
+    canPersistLocalGraph: collaborationBridge.canPersistLocalGraph,
     onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
       collaborationBridge.graphImportHandler = handler
       return vi.fn()
@@ -444,12 +455,18 @@ function renderSubject(options?: {
   nodes?: Node[]
   edges?: Edge[]
   initialStoreState?: Record<string, unknown>
+  isCollaborationEnabled?: boolean
 }) {
-  const { nodes = baseNodes, edges = baseEdges, initialStoreState } = options ?? {}
+  const {
+    nodes = baseNodes,
+    edges = baseEdges,
+    initialStoreState,
+    isCollaborationEnabled,
+  } = options ?? {}
 
   return renderWorkflowComponent(
     <ReactFlowProvider>
-      <Workflow nodes={nodes} edges={edges}>
+      <Workflow nodes={nodes} edges={edges} isCollaborationEnabled={isCollaborationEnabled}>
         <ReactFlowEdgeBootstrap nodes={nodes} edges={edges} />
       </Workflow>
     </ReactFlowProvider>,
@@ -494,9 +511,18 @@ function getPane(container: HTMLElement) {
   return pane
 }
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 describe('Workflow edge event wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    collaborationBridge.canPersistLocalGraph.mockReturnValue(true)
     eventEmitterState.subscription = null
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
@@ -589,6 +615,33 @@ describe('Workflow edge event wiring', () => {
     })
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
+  })
+
+  it('should show a persistent error toast when saving the draft on unmount fails', () => {
+    workflowHookMocks.handleSyncWorkflowDraft.mockImplementationOnce(
+      (_sync, _notRefreshWhenSyncError, callback) => {
+        callback?.onError?.()
+      },
+    )
+
+    const { unmount } = renderSubject({ isCollaborationEnabled: true })
+
+    unmount()
+
+    expect(toastErrorMock).toHaveBeenCalledWith('workflow.common.draftSaveFailed', {
+      timeout: 0,
+    })
+  })
+
+  it('should skip the unmount save while the collaborative graph is not ready', () => {
+    collaborationBridge.canPersistLocalGraph.mockReturnValue(false)
+
+    const { unmount } = renderSubject({ isCollaborationEnabled: true })
+
+    unmount()
+
+    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(toastErrorMock).not.toHaveBeenCalled()
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {

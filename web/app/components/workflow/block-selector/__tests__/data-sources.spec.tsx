@@ -2,12 +2,12 @@ import type { ReactElement } from 'react'
 import type { ToolWithProvider } from '../../types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
 import { BlockEnum } from '../../types'
 import DataSources from '../data-sources'
@@ -30,7 +30,7 @@ const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
 
 let enableMarketplaceForRender = false
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { enable_marketplace: enableMarketplaceForRender },
   })
 

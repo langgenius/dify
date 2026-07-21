@@ -234,12 +234,6 @@ describe('StepOne', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<StepOne {...defaultProps} />)
-
-      expect(screen.getByText('datasetCreation.steps.one')).toBeInTheDocument()
-    })
-
     it('should render DataSourceTypeSelector when not editing existing dataset', () => {
       render(<StepOne {...defaultProps} />)
 
