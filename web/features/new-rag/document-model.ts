@@ -17,6 +17,28 @@ export const ATTENTION_TASK_STATES = new Set<DocumentProcessingTask['state']>([
   'failed',
 ])
 
+function rfc3339Parts(value: string) {
+  const match = /^(.*:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/.exec(value)
+  if (!match) return
+  const epochSecond = Date.parse(`${match[1]}${match[3]}`)
+  if (Number.isNaN(epochSecond)) return
+  return { epochSecond, fraction: match[2] ?? '' }
+}
+
+export function taskVersionIsAfter(candidate: string, baseline: string) {
+  const candidateParts = rfc3339Parts(candidate)
+  const baselineParts = rfc3339Parts(baseline)
+  if (candidateParts && baselineParts) {
+    if (candidateParts.epochSecond !== baselineParts.epochSecond)
+      return candidateParts.epochSecond > baselineParts.epochSecond
+    const precision = Math.max(candidateParts.fraction.length, baselineParts.fraction.length)
+    return (
+      candidateParts.fraction.padEnd(precision, '0') > baselineParts.fraction.padEnd(precision, '0')
+    )
+  }
+  return candidate.localeCompare(baseline) > 0
+}
+
 export function sourceName(document: LogicalDocument) {
   const value = document.userMetadata.sourceName
   if (typeof value === 'string' && value.trim()) return value
@@ -35,7 +57,7 @@ export function newestTaskByDocument(tasks: DocumentProcessingTask[]) {
       !current ||
       task.documentRevision > current.documentRevision ||
       (task.documentRevision === current.documentRevision &&
-        (task.updatedAt > current.updatedAt ||
+        (taskVersionIsAfter(task.updatedAt, current.updatedAt) ||
           (task.updatedAt === current.updatedAt && task.id > current.id)))
     )
       result.set(task.documentId, task)

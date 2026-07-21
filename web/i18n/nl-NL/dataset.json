@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "{{count}} geselecteerd",
+  "newKnowledge.partialDocumentResults": "Er kunnen meer overeenkomende documenten zijn. Laad meer om verder te zoeken.",
   "newKnowledge.permission": "Toestemming",
   "newKnowledge.permissionAllMembers": "Werkruimte · alle leden kunnen bekijken en bewerken",
   "newKnowledge.permissionLoadFailed": "Uw bewerkingsmachtigingen konden niet worden gecontroleerd. Probeer het opnieuw.",

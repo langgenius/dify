@@ -405,6 +405,15 @@ export function DocumentsList({
             {t(($) => $['newKnowledge.noMatchingDocuments'])}
           </p>
         )}
+        {!documents.length && !completingResults && !isFetchNextPageError && resultsIncomplete && (
+          <p
+            aria-live="polite"
+            className="py-16 text-center body-sm-regular text-text-tertiary"
+            role="status"
+          >
+            {t(($) => $['newKnowledge.partialDocumentResults'])}
+          </p>
+        )}
         {completingResults && (
           <div className="flex min-h-32 items-center justify-center">
             <Loading />

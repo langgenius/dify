@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "{{count}} seçildi",
+  "newKnowledge.partialDocumentResults": "Eşleşen başka belgeler olabilir. Aramaya devam etmek için daha fazla yükleyin.",
   "newKnowledge.permission": "İzin",
   "newKnowledge.permissionAllMembers": "Çalışma alanı · tüm üyeler görüntüleyebilir ve düzenleyebilir",
   "newKnowledge.permissionLoadFailed": "Düzenleme izinleriniz doğrulanamadı. Tekrar deneyin.",

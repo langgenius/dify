@@ -29,6 +29,7 @@ import {
   sourceName,
   taskIsActive,
   taskNeedsAttention,
+  taskVersionIsAfter,
 } from './document-model'
 import { ProcessingTasksDrawer } from './processing-tasks-drawer'
 import { TaskEventObserver } from './task-event-observer'
@@ -38,6 +39,7 @@ const DOCUMENT_PAGE_SIZE = 50
 const TASK_PAGE_SIZE = 100
 const MAX_TASK_EVENT_STREAMS = 6
 const MAX_AUTO_CURSOR_PAGES = 20
+const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
 const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.md,.markdown,.html,.htm,.xls,.xlsx,.txt'
 const documentFilterParser = parseAsStringLiteral([
   'all',
@@ -85,15 +87,6 @@ function responseStatus(error: unknown): number | undefined {
 function taskSnapshotErrorIsTransient(error: unknown) {
   const status = responseStatus(error)
   return status === undefined || status === 408 || status === 429 || status >= 500
-}
-
-function taskVersionIsAfter(candidate: string, baseline: string) {
-  const candidateTime = Date.parse(candidate)
-  const baselineTime = Date.parse(baseline)
-  if (!Number.isNaN(candidateTime) && !Number.isNaN(baselineTime))
-    return candidateTime > baselineTime
-
-  return candidate.localeCompare(baseline) > 0
 }
 
 function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessingTask {
@@ -223,6 +216,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () => tasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [tasksQuery.data],
   )
+  const documentIds = useMemo(() => new Set(documents.map((document) => document.id)), [documents])
+  const unresolvedTaskDocumentIds = useMemo(
+    () =>
+      new Set(
+        baseTasks.flatMap((task) => (!documentIds.has(task.documentId) ? [task.documentId] : [])),
+      ),
+    [baseTasks, documentIds],
+  )
   const taskListSnapshotRef = useRef(tasksQuery.data)
   const taskListGenerationRef = useRef(0)
   if (taskListSnapshotRef.current !== tasksQuery.data) {
@@ -278,10 +279,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         )
           return { ...task, ...override }
         if (!override?.updatedAt) return override ? { ...task, ...override } : task
-        const overrideTime = Date.parse(override.updatedAt)
-        const taskTime = Date.parse(task.updatedAt)
-        if (!Number.isNaN(taskTime) && !Number.isNaN(overrideTime) && taskTime > overrideTime)
-          return task
+        if (taskVersionIsAfter(task.updatedAt, override.updatedAt)) return task
         return { ...task, ...override }
       }),
     [baseTasks, taskOverrides, terminalTaskPins],
@@ -432,10 +430,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () =>
       tasks
         .filter((task) => task.state === 'failed')
-        .sort(
-          (left, right) =>
-            right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
-        ),
+        .sort((left, right) => {
+          if (taskVersionIsAfter(left.updatedAt, right.updatedAt)) return -1
+          if (taskVersionIsAfter(right.updatedAt, left.updatedAt)) return 1
+          return right.id.localeCompare(left.id)
+        }),
     [tasks],
   )
   const orderedFailedTasksRef = useRef(orderedFailedTasks)
@@ -443,14 +442,21 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const failedTaskPollSignature = orderedFailedTasks
     .map((task) => `${task.id}:${task.updatedAt}`)
     .join('|')
-  const tasksButtonLabel = attentionTasks.length
-    ? t(($) => $['newKnowledge.tasksWithAttention'], { count: attentionTasks.length })
-    : t(($) => $['newKnowledge.tasks'])
-  const tasksLiveStatus = hasTaskError
-    ? t(($) => $['newKnowledge.taskAttentionErrorCount'], { count: attentionTasks.length })
-    : attentionTasks.length
-      ? t(($) => $['newKnowledge.taskAttentionCount'], { count: attentionTasks.length })
-      : t(($) => $['newKnowledge.taskAttentionClear'])
+  const incompleteTaskHistoryHint = hasNextTaskPage
+    ? ` · ${t(($) => $['newKnowledge.loadMore'])}`
+    : ''
+  const tasksButtonLabel = `${
+    attentionTasks.length || hasNextTaskPage
+      ? t(($) => $['newKnowledge.tasksWithAttention'], { count: attentionTasks.length })
+      : t(($) => $['newKnowledge.tasks'])
+  }${incompleteTaskHistoryHint}`
+  const tasksLiveStatus = `${
+    hasTaskError
+      ? t(($) => $['newKnowledge.taskAttentionErrorCount'], { count: attentionTasks.length })
+      : attentionTasks.length || hasNextTaskPage
+        ? t(($) => $['newKnowledge.taskAttentionCount'], { count: attentionTasks.length })
+        : t(($) => $['newKnowledge.taskAttentionClear'])
+  }${incompleteTaskHistoryHint}`
   const allFilteredSelected =
     selectableFilteredDocuments.length > 0 &&
     selectableFilteredDocuments.every((document) => validSelectedDocumentIds.has(document.id))
@@ -469,7 +475,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   useEffect(() => {
     if (
-      filterActive &&
+      (filterActive || unresolvedTaskDocumentIds.size > 0) &&
       canAutoFetchDocumentPage &&
       !isFetchingNextDocumentPage &&
       !isFetchNextDocumentPageError
@@ -478,6 +484,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [
     fetchNextDocumentPage,
     filterActive,
+    unresolvedTaskDocumentIds,
     canAutoFetchDocumentPage,
     isFetchNextDocumentPageError,
     isFetchingNextDocumentPage,
@@ -614,6 +621,46 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     },
     [knowledgeSpaceId],
   )
+
+  useEffect(() => {
+    const taskIds = new Set(baseTasks.map((task) => task.id))
+    const pruneMap = (map: Map<string, unknown>) => {
+      for (const taskId of map.keys()) {
+        if (!taskIds.has(taskId)) map.delete(taskId)
+      }
+    }
+
+    for (const [taskId, controller] of terminalReconciliationControllersRef.current) {
+      if (taskIds.has(taskId)) continue
+      controller.abort()
+      terminalReconciliationControllersRef.current.delete(taskId)
+    }
+    for (const [taskId, timeout] of terminalReconciliationTimeoutsRef.current) {
+      if (taskIds.has(taskId)) continue
+      window.clearTimeout(timeout)
+      terminalReconciliationTimeoutsRef.current.delete(taskId)
+    }
+    pruneMap(terminalReconciliationGenerationsRef.current)
+    pruneMap(failedTaskPollGenerationsRef.current)
+    pruneMap(blockedFailedTaskPollVersionsRef.current)
+    pruneMap(equalRetryListGenerationsRef.current)
+    pruneMap(pendingTerminalProgressRef.current)
+    taskProgressStore.retain(taskIds)
+
+    const retainTaskState = <Value,>(current: Record<string, Value>) => {
+      const staleTaskIds = Object.keys(current).filter((taskId) => !taskIds.has(taskId))
+      if (!staleTaskIds.length) return current
+      const next = { ...current }
+      for (const taskId of staleTaskIds) delete next[taskId]
+      return next
+    }
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Prune state for tasks removed by a refreshed cursor result.
+    setTaskOverrides(retainTaskState)
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Prune state for tasks removed by a refreshed cursor result.
+    setTerminalTaskPins(retainTaskState)
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Prune state for tasks removed by a refreshed cursor result.
+    setTaskObserverGenerations(retainTaskState)
+  }, [baseTasks, taskProgressStore])
 
   useEffect(() => {
     const strictRetries = new Map<string, DocumentProcessingTask>()
@@ -858,7 +905,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         if (
           event.event === 'progress' &&
           previous?.updatedAt &&
-          Date.parse(previous.updatedAt) > Date.parse(event.data.updatedAt)
+          taskVersionIsAfter(previous.updatedAt, event.data.updatedAt)
         )
           return current
         return {
@@ -955,7 +1002,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     if (!orderedFailedTasksRef.current.length) return
     let canceled = false
     let timeout: number | undefined
-    const controller = new AbortController()
+    const cancelRequests = new Set<() => void>()
     const pollNextBatch = async () => {
       const failedTasks = orderedFailedTasksRef.current
       const pollableTasks = failedTasks.filter(
@@ -973,9 +1020,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           tasksToPoll.map(async (task) => {
             const requestGeneration = (failedTaskPollGenerationsRef.current.get(task.id) ?? 0) + 1
             failedTaskPollGenerationsRef.current.set(task.id, requestGeneration)
+            const requestController = new AbortController()
+            let requestTimeout: number | undefined
+            let rejectDeadline: ((reason?: unknown) => void) | undefined
+            const cancelRequest = () => {
+              requestController.abort()
+              rejectDeadline?.(new DOMException('Task snapshot request aborted', 'AbortError'))
+            }
             try {
-              const snapshot =
-                await consoleClient.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId(
+              const request =
+                consoleClient.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId(
                   {
                     params: {
                       documentId: task.documentId,
@@ -983,8 +1037,17 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                       taskId: task.id,
                     },
                   },
-                  { signal: controller.signal },
+                  { signal: requestController.signal },
                 )
+              const deadline = new Promise<never>((_resolve, reject) => {
+                rejectDeadline = reject
+                requestTimeout = window.setTimeout(() => {
+                  requestController.abort()
+                  reject(new DOMException('Task snapshot request timed out', 'TimeoutError'))
+                }, FAILED_TASK_POLL_REQUEST_TIMEOUT)
+              })
+              cancelRequests.add(cancelRequest)
+              const snapshot = await Promise.race([request, deadline])
               if (
                 canceled ||
                 failedTaskPollGenerationsRef.current.get(task.id) !== requestGeneration
@@ -1001,6 +1064,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 return
               if (!taskSnapshotErrorIsTransient(error))
                 blockedFailedTaskPollVersionsRef.current.set(task.id, task.updatedAt)
+            } finally {
+              if (requestTimeout !== undefined) window.clearTimeout(requestTimeout)
+              cancelRequests.delete(cancelRequest)
             }
           }),
         )
@@ -1010,7 +1076,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     timeout = window.setTimeout(() => void pollNextBatch(), 5000)
     return () => {
       canceled = true
-      controller.abort()
+      for (const cancelRequest of cancelRequests) cancelRequest()
+      cancelRequests.clear()
       if (timeout !== undefined) window.clearTimeout(timeout)
     }
   }, [failedTaskPollSignature, handleTaskUpdated, knowledgeSpaceId])
@@ -1251,11 +1318,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         />
       )}
       <ProcessingTasksDrawer
-        canEdit={canWrite && !taskResultsIncomplete && !tasksQuery.error}
+        canEdit={canWrite}
         documents={documents}
+        documentsPending={Boolean(hasNextDocumentPage || documentsQuery.isFetchingNextPage)}
+        hasNextDocumentPage={Boolean(hasNextDocumentPage)}
         hasNextTaskPage={Boolean(hasNextTaskPage)}
+        hasUnresolvedTaskDocuments={unresolvedTaskDocumentIds.size > 0}
+        isFetchingNextDocumentPage={isFetchingNextDocumentPage}
         isFetchingNextTaskPage={isFetchingNextTaskPage}
         knowledgeSpaceId={knowledgeSpaceId}
+        onLoadMoreDocuments={() => void fetchNextDocumentPage()}
         onLoadMoreTasks={() => void fetchNextTaskPage()}
         onOpenChange={setTasksOpen}
         onRetryTaskQuery={() => {

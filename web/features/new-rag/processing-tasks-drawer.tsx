@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/client'
-import { taskCanRetry, taskIsActive } from './document-model'
+import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
 
 type TaskAction = 'cancel' | 'retry'
 
@@ -35,7 +35,9 @@ function taskTime(task: DocumentProcessingTask) {
 }
 
 function compareTaskRecency(left: DocumentProcessingTask, right: DocumentProcessingTask) {
-  return right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id)
+  if (taskVersionIsAfter(left.updatedAt, right.updatedAt)) return -1
+  if (taskVersionIsAfter(right.updatedAt, left.updatedAt)) return 1
+  return right.id.localeCompare(left.id)
 }
 
 function newestTasks(
@@ -62,9 +64,14 @@ function newestTasks(
 export function ProcessingTasksDrawer({
   canEdit,
   documents,
+  documentsPending,
+  hasNextDocumentPage,
   hasNextTaskPage,
+  hasUnresolvedTaskDocuments,
+  isFetchingNextDocumentPage,
   isFetchingNextTaskPage,
   knowledgeSpaceId,
+  onLoadMoreDocuments,
   onLoadMoreTasks,
   onOpenChange,
   onTaskUpdated,
@@ -77,9 +84,14 @@ export function ProcessingTasksDrawer({
 }: {
   canEdit: boolean
   documents: LogicalDocument[]
+  documentsPending: boolean
+  hasNextDocumentPage: boolean
   hasNextTaskPage: boolean
+  hasUnresolvedTaskDocuments: boolean
+  isFetchingNextDocumentPage: boolean
   isFetchingNextTaskPage: boolean
   knowledgeSpaceId: string
+  onLoadMoreDocuments: () => void
   onLoadMoreTasks: () => void
   onOpenChange: (open: boolean) => void
   onTaskUpdated: (task: DocumentProcessingTask) => void
@@ -101,6 +113,7 @@ export function ProcessingTasksDrawer({
     consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry.mutationOptions(),
   )
   const pendingActionsRef = useRef(new Set<string>())
+  const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
   const [actionErrors, setActionErrors] = useState<Record<string, boolean>>({})
   const [visibleTaskLimit, setVisibleTaskLimit] = useState(TASK_DRAWER_LIMIT)
@@ -137,10 +150,15 @@ export function ProcessingTasksDrawer({
       compareTaskRecency,
     )
   }, [open, tasks, visibleTaskLimit])
-  const hasMoreTasks = open && (tasks.length > orderedBaseTasks.length || hasNextTaskPage)
+  const hasMoreTasks =
+    open &&
+    (tasks.length > orderedBaseTasks.length ||
+      hasNextTaskPage ||
+      (hasUnresolvedTaskDocuments && hasNextDocumentPage))
   const orderedTasks = orderedBaseTasks.map((task) => {
     const progress = taskProgressStore.get(task.id)
-    if (!progress || !taskIsActive(task) || task.updatedAt > progress.updatedAt) return task
+    if (!progress || !taskIsActive(task) || taskVersionIsAfter(task.updatedAt, progress.updatedAt))
+      return task
     return {
       ...task,
       errorCode: undefined,
@@ -177,6 +195,7 @@ export function ProcessingTasksDrawer({
           ? await cancelTask.mutateAsync(input)
           : await retryTask.mutateAsync(input)
       onTaskUpdated(updated)
+      drawerCloseButtonRef.current?.focus()
     } catch {
       setActionErrors((current) => ({ ...current, [task.id]: true }))
     } finally {
@@ -211,6 +230,7 @@ export function ProcessingTasksDrawer({
                     {t(($) => $['newKnowledge.backgroundTasks'])}
                   </DrawerTitle>
                   <DrawerCloseButton
+                    ref={drawerCloseButtonRef}
                     aria-label={tCommon(($) => $['operation.close'])}
                     className="size-6 rounded-md"
                   />
@@ -235,103 +255,103 @@ export function ProcessingTasksDrawer({
                     <Loading />
                   </div>
                 ) : orderedTasks.length ? (
-                  <>
-                    <ul className="divide-y divide-divider-subtle">
-                      {orderedTasks.map((task) => {
-                        const title = documentTitles.get(task.documentId) ?? task.documentId
-                        const timestamp = Date.parse(
-                          taskIsActive(task) ? task.createdAt : taskTime(task),
-                        )
-                        const taskError = task.errorMessage ?? task.errorCode
-                        return (
-                          <li
-                            key={task.id}
-                            className="flex min-h-[62px] items-center gap-2.5 py-3.5"
-                          >
-                            <span
-                              aria-hidden
-                              className={
-                                task.state === 'failed'
-                                  ? 'i-ri-error-warning-fill size-4 shrink-0 text-text-destructive'
-                                  : taskIsActive(task)
-                                    ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin text-text-accent motion-reduce:animate-none'
-                                    : task.state === 'succeeded'
-                                      ? 'i-ri-check-line size-4 shrink-0 text-text-success'
-                                      : 'i-ri-indeterminate-circle-line size-4 shrink-0 text-text-tertiary'
-                              }
-                            />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate system-xs-medium text-text-primary">
-                                {t(($) => $['newKnowledge.processDocument'], { name: title })}
-                              </p>
-                              <p className="mt-0.5 truncate system-2xs-regular text-text-tertiary">
-                                {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
-                                  progress: task.progressPercent,
-                                })}
-                                {!Number.isNaN(timestamp) && (
-                                  <>
-                                    <span aria-hidden> · </span>
-                                    {formatTimeFromNow(timestamp)}
-                                  </>
-                                )}
-                              </p>
-                              {taskError && (
-                                <p className="mt-1 system-2xs-regular break-words whitespace-pre-wrap text-text-destructive">
-                                  {taskError}
-                                </p>
+                  <ul className="divide-y divide-divider-subtle">
+                    {orderedTasks.map((task) => {
+                      const title =
+                        documentTitles.get(task.documentId) ??
+                        (documentsPending
+                          ? t(($) => $['newKnowledge.documentColumn'])
+                          : task.documentId)
+                      const timestamp = Date.parse(
+                        taskIsActive(task) ? task.createdAt : taskTime(task),
+                      )
+                      const taskError = task.errorMessage ?? task.errorCode
+                      return (
+                        <li key={task.id} className="flex min-h-[62px] items-center gap-2.5 py-3.5">
+                          <span
+                            aria-hidden
+                            className={
+                              task.state === 'failed'
+                                ? 'i-ri-error-warning-fill size-4 shrink-0 text-text-destructive'
+                                : taskIsActive(task)
+                                  ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin text-text-accent motion-reduce:animate-none'
+                                  : task.state === 'succeeded'
+                                    ? 'i-ri-check-line size-4 shrink-0 text-text-success'
+                                    : 'i-ri-indeterminate-circle-line size-4 shrink-0 text-text-tertiary'
+                            }
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate system-xs-medium text-text-primary">
+                              {t(($) => $['newKnowledge.processDocument'], { name: title })}
+                            </p>
+                            <p className="mt-0.5 truncate system-2xs-regular text-text-tertiary">
+                              {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
+                                progress: task.progressPercent,
+                              })}
+                              {!Number.isNaN(timestamp) && (
+                                <>
+                                  <span aria-hidden> · </span>
+                                  {formatTimeFromNow(timestamp)}
+                                </>
                               )}
-                              {actionErrors[task.id] && (
-                                <p
-                                  className="mt-1 system-2xs-regular text-text-destructive"
-                                  role="alert"
-                                >
-                                  {t(($) => $['newKnowledge.taskActionFailed'])}
-                                </p>
-                              )}
-                            </div>
-                            {canEdit && taskIsActive(task) ? (
-                              <Button
-                                size="small"
-                                disabled={pendingActions.has(task.id)}
-                                loading={pendingActions.has(task.id)}
-                                onClick={() => void performAction(task, 'cancel')}
+                            </p>
+                            {taskError && (
+                              <p className="mt-1 system-2xs-regular break-words whitespace-pre-wrap text-text-destructive">
+                                {taskError}
+                              </p>
+                            )}
+                            {actionErrors[task.id] && (
+                              <p
+                                className="mt-1 system-2xs-regular text-text-destructive"
+                                role="alert"
                               >
-                                {t(($) => $['newKnowledge.interruptTask'])}
-                              </Button>
-                            ) : canEdit && taskCanRetry(task) ? (
-                              <Button
-                                size="small"
-                                disabled={pendingActions.has(task.id)}
-                                loading={pendingActions.has(task.id)}
-                                onClick={() => void performAction(task, 'retry')}
-                              >
-                                {t(($) => $['newKnowledge.retryTask'])}
-                              </Button>
-                            ) : null}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                    {hasMoreTasks && (
-                      <div className="mt-4 flex justify-center">
-                        <Button
-                          loading={isFetchingNextTaskPage}
-                          onClick={() => {
-                            if (tasks.length <= orderedBaseTasks.length && hasNextTaskPage)
-                              onLoadMoreTasks()
-                            setVisibleTaskLimit((current) => current + TASK_DRAWER_LIMIT)
-                          }}
-                        >
-                          {t(($) => $['newKnowledge.loadMore'])}
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : !taskQueryError ? (
+                                {t(($) => $['newKnowledge.taskActionFailed'])}
+                              </p>
+                            )}
+                          </div>
+                          {canEdit && taskIsActive(task) ? (
+                            <Button
+                              size="small"
+                              disabled={pendingActions.has(task.id)}
+                              loading={pendingActions.has(task.id)}
+                              onClick={() => void performAction(task, 'cancel')}
+                            >
+                              {t(($) => $['newKnowledge.interruptTask'])}
+                            </Button>
+                          ) : canEdit && taskCanRetry(task) ? (
+                            <Button
+                              size="small"
+                              disabled={pendingActions.has(task.id)}
+                              loading={pendingActions.has(task.id)}
+                              onClick={() => void performAction(task, 'retry')}
+                            >
+                              {t(($) => $['newKnowledge.retryTask'])}
+                            </Button>
+                          ) : null}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : !taskQueryError && !hasMoreTasks ? (
                   <p className="py-16 text-center system-xs-regular text-text-tertiary">
                     {t(($) => $['newKnowledge.noBackgroundTasks'])}
                   </p>
                 ) : null}
+                {hasMoreTasks && (
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      loading={isFetchingNextTaskPage || isFetchingNextDocumentPage}
+                      onClick={() => {
+                        if (tasks.length <= orderedBaseTasks.length && hasNextTaskPage)
+                          onLoadMoreTasks()
+                        if (hasUnresolvedTaskDocuments && hasNextDocumentPage) onLoadMoreDocuments()
+                        setVisibleTaskLimit((current) => current + TASK_DRAWER_LIMIT)
+                      }}
+                    >
+                      {t(($) => $['newKnowledge.loadMore'])}
+                    </Button>
+                  </div>
+                )}
               </div>
             </DrawerContent>
           </DrawerPopup>

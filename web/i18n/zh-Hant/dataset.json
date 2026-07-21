@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "已選取 {{count}} 項",
+  "newKnowledge.partialDocumentResults": "可能還有符合的文件。載入更多以繼續搜尋。",
   "newKnowledge.permission": "權限",
   "newKnowledge.permissionAllMembers": "工作區 · 所有成員皆可檢視和編輯",
   "newKnowledge.permissionLoadFailed": "無法驗證你的編輯權限，請再試一次。",

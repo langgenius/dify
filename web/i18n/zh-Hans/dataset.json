@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "已选择 {{count}} 项",
+  "newKnowledge.partialDocumentResults": "可能还有匹配的文档。加载更多以继续搜索。",
   "newKnowledge.permission": "权限",
   "newKnowledge.permissionAllMembers": "工作区 · 所有成员均可查看和编辑",
   "newKnowledge.permissionLoadFailed": "无法验证你的编辑权限，请重试。",

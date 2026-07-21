@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "Izbrano: {{count}}",
+  "newKnowledge.partialDocumentResults": "Morda se ujema več dokumentov. Naložite jih več za nadaljevanje iskanja.",
   "newKnowledge.permission": "Dovoljenje",
   "newKnowledge.permissionAllMembers": "Delovni prostor · vsi člani si lahko ogledujejo in urejajo",
   "newKnowledge.permissionLoadFailed": "Dovoljenj za urejanje ni bilo mogoče preveriti. Poskusite znova.",

@@ -8,6 +8,7 @@ import {
   taskCanRetry,
   taskIsActive,
   taskNeedsAttention,
+  taskVersionIsAfter,
 } from '../document-model'
 
 const document = (overrides: Partial<LogicalDocument> = {}): LogicalDocument => ({
@@ -56,6 +57,23 @@ describe('new Knowledge document model', () => {
     ])
 
     expect(result.get('document-1')?.id).toBe('current')
+  })
+
+  it('compares task versions without losing sub-millisecond precision', () => {
+    expect(taskVersionIsAfter('2026-07-20T10:00:00.123789Z', '2026-07-20T10:00:00.123456Z')).toBe(
+      true,
+    )
+    expect(taskVersionIsAfter('2026-07-20T10:00:00.000001Z', '2026-07-20T10:00:00Z')).toBe(true)
+    expect(taskVersionIsAfter('2026-07-20T10:00:00Z', '2026-07-20T10:00:00.000001Z')).toBe(false)
+  })
+
+  it('selects the newest task when versions differ only after milliseconds', () => {
+    const result = newestTaskByDocument([
+      task({ id: 'older', updatedAt: '2026-07-20T10:00:00.123456Z' }),
+      task({ id: 'newer', updatedAt: '2026-07-20T10:00:00.123789Z' }),
+    ])
+
+    expect(result.get('document-1')?.id).toBe('newer')
   })
 
   it.each([

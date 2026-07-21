@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "{{count}} selectate",
+  "newKnowledge.partialDocumentResults": "Este posibil să existe mai multe documente potrivite. Încarcă mai multe pentru a continua căutarea.",
   "newKnowledge.permission": "Permisiune",
   "newKnowledge.permissionAllMembers": "Spațiu de lucru · toți membrii pot vizualiza și edita",
   "newKnowledge.permissionLoadFailed": "Permisiunile de editare nu au putut fi verificate. Încercați din nou.",

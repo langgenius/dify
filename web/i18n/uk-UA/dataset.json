@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "Вибрано: {{count}}",
+  "newKnowledge.partialDocumentResults": "Може бути більше відповідних документів. Завантажте ще, щоб продовжити пошук.",
   "newKnowledge.permission": "Дозвіл",
   "newKnowledge.permissionAllMembers": "Робоча область · усі учасники можуть переглядати та редагувати",
   "newKnowledge.permissionLoadFailed": "Не вдалося перевірити дозволи на редагування. Спробуйте ще раз.",

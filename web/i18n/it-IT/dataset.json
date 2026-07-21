@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "{{count}} selezionati",
+  "newKnowledge.partialDocumentResults": "Potrebbero esserci altri documenti corrispondenti. Caricane altri per continuare la ricerca.",
   "newKnowledge.permission": "Autorizzazione",
   "newKnowledge.permissionAllMembers": "Area di lavoro · tutti i membri possono visualizzare e modificare",
   "newKnowledge.permissionLoadFailed": "Impossibile verificare le autorizzazioni di modifica. Riprova.",

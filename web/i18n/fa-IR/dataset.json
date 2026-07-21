@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "{{count}} مورد انتخاب شد",
+  "newKnowledge.partialDocumentResults": "ممکن است اسناد بیشتری مطابقت داشته باشند. برای ادامه جستجو موارد بیشتری بارگیری کنید.",
   "newKnowledge.permission": "اجازه",
   "newKnowledge.permissionAllMembers": "فضای کاری · همه اعضا می توانند مشاهده و ویرایش کنند",
   "newKnowledge.permissionLoadFailed": "تأیید مجوزهای ویرایش ممکن نشد. دوباره تلاش کنید.",

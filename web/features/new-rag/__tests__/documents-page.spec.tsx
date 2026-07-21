@@ -700,19 +700,26 @@ describe('DocumentsPage', () => {
     expect(tasksQuery.refetch).not.toHaveBeenCalled()
   })
 
-  it('continues remote task pagination from the task drawer after the automatic cap', async () => {
+  it('continues remote task pagination from an empty cached drawer after the automatic cap', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = {
-      pages: Array.from({ length: 20 }, (_, index) => ({
-        items: index === 0 ? [task({ state: 'succeeded' })] : [],
+      pages: Array.from({ length: 20 }, () => ({
+        items: [],
         nextCursor: 'next',
       })),
     }
     tasksQuery.hasNextPage = true
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":0} · dataset.newKnowledge.loadMore',
+      }),
+    )
+    expect(
+      within(screen.getByRole('dialog')).queryByText('dataset.newKnowledge.noBackgroundTasks'),
+    ).not.toBeInTheDocument()
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', {
         name: 'dataset.newKnowledge.loadMore',
@@ -720,6 +727,37 @@ describe('DocumentsPage', () => {
     )
 
     expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
+  it('loads document titles for tasks whose documents are on a later cursor page', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: Array.from({ length: 20 }, (_, index) => ({
+        items: index === 0 ? [document()] : [],
+        nextCursor: 'next',
+      })),
+    }
+    documentsQuery.hasNextPage = true
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ documentId: 'later-document', id: 'later-task', state: 'succeeded' })],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+
+    const panel = screen.getByRole('dialog')
+    expect(within(panel).queryByText('later-document')).not.toBeInTheDocument()
+    expect(
+      within(panel).getByText(
+        'dataset.newKnowledge.processDocument:{"name":"dataset.newKnowledge.documentColumn"}',
+      ),
+    ).toBeInTheDocument()
+    await user.click(within(panel).getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
   it('keeps an unresolved source pending when a background source refresh fails', () => {
@@ -740,11 +778,12 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('keeps cached documents visible when a background task refresh fails', async () => {
+  it('keeps loaded task actions available when background task pagination fails', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = { pages: [{ items: [task()] }] }
     tasksQuery.error = new Error('poll failed')
+    tasksQuery.isFetchingNextPage = true
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -752,11 +791,6 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.tasksErrorDescription',
     )
-    expect(
-      within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ })).getByText(
-        'dataset.newKnowledge.documentStatus.processing',
-      ),
-    ).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -769,8 +803,8 @@ describe('DocumentsPage', () => {
       }),
     )
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).toBeInTheDocument()
   })
 
   it('renders document identity while dependency cursor pages continue loading', () => {
@@ -1037,6 +1071,7 @@ describe('DocumentsPage', () => {
     })
     await act(async () => resolveCancel?.(task({ id: 'running', state: 'canceled' })))
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toHaveFocus()
   })
 
   it('locks cancel and retry together while either task mutation is pending', async () => {
@@ -2315,7 +2350,7 @@ describe('DocumentsPage', () => {
           name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
         }),
       )
-      await act(async () => vi.advanceTimersByTime(20000))
+      await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
       fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
       await act(async () => {})
@@ -2430,6 +2465,75 @@ describe('DocumentsPage', () => {
     }
   })
 
+  it('advances failed-task polling when a snapshot request never settles', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: Array.from({ length: 7 }, (_, index) =>
+            task({ id: `failed-${index}`, state: 'failed' }),
+          ),
+        },
+      ],
+    }
+    getTaskSnapshot.mockImplementation((input: { params: { taskId: string } }) => {
+      if (input.params.taskId !== 'failed-0') return new Promise<DocumentProcessingTask>(() => {})
+      return Promise.resolve(
+        task({
+          id: 'failed-0',
+          state: 'dispatch_pending',
+          updatedAt: '2026-07-20T10:02:00Z',
+        }),
+      )
+    })
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(6)
+      await act(async () => vi.advanceTimersByTime(3000))
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(12)
+      expect(getTaskSnapshot).toHaveBeenCalledWith(
+        expect.objectContaining({ params: expect.objectContaining({ taskId: 'failed-0' }) }),
+        expect.anything(),
+      )
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('forgets permanent poll failures after a task leaves the cursor result', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'removed-failed-task', state: 'failed' })] }],
+    }
+    getTaskSnapshot.mockRejectedValue(new Response(null, { status: 403 }))
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+
+      tasksQuery.data = { pages: [{ items: [] }] }
+      rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await act(async () => {})
+      tasksQuery.data = {
+        pages: [{ items: [task({ id: 'removed-failed-task', state: 'failed' })] }],
+      }
+      rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await act(async () => vi.advanceTimersByTime(5000))
+
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('ignores an older active snapshot while polling a newer failed task', async () => {
     vi.useFakeTimers()
     documentsQuery.data = { pages: [{ items: [document()] }] }
@@ -2441,7 +2545,7 @@ describe('DocumentsPage', () => {
               errorCode: 'LATEST_FAILURE',
               id: 'stale-active-poll',
               state: 'failed',
-              updatedAt: '2026-07-20T10:03:00Z',
+              updatedAt: '2026-07-20T10:03:00.123789Z',
             }),
           ],
         },
@@ -2451,7 +2555,7 @@ describe('DocumentsPage', () => {
       task({
         id: 'stale-active-poll',
         state: 'dispatch_pending',
-        updatedAt: '2026-07-20T10:02:00Z',
+        updatedAt: '2026-07-20T10:03:00.123456Z',
       }),
     )
 
@@ -2744,6 +2848,7 @@ describe('DocumentsPage', () => {
     await user.clear(screen.getByRole('searchbox'))
     await user.type(screen.getByRole('searchbox'), 'missing')
     expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
     await user.click(loadMore)
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()

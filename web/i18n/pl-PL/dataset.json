@@ -268,6 +268,7 @@
   "newKnowledge.pagesAppearTitle": "Pages will appear here",
   "newKnowledge.pagesCrawled": "{{count}} pages crawled at {{host}}",
   "newKnowledge.pagesSelected": "Wybrano: {{count}}",
+  "newKnowledge.partialDocumentResults": "Więcej dokumentów może pasować. Wczytaj więcej, aby kontynuować wyszukiwanie.",
   "newKnowledge.permission": "Pozwolenie",
   "newKnowledge.permissionAllMembers": "Obszar roboczy · wszyscy członkowie mogą przeglądać i edytować",
   "newKnowledge.permissionLoadFailed": "Nie udało się zweryfikować uprawnień do edycji. Spróbuj ponownie.",
