@@ -1,6 +1,7 @@
 import type { DefaultModelResponse } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'
 
@@ -30,44 +31,22 @@ const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
-const mockModelSelectorProps = vi.hoisted(() => [] as Array<{ hideProviderSettingsFooter?: boolean, onConfigureEmptyState?: () => void, showModelMeta?: boolean }>)
+const mockModelSelectorProps = vi.hoisted(
+  () =>
+    [] as Array<{
+      hideProviderSettingsFooter?: boolean
+      onConfigureEmptyState?: () => void
+      showModelMeta?: boolean
+    }>,
+)
 
 let mockWorkspacePermissionKeys = ['plugin.model_config']
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/context/provider-context', () => ({
@@ -92,7 +71,10 @@ vi.mock('../../hooks', () => ({
     data: [],
   }),
   useSystemDefaultModelAndModelList: (defaultModel: DefaultModelResponse | undefined) => [
-    defaultModel || { model: '', provider: { provider: '', icon_small: { en_US: '', zh_Hans: '' } } },
+    defaultModel || {
+      model: '',
+      provider: { provider: '', icon_small: { en_US: '', zh_Hans: '' } },
+    },
     vi.fn(),
   ],
   useUpdateModelList: () => mockUpdateModelList,
@@ -104,12 +86,21 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: (props: { hideProviderSettingsFooter?: boolean, onConfigureEmptyState?: () => void, showModelMeta?: boolean, onSelect: (model: { model: string, provider: string }) => void }) => {
+  default: (props: {
+    hideProviderSettingsFooter?: boolean
+    onConfigureEmptyState?: () => void
+    showModelMeta?: boolean
+    onSelect: (model: { model: string; provider: string }) => void
+  }) => {
     mockModelSelectorProps.push(props)
     return (
       <div>
-        <button onClick={() => props.onSelect({ model: 'test', provider: 'test' })}>Mock Model Selector</button>
-        {props.onConfigureEmptyState && <button onClick={props.onConfigureEmptyState}>Mock Configure Empty State</button>}
+        <button onClick={() => props.onSelect({ model: 'test', provider: 'test' })}>
+          Mock Model Selector
+        </button>
+        {props.onConfigureEmptyState && (
+          <button onClick={props.onConfigureEmptyState}>Mock Configure Empty State</button>
+        )}
       </div>
     )
   },
@@ -181,7 +172,7 @@ describe('SystemModel', () => {
     })
 
     const selectorButtons = screen.getAllByRole('button', { name: 'Mock Model Selector' })
-    selectorButtons.forEach(button => fireEvent.click(button))
+    selectorButtons.forEach((button) => fireEvent.click(button))
 
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
 
@@ -232,7 +223,7 @@ describe('SystemModel', () => {
       expect(mockModelSelectorProps).toHaveLength(5)
     })
 
-    expect(mockModelSelectorProps.every(props => props.hideProviderSettingsFooter)).toBe(true)
+    expect(mockModelSelectorProps.every((props) => props.hideProviderSettingsFooter)).toBe(true)
   })
 
   it('should hide model metadata in default model selectors', async () => {
@@ -243,7 +234,7 @@ describe('SystemModel', () => {
       expect(mockModelSelectorProps).toHaveLength(5)
     })
 
-    expect(mockModelSelectorProps.every(props => props.showModelMeta === false)).toBe(true)
+    expect(mockModelSelectorProps.every((props) => props.showModelMeta === false)).toBe(true)
   })
 
   it('should close the dialog from the empty selector configure action', async () => {

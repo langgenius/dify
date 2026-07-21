@@ -5,8 +5,7 @@ import { FeaturesContext, FeaturesProvider } from '../context'
 
 const TestConsumer = () => {
   const store = use(FeaturesContext)
-  if (!store)
-    return <div>no store</div>
+  if (!store) return <div>no store</div>
 
   const { features } = store.getState()
   return <div role="status">{features.moreLikeThis?.enabled ? 'enabled' : 'disabled'}</div>

@@ -268,6 +268,20 @@ def _workflow_generate_payload() -> dict:
     }
 
 
+def _workflow_graph(*, node_id: str | None = None) -> dict:
+    nodes = []
+    if node_id:
+        nodes.append(
+            {
+                "id": node_id,
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"type": "start", "title": "Start"},
+            }
+        )
+    return {"nodes": nodes, "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}}
+
+
 def _stub_workflow_service(monkeypatch: pytest.MonkeyPatch, returns=None, raises: Exception | None = None):
     def _call(**_kwargs):
         if raises is not None:
@@ -286,10 +300,15 @@ def test_workflow_generate_returns_service_result(app: Flask, monkeypatch: pytes
     method = unwrap(api.post)
 
     expected = {
-        "graph": {"nodes": [{"id": "node-1"}], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+        "graph": _workflow_graph(node_id="node-1"),
         "message": "Summarize",
+        "app_name": "",
+        "icon": "",
         "error": "",
+        "errors": [],
+        "mode": None,
     }
+    expected["graph"]["nodes"][0]["parentId"] = "container-1"
     _stub_workflow_service(monkeypatch, returns=expected)
 
     with app.test_request_context(
@@ -300,6 +319,17 @@ def test_workflow_generate_returns_service_result(app: Flask, monkeypatch: pytes
         response = method(api, "t1")
 
     assert response == expected
+
+
+def test_workflow_generate_response_schema_is_concrete() -> None:
+    schema = generator_module.WorkflowGenerateResponse.model_json_schema()
+
+    assert schema["properties"]["graph"]["$ref"].endswith("/$defs/WorkflowGraph")
+    error_items = schema["properties"]["errors"]["items"]
+    assert error_items["$ref"].endswith("/$defs/WorkflowGenerateErrorResponse")
+    assert set(schema["$defs"]["WorkflowGenerateErrorCode"]["enum"]) == {
+        code.value for code in generator_module.WorkflowGenerateErrorCode
+    }
 
 
 def test_workflow_generate_maps_provider_token_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -421,7 +451,7 @@ def test_workflow_generate_forwards_current_graph_for_refine(app: Flask, monkeyp
 
     monkeypatch.setattr(generator_module.WorkflowGeneratorService, "generate_workflow_graph", _capture)
 
-    graph = {"nodes": [{"id": "node1"}], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}}
+    graph = _workflow_graph(node_id="node1")
     payload = _workflow_generate_payload()
     payload["current_graph"] = graph
     with app.test_request_context(
@@ -613,7 +643,7 @@ def test_workflow_generate_stream_emits_plan_then_result(app: Flask, monkeypatch
 
     def _stream(**_kwargs):
         yield ("plan", {"title": "Summarizer", "mode": "workflow", "nodes": []})
-        yield ("result", {"graph": {"nodes": []}, "error": "", "mode": "workflow"})
+        yield ("result", {"graph": _workflow_graph(), "error": "", "mode": "workflow"})
 
     monkeypatch.setattr(generator_module.WorkflowGeneratorService, "generate_workflow_graph_stream", _stream)
 

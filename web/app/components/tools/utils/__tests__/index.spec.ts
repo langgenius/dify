@@ -11,10 +11,7 @@ describe('tools/utils', () => {
     })
 
     it('returns unsorted when some items lack position', () => {
-      const items = [
-        { id: '1', position: 2 },
-        { id: '2' },
-      ] as unknown as ThoughtItem[]
+      const items = [{ id: '1', position: 2 }, { id: '2' }] as unknown as ThoughtItem[]
       const result = sortAgentSorts(items)
       expect(result[0]).toEqual(expect.objectContaining({ id: '1' }))
       expect(result[1]).toEqual(expect.objectContaining({ id: '2' }))
@@ -60,14 +57,14 @@ describe('tools/utils', () => {
       ] as unknown as ThoughtItem[]
 
       const result = addFileInfos(items, [file1, file2])
-      expect((result[0] as ThoughtItem & { message_files: FileEntity[] }).message_files).toEqual([file1, file2])
+      expect((result[0] as ThoughtItem & { message_files: FileEntity[] }).message_files).toEqual([
+        file1,
+        file2,
+      ])
     })
 
     it('returns items without files unchanged', () => {
-      const items = [
-        { id: '1' },
-        { id: '2', files: null },
-      ] as unknown as ThoughtItem[]
+      const items = [{ id: '1' }, { id: '2', files: null }] as unknown as ThoughtItem[]
       const result = addFileInfos(items, [])
       expect(result[0]).toEqual(expect.objectContaining({ id: '1' }))
     })

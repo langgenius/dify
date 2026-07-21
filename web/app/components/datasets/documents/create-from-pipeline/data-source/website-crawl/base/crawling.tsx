@@ -18,16 +18,11 @@ type ItemProps = {
   secondLineWidth: string
 }
 
-const Block = React.memo(({
-  className,
-}: BlockProps) => {
+const Block = React.memo(({ className }: BlockProps) => {
   return <div className={cn('bg-text-quaternary opacity-20', className)} />
 })
 
-const Item = React.memo(({
-  firstLineWidth,
-  secondLineWidth,
-}: ItemProps) => {
+const Item = React.memo(({ firstLineWidth, secondLineWidth }: ItemProps) => {
   return (
     <div className="flex gap-x-2 px-2 py-[5px]">
       <div className="py-0.5">
@@ -45,31 +40,28 @@ const Item = React.memo(({
   )
 })
 
-const Crawling = ({
-  className = '',
-  crawledNum,
-  totalNum,
-}: CrawlingProps) => {
+const Crawling = ({ className = '', crawledNum, totalNum }: CrawlingProps) => {
   const { t } = useTranslation()
 
-  const itemsConfig = [{
-    firstLineWidth: 'w-[35%]',
-    secondLineWidth: 'w-[50%]',
-  }, {
-    firstLineWidth: 'w-[40%]',
-    secondLineWidth: 'w-[45%]',
-  }, {
-    firstLineWidth: 'w-[30%]',
-    secondLineWidth: 'w-[36%]',
-  }]
+  const itemsConfig = [
+    {
+      firstLineWidth: 'w-[35%]',
+      secondLineWidth: 'w-[50%]',
+    },
+    {
+      firstLineWidth: 'w-[40%]',
+      secondLineWidth: 'w-[45%]',
+    },
+    {
+      firstLineWidth: 'w-[30%]',
+      secondLineWidth: 'w-[36%]',
+    },
+  ]
 
   return (
     <div className={cn('mt-2 flex flex-col gap-y-2 pt-2', className)}>
       <div className="system-sm-medium text-text-primary">
-        {t($ => $['stepOne.website.totalPageScraped'], { ns: 'datasetCreation' })}
-        {' '}
-        {crawledNum}
-        /
+        {t(($) => $['stepOne.website.totalPageScraped'], { ns: 'datasetCreation' })} {crawledNum}/
         {totalNum}
       </div>
       <div className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">

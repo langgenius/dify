@@ -56,13 +56,13 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
                 },
             )
 
-            dataset = segment.dataset
+            dataset = segment.get_dataset(session=session)
 
             if not dataset:
                 logger.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
                 return
 
-            dataset_document = segment.document
+            dataset_document = segment.get_document(session=session)
 
             if not dataset_document:
                 logger.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
@@ -76,9 +76,9 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
                 logger.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
                 return
 
-            index_type = dataset.doc_form
+            index_type = dataset.get_doc_form(session=session)
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
-            index_processor.load(dataset, [document])
+            index_processor.load(dataset, [document], session=session)
 
             # update segment to completed
             session.execute(

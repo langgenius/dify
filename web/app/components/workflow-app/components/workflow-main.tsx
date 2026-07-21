@@ -5,12 +5,8 @@ import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-s
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useAtomValue } from 'jotai'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -41,28 +37,38 @@ import {
 import WorkflowChildren from './workflow-children'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
-type WorkflowDataUpdatePayload = Pick<FetchWorkflowDraftResponse, 'features' | 'conversation_variables' | 'environment_variables'>
-const WorkflowMain = ({
-  nodes,
-  edges,
-  viewport,
-}: WorkflowMainProps) => {
+type WorkflowDataUpdatePayload = Pick<
+  FetchWorkflowDraftResponse,
+  'features' | 'conversation_variables' | 'environment_variables'
+>
+const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
+const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
+
+const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
+  const { t } = useTranslation()
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
-  const appId = useStore(s => s.appId)
-  const appDetail = useAppStore(s => s.appDetail)
+  const appId = useStore((s) => s.appId)
+  const appDetail = useAppStore((s) => s.appDetail)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [collaborationGraphState, setCollaborationGraphState] = useState({
+    appId: null as string | null,
+    isReady: false,
+  })
   const reactFlow = useReactFlow()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
 
-  const reactFlowStore = useMemo(() => ({
-    getState: () => ({
-      getNodes: () => reactFlow.getNodes(),
-      setNodes: (nodesToSet: Node[]) => reactFlow.setNodes(nodesToSet),
-      getEdges: () => reactFlow.getEdges(),
-      setEdges: (edgesToSet: Edge[]) => reactFlow.setEdges(edgesToSet),
+  const reactFlowStore = useMemo(
+    () => ({
+      getState: () => ({
+        getNodes: () => reactFlow.getNodes(),
+        setNodes: (nodesToSet: Node[]) => reactFlow.setNodes(nodesToSet),
+        getEdges: () => reactFlow.getEdges(),
+        setEdges: (edgesToSet: Edge[]) => reactFlow.setEdges(edgesToSet),
+      }),
     }),
-  }), [reactFlow])
+    [reactFlow],
+  )
   const {
     startCursorTracking,
     stopCursorTracking,
@@ -82,17 +88,17 @@ const WorkflowMain = ({
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(
-    () => getAppACLCapabilities(appDetail?.permission_keys, {
-      currentUserId,
-      resourceMaintainer: appDetail?.maintainer,
-      workspacePermissionKeys,
-    }),
+    () =>
+      getAppACLCapabilities(appDetail?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: appDetail?.maintainer,
+        workspacePermissionKeys,
+      }),
     [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
   )
 
   useEffect(() => {
-    if (!isCollaborationEnabled)
-      return
+    if (!isCollaborationEnabled) return
 
     if (containerRef.current)
       startCursorTracking(containerRef as React.RefObject<HTMLElement>, reactFlow)
@@ -102,57 +108,74 @@ const WorkflowMain = ({
     }
   }, [startCursorTracking, stopCursorTracking, reactFlow, isCollaborationEnabled])
 
-  const handleWorkflowDataUpdate = useCallback((payload: WorkflowDataUpdatePayload) => {
-    const {
-      features,
-      conversation_variables,
-      environment_variables,
-    } = payload
-    if (features && featuresStore) {
-      const { setFeatures } = featuresStore.getState()
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled) return
 
-      const transformedFeatures: FeaturesData = {
-        file: {
-          image: {
-            enabled: !!features.file_upload?.image?.enabled,
-            number_limits: features.file_upload?.image?.number_limits || 3,
-            transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+    return collaborationManager.onGraphReadyChange((isReady) => {
+      setCollaborationGraphState({ appId, isReady })
+    })
+  }, [appId, isCollaborationEnabled])
+
+  const handleWorkflowDataUpdate = useCallback(
+    (payload: WorkflowDataUpdatePayload) => {
+      const { features, conversation_variables, environment_variables } = payload
+      if (features && featuresStore) {
+        const { setFeatures } = featuresStore.getState()
+
+        const transformedFeatures: FeaturesData = {
+          file: {
+            image: {
+              enabled: !!features.file_upload?.image?.enabled,
+              number_limits: features.file_upload?.image?.number_limits || 3,
+              transfer_methods: features.file_upload?.image?.transfer_methods || [
+                'local_file',
+                'remote_url',
+              ],
+            },
+            enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
+            allowed_file_types: features.file_upload?.allowed_file_types || [
+              SupportUploadFileTypes.image,
+            ],
+            allowed_file_extensions:
+              features.file_upload?.allowed_file_extensions ||
+              FILE_EXTS[SupportUploadFileTypes.image]!.map((ext) => `.${ext}`),
+            allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods ||
+              features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+            number_limits:
+              features.file_upload?.number_limits ||
+              features.file_upload?.image?.number_limits ||
+              3,
           },
-          enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
-          allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-          allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image]!.map(ext => `.${ext}`),
-          allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-          number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
-        },
-        opening: {
-          enabled: !!features.opening_statement,
-          opening_statement: features.opening_statement,
-          suggested_questions: features.suggested_questions,
-        },
-        suggested: features.suggested_questions_after_answer || { enabled: false },
-        speech2text: features.speech_to_text || { enabled: false },
-        text2speech: features.text_to_speech || { enabled: false },
-        citation: features.retriever_resource || { enabled: false },
-        moderation: features.sensitive_word_avoidance || { enabled: false },
-        annotationReply: features.annotation_reply || { enabled: false },
+          opening: {
+            enabled: !!features.opening_statement,
+            opening_statement: features.opening_statement,
+            suggested_questions: features.suggested_questions,
+          },
+          suggested: features.suggested_questions_after_answer || { enabled: false },
+          speech2text: features.speech_to_text || { enabled: false },
+          text2speech: features.text_to_speech || { enabled: false },
+          citation: features.retriever_resource || { enabled: false },
+          moderation: features.sensitive_word_avoidance || { enabled: false },
+          annotationReply: features.annotation_reply || { enabled: false },
+        }
+
+        setFeatures(transformedFeatures)
       }
+      if (conversation_variables) {
+        const { setConversationVariables } = workflowStore.getState()
+        setConversationVariables(conversation_variables)
+      }
+      if (environment_variables) {
+        const { setEnvironmentVariables } = workflowStore.getState()
+        setEnvironmentVariables(environment_variables)
+      }
+    },
+    [featuresStore, workflowStore],
+  )
 
-      setFeatures(transformedFeatures)
-    }
-    if (conversation_variables) {
-      const { setConversationVariables } = workflowStore.getState()
-      setConversationVariables(conversation_variables)
-    }
-    if (environment_variables) {
-      const { setEnvironmentVariables } = workflowStore.getState()
-      setEnvironmentVariables(environment_variables)
-    }
-  }, [featuresStore, workflowStore])
-
-  const {
-    doSyncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraftByCanEdit(appACLCapabilities.canEdit)
+  const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraftByCanEdit(
+    appACLCapabilities.canEdit,
+  )
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const {
@@ -164,26 +187,25 @@ const WorkflowMain = ({
   } = useWorkflowRunByCanEdit(appACLCapabilities.canEdit)
 
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled)
-      return
+    if (!appId || !isCollaborationEnabled) return
 
-    const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(async (_update: CollaborationUpdate) => {
-      try {
-        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-        handleWorkflowDataUpdate(response)
-      }
-      catch (error) {
-        console.error('workflow vars and features update failed:', error)
-      }
-    })
+    const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(
+      async (_update: CollaborationUpdate) => {
+        try {
+          const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+          handleWorkflowDataUpdate(response)
+        } catch (error) {
+          console.error('workflow vars and features update failed:', error)
+        }
+      },
+    )
 
     return unsubscribe
   }, [appId, handleWorkflowDataUpdate, isCollaborationEnabled])
 
   // Listen for workflow updates from other users
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled)
-      return
+    if (!appId || !isCollaborationEnabled) return
 
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
       try {
@@ -195,26 +217,84 @@ const WorkflowMain = ({
         // Update workflow canvas (nodes, edges, viewport)
         if (response.graph)
           handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
-      }
-      catch (error) {
+      } catch (error) {
         console.error('Failed to fetch updated workflow:', error)
       }
     })
 
     return unsubscribe
-  }, [appId, getWorkflowDraftGraphForCanvas, handleWorkflowDataUpdate, handleUpdateWorkflowCanvas, isCollaborationEnabled])
+  }, [
+    appId,
+    getWorkflowDraftGraphForCanvas,
+    handleWorkflowDataUpdate,
+    handleUpdateWorkflowCanvas,
+    isCollaborationEnabled,
+  ])
 
-  // Listen for sync requests from other users (only processed by leader)
+  // The server directs this request to the selected saver. Do not gate it on the
+  // local leader flag because the preceding status event may still be in flight.
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled)
-      return
+    if (!appId || !isCollaborationEnabled) return
 
-    const unsubscribe = collaborationManager.onSyncRequest(() => {
-      doSyncWorkflowDraft()
+    const unsubscribe = collaborationManager.onSyncRequest(({ acknowledge }) => {
+      if (!collaborationManager.canPersistLocalGraph()) {
+        acknowledge({ success: false, error: 'Collaborative graph is not ready to save.' })
+        return
+      }
+
+      collaborationManager.refreshGraphSynchronously()
+      void doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+        .then((result) => {
+          acknowledge(
+            result
+              ? { success: true, hash: result.hash, updatedAt: result.updatedAt }
+              : { success: false },
+          )
+        })
+        .catch(() => {
+          acknowledge({ success: false })
+        })
     })
 
     return unsubscribe
   }, [appId, doSyncWorkflowDraft, isCollaborationEnabled])
+
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled) return
+
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+    let disposed = false
+    const unsubscribe = collaborationManager.onGraphReloadRequired(async (request) => {
+      if (retryTimer) {
+        clearTimeout(retryTimer)
+        retryTimer = undefined
+      }
+
+      const isCurrent = () => !disposed && collaborationManager.isGraphReloadCurrent(request)
+      const refreshed = await handleRefreshWorkflowDraft(false, { shouldApply: isCurrent })
+      if (!isCurrent()) return
+
+      if (refreshed) {
+        collaborationManager.replaceGraphFromReactFlow(request)
+        return
+      }
+
+      const retryDelay = Math.min(
+        GRAPH_RELOAD_RETRY_BASE_DELAY * 2 ** request.attempt,
+        GRAPH_RELOAD_RETRY_MAX_DELAY,
+      )
+      retryTimer = setTimeout(() => {
+        retryTimer = undefined
+        collaborationManager.retryGraphReload(request)
+      }, retryDelay)
+    })
+
+    return () => {
+      disposed = true
+      if (retryTimer) clearTimeout(retryTimer)
+      unsubscribe()
+    }
+  }, [appId, handleRefreshWorkflowDraft, isCollaborationEnabled])
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
@@ -226,10 +306,7 @@ const WorkflowMain = ({
   } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
-  const {
-    exportCheck,
-    handleExportDSL,
-  } = useDSLByCanEdit(appACLCapabilities.canEdit)
+  const { exportCheck, handleExportDSL } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
   const configsMap = useConfigsMap()
 
@@ -291,7 +368,6 @@ const WorkflowMain = ({
       invalidateConversationVarValues,
       accessControl: {
         canEdit: appACLCapabilities.canEdit,
-        canComment: appACLCapabilities.canComment,
         canRun: appACLCapabilities.canTestAndRun,
         canImportExportDSL: appACLCapabilities.canImportExportDSL,
         canReleaseAndVersion: appACLCapabilities.canReleaseAndVersion,
@@ -338,10 +414,7 @@ const WorkflowMain = ({
   ])
 
   return (
-    <div
-      ref={containerRef}
-      className="relative size-full"
-    >
+    <div ref={containerRef} className="relative size-full">
       <WorkflowWithInnerContext
         nodes={nodes}
         edges={edges}
@@ -354,6 +427,25 @@ const WorkflowMain = ({
       >
         <WorkflowChildren />
       </WorkflowWithInnerContext>
+      {isCollaborationEnabled &&
+        (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
+          <div
+            data-testid="collaboration-graph-loading"
+            className="absolute inset-0 z-50 flex cursor-wait items-center justify-center"
+          >
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
+            >
+              <span
+                aria-hidden="true"
+                className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
+              />
+              <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+            </div>
+          </div>
+        )}
     </div>
   )
 }

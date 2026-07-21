@@ -32,16 +32,10 @@ const Marketplace = async ({
             isMarketplacePlatform={isMarketplacePlatform}
             marketplaceNav={marketplaceNav}
           />
-          {
-            !isMarketplacePlatform && (
-              <StickySearchAndSwitchWrapper
-                pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-              />
-            )
-          }
-          <ListWrapper
-            showInstallButton={showInstallButton}
-          />
+          {!isMarketplacePlatform && (
+            <StickySearchAndSwitchWrapper pluginTypeSwitchClassName={pluginTypeSwitchClassName} />
+          )}
+          <ListWrapper showInstallButton={showInstallButton} />
         </PluginInstallPermissionProviderGuard>
       </HydrateQueryClient>
     </TanstackQueryInitializer>

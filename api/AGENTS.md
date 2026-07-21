@@ -109,6 +109,18 @@ class Example:
 - Reuse existing helpers in `core/`, `services/`, and `libs/` before creating new abstractions.
 - Optimise for observability: deterministic control flow, clear logging, actionable errors.
 
+### Owner-Bound Resource References
+
+- Resolve and validate the outer owner before binding a nested resource ID.
+- For stable single-parent chains, use immutable nested `NamedTuple` refs.
+- Root refs carry tenant plus root ID; child refs carry the parent ref.
+- In production, construct refs through the domain ref service.
+- Python allowing direct construction does not grant authorization.
+- Scope every consuming query with complete owner predicates; refs are not security tokens.
+- Keep polymorphic owners flat until explicit nominal owner types exist.
+- Do not add generic ref bases or compatibility fields only for uniformity.
+- Reconstruct internal refs from validated database state after payload or async boundaries.
+
 ### Logging & Errors
 
 - Never use `print`; use a module-level logger:

@@ -1,12 +1,22 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
+  downloadBlob: vi.fn(),
+  exportAppConfig: vi.fn(),
   pathname: '/agents/agent-1/configure',
   queryData: undefined as AgentAppDetailWithSite | undefined,
+}))
+
+vi.mock('@/service/apps', () => ({
+  exportAppConfig: mocks.exportAppConfig,
+}))
+
+vi.mock('@/utils/download', () => ({
+  downloadBlob: mocks.downloadBlob,
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -29,7 +39,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/app/components/app-sidebar/nav-link', () => ({
-  default: ({ href, name }: { href: string, name: string }) => <a href={href}>{name}</a>,
+  default: ({ href, name }: { href: string; name: string }) => <a href={href}>{name}</a>,
 }))
 
 vi.mock('@/app/components/base/divider', () => ({
@@ -41,7 +51,10 @@ vi.mock('@/service/client', () => ({
     agent: {
       byAgentId: {
         get: {
-          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent-detail', input.params.agent_id],
+          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+            'agent-detail',
+            input.params.agent_id,
+          ],
           queryOptions: () => ({ queryKey: ['agent-detail'] }),
         },
         copy: {
@@ -67,6 +80,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
+  app_id: 'app-1',
   description: 'Find and summarize market materials.',
   enable_api: true,
   enable_site: true,
@@ -93,6 +107,8 @@ function renderAgentDetailSection(expand = true) {
 
 describe('AgentDetailSection', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.exportAppConfig.mockResolvedValue({ data: 'kind: app\napp:\n  mode: agent\n' })
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
   })
@@ -110,7 +126,12 @@ describe('AgentDetailSection', () => {
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
     expect(agentAvatar?.parentElement?.parentElement).toHaveClass('mr-2')
     expect(agentName.parentElement?.parentElement).toHaveClass('h-10')
-    expect(agentName.parentElement?.parentElement?.parentElement).toHaveClass('h-13', 'py-1.5', 'pl-1.5', 'pr-2')
+    expect(agentName.parentElement?.parentElement?.parentElement).toHaveClass(
+      'h-13',
+      'py-1.5',
+      'pl-1.5',
+      'pr-2',
+    )
   })
 
   it('renders compact more actions beside the expanded sidebar agent identity', async () => {
@@ -123,15 +144,39 @@ describe('AgentDetailSection', () => {
 
     await user.click(trigger)
 
-    expect(screen.getByRole('menuitem', { name: 'agentV2.roster.editInfo' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'common.operation.duplicate' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'agentV2.roster.editInfo',
+      'common.operation.duplicate',
+      'app.export',
+      'common.operation.delete',
+    ])
+  })
+
+  it('exports the Agent App DSL from the detail action menu', async () => {
+    const user = userEvent.setup()
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+
+    await waitFor(() => {
+      expect(mocks.exportAppConfig).toHaveBeenCalledWith({
+        appID: 'app-1',
+        include: false,
+      })
+    })
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'Research Agent.yml',
+    })
   })
 
   it('does not render more actions in collapsed sidebar mode', () => {
     renderAgentDetailSection(false)
 
-    expect(screen.queryByRole('button', { name: /agentV2\.roster\.moreActions/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /agentV2\.roster\.moreActions/ }),
+    ).not.toBeInTheDocument()
   })
 })
 

@@ -4,11 +4,18 @@ import { ModelTypeEnum } from '../../../declarations'
 import { AuthorizedItem } from '../authorized-item'
 
 vi.mock('../../../model-icon', () => ({
-  default: ({ modelName }: { modelName: string }) => <div data-testid="model-icon">{modelName}</div>,
+  default: ({ modelName }: { modelName: string }) => (
+    <div data-testid="model-icon">{modelName}</div>
+  ),
 }))
 
 vi.mock('../credential-item', () => ({
-  default: ({ credential, onEdit, onDelete, onItemClick }: {
+  default: ({
+    credential,
+    onEdit,
+    onDelete,
+    onItemClick,
+  }: {
     credential: Credential
     onEdit?: (credential: Credential) => void
     onDelete?: (credential: Credential) => void
@@ -44,12 +51,7 @@ describe('AuthorizedItem', () => {
 
   describe('Rendering', () => {
     it('should render credentials list', () => {
-      render(
-        <AuthorizedItem
-          provider={mockProvider}
-          credentials={mockCredentials}
-        />,
-      )
+      render(<AuthorizedItem provider={mockProvider} credentials={mockCredentials} />)
 
       expect(screen.getByTestId('credential-item-cred-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('credential-item-cred-2'))!.toBeInTheDocument()
@@ -73,11 +75,7 @@ describe('AuthorizedItem', () => {
 
     it('should not render model title when showModelTitle is false', () => {
       render(
-        <AuthorizedItem
-          provider={mockProvider}
-          credentials={mockCredentials}
-          model={mockModel}
-        />,
+        <AuthorizedItem provider={mockProvider} credentials={mockCredentials} model={mockModel} />,
       )
 
       expect(screen.queryByTestId('model-icon')).not.toBeInTheDocument()
@@ -98,12 +96,7 @@ describe('AuthorizedItem', () => {
     })
 
     it('should handle empty credentials array', () => {
-      const { container } = render(
-        <AuthorizedItem
-          provider={mockProvider}
-          credentials={[]}
-        />,
-      )
+      const { container } = render(<AuthorizedItem provider={mockProvider} credentials={[]} />)
 
       expect(container.querySelector('[data-testid^="credential-item-"]')).not.toBeInTheDocument()
     })

@@ -1,41 +1,45 @@
 'use client'
 
-import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type FooterProps = {
   resultCount: number
   searchMode: string
-  isError: boolean
+  isLoading: boolean
+  hasUnavailableServices: boolean
   isCommandsMode: boolean
   hasQuery: boolean
 }
 
-const Footer: FC<FooterProps> = ({
+export function Footer({
   resultCount,
   searchMode,
-  isError,
+  isLoading,
+  hasUnavailableServices,
   isCommandsMode,
   hasQuery,
-}) => {
+}: FooterProps) {
   const { t } = useTranslation()
 
   const renderLeftContent = () => {
-    if (resultCount > 0 || isError) {
-      if (isError) {
-        return (
-          <span className="text-red-500">
-            {t($ => $['gotoAnything.someServicesUnavailable'], { ns: 'app' })}
-          </span>
-        )
-      }
+    if (hasUnavailableServices) {
+      return (
+        <span className="text-red-500">
+          {t(($) => $['gotoAnything.someServicesUnavailable'], { ns: 'app' })}
+        </span>
+      )
+    }
 
+    if (resultCount > 0) {
       return (
         <>
-          {t($ => $['gotoAnything.resultCount'], { ns: 'app', count: resultCount })}
+          {t(($) => $['gotoAnything.resultCount'], { ns: 'app', count: resultCount })}
           {searchMode !== 'general' && (
             <span className="ml-2 opacity-60">
-              {t($ => $['gotoAnything.inScope'], { ns: 'app', scope: searchMode.replace('@', '') })}
+              {t(($) => $['gotoAnything.inScope'], {
+                ns: 'app',
+                scope: searchMode.replace('@', ''),
+              })}
             </span>
           )}
         </>
@@ -45,25 +49,23 @@ const Footer: FC<FooterProps> = ({
     return (
       <span className="opacity-60">
         {(() => {
-          if (isCommandsMode)
-            return t($ => $['gotoAnything.selectToNavigate'], { ns: 'app' })
+          if (isCommandsMode) return t(($) => $['gotoAnything.selectToNavigate'], { ns: 'app' })
 
-          if (hasQuery)
-            return t($ => $['gotoAnything.searching'], { ns: 'app' })
+          if (isLoading) return t(($) => $['gotoAnything.searching'], { ns: 'app' })
 
-          return t($ => $['gotoAnything.startTyping'], { ns: 'app' })
+          return t(($) => $['gotoAnything.startTyping'], { ns: 'app' })
         })()}
       </span>
     )
   }
 
   const renderRightContent = () => {
-    if (resultCount > 0 || isError) {
+    if (resultCount > 0 || hasUnavailableServices) {
       return (
         <span className="opacity-60">
           {searchMode !== 'general'
-            ? t($ => $['gotoAnything.clearToSearchAll'], { ns: 'app' })
-            : t($ => $['gotoAnything.useAtForSpecific'], { ns: 'app' })}
+            ? t(($) => $['gotoAnything.clearToSearchAll'], { ns: 'app' })
+            : t(($) => $['gotoAnything.useAtForSpecific'], { ns: 'app' })}
         </span>
       )
     }
@@ -71,8 +73,8 @@ const Footer: FC<FooterProps> = ({
     return (
       <span className="opacity-60">
         {hasQuery || isCommandsMode
-          ? t($ => $['gotoAnything.tips'], { ns: 'app' })
-          : t($ => $['gotoAnything.pressEscToClose'], { ns: 'app' })}
+          ? t(($) => $['gotoAnything.tips'], { ns: 'app' })
+          : t(($) => $['gotoAnything.pressEscToClose'], { ns: 'app' })}
       </span>
     )
   }
@@ -86,5 +88,3 @@ const Footer: FC<FooterProps> = ({
     </div>
   )
 }
-
-export default Footer

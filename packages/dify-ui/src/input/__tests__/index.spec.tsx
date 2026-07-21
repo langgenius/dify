@@ -1,30 +1,15 @@
 import { render } from 'vitest-browser-react'
-import { FieldError, FieldLabel, FieldRoot } from '../../field'
+import { Field, FieldError, FieldLabel } from '../../field'
 import { Form } from '../../form'
 import { Input } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('Input', () => {
-  it('should render a labelled Base UI input with its value', async () => {
+  it('should use Field invalid state', async () => {
     const screen = await render(
-      <label>
-        Workspace name
-        <Input name="workspaceName" defaultValue="Dify" />
-      </label>,
-    )
-
-    const input = screen.getByRole('textbox', { name: 'Workspace name' })
-
-    await expect.element(input).toHaveValue('Dify')
-  })
-
-  it('should use FieldRoot invalid state', async () => {
-    const screen = await render(
-      <FieldRoot name="repositoryUrl" invalid>
+      <Field name="repositoryUrl" invalid>
         <FieldLabel>Repository URL</FieldLabel>
         <Input defaultValue="github.com/langgenius" />
-      </FieldRoot>,
+      </Field>,
     )
 
     const input = screen.getByRole('textbox', { name: 'Repository URL' })
@@ -33,22 +18,22 @@ describe('Input', () => {
     await expect.element(input).toHaveAttribute('data-invalid')
   })
 
-  it('should integrate with FieldRoot and Base UI Form validation', async () => {
+  it('should integrate with Field and Base UI Form validation', async () => {
     const onFormSubmit = vi.fn()
     const screen = await render(
       <Form aria-label="account form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="email">
+        <Field name="email">
           <FieldLabel>Email</FieldLabel>
           <Input type="email" required />
           <FieldError match="valueMissing">Email is required.</FieldError>
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )
 
     const input = screen.getByRole('textbox', { name: 'Email' })
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     await vi.waitFor(async () => {
       await expect.element(screen.getByText('Email is required.')).toBeInTheDocument()

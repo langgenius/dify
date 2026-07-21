@@ -15,7 +15,7 @@ import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/comp
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 
 type Props = Readonly<{
-  icon?: string | { content?: string, background?: string }
+  icon?: string | { content?: string; background?: string }
   providerName?: string
   isMCPTool?: boolean
   providerShowName?: string
@@ -63,31 +63,57 @@ const ToolItem = ({
   const isShowCanNotChooseMCPTip = isMCPTool && !isMCPToolAllowed
 
   return (
-    <div className={cn(
-      'group flex cursor-default items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
-      open && 'bg-components-panel-on-panel-item-bg-hover shadow-sm',
-      isDeleting && 'border-state-destructive-border shadow-xs hover:bg-state-destructive-hover',
-    )}
+    <div
+      className={cn(
+        'group flex cursor-default items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+        open && 'bg-components-panel-on-panel-item-bg-hover shadow-sm',
+        isDeleting && 'border-state-destructive-border shadow-xs hover:bg-state-destructive-hover',
+      )}
     >
       {icon && (
-        <div className={cn('shrink-0', isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30')}>
-          {typeof icon === 'string' && <div className="h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge bg-cover bg-center" style={{ backgroundImage: `url(${icon})` }} />}
-          {typeof icon !== 'string' && <AppIcon className="h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge" size="xs" icon={icon?.content} background={icon?.background} />}
+        <div
+          className={cn(
+            'shrink-0',
+            isTransparent && 'opacity-50',
+            isShowCanNotChooseMCPTip && 'opacity-30',
+          )}
+        >
+          {typeof icon === 'string' && (
+            <div
+              className="h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge bg-cover bg-center"
+              style={{ backgroundImage: `url(${icon})` }}
+            />
+          )}
+          {typeof icon !== 'string' && (
+            <AppIcon
+              className="h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge"
+              size="xs"
+              icon={icon?.content}
+              background={icon?.background}
+            />
+          )}
         </div>
       )}
       {!icon && (
-        <div className={cn(
-          'flex h-7 w-7 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
-          isTransparent && 'opacity-50',
-          isShowCanNotChooseMCPTip && 'opacity-30',
-        )}
+        <div
+          className={cn(
+            'flex h-7 w-7 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
+            isTransparent && 'opacity-50',
+            isShowCanNotChooseMCPTip && 'opacity-30',
+          )}
         >
           <div className="flex size-5 items-center justify-center opacity-35">
             <span className="i-custom-vender-other-group text-text-tertiary" />
           </div>
         </div>
       )}
-      <div className={cn('grow truncate pl-0.5', isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30')}>
+      <div
+        className={cn(
+          'grow truncate pl-0.5',
+          isTransparent && 'opacity-50',
+          isShowCanNotChooseMCPTip && 'opacity-30',
+        )}
+      >
         <div className="system-2xs-medium-uppercase text-text-tertiary">{providerNameText}</div>
         <div className="system-xs-medium text-text-secondary">{toolLabel}</div>
       </div>
@@ -109,43 +135,47 @@ const ToolItem = ({
           <span className="i-ri-delete-bin-line size-4" />
         </div>
       </div>
-      {!isError && !uninstalled && !noAuth && !versionMismatch && !isShowCanNotChooseMCPTip && showSwitch && (
-        <div className="mr-1" onClick={e => e.stopPropagation()}>
-          <Switch
-            size="md"
-            checked={switchValue ?? false}
-            onCheckedChange={onSwitchChange}
-          />
-        </div>
-      )}
+      {!isError &&
+        !uninstalled &&
+        !noAuth &&
+        !versionMismatch &&
+        !isShowCanNotChooseMCPTip &&
+        showSwitch && (
+          <div className="mr-1" onClick={(e) => e.stopPropagation()}>
+            <Switch size="md" checked={switchValue ?? false} onCheckedChange={onSwitchChange} />
+          </div>
+        )}
       {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant="secondary" size="small">
-          {t($ => $.notAuthorized, { ns: 'tools' })}
+          {t(($) => $.notAuthorized, { ns: 'tools' })}
           <StatusDot className="ml-2" status="warning" />
         </Button>
       )}
       {!isError && !uninstalled && !versionMismatch && authRemoved && (
         <Button variant="secondary" size="small">
-          {t($ => $['auth.authRemoved'], { ns: 'plugin' })}
+          {t(($) => $['auth.authRemoved'], { ns: 'plugin' })}
           <StatusDot className="ml-2" status="error" />
         </Button>
       )}
       {!isError && !uninstalled && versionMismatch && installInfo && (
-        <div onClick={e => e.stopPropagation()}>
+        <div onClick={(e) => e.stopPropagation()}>
           <SwitchPluginVersion
             className="-mt-1"
             uniqueIdentifier={installInfo}
-            tooltip={(
+            tooltip={
               <div className="w-45" data-testid="tooltip-content">
-                <div className="mb-1.5 font-semibold text-text-secondary" data-testid="tooltip-content-title">
-                  {t($ => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })}
+                <div
+                  className="mb-1.5 font-semibold text-text-secondary"
+                  data-testid="tooltip-content-title"
+                >
+                  {t(($) => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })}
                 </div>
                 <div className="mb-1.5 text-text-tertiary" data-testid="tooltip-content-body">
-                  {`${t($ => $['detailPanel.toolSelector.unsupportedContent'], { ns: 'plugin' })} ${t($ => $['detailPanel.toolSelector.unsupportedContent2'], { ns: 'plugin' })}`}
+                  {`${t(($) => $['detailPanel.toolSelector.unsupportedContent'], { ns: 'plugin' })} ${t(($) => $['detailPanel.toolSelector.unsupportedContent2'], { ns: 'plugin' })}`}
                 </div>
               </div>
-            )}
+            }
             onChange={() => {
               onInstall?.()
             }}
@@ -154,7 +184,7 @@ const ToolItem = ({
       )}
       {!isError && uninstalled && installInfo && (
         <InstallPluginButton
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           size="small"
           uniqueIdentifier={installInfo}
           onSuccess={() => {
@@ -166,7 +196,11 @@ const ToolItem = ({
         <Popover>
           <PopoverTrigger
             openOnHover
-            aria-label={typeof errorTip === 'string' ? errorTip : t($ => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })}
+            aria-label={
+              typeof errorTip === 'string'
+                ? errorTip
+                : t(($) => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })
+            }
             className="inline-flex border-0 bg-transparent p-0"
           >
             <span className="i-ri-error-warning-fill size-4 text-text-destructive" />

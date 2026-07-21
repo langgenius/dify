@@ -46,39 +46,41 @@ describe('YamlStore.doGet', () => {
     const store = new YamlStore('/irrelevant')
     const timestamp = '2026-07-10T03:04:05.000Z'
     store.setRawContent(`created_at: ${timestamp}\n`)
-    expect(store.doGet<Date | null>({ key: 'created_at', default: null })).toEqual(new Date(timestamp))
+    expect(store.doGet<Date | null>({ key: 'created_at', default: null })).toEqual(
+      new Date(timestamp),
+    )
   })
 
   it('rejects multiple YAML documents', () => {
     const store = new YamlStore('/irrelevant')
     store.setRawContent('name: alice\n---\nname: bob\n')
 
-    expect(() => store.doGet({ key: 'name', default: '' }))
-      .toThrowError(/single document/)
+    expect(() => store.doGet({ key: 'name', default: '' })).toThrowError(/single document/)
   })
 
   it('rejects duplicate mapping keys', () => {
     const store = new YamlStore('/irrelevant')
     store.setRawContent('name: alice\nname: bob\n')
 
-    expect(() => store.doGet({ key: 'name', default: '' }))
-      .toThrowError(/duplicated mapping key/)
+    expect(() => store.doGet({ key: 'name', default: '' })).toThrowError(/duplicated mapping key/)
   })
 
   it('rejects complex mapping keys', () => {
     const store = new YamlStore('/irrelevant')
     store.setRawContent('? [name, region]\n: deployment\n')
 
-    expect(() => store.doGet({ key: 'name', default: '' }))
-      .toThrowError(/does not support complex keys/)
+    expect(() => store.doGet({ key: 'name', default: '' })).toThrowError(
+      /does not support complex keys/,
+    )
   })
 
   it('parses explicit YAML sets as JavaScript sets', () => {
     const store = new YamlStore('/irrelevant')
     store.setRawContent('features: !!set\n  workflow:\n  chat:\n')
 
-    expect(store.doGet<Set<string>>({ key: 'features', default: new Set() }))
-      .toEqual(new Set(['workflow', 'chat']))
+    expect(store.doGet<Set<string>>({ key: 'features', default: new Set() })).toEqual(
+      new Set(['workflow', 'chat']),
+    )
   })
 
   it('returns default for a missing flat key', () => {
@@ -106,8 +108,7 @@ describe('YamlStore.doGet', () => {
     let caught: unknown
     try {
       store.doGet({ key: 'name', default: '' })
-    }
-    catch (err) {
+    } catch (err) {
       caught = err
     }
     expect(caught).toBeInstanceOf(BadYamlFormatError)
@@ -183,7 +184,9 @@ describe('FileBasedStore.withLock concurrency', () => {
 
     await s1.lock()
 
-    await expect(s2.set({ key: 'key', default: '' }, 'blocked')).rejects.toThrow(ConcurrentAccessError)
+    await expect(s2.set({ key: 'key', default: '' }, 'blocked')).rejects.toThrow(
+      ConcurrentAccessError,
+    )
 
     await s1.unlock()
 

@@ -105,6 +105,7 @@ class TestOAuthLogin:
             invite_token=expected_token,
             timezone=None,
             language=None,
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -127,6 +128,7 @@ class TestOAuthLogin:
             invite_token=None,
             timezone="Asia/Shanghai",
             language=None,
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -149,6 +151,7 @@ class TestOAuthLogin:
             invite_token=None,
             timezone=None,
             language="zh-Hans",
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -653,10 +656,8 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     @patch("controllers.console.auth.oauth.FeatureService")
     @patch("controllers.console.auth.oauth.AccountService")
-    @patch("controllers.console.auth.oauth.tenant_was_created")
     def test_should_create_workspace_for_account_without_tenant(
         self,
-        mock_event: MagicMock,
         mock_account_service: MagicMock,
         mock_feature_service: MagicMock,
         mock_tenant_service: MagicMock,
@@ -669,16 +670,9 @@ class TestAccountGeneration:
         mock_tenant_service.get_join_tenants.return_value = []
         mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
 
-        mock_new_tenant = MagicMock()
-        mock_tenant_service.create_tenant.return_value = mock_new_tenant
-
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
             result, oauth_new_user = _generate_account("github", user_info)
 
             assert result == mock_account
             assert oauth_new_user is False
-            mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace", session=ANY)
-            mock_tenant_service.create_tenant_member.assert_called_once_with(
-                mock_new_tenant, mock_account, ANY, role="owner"
-            )
-            mock_event.send.assert_called_once_with(mock_new_tenant)
+            mock_tenant_service.create_owner_tenant.assert_called_once_with(mock_account, session=ANY)

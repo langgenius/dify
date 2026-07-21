@@ -10,41 +10,39 @@
 }
 
 .dataSourceItem {
-  @apply w-full relative flex items-center p-3 h-14 bg-components-option-card-option-bg rounded-xl
-  cursor-pointer border border-components-option-card-option-border text-text-secondary;
+  @apply relative flex h-14 w-full cursor-pointer items-center rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-text-secondary;
 }
 
 .dataSourceItem:hover {
-  @apply bg-components-option-card-option-bg-hover border border-components-option-card-option-border-hover shadow-xs shadow-shadow-shadow-3;
+  @apply border border-components-option-card-option-border-hover bg-components-option-card-option-bg-hover shadow-xs shadow-shadow-shadow-3;
 }
 
 .dataSourceItem.active {
-  @apply bg-components-option-card-option-selected-bg border border-components-option-card-option-selected-border
-  ring-[0.5px] ring-components-option-card-option-selected-border;
+  @apply border border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg ring-[0.5px] ring-components-option-card-option-selected-border;
 }
 
 .dataSourceItem.disabled,
 .dataSourceItem.disabled:hover {
-  @apply bg-components-option-card-option-bg border-[0.5px] border-components-option-card-option-border cursor-not-allowed text-text-disabled shadow-none;
+  @apply cursor-not-allowed border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg text-text-disabled shadow-none;
 }
 
 .comingTag {
-  @apply flex justify-center items-center bg-white;
+  @apply flex items-center justify-center bg-white;
   position: absolute;
   right: 8px;
   top: -10px;
   padding: 1px 6px;
   height: 20px;
-  border: 1px solid #E0EAFF;
+  border: 1px solid #e0eaff;
   border-radius: 6px;
   font-weight: 500;
   font-size: 12px;
   line-height: 18px;
-  color: #444CE7;
+  color: #444ce7;
 }
 
 .datasetIcon {
-  @apply flex shrink-0 mr-2 w-8 h-8 rounded-lg bg-center bg-no-repeat bg-text-primary-on-surface border-[0.5px] border-divider-regular backdrop-blur-sm;
+  @apply mr-2 flex h-8 w-8 shrink-0 rounded-lg border-[0.5px] border-divider-regular bg-text-primary-on-surface bg-center bg-no-repeat backdrop-blur-sm;
   background-image: url(../assets/file.svg);
   background-size: 16px;
 }

@@ -35,8 +35,8 @@ describe('unescape', () => {
     expect(unescape('\\\\')).toBe('\\')
   })
 
-  it('should unescape \\\'  to single quote', () => {
-    expect(unescape('\\\'')).toBe('\'')
+  it("should unescape \\'  to single quote", () => {
+    expect(unescape("\\'")).toBe("'")
   })
 
   it('should unescape \\" to double quote', () => {

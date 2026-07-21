@@ -55,7 +55,15 @@ type TextareaNativeProps = React.ComponentPropsWithRef<'textarea'>
 type TextareaOnlyProps = Pick<TextareaNativeProps, 'cols' | 'rows' | 'wrap'>
 type TextareaElementProps = Omit<
   TextareaNativeProps,
-  'children' | 'className' | 'cols' | 'defaultValue' | 'onChange' | 'rows' | 'size' | 'value' | 'wrap'
+  | 'children'
+  | 'className'
+  | 'cols'
+  | 'defaultValue'
+  | 'onChange'
+  | 'rows'
+  | 'size'
+  | 'value'
+  | 'wrap'
 >
 
 type TextareaControlProps = ControlledTextareaProps | UncontrolledTextareaProps
@@ -65,15 +73,13 @@ type FieldControlTextareaProps = Omit<
   'className' | 'defaultValue' | 'onValueChange' | 'render' | 'value'
 >
 
-export type TextareaProps
-  = TextareaElementProps
-    & TextareaOnlyProps
-    & TextareaControlProps
-    & TextareaVariantProps
-    & {
-      children?: never
-      className?: string
-    }
+export type TextareaProps = TextareaElementProps &
+  TextareaOnlyProps &
+  TextareaControlProps &
+  TextareaVariantProps & {
+    children?: never
+    className?: string
+  }
 
 export function Textarea({
   className,

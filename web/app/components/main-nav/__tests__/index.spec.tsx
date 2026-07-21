@@ -1,66 +1,174 @@
+import type {
+  StepByStepTourStatePatchPayload,
+  StepByStepTourStateResponse,
+} from '@dify/contracts/api/console/onboarding/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
+import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
+import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { Plan } from '@/app/components/billing/type'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
-import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
+import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AppModeEnum } from '@/types/app'
 import { MainNav } from '../index'
 
+type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
+
 const activeGradientMaskClassName = 'aria-[current=page]:dify-blue-glass-surface'
 const activeStackingClassName = 'aria-[current=page]:z-1'
+const mockTrackEvent = vi.hoisted(() => vi.fn())
 
 const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockIsAgentV2Enabled: vi.fn(() => true),
 }))
-const mockAppContextState = vi.hoisted(() => ({
-  current: undefined as AppContextStateMockState | undefined,
+const mockStepByStepTour = vi.hoisted(() => {
+  const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
+  const createState = (
+    overrides: Partial<StepByStepTourStateResponse> = {},
+  ): StepByStepTourStateResponse => ({
+    first_workspace_id: 'workspace-1',
+    skipped: false,
+    completed_task_ids: [],
+    manually_enabled_workspace_ids: [],
+    manually_disabled_workspace_ids: [],
+    updated_at: '2026-07-01T00:00:00Z',
+    ...overrides,
+  })
+  const createUiState = (
+    overrides: Partial<StepByStepTourTestUiState> = {},
+  ): StepByStepTourTestUiState => ({
+    activeGuideGroup: undefined,
+    activeGuideIndex: undefined,
+    activeGuideIndexes: undefined,
+    activeTaskId: undefined,
+    minimized: false,
+    ...overrides,
+  })
+  let state = createState()
+  let uiState = createUiState()
+  const patchState = vi.fn(
+    async ({
+      body,
+    }: {
+      body: StepByStepTourStatePatchPayload
+    }): Promise<StepByStepTourStateResponse> => {
+      switch (body.action) {
+        case 'enable_current_workspace':
+          state = {
+            ...state,
+            skipped: false,
+            manually_enabled_workspace_ids: Array.from(
+              new Set([...(state.manually_enabled_workspace_ids ?? []), 'workspace-1']),
+            ),
+            manually_disabled_workspace_ids: (state.manually_disabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
+          }
+          break
+        case 'disable_current_workspace':
+          state = {
+            ...state,
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
+            manually_disabled_workspace_ids: Array.from(
+              new Set([...(state.manually_disabled_workspace_ids ?? []), 'workspace-1']),
+            ),
+          }
+          break
+        case 'skip':
+          state = {
+            ...state,
+            skipped: true,
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
+          }
+          break
+      }
+
+      return state
+    },
+  )
+
+  return {
+    get state() {
+      return state
+    },
+    get uiState() {
+      return uiState
+    },
+    patchState,
+    reset() {
+      state = createState()
+      uiState = createUiState()
+      patchState.mockClear()
+    },
+    setState(overrides: Partial<StepByStepTourStateResponse> = {}) {
+      state = createState(overrides)
+    },
+    setUiState(overrides: Partial<StepByStepTourTestUiState> = {}) {
+      uiState = createUiState(overrides)
+      if (overrides.minimized !== undefined) {
+        localStorage.setItem(
+          STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY,
+          overrides.minimized ? 'collapsed' : 'expanded',
+        )
+      }
+    },
+    stateQueryKey,
+  }
+})
+const mockConsoleState = vi.hoisted(() => ({
+  current: undefined as ConsoleStateFixture | undefined,
 }))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
+}))
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
+})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
+})
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
 })
 
 vi.mock('@/context/provider-context', () => ({
@@ -69,6 +177,10 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
+  useModalContextSelector: <T,>(selector: (state: { hasBlockingModalOpen: boolean }) => T) =>
+    selector({
+      hasBlockingModalOpen: false,
+    }),
 }))
 
 vi.mock('@/next/navigation', async (importOriginal) => {
@@ -77,6 +189,39 @@ vi.mock('@/next/navigation', async (importOriginal) => {
     ...actual,
     usePathname: vi.fn(),
     useRouter: vi.fn(),
+  }
+})
+
+vi.mock('react-i18next', async () => {
+  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+
+  return {
+    ...actual,
+    ...createReactI18nextMock({
+      'common.stepByStepTour.title': 'Get to know Dify',
+      'common.stepByStepTour.duration': 'A quick tour — about 5 minutes',
+      'common.stepByStepTour.skip': 'Skip tour',
+      'common.stepByStepTour.minimize': 'Minimize tour',
+      'common.stepByStepTour.restore': 'Open step-by-step tour',
+      'common.stepByStepTour.learnMore': 'Learn more',
+      'common.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
+      'common.stepByStepTour.tasks.home.description':
+        'Open a hands-on lesson from Learn Dify to see Dify in action.',
+      'common.stepByStepTour.tasks.home.primaryActionLabel': 'Show me',
+      'common.stepByStepTour.tasks.studio.title': 'Manage your apps in Studio',
+      'common.stepByStepTour.tasks.studio.description':
+        'All your apps live in Studio — edit, organize, and publish them here.',
+      'common.stepByStepTour.tasks.studio.primaryActionLabel': 'Take a look',
+      'common.stepByStepTour.tasks.knowledge.title': 'Add your own data',
+      'common.stepByStepTour.tasks.knowledge.description':
+        'Build a knowledge base so your apps answer from your documents.',
+      'common.stepByStepTour.tasks.knowledge.primaryActionLabel': 'Take a look',
+      'common.stepByStepTour.tasks.integration.title': 'Explore integrations',
+      'common.stepByStepTour.tasks.integration.description':
+        'Models, tools, data sources & more — explore what you can connect.',
+      'common.stepByStepTour.tasks.integration.primaryActionLabel': 'Take a look',
+    }),
   }
 })
 
@@ -111,6 +256,27 @@ vi.mock('@/service/client', async (importOriginal) => {
               mutationOptions: () => ({
                 mutationFn: (variables: unknown) => mockSwitchWorkspace(variables),
               }),
+            },
+          },
+        }
+      }
+      if (prop === 'onboarding') {
+        return {
+          stepByStepTour: {
+            state: {
+              get: {
+                queryKey: () => mockStepByStepTour.stateQueryKey,
+                queryOptions: () => ({
+                  queryKey: mockStepByStepTour.stateQueryKey,
+                  queryFn: async () => mockStepByStepTour.state,
+                }),
+              },
+              patch: {
+                mutationOptions: (options = {}) => ({
+                  mutationFn: mockStepByStepTour.patchState,
+                  ...options,
+                }),
+              },
             },
           },
         }
@@ -206,16 +372,18 @@ const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp
   },
 })
 
-const appContextValue: AppContextStateMockState = {
-  userProfile: {
-    id: 'user-1',
-    name: 'Evan Z',
-    email: 'evan@example.com',
-    avatar: '',
-    avatar_url: '',
-    is_password_set: true,
-  },
-  mutateUserProfile: vi.fn(),
+const mainNavUserProfile = {
+  id: 'user-1',
+  name: 'Evan Z',
+  email: 'evan@example.com',
+  avatar: '',
+  avatar_url: '',
+  is_password_set: true,
+}
+
+const consoleState: ConsoleStateFixture = {
+  userProfile: mainNavUserProfile,
+  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
@@ -232,7 +400,7 @@ const appContextValue: AppContextStateMockState = {
   isCurrentWorkspaceOwner: true,
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
-  mutateCurrentWorkspace: vi.fn(),
+  refreshCurrentWorkspace: vi.fn(),
   langGeniusVersionInfo: {
     current_env: 'testing',
     current_version: '1.0.0',
@@ -247,22 +415,44 @@ const appContextValue: AppContextStateMockState = {
   workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
 
-type MainNavSystemFeatures = Exclude<NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures'], null | undefined>
+type MainNavSystemFeatures = Exclude<
+  NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'],
+  null | undefined
+>
 
 const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
   branding: { enabled: false },
   enable_marketplace: true,
+  enable_step_by_step_tour: true,
 }
 
 const renderMainNav = (
   systemFeatures: MainNavSystemFeatures = defaultMainNavSystemFeatures,
-  options: { store?: ReturnType<typeof createStore>, extra?: ReactNode } = {},
+  options: { store?: ReturnType<typeof createStore>; extra?: ReactNode } = {},
 ) => {
-  const queryClient = createTestQueryClient()
-  const currentAppContext = mockAppContextState.current ?? appContextValue
-  mockAppContextState.current = currentAppContext
-  queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace as ICurrentWorkspace)
+  const queryClient = createConsoleQueryClient()
+  const currentConsoleState = mockConsoleState.current ?? consoleState
+  mockConsoleState.current = currentConsoleState
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.post.queryKey(),
+    currentConsoleState.currentWorkspace as ICurrentWorkspace,
+  )
+  queryClient.setQueryData(userProfileQueryOptions().queryKey, {
+    profile: {
+      ...mainNavUserProfile,
+      ...(currentConsoleState.userProfile ?? {}),
+    },
+    meta: {
+      currentVersion: null,
+      currentEnv: null,
+    },
+  })
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+  queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
+  const store = options.store ?? createStore()
+  seedRegisteredConsoleStateFixture(store)
+  store.set(queryClientAtom, queryClient)
+  store.set(stepByStepTourSessionAtom, mockStepByStepTour.uiState)
   const resolvedSystemFeatures = {
     ...defaultMainNavSystemFeatures,
     ...systemFeatures,
@@ -271,8 +461,8 @@ const renderMainNav = (
       ...systemFeatures.branding,
     },
   }
-  return renderWithSystemFeatures(
-    <JotaiProvider store={options.store}>
+  return renderWithConsoleQuery(
+    <JotaiProvider store={store}>
       <MainNav />
       {options.extra}
     </JotaiProvider>,
@@ -280,22 +470,33 @@ const renderMainNav = (
   )
 }
 
-function GotoAnythingOpenProbe() {
-  const open = useGotoAnythingOpen()
-  return <div data-testid="goto-anything-open">{String(open)}</div>
-}
-
 describe('MainNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    gotoAnythingDialogHandle.close()
     localStorage.clear()
     mockPathname = '/apps'
     mockInstalledApps = []
     mockInstalledAppsPending = false
     mockWorkspaces = [
-      { id: 'workspace-1', name: 'Solar Studio', plan: Plan.team, status: 'normal', created_at: 0, current: true },
-      { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.sandbox, status: 'normal', created_at: 0, current: false },
+      {
+        id: 'workspace-1',
+        name: 'Solar Studio',
+        plan: Plan.team,
+        status: 'normal',
+        created_at: 0,
+        current: true,
+      },
+      {
+        id: 'workspace-2',
+        name: 'Evan Workspace',
+        plan: Plan.sandbox,
+        status: 'normal',
+        created_at: 0,
+        current: false,
+      },
     ]
+    mockStepByStepTour.reset()
     mockIsAgentV2Enabled.mockReturnValue(true)
 
     ;(usePathname as Mock).mockImplementation(() => mockPathname)
@@ -307,7 +508,7 @@ describe('MainNav', () => {
       forward: vi.fn(),
       refresh: vi.fn(),
     })
-    mockAppContextState.current = appContextValue
+    mockConsoleState.current = consoleState
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
@@ -337,14 +538,25 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.getAllByText(Plan.team)).toHaveLength(1)
-    expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(Plan.team)
+    expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(
+      Plan.team,
+    )
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
     expect(screen.getByRole('link', { name: /Agents common.menus.status/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
-    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
-    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
+    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
+      'href',
+      '/datasets',
+    )
+    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute(
+      'href',
+      '/integrations/model-provider',
+    )
+    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute(
+      'href',
+      '/marketplace',
+    )
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {
@@ -358,7 +570,9 @@ describe('MainNav', () => {
   it('hides the marketplace entry when marketplace is disabled', () => {
     renderMainNav({ enable_marketplace: false })
 
-    expect(screen.queryByRole('link', { name: /common.mainNav.marketplace/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /common.mainNav.marketplace/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders deployments in primary navigation when app deploy is enabled', () => {
@@ -368,7 +582,9 @@ describe('MainNav', () => {
     const deploymentsLink = screen.getByRole('link', { name: /common.menus.deployments/ })
 
     expect(deploymentsLink).toHaveAttribute('href', '/deployments')
-    expect(marketplaceLink.compareDocumentPosition(deploymentsLink)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(marketplaceLink.compareDocumentPosition(deploymentsLink)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
   })
 
   it('hides deployments in primary navigation when app deploy is disabled', () => {
@@ -416,10 +632,10 @@ describe('MainNav', () => {
   })
 
   it('renders the desktop environment tag from the old header contract', () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       langGeniusVersionInfo: {
-        ...appContextValue.langGeniusVersionInfo,
+        ...consoleState.langGeniusVersionInfo,
         current_env: 'TESTING',
       },
     }
@@ -458,10 +674,10 @@ describe('MainNav', () => {
   })
 
   it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       currentWorkspace: {
-        ...appContextValue.currentWorkspace,
+        ...consoleState.currentWorkspace,
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
@@ -476,18 +692,29 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
-    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
-    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
+    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
+      'href',
+      '/datasets',
+    )
+    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute(
+      'href',
+      '/integrations/model-provider',
+    )
+    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute(
+      'href',
+      '/marketplace',
+    )
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps unrestricted main routes visible without route permission keys', () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       currentWorkspace: {
-        ...appContextValue.currentWorkspace,
+        ...consoleState.currentWorkspace,
         role: 'normal',
       },
       isCurrentWorkspaceDatasetOperator: false,
@@ -516,7 +743,9 @@ describe('MainNav', () => {
     const datasetsLink = screen.getByRole('link', { name: /common.menus.datasets/ })
     expect(datasetsLink).toHaveClass(activeGradientMaskClassName)
     expect(datasetsLink).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
+      'aria-current',
+    )
   })
 
   it('keeps Studio active on snippets routes', () => {
@@ -527,7 +756,9 @@ describe('MainNav', () => {
     const studioLink = screen.getByRole('link', { name: /common.menus.apps/ })
     expect(studioLink).toHaveClass(activeGradientMaskClassName)
     expect(studioLink).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
+      'aria-current',
+    )
   })
 
   it('keeps roster detail navigation hidden when Agent v2 is disabled', () => {
@@ -541,19 +772,37 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
-  it.each([
-    '/deployments',
-    '/deployments/create',
-  ])('keeps global navigation on deployment collection route %s', (pathname) => {
-    mockPathname = pathname
+  it('keeps MainNav on primary navigation when it is mounted on a detail route', () => {
+    mockPathname = '/app/app-1/overview'
 
-    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+    renderMainNav()
 
-    expect(screen.queryByTestId('deployment-detail-top')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('deployment-detail-section')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.deployments/ })).toHaveAttribute('href', '/deployments')
+    expect(screen.queryByTestId('app-detail-top')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('app-detail-section')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
   })
+
+  it.each(['/deployments', '/deployments/create'])(
+    'keeps global navigation on deployment collection route %s',
+    (pathname) => {
+      mockPathname = pathname
+
+      renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+
+      expect(screen.queryByTestId('deployment-detail-top')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('deployment-detail-section')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /common.menus.deployments/ })).toHaveAttribute(
+        'href',
+        '/deployments',
+      )
+    },
+  )
 
   it.each([
     '/datasets/create',
@@ -568,8 +817,13 @@ describe('MainNav', () => {
 
     expect(screen.queryByTestId('dataset-detail-top')).not.toBeInTheDocument()
     expect(screen.queryByTestId('dataset-detail-section')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
+    expect(
+      screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
+      'href',
+      '/datasets',
+    )
   })
 
   it('marks marketplace active on marketplace routes', () => {
@@ -611,19 +865,27 @@ describe('MainNav', () => {
     expect(homeLink).toHaveAttribute('aria-current', 'page')
 
     mockPathname = '/installed/installed-1'
-    rerender(<JotaiProvider><MainNav /></JotaiProvider>)
+    rerender(<MainNav />)
 
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
+      'aria-current',
+    )
   })
 
-  it('opens goto anything from the search button', () => {
-    const store = createStore()
+  it('opens goto anything from the search button', async () => {
+    renderMainNav(undefined, {
+      extra: (
+        <Dialog handle={gotoAnythingDialogHandle}>
+          <DialogContent>
+            <DialogTitle>Goto Anything</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      ),
+    })
 
-    renderMainNav(undefined, { store, extra: <GotoAnythingOpenProbe /> })
-    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('false')
     fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('true')
+    expect(await screen.findByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
   })
 
   it('shows Learn Dify switch in help menu and restores it from localStorage', async () => {
@@ -632,7 +894,9 @@ describe('MainNav', () => {
     renderMainNav({ enable_learn_app: true })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
-    const learnDifyItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.learnDify' })
+    const learnDifyItem = await screen.findByRole('menuitemcheckbox', {
+      name: 'common.mainNav.help.learnDify',
+    })
     expect(learnDifyItem).toHaveAttribute('aria-checked', 'false')
 
     fireEvent.click(learnDifyItem)
@@ -643,13 +907,103 @@ describe('MainNav', () => {
     expect(mockPush).not.toHaveBeenCalled()
   })
 
+  it('shows Step-by-step Tour switch in help menu and stores the current workspace disable override', async () => {
+    const user = userEvent.setup()
+    renderMainNav({ enable_learn_app: true })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', {
+      name: 'common.mainNav.help.stepByStepTour',
+    })
+    expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'true')
+
+    await user.click(stepByStepTourItem)
+
+    await waitFor(() => {
+      expect(mockStepByStepTour.patchState.mock.calls[0]?.[0]).toEqual({
+        body: { action: 'disable_current_workspace' },
+      })
+    })
+    expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_disabled' })
+  })
+
+  it('shows Step-by-step Tour switch off for existing accounts without a default workspace', async () => {
+    const user = userEvent.setup()
+    mockStepByStepTour.setState({
+      first_workspace_id: null,
+      manually_enabled_workspace_ids: [],
+      manually_disabled_workspace_ids: [],
+    })
+
+    renderMainNav({ enable_learn_app: true })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    expect(
+      await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+    ).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('lets existing accounts enable Step-by-step Tour from the help menu', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
+    mockStepByStepTour.setState({
+      first_workspace_id: null,
+      manually_enabled_workspace_ids: [],
+      manually_disabled_workspace_ids: [],
+    })
+
+    renderMainNav({ enable_learn_app: true })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', {
+      name: 'common.mainNav.help.stepByStepTour',
+    })
+    expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'false')
+
+    await user.click(stepByStepTourItem)
+
+    await waitFor(() => {
+      expect(mockStepByStepTour.patchState.mock.lastCall?.[0]).toEqual({
+        body: { action: 'enable_current_workspace' },
+      })
+      expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
+    })
+    expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_enabled' })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    expect(
+      await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+    ).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('hides Step-by-step Tour switch when the feature is disabled', async () => {
+    const user = userEvent.setup()
+    renderMainNav({
+      enable_learn_app: true,
+      enable_step_by_step_tour: false,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    await screen.findByText('common.mainNav.help.docs')
+    expect(
+      screen.queryByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('hides Learn Dify switch in help menu when learn app is disabled', async () => {
     renderMainNav({ enable_learn_app: false })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
 
     await screen.findByText('common.mainNav.help.docs')
-    expect(screen.queryByRole('menuitemcheckbox', { name: 'common.mainNav.help.learnDify' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitemcheckbox', { name: 'common.mainNav.help.learnDify' }),
+    ).not.toBeInTheDocument()
   })
 
   it('orders help menu items to match the nav shell design', async () => {
@@ -661,13 +1015,14 @@ describe('MainNav', () => {
       'common.mainNav.help.docs',
       'common.userProfile.roadmap',
       'common.mainNav.help.learnDify',
+      'common.mainNav.help.stepByStepTour',
       'common.userProfile.compliance',
       'common.userProfile.forum',
       'common.userProfile.community',
       'common.userProfile.github',
       'common.userProfile.about',
     ]
-    const nodes = await Promise.all(labels.map(label => screen.findByText(label)))
+    const nodes = await Promise.all(labels.map((label) => screen.findByText(label)))
 
     nodes.slice(1).forEach((node, index) => {
       expect(nodes[index]!.compareDocumentPosition(node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
@@ -681,7 +1036,9 @@ describe('MainNav', () => {
     const contactUsItem = await screen.findByRole('menuitem', {
       name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
     })
-    expect(screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
+    ).not.toBeInTheDocument()
 
     fireEvent.click(contactUsItem)
 
@@ -694,25 +1051,35 @@ describe('MainNav', () => {
   it('hides the help menu when branding is enabled', () => {
     renderMainNav({ branding: { enabled: true } })
 
-    expect(screen.queryByRole('button', { name: 'common.mainNav.help.openMenu' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.mainNav.help.openMenu' }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens workspace settings, members, plan, and workspace switching actions', async () => {
     renderMainNav()
 
-    expect(screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits|7,500 credits/ })).toHaveAttribute('href', '/integrations/model-provider')
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+    expect(
+      screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits|7,500 credits/ }),
+    ).toHaveAttribute('href', '/integrations/model-provider')
+    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({
+      payload: ACCOUNT_SETTING_TAB.PROVIDER,
+    })
 
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
     expect(mockSetShowPricingModal).toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
     fireEvent.click(await screen.findByText('common.mainNav.workspace.settings'))
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+      payload: ACCOUNT_SETTING_TAB.BILLING,
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
     fireEvent.click(await screen.findByText('common.mainNav.workspace.inviteMembers'))
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+      payload: ACCOUNT_SETTING_TAB.MEMBERS,
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
     fireEvent.click(await screen.findByText('Evan Workspace'))
@@ -723,7 +1090,14 @@ describe('MainNav', () => {
 
   it('shows the upgrade shortcut for sandbox workspaces', () => {
     mockWorkspaces = [
-      { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 0, current: true },
+      {
+        id: 'workspace-1',
+        name: 'Solar Studio',
+        plan: Plan.sandbox,
+        status: 'normal',
+        created_at: 0,
+        current: true,
+      },
     ]
 
     renderMainNav()
@@ -746,19 +1120,23 @@ describe('MainNav', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
     expect(mockSetShowPricingModal).toHaveBeenCalled()
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
+    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({
+      payload: ACCOUNT_SETTING_TAB.BILLING,
+    })
   })
 
   it('limits invite members by member management permission', async () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       currentWorkspace: {
-        ...appContextValue.currentWorkspace,
+        ...consoleState.currentWorkspace,
         role: 'normal',
       },
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
-      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(key => key !== 'workspace.member.manage'),
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(
+        (key) => key !== 'workspace.member.manage',
+      ),
     }
 
     renderMainNav()
@@ -770,10 +1148,10 @@ describe('MainNav', () => {
   })
 
   it('keeps workspace settings visible and hides invite members without member management permission', () => {
-    mockAppContextState.current = {
-      ...appContextValue,
+    mockConsoleState.current = {
+      ...consoleState,
       currentWorkspace: {
-        ...appContextValue.currentWorkspace,
+        ...consoleState.currentWorkspace,
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
@@ -793,8 +1171,14 @@ describe('MainNav', () => {
 
   it('filters installed web apps and renders installed app navigation link', () => {
     mockInstalledApps = [
-      createInstalledApp({ id: 'installed-1', app: { ...createInstalledApp().app, name: 'Alpha App' } }),
-      createInstalledApp({ id: 'installed-2', app: { ...createInstalledApp().app, name: 'Beta Tool' } }),
+      createInstalledApp({
+        id: 'installed-1',
+        app: { ...createInstalledApp().app, name: 'Alpha App' },
+      }),
+      createInstalledApp({
+        id: 'installed-2',
+        app: { ...createInstalledApp().app, name: 'Beta Tool' },
+      }),
     ]
 
     renderMainNav()
@@ -806,7 +1190,9 @@ describe('MainNav', () => {
 
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
     expect(screen.getByText('Beta Tool')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' })).toHaveAttribute('href', '/installed/installed-2')
+    expect(
+      screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' }),
+    ).toHaveAttribute('href', '/installed/installed-2')
   })
 
   it('renders web app skeleton rows while installed apps are loading', () => {
@@ -814,9 +1200,16 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toHaveAttribute('aria-busy', 'true')
-    expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.operation.search' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.search' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
   })
@@ -824,16 +1217,30 @@ describe('MainNav', () => {
   it('hides the installed web apps section when no web apps are available', () => {
     renderMainNav()
 
-    expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.operation.search' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.search' }),
+    ).not.toBeInTheDocument()
   })
 
   it('separates pinned and unpinned installed web apps', () => {
     mockInstalledApps = [
-      createInstalledApp({ id: 'installed-1', is_pinned: true, app: { ...createInstalledApp().app, name: 'Pinned App' } }),
-      createInstalledApp({ id: 'installed-2', is_pinned: false, app: { ...createInstalledApp().app, name: 'Unpinned App' } }),
+      createInstalledApp({
+        id: 'installed-1',
+        is_pinned: true,
+        app: { ...createInstalledApp().app, name: 'Pinned App' },
+      }),
+      createInstalledApp({
+        id: 'installed-2',
+        is_pinned: false,
+        app: { ...createInstalledApp().app, name: 'Unpinned App' },
+      }),
     ]
 
     renderMainNav()
@@ -846,7 +1253,10 @@ describe('MainNav', () => {
   it('keeps long installed web app names truncated in the main nav item', () => {
     const longName = 'A very long installed web app name that should stay on one line and truncate'
     mockInstalledApps = [
-      createInstalledApp({ id: 'installed-1', app: { ...createInstalledApp().app, name: longName } }),
+      createInstalledApp({
+        id: 'installed-1',
+        app: { ...createInstalledApp().app, name: longName },
+      }),
     ]
 
     renderMainNav()
@@ -855,9 +1265,13 @@ describe('MainNav', () => {
   })
 
   it('virtualizes large installed web app lists', async () => {
-    const offsetHeightSpy = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(320)
-    const offsetWidthSpy = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(240)
-    mockInstalledApps = Array.from({ length: 100 }, (_, index) => (
+    const offsetHeightSpy = vi
+      .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+      .mockReturnValue(320)
+    const offsetWidthSpy = vi
+      .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
+      .mockReturnValue(240)
+    mockInstalledApps = Array.from({ length: 100 }, (_, index) =>
       createInstalledApp({
         id: `installed-${index}`,
         app: {
@@ -865,16 +1279,15 @@ describe('MainNav', () => {
           id: `app-${index}`,
           name: `Web App ${index}`,
         },
-      })
-    ))
+      }),
+    )
 
     try {
       renderMainNav()
 
       expect(await screen.findByText('Web App 0')).toBeInTheDocument()
       expect(screen.queryByText('Web App 99')).not.toBeInTheDocument()
-    }
-    finally {
+    } finally {
       offsetHeightSpy.mockRestore()
       offsetWidthSpy.mockRestore()
     }

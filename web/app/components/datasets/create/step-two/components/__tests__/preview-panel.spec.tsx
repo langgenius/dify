@@ -6,7 +6,9 @@ import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PreviewPanel } from '../preview-panel'
 
 vi.mock('@/app/components/base/float-right-container', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="float-container">{children}</div>,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="float-container">{children}</div>
+  ),
 }))
 
 vi.mock('@/app/components/base/badge', () => ({
@@ -14,22 +16,23 @@ vi.mock('@/app/components/base/badge', () => ({
 }))
 
 vi.mock('@/app/components/base/skeleton', () => ({
-  SkeletonContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="skeleton">{children}</div>,
+  SkeletonContainer: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="skeleton">{children}</div>
+  ),
   SkeletonPoint: () => <span />,
   SkeletonRectangle: () => <span />,
   SkeletonRow: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('../../../../chunk', () => ({
-  ChunkContainer: ({ children, label }: { children: React.ReactNode, label: string }) => (
+  ChunkContainer: ({ children, label }: { children: React.ReactNode; label: string }) => (
     <div data-testid="chunk-container">
-      {label}
-      :
-      {' '}
-      {children}
+      {label}: {children}
     </div>
   ),
-  QAPreview: ({ qa }: { qa: { question: string } }) => <div data-testid="qa-preview">{qa.question}</div>,
+  QAPreview: ({ qa }: { qa: { question: string } }) => (
+    <div data-testid="qa-preview">{qa.question}</div>
+  ),
 }))
 
 vi.mock('../../../../common/document-picker/preview-document-picker', () => ({
@@ -41,22 +44,21 @@ vi.mock('../../../../documents/detail/completed/common/summary-label', () => ({
 }))
 
 vi.mock('../../../../formatted-text/flavours/preview-slice', () => ({
-  PreviewSlice: ({ label, text }: { label: string, text: string }) => (
+  PreviewSlice: ({ label, text }: { label: string; text: string }) => (
     <span data-testid="preview-slice">
-      {label}
-      :
-      {' '}
-      {text}
+      {label}: {text}
     </span>
   ),
 }))
 
 vi.mock('../../../../formatted-text/formatted', () => ({
-  FormattedText: ({ children }: { children: React.ReactNode }) => <p data-testid="formatted-text">{children}</p>,
+  FormattedText: ({ children }: { children: React.ReactNode }) => (
+    <p data-testid="formatted-text">{children}</p>
+  ),
 }))
 
 vi.mock('../../../../preview/container', () => ({
-  default: ({ children, header }: { children: React.ReactNode, header: React.ReactNode }) => (
+  default: ({ children, header }: { children: React.ReactNode; header: React.ReactNode }) => (
     <div data-testid="preview-container">
       {header}
       {children}
@@ -65,7 +67,7 @@ vi.mock('../../../../preview/container', () => ({
 }))
 
 vi.mock('../../../../preview/header', () => ({
-  PreviewHeader: ({ children, title }: { children: React.ReactNode, title: string }) => (
+  PreviewHeader: ({ children, title }: { children: React.ReactNode; title: string }) => (
     <div data-testid="preview-header">
       {title}
       {children}
@@ -96,7 +98,9 @@ describe('PreviewPanel', () => {
 
   it('should render preview header with title', () => {
     render(<PreviewPanel {...defaultProps} />)
-    expect(screen.getByTestId('preview-header')).toHaveTextContent('datasetCreation.stepTwo.preview')
+    expect(screen.getByTestId('preview-header')).toHaveTextContent(
+      'datasetCreation.stepTwo.preview',
+    )
   })
 
   it('should render document picker', () => {
@@ -128,9 +132,7 @@ describe('PreviewPanel', () => {
 
   it('should render QA preview', () => {
     const estimate: Partial<FileIndexingEstimateResponse> = {
-      qa_preview: [
-        { question: 'Q1', answer: 'A1' },
-      ],
+      qa_preview: [{ question: 'Q1', answer: 'A1' }],
     }
     render(
       <PreviewPanel
@@ -144,9 +146,7 @@ describe('PreviewPanel', () => {
 
   it('should render parent-child preview', () => {
     const estimate: Partial<FileIndexingEstimateResponse> = {
-      preview: [
-        { content: 'parent chunk', child_chunks: ['child1', 'child2'], summary: '' },
-      ],
+      preview: [{ content: 'parent chunk', child_chunks: ['child1', 'child2'], summary: '' }],
     }
     render(
       <PreviewPanel

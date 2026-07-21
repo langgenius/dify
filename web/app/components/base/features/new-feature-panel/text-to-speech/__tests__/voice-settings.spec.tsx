@@ -57,11 +57,7 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (ui: ReactNode) => {
-  return render(
-    <FeaturesProvider features={defaultFeatures}>
-      {ui}
-    </FeaturesProvider>,
-  )
+  return render(<FeaturesProvider features={defaultFeatures}>{ui}</FeaturesProvider>)
 }
 
 describe('VoiceSettings', () => {

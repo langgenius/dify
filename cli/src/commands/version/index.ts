@@ -20,9 +20,12 @@ export default class Version extends DifyCommand {
   ]
 
   static override flags = {
-    'output': Flags.outputFormat({ options: [OutputFormat.TEXT, OutputFormat.JSON, OutputFormat.YAML], default: '' }),
-    'client': Flags.boolean({ description: 'skip server probe' }),
-    'short': Flags.boolean({ description: 'print only the client semver' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.TEXT, OutputFormat.JSON, OutputFormat.YAML],
+      default: '',
+    }),
+    client: Flags.boolean({ description: 'skip server probe' }),
+    short: Flags.boolean({ description: 'print only the client semver' }),
     'check-compat': Flags.boolean({
       description: `exit ${COMPAT_FAIL_EXIT_CODE} if server is not 'compatible'`,
     }),
@@ -31,8 +34,7 @@ export default class Version extends DifyCommand {
   async run(argv: string[]) {
     const { flags } = this.parse(Version, argv)
 
-    if (flags.short)
-      return raw(`${versionInfo.version}\n`)
+    if (flags.short) return raw(`${versionInfo.version}\n`)
 
     const report = await runVersionProbe({ skipServer: flags.client })
 

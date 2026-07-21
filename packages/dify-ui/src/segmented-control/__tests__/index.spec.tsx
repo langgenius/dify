@@ -1,11 +1,5 @@
 import { render } from 'vitest-browser-react'
-import {
-  SegmentedControl,
-  SegmentedControlDivider,
-  SegmentedControlItem,
-} from '../index'
-
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
+import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '../index'
 
 describe('SegmentedControl wrappers', () => {
   it('renders a segmented control with Base UI pressed state', async () => {
@@ -16,7 +10,9 @@ describe('SegmentedControl wrappers', () => {
       </SegmentedControl>,
     )
 
-    await expect.element(screen.getByRole('button', { name: 'One' })).toHaveAttribute('aria-pressed', 'true')
+    await expect
+      .element(screen.getByRole('button', { name: 'One' }))
+      .toHaveAttribute('aria-pressed', 'true')
   })
 
   it('uses single selection by default', async () => {
@@ -27,10 +23,14 @@ describe('SegmentedControl wrappers', () => {
       </SegmentedControl>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Two' }).element()).click()
+    await screen.getByRole('button', { name: 'Two' }).click()
 
-    await expect.element(screen.getByRole('button', { name: 'One' })).toHaveAttribute('aria-pressed', 'false')
-    await expect.element(screen.getByRole('button', { name: 'Two' })).toHaveAttribute('aria-pressed', 'true')
+    await expect
+      .element(screen.getByRole('button', { name: 'One' }))
+      .toHaveAttribute('aria-pressed', 'false')
+    await expect
+      .element(screen.getByRole('button', { name: 'Two' }))
+      .toHaveAttribute('aria-pressed', 'true')
   })
 
   it('calls onValueChange while leaving controlled value to the caller', async () => {
@@ -42,10 +42,12 @@ describe('SegmentedControl wrappers', () => {
       </SegmentedControl>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Two' }).element()).click()
+    await screen.getByRole('button', { name: 'Two' }).click()
 
     expect(onValueChange).toHaveBeenCalledWith(['two'], expect.anything())
-    await expect.element(screen.getByRole('button', { name: 'One' })).toHaveAttribute('aria-pressed', 'true')
+    await expect
+      .element(screen.getByRole('button', { name: 'One' }))
+      .toHaveAttribute('aria-pressed', 'true')
   })
 
   it('preserves Base UI empty-array behavior when a single selected item is toggled off', async () => {
@@ -57,18 +59,24 @@ describe('SegmentedControl wrappers', () => {
       </SegmentedControl>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'One' }).element()).click()
+    await screen.getByRole('button', { name: 'One' }).click()
 
     expect(onValueChange).toHaveBeenCalledWith([], expect.anything())
-    await expect.element(screen.getByRole('button', { name: 'One' })).toHaveAttribute('aria-pressed', 'true')
+    await expect
+      .element(screen.getByRole('button', { name: 'One' }))
+      .toHaveAttribute('aria-pressed', 'true')
   })
 
   it('forwards disabled and className to composable parts', async () => {
     const screen = await render(
       <SegmentedControl defaultValue={['one']} aria-label="View" className="custom-group">
-        <SegmentedControlItem value="one" className="custom-item">One</SegmentedControlItem>
+        <SegmentedControlItem value="one" className="custom-item">
+          One
+        </SegmentedControlItem>
         <SegmentedControlDivider className="custom-divider" data-testid="divider" />
-        <SegmentedControlItem value="two" disabled>Two</SegmentedControlItem>
+        <SegmentedControlItem value="two" disabled>
+          Two
+        </SegmentedControlItem>
       </SegmentedControl>,
     )
 
