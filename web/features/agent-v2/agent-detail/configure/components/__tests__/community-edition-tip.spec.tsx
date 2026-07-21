@@ -1,4 +1,3 @@
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { Suspense } from 'react'
@@ -6,17 +5,19 @@ import { defaultSystemFeatures } from '@/features/system-features/config'
 import { LicenseStatus } from '@/features/system-features/constants'
 import { CommunityEditionTip } from '../community-edition-tip'
 
-// Literal rather than LicenseStatus.NONE: vi.hoisted runs before imports resolve.
-const licenseStatus = vi.hoisted(() => ({
-  current: 'none' as GetSystemFeaturesResponse['license']['status'],
+const systemFeatures = vi.hoisted(() => ({
+  enterpriseEnabled: false,
+  // Literal rather than LicenseStatus.NONE: vi.hoisted runs before imports resolve.
+  licenseStatus: 'none' as string,
 }))
 
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features', licenseStatus.current],
+    queryKey: ['system-features', systemFeatures.enterpriseEnabled, systemFeatures.licenseStatus],
     queryFn: async () => ({
       ...defaultSystemFeatures,
-      license: { ...defaultSystemFeatures.license, status: licenseStatus.current },
+      enterprise_enabled: systemFeatures.enterpriseEnabled,
+      license: { ...defaultSystemFeatures.license, status: systemFeatures.licenseStatus },
     }),
   }),
 }))
@@ -32,7 +33,7 @@ const renderTip = async () => {
     <QueryClientProvider client={queryClient}>
       <Suspense fallback={<div>loading</div>}>
         <CommunityEditionTip tip={tip} />
-        {/* Sibling marker: the component renders null when licensed, so there is
+        {/* Sibling marker: the component renders null on enterprise, so there is
             nothing of its own to wait on once the suspense boundary resolves. */}
         <div>resolved</div>
       </Suspense>
@@ -43,40 +44,38 @@ const renderTip = async () => {
 }
 
 describe('CommunityEditionTip', () => {
-  it('shows the warning without an enterprise license', async () => {
-    licenseStatus.current = LicenseStatus.NONE
+  it('shows the warning on a community edition deployment', async () => {
+    systemFeatures.enterpriseEnabled = false
+    systemFeatures.licenseStatus = LicenseStatus.NONE
 
     await renderTip()
 
     expect(screen.getByLabelText(tip)).toBeInTheDocument()
   })
 
-  it('renders nothing under an active enterprise license', async () => {
-    licenseStatus.current = LicenseStatus.ACTIVE
+  it('renders nothing on an enterprise deployment', async () => {
+    systemFeatures.enterpriseEnabled = true
+    systemFeatures.licenseStatus = LicenseStatus.ACTIVE
 
     await renderTip()
 
     expect(screen.queryByLabelText(tip)).not.toBeInTheDocument()
   })
 
-  it('renders nothing while an enterprise license is expiring', async () => {
-    licenseStatus.current = LicenseStatus.EXPIRING
+  it('stays hidden on an enterprise deployment whose license has lapsed', async () => {
+    // Sandbox isolation is a property of the build, not of billing state.
+    systemFeatures.enterpriseEnabled = true
+    systemFeatures.licenseStatus = LicenseStatus.EXPIRED
 
     await renderTip()
 
     expect(screen.queryByLabelText(tip)).not.toBeInTheDocument()
   })
 
-  it('keeps the warning when an enterprise license has lapsed', async () => {
-    licenseStatus.current = LicenseStatus.EXPIRED
-
-    await renderTip()
-
-    expect(screen.getByLabelText(tip)).toBeInTheDocument()
-  })
-
-  it('keeps the warning when the license status is unrecognized', async () => {
-    licenseStatus.current = 'some-future-status' as GetSystemFeaturesResponse['license']['status']
+  it('shows the warning on community edition even with an active license', async () => {
+    // Guards against regressing the gate back to license status.
+    systemFeatures.enterpriseEnabled = false
+    systemFeatures.licenseStatus = LicenseStatus.ACTIVE
 
     await renderTip()
 

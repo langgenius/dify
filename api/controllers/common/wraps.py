@@ -8,9 +8,9 @@ from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
-from models.agent import Agent
 from models.dataset import Dataset
 from models.model import App
+from services.agent.roster_service import AgentRosterService
 from services.enterprise.rbac_service import RBACService
 
 __all__ = ["RBACPermission", "RBACResourceScope", "enforce_rbac_access", "rbac_permission_required"]
@@ -132,29 +132,6 @@ def _is_resource_owned_by_current_user(
     return False
 
 
-def _resolve_agent_app_id(agent_id: str, tenant_id: str) -> str:
-    """Resolve the App id that backs an Agent, for app-scoped ACL checks.
-
-    An Agent is not an App: roster Agents carry ``app_id`` and workflow-only
-    Agents carry a hidden ``backing_app_id``, both distinct from the Agent id.
-    Checking the Agent id as if it were an App id misses every ACL and denies
-    callers who legitimately hold the permission on the backing App.
-
-    Read-only on purpose: an authorization check must not create the hidden
-    backing App the way the runtime path does. Falls back to the Agent id when
-    no row resolves, leaving the caller to be denied rather than silently
-    granted.
-    """
-    row = db.session.execute(
-        select(Agent.backing_app_id, Agent.app_id).where(Agent.id == agent_id, Agent.tenant_id == tenant_id).limit(1)
-    ).first()
-    if row is None:
-        return agent_id
-
-    backing_app_id, app_id = row
-    return backing_app_id or app_id or agent_id
-
-
 def _extract_resource_id(
     resource_type: RBACResourceScope, tenant_id: str, path_args: dict[str, object] | None = None
 ) -> str:
@@ -179,7 +156,14 @@ def _extract_resource_id(
 
         agent_id = matched_args.get("agent_id")
         if agent_id:
-            return _resolve_agent_app_id(str(agent_id), tenant_id)
+            # An Agent is not an App: roster Agents carry app_id and workflow-only
+            # Agents carry a hidden backing_app_id, both distinct from the Agent id.
+            # Keep the Agent id when nothing resolves so the check denies rather
+            # than silently granting.
+            backing_app_id = AgentRosterService(db.session).peek_runtime_backing_app_id(
+                tenant_id=tenant_id, agent_id=str(agent_id)
+            )
+            return backing_app_id or str(agent_id)
 
         resource_id = matched_args.get("resource_id")
         if resource_id:

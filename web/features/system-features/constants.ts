@@ -15,12 +15,6 @@ export const LicenseStatus = {
   LOST: 'lost',
 } as const satisfies Record<string, GetSystemFeaturesResponse['license']['status']>
 
-// A license in any other state (including a lapsed enterprise one) is treated as
-// non-enterprise, so enterprise-only suppressions fail toward showing content.
-export const ENTERPRISE_LICENSE_STATUSES: ReadonlySet<
-  GetSystemFeaturesResponse['license']['status']
-> = new Set([LicenseStatus.ACTIVE, LicenseStatus.EXPIRING])
-
 export const InstallationScope = {
   ALL: 'all',
   NONE: 'none',
