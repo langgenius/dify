@@ -97,6 +97,7 @@ export function ProcessingTasksDrawer({
   const pendingActionsRef = useRef(new Set<string>())
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
   const [actionErrors, setActionErrors] = useState<Record<string, boolean>>({})
+  const [visibleTaskLimit, setVisibleTaskLimit] = useState(TASK_DRAWER_LIMIT)
   useSyncExternalStore(
     open ? taskProgressStore.subscribe : noopSubscribe,
     taskProgressStore.getSnapshot,
@@ -108,21 +109,29 @@ export function ProcessingTasksDrawer({
   )
   const orderedBaseTasks = useMemo(() => {
     if (!open) return []
-    const retryableTasks = newestTasks(tasks, TASK_DRAWER_LIMIT, taskCanRetry)
-    const retryableTaskIds = new Set(retryableTasks.map((task) => task.id))
-    const activeTasks = newestTasks(
+    const reservedLimit = Math.min(TASK_DRAWER_LIMIT / 2, visibleTaskLimit)
+    const retryableTasks = newestTasks(tasks, reservedLimit, taskCanRetry)
+    const activeTasks = newestTasks(tasks, reservedLimit, taskIsActive)
+    const attentionTaskIds = new Set([
+      ...retryableTasks.map((task) => task.id),
+      ...activeTasks.map((task) => task.id),
+    ])
+    const remainingAttentionTasks = newestTasks(
       tasks,
-      TASK_DRAWER_LIMIT - retryableTasks.length,
-      (task) => taskIsActive(task) && !retryableTaskIds.has(task.id),
+      visibleTaskLimit - attentionTaskIds.size,
+      (task) => (taskCanRetry(task) || taskIsActive(task)) && !attentionTaskIds.has(task.id),
     )
-    const attentionTaskIds = new Set([...retryableTaskIds, ...activeTasks.map((task) => task.id)])
+    for (const task of remainingAttentionTasks) attentionTaskIds.add(task.id)
     const terminalTasks = newestTasks(
       tasks,
-      TASK_DRAWER_LIMIT - retryableTasks.length - activeTasks.length,
+      visibleTaskLimit - attentionTaskIds.size,
       (task) => !attentionTaskIds.has(task.id),
     )
-    return [...retryableTasks, ...activeTasks, ...terminalTasks].sort(compareTaskRecency)
-  }, [open, tasks])
+    return [...retryableTasks, ...activeTasks, ...remainingAttentionTasks, ...terminalTasks].sort(
+      compareTaskRecency,
+    )
+  }, [open, tasks, visibleTaskLimit])
+  const hasMoreTasks = open && tasks.length > orderedBaseTasks.length
   const orderedTasks = orderedBaseTasks.map((task) => {
     const progress = taskProgressStore.get(task.id)
     if (!progress || !taskIsActive(task) || task.updatedAt > progress.updatedAt) return task
@@ -176,7 +185,15 @@ export function ProcessingTasksDrawer({
   }
 
   return (
-    <Drawer open={open} modal swipeDirection="right" onOpenChange={onOpenChange}>
+    <Drawer
+      open={open}
+      modal
+      swipeDirection="right"
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setVisibleTaskLimit(TASK_DRAWER_LIMIT)
+        onOpenChange(nextOpen)
+      }}
+    >
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
@@ -212,79 +229,95 @@ export function ProcessingTasksDrawer({
                     <Loading />
                   </div>
                 ) : orderedTasks.length ? (
-                  <ul className="divide-y divide-divider-subtle">
-                    {orderedTasks.map((task) => {
-                      const title = documentTitles.get(task.documentId) ?? task.documentId
-                      const timestamp = Date.parse(
-                        taskIsActive(task) ? task.createdAt : taskTime(task),
-                      )
-                      const taskError = task.errorMessage ?? task.errorCode
-                      return (
-                        <li key={task.id} className="flex min-h-[62px] items-center gap-2.5 py-3.5">
-                          <span
-                            aria-hidden
-                            className={
-                              task.state === 'failed'
-                                ? 'i-ri-error-warning-fill size-4 shrink-0 text-text-destructive'
-                                : taskIsActive(task)
-                                  ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin text-text-accent motion-reduce:animate-none'
-                                  : task.state === 'succeeded'
-                                    ? 'i-ri-check-line size-4 shrink-0 text-text-success'
-                                    : 'i-ri-indeterminate-circle-line size-4 shrink-0 text-text-tertiary'
-                            }
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate system-xs-medium text-text-primary">
-                              {t(($) => $['newKnowledge.processDocument'], { name: title })}
-                            </p>
-                            <p className="mt-0.5 truncate system-2xs-regular text-text-tertiary">
-                              {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
-                                progress: task.progressPercent,
-                              })}
-                              {!Number.isNaN(timestamp) && (
-                                <>
-                                  <span aria-hidden> · </span>
-                                  {formatTimeFromNow(timestamp)}
-                                </>
+                  <>
+                    <ul className="divide-y divide-divider-subtle">
+                      {orderedTasks.map((task) => {
+                        const title = documentTitles.get(task.documentId) ?? task.documentId
+                        const timestamp = Date.parse(
+                          taskIsActive(task) ? task.createdAt : taskTime(task),
+                        )
+                        const taskError = task.errorMessage ?? task.errorCode
+                        return (
+                          <li
+                            key={task.id}
+                            className="flex min-h-[62px] items-center gap-2.5 py-3.5"
+                          >
+                            <span
+                              aria-hidden
+                              className={
+                                task.state === 'failed'
+                                  ? 'i-ri-error-warning-fill size-4 shrink-0 text-text-destructive'
+                                  : taskIsActive(task)
+                                    ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin text-text-accent motion-reduce:animate-none'
+                                    : task.state === 'succeeded'
+                                      ? 'i-ri-check-line size-4 shrink-0 text-text-success'
+                                      : 'i-ri-indeterminate-circle-line size-4 shrink-0 text-text-tertiary'
+                              }
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate system-xs-medium text-text-primary">
+                                {t(($) => $['newKnowledge.processDocument'], { name: title })}
+                              </p>
+                              <p className="mt-0.5 truncate system-2xs-regular text-text-tertiary">
+                                {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
+                                  progress: task.progressPercent,
+                                })}
+                                {!Number.isNaN(timestamp) && (
+                                  <>
+                                    <span aria-hidden> · </span>
+                                    {formatTimeFromNow(timestamp)}
+                                  </>
+                                )}
+                              </p>
+                              {taskError && (
+                                <p className="mt-1 system-2xs-regular break-words whitespace-pre-wrap text-text-destructive">
+                                  {taskError}
+                                </p>
                               )}
-                            </p>
-                            {taskError && (
-                              <p className="mt-1 system-2xs-regular break-words whitespace-pre-wrap text-text-destructive">
-                                {taskError}
-                              </p>
-                            )}
-                            {actionErrors[task.id] && (
-                              <p
-                                className="mt-1 system-2xs-regular text-text-destructive"
-                                role="alert"
+                              {actionErrors[task.id] && (
+                                <p
+                                  className="mt-1 system-2xs-regular text-text-destructive"
+                                  role="alert"
+                                >
+                                  {t(($) => $['newKnowledge.taskActionFailed'])}
+                                </p>
+                              )}
+                            </div>
+                            {canEdit && taskIsActive(task) ? (
+                              <Button
+                                size="small"
+                                disabled={pendingActions.has(task.id)}
+                                loading={pendingActions.has(task.id)}
+                                onClick={() => void performAction(task, 'cancel')}
                               >
-                                {t(($) => $['newKnowledge.taskActionFailed'])}
-                              </p>
-                            )}
-                          </div>
-                          {canEdit && taskIsActive(task) ? (
-                            <Button
-                              size="small"
-                              disabled={pendingActions.has(task.id)}
-                              loading={pendingActions.has(task.id)}
-                              onClick={() => void performAction(task, 'cancel')}
-                            >
-                              {t(($) => $['newKnowledge.interruptTask'])}
-                            </Button>
-                          ) : canEdit && taskCanRetry(task) ? (
-                            <Button
-                              size="small"
-                              disabled={pendingActions.has(task.id)}
-                              loading={pendingActions.has(task.id)}
-                              onClick={() => void performAction(task, 'retry')}
-                            >
-                              {t(($) => $['newKnowledge.retryTask'])}
-                            </Button>
-                          ) : null}
-                        </li>
-                      )
-                    })}
-                  </ul>
+                                {t(($) => $['newKnowledge.interruptTask'])}
+                              </Button>
+                            ) : canEdit && taskCanRetry(task) ? (
+                              <Button
+                                size="small"
+                                disabled={pendingActions.has(task.id)}
+                                loading={pendingActions.has(task.id)}
+                                onClick={() => void performAction(task, 'retry')}
+                              >
+                                {t(($) => $['newKnowledge.retryTask'])}
+                              </Button>
+                            ) : null}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                    {hasMoreTasks && (
+                      <div className="mt-4 flex justify-center">
+                        <Button
+                          onClick={() =>
+                            setVisibleTaskLimit((current) => current + TASK_DRAWER_LIMIT)
+                          }
+                        >
+                          {t(($) => $['newKnowledge.loadMore'])}
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 ) : !taskQueryError ? (
                   <p className="py-16 text-center system-xs-regular text-text-tertiary">
                     {t(($) => $['newKnowledge.noBackgroundTasks'])}

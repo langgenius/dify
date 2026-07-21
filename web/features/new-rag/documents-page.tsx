@@ -215,10 +215,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const canAutoFetchTaskPage = Boolean(
     hasNextTaskPage && (tasksQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
   )
-  const canAutoFetchSourcePage = Boolean(
-    hasNextSourcePage && (sourcesQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
-  )
-
   const documents = useMemo(
     () => documentsQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [documentsQuery.data],
@@ -254,6 +250,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ),
     [documents, sourceNames],
   )
+  const hasRelevantNextSourcePage = Boolean(hasNextSourcePage && unresolvedDocumentSourceIds.size)
+  const canAutoFetchSourcePage = Boolean(
+    hasRelevantNextSourcePage && (sourcesQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
+  )
   const disabledSourceIds = useMemo(
     () =>
       new Set(
@@ -262,10 +262,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           .map((source) => source.id),
       ),
     [sourcesQuery.data],
-  )
-  const baseTaskUpdatedAt = useMemo(
-    () => new Map(baseTasks.map((task) => [task.id, task.updatedAt])),
-    [baseTasks],
   )
   const baseTaskByIdRef = useRef(baseTaskById)
   baseTaskByIdRef.current = baseTaskById
@@ -398,7 +394,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const taskQueryWarning = Boolean(
     (tasksQuery.error && tasksQuery.data) || tasksQuery.isFetchNextPageError,
   )
-  const dependencyResultsIncomplete = sourceResultsIncomplete
+  const dependencyResultsIncomplete = taskResultsIncomplete || sourceResultsIncomplete
   const selectionDisabled =
     !canWrite ||
     dependencyResultsIncomplete ||
@@ -988,6 +984,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 failedTaskPollGenerationsRef.current.get(task.id) !== requestGeneration
               )
                 return
+              const currentVersion = currentTaskVersionRef.current.get(task.id)
+              if (currentVersion && taskVersionIsAfter(currentVersion, snapshot.updatedAt)) return
               handleTaskUpdated(snapshot)
             } catch (error) {
               if (
@@ -1046,7 +1044,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     const requests: Promise<unknown>[] = []
     if (hasNextDocumentPage && !isFetchingNextDocumentPage) requests.push(fetchNextDocumentPage())
     if (hasNextTaskPage && !isFetchingNextTaskPage) requests.push(fetchNextTaskPage())
-    if (hasNextSourcePage && !isFetchingNextSourcePage) requests.push(fetchNextSourcePage())
+    if (hasRelevantNextSourcePage && !isFetchingNextSourcePage) requests.push(fetchNextSourcePage())
     void Promise.allSettled(requests)
   }
 
@@ -1059,7 +1057,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           knowledgeSpaceId={knowledgeSpaceId}
           onEvent={handleTaskEvent}
           taskId={task.id}
-          taskVersion={baseTaskUpdatedAt.get(task.id) ?? task.updatedAt}
+          taskVersion={task.updatedAt}
         />
       ))}
       {canWrite && (
@@ -1194,7 +1192,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               completingResults={completingFilteredResults}
               documents={filteredDocuments}
               filter={filter}
-              hasNextPage={Boolean(hasNextDocumentPage || hasNextTaskPage || hasNextSourcePage)}
+              hasNextPage={Boolean(
+                hasNextDocumentPage || hasNextTaskPage || hasRelevantNextSourcePage,
+              )}
               hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
               hasTaskError={hasTaskError}
               isFetchNextPageError={documentsQuery.isFetchNextPageError}
@@ -1220,6 +1220,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               sourceNames={sourceNames}
               statusPending={dependencyResultsIncomplete}
               statuses={documentStatuses}
+              tasksPending={taskResultsIncomplete}
               tasksButtonLabel={tasksButtonLabel}
               tasksLiveStatus={tasksLiveStatus}
               uploading={uploading}
@@ -1241,11 +1242,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         documents={documents}
         knowledgeSpaceId={knowledgeSpaceId}
         onOpenChange={setTasksOpen}
-        onRetryTaskQuery={() => void tasksQuery.refetch()}
+        onRetryTaskQuery={() => {
+          if (tasksQuery.isFetchNextPageError) void tasksQuery.fetchNextPage()
+          else void tasksQuery.refetch()
+        }}
         onTaskUpdated={handleTaskUpdated}
         open={tasksOpen}
         taskQueryPending={tasksQuery.isPending}
-        taskQueryError={Boolean(tasksQuery.error)}
+        taskQueryError={Boolean(tasksQuery.error || tasksQuery.isFetchNextPageError)}
         taskProgressStore={taskProgressStore}
         tasks={tasks}
       />

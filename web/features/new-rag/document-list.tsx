@@ -220,6 +220,7 @@ export function DocumentsList({
   sourceNames,
   statusPending,
   statuses,
+  tasksPending,
   tasksButtonLabel,
   tasksLiveStatus,
   uploading,
@@ -253,6 +254,7 @@ export function DocumentsList({
   sourceNames: Map<string, string>
   statusPending: boolean
   statuses: Map<string, DocumentDisplayStatus>
+  tasksPending: boolean
   tasksButtonLabel: string
   tasksLiveStatus: string
   uploading: boolean
@@ -387,7 +389,8 @@ export function DocumentsList({
                 )}
                 status={statuses.get(document.id) ?? 'queued'}
                 statusPending={Boolean(
-                  statusPending && document.sourceId && !sourceNames.has(document.sourceId),
+                  tasksPending ||
+                  (statusPending && document.sourceId && !sourceNames.has(document.sourceId)),
                 )}
               />
             ))}
