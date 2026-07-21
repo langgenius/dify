@@ -838,6 +838,29 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.NoAudioUploadedError):
                 method(api, account, trial_app_chat)
 
+    def test_missing_file_field_returns_400(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+        """A multipart POST with no `file` field must surface as 400, not 500.
+
+        Verifies the controller passes file=None to AudioService.transcript_asr
+        instead of raising a KeyError that would yield HTTP 500.
+        """
+
+        def fake_asr(*args, **kwargs):
+            assert kwargs["file"] is None
+            raise module.services.errors.audio.NoAudioUploadedServiceError()
+
+        api = module.TrialChatAudioApi()
+        method = unwrap(api.post)
+
+        with (
+            app.test_request_context("/", method="POST", data={}, content_type="multipart/form-data"),
+            patch.object(module.AudioService, "transcript_asr", side_effect=fake_asr),
+        ):
+            with pytest.raises(module.NoAudioUploadedError) as exc_info:
+                method(api, account, trial_app_chat)
+
+        assert exc_info.value.code == 400
+
     def test_audio_too_large(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)

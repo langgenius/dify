@@ -6,7 +6,6 @@ let currentBillingUrl: string | null = 'https://billing'
 let fetching = false
 let isManager = true
 let enableBilling = true
-let workspacePermissionKeys: string[] = ['billing.subscription.manage']
 let billingUrlEnabled = false
 
 const refetchMock = vi.fn()
@@ -39,14 +38,6 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
     isCurrentWorkspaceManager: isManager,
-    workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    isCurrentWorkspaceManager: isManager,
-    workspacePermissionKeys,
   }))
 })
 
@@ -68,11 +59,10 @@ describe('Billing', () => {
     isManager = true
     enableBilling = true
     billingUrlEnabled = false
-    workspacePermissionKeys = ['billing.subscription.manage']
     refetchMock.mockResolvedValue({ data: 'https://billing' })
   })
 
-  it('hides the billing action when subscription management permission is granted without manager role', () => {
+  it('hides the billing action from non-manager members', () => {
     isManager = false
 
     render(<Billing />)
@@ -83,16 +73,14 @@ describe('Billing', () => {
     expect(billingUrlEnabled).toBe(false)
   })
 
-  it('hides the billing action when subscription management permission is missing or billing is disabled', () => {
-    workspacePermissionKeys = []
+  it('shows the billing action to managers without billing permission keys', () => {
     render(<Billing />)
-    expect(
-      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
-    ).not.toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(false)
 
-    vi.clearAllMocks()
-    workspacePermissionKeys = ['billing.subscription.manage']
+    expect(screen.getByRole('button', { name: /billing\.viewBillingTitle/ })).toBeInTheDocument()
+    expect(billingUrlEnabled).toBe(true)
+  })
+
+  it('hides the billing action when billing is disabled', () => {
     enableBilling = false
     render(<Billing />)
     expect(

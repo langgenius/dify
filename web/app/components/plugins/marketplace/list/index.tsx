@@ -15,6 +15,7 @@ type ListProps = {
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
   showInstallButton?: boolean
+  linkToMarketplaceDetail?: boolean
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   emptyClassName?: string
@@ -25,6 +26,7 @@ const List = ({
   marketplaceCollectionPluginsMap,
   plugins,
   showInstallButton,
+  linkToMarketplaceDetail,
   cardContainerClassName,
   cardRender,
   emptyClassName,
@@ -62,6 +64,7 @@ const List = ({
           marketplaceCollections={marketplaceCollections}
           marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
           showInstallButton={showInstallButton}
+          linkToMarketplaceDetail={linkToMarketplaceDetail}
           cardContainerClassName={cardContainerClassName}
           cardRender={cardRender}
           onCollectionMoreClick={onCollectionMoreClick}
@@ -79,6 +82,7 @@ const List = ({
                 plugin={plugin}
                 showInstallButton={showInstallButton}
                 isInstalled={installedPluginIds.has(plugin.plugin_id)}
+                linkToMarketplaceDetail={linkToMarketplaceDetail}
               />
             )
           })}
