@@ -6336,11 +6336,6 @@
       "count": 1
     }
   },
-  "web/service/access-control/use-permission-catalog.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/use-workspace-access-rules.ts": {
     "no-restricted-imports": {
       "count": 1
