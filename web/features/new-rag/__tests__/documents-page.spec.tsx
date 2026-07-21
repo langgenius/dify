@@ -3,7 +3,7 @@ import type {
   LogicalDocument,
   Source,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { DocumentsPage } from '../documents-page'
@@ -975,7 +975,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'dataset.newKnowledge.tasks',
       }),
     )
 
@@ -1318,7 +1318,7 @@ describe('DocumentsPage', () => {
 
     expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
     expect(toastMock.error).toHaveBeenCalledTimes(1)
-    expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(2)
+    expect(queryClient.invalidateQueries).toHaveBeenCalledOnce()
   })
 
   it('applies task events and clears the attention badge after completion', async () => {
@@ -1753,6 +1753,83 @@ describe('DocumentsPage', () => {
     }
   })
 
+  it('keeps one failed-task poll in flight and ignores it after a local retry', async () => {
+    vi.useFakeTimers()
+    let resolvePoll: ((snapshot: DocumentProcessingTask) => void) | undefined
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'slow-failed-poll', state: 'failed' })] }],
+    }
+    getTaskSnapshot.mockReturnValue(
+      new Promise<DocumentProcessingTask>((resolve) => {
+        resolvePoll = resolve
+      }),
+    )
+    retryMutation.mutateAsync.mockResolvedValue(
+      task({
+        id: 'slow-failed-poll',
+        progressPercent: 0,
+        state: 'dispatch_pending',
+        updatedAt: '2026-07-20T10:03:00Z',
+      }),
+    )
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        }),
+      )
+      await act(async () => vi.advanceTimersByTime(20000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+      await act(async () => {})
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      ).toBeInTheDocument()
+
+      await act(async () => {
+        resolvePoll?.(
+          task({
+            errorCode: 'OLD_FAILURE',
+            id: 'slow-failed-poll',
+            state: 'failed',
+            updatedAt: '2026-07-20T10:01:00Z',
+          }),
+        )
+      })
+
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('OLD_FAILURE')).not.toBeInTheDocument()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('stops polling a failed task after a permanent snapshot error', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'forbidden-failed-poll', state: 'failed' })] }],
+    }
+    getTaskSnapshot.mockRejectedValue(new Response(null, { status: 403 }))
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+      await act(async () => vi.advanceTimersByTime(60000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('renders large document results in bounded batches', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
@@ -1782,5 +1859,40 @@ describe('DocumentsPage', () => {
 
     expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
+  it('bounds automatic cursor exhaustion and leaves further document loading explicit', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: Array.from({ length: 20 }, (_, index) => ({
+        items: index === 0 ? [document()] : [],
+        nextCursor: 'next',
+      })),
+    }
+    documentsQuery.hasNextPage = true
+    tasksQuery.data = {
+      pages: Array.from({ length: 20 }, () => ({ items: [], nextCursor: 'next' })),
+    }
+    tasksQuery.hasNextPage = true
+    sourcesQuery.data = {
+      pages: Array.from({ length: 20 }, (_, index) => ({
+        items: index === 0 ? [source()] : [],
+        nextCursor: 'next',
+      })),
+    }
+    sourcesQuery.hasNextPage = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      'sso',
+    )
+
+    expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
+    ).toBeInTheDocument()
   })
 })

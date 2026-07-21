@@ -425,7 +425,7 @@ export function DocumentsList({
           </span>
           <Button onClick={onLoadMore}>{tCommon(($) => $['operation.retry'])}</Button>
         </div>
-      ) : hasNextPage && !filterActive ? (
+      ) : hasNextPage && (!filterActive || !completingResults) ? (
         <div className="mt-5 flex justify-center">
           <Button loading={isFetchingNextPage} onClick={onLoadMore}>
             {t(($) => $['newKnowledge.loadMore'])}

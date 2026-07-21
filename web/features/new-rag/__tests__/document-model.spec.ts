@@ -93,6 +93,7 @@ describe('new Knowledge document model', () => {
     expect(taskIsActive(task({ state: 'running' }))).toBe(true)
     expect(taskNeedsAttention(task({ state: 'failed' }))).toBe(true)
     expect(taskCanRetry(task({ state: 'canceled' }))).toBe(false)
+    expect(taskNeedsAttention(task({ state: 'canceled' }))).toBe(false)
     expect(taskNeedsAttention(task({ state: 'succeeded' }))).toBe(false)
     expect(taskCanRetry(task({ state: 'superseded' }))).toBe(false)
   })

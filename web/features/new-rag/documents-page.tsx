@@ -36,6 +36,7 @@ import { TaskEventObserver } from './task-event-observer'
 const DOCUMENT_PAGE_SIZE = 50
 const TASK_PAGE_SIZE = 100
 const MAX_TASK_EVENT_STREAMS = 6
+const MAX_AUTO_CURSOR_PAGES = 20
 const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.md,.markdown,.html,.htm,.xls,.xlsx,.txt'
 
 const uploadExclusionReasonKey = {
@@ -56,13 +57,20 @@ type TerminalTaskPin = {
   taskListGeneration: number
 }
 
-function responseStatus(error: unknown) {
+function responseStatus(error: unknown): number | undefined {
   if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error) return error.status
+  if (error && typeof error === 'object' && 'status' in error)
+    return typeof error.status === 'number' ? error.status : undefined
   if (error && typeof error === 'object' && 'data' in error) {
     const data = error.data
-    if (data && typeof data === 'object' && 'status' in data) return data.status
+    if (data && typeof data === 'object' && 'status' in data)
+      return typeof data.status === 'number' ? data.status : undefined
   }
+}
+
+function taskSnapshotErrorIsTransient(error: unknown) {
+  const status = responseStatus(error)
+  return status === undefined || status === 408 || status === 429 || status >= 500
 }
 
 function taskVersionIsAfter(candidate: string, baseline: string) {
@@ -109,6 +117,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [terminalTaskPins, setTerminalTaskPins] = useState<Record<string, TerminalTaskPin>>({})
   const [taskObserverGenerations, setTaskObserverGenerations] = useState<Record<string, number>>({})
   const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
+  const failedTaskPollGenerationsRef = useRef(new Map<string, number>())
+  const blockedFailedTaskPollsRef = useRef(new Set<string>())
   const equalRetryListGenerationsRef = useRef(new Map<string, number>())
   const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
   const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
@@ -181,6 +191,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     isFetchNextPageError: isFetchNextSourcePageError,
     isFetchingNextPage: isFetchingNextSourcePage,
   } = sourcesQuery
+  const canAutoFetchDocumentPage = Boolean(
+    hasNextDocumentPage && (documentsQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
+  )
+  const canAutoFetchTaskPage = Boolean(
+    hasNextTaskPage && (tasksQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
+  )
+  const canAutoFetchSourcePage = Boolean(
+    hasNextSourcePage && (sourcesQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
+  )
 
   const documents = useMemo(
     () => documentsQuery.data?.pages.flatMap((page) => page.items) ?? [],
@@ -258,12 +277,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             taskByDocument.get(document.id),
             Boolean(
               document.sourceId &&
-              (disabledSourceIds.has(document.sourceId) || !sourceNames.has(document.sourceId)),
+              (disabledSourceIds.has(document.sourceId) ||
+                (!hasNextSourcePage && !sourceNames.has(document.sourceId))),
             ),
           ),
         ]),
       ),
-    [disabledSourceIds, documents, sourceNames, taskByDocument],
+    [disabledSourceIds, documents, hasNextSourcePage, sourceNames, taskByDocument],
   )
   const filterActive = filter !== 'all' || Boolean(search.trim())
   const availableDocumentIds = useMemo(
@@ -298,10 +318,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const completingFilteredResults =
     filterActive &&
     !documentsQuery.isFetchNextPageError &&
-    (documentsQuery.hasNextPage || documentsQuery.isFetchingNextPage)
+    (canAutoFetchDocumentPage || documentsQuery.isFetchingNextPage)
   const filteredResultsIncomplete = Boolean(
     filterActive &&
-    (documentsQuery.hasNextPage ||
+    (canAutoFetchDocumentPage ||
       documentsQuery.isFetchingNextPage ||
       documentsQuery.isFetchNextPageError),
   )
@@ -317,14 +337,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const taskResultsIncomplete = Boolean(
     !tasksQuery.data ||
     tasksQuery.isPending ||
-    tasksQuery.hasNextPage ||
+    canAutoFetchTaskPage ||
     tasksQuery.isFetchingNextPage ||
     tasksQuery.isFetchNextPageError,
   )
   const sourceResultsIncomplete = Boolean(
     !sourcesQuery.data ||
     sourcesQuery.isPending ||
-    sourcesQuery.hasNextPage ||
+    canAutoFetchSourcePage ||
     sourcesQuery.isFetchingNextPage ||
     sourcesQuery.isFetchNextPageError,
   )
@@ -398,7 +418,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   useEffect(() => {
     if (
       filterActive &&
-      hasNextDocumentPage &&
+      canAutoFetchDocumentPage &&
       !isFetchingNextDocumentPage &&
       !isFetchNextDocumentPageError
     )
@@ -406,20 +426,31 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [
     fetchNextDocumentPage,
     filterActive,
-    hasNextDocumentPage,
+    canAutoFetchDocumentPage,
     isFetchNextDocumentPageError,
     isFetchingNextDocumentPage,
   ])
 
   useEffect(() => {
-    if (hasNextTaskPage && !isFetchingNextTaskPage && !isFetchNextTaskPageError)
+    if (canAutoFetchTaskPage && !isFetchingNextTaskPage && !isFetchNextTaskPageError)
       void fetchNextTaskPage()
-  }, [fetchNextTaskPage, hasNextTaskPage, isFetchNextTaskPageError, isFetchingNextTaskPage])
+  }, [canAutoFetchTaskPage, fetchNextTaskPage, isFetchNextTaskPageError, isFetchingNextTaskPage])
 
   useEffect(() => {
-    if (hasNextSourcePage && !isFetchingNextSourcePage && !isFetchNextSourcePageError)
+    if (canAutoFetchSourcePage && !isFetchingNextSourcePage && !isFetchNextSourcePageError)
       void fetchNextSourcePage()
-  }, [fetchNextSourcePage, hasNextSourcePage, isFetchNextSourcePageError, isFetchingNextSourcePage])
+  }, [
+    canAutoFetchSourcePage,
+    fetchNextSourcePage,
+    isFetchNextSourcePageError,
+    isFetchingNextSourcePage,
+  ])
+
+  const refreshDocuments = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdLogicalDocuments.key(),
+    })
+  }, [queryClient])
 
   const refreshDocumentsAndTasks = useCallback(() => {
     void Promise.allSettled([
@@ -437,6 +468,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       taskId: string,
       terminalVersion: string,
       reconciliationGeneration: number,
+      retryAttempt = 0,
     ) {
       const currentTask = baseTaskByIdRef.current.get(taskId)
       if (!currentTask) return
@@ -474,17 +506,29 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             [taskId]: (current[taskId] ?? 0) + 1,
           }))
         }
-      } catch {
+      } catch (error) {
         if (
+          retryAttempt >= 4 ||
+          !taskSnapshotErrorIsTransient(error) ||
           terminalReconciliationGenerationsRef.current.get(taskId) !== reconciliationGeneration ||
           terminalReconciliationTimeoutsRef.current.has(taskId)
         )
           return
-        const timeout = window.setTimeout(() => {
-          terminalReconciliationTimeoutsRef.current.delete(taskId)
-          if (terminalReconciliationGenerationsRef.current.get(taskId) === reconciliationGeneration)
-            void reconcileTerminalTaskRequest(taskId, terminalVersion, reconciliationGeneration)
-        }, 5000)
+        const timeout = window.setTimeout(
+          () => {
+            terminalReconciliationTimeoutsRef.current.delete(taskId)
+            if (
+              terminalReconciliationGenerationsRef.current.get(taskId) === reconciliationGeneration
+            )
+              void reconcileTerminalTaskRequest(
+                taskId,
+                terminalVersion,
+                reconciliationGeneration,
+                retryAttempt + 1,
+              )
+          },
+          Math.min(1000 * 2 ** retryAttempt, 30000),
+        )
         terminalReconciliationTimeoutsRef.current.set(taskId, timeout)
       }
     },
@@ -723,6 +767,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         }
       })
       if (event.event === 'terminal') {
+        const pollGeneration = failedTaskPollGenerationsRef.current.get(taskId) ?? 0
+        failedTaskPollGenerationsRef.current.set(taskId, pollGeneration + 1)
         const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
         if (timeout !== undefined) window.clearTimeout(timeout)
         terminalReconciliationTimeoutsRef.current.delete(taskId)
@@ -738,22 +784,25 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         }))
         if (event.data.state === 'failed')
           toast.error(t(($) => $['newKnowledge.taskFailedNotification']))
-        refreshDocumentsAndTasks()
+        refreshDocuments()
         void reconcileTerminalTask(taskId, eventVersion, reconciliationGeneration)
       }
       return true
     },
-    [reconcileTerminalTask, refreshDocumentsAndTasks, t],
+    [reconcileTerminalTask, refreshDocuments, t],
   )
 
   const handleTaskUpdated = useCallback((task: DocumentProcessingTask) => {
     setTaskOverrides((current) => ({ ...current, [task.id]: normalizedTaskSnapshot(task) }))
     if (taskIsActive(task)) {
+      blockedFailedTaskPollsRef.current.delete(task.id)
       const timeout = terminalReconciliationTimeoutsRef.current.get(task.id)
       if (timeout !== undefined) window.clearTimeout(timeout)
       terminalReconciliationTimeoutsRef.current.delete(task.id)
       const generation = terminalReconciliationGenerationsRef.current.get(task.id) ?? 0
       terminalReconciliationGenerationsRef.current.set(task.id, generation + 1)
+      const pollGeneration = failedTaskPollGenerationsRef.current.get(task.id) ?? 0
+      failedTaskPollGenerationsRef.current.set(task.id, pollGeneration + 1)
       pendingTerminalProgressRef.current.delete(task.id)
       setTerminalTaskPins((current) => {
         const next = { ...current }
@@ -765,33 +814,56 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   useEffect(() => {
     if (!orderedFailedTasksRef.current.length) return
-    const interval = window.setInterval(() => {
+    let canceled = false
+    let timeout: number | undefined
+    const pollNextBatch = async () => {
       const failedTasks = orderedFailedTasksRef.current
-      if (!failedTasks.length) return
-      const pollCount = Math.min(MAX_TASK_EVENT_STREAMS, failedTasks.length)
-      const offset = failedTaskPollOffsetRef.current % failedTasks.length
-      const tasksToPoll = Array.from(
-        { length: pollCount },
-        (_, index) => failedTasks[(offset + index) % failedTasks.length]!,
+      const pollableTasks = failedTasks.filter(
+        (task) => !blockedFailedTaskPollsRef.current.has(task.id),
       )
-      failedTaskPollOffsetRef.current += MAX_TASK_EVENT_STREAMS
-      void Promise.allSettled(
-        tasksToPoll.map(async (task) => {
-          const snapshot =
-            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId(
-              {
-                params: {
-                  documentId: task.documentId,
-                  id: knowledgeSpaceId,
-                  taskId: task.id,
-                },
-              },
-            )
-          handleTaskUpdated(snapshot)
-        }),
-      )
-    }, 5000)
-    return () => window.clearInterval(interval)
+      if (pollableTasks.length) {
+        const pollCount = Math.min(MAX_TASK_EVENT_STREAMS, pollableTasks.length)
+        const offset = failedTaskPollOffsetRef.current % pollableTasks.length
+        const tasksToPoll = Array.from(
+          { length: pollCount },
+          (_, index) => pollableTasks[(offset + index) % pollableTasks.length]!,
+        )
+        failedTaskPollOffsetRef.current += MAX_TASK_EVENT_STREAMS
+        await Promise.allSettled(
+          tasksToPoll.map(async (task) => {
+            const requestGeneration = (failedTaskPollGenerationsRef.current.get(task.id) ?? 0) + 1
+            failedTaskPollGenerationsRef.current.set(task.id, requestGeneration)
+            try {
+              const snapshot =
+                await consoleClient.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId(
+                  {
+                    params: {
+                      documentId: task.documentId,
+                      id: knowledgeSpaceId,
+                      taskId: task.id,
+                    },
+                  },
+                )
+              if (
+                canceled ||
+                failedTaskPollGenerationsRef.current.get(task.id) !== requestGeneration
+              )
+                return
+              handleTaskUpdated(snapshot)
+            } catch (error) {
+              if (!taskSnapshotErrorIsTransient(error))
+                blockedFailedTaskPollsRef.current.add(task.id)
+            }
+          }),
+        )
+      }
+      if (!canceled) timeout = window.setTimeout(() => void pollNextBatch(), 5000)
+    }
+    timeout = window.setTimeout(() => void pollNextBatch(), 5000)
+    return () => {
+      canceled = true
+      if (timeout !== undefined) window.clearTimeout(timeout)
+    }
   }, [failedTaskPollSignature, handleTaskUpdated, knowledgeSpaceId])
 
   const toggleDocument = useCallback(
@@ -853,9 +925,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           }}
         />
       )}
-      <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7">
+      <section
+        aria-labelledby="new-knowledge-documents-title"
+        className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7"
+      >
         <header>
-          <h2 className="title-xl-semi-bold text-text-primary">
+          <h2 id="new-knowledge-documents-title" className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newKnowledge.documents'])}
           </h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
@@ -997,7 +1072,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             />
           </>
         )}
-      </main>
+      </section>
       {canWrite && !!validSelectedDocumentIds.size && (
         <DocumentBulkActions
           disabled={selectionDisabled}

@@ -15,7 +15,6 @@ export const ACTIVE_TASK_STATES = new Set<DocumentProcessingTask['state']>([
 export const ATTENTION_TASK_STATES = new Set<DocumentProcessingTask['state']>([
   ...ACTIVE_TASK_STATES,
   'failed',
-  'canceled',
 ])
 
 export function sourceName(document: LogicalDocument) {
