@@ -1,25 +1,137 @@
 """Logging extension for Dify Flask application."""
 
+import atexit
+import contextlib
 import logging
 import os
+import queue
 import sys
-from logging.handlers import RotatingFileHandler
+import threading
+from logging import LogRecord
+from logging.handlers import QueueHandler, RotatingFileHandler
 from typing import override
 
 from configs import dify_config
 from dify_app import DifyApp
 
+# Keep the listener (and its thread) referenced for the process lifetime so it
+# is never garbage-collected while the root logger still feeds its queue.
+_log_listener: "_QueueLogListener | None" = None
+
+
+def _spawn_real_thread(target, name: str) -> threading.Thread:
+    """Start a **real OS thread**, even under gevent monkey-patching.
+
+    gevent's ``monkey.patch_all()`` turns ``threading.Thread`` into a
+    greenlet-backed thread. The logging queue listener below blocks on
+    ``queue.SimpleQueue.get()`` -- a C-level call that is NOT cooperative -- so
+    running it on a greenlet would freeze the whole gevent hub. We therefore
+    resolve the original (unpatched) ``Thread`` and run the listener there.
+    """
+    # If gevent is unavailable or threading is unpatched, threading.Thread is
+    # already a real OS thread and the suppressed block simply leaves it alone.
+    thread_cls = threading.Thread
+    with contextlib.suppress(Exception):
+        from gevent import monkey
+
+        if monkey.is_module_patched("threading"):
+            thread_cls = monkey.get_original("threading", "Thread")
+    t = thread_cls(target=target, name=name, daemon=True)
+    t.start()
+    return t
+
+
+class _LockFreeQueueHandler(QueueHandler):
+    """QueueHandler that enqueues records WITHOUT taking the handler lock.
+
+    Under gevent monkey-patching a ``logging.Handler``'s lock is a gevent
+    ``BoundedSemaphore``. ``Handler.handle()`` acquires it around ``emit()``;
+    when a request greenlet is parked in that acquire and a gevent threadpool
+    worker (a different hub) releases the semaphore, the cross-hub wakeup can be
+    lost and the greenlet sleeps forever -- the request hangs (HTTP 200, empty
+    body) with no error and no timeout.
+
+    ``queue.SimpleQueue.put_nowait`` is a C-atomic, lock-free operation, so the
+    handler lock is unnecessary here. We drop it entirely, which removes the
+    contended semaphore from every request/greenlet's logging path.
+    """
+
+    @override
+    def prepare(self, record: LogRecord) -> LogRecord:
+        # Do NOT pre-format: the real formatter (e.g. StructuredJSONFormatter)
+        # runs on the listener side and needs the untouched record/args. Context
+        # filters already ran on this (request) side via Handler.filter().
+        return record
+
+    @override
+    def handle(self, record: LogRecord) -> bool:
+        rv = self.filter(record)
+        if isinstance(rv, LogRecord):
+            record = rv
+        if rv:
+            # No self.acquire()/self.release(): the SimpleQueue is thread-safe.
+            self.emit(record)
+        return bool(rv)
+
+
+class _QueueLogListener:
+    """Drains the log queue on a real OS thread and emits to the real handlers.
+
+    We deliberately do not use ``logging.handlers.QueueListener``: it runs its
+    drain loop on a ``threading.Thread``, which gevent's monkey-patching turns
+    into a greenlet, and a greenlet blocking in ``SimpleQueue.get()`` would
+    freeze the hub.
+    """
+
+    def __init__(self, log_queue: "queue.SimpleQueue[LogRecord | None]", handlers: list[logging.Handler]):
+        self._queue = log_queue
+        self._handlers = handlers
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        self._thread = _spawn_real_thread(self._run, name="log-queue-listener")
+
+    def _run(self) -> None:
+        while True:
+            record = self._queue.get()
+            if record is None:  # sentinel from stop()
+                break
+            for handler in self._handlers:
+                if record.levelno >= handler.level:
+                    try:
+                        handler.handle(record)
+                    except Exception:
+                        # A failing sink must never kill the listener thread.
+                        handler.handleError(record)
+
+    def stop(self) -> None:
+        """Flush what is already queued, then stop the listener thread."""
+        thread = self._thread
+        if thread is None:
+            return
+        self._queue.put(None)
+        thread.join(timeout=5)
+        self._thread = None
+
 
 def init_app(app: DifyApp):
-    """Initialize logging with support for text or JSON format."""
-    log_handlers: list[logging.Handler] = []
+    """Initialize logging with support for text or JSON format.
+
+    All records flow through a lock-free ``SimpleQueue`` (see
+    ``_LockFreeQueueHandler``) and are emitted by a single listener running on a
+    real OS thread, so no request greenlet ever contends on a gevent semaphore
+    inside the logging path.
+    """
+    # "Real" output handlers -- these run ONLY on the listener thread, so their
+    # (gevent-semaphore) locks are never contended and cannot wedge anyone.
+    output_handlers: list[logging.Handler] = []
 
     # File handler
     log_file = dify_config.LOG_FILE
     if log_file:
         log_dir = os.path.dirname(log_file)
         os.makedirs(log_dir, exist_ok=True)
-        log_handlers.append(
+        output_handlers.append(
             RotatingFileHandler(
                 filename=log_file,
                 maxBytes=dify_config.LOG_FILE_MAX_SIZE * 1024 * 1024,
@@ -28,25 +140,37 @@ def init_app(app: DifyApp):
         )
 
     # Console handler
-    sh = logging.StreamHandler(sys.stdout)
-    log_handlers.append(sh)
+    output_handlers.append(logging.StreamHandler(sys.stdout))
 
-    # Apply filters to all handlers
-    from core.logging.filters import IdentityContextFilter, TraceContextFilter
-
-    for handler in log_handlers:
-        handler.addFilter(TraceContextFilter())
-        handler.addFilter(IdentityContextFilter())
-
-    # Configure formatter based on format type
+    # Formatter runs on the listener side.
     formatter = _create_formatter()
-    for handler in log_handlers:
+    for handler in output_handlers:
         handler.setFormatter(formatter)
 
-    # Configure root logger
+    # The queue handler is the ONE handler installed on the root logger. Context
+    # filters must run on the producing (request) side where request context is
+    # available, so they live here -- and now run once per record instead of
+    # once per output handler (previously the identity filter's end_users SELECT
+    # ran twice: once for file, once for console).
+    from core.logging.filters import IdentityContextFilter, TraceContextFilter
+
+    log_queue: queue.SimpleQueue[LogRecord | None] = queue.SimpleQueue()
+    queue_handler = _LockFreeQueueHandler(log_queue)
+    queue_handler.addFilter(TraceContextFilter())
+    queue_handler.addFilter(IdentityContextFilter())
+
+    # (Re)start the listener that drains the queue into the real handlers.
+    global _log_listener
+    if _log_listener is not None:
+        _log_listener.stop()
+    _log_listener = _QueueLogListener(log_queue, output_handlers)
+    _log_listener.start()
+    atexit.register(_stop_listener)
+
+    # Configure root logger with ONLY the queue handler.
     logging.basicConfig(
         level=dify_config.LOG_LEVEL,
-        handlers=log_handlers,
+        handlers=[queue_handler],
         force=True,
     )
 
@@ -55,7 +179,15 @@ def init_app(app: DifyApp):
 
     # Apply timezone if specified (only for text format)
     if dify_config.LOG_OUTPUT_FORMAT == "text":
-        _apply_timezone(log_handlers)
+        _apply_timezone(output_handlers)
+
+
+def _stop_listener() -> None:
+    """Flush and stop the queue listener at interpreter shutdown."""
+    global _log_listener
+    if _log_listener is not None:
+        _log_listener.stop()
+        _log_listener = None
 
 
 def _create_formatter() -> logging.Formatter:
