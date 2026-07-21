@@ -27,10 +27,7 @@ export function AgentOrchestrateHeader({
           <h2 id={headingId} className="truncate title-xl-semi-bold text-text-primary">
             {t(($) => $['agentDetail.configure.title'])}
           </h2>
-          <CommunityEditionTip
-            tip={communityEditionIsolationTip}
-            popupClassName="max-w-[320px]"
-          />
+          <CommunityEditionTip tip={communityEditionIsolationTip} popupClassName="max-w-[320px]" />
           {isBuildDraftActive && (
             <span className="flex min-w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $['agentDetail.configure.buildDraft.modeBadge'])}

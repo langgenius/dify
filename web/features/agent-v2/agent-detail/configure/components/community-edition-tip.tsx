@@ -27,8 +27,7 @@ export function CommunityEditionTip({
     select: (systemFeatures) => systemFeatures.enterprise_enabled,
   })
 
-  if (isEnterprise)
-    return null
+  if (isEnterprise) return null
 
   return (
     <Popover>

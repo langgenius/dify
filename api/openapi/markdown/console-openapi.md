@@ -21985,6 +21985,7 @@ Model class for provider system configuration response.
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |
 | enable_trial_app | boolean |  | Yes |
+| enterprise_enabled | boolean |  | Yes |
 | is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
