@@ -52,6 +52,7 @@ const uploadExclusionReasonKey = {
 
 type TerminalTaskPin = {
   observedAt: string
+  taskListGeneration: number
 }
 
 function responseStatus(error: unknown) {
@@ -185,6 +186,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () => tasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [tasksQuery.data],
   )
+  const taskListSnapshotRef = useRef(tasksQuery.data)
+  const taskListGenerationRef = useRef(0)
+  if (taskListSnapshotRef.current !== tasksQuery.data) {
+    taskListSnapshotRef.current = tasksQuery.data
+    taskListGenerationRef.current += 1
+  }
+  const taskListGeneration = taskListGenerationRef.current
   const baseTaskById = useMemo(() => new Map(baseTasks.map((task) => [task.id, task])), [baseTasks])
   const sourceNames = useMemo(
     () =>
@@ -214,24 +222,49 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const baseTaskUpdatedAtRef = useRef(baseTaskUpdatedAt)
   baseTaskUpdatedAtRef.current = baseTaskUpdatedAt
   useEffect(() => {
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Server snapshots release a terminal pin after confirming the terminal state or a newer retry.
+    const reconciledRetries = new Map<string, DocumentProcessingTask>()
+    for (const task of baseTasks) {
+      const pin = terminalTaskPins[task.id]
+      if (
+        pin &&
+        taskIsActive(task) &&
+        taskListGeneration > pin.taskListGeneration &&
+        !taskVersionIsAfter(pin.observedAt, task.updatedAt)
+      )
+        reconciledRetries.set(task.id, task)
+    }
+    if (!reconciledRetries.size) return
+
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- An active list request completed after the terminal event proves a retry even when the server timestamp has millisecond precision.
     setTerminalTaskPins((current) => {
       let changed = false
       const next = { ...current }
-      for (const task of baseTasks) {
-        const pin = current[task.id]
-        if (!pin) continue
-        const retryObserved =
-          taskIsActive(task) && taskVersionIsAfter(task.updatedAt, pin.observedAt)
-        const terminalConfirmed =
-          !taskIsActive(task) && !taskVersionIsAfter(pin.observedAt, task.updatedAt)
-        if (!retryObserved && !terminalConfirmed) continue
-        delete next[task.id]
+      for (const [taskId, task] of reconciledRetries) {
+        const pin = current[taskId]
+        if (
+          !pin ||
+          taskListGeneration <= pin.taskListGeneration ||
+          taskVersionIsAfter(pin.observedAt, task.updatedAt)
+        )
+          continue
+        delete next[taskId]
         changed = true
       }
       return changed ? next : current
     })
-  }, [baseTasks])
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Drop the terminal event override together with its reconciled pin so the retry can become active.
+    setTaskOverrides((current) => {
+      let changed = false
+      const next = { ...current }
+      for (const [taskId, task] of reconciledRetries) {
+        const overrideVersion = current[taskId]?.updatedAt
+        if (overrideVersion && taskVersionIsAfter(overrideVersion, task.updatedAt)) continue
+        delete next[taskId]
+        changed = true
+      }
+      return changed ? next : current
+    })
+  }, [baseTasks, taskListGeneration, terminalTaskPins])
   const tasks = useMemo(
     () =>
       baseTasks.map((task) => {
@@ -421,14 +454,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             return current
           return { ...current, [taskId]: normalizedSnapshot }
         })
-        setTerminalTaskPins((current) => {
-          const pin = current[taskId]
-          if (!pin || taskVersionIsAfter(pin.observedAt, snapshot.updatedAt)) return current
-          const next = { ...current }
-          delete next[taskId]
-          return next
-        })
         if (taskIsActive(snapshot)) {
+          setTerminalTaskPins((current) => {
+            const pin = current[taskId]
+            if (!pin || taskVersionIsAfter(pin.observedAt, snapshot.updatedAt)) return current
+            const next = { ...current }
+            delete next[taskId]
+            return next
+          })
           setTaskObserverGenerations((current) => ({
             ...current,
             [taskId]: (current[taskId] ?? 0) + 1,
@@ -616,7 +649,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       if (event.event === 'terminal') {
         setTerminalTaskPins((current) => ({
           ...current,
-          [taskId]: { observedAt: eventVersion },
+          [taskId]: {
+            observedAt: eventVersion,
+            taskListGeneration: taskListGenerationRef.current,
+          },
         }))
         if (event.data.state === 'failed')
           toast.error(t(($) => $['newKnowledge.taskFailedNotification']))

@@ -215,6 +215,32 @@ const task = (overrides: Partial<DocumentProcessingTask> = {}): DocumentProcessi
   ...overrides,
 })
 
+function streamFailedTaskThenWait(taskId: string) {
+  let streamCount = 0
+  streamProcessingTaskEvents.mockImplementation(async function* () {
+    streamCount += 1
+    if (streamCount === 1) {
+      yield {
+        data: {
+          progressPercent: 80,
+          stage: 'parsed' as const,
+          state: 'failed' as const,
+          updatedAt: '2026-07-20T10:03:00Z',
+        },
+        event: 'progress' as const,
+        id: `${taskId}:2026-07-20T10:03:00Z`,
+      }
+      yield {
+        data: { errorCode: 'PARSER_FAILED', state: 'failed' as const },
+        event: 'terminal' as const,
+        id: `${taskId}:terminal`,
+      }
+      return
+    }
+    await new Promise<void>(() => {})
+  })
+}
+
 const source = (overrides: Partial<Source> = {}): Source => ({
   createdAt: '2026-07-20T10:00:00Z',
   id: 'source-1',
@@ -1058,6 +1084,91 @@ describe('DocumentsPage', () => {
     })
   })
 
+  it('accepts a later active list snapshot after exact reconciliation saw the terminal state', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'later-same-time-retry' })] }] }
+    getTaskSnapshot.mockResolvedValue(
+      task({
+        errorCode: 'PARSER_FAILED',
+        id: 'later-same-time-retry',
+        state: 'failed',
+        updatedAt: '2026-07-20T10:03:00Z',
+      }),
+    )
+    streamFailedTaskThenWait('later-same-time-retry')
+
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'later-same-time-retry',
+              progressPercent: 0,
+              state: 'dispatch_pending',
+              updatedAt: '2026-07-20T10:03:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('PARSER_FAILED')).not.toBeInTheDocument()
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
+  })
+
+  it('uses a later active list snapshot when exact reconciliation fails', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'failed-reconciliation-retry' })] }] }
+    getTaskSnapshot.mockRejectedValueOnce(new Error('snapshot unavailable'))
+    streamFailedTaskThenWait('failed-reconciliation-retry')
+
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'failed-reconciliation-retry',
+              progressPercent: 0,
+              state: 'dispatch_pending',
+              updatedAt: '2026-07-20T10:03:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('PARSER_FAILED')).not.toBeInTheDocument()
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
+  })
+
   it('consumes the terminal error after final progress without duplicate side effects', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document({})] }] }
@@ -1406,6 +1517,37 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' })).toBeInTheDocument()
+  })
+
+  it('limits rendered task history while retaining an active retry for an old document', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    const history = Array.from({ length: 150 }, (_, index) =>
+      task({
+        id: `history-${index}`,
+        state: 'succeeded',
+        updatedAt: new Date(Date.UTC(2026, 6, 20, 10, index)).toISOString(),
+      }),
+    )
+    history[0] = task({
+      createdAt: '2026-07-01T10:00:00Z',
+      id: 'old-active-retry',
+      state: 'running',
+      updatedAt: '2026-08-01T10:00:00Z',
+    })
+    tasksQuery.data = { pages: [{ items: history }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(100)
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).toBeInTheDocument()
   })
 
   it('eagerly exhausts task and source cursor pages for accurate labels', () => {

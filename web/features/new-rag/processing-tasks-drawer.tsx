@@ -17,7 +17,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -25,6 +25,8 @@ import { consoleQuery } from '@/service/client'
 import { taskCanRetry, taskIsActive } from './document-model'
 
 type TaskAction = 'cancel' | 'retry'
+
+const TASK_DRAWER_LIMIT = 100
 
 function taskTime(task: DocumentProcessingTask) {
   return task.completedAt ?? task.updatedAt
@@ -66,11 +68,24 @@ export function ProcessingTasksDrawer({
   const pendingActionsRef = useRef(new Set<string>())
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
   const [actionErrors, setActionErrors] = useState<Record<string, boolean>>({})
-  const documentTitles = new Map(documents.map((document) => [document.id, document.title]))
-  const orderedTasks = [...tasks].sort(
-    (left, right) =>
-      right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+  const documentTitles = useMemo(
+    () => new Map(documents.map((document) => [document.id, document.title])),
+    [documents],
   )
+  const orderedTasks = useMemo(() => {
+    if (!open) return []
+    const recentTasks = tasks.slice(-TASK_DRAWER_LIMIT)
+    const visibleTasks = new Map(recentTasks.map((task) => [task.id, task]))
+    for (const task of tasks) {
+      if (taskIsActive(task)) visibleTasks.set(task.id, task)
+    }
+    return [...visibleTasks.values()]
+      .sort(
+        (left, right) =>
+          right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+      )
+      .slice(0, TASK_DRAWER_LIMIT)
+  }, [open, tasks])
 
   const refreshDocumentsAndTasks = () =>
     Promise.allSettled([
