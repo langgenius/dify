@@ -1,10 +1,11 @@
 import json
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
+from models.model import Account, Tag
 from models.snippet import CustomizedSnippet
+from models.workflow import Workflow
 
 
 def test_graph_dict_returns_empty_without_workflow_id() -> None:
@@ -14,8 +15,8 @@ def test_graph_dict_returns_empty_without_workflow_id() -> None:
 
 
 def test_graph_dict_loads_published_workflow_graph(monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow = SimpleNamespace(graph=json.dumps({"nodes": [{"id": "llm-1"}], "edges": []}))
-    session = SimpleNamespace(get=Mock(return_value=workflow))
+    workflow = Workflow(graph=json.dumps({"nodes": [{"id": "llm-1"}], "edges": []}))
+    session = Mock(get=Mock(return_value=workflow))
     monkeypatch.setattr("models.snippet.db.session", session)
     snippet = CustomizedSnippet(workflow_id="workflow-1")
 
@@ -24,7 +25,7 @@ def test_graph_dict_loads_published_workflow_graph(monkeypatch: pytest.MonkeyPat
 
 
 def test_graph_dict_returns_empty_when_workflow_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = SimpleNamespace(get=Mock(return_value=None))
+    session = Mock(get=Mock(return_value=None))
     monkeypatch.setattr("models.snippet.db.session", session)
     snippet = CustomizedSnippet(workflow_id="missing-workflow")
 
@@ -39,8 +40,10 @@ def test_input_fields_list_parses_json_or_returns_empty() -> None:
 
 
 def test_tags_returns_query_results_or_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    tags = [SimpleNamespace(id="tag-1")]
-    session = SimpleNamespace(scalars=Mock(return_value=SimpleNamespace(all=Mock(return_value=tags))))
+    tag = Tag()
+    tag.id = "tag-1"
+    tags = [tag]
+    session = Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=tags))))
     monkeypatch.setattr("models.snippet.db.session", session)
     snippet = CustomizedSnippet(id="snippet-1", tenant_id="tenant-1")
 
@@ -51,9 +54,13 @@ def test_tags_returns_query_results_or_empty(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_account_properties_and_author_name(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = SimpleNamespace(id="account-1", name="Ada")
-    updated_account = SimpleNamespace(id="account-2", name="Grace")
-    session = SimpleNamespace(
+    account = Account()
+    account.id = "account-1"
+    account.name = "Ada"
+    updated_account = Account()
+    updated_account.id = "account-2"
+    updated_account.name = "Grace"
+    session = Mock(
         get=Mock(side_effect=lambda _model, account_id: account if account_id == "account-1" else updated_account)
     )
     monkeypatch.setattr("models.snippet.db.session", session)
