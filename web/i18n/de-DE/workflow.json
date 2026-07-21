@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Aktueller Arbeitsablauf",
   "common.debugAndPreview": "Vorschau",
   "common.disconnect": "Trennen",
+  "common.draftSaveFailed": "Entwurf konnte nicht gespeichert werden",
   "common.duplicate": "Duplizieren",
   "common.editing": "Bearbeitung",
   "common.effectVarConfirm.content": "Die Variable wird in anderen Knoten verwendet. Möchten Sie sie trotzdem entfernen?",

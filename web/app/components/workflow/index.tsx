@@ -364,9 +364,18 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     useEffect(() => {
       return () => {
-        handleSyncWorkflowDraft(true, true)
+        handleSyncWorkflowDraft(true, true, {
+          onError: () => {
+            toast.error(
+              t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
+              {
+                timeout: 0,
+              },
+            )
+          },
+        })
       }
-    }, [handleSyncWorkflowDraft])
+    }, [handleSyncWorkflowDraft, t])
 
     const handlePendingCommentPositionChange = useCallback(
       (position: NonNullable<WorkflowSliceShape['pendingComment']>) => {

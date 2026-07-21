@@ -169,6 +169,7 @@
   "common.currentWorkflow": "سير العمل الحالي",
   "common.debugAndPreview": "معاينة",
   "common.disconnect": "قطع الاتصال",
+  "common.draftSaveFailed": "فشل حفظ المسودة",
   "common.duplicate": "تكرار",
   "common.editing": "تعديل",
   "common.effectVarConfirm.content": "يتم استخدام المتغير في عقد أخرى. هل ما زلت تريد إزالته؟",
