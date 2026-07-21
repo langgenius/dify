@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "Żadne zadania w tle nie wymagają uwagi.",
   "newKnowledge.taskAttentionCount": "Zadania w tle {{count}} wymagają uwagi.",
   "newKnowledge.taskAttentionErrorCount": "Zadania w tle {{count}} wymagają uwagi, w tym zadania zakończone niepowodzeniem.",
-  "newKnowledge.taskFailedNotification": "Ponowne indeksowanie nie powiodło się — spróbuj ponownie w Zadaniach",
+  "newKnowledge.taskFailedNotification": "Przetwarzanie dokumentu nie powiodło się — spróbuj ponownie w Zadaniach",
   "newKnowledge.tasks": "Zadania",
   "newKnowledge.tasksErrorDescription": "Nie udało się wczytać zadań w tle. Spróbuj ponownie.",
   "newKnowledge.tasksWithAttention": "Zadania, {{count}} wymagają uwagi",

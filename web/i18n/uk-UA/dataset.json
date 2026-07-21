@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "Жодні фонові завдання не потребують уваги.",
   "newKnowledge.taskAttentionCount": "Фонові завдання {{count}} потребують уваги.",
   "newKnowledge.taskAttentionErrorCount": "Фонові завдання {{count}} потребують уваги, включаючи невдалі завдання.",
-  "newKnowledge.taskFailedNotification": "Помилка повторного індексування — повторіть спробу із завдань",
+  "newKnowledge.taskFailedNotification": "Не вдалося обробити документ — повторіть спробу в розділі «Завдання»",
   "newKnowledge.tasks": "завдання",
   "newKnowledge.tasksErrorDescription": "Не вдалося завантажити фонові завдання. Спробуйте знову.",
   "newKnowledge.tasksWithAttention": "Завдання, {{count}} потребують уваги",

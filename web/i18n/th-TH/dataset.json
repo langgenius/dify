@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "ไม่มีงานพื้นหลังที่ต้องให้ความสนใจ",
   "newKnowledge.taskAttentionCount": "งานพื้นหลัง {{count}} จำเป็นต้องได้รับการดูแล",
   "newKnowledge.taskAttentionErrorCount": "งานเบื้องหลัง {{count}} ต้องการความสนใจ รวมถึงงานที่ล้มเหลวด้วย",
-  "newKnowledge.taskFailedNotification": "การจัดทำดัชนีใหม่ล้มเหลว — ลองอีกครั้งจากงาน",
+  "newKnowledge.taskFailedNotification": "การประมวลผลเอกสารล้มเหลว — ลองอีกครั้งจากงาน",
   "newKnowledge.tasks": "งาน",
   "newKnowledge.tasksErrorDescription": "เราไม่สามารถโหลดงานพื้นหลังได้ ลองอีกครั้ง",
   "newKnowledge.tasksWithAttention": "งาน {{count}} ต้องการความสนใจ",

@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "Nessuna attività in background richiede attenzione.",
   "newKnowledge.taskAttentionCount": "Le attività in background {{count}} richiedono attenzione.",
   "newKnowledge.taskAttentionErrorCount": "Le attività in background {{count}} richiedono attenzione, comprese le attività non riuscite.",
-  "newKnowledge.taskFailedNotification": "Reindicizzazione non riuscita: riprova da Attività",
+  "newKnowledge.taskFailedNotification": "Elaborazione del documento non riuscita — riprova da Attività",
   "newKnowledge.tasks": "Compiti",
   "newKnowledge.tasksErrorDescription": "Non è stato possibile caricare le attività in background. Riprova.",
   "newKnowledge.tasksWithAttention": "I compiti, {{count}} richiedono attenzione",

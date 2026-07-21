@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "没有需要关注的后台任务。",
   "newKnowledge.taskAttentionCount": "{{count}} 个后台任务需要关注。",
   "newKnowledge.taskAttentionErrorCount": "{{count}} 个后台任务需要关注，其中包含失败的任务。",
-  "newKnowledge.taskFailedNotification": "重新索引失败，请在“任务”中重试",
+  "newKnowledge.taskFailedNotification": "文档处理失败，请在“任务”中重试",
   "newKnowledge.tasks": "任务",
   "newKnowledge.tasksErrorDescription": "无法加载后台任务，请重试。",
   "newKnowledge.tasksWithAttention": "任务，{{count}} 个需要关注",

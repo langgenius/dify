@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "किसी भी पृष्ठभूमि कार्य पर ध्यान देने की आवश्यकता नहीं है।",
   "newKnowledge.taskAttentionCount": "{{count}} पृष्ठभूमि कार्यों पर ध्यान देने की आवश्यकता है।",
   "newKnowledge.taskAttentionErrorCount": "{{count}} पृष्ठभूमि कार्यों पर ध्यान देने की आवश्यकता है, जिसमें विफल कार्य भी शामिल हैं।",
-  "newKnowledge.taskFailedNotification": "पुनः अनुक्रमणिका विफल - कार्य से पुनः प्रयास करें",
+  "newKnowledge.taskFailedNotification": "दस्तावेज़ प्रोसेसिंग विफल — कार्य से दोबारा कोशिश करें",
   "newKnowledge.tasks": "कार्य",
   "newKnowledge.tasksErrorDescription": "हम पृष्ठभूमि कार्य लोड नहीं कर सके. पुनः प्रयास करें।",
   "newKnowledge.tasksWithAttention": "कार्य, {{count}} पर ध्यान देने की आवश्यकता है",

@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "Nobena opravila v ozadju ne potrebujejo pozornosti.",
   "newKnowledge.taskAttentionCount": "Opravila v ozadju {{count}} zahtevajo pozornost.",
   "newKnowledge.taskAttentionErrorCount": "Opravila v ozadju {{count}} zahtevajo pozornost, vključno z neuspešnimi opravili.",
-  "newKnowledge.taskFailedNotification": "Ponovno indeksiranje ni uspelo — poskusite znova iz opravil",
+  "newKnowledge.taskFailedNotification": "Obdelava dokumenta ni uspela — poskusite znova v opravilih",
   "newKnowledge.tasks": "Naloge",
   "newKnowledge.tasksErrorDescription": "Opravil v ozadju nismo mogli naložiti. poskusi ponovno",
   "newKnowledge.tasksWithAttention": "Naloge, {{count}} potrebujejo pozornost",

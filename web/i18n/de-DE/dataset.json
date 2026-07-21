@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "Keine Hintergrundaufgaben erfordern Aufmerksamkeit.",
   "newKnowledge.taskAttentionCount": "{{count}} Hintergrundaufgaben erfordern Aufmerksamkeit.",
   "newKnowledge.taskAttentionErrorCount": "{{count}} Hintergrundaufgaben erfordern Aufmerksamkeit, einschließlich fehlgeschlagener Aufgaben.",
-  "newKnowledge.taskFailedNotification": "Die Neuindizierung ist fehlgeschlagen. Versuchen Sie es erneut über „Aufgaben“.",
+  "newKnowledge.taskFailedNotification": "Die Dokumentverarbeitung ist fehlgeschlagen. Versuchen Sie es erneut über „Aufgaben“.",
   "newKnowledge.tasks": "Aufgaben",
   "newKnowledge.tasksErrorDescription": "Wir konnten keine Hintergrundaufgaben laden. Versuchen Sie es erneut.",
   "newKnowledge.tasksWithAttention": "Aufgaben, {{count}} erfordern Aufmerksamkeit",

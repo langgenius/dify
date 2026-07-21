@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "No background tasks need attention.",
   "newKnowledge.taskAttentionCount": "{{count}} background tasks need attention.",
   "newKnowledge.taskAttentionErrorCount": "{{count}} background tasks need attention, including failed tasks.",
-  "newKnowledge.taskFailedNotification": "Re-index failed — retry from Tasks",
+  "newKnowledge.taskFailedNotification": "Document processing failed — retry from Tasks",
   "newKnowledge.tasks": "Tasks",
   "newKnowledge.tasksErrorDescription": "We couldn't load background tasks. Try again.",
   "newKnowledge.tasksWithAttention": "Tasks, {{count}} need attention",

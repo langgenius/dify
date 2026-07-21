@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "Nenhuma tarefa em segundo plano precisa de atenção.",
   "newKnowledge.taskAttentionCount": "As tarefas em segundo plano do {{count}} precisam de atenção.",
   "newKnowledge.taskAttentionErrorCount": "As tarefas em segundo plano {{count}} precisam de atenção, incluindo tarefas com falha.",
-  "newKnowledge.taskFailedNotification": "Falha na reindexação – tente novamente em Tarefas",
+  "newKnowledge.taskFailedNotification": "Falha no processamento do documento — tente novamente em Tarefas",
   "newKnowledge.tasks": "Tarefas",
   "newKnowledge.tasksErrorDescription": "Não foi possível carregar tarefas em segundo plano. Tente novamente.",
   "newKnowledge.tasksWithAttention": "Tarefas, {{count}} precisam de atenção",

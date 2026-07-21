@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "注意を必要とするバックグラウンド タスクはありません。",
   "newKnowledge.taskAttentionCount": "{{count}} バックグラウンド タスクには注意が必要です。",
   "newKnowledge.taskAttentionErrorCount": "{{count}} バックグラウンド タスク (失敗したタスクも含む) には注意が必要です。",
-  "newKnowledge.taskFailedNotification": "インデックスの再作成に失敗しました - タスクから再試行してください",
+  "newKnowledge.taskFailedNotification": "ドキュメントの処理に失敗しました —「タスク」から再試行してください",
   "newKnowledge.tasks": "タスク",
   "newKnowledge.tasksErrorDescription": "バックグラウンドタスクをロードできませんでした。もう一度やり直してください。",
   "newKnowledge.tasksWithAttention": "タスク、{{count}} は注意が必要です",

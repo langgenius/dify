@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "주의가 필요한 백그라운드 작업은 없습니다.",
   "newKnowledge.taskAttentionCount": "{{count}} 백그라운드 작업에 주의가 필요합니다.",
   "newKnowledge.taskAttentionErrorCount": "{{count}} 실패한 작업을 포함하여 백그라운드 작업에 주의가 필요합니다.",
-  "newKnowledge.taskFailedNotification": "재인덱싱 실패 — 작업에서 재시도",
+  "newKnowledge.taskFailedNotification": "문서 처리 실패 — 작업에서 다시 시도하세요",
   "newKnowledge.tasks": "작업",
   "newKnowledge.tasksErrorDescription": "백그라운드 작업을 로드할 수 없습니다. 다시 시도해 보세요.",
   "newKnowledge.tasksWithAttention": "작업, {{count}}에 주의가 필요합니다.",

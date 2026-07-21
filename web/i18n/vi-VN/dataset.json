@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "Không có tác vụ nền nào cần chú ý.",
   "newKnowledge.taskAttentionCount": "Các tác vụ chạy nền {{count}} cần được chú ý.",
   "newKnowledge.taskAttentionErrorCount": "Các tác vụ chạy nền {{count}} cần được chú ý, kể cả những tác vụ bị lỗi.",
-  "newKnowledge.taskFailedNotification": "Lập chỉ mục lại không thành công — thử lại từ Nhiệm vụ",
+  "newKnowledge.taskFailedNotification": "Xử lý tài liệu không thành công — thử lại trong Tác vụ",
   "newKnowledge.tasks": "Nhiệm vụ",
   "newKnowledge.tasksErrorDescription": "Chúng tôi không thể tải tác vụ nền. Hãy thử lại.",
   "newKnowledge.tasksWithAttention": "Nhiệm vụ, {{count}} cần chú ý",

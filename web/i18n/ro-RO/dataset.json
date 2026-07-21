@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "Nicio activitate de fundal nu necesită atenție.",
   "newKnowledge.taskAttentionCount": "{{count}} sarcinile de fundal necesită atenție.",
   "newKnowledge.taskAttentionErrorCount": "{{count}} sarcinile de fundal necesită atenție, inclusiv sarcinile eșuate.",
-  "newKnowledge.taskFailedNotification": "Reindexarea a eșuat — reîncercați din Tasks",
+  "newKnowledge.taskFailedNotification": "Procesarea documentului a eșuat — reîncercați din Sarcini",
   "newKnowledge.tasks": "Sarcini",
   "newKnowledge.tasksErrorDescription": "Nu am putut încărca sarcinile de fundal. Încearcă din nou.",
   "newKnowledge.tasksWithAttention": "Sarcini, {{count}} necesită atenție",

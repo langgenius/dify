@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "沒有需要注意的背景任務。",
   "newKnowledge.taskAttentionCount": "{{count}} 個背景任務需要注意。",
   "newKnowledge.taskAttentionErrorCount": "{{count}} 個背景任務需要注意，其中包含失敗的任務。",
-  "newKnowledge.taskFailedNotification": "重新索引失敗，請在「任務」中重試",
+  "newKnowledge.taskFailedNotification": "文件處理失敗，請在「任務」中重試",
   "newKnowledge.tasks": "任務",
   "newKnowledge.tasksErrorDescription": "無法載入背景任務，請再試一次。",
   "newKnowledge.tasksWithAttention": "任務，{{count}} 個需要注意",

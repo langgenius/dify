@@ -346,7 +346,7 @@
   "newKnowledge.taskAttentionClear": "Hiçbir arka plan görevinin dikkat edilmesi gerekmez.",
   "newKnowledge.taskAttentionCount": "{{count}} arka plan görevlerine dikkat edilmesi gerekiyor.",
   "newKnowledge.taskAttentionErrorCount": "{{count}} Başarısız görevler de dahil olmak üzere arka plan görevlerine dikkat edilmesi gerekir.",
-  "newKnowledge.taskFailedNotification": "Yeniden dizin oluşturma işlemi başarısız oldu; Görevler'den yeniden deneyin",
+  "newKnowledge.taskFailedNotification": "Belge işleme başarısız oldu — Görevler'den yeniden deneyin",
   "newKnowledge.tasks": "Görevler",
   "newKnowledge.tasksErrorDescription": "Arka plan görevlerini yükleyemedik. Tekrar deneyin.",
   "newKnowledge.tasksWithAttention": "Görevler, {{count}} tanesiyle ilgilenilmesi gerekiyor",
