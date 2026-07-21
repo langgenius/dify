@@ -185,7 +185,11 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
         return_value="converted",
     )
     mocker.patch.object(WorkflowAppGenerator, "_handle_response", return_value="response")
-    mocker.patch.object(WorkflowAppGenerator, "_get_draft_var_saver_factory", return_value=MagicMock())
+    draft_saver_factory = mocker.patch.object(
+        WorkflowAppGenerator,
+        "_get_draft_var_saver_factory",
+        return_value=MagicMock(),
+    )
 
     pause_layer = MagicMock(name="pause-layer")
     mocker.patch(
@@ -209,7 +213,7 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
 
     mocker.patch("core.app.apps.workflow.app_generator.threading.Thread", DummyThread)
 
-    app_model = SimpleNamespace(mode="workflow")
+    app_model = SimpleNamespace(mode="workflow", tenant_id="tenant")
     app_config = SimpleNamespace(app_id="app", tenant_id="tenant", workflow_id="wf")
     application_generate_entity = SimpleNamespace(
         task_id="task",
@@ -240,6 +244,7 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
     assert result == "converted"
     assert worker_kwargs["kwargs"]["graph_engine_layers"] == ("base-layer", pause_layer)
     assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
+    assert draft_saver_factory.call_args.kwargs["tenant_id"] == app_model.tenant_id
 
 
 def test_resume_path_runs_worker_with_runtime_state(mocker: MockerFixture):
@@ -301,7 +306,7 @@ def test_resume_path_runs_worker_with_runtime_state(mocker: MockerFixture):
 
     pause_config = SimpleNamespace(session_factory=MagicMock(), state_owner_user_id="owner")
 
-    app_model = SimpleNamespace(mode="workflow")
+    app_model = SimpleNamespace(mode="workflow", tenant_id="tenant")
     app_config = SimpleNamespace(app_id="app", tenant_id="tenant", workflow_id="workflow")
     application_generate_entity = SimpleNamespace(
         task_id="task",
