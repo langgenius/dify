@@ -1576,6 +1576,9 @@ describe('DocumentsPage', () => {
       name: 'dataset.newKnowledge.bulkDocumentActions',
     })
     expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' }).closest('section'),
+    ).toHaveClass('pb-[calc(7rem+env(safe-area-inset-bottom,0px))]')
+    expect(
       within(actions).getByText('dataset.newKnowledge.documentsSelected:{"count":1}'),
     ).toBeInTheDocument()
     const reindex = within(actions).getByRole('button', {
@@ -2517,6 +2520,30 @@ describe('DocumentsPage', () => {
     await act(async () => resolveDocumentsRefetch({ error: null }))
     expect(await screen.findByText('sso-enterprise.pdf')).toBeInTheDocument()
     expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+  })
+
+  it('focuses the permission alert when an auxiliary retry becomes a document denial', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    documentsQuery.refetch
+      .mockResolvedValueOnce({ error: new Error('verification unavailable') })
+      .mockImplementationOnce(() => new Promise(() => {}))
+    tasksQuery.data = { pages: [{ items: [task({ id: 'retry-document-denial' })] }] }
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      throw new Response(null, { status: 403 })
+    })
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const retry = await screen.findByRole('button', {
+      name: 'common.operation.retry · dataset.newKnowledge.documentsPermissionDescription',
+    })
+    await user.click(retry)
+
+    documentsQuery.error = { status: 403 }
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveFocus())
+    expect(screen.queryByText('sso-enterprise.pdf')).not.toBeInTheDocument()
   })
 
   it('replaces an in-flight terminal reconciliation and aborts it on unmount', async () => {
@@ -3776,6 +3803,146 @@ describe('DocumentsPage', () => {
       await act(async () => vi.advanceTimersByTime(1000))
 
       expect(onPermissionDenied).toHaveBeenCalledWith('task-1', '2026-07-20T10:02:00Z')
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps an accepted task version after rejecting a stale event before a denied reconnect', async () => {
+    vi.useFakeTimers()
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) {
+        for (const updatedAt of ['2026-07-20T10:02:00Z', '2026-07-20T10:00:00Z']) {
+          yield {
+            data: {
+              progressPercent: 50,
+              stage: 'parsed' as const,
+              state: 'running' as const,
+              updatedAt,
+            },
+            event: 'progress' as const,
+            id: `task-1:${updatedAt}`,
+          }
+        }
+        return
+      }
+      throw new Response(null, { status: 403 })
+    })
+    const onPermissionDenied = vi.fn()
+    const rendered = render(
+      <TaskEventObserver
+        documentId="document-1"
+        knowledgeSpaceId="space-1"
+        onEvent={vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false)}
+        onLastEventIdChange={vi.fn()}
+        onPermissionDenied={onPermissionDenied}
+        taskId="task-1"
+        taskVersion="2026-07-20T10:01:00Z"
+      />,
+    )
+
+    try {
+      await act(async () => {})
+      await act(async () => vi.advanceTimersByTime(1000))
+
+      expect(onPermissionDenied).toHaveBeenCalledWith('task-1', '2026-07-20T10:02:00Z')
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('syncs a newer task prop before a reconnect is denied', async () => {
+    vi.useFakeTimers()
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) return
+      throw new Response(null, { status: 403 })
+    })
+    const onPermissionDenied = vi.fn()
+    const rendered = render(
+      <TaskEventObserver
+        documentId="document-1"
+        knowledgeSpaceId="space-1"
+        onEvent={vi.fn(() => true)}
+        onLastEventIdChange={vi.fn()}
+        onPermissionDenied={onPermissionDenied}
+        taskId="task-1"
+        taskVersion="2026-07-20T10:01:00Z"
+      />,
+    )
+
+    try {
+      await act(async () => {})
+      rendered.rerender(
+        <TaskEventObserver
+          documentId="document-1"
+          knowledgeSpaceId="space-1"
+          onEvent={vi.fn(() => true)}
+          onLastEventIdChange={vi.fn()}
+          onPermissionDenied={onPermissionDenied}
+          taskId="task-1"
+          taskVersion="2026-07-20T10:02:00Z"
+        />,
+      )
+      await act(async () => vi.advanceTimersByTime(1000))
+
+      expect(onPermissionDenied).toHaveBeenCalledWith('task-1', '2026-07-20T10:02:00Z')
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('uses a newer task prop for a terminal-only reconnect', async () => {
+    vi.useFakeTimers()
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) return
+      yield {
+        data: { errorCode: 'PARSER_FAILED', state: 'failed' as const },
+        event: 'terminal' as const,
+        id: 'task-1:terminal',
+      }
+    })
+    const onEvent = vi.fn(() => true)
+    const rendered = render(
+      <TaskEventObserver
+        documentId="document-1"
+        knowledgeSpaceId="space-1"
+        onEvent={onEvent}
+        onLastEventIdChange={vi.fn()}
+        onPermissionDenied={vi.fn()}
+        taskId="task-1"
+        taskVersion="2026-07-20T10:01:00Z"
+      />,
+    )
+
+    try {
+      await act(async () => {})
+      rendered.rerender(
+        <TaskEventObserver
+          documentId="document-1"
+          knowledgeSpaceId="space-1"
+          onEvent={onEvent}
+          onLastEventIdChange={vi.fn()}
+          onPermissionDenied={vi.fn()}
+          taskId="task-1"
+          taskVersion="2026-07-20T10:02:00Z"
+        />,
+      )
+      await act(async () => vi.advanceTimersByTime(1000))
+
+      expect(onEvent).toHaveBeenCalledWith(
+        'task-1',
+        '2026-07-20T10:02:00Z',
+        expect.objectContaining({ event: 'terminal' }),
+      )
     } finally {
       rendered.unmount()
       vi.useRealTimers()

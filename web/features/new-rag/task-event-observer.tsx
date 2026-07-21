@@ -2,6 +2,7 @@
 
 import type { ProcessingTaskEvent } from './services/processing-task-events'
 import { useEffect, useRef } from 'react'
+import { taskVersionIsAfter } from './document-model'
 import { streamProcessingTaskEvents } from './services/processing-task-events'
 
 const TASK_EVENT_RECONNECT_DELAY = 1000
@@ -61,6 +62,8 @@ export function TaskEventObserver({
     void (async () => {
       let reconnectDelay = TASK_EVENT_RECONNECT_DELAY
       while (!controller.signal.aborted) {
+        if (taskVersionIsAfter(latestTaskVersionRef.current, streamTaskVersionRef.current))
+          streamTaskVersionRef.current = latestTaskVersionRef.current
         try {
           for await (const event of streamProcessingTaskEvents({
             documentId,
@@ -72,14 +75,22 @@ export function TaskEventObserver({
             if (controller.signal.aborted) return
             resumeEventIdRef.current = event.id
             onLastEventIdChange(taskId, event.id)
-            if (event.event === 'progress') streamTaskVersionRef.current = event.data.updatedAt
-            const accepted = onEvent(taskId, streamTaskVersionRef.current, event)
+            const acceptedTaskVersion = streamTaskVersionRef.current
+            const eventTaskVersion =
+              event.event === 'progress' ? event.data.updatedAt : acceptedTaskVersion
+            const accepted = onEvent(taskId, eventTaskVersion, event)
             if (!accepted) {
               resumeEventIdRef.current = undefined
               onLastEventIdChange(taskId)
-              streamTaskVersionRef.current = latestTaskVersionRef.current
+              streamTaskVersionRef.current = taskVersionIsAfter(
+                latestTaskVersionRef.current,
+                acceptedTaskVersion,
+              )
+                ? latestTaskVersionRef.current
+                : acceptedTaskVersion
               break
             }
+            streamTaskVersionRef.current = eventTaskVersion
             reconnectDelay = TASK_EVENT_RECONNECT_DELAY
             if (event.event === 'terminal') {
               resumeEventIdRef.current = undefined
@@ -90,6 +101,8 @@ export function TaskEventObserver({
         } catch (error) {
           if (controller.signal.aborted) return
           if (responseStatus(error) === 403) {
+            if (taskVersionIsAfter(latestTaskVersionRef.current, streamTaskVersionRef.current))
+              streamTaskVersionRef.current = latestTaskVersionRef.current
             onPermissionDenied(taskId, streamTaskVersionRef.current)
             return
           }

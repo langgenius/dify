@@ -6,6 +6,7 @@ import type {
   ProcessingTaskProgressEvent,
 } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -758,7 +759,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   useEffect(() => {
     if (!mainRetryFocusRequestedRef.current) return
     if (mainRecoveryVisible) {
-      if (permissionQueryError) permissionRetryButtonRef.current?.focus()
+      if (documentPermissionDenied) {
+        mainRetryFocusRequestedRef.current = false
+        documentPermissionAlertRef.current?.focus()
+      } else if (permissionQueryError) permissionRetryButtonRef.current?.focus()
       else if (documentsQuery.error && !permissionDenied) documentsRetryButtonRef.current?.focus()
       else dependencyRetryButtonRef.current?.focus()
       return
@@ -767,6 +771,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     documentsTitleRef.current?.focus()
   }, [
     documentsQuery.error,
+    documentPermissionDenied,
     mainRecoveryIdentity,
     mainRecoveryVisible,
     permissionDenied,
@@ -1699,7 +1704,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       )}
       <section
         ref={documentsSectionRef}
-        className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7"
+        className={cn(
+          'flex min-h-full flex-col px-4 pt-6 sm:px-8 sm:pt-7',
+          bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6 sm:pb-7',
+        )}
         onBlurCapture={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
             documentSurfaceHadFocusRef.current = false
