@@ -101,7 +101,7 @@ from .model import (
     UploadFile,
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
-from .onboarding import AccountStepByStepTourState
+from .ldap_setting import LdapSetting
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -156,7 +156,6 @@ __all__ = [
     "Account",
     "AccountIntegrate",
     "AccountStatus",
-    "AccountStepByStepTourState",
     "AccountTrialAppRecord",
     "Agent",
     "AgentConfigDraft",
@@ -233,6 +232,7 @@ __all__ = [
     "MessageChain",
     "MessageFeedback",
     "MessageFile",
+    "LdapSetting",
     "OAuthAccessToken",
     "OperationLog",
     "PermissionEnum",

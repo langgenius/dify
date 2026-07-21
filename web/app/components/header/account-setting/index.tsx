@@ -14,13 +14,10 @@ import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { IS_CLOUD_EDITION } from '@/config'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import {
-  isCurrentWorkspaceDatasetOperatorAtom,
-  isCurrentWorkspaceManagerAtom,
-} from '@/context/workspace-state'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { hasPermission } from '@/utils/permission'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
@@ -30,6 +27,8 @@ import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
+import LdapPage from './ldap-page'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 
 const iconClassName = `
   w-4 h-4 mr-2
@@ -61,11 +60,12 @@ export default function AccountSetting({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
-  const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
+  const canViewBilling =
+    enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
   const canViewWorkflowLogArchives = IS_CLOUD_EDITION && isCurrentWorkspaceManager
   // Keep legacy `language` deep links opening Preferences during the tab rename migration.
   const normalizedActiveTab =
@@ -147,6 +147,12 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
     },
     {
+      key: ACCOUNT_SETTING_TAB.LDAP,
+      name: 'LDAP / AD Settings',
+      icon: <span className={cn('i-ri-shield-keyhole-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-shield-keyhole-fill', iconClassName)} />,
+    },
+    {
       key: ACCOUNT_SETTING_TAB.PREFERENCES,
       name: t(($) => $['settings.preferences'], { ns: 'common' }),
       title: t(($) => $['account.general'], { ns: 'common' }),
@@ -171,6 +177,10 @@ export default function AccountSetting({
     if (enableReplaceWebAppLogo || enableBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
 
     if (canViewWorkflowLogArchives) visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
+
+    const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
+    if (isCurrentWorkspaceOwner || canManageMembers)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.LDAP)
 
     return visibleTabs
       .map((tab) => settingItems.find((item) => item.key === tab))
@@ -305,6 +315,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.LDAP && <LdapPage />}
             </div>
           </ScrollArea>
         </div>

@@ -371,8 +371,51 @@ class AccountService:
 
     @staticmethod
     def authenticate(email: str, password: str, invite_token: str | None = None, *, session: Session) -> Account:
-        """authenticate account with email and password"""
+        """Authenticate a user with email + password.
 
+        If an LDAP/AD setting is enabled, authentication is first attempted
+        against the directory.  On success the user is auto-provisioned in
+        the Dify database if they don't exist yet.  When LDAP fails and
+        ``fallback_to_local`` is False, the error is raised immediately;
+        otherwise local password validation is performed.
+        """
+        # Lazy imports to avoid potential circular-import issues at module load
+        from libs.ldap import LDAPAuth
+        from models.ldap_setting import LdapSetting
+
+        # ── LDAP / AD authentication ─────────────────────────────────────────
+        ldap_setting = session.scalar(select(LdapSetting).limit(1))
+        if ldap_setting and ldap_setting.enabled:
+            ldap_user = LDAPAuth.authenticate(email, password, ldap_setting)
+            if ldap_user:
+                # Look up or auto-provision the Dify account
+                account = session.scalar(
+                    select(Account).where(Account.email == ldap_user["email"].lower()).limit(1)
+                )
+                if not account:
+                    account = AccountService.create_account_and_tenant(
+                        email=ldap_user["email"].lower(),
+                        name=ldap_user["name"],
+                        interface_language="en-US",
+                        timezone="UTC",
+                        session=session,
+                    )
+
+                if account.status == AccountStatus.BANNED:
+                    raise AccountLoginError("Account is banned.")
+
+                if account.status == AccountStatus.PENDING:
+                    account.status = AccountStatus.ACTIVE
+                    account.initialized_at = naive_utc_now()
+                    session.commit()
+
+                return account
+
+            # LDAP returned None (wrong credentials or user not found)
+            if not ldap_setting.fallback_to_local:
+                raise AccountPasswordError("Invalid email or password.")
+
+        # ── Local database authentication ────────────────────────────────────
         account = session.scalar(select(Account).where(Account.email == email).limit(1))
         if not account:
             raise AccountPasswordError("Invalid email or password.")
