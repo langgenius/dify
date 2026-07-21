@@ -97,29 +97,35 @@ def build_workflow_event_stream(
     resumption_context = _load_resumption_context(pause_entity)
     message_context: MessageContext | None = None
     if app_mode == AppMode.ADVANCED_CHAT:
-        # Advanced-chat snapshots are replayed only for suspended HITL runs. The persisted generate entity supplies
-        # the conversation scope required by the existing message index; falling back to app scope would reintroduce
-        # an unbounded scan for high-volume apps.
-        if resumption_context is None:
-            raise AssertionError(
-                "WorkflowResumptionContext is required for advanced-chat snapshot replay, "
-                f"workflow_run_id={workflow_run.id}"
+        if workflow_run.status == WorkflowExecutionStatus.PAUSED:
+            if resumption_context is None:
+                raise AssertionError(
+                    "WorkflowResumptionContext is required for advanced-chat snapshot replay, "
+                    f"workflow_run_id={workflow_run.id}"
+                )
+            generate_entity = resumption_context.get_generate_entity()
+            if not isinstance(generate_entity, AdvancedChatAppGenerateEntity):
+                raise AssertionError(
+                    "AdvancedChatAppGenerateEntity is required for advanced-chat snapshot replay, "
+                    f"workflow_run_id={workflow_run.id}, generate_entity_type={type(generate_entity).__name__}"
+                )
+            if not generate_entity.conversation_id:
+                raise AssertionError(
+                    f"conversation_id is required for advanced-chat snapshot replay, workflow_run_id={workflow_run.id}"
+                )
+            message_context = _get_message_context(
+                session_maker,
+                conversation_id=generate_entity.conversation_id,
+                workflow_run_id=workflow_run.id,
             )
-        generate_entity = resumption_context.get_generate_entity()
-        if not isinstance(generate_entity, AdvancedChatAppGenerateEntity):
-            raise AssertionError(
-                "AdvancedChatAppGenerateEntity is required for advanced-chat snapshot replay, "
-                f"workflow_run_id={workflow_run.id}, generate_entity_type={type(generate_entity).__name__}"
+        else:
+            # Compatibility fallback for non-suspended snapshot requests. This app-scoped lookup is not optimal;
+            # a dedicated index or stronger lookup key would be preferable.
+            message_context = _get_message_context_by_app(
+                session_maker,
+                app_id=app_id,
+                workflow_run_id=workflow_run.id,
             )
-        if generate_entity.conversation_id is None:
-            raise AssertionError(
-                f"conversation_id is required for advanced-chat snapshot replay, workflow_run_id={workflow_run.id}"
-            )
-        message_context = _get_message_context(
-            session_maker,
-            conversation_id=generate_entity.conversation_id,
-            workflow_run_id=workflow_run.id,
-        )
 
     node_snapshots = node_execution_repo.get_execution_snapshots_by_workflow_run(
         tenant_id=tenant_id,
@@ -223,13 +229,40 @@ def _get_message_context(
         message = session.scalar(stmt)
         if message is None:
             return None
-        created_at = int(message.created_at.timestamp()) if message.created_at else 0
-        return MessageContext(
-            conversation_id=message.conversation_id,
-            message_id=message.id,
-            created_at=created_at,
-            answer=message.answer,
+        return _to_message_context(message)
+
+
+def _get_message_context_by_app(
+    session_maker: sessionmaker[Session],
+    *,
+    app_id: str,
+    workflow_run_id: str,
+) -> MessageContext | None:
+    """Return the latest message context using the non-suspension compatibility scope."""
+    with session_maker() as session:
+        stmt = (
+            select(Message)
+            .where(
+                Message.app_id == app_id,
+                Message.workflow_run_id == workflow_run_id,
+            )
+            .order_by(desc(Message.created_at))
+            .limit(1)
         )
+        message = session.scalar(stmt)
+        if message is None:
+            return None
+        return _to_message_context(message)
+
+
+def _to_message_context(message: Message) -> MessageContext:
+    created_at = int(message.created_at.timestamp()) if message.created_at else 0
+    return MessageContext(
+        conversation_id=message.conversation_id,
+        message_id=message.id,
+        created_at=created_at,
+        answer=message.answer,
+    )
 
 
 def _load_resumption_context(pause_entity: WorkflowPauseEntity | None) -> WorkflowResumptionContext | None:

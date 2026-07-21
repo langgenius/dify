@@ -398,6 +398,29 @@ def test_get_message_context_should_scope_and_bound_message_lookup() -> None:
     assert compiled.endswith("LIMIT 1")
 
 
+def test_get_message_context_by_app_should_scope_and_bound_compatibility_lookup() -> None:
+    # Arrange
+    session = SimpleNamespace(scalar=MagicMock(return_value=None))
+    session_maker = _SessionMaker(session)
+
+    # Act
+    service_module._get_message_context_by_app(
+        cast(sessionmaker[Session], session_maker),
+        app_id="app-1",
+        workflow_run_id="run-1",
+    )
+
+    # Assert
+    stmt = session.scalar.call_args.args[0]
+    compiled = " ".join(str(stmt.compile(compile_kwargs={"literal_binds": True})).split())
+    where_clause = compiled.split(" WHERE ", maxsplit=1)[1].split(" ORDER BY ", maxsplit=1)[0]
+    assert "messages.app_id = 'app-1'" in where_clause
+    assert "messages.workflow_run_id = 'run-1'" in where_clause
+    assert "messages.conversation_id" not in where_clause
+    assert "ORDER BY messages.created_at DESC" in compiled
+    assert compiled.endswith("LIMIT 1")
+
+
 def test_get_message_context_should_default_created_at_to_zero_when_message_has_no_timestamp() -> None:
     # Arrange
     message = SimpleNamespace(
@@ -705,6 +728,11 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
             "conversation_id.*workflow_run_id=run-1",
             id="missing-conversation-id",
         ),
+        pytest.param(
+            _build_advanced_chat_resumption_context(conversation_id=""),
+            "conversation_id.*workflow_run_id=run-1",
+            id="empty-conversation-id",
+        ),
     ],
 )
 def test_build_advanced_chat_snapshot_requires_conversation_context(
@@ -737,6 +765,48 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
             session_maker=MagicMock(),
         )
     message_context_lookup.assert_not_called()
+
+
+def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Arrange
+    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
+    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
+    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
+    factory = SimpleNamespace(
+        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
+        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
+    )
+    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock())
+    load_resumption_context = MagicMock(return_value=None)
+    monkeypatch.setattr(service_module, "_load_resumption_context", load_resumption_context)
+    conversation_lookup = MagicMock(return_value=None)
+    app_lookup = MagicMock(return_value=MessageContext("conv-1", "msg-1", 1700000000))
+    monkeypatch.setattr(service_module, "_get_message_context", conversation_lookup)
+    monkeypatch.setattr(service_module, "_get_message_context_by_app", app_lookup)
+    session_maker = MagicMock()
+
+    # Act
+    event_stream = build_workflow_event_stream(
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_run=workflow_run,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        session_maker=session_maker,
+    )
+
+    # Assert
+    assert event_stream is not None
+    workflow_run_repo.get_workflow_pause.assert_not_called()
+    load_resumption_context.assert_called_once_with(None)
+    conversation_lookup.assert_not_called()
+    app_lookup.assert_called_once_with(
+        session_maker,
+        app_id="app-1",
+        workflow_run_id="run-1",
+    )
 
 
 def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_idle_timeout(
