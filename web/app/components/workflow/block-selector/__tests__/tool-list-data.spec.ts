@@ -21,6 +21,29 @@ describe('createToolListData', () => {
     ])
   })
 
+  it('sorts the flat view by letter without changing the tree view provider order', () => {
+    const result = createToolListData(
+      [
+        createToolProvider({
+          id: 'zeta',
+          author: 'Zeta',
+          label: { en_US: 'Zeta', zh_Hans: 'Zeta' },
+        }),
+        createToolProvider({
+          id: 'alpha',
+          author: 'Alpha',
+          label: { en_US: 'Alpha', zh_Hans: 'Alpha' },
+        }),
+      ],
+      (tool) => tool.label.en_US[0] ?? '',
+    )
+
+    expect(result.flatTools.map(({ id }) => id)).toEqual(['alpha', 'zeta'])
+    expect(
+      result.treeGroups.map((group) => (group.kind === 'author' ? group.author : group.category)),
+    ).toEqual(['Zeta', 'Alpha'])
+  })
+
   it('keeps author and category group identities separate without sentinel keys', () => {
     const result = createToolListData(
       [
@@ -40,6 +63,29 @@ describe('createToolListData', () => {
         kind: 'category',
         category: 'custom',
         tools: [expect.objectContaining({ id: 'category' })],
+      },
+    ])
+  })
+
+  it('maps workflow and data source providers to distinct categories', () => {
+    const result = createToolListData(
+      [
+        createToolProvider({ id: 'workflow', type: CollectionType.workflow }),
+        createToolProvider({ id: 'data-source', type: CollectionType.datasource }),
+      ],
+      () => 'A',
+    )
+
+    expect(result.treeGroups).toEqual([
+      {
+        kind: 'category',
+        category: 'workflow',
+        tools: [expect.objectContaining({ id: 'workflow' })],
+      },
+      {
+        kind: 'category',
+        category: 'data-source',
+        tools: [expect.objectContaining({ id: 'data-source' })],
       },
     ])
   })

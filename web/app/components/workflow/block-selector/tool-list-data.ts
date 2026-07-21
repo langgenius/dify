@@ -54,7 +54,7 @@ export function createToolListData(
   const flatTools = sortedBuckets.flatMap(([letter, bucket]) =>
     bucket.groups.flatMap((group) => group.tools.map((tool) => ({ ...tool, letter }))),
   )
-  const treeGroups = mergeGroupsByProvider(sortedBuckets.map(([, bucket]) => bucket))
+  const treeGroups = mergeGroupsByProvider([...buckets.values()])
 
   return { letters, flatTools, treeGroups }
 }
