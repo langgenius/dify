@@ -85,7 +85,9 @@ def build_workflow_event_stream(
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
     message_context = (
-        _get_message_context(session_maker, workflow_run.id) if app_mode == AppMode.ADVANCED_CHAT else None
+        _get_message_context(session_maker, app_id=app_id, workflow_run_id=workflow_run.id)
+        if app_mode == AppMode.ADVANCED_CHAT
+        else None
     )
 
     pause_entity: WorkflowPauseEntity | None = None
@@ -175,9 +177,27 @@ def build_workflow_event_stream(
     return _generate()
 
 
-def _get_message_context(session_maker: sessionmaker[Session], workflow_run_id: str) -> MessageContext | None:
+def _get_message_context(
+    session_maker: sessionmaker[Session],
+    *,
+    app_id: str,
+    workflow_run_id: str,
+) -> MessageContext | None:
+    """Return the latest message context for a workflow run within its owning app.
+
+    The app scope and descending creation order allow the existing ``message_app_id_idx`` index to bound the lookup;
+    the explicit limit prevents loading more than the single context used by snapshot replay.
+    """
     with session_maker() as session:
-        stmt = select(Message).where(Message.workflow_run_id == workflow_run_id).order_by(desc(Message.created_at))
+        stmt = (
+            select(Message)
+            .where(
+                Message.app_id == app_id,
+                Message.workflow_run_id == workflow_run_id,
+            )
+            .order_by(desc(Message.created_at))
+            .limit(1)
+        )
         message = session.scalar(stmt)
         if message is None:
             return None

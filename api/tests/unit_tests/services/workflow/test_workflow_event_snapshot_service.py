@@ -333,10 +333,35 @@ def test_get_message_context_should_return_none_when_no_message() -> None:
     session_maker = _SessionMaker(session)
 
     # Act
-    result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
+    result = service_module._get_message_context(
+        cast(sessionmaker[Session], session_maker),
+        app_id="app-1",
+        workflow_run_id="run-1",
+    )
 
     # Assert
     assert result is None
+
+
+def test_get_message_context_should_scope_and_bound_message_lookup() -> None:
+    # Arrange
+    session = SimpleNamespace(scalar=MagicMock(return_value=None))
+    session_maker = _SessionMaker(session)
+
+    # Act
+    service_module._get_message_context(
+        cast(sessionmaker[Session], session_maker),
+        app_id="app-1",
+        workflow_run_id="run-1",
+    )
+
+    # Assert
+    stmt = session.scalar.call_args.args[0]
+    compiled = " ".join(str(stmt.compile(compile_kwargs={"literal_binds": True})).split())
+    assert "messages.app_id = 'app-1'" in compiled
+    assert "messages.workflow_run_id = 'run-1'" in compiled
+    assert "ORDER BY messages.created_at DESC" in compiled
+    assert compiled.endswith("LIMIT 1")
 
 
 def test_get_message_context_should_default_created_at_to_zero_when_message_has_no_timestamp() -> None:
@@ -351,7 +376,11 @@ def test_get_message_context_should_default_created_at_to_zero_when_message_has_
     session_maker = _SessionMaker(session)
 
     # Act
-    result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
+    result = service_module._get_message_context(
+        cast(sessionmaker[Session], session_maker),
+        app_id="app-1",
+        workflow_run_id="run-1",
+    )
 
     # Assert
     assert result is not None

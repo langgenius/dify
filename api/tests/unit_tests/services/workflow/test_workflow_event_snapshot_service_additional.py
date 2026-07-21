@@ -151,7 +151,11 @@ class TestWorkflowEventSnapshotHelpers:
         session = SimpleNamespace(scalar=MagicMock(return_value=None))
         session_maker = _SessionMaker(session)
 
-        result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
+        result = service_module._get_message_context(
+            cast(sessionmaker[Session], session_maker),
+            app_id="app-1",
+            workflow_run_id="run-1",
+        )
 
         assert result is None
 
@@ -165,7 +169,11 @@ class TestWorkflowEventSnapshotHelpers:
         session = SimpleNamespace(scalar=MagicMock(return_value=message))
         session_maker = _SessionMaker(session)
 
-        result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
+        result = service_module._get_message_context(
+            cast(sessionmaker[Session], session_maker),
+            app_id="app-1",
+            workflow_run_id="run-1",
+        )
 
         assert result is not None
         assert result.created_at == 0
