@@ -33,9 +33,7 @@ vi.mock('@/service/client', () => ({
 const manageInConsoleLabel = /manageInAgentConsole/
 const startFromScratchLabel = /startFromScratch/
 
-const renderSelector = async ({
-  onStartFromScratch,
-}: { onStartFromScratch?: () => void } = {}) => {
+const renderSelector = async ({ onStartFromScratch }: { onStartFromScratch?: () => void } = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   render(

@@ -1,31 +1,47 @@
-import type { PermissionGroup, Role } from '@/models/access-control'
+import type { PermissionCatalogResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactNode } from 'react'
+import type { Role } from '@/models/access-control'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/client'
+import { createTestQueryClient } from '@/test/query-client'
 import RoleModal from '../index'
 
-const mockWorkspacePermissionCatalog = vi.hoisted(() => ({
-  groups: [] as PermissionGroup[],
-}))
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'permission.group.workspace_management': 'Translated workspace permissions',
+    'permissionKeys.workspace.member.manage': 'Manage workspace members',
+  })
+})
 
-vi.mock('@/service/access-control/use-permission-catalog', () => ({
-  useWorkspacePermissionCatalog: () => ({
-    data: { groups: mockWorkspacePermissionCatalog.groups },
-  }),
-}))
-
-const createPermissionGroup = (overrides: Partial<PermissionGroup> = {}): PermissionGroup => ({
-  group_key: 'workspace_management',
-  group_name: 'Workspace management',
-  description: '',
-  permissions: [
+const workspacePermissionCatalog = {
+  groups: [
     {
-      key: 'workspace.member.manage',
-      name: 'Manage members',
+      group_key: 'workspace_management',
+      group_name: 'Workspace management',
       description: '',
+      permissions: [
+        {
+          key: 'workspace.member.manage',
+          name: 'Manage members',
+          description: '',
+        },
+      ],
     },
   ],
-  ...overrides,
-})
+} satisfies PermissionCatalogResponse
+
+const renderModal = (modal: ReactNode) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.get.queryKey({ input: {} }),
+    workspacePermissionCatalog,
+  )
+
+  return render(<QueryClientProvider client={queryClient}>{modal}</QueryClientProvider>)
+}
 
 const createRole = (overrides: Partial<Role> = {}): Role => ({
   id: 'role-1',
@@ -43,13 +59,12 @@ const createRole = (overrides: Partial<Role> = {}): Role => ({
 describe('RoleModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionCatalog.groups = [createPermissionGroup()]
   })
 
   // Rendering keeps role fields and workspace permissions in one modal form.
   describe('Rendering', () => {
     it('should render edit mode with role values and selected permissions', () => {
-      render(
+      renderModal(
         <RoleModal open mode="edit" role={createRole()} onClose={vi.fn()} onSubmit={vi.fn()} />,
       )
 
@@ -58,15 +73,14 @@ describe('RoleModal', () => {
       expect(screen.getByLabelText('permission.role.modal.descriptionLabel')).toHaveValue(
         'Can operate workspace',
       )
-      expect(screen.getByRole('button', { name: /Workspace management/ })).toHaveAttribute(
-        'aria-expanded',
-        'true',
-      )
-      expect(screen.getByText(/workspace\.member\.manage/)).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /Translated workspace permissions/ }),
+      ).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByText('Manage workspace members')).toBeInTheDocument()
     })
 
     it('should disable confirm action when role name is empty', () => {
-      render(<RoleModal open mode="create" onClose={vi.fn()} onSubmit={vi.fn()} />)
+      renderModal(<RoleModal open mode="create" onClose={vi.fn()} onSubmit={vi.fn()} />)
 
       expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeDisabled()
     })
@@ -79,14 +93,14 @@ describe('RoleModal', () => {
       const handleClose = vi.fn()
       const handleSubmit = vi.fn()
 
-      render(<RoleModal open mode="create" onClose={handleClose} onSubmit={handleSubmit} />)
+      renderModal(<RoleModal open mode="create" onClose={handleClose} onSubmit={handleSubmit} />)
 
       await user.type(screen.getByLabelText('permission.role.modal.nameLabel'), '  Support role  ')
       await user.type(
         screen.getByLabelText('permission.role.modal.descriptionLabel'),
         '  Helps members  ',
       )
-      await user.click(screen.getByText(/workspace\.member\.manage/))
+      await user.click(screen.getByText('Manage workspace members'))
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(handleSubmit).toHaveBeenCalledTimes(1)
@@ -102,7 +116,7 @@ describe('RoleModal', () => {
       const user = userEvent.setup()
       const handleSubmit = vi.fn()
 
-      render(
+      renderModal(
         <RoleModal
           open
           mode="edit"
@@ -132,7 +146,7 @@ describe('RoleModal', () => {
   // View mode preserves the permission display but blocks edits and confirmation.
   describe('Read-only Mode', () => {
     it('should render role details as read-only in view mode', () => {
-      render(
+      renderModal(
         <RoleModal open mode="view" role={createRole()} onClose={vi.fn()} onSubmit={vi.fn()} />,
       )
 

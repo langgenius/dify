@@ -1,8 +1,6 @@
 'use client'
-import type { FC } from 'react'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'
 import {
@@ -17,7 +15,7 @@ type Props = Readonly<{
   onClose: () => void
 }>
 
-const SchemaModal: FC<Props> = ({ isShow, schema, rootName, onClose }) => {
+export function SchemaModal({ isShow, schema, rootName, onClose }: Props) {
   const { t } = useTranslation()
   return (
     <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
@@ -55,4 +53,3 @@ const SchemaModal: FC<Props> = ({ isShow, schema, rootName, onClose }) => {
     </Dialog>
   )
 }
-export default React.memo(SchemaModal)

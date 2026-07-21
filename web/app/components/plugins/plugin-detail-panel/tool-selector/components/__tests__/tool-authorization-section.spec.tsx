@@ -2,7 +2,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
-import ToolAuthorizationSection from '../tool-authorization-section'
+import { ToolAuthorizationSection } from '../tool-authorization-section'
 
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
   AuthCategory: {

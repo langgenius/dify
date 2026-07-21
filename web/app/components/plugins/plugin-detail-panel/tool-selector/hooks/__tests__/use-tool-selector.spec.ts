@@ -2,7 +2,7 @@ import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
-import { useToolSelectorState } from '../use-tool-selector-state'
+import { useToolSelector } from '../use-tool-selector'
 
 const mockToolParams = [
   { name: 'param1', form: 'llm', type: 'string', required: true, label: { en_US: 'Param 1' } },
@@ -60,7 +60,7 @@ vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   getStructureValue: (value: Record<string, unknown>) => value || {},
 }))
 
-describe('useToolSelectorState', () => {
+describe('useToolSelector', () => {
   const mockOnSelect = vi.fn()
   const _mockOnSelectMultiple = vi.fn()
 
@@ -88,7 +88,7 @@ describe('useToolSelectorState', () => {
   })
 
   it('should initialize with default panel states', () => {
-    const { result } = renderHook(() => useToolSelectorState({ onSelect: mockOnSelect }))
+    const { result } = renderHook(() => useToolSelector({ onSelect: mockOnSelect }))
 
     expect(result.current.isShow).toBe(false)
     expect(result.current.isShowChooseTool).toBe(false)
@@ -97,7 +97,7 @@ describe('useToolSelectorState', () => {
 
   it('should find current provider from tool value', () => {
     const { result } = renderHook(() =>
-      useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
+      useToolSelector({ value: toolValue, onSelect: mockOnSelect }),
     )
 
     expect(result.current.currentProvider).toBeDefined()
@@ -106,7 +106,7 @@ describe('useToolSelectorState', () => {
 
   it('should find current tool from provider', () => {
     const { result } = renderHook(() =>
-      useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
+      useToolSelector({ value: toolValue, onSelect: mockOnSelect }),
     )
 
     expect(result.current.currentTool).toBeDefined()
@@ -115,7 +115,7 @@ describe('useToolSelectorState', () => {
 
   it('should compute tool settings and params correctly', () => {
     const { result } = renderHook(() =>
-      useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
+      useToolSelector({ value: toolValue, onSelect: mockOnSelect }),
     )
 
     // param2 has form='form' (not 'llm'), so it goes to settings
@@ -129,7 +129,7 @@ describe('useToolSelectorState', () => {
 
   it('should show tab slider when both settings and params exist', () => {
     const { result } = renderHook(() =>
-      useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
+      useToolSelector({ value: toolValue, onSelect: mockOnSelect }),
     )
 
     expect(result.current.showTabSlider).toBe(true)
@@ -138,7 +138,7 @@ describe('useToolSelectorState', () => {
   })
 
   it('should toggle panel visibility', () => {
-    const { result } = renderHook(() => useToolSelectorState({ onSelect: mockOnSelect }))
+    const { result } = renderHook(() => useToolSelector({ onSelect: mockOnSelect }))
 
     act(() => {
       result.current.setIsShow(true)
@@ -152,7 +152,7 @@ describe('useToolSelectorState', () => {
   })
 
   it('should switch tab type', () => {
-    const { result } = renderHook(() => useToolSelectorState({ onSelect: mockOnSelect }))
+    const { result } = renderHook(() => useToolSelector({ onSelect: mockOnSelect }))
 
     act(() => {
       result.current.setCurrType('params')
@@ -162,7 +162,7 @@ describe('useToolSelectorState', () => {
 
   it('should handle description change', () => {
     const { result } = renderHook(() =>
-      useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
+      useToolSelector({ value: toolValue, onSelect: mockOnSelect }),
     )
 
     act(() => {
@@ -178,7 +178,7 @@ describe('useToolSelectorState', () => {
 
   it('should handle enabled change', () => {
     const { result } = renderHook(() =>
-      useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
+      useToolSelector({ value: toolValue, onSelect: mockOnSelect }),
     )
 
     act(() => {
@@ -194,7 +194,7 @@ describe('useToolSelectorState', () => {
 
   it('should handle authorization item click', () => {
     const { result } = renderHook(() =>
-      useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
+      useToolSelector({ value: toolValue, onSelect: mockOnSelect }),
     )
 
     act(() => {
@@ -209,7 +209,7 @@ describe('useToolSelectorState', () => {
   })
 
   it('should not call onSelect if value is undefined', () => {
-    const { result } = renderHook(() => useToolSelectorState({ onSelect: mockOnSelect }))
+    const { result } = renderHook(() => useToolSelector({ onSelect: mockOnSelect }))
 
     act(() => {
       result.current.handleEnabledChange(true)
@@ -219,7 +219,7 @@ describe('useToolSelectorState', () => {
 
   it('should return empty arrays when no provider matches', () => {
     const { result } = renderHook(() =>
-      useToolSelectorState({
+      useToolSelector({
         value: { ...toolValue, provider_name: 'nonexistent' },
         onSelect: mockOnSelect,
       }),
@@ -232,7 +232,7 @@ describe('useToolSelectorState', () => {
   })
 
   it('should skip plugin checks after resolving the current provider and tool', () => {
-    renderHook(() => useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }))
+    renderHook(() => useToolSelector({ value: toolValue, onSelect: mockOnSelect }))
 
     expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
       providerPluginId: 'org/test-plugin',
@@ -242,7 +242,7 @@ describe('useToolSelectorState', () => {
 
   it('should keep plugin checks enabled when the current tool cannot be resolved', () => {
     renderHook(() =>
-      useToolSelectorState({
+      useToolSelector({
         value: { ...toolValue, tool_name: 'missing-tool' },
         onSelect: mockOnSelect,
       }),
@@ -256,7 +256,7 @@ describe('useToolSelectorState', () => {
 
   it('should keep marketplace fallback enabled after tool queries settle without resolving the provider', () => {
     renderHook(() =>
-      useToolSelectorState({
+      useToolSelector({
         value: {
           ...toolValue,
           provider_name: 'org/market-plugin/search',
@@ -276,7 +276,7 @@ describe('useToolSelectorState', () => {
     areToolQueriesFetched = false
 
     renderHook(() =>
-      useToolSelectorState({
+      useToolSelector({
         value: {
           ...toolValue,
           provider_name: 'org/market-plugin/search',
@@ -294,7 +294,7 @@ describe('useToolSelectorState', () => {
 
   it('should skip marketplace checks for unresolved non-plugin workflow tools', () => {
     renderHook(() =>
-      useToolSelectorState({
+      useToolSelector({
         value: {
           ...toolValue,
           provider_name: 'author/tool-b',

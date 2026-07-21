@@ -33,7 +33,7 @@ const buttonClassName = (className?: string, disabled = false, hoverable = true)
   cn(
     rowClassName(className, disabled, hoverable),
     !disabled && 'cursor-pointer',
-    'border-0 bg-transparent text-left focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+    'border-0 bg-transparent text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
   )
 
 export function BlockSelectorRow(props: BlockSelectorRowProps) {
