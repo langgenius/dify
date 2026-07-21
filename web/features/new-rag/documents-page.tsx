@@ -35,6 +35,7 @@ import { TaskEventObserver } from './task-event-observer'
 
 const DOCUMENT_PAGE_SIZE = 50
 const TASK_PAGE_SIZE = 100
+const MAX_TASK_EVENT_STREAMS = 6
 const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.md,.markdown,.html,.htm,.xls,.xlsx,.txt'
 
 const uploadExclusionReasonKey = {
@@ -105,6 +106,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   >({})
   const [terminalTaskPins, setTerminalTaskPins] = useState<Record<string, TerminalTaskPin>>({})
   const [taskObserverGenerations, setTaskObserverGenerations] = useState<Record<string, number>>({})
+  const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
   const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
@@ -234,6 +236,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         reconciledRetries.set(task.id, task)
     }
     if (!reconciledRetries.size) return
+
+    for (const taskId of reconciledRetries.keys()) {
+      const generation = terminalReconciliationGenerationsRef.current.get(taskId) ?? 0
+      terminalReconciliationGenerationsRef.current.set(taskId, generation + 1)
+    }
 
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- An active list request completed after the terminal event proves a retry even when the server timestamp has millisecond precision.
     setTerminalTaskPins((current) => {
@@ -378,7 +385,17 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const hasTaskError = attentionTasks.some(
     (task) => task.state === 'failed' || task.state === 'canceled',
   )
-  const activeTasks = tasks.filter(taskIsActive)
+  const activeTasks = useMemo(() => tasks.filter(taskIsActive), [tasks])
+  const streamedActiveTasks = useMemo(
+    () =>
+      [...activeTasks]
+        .sort(
+          (left, right) =>
+            right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+        )
+        .slice(0, MAX_TASK_EVENT_STREAMS),
+    [activeTasks],
+  )
   const tasksButtonLabel = attentionTasks.length
     ? t(($) => $['newKnowledge.tasksWithAttention'], { count: attentionTasks.length })
     : t(($) => $['newKnowledge.tasks'])
@@ -432,7 +449,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [queryClient])
 
   const reconcileTerminalTask = useCallback(
-    async (taskId: string, terminalVersion: string) => {
+    async (taskId: string, terminalVersion: string, reconciliationGeneration: number) => {
       const currentTask = baseTaskByIdRef.current.get(taskId)
       if (!currentTask) return
       try {
@@ -446,6 +463,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               },
             },
           )
+        if (terminalReconciliationGenerationsRef.current.get(taskId) !== reconciliationGeneration)
+          return
         if (taskVersionIsAfter(terminalVersion, snapshot.updatedAt)) return
         const normalizedSnapshot = normalizedTaskSnapshot(snapshot)
         setTaskOverrides((current) => {
@@ -647,6 +666,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         }
       })
       if (event.event === 'terminal') {
+        const reconciliationGeneration =
+          (terminalReconciliationGenerationsRef.current.get(taskId) ?? 0) + 1
+        terminalReconciliationGenerationsRef.current.set(taskId, reconciliationGeneration)
         setTerminalTaskPins((current) => ({
           ...current,
           [taskId]: {
@@ -657,7 +679,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         if (event.data.state === 'failed')
           toast.error(t(($) => $['newKnowledge.taskFailedNotification']))
         refreshDocumentsAndTasks()
-        void reconcileTerminalTask(taskId, eventVersion)
+        void reconcileTerminalTask(taskId, eventVersion, reconciliationGeneration)
       }
       return true
     },
@@ -667,6 +689,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const handleTaskUpdated = useCallback((task: DocumentProcessingTask) => {
     setTaskOverrides((current) => ({ ...current, [task.id]: normalizedTaskSnapshot(task) }))
     if (taskIsActive(task)) {
+      const generation = terminalReconciliationGenerationsRef.current.get(task.id) ?? 0
+      terminalReconciliationGenerationsRef.current.set(task.id, generation + 1)
       pendingTerminalProgressRef.current.delete(task.id)
       setTerminalTaskPins((current) => {
         const next = { ...current }
@@ -709,7 +733,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   return (
     <>
-      {activeTasks.map((task) => (
+      {streamedActiveTasks.map((task) => (
         <TaskEventObserver
           key={`${task.id}:${taskObserverGenerations[task.id] ?? 0}`}
           documentId={task.documentId}

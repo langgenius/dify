@@ -74,17 +74,26 @@ export function ProcessingTasksDrawer({
   )
   const orderedTasks = useMemo(() => {
     if (!open) return []
-    const recentTasks = tasks.slice(-TASK_DRAWER_LIMIT)
-    const visibleTasks = new Map(recentTasks.map((task) => [task.id, task]))
-    for (const task of tasks) {
-      if (taskIsActive(task)) visibleTasks.set(task.id, task)
-    }
-    return [...visibleTasks.values()]
+    const activeTasks = tasks
+      .filter(taskIsActive)
       .sort(
         (left, right) =>
           right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
       )
       .slice(0, TASK_DRAWER_LIMIT)
+    const visibleTasks = new Map(activeTasks.map((task) => [task.id, task]))
+    for (
+      let index = tasks.length - 1;
+      index >= 0 && visibleTasks.size < TASK_DRAWER_LIMIT;
+      index--
+    ) {
+      const task = tasks[index]!
+      if (!taskIsActive(task)) visibleTasks.set(task.id, task)
+    }
+    return [...visibleTasks.values()].sort(
+      (left, right) =>
+        right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+    )
   }, [open, tasks])
 
   const refreshDocumentsAndTasks = () =>
