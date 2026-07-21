@@ -467,13 +467,10 @@ describe('Console bootstrap', () => {
       expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['current-workspace'] })
     })
 
-    it('starts a fresh permission request after an older request settles', async () => {
+    it('starts a fresh permission request without waiting for an older request', async () => {
       const { queryClient } = renderConsoleBootstrap()
       await screen.findByText('dataset keys:dataset.acl.edit')
-      let resolveOlderRequest: ((value: unknown) => void) | undefined
-      const olderRequest = new Promise((resolve) => {
-        resolveOlderRequest = resolve
-      })
+      const olderRequest = new Promise(() => {})
       let permissionRequestCount = 0
       mockGetRequest.mockImplementation((url: string) => {
         if (url !== '/workspaces/current/rbac/my-permissions')
@@ -492,17 +489,9 @@ describe('Console bootstrap', () => {
       })
       await waitFor(() => expect(permissionRequestCount).toBe(1))
       fireEvent.click(screen.getByRole('button', { name: /refresh permissions after denial/i }))
-      expect(permissionRequestCount).toBe(1)
-
-      resolveOlderRequest?.({
-        workspace: { permission_keys: ['app.create_and_management'] },
-        app: { default_permission_keys: [], overrides: [] },
-        dataset: { default_permission_keys: ['dataset.acl.edit'], overrides: [] },
-      })
-      await backgroundRefresh
-
       await waitFor(() => expect(permissionRequestCount).toBe(2))
       expect(await screen.findByText('dataset keys:dataset.acl.readonly')).toBeInTheDocument()
+      await backgroundRefresh
     })
   })
 

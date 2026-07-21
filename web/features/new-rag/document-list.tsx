@@ -599,53 +599,59 @@ export function DocumentBulkActions({
 }) {
   const { t } = useTranslation('dataset')
   return (
-    <div
-      aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
-      className="fixed bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-1/2 z-20 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg px-3 py-2.5 shadow-xl"
-      role="group"
-      onBlurCapture={onBlurCapture}
-      onFocusCapture={onFocusCapture}
-    >
-      <span className="shrink-0 px-1 system-xs-medium text-text-primary">
-        {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
-      </span>
-      <span id="document-actions-unavailable" className="sr-only">
-        {t(($) => $['newKnowledge.documentActionsUnavailable'])}
-      </span>
-      <Button
-        className="shrink-0"
-        size="small"
-        aria-busy={reindexing}
-        disabled={disabled}
-        loading={reindexing}
-        onClick={onReindex}
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))]">
+      <div
+        aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
+        className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg px-3 py-2.5 shadow-xl"
+        role="group"
+        onBlurCapture={onBlurCapture}
+        onFocusCapture={onFocusCapture}
       >
-        {t(($) => $['newKnowledge.reindexDocuments'])}
-      </Button>
-      <Button
-        className="shrink-0"
-        size="small"
-        disabled
-        aria-describedby="document-actions-unavailable"
-      >
-        {t(($) => $['newKnowledge.downloadDocuments'])}
-      </Button>
-      <Button
-        className="shrink-0"
-        size="small"
-        disabled
-        aria-describedby="document-actions-unavailable"
-      >
-        {t(($) => $['newKnowledge.deleteDocuments'])}
-      </Button>
-      <button
-        type="button"
-        aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
-        className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        onClick={onClear}
-      >
-        <span aria-hidden className="i-ri-close-line size-4" />
-      </button>
+        <span className="shrink-0 px-1 system-xs-medium text-text-primary">
+          {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
+        </span>
+        <span
+          id="document-actions-unavailable"
+          className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
+        >
+          {t(($) => $['newKnowledge.documentActionsUnavailable'])}
+        </span>
+        <Button
+          aria-describedby={disabled ? 'document-actions-unavailable' : undefined}
+          aria-busy={reindexing}
+          className="shrink-0"
+          disabled={disabled}
+          loading={reindexing}
+          size="small"
+          onClick={onReindex}
+        >
+          {t(($) => $['newKnowledge.reindexDocuments'])}
+        </Button>
+        <Button
+          aria-describedby="document-actions-unavailable"
+          className="shrink-0"
+          disabled
+          size="small"
+        >
+          {t(($) => $['newKnowledge.downloadDocuments'])}
+        </Button>
+        <Button
+          aria-describedby="document-actions-unavailable"
+          className="shrink-0"
+          disabled
+          size="small"
+        >
+          {t(($) => $['newKnowledge.deleteDocuments'])}
+        </Button>
+        <button
+          type="button"
+          aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
+          className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          onClick={onClear}
+        >
+          <span aria-hidden className="i-ri-close-line size-4" />
+        </button>
+      </div>
     </div>
   )
 }

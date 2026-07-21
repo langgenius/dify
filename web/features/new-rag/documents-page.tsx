@@ -1,16 +1,25 @@
 'use client'
 
 import type { DocumentProcessingTask } from '@dify/contracts/knowledge-fs/types.gen'
+import type { QueryClient, QueryKey } from '@tanstack/react-query'
 import type {
   ProcessingTaskEvent,
   ProcessingTaskProgressEvent,
 } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { hashKey, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import {
@@ -121,6 +130,27 @@ function queryKeyMatchesKnowledgeSpace(queryKey: readonly unknown[], knowledgeSp
   )
 }
 
+function useQueryDataUpdateCount(queryClient: QueryClient, queryKey: QueryKey) {
+  const queryHash = hashKey(queryKey)
+  const subscribe = useCallback(
+    (onStoreChange: () => void) =>
+      queryClient.getQueryCache().subscribe((event) => {
+        if (
+          event.type === 'updated' &&
+          event.action.type === 'success' &&
+          event.query.queryHash === queryHash
+        )
+          onStoreChange()
+      }),
+    [queryClient, queryHash],
+  )
+  const getSnapshot = useCallback(
+    () => queryClient.getQueryState(queryKey)?.dataUpdateCount ?? 0,
+    [queryClient, queryKey],
+  )
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
 function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessingTask {
   return {
     ...task,
@@ -206,20 +236,23 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }),
   )
   const documentPermissionDenied = responseStatus(documentsQuery.error) === 403
-  const tasksQueryOptions =
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
-      enabled: !documentPermissionDenied,
-      input: (pageParam) => ({
-        params: { id: knowledgeSpaceId },
-        query: {
-          limit: TASK_PAGE_SIZE,
-          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-        },
+  const tasksQueryOptions = useMemo(
+    () =>
+      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
+        enabled: !documentPermissionDenied,
+        input: (pageParam) => ({
+          params: { id: knowledgeSpaceId },
+          query: {
+            limit: TASK_PAGE_SIZE,
+            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+          },
+        }),
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: null as string | null,
       }),
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-      initialPageParam: null as string | null,
-    })
-  const tasksQuery = useInfiniteQuery({ ...tasksQueryOptions, notifyOnChangeProps: 'all' })
+    [documentPermissionDenied, knowledgeSpaceId],
+  )
+  const tasksQuery = useInfiniteQuery(tasksQueryOptions)
   const sourcesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.infiniteOptions({
       enabled: !documentPermissionDenied,
@@ -294,7 +327,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ),
     [baseTasks, documentIds],
   )
-  const taskDataUpdateCount = queryClient.getQueryState(tasksQueryOptions.queryKey)?.dataUpdateCount
+  const taskDataUpdateCount = useQueryDataUpdateCount(queryClient, tasksQueryOptions.queryKey)
   const taskListSnapshotRef = useRef({
     data: tasksQuery.data,
     dataUpdateCount: taskDataUpdateCount,
@@ -1862,6 +1895,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         onLoadMoreTasks={() => void fetchNextTaskPage()}
         onOpenChange={setTasksOpen}
         onRefreshDocumentsAndTasks={refreshDocumentsAndTasks}
+        onRetryPermissionQuery={() => void refreshWorkspacePermissions(true)}
         onRetryDocumentQuery={() => {
           if (documentsQuery.isFetchNextPageError) void documentsQuery.fetchNextPage()
           else void documentsQuery.refetch()
@@ -1873,8 +1907,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         onTaskUpdated={handleTaskUpdated}
         onWritePermissionDenied={handleWritePermissionDenied}
         open={tasksOpen && !permissionDenied}
+        permissionQueryError={permissionQueryError}
+        permissionQueryFetching={workspacePermissionKeysFetching}
+        permissionQueryPending={permissionPending}
         readOnlyReason={
-          !permissionPending && !permissionQueryError && (!canEdit || writePermissionRevoked)
+          writePermissionRevoked || (!permissionPending && !permissionQueryError && !canEdit)
             ? t(($) => $['newKnowledge.permissionRestricted'])
             : undefined
         }

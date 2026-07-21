@@ -93,9 +93,13 @@ export function ProcessingTasksDrawer({
   onLoadMoreTasks,
   onOpenChange,
   onRefreshDocumentsAndTasks,
+  onRetryPermissionQuery,
   onTaskUpdated,
   onWritePermissionDenied,
   open,
+  permissionQueryError,
+  permissionQueryFetching,
+  permissionQueryPending,
   readOnlyReason,
   taskQueryError,
   taskQueryFetching,
@@ -121,9 +125,13 @@ export function ProcessingTasksDrawer({
   onLoadMoreTasks: () => void
   onOpenChange: (open: boolean) => void
   onRefreshDocumentsAndTasks: () => void
+  onRetryPermissionQuery: () => void
   onTaskUpdated: (task: DocumentProcessingTask) => void
   onWritePermissionDenied: () => void
   open: boolean
+  permissionQueryError: boolean
+  permissionQueryFetching: boolean
+  permissionQueryPending: boolean
   readOnlyReason?: string
   taskQueryError: boolean
   taskQueryFetching: boolean
@@ -146,9 +154,11 @@ export function ProcessingTasksDrawer({
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const taskQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
   const documentQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
+  const permissionQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
   const focusedTaskActionRef = useRef<HTMLButtonElement | null>(null)
   const loadMoreRequestedRef = useRef(false)
   const queryRetryFocusRequestedRef = useRef(false)
+  const permissionRetryFocusRequestedRef = useRef(false)
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
   const openCycleRef = useRef(0)
   const openRef = useRef(open)
@@ -283,6 +293,16 @@ export function ProcessingTasksDrawer({
   }, [documentQueryError, hasUnresolvedTaskDocuments, open, taskQueryError])
 
   useEffect(() => {
+    if (!open || !permissionRetryFocusRequestedRef.current) return
+    if (permissionQueryError) {
+      permissionQueryRetryButtonRef.current?.focus()
+      return
+    }
+    permissionRetryFocusRequestedRef.current = false
+    drawerCloseButtonRef.current?.focus()
+  }, [open, permissionQueryError])
+
+  useEffect(() => {
     const focusedAction = focusedTaskActionRef.current
     if (!open || !focusedAction || focusedAction.isConnected) return
     focusedTaskActionRef.current = null
@@ -368,7 +388,7 @@ export function ProcessingTasksDrawer({
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:w-[440px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
-              <header className="shrink-0 px-6 pt-5 pb-4">
+              <header className="shrink-0 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-4 pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
                 <div className="flex items-center justify-between gap-3">
                   <DrawerTitle className="system-md-semibold text-text-primary">
                     {t(($) => $['newKnowledge.backgroundTasks'])}
@@ -391,8 +411,37 @@ export function ProcessingTasksDrawer({
                     {readOnlyReason}
                   </p>
                 )}
+                {permissionQueryPending && (
+                  <p className="mt-2 system-xs-regular text-text-tertiary" role="status">
+                    {tCommon(($) => $.loading)}
+                  </p>
+                )}
               </header>
-              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
+              <div className="min-h-0 flex-1 overflow-y-auto pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
+                {permissionQueryError && (
+                  <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
+                    <p className="system-xs-regular text-text-destructive">
+                      {t(($) => $['newKnowledge.permissionLoadFailed'])}
+                    </p>
+                    <Button
+                      ref={permissionQueryRetryButtonRef}
+                      aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
+                      aria-busy={permissionQueryFetching}
+                      className="mt-3"
+                      loading={permissionQueryFetching}
+                      size="small"
+                      onBlur={(event) => {
+                        if (event.relatedTarget) permissionRetryFocusRequestedRef.current = false
+                      }}
+                      onClick={() => {
+                        permissionRetryFocusRequestedRef.current = true
+                        onRetryPermissionQuery()
+                      }}
+                    >
+                      {tCommon(($) => $['operation.retry'])}
+                    </Button>
+                  </div>
+                )}
                 {taskQueryError && (
                   <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
                     <p className="system-xs-regular text-text-destructive">

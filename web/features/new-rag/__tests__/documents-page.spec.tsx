@@ -3,6 +3,7 @@ import type {
   LogicalDocument,
   Source,
 } from '@dify/contracts/knowledge-fs/types.gen'
+import { hashKey } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
@@ -15,6 +16,7 @@ type InfiniteOptions = {
   input: (pageParam: string | null) => unknown
   initialPageParam: string | null
   queryKind: 'documents' | 'sources' | 'tasks'
+  queryKey?: readonly unknown[]
   refetchInterval?: (query: { state: { data?: unknown } }) => false | number
 }
 
@@ -66,8 +68,26 @@ const retryMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const uploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
+const queryCacheListeners = vi.hoisted(
+  () =>
+    new Set<
+      (event: { action: { type: string }; query: { queryHash: string }; type: string }) => void
+    >(),
+)
 const queryClient = vi.hoisted(() => ({
   cancelQueries: vi.fn(),
+  getQueryCache: vi.fn(() => ({
+    subscribe: (
+      listener: (event: {
+        action: { type: string }
+        query: { queryHash: string }
+        type: string
+      }) => void,
+    ) => {
+      queryCacheListeners.add(listener)
+      return () => queryCacheListeners.delete(listener)
+    },
+  })),
   getQueryState: vi.fn(() => ({ dataUpdateCount: tasksQuery.dataUpdateCount })),
   invalidateQueries: vi.fn(),
 }))
@@ -128,7 +148,11 @@ const documentsInfiniteOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({ ...options, queryKind: 'documents' })),
 )
 const tasksInfiniteOptions = vi.hoisted(() =>
-  vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({ ...options, queryKind: 'tasks' })),
+  vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
+    ...options,
+    queryKey: ['knowledge-fs', 'tasks'],
+    queryKind: 'tasks',
+  })),
 )
 const sourcesInfiniteOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({ ...options, queryKind: 'sources' })),
@@ -263,6 +287,15 @@ function streamFailedTaskThenWait(taskId: string) {
   })
 }
 
+function notifyTaskQuerySuccess() {
+  for (const listener of queryCacheListeners)
+    listener({
+      action: { type: 'success' },
+      query: { queryHash: hashKey(['knowledge-fs', 'tasks']) },
+      type: 'updated',
+    })
+}
+
 const source = (overrides: Partial<Source> = {}): Source => ({
   createdAt: '2026-07-20T10:00:00Z',
   id: 'source-1',
@@ -279,6 +312,7 @@ const source = (overrides: Partial<Source> = {}): Source => ({
 describe('DocumentsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryCacheListeners.clear()
     queryClient.cancelQueries.mockResolvedValue(undefined)
     queryClient.invalidateQueries.mockResolvedValue(undefined)
     documentsQuery.data = { pages: [{ items: [] }] }
@@ -571,6 +605,7 @@ describe('DocumentsPage', () => {
     const user = userEvent.setup()
     permissionStateMock.error = new Error('permission service unavailable')
     documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task()] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -579,10 +614,37 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
     await user.click(
       screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    expect(within(screen.getByRole('dialog')).getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.permissionLoadFailed',
+    )
+    await user.click(
+      screen.getByRole('button', {
         name: 'common.operation.retry · dataset.newKnowledge.permissionLoadFailed',
       }),
     )
     expect(permissionStateMock.retry).toHaveBeenCalledOnce()
+  })
+
+  it('explains pending permission checks inside the task drawer', async () => {
+    const user = userEvent.setup()
+    permissionStateMock.loading = true
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task()] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+
+    expect(within(screen.getByRole('dialog')).getByText('common.loading')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).not.toBeInTheDocument()
   })
 
   it('uploads one or multiple files through the pinned document contracts', async () => {
@@ -1474,6 +1536,9 @@ describe('DocumentsPage', () => {
       name: 'dataset.newKnowledge.reindexDocuments',
     })
     expect(reindex).toBeEnabled()
+    expect(
+      within(actions).getByText('dataset.newKnowledge.documentActionsUnavailable'),
+    ).toBeVisible()
     await user.dblClick(reindex)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({
@@ -1486,7 +1551,28 @@ describe('DocumentsPage', () => {
     for (const name of ['downloadDocuments', 'deleteDocuments'])
       expect(
         within(actions).getByRole('button', { name: `dataset.newKnowledge.${name}` }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-describedby', 'document-actions-unavailable')
+  })
+
+  it('explains why re-indexing becomes unavailable while results refresh', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
+
+    tasksQuery.data = undefined
+    tasksQuery.isPending = true
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    expect(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }),
+    ).toHaveAttribute('aria-describedby', 'document-actions-unavailable')
+    expect(
+      within(actions).getByText('dataset.newKnowledge.documentActionsUnavailable'),
+    ).toBeVisible()
   })
 
   it('keeps missing documents selected after a partial bulk re-index result', async () => {
@@ -4529,7 +4615,7 @@ describe('DocumentsPage', () => {
       data: { dataset: { default_permission_keys: ['dataset.acl.readonly'] } },
       error: null,
     })
-    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
@@ -4546,6 +4632,16 @@ describe('DocumentsPage', () => {
       screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.close' })).toHaveFocus()
+
+    permissionStateMock.error = new Error('permission refresh failed')
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const dialog = screen.getByRole('dialog')
+    expect(
+      within(dialog).getByText('dataset.newKnowledge.permissionRestricted'),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.permissionLoadFailed',
+    )
   })
 
   it('does not let an older permission refresh release the latest write lock', async () => {
@@ -4636,7 +4732,7 @@ describe('DocumentsPage', () => {
         task({ id: 'shared-active-retry', state: 'running', updatedAt: taskVersion }),
       )
     streamFailedTaskThenWait('shared-active-retry')
-    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
@@ -4648,7 +4744,7 @@ describe('DocumentsPage', () => {
     tasksQuery.data = sharedTaskData
     tasksQuery.dataUpdatedAt = 100
     tasksQuery.dataUpdateCount = 2
-    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    act(() => notifyTaskQuerySuccess())
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
     expect(
