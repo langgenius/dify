@@ -1,25 +1,28 @@
 import { useMutation } from '@tanstack/react-query'
 import { create } from 'zustand'
-import { sendDeleteAccountCode, submitDeleteAccountFeedback, verifyDeleteAccountCode } from '@/service/common'
+import {
+  sendDeleteAccountCode,
+  submitDeleteAccountFeedback,
+  verifyDeleteAccountCode,
+} from '@/service/common'
 
 type State = {
   sendEmailToken: string
   setSendEmailToken: (token: string) => void
 }
 
-export const useAccountDeleteStore = create<State>(set => ({
+export const useAccountDeleteStore = create<State>((set) => ({
   sendEmailToken: '',
   setSendEmailToken: (token: string) => set({ sendEmailToken: token }),
 }))
 
 export function useSendDeleteAccountEmail() {
-  const updateEmailToken = useAccountDeleteStore(state => state.setSendEmailToken)
+  const updateEmailToken = useAccountDeleteStore((state) => state.setSendEmailToken)
   return useMutation({
     mutationKey: ['delete-account'],
     mutationFn: sendDeleteAccountCode,
     onSuccess: (ret) => {
-      if (ret.result === 'success')
-        updateEmailToken(ret.data)
+      if (ret.result === 'success') updateEmailToken(ret.data)
     },
   })
 }

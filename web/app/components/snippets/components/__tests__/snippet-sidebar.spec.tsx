@@ -5,16 +5,20 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { SnippetSidebarContent } from '../snippet-sidebar'
 
-let capturedVarListProps: {
-  list: InputVar[]
-  onChange: (list: InputVar[]) => void
-  readonly: boolean
-} | undefined
-let capturedConfigVarModalProps: {
-  onClose: () => void
-  onConfirm: (field: InputVar) => void
-  varKeys: string[]
-} | undefined
+let capturedVarListProps:
+  | {
+      list: InputVar[]
+      onChange: (list: InputVar[]) => void
+      readonly: boolean
+    }
+  | undefined
+let capturedConfigVarModalProps:
+  | {
+      onClose: () => void
+      onConfirm: (field: InputVar) => void
+      varKeys: string[]
+    }
+  | undefined
 
 vi.mock('@/app/components/app-sidebar/snippet-info/dropdown', () => ({
   default: () => <div data-testid="snippet-info-dropdown" />,
@@ -38,16 +42,20 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
       <div role="dialog" aria-label="config-var-modal">
         <button
           type="button"
-          onClick={() => props.onConfirm({
-            type: PipelineInputVarType.textInput as unknown as InputVar['type'],
-            label: 'Question',
-            variable: 'question',
-            required: false,
-          })}
+          onClick={() =>
+            props.onConfirm({
+              type: PipelineInputVarType.textInput as unknown as InputVar['type'],
+              label: 'Question',
+              variable: 'question',
+              required: false,
+            })
+          }
         >
           confirm field
         </button>
-        <button type="button" onClick={props.onClose}>close modal</button>
+        <button type="button" onClick={props.onClose}>
+          close modal
+        </button>
       </div>
     )
   },
@@ -133,22 +141,18 @@ describe('SnippetSidebarContent', () => {
 
   it('should hide input field operations when readonly', () => {
     render(
-      <SnippetSidebarContent
-        snippet={snippet}
-        fields={fields}
-        readonly
-        onFieldsChange={vi.fn()}
-      />,
+      <SnippetSidebarContent snippet={snippet} fields={fields} readonly onFieldsChange={vi.fn()} />,
     )
 
     expect(screen.queryByRole('link', { name: /snippet\.management/i })).not.toBeInTheDocument()
     expect(screen.getByText(snippet.name)).toHaveAttribute('title', snippet.name)
     expect(screen.getByText(snippet.name)).toHaveClass('truncate')
-    if (!snippet.description)
-      throw new Error('snippet.description is required for this test')
+    if (!snippet.description) throw new Error('snippet.description is required for this test')
     expect(screen.getByText(snippet.description)).toHaveAttribute('title', snippet.description)
     expect(screen.getByText(snippet.description)).toHaveClass('truncate')
-    expect(screen.queryByRole('button', { name: /common\.operation\.add/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /common\.operation\.add/i }),
+    ).not.toBeInTheDocument()
     expect(capturedVarListProps?.readonly).toBe(true)
   })
 
@@ -162,7 +166,10 @@ describe('SnippetSidebarContent', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
+    expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute(
+      'href',
+      '/snippets/snippet-1/orchestrate',
+    )
   })
 
   it('should add a new input field from the config variable modal', () => {

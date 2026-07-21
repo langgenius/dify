@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { render } from '@/test/console/render'
 import DocumentList from '../../list'
 
 const mockPush = vi.fn()
@@ -24,7 +26,11 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { doc_form: string, created_by: string, permission_keys: string[] } }) => unknown) =>
+  useDatasetDetailContextWithSelector: (
+    selector: (state: {
+      dataset: { doc_form: string; created_by: string; permission_keys: string[] }
+    }) => unknown,
+  ) =>
     selector({
       dataset: {
         doc_form: ChunkingMode.text,
@@ -34,42 +40,34 @@ vi.mock('@/context/dataset-detail', () => ({
     }),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
   }))
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createSystemFeaturesStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
   }))
@@ -85,61 +83,60 @@ vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metada
   }),
 }))
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
-
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, gcTime: 0 },
-    mutations: { retry: false },
-  },
-})
+const createConsoleQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: Number.POSITIVE_INFINITY,
+        staleTime: Number.POSITIVE_INFINITY,
+      },
+      mutations: { retry: false },
+    },
+  })
 
 const createWrapper = () => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(queryClient)
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
 
-const createMockDoc = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail => ({
-  id: `doc-${Math.random().toString(36).substr(2, 9)}`,
-  position: 1,
-  data_source_type: DataSourceType.FILE,
-  data_source_info: {},
-  data_source_detail_dict: {
-    upload_file: { name: 'test.txt', extension: 'txt' },
-  },
-  dataset_process_rule_id: 'rule-1',
-  batch: 'batch-1',
-  name: 'test-document.txt',
-  created_from: 'web',
-  created_by: 'user-1',
-  created_at: Date.now(),
-  tokens: 100,
-  indexing_status: 'completed',
-  error: null,
-  enabled: true,
-  disabled_at: null,
-  disabled_by: null,
-  archived: false,
-  archived_reason: null,
-  archived_by: null,
-  archived_at: null,
-  updated_at: Date.now(),
-  doc_type: null,
-  doc_metadata: undefined,
-  display_status: 'available',
-  word_count: 500,
-  hit_count: 10,
-  doc_form: 'text_model',
-  ...overrides,
-} as SimpleDocumentDetail)
+const createMockDoc = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail =>
+  ({
+    id: `doc-${Math.random().toString(36).substr(2, 9)}`,
+    position: 1,
+    data_source_type: DataSourceType.FILE,
+    data_source_info: {},
+    data_source_detail_dict: {
+      upload_file: { name: 'test.txt', extension: 'txt' },
+    },
+    dataset_process_rule_id: 'rule-1',
+    batch: 'batch-1',
+    name: 'test-document.txt',
+    created_from: 'web',
+    created_by: 'user-1',
+    created_at: Date.now(),
+    tokens: 100,
+    indexing_status: 'completed',
+    error: null,
+    enabled: true,
+    disabled_at: null,
+    disabled_by: null,
+    archived: false,
+    archived_reason: null,
+    archived_by: null,
+    archived_at: null,
+    updated_at: Date.now(),
+    doc_type: null,
+    doc_metadata: undefined,
+    display_status: 'available',
+    word_count: 500,
+    hit_count: 10,
+    doc_form: 'text_model',
+    ...overrides,
+  }) as SimpleDocumentDetail
 
 const defaultPagination: PaginationProps = {
   current: 1,
@@ -170,11 +167,6 @@ describe('DocumentList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('table'))!.toBeInTheDocument()
-    })
-
     it('should render all documents', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('Document 1.txt'))!.toBeInTheDocument()
@@ -249,9 +241,18 @@ describe('DocumentList', () => {
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      expect(screen.getByRole('checkbox', { name: 'Document 1.txt' })).toHaveAttribute('aria-checked', 'true')
-      expect(screen.getByRole('checkbox', { name: 'Document 2.txt' })).toHaveAttribute('aria-checked', 'true')
-      expect(screen.getByRole('checkbox', { name: 'Document 3.txt' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: 'Document 1.txt' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
+      expect(screen.getByRole('checkbox', { name: 'Document 2.txt' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
+      expect(screen.getByRole('checkbox', { name: 'Document 3.txt' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
     })
 
     it('should show indeterminate state when some are selected', () => {
@@ -294,11 +295,12 @@ describe('DocumentList', () => {
 
     it('should call onSortChange when sortable header is clicked', () => {
       const onSortChange = vi.fn()
-      const { container } = render(<DocumentList {...defaultProps} onSortChange={onSortChange} />, { wrapper: createWrapper() })
+      const { container } = render(<DocumentList {...defaultProps} onSortChange={onSortChange} />, {
+        wrapper: createWrapper(),
+      })
 
       const sortableHeaders = container.querySelectorAll('thead button')
-      if (sortableHeaders.length > 0)
-        fireEvent.click(sortableHeaders[0]!)
+      if (sortableHeaders.length > 0) fireEvent.click(sortableHeaders[0]!)
 
       expect(onSortChange).toHaveBeenCalled()
     })
@@ -387,9 +389,7 @@ describe('DocumentList', () => {
       const props = {
         ...defaultProps,
         selectedIds: ['doc-1'],
-        documents: [
-          createMockDoc({ id: 'doc-1', data_source_type: DataSourceType.FILE }),
-        ],
+        documents: [createMockDoc({ id: 'doc-1', data_source_type: DataSourceType.FILE })],
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
@@ -402,9 +402,7 @@ describe('DocumentList', () => {
       const props = {
         ...defaultProps,
         selectedIds: ['doc-1'],
-        documents: [
-          createMockDoc({ id: 'doc-1', display_status: 'error' }),
-        ],
+        documents: [createMockDoc({ id: 'doc-1', display_status: 'error' })],
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
@@ -446,7 +444,9 @@ describe('DocumentList', () => {
         fireEvent.click(await screen.findByText('datasetDocuments.list.table.rename'))
       })
 
-      expect(screen.getByRole('dialog', { name: 'datasetDocuments.list.table.rename' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'datasetDocuments.list.table.rename' }),
+      )!.toBeInTheDocument()
     })
 
     it('should call onUpdate when document is renamed', () => {
@@ -546,7 +546,8 @@ describe('DocumentList', () => {
 
     it('should handle large number of documents', () => {
       const manyDocs = Array.from({ length: 20 }, (_, i) =>
-        createMockDoc({ id: `doc-${i}`, name: `Document ${i}.txt` }))
+        createMockDoc({ id: `doc-${i}`, name: `Document ${i}.txt` }),
+      )
       const props = { ...defaultProps, documents: manyDocs }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 

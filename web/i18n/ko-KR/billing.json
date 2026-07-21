@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "한 번에 여러 문서를 업로드하려면 업그레이드하세요",
   "upgrade.workflowRestore.description": "현재 플랜에서는 워크플로 버전 복원을 사용할 수 없습니다.",
   "upgrade.workflowRestore.title": "워크플로 버전을 복원하려면 업그레이드하세요",
+  "upgrade.workflowVersionRun.description": "현재 플랜에서는 워크플로 ID로 특정 워크플로 버전을 실행할 수 없습니다.",
+  "upgrade.workflowVersionRun.title": "특정 워크플로 버전을 실행하려면 업그레이드하세요",
   "upgradeBtn.encourage": "지금 업그레이드",
   "upgradeBtn.encourageShort": "업그레이드",
   "upgradeBtn.plain": "요금제 업그레이드",

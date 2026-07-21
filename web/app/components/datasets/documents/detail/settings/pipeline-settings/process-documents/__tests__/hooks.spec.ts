@@ -5,8 +5,9 @@ import { useInputVariables } from '../hooks'
 let mockPipelineId: string | undefined
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { pipeline_id?: string } | null }) => unknown) =>
-    selector({ dataset: mockPipelineId ? { pipeline_id: mockPipelineId } : null }),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: { pipeline_id?: string } | null }) => unknown,
+  ) => selector({ dataset: mockPipelineId ? { pipeline_id: mockPipelineId } : null }),
 }))
 
 let mockParamsReturn: {
@@ -15,11 +16,11 @@ let mockParamsReturn: {
 }
 
 const mockUsePublishedPipelineProcessingParams = vi.fn(
-  (_params: { pipeline_id: string, node_id: string }) => mockParamsReturn,
+  (_params: { pipeline_id: string; node_id: string }) => mockParamsReturn,
 )
 
 vi.mock('@/service/use-pipeline', () => ({
-  usePublishedPipelineProcessingParams: (params: { pipeline_id: string, node_id: string }) =>
+  usePublishedPipelineProcessingParams: (params: { pipeline_id: string; node_id: string }) =>
     mockUsePublishedPipelineProcessingParams(params),
 }))
 

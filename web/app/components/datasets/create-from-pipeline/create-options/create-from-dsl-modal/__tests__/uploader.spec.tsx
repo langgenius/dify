@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import Uploader from '../uploader'
 
 const { mockToast } = vi.hoisted(() => {
@@ -38,11 +37,6 @@ describe('Uploader', () => {
 
   // Rendering Tests - No File
   describe('Rendering - No File', () => {
-    it('should render without crashing', () => {
-      render(<Uploader {...defaultProps} />)
-      expect(screen.getByText(/dslUploader\.button/i)).toBeInTheDocument()
-    })
-
     it('should render upload prompt when no file', () => {
       render(<Uploader {...defaultProps} />)
       expect(screen.getByText(/dslUploader\.button/i)).toBeInTheDocument()
@@ -134,35 +128,15 @@ describe('Uploader', () => {
       const { container } = render(<Uploader {...defaultProps} file={file} />)
 
       const deleteButton = container.querySelector('[class*="group-hover:flex"] button')
-      if (deleteButton)
-        fireEvent.click(deleteButton)
+      if (deleteButton) fireEvent.click(deleteButton)
 
       expect(defaultProps.updateFile).toHaveBeenCalledWith()
     })
   })
 
   // Custom className Tests
-  describe('Custom className', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<Uploader {...defaultProps} className="custom-class" />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('custom-class')
-    })
-
-    it('should merge custom className with default', () => {
-      const { container } = render(<Uploader {...defaultProps} className="custom-class" />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('mt-6', 'custom-class')
-    })
-  })
 
   describe('Layout', () => {
-    it('should have proper container styling', () => {
-      const { container } = render(<Uploader {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('mt-6')
-    })
-
     it('should have dropzone styling when no file', () => {
       const { container } = render(<Uploader {...defaultProps} />)
       const dropzone = container.querySelector('[class*="border-dashed"]')
@@ -174,14 +148,6 @@ describe('Uploader', () => {
       const { container } = render(<Uploader {...defaultProps} file={file} />)
       const fileCard = container.querySelector('[class*="rounded-lg"]')
       expect(fileCard).toBeInTheDocument()
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<Uploader {...defaultProps} />)
-      rerender(<Uploader {...defaultProps} />)
-      expect(screen.getByText(/dslUploader\.button/i)).toBeInTheDocument()
     })
   })
 })

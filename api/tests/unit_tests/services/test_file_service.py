@@ -84,6 +84,27 @@ class TestFileService:
         mock_db_session.add.assert_called_once_with(result)
         mock_db_session.commit.assert_called_once()
 
+    def test_upload_file_uses_explicit_resource_tenant(self, file_service: FileService):
+        user = MagicMock(spec=Account)
+        user.id = "user-id"
+
+        with (
+            patch("services.file_service.storage") as mock_storage,
+            patch("services.file_service.extract_tenant_id") as mock_extract_tenant_id,
+            patch("services.file_service.file_helpers.get_signed_file_url"),
+        ):
+            result = file_service.upload_file(
+                filename="test.txt",
+                content=b"test",
+                mimetype="text/plain",
+                user=user,
+                tenant_id="resource-tenant-id",
+            )
+
+        assert result.tenant_id == "resource-tenant-id"
+        assert mock_storage.save.call_args.args[0].startswith("upload_files/resource-tenant-id/")
+        mock_extract_tenant_id.assert_not_called()
+
     def test_upload_file_invalid_characters(self, file_service):
         with pytest.raises(ValueError, match="Filename contains invalid characters"):
             file_service.upload_file(filename="invalid/file.txt", content=b"", mimetype="text/plain", user=MagicMock())

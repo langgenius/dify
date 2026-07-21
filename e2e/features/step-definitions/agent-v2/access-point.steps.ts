@@ -2,11 +2,8 @@ import type { DifyWorld } from '../../support/world'
 import type { AccessSurfaceName } from './access-point-helpers'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  setAgentApiAccess,
-  setAgentSiteAccessAndGetURL,
-} from '../../agent-v2/support/access-point'
-import { getAgentAccessPath, publishAgentWithPublishableDraft } from '../../agent-v2/support/agent'
+import { enableAgentWebApp } from '../../agent-v2/support/access-point'
+import { publishAgentWithPublishableDraft } from '../../agent-v2/support/agent'
 import {
   getAccessRegion,
   getAccessSurfaceCard,
@@ -15,28 +12,28 @@ import {
 } from './access-point-helpers'
 
 Given('the Agent v2 draft has been published via API', async function (this: DifyWorld) {
-  await publishAgentWithPublishableDraft(getCurrentAgentId(this))
+  await publishAgentWithPublishableDraft(this.getConsoleClient(), getCurrentAgentId(this))
 })
 
 Given(
   /^Agent v2 (Web app|Backend service API) access has been enabled via API$/,
   async function (this: DifyWorld, surface: AccessSurfaceName) {
     if (surface === 'Web app') {
-      this.agentBuilder.accessPoint.webAppURL = await setAgentSiteAccessAndGetURL(
+      this.agentBuilder.accessPoint.webAppURL = await enableAgentWebApp(
+        this.getConsoleClient(),
         getCurrentAgentId(this),
-        true,
       )
       return
     }
 
-    const apiAccess = await setAgentApiAccess(getCurrentAgentId(this), true)
+    const agentId = getCurrentAgentId(this)
+    const apiAccess = await this.getConsoleClient().agent.byAgentId.apiEnable.post({
+      body: { enable_api: true },
+      params: { agent_id: agentId },
+    })
     this.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
   },
 )
-
-When('I open the Agent v2 Access Point page', async function (this: DifyWorld) {
-  await this.getPage().goto(getAgentAccessPath(getCurrentAgentId(this)))
-})
 
 When(
   'I open the preseeded Agent v2 Access Point page for {string} from the Agent Roster',
@@ -101,8 +98,7 @@ When(
     if (surface === 'Web app') {
       const launchLink = accessSurfaceCard.getByRole('link', { name: 'Launch' })
       const href = await launchLink.getAttribute('href')
-      if (!href)
-        throw new Error('Agent v2 Web app Launch link does not expose an href.')
+      if (!href) throw new Error('Agent v2 Web app Launch link does not expose an href.')
 
       this.agentBuilder.accessPoint.webAppURL = href
     }

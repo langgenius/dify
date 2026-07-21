@@ -29,15 +29,16 @@ export function usePrepareAgentBuildDraftBeforeRun({
       },
     },
   })
-  const checkoutBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.checkout.post.mutationOptions())
-  const { mutateAsync: checkoutBuildDraft, isPending: isCheckingOutBuildDraft } = checkoutBuildDraftMutation
+  const checkoutBuildDraftMutation = useMutation(
+    consoleQuery.agent.byAgentId.buildDraft.checkout.post.mutationOptions(),
+  )
+  const { mutateAsync: checkoutBuildDraft, isPending: isCheckingOutBuildDraft } =
+    checkoutBuildDraftMutation
 
   const prepareBuildDraftBeforeRun = useCallback(async () => {
-    if (!agentId)
-      return
+    if (!agentId) return
 
-    if (isBuildDraftActive)
-      return buildDraftAgentSoulConfig
+    if (isBuildDraftActive) return buildDraftAgentSoulConfig
 
     await saveDraft()
 
@@ -53,7 +54,17 @@ export function usePrepareAgentBuildDraftBeforeRun({
     rebaseComposerDraft?.(buildDraft.agent_soul as AgentSoulConfig | undefined)
     setSoulSourceOverride?.('build-draft')
     return buildDraft.agent_soul as AgentSoulConfig | undefined
-  }, [agentId, buildDraftAgentSoulConfig, buildDraftQueryOptions.queryKey, checkoutBuildDraft, isBuildDraftActive, queryClient, rebaseComposerDraft, saveDraft, setSoulSourceOverride])
+  }, [
+    agentId,
+    buildDraftAgentSoulConfig,
+    buildDraftQueryOptions.queryKey,
+    checkoutBuildDraft,
+    isBuildDraftActive,
+    queryClient,
+    rebaseComposerDraft,
+    saveDraft,
+    setSoulSourceOverride,
+  ])
 
   return {
     isCheckingOutBuildDraft,

@@ -7,12 +7,16 @@ const TILDE_RANGE_RE = /0\.3~8mm/
 vi.mock('@/app/components/base/markdown-blocks', () => ({
   AudioBlock: ({ children }: PropsWithChildren) => <div data-testid="audio-block">{children}</div>,
   Img: ({ alt }: { alt?: string }) => <span data-testid="img">{alt}</span>,
-  Link: ({ children, href }: { children?: ReactNode, href?: string }) => <a href={href}>{children}</a>,
+  Link: ({ children, href }: { children?: ReactNode; href?: string }) => (
+    <a href={href}>{children}</a>
+  ),
   MarkdownButton: ({ children }: PropsWithChildren) => <button>{children}</button>,
   MarkdownForm: ({ children }: PropsWithChildren) => <form>{children}</form>,
   Paragraph: ({ children }: PropsWithChildren) => <p data-testid="paragraph">{children}</p>,
   PluginImg: ({ alt }: { alt?: string }) => <span data-testid="plugin-img">{alt}</span>,
-  PluginParagraph: ({ children }: PropsWithChildren) => <p data-testid="plugin-paragraph">{children}</p>,
+  PluginParagraph: ({ children }: PropsWithChildren) => (
+    <p data-testid="plugin-paragraph">{children}</p>
+  ),
   ScriptBlock: () => null,
   ThinkBlock: ({ children }: PropsWithChildren) => <details>{children}</details>,
   VideoBlock: ({ children }: PropsWithChildren) => <div data-testid="video-block">{children}</div>,
@@ -164,7 +168,12 @@ describe('StreamdownWrapper', () => {
       }
 
       // Act
-      render(<StreamdownWrapper latexContent="[link](https://example.com)" customComponents={customComponents} />)
+      render(
+        <StreamdownWrapper
+          latexContent="[link](https://example.com)"
+          customComponents={customComponents}
+        />,
+      )
 
       // Assert
       // Assert

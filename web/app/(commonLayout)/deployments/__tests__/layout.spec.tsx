@@ -52,9 +52,11 @@ describe('DeploymentsLayout', () => {
     mocks.ensureQueryData.mockResolvedValue({ enable_app_deploy: false })
     const { default: DeploymentsLayout } = await import('../layout')
 
-    await expect(DeploymentsLayout({
-      children: <div>Deployments content</div>,
-    })).rejects.toThrow('NEXT_NOT_FOUND')
+    await expect(
+      DeploymentsLayout({
+        children: <div>Deployments content</div>,
+      }),
+    ).rejects.toThrow('NEXT_NOT_FOUND')
 
     expect(mocks.notFound).toHaveBeenCalledTimes(1)
   })

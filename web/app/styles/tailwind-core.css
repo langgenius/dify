@@ -51,7 +51,9 @@
  * indirection survives without re-declaring values at :root. */
 @theme inline {
   /* Flat color (used as `bg-background-gradient-bg-fill-chat-bubble-bg-3`). */
-  --color-background-gradient-bg-fill-chat-bubble-bg-3: var(--color-background-gradient-bg-fill-chat-bubble-bg-3);
+  --color-background-gradient-bg-fill-chat-bubble-bg-3: var(
+    --color-background-gradient-bg-fill-chat-bubble-bg-3
+  );
 
   /* Gradients — registered under v4's --background-image-* namespace. */
   --background-image-chatbot-bg: var(--color-chatbot-bg);
@@ -61,7 +63,9 @@
   --background-image-workflow-process-paused-bg: var(--color-workflow-process-paused-bg);
   --background-image-workflow-run-failed-bg: var(--color-workflow-run-failed-bg);
   --background-image-workflow-batch-failed-bg: var(--color-workflow-batch-failed-bg);
-  --background-image-mask-top2bottom-gray-50-to-transparent: var(--mask-top2bottom-gray-50-to-transparent);
+  --background-image-mask-top2bottom-gray-50-to-transparent: var(
+    --mask-top2bottom-gray-50-to-transparent
+  );
   --background-image-marketplace-divider-bg: var(--color-marketplace-divider-bg);
   --background-image-marketplace-plugin-empty: var(--color-marketplace-plugin-empty);
   --background-image-toast-success-bg: var(--color-toast-success-bg);
@@ -70,18 +74,32 @@
   --background-image-toast-info-bg: var(--color-toast-info-bg);
   --background-image-app-detail-bg: var(--color-app-detail-bg);
   --background-image-app-detail-overlay-bg: var(--color-app-detail-overlay-bg);
-  --background-image-dataset-chunk-process-success-bg: var(--color-dataset-chunk-process-success-bg);
+  --background-image-dataset-chunk-process-success-bg: var(
+    --color-dataset-chunk-process-success-bg
+  );
   --background-image-dataset-chunk-process-error-bg: var(--color-dataset-chunk-process-error-bg);
-  --background-image-dataset-chunk-detail-card-hover-bg: var(--color-dataset-chunk-detail-card-hover-bg);
-  --background-image-dataset-child-chunk-expand-btn-bg: var(--color-dataset-child-chunk-expand-btn-bg);
-  --background-image-dataset-option-card-blue-gradient: var(--color-dataset-option-card-blue-gradient);
-  --background-image-dataset-option-card-purple-gradient: var(--color-dataset-option-card-purple-gradient);
-  --background-image-dataset-option-card-orange-gradient: var(--color-dataset-option-card-orange-gradient);
+  --background-image-dataset-chunk-detail-card-hover-bg: var(
+    --color-dataset-chunk-detail-card-hover-bg
+  );
+  --background-image-dataset-child-chunk-expand-btn-bg: var(
+    --color-dataset-child-chunk-expand-btn-bg
+  );
+  --background-image-dataset-option-card-blue-gradient: var(
+    --color-dataset-option-card-blue-gradient
+  );
+  --background-image-dataset-option-card-purple-gradient: var(
+    --color-dataset-option-card-purple-gradient
+  );
+  --background-image-dataset-option-card-orange-gradient: var(
+    --color-dataset-option-card-orange-gradient
+  );
   --background-image-dataset-chunk-list-mask-bg: var(--color-dataset-chunk-list-mask-bg);
   --background-image-line-divider-bg: var(--color-line-divider-bg);
   --background-image-dataset-warning-message-bg: var(--color-dataset-warning-message-bg);
   --background-image-price-premium-badge-background: var(--color-premium-badge-background);
-  --background-image-premium-yearly-tip-text-background: var(--color-premium-yearly-tip-text-background);
+  --background-image-premium-yearly-tip-text-background: var(
+    --color-premium-yearly-tip-text-background
+  );
   --background-image-price-premium-text-background: var(--color-premium-text-background);
   --background-image-price-enterprise-background: var(--color-price-enterprise-background);
   --background-image-grid-mask-background: var(--color-grid-mask-background);
@@ -93,9 +111,15 @@
   --background-image-billing-plan-title-bg: var(--color-billing-plan-title-bg);
   --background-image-billing-plan-card-premium-bg: var(--color-billing-plan-card-premium-bg);
   --background-image-billing-plan-card-enterprise-bg: var(--color-billing-plan-card-enterprise-bg);
-  --background-image-knowledge-pipeline-creation-footer-bg: var(--color-knowledge-pipeline-creation-footer-bg);
-  --background-image-progress-bar-indeterminate-stripe: var(--color-progress-bar-indeterminate-stripe);
-  --background-image-chat-answer-human-input-form-divider-bg: var(--color-chat-answer-human-input-form-divider-bg);
+  --background-image-knowledge-pipeline-creation-footer-bg: var(
+    --color-knowledge-pipeline-creation-footer-bg
+  );
+  --background-image-progress-bar-indeterminate-stripe: var(
+    --color-progress-bar-indeterminate-stripe
+  );
+  --background-image-chat-answer-human-input-form-divider-bg: var(
+    --color-chat-answer-human-input-form-divider-bg
+  );
 }
 
 /* ---------- App-level component CSS ----------------------------------- */

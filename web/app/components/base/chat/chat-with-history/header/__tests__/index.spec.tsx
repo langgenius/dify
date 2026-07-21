@@ -21,17 +21,14 @@ vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip
 
 // Mock Dialog to avoid Base UI focus/portal behavior in tests
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) => {
-    if (!open)
-      return null
-    return (
-      <div data-testid="modal">
-        {children}
-      </div>
-    )
+  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => {
+    if (!open) return null
+    return <div data-testid="modal">{children}</div>
   },
   DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div role="dialog" data-testid="modal-content">{children}</div>
+    <div role="dialog" data-testid="modal-content">
+      {children}
+    </div>
   ),
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
@@ -215,7 +212,11 @@ describe('Header Component', () => {
       const saveBtn = await screen.findByText('common.operation.save')
       await userEvent.click(saveBtn)
 
-      expect(handleRenameConversation).toHaveBeenCalledWith('conv-1', 'New Name', expect.any(Object))
+      expect(handleRenameConversation).toHaveBeenCalledWith(
+        'conv-1',
+        'New Name',
+        expect.any(Object),
+      )
 
       const successCallback = handleRenameConversation.mock.calls[0]![2].onSuccess
       await act(async () => {
@@ -398,7 +399,9 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      const operationTrigger = container.querySelector('.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover') as HTMLElement
+      const operationTrigger = container.querySelector(
+        '.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover',
+      ) as HTMLElement
       await userEvent.click(operationTrigger)
       await userEvent.click(await screen.findByText('explore.sidebar.action.rename'))
 
