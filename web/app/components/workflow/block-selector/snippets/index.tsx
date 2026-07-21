@@ -1,5 +1,5 @@
 import type { OnNodeAdd } from '../../types'
-import type { PublishedSnippetListItem } from './snippet-detail-card'
+import type { SnippetListItem as SnippetListItemData } from '@/types/snippet'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -68,7 +68,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [tagIds, setTagIds] = useState<string[]>([])
-  const previewCardHandle = useMemo(() => createPreviewCardHandle<PublishedSnippetListItem>(), [])
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<SnippetListItemData>(), [])
 
   const keyword = deferredSearchText.trim() || undefined
 
@@ -165,7 +165,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
               return (
                 <PreviewCardTrigger
                   key={item.id}
-                  delay={0}
+                  delay={150}
                   closeDelay={150}
                   handle={previewCardHandle}
                   payload={item}
@@ -196,7 +196,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
 
           return (
             <BlockSelectorPreviewCardContent>
-              <SnippetDetailCard snippet={payload as PublishedSnippetListItem} />
+              <SnippetDetailCard snippet={payload as SnippetListItemData} />
             </BlockSelectorPreviewCardContent>
           )
         }}

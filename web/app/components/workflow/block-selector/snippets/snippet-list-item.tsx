@@ -1,10 +1,10 @@
 import type { ComponentPropsWithoutRef, Ref } from 'react'
-import type { PublishedSnippetListItem } from './snippet-detail-card'
+import type { SnippetListItem as SnippetListItemData } from '@/types/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 
 type SnippetListItemProps = {
   ref?: Ref<HTMLButtonElement>
-  snippet: PublishedSnippetListItem
+  snippet: SnippetListItemData
 } & ComponentPropsWithoutRef<'button'>
 
 const SnippetListItem = ({ snippet, className, ref, ...props }: SnippetListItemProps) => (

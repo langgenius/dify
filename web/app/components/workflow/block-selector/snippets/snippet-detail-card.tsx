@@ -1,27 +1,19 @@
 import type { SnippetListItem } from '@/types/snippet'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMembers } from '@/service/use-common'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
 
-export type PublishedSnippetListItem = SnippetListItem
-
 type SnippetDetailCardProps = {
-  snippet: PublishedSnippetListItem
+  snippet: SnippetListItem
 }
 
 function SnippetDetailCard({ snippet }: SnippetDetailCardProps) {
-  const { description, name } = snippet
+  const { author_name, description, name } = snippet
   const { t } = useTranslation('snippet')
-  const { data: membersData } = useMembers()
   const { data: workflow } = useSnippetPublishedWorkflow(snippet.id)
-
-  const creatorName = useMemo(() => {
-    const member = membersData?.accounts?.find((member) => member.id === snippet.created_by)
-    return member?.name || t(($) => $.unknownUser)
-  }, [membersData?.accounts, snippet.created_by, t])
+  const creatorName = author_name || t(($) => $.unknownUser)
 
   const blockTypes = useMemo(() => {
     const graph = workflow?.graph

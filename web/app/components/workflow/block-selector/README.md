@@ -56,7 +56,7 @@ Rows use one of three DOM structures:
 
 List controls use the shared two-pixel accent focus indicator. Use an inset ring inside clipped or scrollable surfaces so the ring follows the row boundary.
 
-Each preview-enabled list owns one `PreviewCard` root and one detached handle. Rows provide `PreviewCardTrigger` payloads, and preview content uses `BlockSelectorPreviewCardContent`. Preview availability must not depend on an optional description; a card may still show the item name, icon, author, or other available metadata. Preview cards are supplemental hover and focus content and never add a second action to a row.
+Each preview-enabled list owns one `PreviewCard` root and one detached handle. Rows provide focusable `PreviewCardTrigger` payloads with `delay={150}` and `closeDelay={150}`, and preview content uses `BlockSelectorPreviewCardContent`. Preview availability must not depend on an optional description; a card may still show the item name, icon, author, or other available metadata. Preview cards are read-only supplemental hover and focus content, contain no independent interactions, and never add a second action to a row.
 
 ## Testing
 

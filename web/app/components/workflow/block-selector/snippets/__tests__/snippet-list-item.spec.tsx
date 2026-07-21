@@ -1,10 +1,8 @@
-import type { PublishedSnippetListItem } from '../snippet-detail-card'
+import type { SnippetListItem as SnippetListItemData } from '@/types/snippet'
 import { fireEvent, render, screen } from '@testing-library/react'
 import SnippetListItem from '../snippet-list-item'
 
-const createSnippet = (
-  overrides: Partial<PublishedSnippetListItem> = {},
-): PublishedSnippetListItem => ({
+const createSnippet = (overrides: Partial<SnippetListItemData> = {}): SnippetListItemData => ({
   id: 'snippet-1',
   name: 'Customer Review',
   description: 'Snippet description',
