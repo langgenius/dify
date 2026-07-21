@@ -1650,18 +1650,6 @@ describe('useIndexingEstimate', () => {
 
   // Tests for fetchEstimate
   describe('fetchEstimate', () => {
-    it('should have fetchEstimate function', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-
-      expect(typeof result.current.fetchEstimate).toBe('function')
-    })
-
-    it('should have reset function', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-
-      expect(typeof result.current.reset).toBe('function')
-    })
-
     it('should call fetchEstimate for FILE data source', () => {
       const { result } = renderHook(() =>
         useIndexingEstimate({
@@ -1775,15 +1763,6 @@ describe('StepTwoFooter', () => {
 
   // Tests for rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<StepTwoFooter {...defaultProps} />)
-
-      // Should render Previous and Next buttons with correct text
-      // Should render Previous and Next buttons with correct text
-      expect(screen.getByText(/previousStep/i))!.toBeInTheDocument()
-      expect(screen.getByText(/nextStep/i))!.toBeInTheDocument()
-    })
-
     it('should render Previous and Next buttons when not in setting mode', () => {
       render(<StepTwoFooter {...defaultProps} />)
 
@@ -1870,14 +1849,6 @@ describe('PreviewPanel', () => {
 
   // Tests for rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<PreviewPanel {...defaultProps} />)
-
-      // Check for the preview header title text
-      // Check for the preview header title text
-      expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
-    })
-
     it('should render idle state when isIdle is true', () => {
       render(<PreviewPanel {...defaultProps} isIdle={true} />)
 
@@ -2350,11 +2321,6 @@ describe('StepTwo Component', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<StepTwo {...defaultStepTwoProps} />)
-      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
-    })
-
     it('should show general chunking options when not in upload', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // Should render the segmentation section

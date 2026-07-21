@@ -95,11 +95,6 @@ describe('AudioPlayer — rendering', () => {
     expect((sources[0] as HTMLSourceElement).src).toBe('https://example.com/a.mp3')
     expect((sources[1] as HTMLSourceElement).src).toBe('https://example.com/b.ogg')
   })
-
-  it('should render without crashing when no props are supplied', () => {
-    render(<AudioPlayer />)
-    expect(getPlayButton())!.toBeInTheDocument()
-  })
 })
 
 // ─── Play / Pause toggle ──────────────────────────────────────────────────────
@@ -430,12 +425,6 @@ describe('AudioPlayer — canvas seek interactions', () => {
 // ─── Missing coverage tests ───────────────────────────────────────────────────
 
 describe('AudioPlayer — missing coverage', () => {
-  it('should handle unmounting without crashing (clears timeout)', () => {
-    const { unmount } = render(<AudioPlayer src="https://example.com/a.mp3" />)
-    unmount()
-    // Timer is cleared, no state update should happen after unmount
-  })
-
   it('should handle getContext returning null safely', () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(null)

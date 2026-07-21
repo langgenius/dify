@@ -1,9 +1,12 @@
 import inspect
+from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
+from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
@@ -12,7 +15,8 @@ from controllers.console.workspace.account import (
     ChangeEmailSendEmailApi,
     CheckEmailUnique,
 )
-from models import Account, AccountStatus, Tenant
+from models import Account, AccountIntegrate, AccountStatus, Tenant, TenantAccountJoin
+from models.account import TenantAccountRole
 from services.account_service import AccountService
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
@@ -43,6 +47,38 @@ def _build_account(email: str, account_id: str = "acc", tenant: Tenant | None = 
     account.status = AccountStatus.ACTIVE
     account._current_tenant = tenant_obj
     return account
+
+
+def _stable_uuid(value: str) -> str:
+    return str(uuid5(NAMESPACE_URL, value))
+
+
+def _persist_account_with_tenant(session: Session, email: str, account_name: str = "account") -> tuple[Account, Tenant]:
+    tenant = Tenant(name=f"{account_name} tenant")
+    tenant.id = _stable_uuid(f"tenant:{account_name}")
+    account = Account(name=account_name, email=email, status=AccountStatus.ACTIVE)
+    account.id = _stable_uuid(f"account:{account_name}")
+    membership = TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        current=True,
+        role=TenantAccountRole.OWNER,
+    )
+    session.add_all([account, tenant, membership])
+    session.commit()
+    account._current_tenant = tenant
+    account.role = TenantAccountRole.OWNER
+    return account, tenant
+
+
+@contextmanager
+def _bind_database_session(session: Session):
+    database_session = scoped_session(sessionmaker(bind=session.get_bind(), expire_on_commit=False))
+    try:
+        with patch("extensions.ext_database.db.session", database_session):
+            yield database_session
+    finally:
+        database_session.remove()
 
 
 def _build_change_email_token(
@@ -387,47 +423,64 @@ class TestChangeEmailValidity:
 
 class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
-    @patch("controllers.console.workspace.account.AccountService.update_account_email")
     @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
-    @patch("controllers.console.workspace.account.AccountService.check_email_unique")
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Account, Tenant, TenantAccountJoin, AccountIntegrate)],
+        indirect=True,
+    )
     def test_should_normalize_new_email_before_update(
         self,
         mock_is_freeze: MagicMock,
-        mock_check_unique: MagicMock,
         mock_get_data: MagicMock,
         mock_revoke_token: MagicMock,
-        mock_update_account: MagicMock,
         mock_send_notify: MagicMock,
         app: Flask,
+        sqlite_session: Session,
     ):
-        current_user = _build_account("old@example.com", "acc3")
         mock_is_freeze.return_value = False
-        mock_check_unique.return_value = True
-        mock_get_data.return_value = _build_change_email_token(
-            AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
-            account_id="acc3",
-            email="new@example.com",
-            old_email="OLD@example.com",
-        )
-        mock_account_after_update = _build_account("new@example.com", "acc3-updated")
-        mock_update_account.return_value = mock_account_after_update
 
-        with app.test_request_context(
-            "/account/change-email/reset",
-            method="POST",
-            json={"new_email": "New@Example.com", "token": "token-123"},
-        ):
-            api = ChangeEmailResetApi()
-            method = inspect.unwrap(api.post)
-            method(api, current_user)
+        with _bind_database_session(sqlite_session) as database_session:
+            current_user, _ = _persist_account_with_tenant(
+                database_session(),
+                "old@example.com",
+                "email-reset-account",
+            )
+            account_integration = AccountIntegrate(
+                account_id=current_user.id,
+                provider="google",
+                open_id="google-user",
+                encrypted_token="encrypted-token",
+            )
+            database_session.add(account_integration)
+            database_session.commit()
+            mock_get_data.return_value = _build_change_email_token(
+                AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+                account_id=current_user.id,
+                email="new@example.com",
+                old_email="OLD@example.com",
+            )
 
-            mock_is_freeze.assert_called_once_with("new@example.com")
-            mock_check_unique.assert_called_once_with("new@example.com", session=ANY)
-            mock_revoke_token.assert_called_once_with("token-123")
-            mock_update_account.assert_called_once_with(current_user, email="new@example.com", session=ANY)
-            mock_send_notify.assert_called_once_with(email="new@example.com")
+            with app.test_request_context(
+                "/account/change-email/reset",
+                method="POST",
+                json={"new_email": "New@Example.com", "token": "token-123"},
+            ):
+                api = ChangeEmailResetApi()
+                method = inspect.unwrap(api.post)
+                response = method(api, current_user)
+
+        sqlite_session.expire_all()
+        persisted_account = sqlite_session.get(Account, current_user.id)
+        assert response["email"] == "new@example.com"
+        assert persisted_account is not None
+        assert persisted_account.email == "new@example.com"
+        assert sqlite_session.get(AccountIntegrate, account_integration.id) is None
+        mock_is_freeze.assert_called_once_with("new@example.com")
+        mock_revoke_token.assert_called_once_with("token-123")
+        mock_send_notify.assert_called_once_with(email="new@example.com")
 
     @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
     @patch("controllers.console.workspace.account.AccountService.update_account_email")
@@ -663,36 +716,47 @@ class TestAccountDeletionFeedback:
 
 
 class TestCheckEmailUnique:
-    @patch("controllers.console.workspace.account.AccountService.check_email_unique")
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
-    def test_should_normalize_email(self, mock_is_freeze: MagicMock, mock_check_unique: MagicMock, app: Flask):
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Account, Tenant, TenantAccountJoin)],
+        indirect=True,
+    )
+    def test_should_normalize_email(
+        self,
+        mock_is_freeze: MagicMock,
+        app: Flask,
+        sqlite_session: Session,
+    ):
         mock_is_freeze.return_value = False
-        mock_check_unique.return_value = True
 
-        with app.test_request_context(
-            "/account/change-email/check-email-unique",
-            method="POST",
-            json={"email": "Case@Test.com"},
-        ):
-            api = CheckEmailUnique()
-            method = inspect.unwrap(api.post)
-            response = method(api)
+        with _bind_database_session(sqlite_session) as database_session:
+            _persist_account_with_tenant(database_session(), "different@test.com", "uniqueness-account")
+            with app.test_request_context(
+                "/account/change-email/check-email-unique",
+                method="POST",
+                json={"email": "Case@Test.com"},
+            ):
+                api = CheckEmailUnique()
+                method = inspect.unwrap(api.post)
+                response = method(api)
 
         assert response == {"result": "success"}
         mock_is_freeze.assert_called_once_with("case@test.com")
-        mock_check_unique.assert_called_once_with("case@test.com", session=ANY)
 
 
-def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
-    mock_session = MagicMock()
-    first = MagicMock()
-    first.scalar_one_or_none.return_value = None
-    second = MagicMock()
-    expected_account = MagicMock()
-    second.scalar_one_or_none.return_value = expected_account
-    mock_session.execute.side_effect = [first, second]
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(Account, Tenant, TenantAccountJoin)],
+    indirect=True,
+)
+def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup(sqlite_session: Session):
+    expected_account, _ = _persist_account_with_tenant(
+        sqlite_session,
+        "mixed@test.com",
+        "case-fallback-account",
+    )
 
-    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
+    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=sqlite_session)
 
     assert result is expected_account
-    assert mock_session.execute.call_count == 2

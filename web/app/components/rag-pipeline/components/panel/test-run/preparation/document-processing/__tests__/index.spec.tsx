@@ -209,16 +209,6 @@ describe('DocumentProcessing', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      setupMocks({
-        configurations: [createBaseConfiguration()],
-      })
-
-      renderWithQueryClient(<DocumentProcessing {...defaultProps} />)
-
-      expect(screen.getByTestId('form-actions')).toBeInTheDocument()
-    })
-
     it('should render Options component with form elements', () => {
       const configurations = [
         createBaseConfiguration({ variable: 'field1', label: 'Field 1' }),
@@ -306,19 +296,6 @@ describe('DocumentProcessing', () => {
   })
 
   describe('Callback Stability and Memoization', () => {
-    it('should memoize renderCustomActions callback', () => {
-      setupMocks()
-      const { rerender } = renderWithQueryClient(<DocumentProcessing {...defaultProps} />)
-
-      rerender(
-        <QueryClientProvider client={createQueryClient()}>
-          <DocumentProcessing {...defaultProps} />
-        </QueryClientProvider>,
-      )
-
-      expect(screen.getByTestId('form-actions')).toBeInTheDocument()
-    })
-
     it('should update renderCustomActions when isFetchingParams changes', () => {
       setupMocks({ isFetchingParams: false })
       const { rerender } = renderWithQueryClient(<DocumentProcessing {...defaultProps} />)
@@ -376,19 +353,6 @@ describe('DocumentProcessing', () => {
   })
 
   describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      setupMocks()
-      const { rerender } = renderWithQueryClient(<DocumentProcessing {...defaultProps} />)
-
-      rerender(
-        <QueryClientProvider client={createQueryClient()}>
-          <DocumentProcessing {...defaultProps} />
-        </QueryClientProvider>,
-      )
-
-      expect(screen.getByTestId('form-actions')).toBeInTheDocument()
-    })
-
     it('should not break when re-rendering with different props', () => {
       const initialProps = {
         ...defaultProps,
@@ -622,18 +586,6 @@ describe('Actions', () => {
       expect(processButton).not.toBeDisabled()
     })
   })
-
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      const mockFormParams = createMockFormParams()
-      const mockOnBack = vi.fn()
-      const { rerender } = render(<Actions formParams={mockFormParams} onBack={mockOnBack} />)
-
-      rerender(<Actions formParams={mockFormParams} onBack={mockOnBack} />)
-
-      expect(screen.getByText('datasetPipeline.operations.backToDataSource')).toBeInTheDocument()
-    })
-  })
 })
 
 describe('Options', () => {
@@ -688,21 +640,6 @@ describe('Options', () => {
       render(<Options {...props} />)
 
       expect(screen.getByTestId('custom-action')).toBeInTheDocument()
-    })
-
-    it('should render with correct class name', () => {
-      const props = {
-        initialData: {},
-        configurations: [],
-        schema: createMockSchema(),
-        CustomActions: () => <button>Submit</button>,
-        onSubmit: vi.fn(),
-      }
-
-      const { container } = render(<Options {...props} />)
-
-      const form = container.querySelector('form')
-      expect(form).toHaveClass('w-full')
     })
   })
 

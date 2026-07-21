@@ -2,8 +2,9 @@ import type { ReactElement, ReactNode } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -87,46 +88,22 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: mockUseProviderContext,
 }))
 
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
@@ -183,7 +160,7 @@ describe('PopupItem', () => {
     mockUseProviderContext.mockReturnValue({
       modelProviders: [makeProvider()],
     })
-    mockUseAppContext.mockReturnValue({
+    mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { trial_credits: 200, trial_credits_used: 0 },
     })
     mockCredentialPanelState.mockReturnValue({
@@ -496,7 +473,7 @@ describe('PopupItem', () => {
         }),
       ],
     })
-    mockUseAppContext.mockReturnValue({
+    mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { trial_credits: 100, trial_credits_used: 100 },
     })
     mockCredentialPanelState.mockReturnValue({

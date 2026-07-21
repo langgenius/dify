@@ -449,6 +449,98 @@ class TestWorkflowService:
         assert workflow.features_dict == features
         assert workflow.updated_by == account.id
 
+    def test_sync_draft_workflow_graph_only_preserves_independently_updated_draft_fields(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        existing_features = {"file_upload": {"enabled": True}}
+        existing_environment_variables = [
+            StringVariable(id="env-new", name="region", value="new", selector=["env", "region"])
+        ]
+        existing_conversation_variables = [
+            StringVariable(
+                id="conversation-new",
+                name="topic",
+                value="new",
+                selector=["conversation", "topic"],
+            )
+        ]
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+            features=existing_features,
+            environment_variables=existing_environment_variables,
+            conversation_variables=existing_conversation_variables,
+        )
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+        unique_hash = workflow.unique_hash
+        updated_graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+        updated_graph["nodes"][0]["data"]["title"] = "Updated graph"
+
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            result = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=updated_graph,
+                features={"file_upload": {"enabled": False}},
+                unique_hash=unique_hash,
+                account=account,
+                environment_variables=[
+                    StringVariable(id="env-old", name="region", value="old", selector=["env", "region"])
+                ],
+                conversation_variables=[
+                    StringVariable(
+                        id="conversation-old",
+                        name="topic",
+                        value="old",
+                        selector=["conversation", "topic"],
+                    )
+                ],
+                session=sqlite_session,
+                graph_only=True,
+            )
+
+        sqlite_session.refresh(workflow)
+        assert result is workflow
+        assert workflow.graph_dict == updated_graph
+        assert workflow.features_dict == existing_features
+        assert workflow.environment_variables == existing_environment_variables
+        assert workflow.conversation_variables == existing_conversation_variables
+
+    def test_sync_draft_workflow_graph_only_creates_complete_initial_draft(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+        features = {"file_upload": {"enabled": True}}
+        environment_variables = [StringVariable(id="env-id", name="region", value="new", selector=["env", "region"])]
+        conversation_variables = [
+            StringVariable(
+                id="conversation-id",
+                name="topic",
+                value="new",
+                selector=["conversation", "topic"],
+            )
+        ]
+
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            workflow = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=graph,
+                features=features,
+                unique_hash=None,
+                account=account,
+                environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
+                session=sqlite_session,
+                graph_only=True,
+            )
+
+        assert workflow.graph_dict == graph
+        assert workflow.features_dict == features
+        assert workflow.environment_variables == environment_variables
+        assert workflow.conversation_variables == conversation_variables
+
     def test_sync_draft_workflow_raises_hash_not_equal_error(
         self, workflow_service: WorkflowService, sqlite_session: Session
     ):

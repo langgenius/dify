@@ -1577,6 +1577,7 @@ Default configuration for form inputs.
 | enable_learn_app | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
 | enable_trial_app | boolean |  | Yes |
 | is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
@@ -1642,6 +1643,7 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | allow_email_code_login | boolean |  | Yes |
 | allow_email_password_login | boolean |  | Yes |
+| allow_public_access | boolean, <br>**Default:** true |  | Yes |
 | allow_sso | boolean |  | Yes |
 | enabled | boolean |  | Yes |
 | sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |

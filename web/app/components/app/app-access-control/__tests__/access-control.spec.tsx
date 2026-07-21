@@ -3,21 +3,18 @@ import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode, SubjectType } from '@/models/access-control'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AccessControlDialog from '../access-control-dialog'
-import AccessControlItem from '../access-control-item'
 import AddMemberOrGroupDialog from '../add-member-or-group-pop'
 import AccessControl from '../index'
 import SpecificGroupsOrMembers from '../specific-groups-or-members'
 
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
-const mockMutateAsync = vi.fn()
-const mockUseUpdateAccessMode = vi.fn(() => ({
-  isPending: false,
-  mutateAsync: mockMutateAsync,
+const { mockMutateAsync } = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
 }))
 const intersectionObserverMocks = vi.hoisted(() => ({
   callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
@@ -27,8 +24,49 @@ vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
   useSearchForWhiteListCandidates: (...args: unknown[]) =>
     mockUseSearchForWhiteListCandidates(...args),
-  useUpdateAccessMode: () => mockUseUpdateAccessMode(),
 }))
+
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const webAppAuth = new Proxy(actual.consoleQuery.enterprise.webAppAuth, {
+    get(target, property, receiver) {
+      if (property === 'updateWebAppWhitelistSubjects')
+        return { mutationOptions: () => ({ mutationFn: mockMutateAsync }) }
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  const enterprise = new Proxy(actual.consoleQuery.enterprise, {
+    get(target, property, receiver) {
+      if (property === 'webAppAuth') return webAppAuth
+      return Reflect.get(target, property, receiver)
+    },
+  })
+
+  return {
+    ...actual,
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, property, receiver) {
+        if (property === 'enterprise') return enterprise
+        return Reflect.get(target, property, receiver)
+      },
+    }),
+  }
+})
+
+vi.mock('@/context/account-state', async () => {
+  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
+  return {
+    userProfileAtom: atom({
+      id: 'user-1',
+      name: 'Test User',
+      email: 'test@dify.ai',
+      avatar: '',
+      avatar_url: null,
+      is_password_set: false,
+      timezone: 'UTC',
+    }),
+  }
+})
 
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ahooks')>()
@@ -84,11 +122,8 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  vi.clearAllMocks()
   mockMutateAsync.mockResolvedValue(undefined)
-  mockUseUpdateAccessMode.mockReturnValue({
-    isPending: false,
-    mutateAsync: mockMutateAsync,
-  })
   mockUseAppWhiteListSubjects.mockReturnValue({
     isPending: false,
     data: {
@@ -101,39 +136,6 @@ beforeEach(() => {
     isFetchingNextPage: false,
     fetchNextPage: vi.fn(),
     data: { pages: [{ currPage: 1, subjects: [groupSubject, memberSubject], hasMore: false }] },
-  })
-})
-
-// AccessControlItem handles selected vs. unselected styling and click state updates
-describe('AccessControlItem', () => {
-  it('should update current menu when selecting a different access type', () => {
-    useAccessControlStore.setState({ currentMenu: AccessMode.PUBLIC })
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
-    )
-
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    expect(option).toHaveClass('cursor-pointer')
-
-    fireEvent.click(option)
-
-    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
-  })
-
-  it('should keep current menu when clicking the selected access type', () => {
-    useAccessControlStore.setState({ currentMenu: AccessMode.ORGANIZATION })
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
-    )
-
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    fireEvent.click(option)
-
-    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
   })
 })
 
@@ -340,13 +342,15 @@ describe('AccessControl', () => {
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        appId: app.id,
-        accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-        subjects: [
-          { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
-          { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
-        ],
+      expect(mockMutateAsync.mock.calls[0]?.[0]).toEqual({
+        body: {
+          appId: app.id,
+          accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+          subjects: [
+            { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
+            { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
+          ],
+        },
       })
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalled()

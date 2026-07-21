@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { render } from '@/test/console/render'
 import DocumentList from '../../list'
 
 const mockPush = vi.fn()
@@ -38,47 +40,34 @@ vi.mock('@/context/dataset-detail', () => ({
     }),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
   }))
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createSystemFeaturesStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
   }))
@@ -94,23 +83,21 @@ vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metada
   }),
 }))
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
-
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
+      queries: {
+        retry: false,
+        gcTime: Number.POSITIVE_INFINITY,
+        staleTime: Number.POSITIVE_INFINITY,
+      },
       mutations: { retry: false },
     },
   })
 
 const createWrapper = () => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(queryClient)
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -180,11 +167,6 @@ describe('DocumentList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('table'))!.toBeInTheDocument()
-    })
-
     it('should render all documents', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('Document 1.txt'))!.toBeInTheDocument()

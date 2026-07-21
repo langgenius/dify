@@ -76,8 +76,8 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
         <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <Input
-              data-testid="member-selector-search"
               showLeftIcon
+              aria-label={t(($) => $['operation.search'], { ns: 'common' })}
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
             />

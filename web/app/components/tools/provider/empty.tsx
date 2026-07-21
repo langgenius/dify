@@ -7,10 +7,10 @@ import { useDocLink } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import Link from '@/next/link'
 import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
-import { ToolTypeEnum } from '../../workflow/block-selector/types'
+import { ToolType } from '../../workflow/block-selector/types'
 
 type Props = Readonly<{
-  type?: ToolTypeEnum
+  type?: ToolType
   isAgent?: boolean
 }>
 
@@ -20,11 +20,11 @@ const workflowToolStepKeys = [
   'workflowToolEmpty.step3',
 ] as const
 
-const getLink = (type?: ToolTypeEnum) => {
+const getLink = (type?: ToolType) => {
   switch (type) {
-    case ToolTypeEnum.Custom:
+    case ToolType.Custom:
       return buildIntegrationPath('custom-tool')
-    case ToolTypeEnum.MCP:
+    case ToolType.MCP:
       return buildIntegrationPath('mcp')
     default:
       return buildIntegrationPath('custom-tool')
@@ -35,7 +35,7 @@ const Empty = ({ type, isAgent }: Props) => {
   const docLink = useDocLink()
   const { theme } = useTheme()
 
-  const hasLink = type && [ToolTypeEnum.Custom, ToolTypeEnum.MCP].includes(type)
+  const hasLink = type === ToolType.Custom || type === ToolType.MCP
   const renderType = isAgent ? ('agent' as const) : type
   const hasTitle =
     renderType &&
@@ -52,7 +52,7 @@ const Empty = ({ type, isAgent }: Props) => {
     </>
   )
 
-  if (!isAgent && type === ToolTypeEnum.Workflow) {
+  if (!isAgent && type === ToolType.Workflow) {
     return (
       <div className="flex w-full max-w-[1060px] flex-col items-center gap-8 text-center">
         <div className="flex w-full max-w-[739px] flex-col items-center gap-1">
