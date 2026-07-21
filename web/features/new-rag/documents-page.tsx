@@ -119,6 +119,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [search, setSearch] = useQueryState('query', documentSearchParser)
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
   const [tasksOpen, setTasksOpen] = useState(false)
+  const [blockingDependencyRetries, setBlockingDependencyRetries] = useState({
+    sources: false,
+    tasks: false,
+  })
   const [taskStreamOffset, setTaskStreamOffset] = useState(0)
   const failedTaskPollOffsetRef = useRef(0)
   const [taskOverrides, setTaskOverrides] = useState<
@@ -166,6 +170,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const canWrite = hasWorkspaceWritePermission && !documentPermissionDenied
   const tasksQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
+      enabled: !documentPermissionDenied,
       input: (pageParam) => ({
         params: { id: knowledgeSpaceId },
         query: {
@@ -179,6 +184,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const sourcesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.infiniteOptions({
+      enabled: !documentPermissionDenied,
       input: (pageParam) => ({
         params: { id: knowledgeSpaceId },
         query: {
@@ -389,9 +395,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       unresolvedDocumentSourceIds.size > 0 &&
       (hasNextSourcePage || sourcesQuery.isFetchingNextPage || sourcesQuery.isFetchNextPageError)),
   )
-  const dependencyQueryBlockingError = Boolean(
-    (tasksQuery.error && !tasksQuery.data) || (sourcesQuery.error && !sourcesQuery.data),
+  const taskQueryBlockingError = Boolean(
+    !tasksQuery.data && (tasksQuery.error || blockingDependencyRetries.tasks),
   )
+  const sourceQueryBlockingError = Boolean(
+    !sourcesQuery.data && (sourcesQuery.error || blockingDependencyRetries.sources),
+  )
+  const dependencyQueryBlockingError = taskQueryBlockingError || sourceQueryBlockingError
   const dependencyQueryWarning = Boolean(
     (tasksQuery.error && tasksQuery.data) ||
     tasksQuery.isFetchNextPageError ||
@@ -418,6 +428,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const dependencyRetryFetching = Boolean(
     (taskQueryWarning && tasksQuery.isFetching) || (sourceQueryWarning && sourcesQuery.isFetching),
+  )
+  const blockingDependencyRetryFetching = Boolean(
+    (taskQueryBlockingError && tasksQuery.isFetching) ||
+    (sourceQueryBlockingError && sourcesQuery.isFetching),
   )
   const dependencyResultsIncomplete = taskResultsIncomplete || sourceResultsIncomplete
   const selectionDisabled =
@@ -509,6 +523,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     setTasksOpen(false)
     documentPermissionAlertRef.current?.focus()
   }, [documentPermissionDenied, tasksOpen])
+
+  useEffect(() => {
+    if (!blockingDependencyRetries.tasks && !blockingDependencyRetries.sources) return
+    if (
+      (!blockingDependencyRetries.tasks || !tasksQuery.data) &&
+      (!blockingDependencyRetries.sources || !sourcesQuery.data)
+    )
+      return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Successful first-page retries retire the locally stabilized blocking state.
+    setBlockingDependencyRetries((current) => ({
+      sources: current.sources && !sourcesQuery.data,
+      tasks: current.tasks && !tasksQuery.data,
+    }))
+  }, [blockingDependencyRetries, sourcesQuery.data, tasksQuery.data])
 
   useEffect(() => {
     if (
@@ -682,6 +710,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   useEffect(() => {
     if (!documentPermissionDenied) return
+    void queryClient.cancelQueries({
+      queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.key(),
+    })
+    void queryClient.cancelQueries({
+      queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
+    })
     for (const [taskId, controller] of terminalReconciliationControllersRef.current) {
       controller.abort()
       terminalReconciliationControllersRef.current.delete(taskId)
@@ -691,7 +725,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     for (const timeout of terminalReconciliationTimeoutsRef.current.values())
       window.clearTimeout(timeout)
     terminalReconciliationTimeoutsRef.current.clear()
-  }, [documentPermissionDenied])
+    equalRetryListGenerationsRef.current.clear()
+  }, [documentPermissionDenied, queryClient])
 
   useEffect(() => {
     const taskIds = new Set(baseTasks.map((task) => task.id))
@@ -1189,10 +1224,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }
 
   const retryDependencyQueries = () => {
+    if (taskQueryBlockingError || sourceQueryBlockingError)
+      setBlockingDependencyRetries((current) => ({
+        sources: current.sources || sourceQueryBlockingError,
+        tasks: current.tasks || taskQueryBlockingError,
+      }))
     if (tasksQuery.isFetchNextPageError) void tasksQuery.fetchNextPage()
-    else if (tasksQuery.error) void tasksQuery.refetch()
+    else if (tasksQuery.error || taskQueryBlockingError) void tasksQuery.refetch()
     if (sourcesQuery.isFetchNextPageError) void sourcesQuery.fetchNextPage()
-    else if (sourcesQuery.error) void sourcesQuery.refetch()
+    else if (sourcesQuery.error || sourceQueryBlockingError) void sourcesQuery.refetch()
   }
 
   const loadMoreResults = () => {
@@ -1311,7 +1351,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               )}
             </div>
           )}
-        {!documentPermissionDenied && dependencyQueryWarning && (
+        {!documentPermissionDenied && !dependencyQueryBlockingError && dependencyQueryWarning && (
           <div
             className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
             role="alert"
@@ -1379,18 +1419,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           >
             <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
             <p className="mt-3 max-w-md body-sm-regular text-text-tertiary">
-              {sourcesQuery.error || sourcesQuery.isFetchNextPageError
-                ? t(($) => $['newKnowledge.sourcesErrorDescription'])
-                : t(($) => $['newKnowledge.tasksErrorDescription'])}
+              {taskQueryBlockingError
+                ? t(($) => $['newKnowledge.tasksErrorDescription'])
+                : t(($) => $['newKnowledge.sourcesErrorDescription'])}
             </p>
             <Button
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${
-                sourcesQuery.error || sourcesQuery.isFetchNextPageError
-                  ? t(($) => $['newKnowledge.sourcesErrorDescription'])
-                  : t(($) => $['newKnowledge.tasksErrorDescription'])
+                taskQueryBlockingError
+                  ? t(($) => $['newKnowledge.tasksErrorDescription'])
+                  : t(($) => $['newKnowledge.sourcesErrorDescription'])
               }`}
               className="mt-4"
-              loading={dependencyRetryFetching}
+              loading={blockingDependencyRetryFetching}
               onClick={retryDependencyQueries}
             >
               {tCommon(($) => $['operation.retry'])}
@@ -1429,6 +1469,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
             hasTaskError={hasTaskError}
             isFetchNextPageError={documentsQuery.isFetchNextPageError}
+            isFetchingNextDocumentPage={isFetchingNextDocumentPage}
             isFetchingNextPage={isFetchingNextResultsPage}
             onAddDocument={() => uploadInputRef.current?.click()}
             onFilterChange={setFilter}

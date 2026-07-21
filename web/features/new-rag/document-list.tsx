@@ -5,7 +5,7 @@ import type { DocumentDisplayStatus } from './document-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -274,6 +274,7 @@ export function DocumentsList({
   hasSelectableDocuments,
   hasTaskError,
   isFetchNextPageError,
+  isFetchingNextDocumentPage,
   isFetchingNextPage,
   onAddDocument,
   onFilterChange,
@@ -308,6 +309,7 @@ export function DocumentsList({
   hasSelectableDocuments: boolean
   hasTaskError: boolean
   isFetchNextPageError: boolean
+  isFetchingNextDocumentPage: boolean
   isFetchingNextPage: boolean
   onAddDocument: () => void
   onFilterChange: (filter: DocumentFilter) => void
@@ -335,13 +337,23 @@ export function DocumentsList({
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [visibleDocumentLimit, setVisibleDocumentLimit] = useState(DOCUMENT_RENDER_BATCH_SIZE)
+  const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
+  const resultsContainerRef = useRef<HTMLDivElement>(null)
+  const restoreLoadMoreFocusRef = useRef(false)
   const filterActive = filter !== 'all' || Boolean(search.trim())
   const visibleDocuments = documents.slice(0, visibleDocumentLimit)
   const hasHiddenDocuments = visibleDocuments.length < documents.length
 
+  useEffect(() => {
+    if (hasHiddenDocuments || hasNextPage || isFetchingNextPage || !restoreLoadMoreFocusRef.current)
+      return
+    restoreLoadMoreFocusRef.current = false
+    resultsContainerRef.current?.focus()
+  }, [hasHiddenDocuments, hasNextPage, isFetchingNextPage])
+
   return (
     <>
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="mt-5 flex flex-col gap-2 lg:flex-row lg:items-center">
         <label className="sr-only" htmlFor="document-filter">
           {t(($) => $['newKnowledge.documentFilterLabel'])}
         </label>
@@ -353,7 +365,7 @@ export function DocumentsList({
             setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
             onFilterChange(event.target.value as DocumentFilter)
           }}
-          className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid sm:w-36"
+          className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid lg:w-36"
         >
           <option value="all">{t(($) => $['newKnowledge.allDocumentStatuses'])}</option>
           {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
@@ -362,7 +374,7 @@ export function DocumentsList({
             </option>
           ))}
         </select>
-        <label className="relative sm:w-60">
+        <label className="relative lg:w-60">
           <span className="sr-only">{t(($) => $['newKnowledge.searchDocuments'])}</span>
           <span
             aria-hidden
@@ -403,7 +415,12 @@ export function DocumentsList({
           {t(($) => $['newKnowledge.addDocument'])}
         </Button>
       </div>
-      <div aria-busy={completingResults || isFetchingNextPage} className="mt-4 overflow-x-auto">
+      <div
+        ref={resultsContainerRef}
+        aria-busy={completingResults || isFetchingNextPage}
+        className="mt-4 overflow-x-auto"
+        tabIndex={-1}
+      >
         <table className="w-full min-w-[900px] border-collapse text-left">
           <thead className="system-2xs-medium text-text-tertiary uppercase">
             <tr>
@@ -500,9 +517,14 @@ export function DocumentsList({
       {hasHiddenDocuments ? (
         <div className="mt-5 flex justify-center">
           <Button
-            onClick={() =>
+            ref={loadMoreButtonRef}
+            onBlur={() => {
+              restoreLoadMoreFocusRef.current = false
+            }}
+            onClick={() => {
+              restoreLoadMoreFocusRef.current = document.activeElement === loadMoreButtonRef.current
               setVisibleDocumentLimit((current) => current + DOCUMENT_RENDER_BATCH_SIZE)
-            }
+            }}
           >
             {t(($) => $['newKnowledge.loadMore'])}
           </Button>
@@ -514,7 +536,7 @@ export function DocumentsList({
           </span>
           <Button
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-            loading={isFetchingNextPage}
+            loading={isFetchingNextDocumentPage}
             onClick={onLoadMore}
           >
             {tCommon(($) => $['operation.retry'])}
@@ -522,7 +544,17 @@ export function DocumentsList({
         </div>
       ) : hasNextPage && (!filterActive || !completingResults) ? (
         <div className="mt-5 flex justify-center">
-          <Button loading={isFetchingNextPage} onClick={onLoadMore}>
+          <Button
+            ref={loadMoreButtonRef}
+            loading={isFetchingNextPage}
+            onBlur={() => {
+              restoreLoadMoreFocusRef.current = false
+            }}
+            onClick={() => {
+              restoreLoadMoreFocusRef.current = document.activeElement === loadMoreButtonRef.current
+              onLoadMore()
+            }}
+          >
             {t(($) => $['newKnowledge.loadMore'])}
           </Button>
         </div>

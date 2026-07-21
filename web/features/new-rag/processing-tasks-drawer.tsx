@@ -18,7 +18,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -130,6 +130,7 @@ export function ProcessingTasksDrawer({
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
   const openCycleRef = useRef(0)
   const openRef = useRef(open)
+  const canEditRef = useRef(canEdit)
   const previousOpenRef = useRef(open)
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
@@ -192,7 +193,8 @@ export function ProcessingTasksDrawer({
   const taskLifecycleGenerationsRef = useRef(
     new Map<string, { generation: number; lifecycle: string }>(),
   )
-  useEffect(() => {
+  useLayoutEffect(() => {
+    canEditRef.current = canEdit
     const currentTaskIds = new Set(tasks.map((task) => task.id))
     for (const task of tasks) {
       const lifecycle = taskLifecycle(task)
@@ -206,7 +208,7 @@ export function ProcessingTasksDrawer({
     for (const taskId of taskLifecycleGenerationsRef.current.keys()) {
       if (!currentTaskIds.has(taskId)) taskLifecycleGenerationsRef.current.delete(taskId)
     }
-  }, [tasks])
+  }, [canEdit, tasks])
 
   useEffect(() => {
     openRef.current = open
@@ -281,6 +283,7 @@ export function ProcessingTasksDrawer({
           ? await cancelTask.mutateAsync(input)
           : await retryTask.mutateAsync(input)
       if (
+        !canEditRef.current ||
         taskLifecycleGenerationsRef.current.get(task.id)?.generation !== actionLifecycleGeneration
       )
         return
@@ -291,6 +294,7 @@ export function ProcessingTasksDrawer({
         return next
       })
       if (
+        canEditRef.current &&
         openRef.current &&
         openCycleRef.current === actionOpenCycle &&
         document.activeElement === actionFocusTarget
@@ -298,13 +302,14 @@ export function ProcessingTasksDrawer({
         drawerCloseButtonRef.current?.focus()
     } catch {
       if (
+        canEditRef.current &&
         openRef.current &&
         openCycleRef.current === actionOpenCycle &&
         taskLifecycleGenerationsRef.current.get(task.id)?.generation === actionLifecycleGeneration
       )
         setActionErrors((current) => ({ ...current, [task.id]: taskLifecycle(task) }))
     } finally {
-      await refreshDocumentsAndTasks()
+      if (canEditRef.current) await refreshDocumentsAndTasks()
       pendingActionsRef.current.delete(task.id)
       setPendingActions((current) => {
         const next = new Set(current)

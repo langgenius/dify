@@ -10,6 +10,7 @@ import { DocumentsPage } from '../documents-page'
 import { TaskEventObserver } from '../task-event-observer'
 
 type InfiniteOptions = {
+  enabled?: boolean
   getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
   input: (pageParam: string | null) => unknown
   initialPageParam: string | null
@@ -63,7 +64,7 @@ const retryMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const uploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
-const queryClient = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
+const queryClient = vi.hoisted(() => ({ cancelQueries: vi.fn(), invalidateQueries: vi.fn() }))
 const streamProcessingTaskEvents = vi.hoisted(() => vi.fn())
 const getTaskSnapshot = vi.hoisted(() => vi.fn())
 const permissionStateMock = vi.hoisted(() => ({
@@ -165,6 +166,7 @@ vi.mock('@/service/client', () => ({
       },
       getKnowledgeSpacesByIdSources: {
         infiniteOptions: sourcesInfiniteOptions,
+        key: () => ['knowledge-fs', 'sources'],
       },
       postKnowledgeSpacesByIdDocuments: {
         mutationOptions: () => ({ mutationKind: 'upload' }),
@@ -746,6 +748,35 @@ describe('DocumentsPage', () => {
     ).not.toHaveAttribute('aria-disabled')
   })
 
+  it('keeps a blocking dependency retry stable while its first page refetches', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = undefined
+    tasksQuery.error = new Error('task first page failed')
+    sourcesQuery.error = new Error('source background refresh failed')
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const retry = screen.getByRole('button', {
+      name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+    })
+
+    await user.click(retry)
+    expect(tasksQuery.refetch).toHaveBeenCalledOnce()
+    tasksQuery.error = null
+    tasksQuery.isFetching = true
+    tasksQuery.isPending = true
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(retry).toBeInTheDocument()
+    expect(retry).toHaveFocus()
+    expect(retry).toHaveAttribute('aria-disabled', 'true')
+
+    tasksQuery.data = { pages: [{ items: [] }] }
+    tasksQuery.isFetching = false
+    tasksQuery.isPending = false
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
+  })
+
   it('closes a task drawer permanently and restores focus when document permission is revoked', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
@@ -763,6 +794,14 @@ describe('DocumentsPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const permissionAlert = screen.getByRole('alert')
     expect(permissionAlert).toHaveFocus()
+    expect(tasksInfiniteOptions.mock.lastCall?.[0].enabled).toBe(false)
+    expect(sourcesInfiniteOptions.mock.lastCall?.[0].enabled).toBe(false)
+    expect(queryClient.cancelQueries).toHaveBeenCalledWith({
+      queryKey: ['knowledge-fs', 'tasks'],
+    })
+    expect(queryClient.cancelQueries).toHaveBeenCalledWith({
+      queryKey: ['knowledge-fs', 'sources'],
+    })
 
     documentsQuery.error = null
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -1163,6 +1202,25 @@ describe('DocumentsPage', () => {
         name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
       }),
     ).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('does not disable a document page retry for unrelated dependency pagination', () => {
+    documentsQuery.data = { pages: [{ items: [document()], nextCursor: 'next' }] }
+    documentsQuery.hasNextPage = true
+    documentsQuery.isFetchNextPageError = true
+    tasksQuery.data = {
+      pages: Array.from({ length: 20 }, () => ({ items: [], nextCursor: 'task-next' })),
+    }
+    tasksQuery.hasNextPage = true
+    tasksQuery.isFetchingNextPage = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+      }),
+    ).not.toHaveAttribute('aria-disabled')
   })
 
   it('re-indexes selected documents and keeps unsupported actions unavailable', async () => {
@@ -1596,6 +1654,40 @@ describe('DocumentsPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('ignores a delayed task action after document permission is revoked', async () => {
+    const user = userEvent.setup()
+    let resolveCancel: ((value: DocumentProcessingTask) => void) | undefined
+    cancelMutation.mutateAsync.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCancel = resolve
+        }),
+    )
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'revoked-action' })] }] }
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+
+    queryClient.invalidateQueries.mockClear()
+    documentsQuery.error = { status: 403 }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await act(async () => resolveCancel?.(task({ id: 'revoked-action', state: 'canceled' })))
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+
+    documentsQuery.error = null
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('drops a delayed action failure after the task lifecycle advances', async () => {
     const user = userEvent.setup()
     let rejectRetry: ((reason?: unknown) => void) | undefined
@@ -1806,6 +1898,45 @@ describe('DocumentsPage', () => {
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
+  })
+
+  it('restarts an aborted equal-timestamp reconciliation after permission returns', async () => {
+    const signals: AbortSignal[] = []
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'permission-reconciliation' })] }] }
+    getTaskSnapshot.mockImplementation(
+      (_input: unknown, options: { signal: AbortSignal }) =>
+        new Promise<DocumentProcessingTask>((_resolve, reject) => {
+          signals.push(options.signal)
+          options.signal.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true },
+          )
+        }),
+    )
+    streamFailedTaskThenWait('permission-reconciliation')
+
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ id: 'permission-reconciliation', updatedAt: '2026-07-20T10:03:00Z' })],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
+
+    documentsQuery.error = { status: 403 }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(signals[1]?.aborted).toBe(true))
+    documentsQuery.error = null
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(3))
+    expect(signals[2]?.aborted).toBe(false)
   })
 
   it('restores complete terminal error details from an equal list snapshot', async () => {
@@ -3592,6 +3723,7 @@ describe('DocumentsPage', () => {
     expect(screen.getAllByRole('row')).toHaveLength(101)
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
     expect(screen.getAllByRole('row')).toHaveLength(151)
+    expect(screen.getByRole('table').parentElement).toHaveFocus()
   })
 
   it('eagerly exhausts task and source cursor pages for accurate labels', () => {
