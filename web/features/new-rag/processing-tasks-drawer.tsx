@@ -32,6 +32,31 @@ function taskTime(task: DocumentProcessingTask) {
   return task.completedAt ?? task.updatedAt
 }
 
+function compareTaskRecency(left: DocumentProcessingTask, right: DocumentProcessingTask) {
+  return right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id)
+}
+
+function newestTasks(
+  tasks: DocumentProcessingTask[],
+  limit: number,
+  predicate: (task: DocumentProcessingTask) => boolean,
+) {
+  const selected: DocumentProcessingTask[] = []
+  for (const task of tasks) {
+    if (!predicate(task)) continue
+    let low = 0
+    let high = selected.length
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2)
+      if (compareTaskRecency(task, selected[middle]!) < 0) high = middle
+      else low = middle + 1
+    }
+    selected.splice(low, 0, task)
+    if (selected.length > limit) selected.pop()
+  }
+  return selected
+}
+
 export function ProcessingTasksDrawer({
   canEdit,
   documents,
@@ -74,26 +99,13 @@ export function ProcessingTasksDrawer({
   )
   const orderedTasks = useMemo(() => {
     if (!open) return []
-    const activeTasks = tasks
-      .filter(taskIsActive)
-      .sort(
-        (left, right) =>
-          right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
-      )
-      .slice(0, TASK_DRAWER_LIMIT)
-    const visibleTasks = new Map(activeTasks.map((task) => [task.id, task]))
-    for (
-      let index = tasks.length - 1;
-      index >= 0 && visibleTasks.size < TASK_DRAWER_LIMIT;
-      index--
-    ) {
-      const task = tasks[index]!
-      if (!taskIsActive(task)) visibleTasks.set(task.id, task)
-    }
-    return [...visibleTasks.values()].sort(
-      (left, right) =>
-        right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+    const activeTasks = newestTasks(tasks, TASK_DRAWER_LIMIT, taskIsActive)
+    const terminalTasks = newestTasks(
+      tasks,
+      TASK_DRAWER_LIMIT - activeTasks.length,
+      (task) => !taskIsActive(task),
     )
+    return [...activeTasks, ...terminalTasks].sort(compareTaskRecency)
   }, [open, tasks])
 
   const refreshDocumentsAndTasks = () =>

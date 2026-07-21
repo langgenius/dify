@@ -1088,14 +1088,23 @@ describe('DocumentsPage', () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document({})] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'later-same-time-retry' })] }] }
-    getTaskSnapshot.mockResolvedValue(
-      task({
-        errorCode: 'PARSER_FAILED',
-        id: 'later-same-time-retry',
-        state: 'failed',
-        updatedAt: '2026-07-20T10:03:00Z',
-      }),
-    )
+    getTaskSnapshot
+      .mockResolvedValueOnce(
+        task({
+          errorCode: 'PARSER_FAILED',
+          id: 'later-same-time-retry',
+          state: 'failed',
+          updatedAt: '2026-07-20T10:03:00Z',
+        }),
+      )
+      .mockResolvedValueOnce(
+        task({
+          id: 'later-same-time-retry',
+          progressPercent: 0,
+          state: 'dispatch_pending',
+          updatedAt: '2026-07-20T10:03:00Z',
+        }),
+      )
     streamFailedTaskThenWait('later-same-time-retry')
 
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -1123,6 +1132,7 @@ describe('DocumentsPage', () => {
     }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
     expect(
       await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()
@@ -1134,7 +1144,14 @@ describe('DocumentsPage', () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document({})] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'failed-reconciliation-retry' })] }] }
-    getTaskSnapshot.mockRejectedValueOnce(new Error('snapshot unavailable'))
+    getTaskSnapshot.mockRejectedValueOnce(new Error('snapshot unavailable')).mockResolvedValueOnce(
+      task({
+        id: 'failed-reconciliation-retry',
+        progressPercent: 0,
+        state: 'dispatch_pending',
+        updatedAt: '2026-07-20T10:03:00Z',
+      }),
+    )
     streamFailedTaskThenWait('failed-reconciliation-retry')
 
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -1162,11 +1179,59 @@ describe('DocumentsPage', () => {
     }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
     expect(
       await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()
     expect(screen.queryByText('PARSER_FAILED')).not.toBeInTheDocument()
     await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
+  })
+
+  it('does not treat a stale active row from a completed cursor page as a retry', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ id: 'stale-cursor-active', updatedAt: '2026-07-20T10:03:00Z' })],
+        },
+      ],
+    }
+    getTaskSnapshot.mockResolvedValue(
+      task({
+        errorCode: 'PARSER_FAILED',
+        id: 'stale-cursor-active',
+        state: 'failed',
+        updatedAt: '2026-07-20T10:03:00Z',
+      }),
+    )
+    streamFailedTaskThenWait('stale-cursor-active')
+
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ id: 'stale-cursor-active', updatedAt: '2026-07-20T10:03:00Z' })],
+        },
+        { items: [task({ id: 'another-page', state: 'succeeded' })] },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
+    expect(screen.getByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
+    ).toBeInTheDocument()
+    expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
   })
 
   it('ignores a terminal reconciliation that resolves after a local retry', async () => {
@@ -1588,12 +1653,18 @@ describe('DocumentsPage', () => {
       state: 'running',
       updatedAt: '2026-07-01T10:00:00Z',
     })
+    history[1] = task({
+      createdAt: '2026-07-01T10:01:00Z',
+      id: 'old-failed-retry',
+      state: 'failed',
+      updatedAt: '2026-08-01T10:00:00Z',
+    })
     tasksQuery.data = { pages: [{ items: history }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
       }),
     )
 
@@ -1601,9 +1672,13 @@ describe('DocumentsPage', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
+    ).toBeInTheDocument()
   })
 
-  it('caps concurrent task event streams and keeps polling for all active tasks', async () => {
+  it('rotates a bounded task event stream pool without polling every cursor page', async () => {
+    vi.useFakeTimers()
     streamProcessingTaskEvents.mockImplementation(async function* () {
       await new Promise<void>(() => {})
     })
@@ -1621,16 +1696,80 @@ describe('DocumentsPage', () => {
       ],
     }
 
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => {})
+      expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(6)
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(12)
+      const taskOptions = tasksInfiniteOptions.mock.lastCall?.[0]
+      expect(taskOptions?.refetchInterval).toBeUndefined()
+      expect(
+        screen.getByRole('button', {
+          name: 'dataset.newKnowledge.tasksWithAttention:{"count":20}',
+        }),
+      ).toBeInTheDocument()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('relies on bounded reconnect backoff instead of invalidating queries on stream closure', async () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'closed-stream' })] }] }
+    streamProcessingTaskEvents.mockImplementation(async function* () {})
+
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(6))
-    const taskOptions = tasksInfiniteOptions.mock.lastCall?.[0]
-    expect(taskOptions?.refetchInterval?.({ state: { data: tasksQuery.data } })).toBe(5000)
-    expect(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":20}',
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledOnce())
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+  })
+
+  it('polls failed tasks through a bounded exact-snapshot pool for external retries', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'external-retry', state: 'failed' })] }],
+    }
+    getTaskSnapshot.mockResolvedValue(
+      task({
+        id: 'external-retry',
+        progressPercent: 0,
+        state: 'dispatch_pending',
+        updatedAt: '2026-07-20T10:03:00Z',
       }),
-    ).toBeInTheDocument()
+    )
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+      await act(async () => {})
+      expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('renders large document results in bounded batches', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: Array.from({ length: 150 }, (_, index) =>
+            document({ id: `document-${index}`, title: `Document ${index}` }),
+          ),
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getAllByRole('row')).toHaveLength(101)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    expect(screen.getAllByRole('row')).toHaveLength(151)
   })
 
   it('eagerly exhausts task and source cursor pages for accurate labels', () => {

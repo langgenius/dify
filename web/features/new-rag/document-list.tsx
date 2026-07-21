@@ -5,13 +5,15 @@ import type { DocumentDisplayStatus } from './document-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { sourceName } from './document-model'
 
 export type DocumentFilter = DocumentDisplayStatus | 'all'
+
+const DOCUMENT_RENDER_BATCH_SIZE = 100
 
 const statusIconClass: Record<DocumentDisplayStatus, string> = {
   ready: 'i-ri-check-line text-text-success',
@@ -256,7 +258,10 @@ export function DocumentsList({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const [visibleDocumentLimit, setVisibleDocumentLimit] = useState(DOCUMENT_RENDER_BATCH_SIZE)
   const filterActive = filter !== 'all' || Boolean(search.trim())
+  const visibleDocuments = documents.slice(0, visibleDocumentLimit)
+  const hasHiddenDocuments = visibleDocuments.length < documents.length
 
   return (
     <>
@@ -268,7 +273,10 @@ export function DocumentsList({
           id="document-filter"
           disabled={statusPending}
           value={filter}
-          onChange={(event) => onFilterChange(event.target.value as DocumentFilter)}
+          onChange={(event) => {
+            setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
+            onFilterChange(event.target.value as DocumentFilter)
+          }}
           className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid sm:w-36"
         >
           <option value="all">{t(($) => $['newKnowledge.allDocumentStatuses'])}</option>
@@ -287,7 +295,10 @@ export function DocumentsList({
           <input
             type="search"
             value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
+            onChange={(event) => {
+              setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
+              onSearchChange(event.target.value)
+            }}
             placeholder={t(($) => $['newKnowledge.searchDocuments'])}
             className="h-8 w-full rounded-lg border-0 bg-components-input-bg-normal pr-3 pl-8 system-xs-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
           />
@@ -357,7 +368,7 @@ export function DocumentsList({
             </tr>
           </thead>
           <tbody>
-            {documents.map((document) => (
+            {visibleDocuments.map((document) => (
               <DocumentRow
                 key={document.id}
                 document={document}
@@ -397,7 +408,17 @@ export function DocumentsList({
         <span aria-hidden className="i-ri-information-2-line size-3.5" />
         {t(($) => $['newKnowledge.lastReadyRevisionHint'])}
       </p>
-      {isFetchNextPageError ? (
+      {hasHiddenDocuments ? (
+        <div className="mt-5 flex justify-center">
+          <Button
+            onClick={() =>
+              setVisibleDocumentLimit((current) => current + DOCUMENT_RENDER_BATCH_SIZE)
+            }
+          >
+            {t(($) => $['newKnowledge.loadMore'])}
+          </Button>
+        </div>
+      ) : isFetchNextPageError ? (
         <div className="mt-5 flex items-center justify-center gap-3" role="alert">
           <span className="system-xs-regular text-text-destructive">
             {t(($) => $['newKnowledge.documentsErrorDescription'])}

@@ -29,6 +29,7 @@ tasks.
 ## External Modules
 
 - `app/components/base/corner-label`
+- `app/components/base/loading`
 - `app/components/base/search-input`
 - `app/components/base/skeleton`
 - `app/components/datasets/external-api/external-api-panel`

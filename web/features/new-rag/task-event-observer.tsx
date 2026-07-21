@@ -5,10 +5,11 @@ import { useEffect, useRef } from 'react'
 import { streamProcessingTaskEvents } from './services/processing-task-events'
 
 const TASK_EVENT_RECONNECT_DELAY = 1000
+const TASK_EVENT_MAX_RECONNECT_DELAY = 30000
 
-function waitForTaskEventReconnect(signal: AbortSignal) {
+function waitForTaskEventReconnect(signal: AbortSignal, delay: number) {
   return new Promise<void>((resolve) => {
-    const timeout = window.setTimeout(finish, TASK_EVENT_RECONNECT_DELAY)
+    const timeout = window.setTimeout(finish, delay)
     signal.addEventListener('abort', finish, { once: true })
 
     function finish() {
@@ -22,14 +23,12 @@ function waitForTaskEventReconnect(signal: AbortSignal) {
 export function TaskEventObserver({
   documentId,
   knowledgeSpaceId,
-  onError,
   onEvent,
   taskId,
   taskVersion,
 }: {
   documentId: string
   knowledgeSpaceId: string
-  onError: () => void
   onEvent: (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => boolean
   taskId: string
   taskVersion: string
@@ -42,8 +41,8 @@ export function TaskEventObserver({
   useEffect(() => {
     const controller = new AbortController()
     void (async () => {
+      let reconnectDelay = TASK_EVENT_RECONNECT_DELAY
       while (!controller.signal.aborted) {
-        let restartForNewerTask = false
         try {
           for await (const event of streamProcessingTaskEvents({
             documentId,
@@ -53,13 +52,13 @@ export function TaskEventObserver({
             taskId,
           })) {
             if (controller.signal.aborted) return
+            reconnectDelay = TASK_EVENT_RECONNECT_DELAY
             lastEventIdRef.current = event.id
             if (event.event === 'progress') streamTaskVersionRef.current = event.data.updatedAt
             const accepted = onEvent(taskId, streamTaskVersionRef.current, event)
             if (!accepted) {
               lastEventIdRef.current = undefined
               streamTaskVersionRef.current = latestTaskVersionRef.current
-              restartForNewerTask = true
               break
             }
             if (event.event === 'terminal') return
@@ -67,12 +66,12 @@ export function TaskEventObserver({
         } catch {
           if (controller.signal.aborted) return
         }
-        if (!restartForNewerTask) onError()
-        await waitForTaskEventReconnect(controller.signal)
+        await waitForTaskEventReconnect(controller.signal, reconnectDelay)
+        reconnectDelay = Math.min(reconnectDelay * 2, TASK_EVENT_MAX_RECONNECT_DELAY)
       }
     })()
     return () => controller.abort()
-  }, [documentId, knowledgeSpaceId, onError, onEvent, taskId])
+  }, [documentId, knowledgeSpaceId, onEvent, taskId])
 
   return null
 }

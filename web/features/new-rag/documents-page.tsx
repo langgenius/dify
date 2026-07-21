@@ -101,12 +101,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [search, setSearch] = useState('')
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
   const [tasksOpen, setTasksOpen] = useState(false)
+  const [taskStreamOffset, setTaskStreamOffset] = useState(0)
+  const failedTaskPollOffsetRef = useRef(0)
   const [taskOverrides, setTaskOverrides] = useState<
     Record<string, Partial<DocumentProcessingTask>>
   >({})
   const [terminalTaskPins, setTerminalTaskPins] = useState<Record<string, TerminalTaskPin>>({})
   const [taskObserverGenerations, setTaskObserverGenerations] = useState<Record<string, number>>({})
   const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
+  const equalRetryListGenerationsRef = useRef(new Map<string, number>())
+  const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
   const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
@@ -144,8 +148,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       initialPageParam: null as string | null,
-      refetchInterval: (query) =>
-        query.state.data?.pages.some((page) => page.items.some(taskIsActive)) ? 5000 : false,
     }),
   )
   const sourcesQuery = useInfiniteQuery(
@@ -223,55 +225,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   baseTaskByIdRef.current = baseTaskById
   const baseTaskUpdatedAtRef = useRef(baseTaskUpdatedAt)
   baseTaskUpdatedAtRef.current = baseTaskUpdatedAt
-  useEffect(() => {
-    const reconciledRetries = new Map<string, DocumentProcessingTask>()
-    for (const task of baseTasks) {
-      const pin = terminalTaskPins[task.id]
-      if (
-        pin &&
-        taskIsActive(task) &&
-        taskListGeneration > pin.taskListGeneration &&
-        !taskVersionIsAfter(pin.observedAt, task.updatedAt)
-      )
-        reconciledRetries.set(task.id, task)
-    }
-    if (!reconciledRetries.size) return
-
-    for (const taskId of reconciledRetries.keys()) {
-      const generation = terminalReconciliationGenerationsRef.current.get(taskId) ?? 0
-      terminalReconciliationGenerationsRef.current.set(taskId, generation + 1)
-    }
-
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- An active list request completed after the terminal event proves a retry even when the server timestamp has millisecond precision.
-    setTerminalTaskPins((current) => {
-      let changed = false
-      const next = { ...current }
-      for (const [taskId, task] of reconciledRetries) {
-        const pin = current[taskId]
-        if (
-          !pin ||
-          taskListGeneration <= pin.taskListGeneration ||
-          taskVersionIsAfter(pin.observedAt, task.updatedAt)
-        )
-          continue
-        delete next[taskId]
-        changed = true
-      }
-      return changed ? next : current
-    })
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Drop the terminal event override together with its reconciled pin so the retry can become active.
-    setTaskOverrides((current) => {
-      let changed = false
-      const next = { ...current }
-      for (const [taskId, task] of reconciledRetries) {
-        const overrideVersion = current[taskId]?.updatedAt
-        if (overrideVersion && taskVersionIsAfter(overrideVersion, task.updatedAt)) continue
-        delete next[taskId]
-        changed = true
-      }
-      return changed ? next : current
-    })
-  }, [baseTasks, taskListGeneration, terminalTaskPins])
   const tasks = useMemo(
     () =>
       baseTasks.map((task) => {
@@ -386,16 +339,38 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (task) => task.state === 'failed' || task.state === 'canceled',
   )
   const activeTasks = useMemo(() => tasks.filter(taskIsActive), [tasks])
-  const streamedActiveTasks = useMemo(
+  const orderedActiveTasks = useMemo(
     () =>
-      [...activeTasks]
+      [...activeTasks].sort(
+        (left, right) =>
+          right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+      ),
+    [activeTasks],
+  )
+  const streamedActiveTasks = useMemo(() => {
+    const streamCount = Math.min(MAX_TASK_EVENT_STREAMS, orderedActiveTasks.length)
+    if (!streamCount) return []
+    const offset = taskStreamOffset % orderedActiveTasks.length
+    return Array.from(
+      { length: streamCount },
+      (_, index) => orderedActiveTasks[(offset + index) % orderedActiveTasks.length]!,
+    )
+  }, [orderedActiveTasks, taskStreamOffset])
+  const orderedFailedTasks = useMemo(
+    () =>
+      tasks
+        .filter((task) => task.state === 'failed')
         .sort(
           (left, right) =>
             right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
-        )
-        .slice(0, MAX_TASK_EVENT_STREAMS),
-    [activeTasks],
+        ),
+    [tasks],
   )
+  const orderedFailedTasksRef = useRef(orderedFailedTasks)
+  orderedFailedTasksRef.current = orderedFailedTasks
+  const failedTaskPollSignature = orderedFailedTasks
+    .map((task) => `${task.id}:${task.updatedAt}`)
+    .join('|')
   const tasksButtonLabel = attentionTasks.length
     ? t(($) => $['newKnowledge.tasksWithAttention'], { count: attentionTasks.length })
     : t(($) => $['newKnowledge.tasks'])
@@ -410,6 +385,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const someFilteredSelected = selectableFilteredDocuments.some((document) =>
     validSelectedDocumentIds.has(document.id),
   )
+
+  useEffect(() => {
+    if (orderedActiveTasks.length <= MAX_TASK_EVENT_STREAMS) return
+    const interval = window.setInterval(
+      () => setTaskStreamOffset((current) => current + MAX_TASK_EVENT_STREAMS),
+      5000,
+    )
+    return () => window.clearInterval(interval)
+  }, [orderedActiveTasks.length])
 
   useEffect(() => {
     if (
@@ -449,7 +433,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [queryClient])
 
   const reconcileTerminalTask = useCallback(
-    async (taskId: string, terminalVersion: string, reconciliationGeneration: number) => {
+    async function reconcileTerminalTaskRequest(
+      taskId: string,
+      terminalVersion: string,
+      reconciliationGeneration: number,
+    ) {
       const currentTask = baseTaskByIdRef.current.get(taskId)
       if (!currentTask) return
       try {
@@ -487,11 +475,80 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           }))
         }
       } catch {
-        // The invalidated task list remains the polling fallback when exact reconciliation fails.
+        if (
+          terminalReconciliationGenerationsRef.current.get(taskId) !== reconciliationGeneration ||
+          terminalReconciliationTimeoutsRef.current.has(taskId)
+        )
+          return
+        const timeout = window.setTimeout(() => {
+          terminalReconciliationTimeoutsRef.current.delete(taskId)
+          if (terminalReconciliationGenerationsRef.current.get(taskId) === reconciliationGeneration)
+            void reconcileTerminalTaskRequest(taskId, terminalVersion, reconciliationGeneration)
+        }, 5000)
+        terminalReconciliationTimeoutsRef.current.set(taskId, timeout)
       }
     },
     [knowledgeSpaceId],
   )
+
+  useEffect(
+    () => () => {
+      for (const timeout of terminalReconciliationTimeoutsRef.current.values())
+        window.clearTimeout(timeout)
+      terminalReconciliationTimeoutsRef.current.clear()
+    },
+    [],
+  )
+
+  useEffect(() => {
+    const strictRetries = new Map<string, DocumentProcessingTask>()
+    const equalTimestampRetries = new Map<string, TerminalTaskPin>()
+    for (const task of baseTasks) {
+      const pin = terminalTaskPins[task.id]
+      if (!pin || !taskIsActive(task) || taskListGeneration <= pin.taskListGeneration) continue
+      if (taskVersionIsAfter(task.updatedAt, pin.observedAt)) strictRetries.set(task.id, task)
+      else if (!taskVersionIsAfter(pin.observedAt, task.updatedAt))
+        equalTimestampRetries.set(task.id, pin)
+    }
+
+    for (const taskId of strictRetries.keys()) {
+      const generation = terminalReconciliationGenerationsRef.current.get(taskId) ?? 0
+      terminalReconciliationGenerationsRef.current.set(taskId, generation + 1)
+      const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
+      if (timeout !== undefined) window.clearTimeout(timeout)
+      terminalReconciliationTimeoutsRef.current.delete(taskId)
+    }
+    if (strictRetries.size) {
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- A strictly newer active list snapshot proves a retry without another request.
+      setTerminalTaskPins((current) => {
+        const next = { ...current }
+        for (const taskId of strictRetries.keys()) delete next[taskId]
+        return next
+      })
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Drop terminal overrides only after a strictly newer active list snapshot.
+      setTaskOverrides((current) => {
+        const next = { ...current }
+        for (const [taskId, task] of strictRetries) {
+          const overrideVersion = current[taskId]?.updatedAt
+          if (!overrideVersion || !taskVersionIsAfter(overrideVersion, task.updatedAt))
+            delete next[taskId]
+        }
+        return next
+      })
+    }
+
+    for (const [taskId, pin] of equalTimestampRetries) {
+      if (equalRetryListGenerationsRef.current.get(taskId) === taskListGeneration) continue
+      equalRetryListGenerationsRef.current.set(taskId, taskListGeneration)
+      const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
+      if (timeout !== undefined) window.clearTimeout(timeout)
+      terminalReconciliationTimeoutsRef.current.delete(taskId)
+      const reconciliationGeneration =
+        (terminalReconciliationGenerationsRef.current.get(taskId) ?? 0) + 1
+      terminalReconciliationGenerationsRef.current.set(taskId, reconciliationGeneration)
+      void reconcileTerminalTask(taskId, pin.observedAt, reconciliationGeneration)
+    }
+  }, [baseTasks, reconcileTerminalTask, taskListGeneration, terminalTaskPins])
 
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
@@ -666,6 +723,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         }
       })
       if (event.event === 'terminal') {
+        const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
+        if (timeout !== undefined) window.clearTimeout(timeout)
+        terminalReconciliationTimeoutsRef.current.delete(taskId)
         const reconciliationGeneration =
           (terminalReconciliationGenerationsRef.current.get(taskId) ?? 0) + 1
         terminalReconciliationGenerationsRef.current.set(taskId, reconciliationGeneration)
@@ -689,6 +749,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const handleTaskUpdated = useCallback((task: DocumentProcessingTask) => {
     setTaskOverrides((current) => ({ ...current, [task.id]: normalizedTaskSnapshot(task) }))
     if (taskIsActive(task)) {
+      const timeout = terminalReconciliationTimeoutsRef.current.get(task.id)
+      if (timeout !== undefined) window.clearTimeout(timeout)
+      terminalReconciliationTimeoutsRef.current.delete(task.id)
       const generation = terminalReconciliationGenerationsRef.current.get(task.id) ?? 0
       terminalReconciliationGenerationsRef.current.set(task.id, generation + 1)
       pendingTerminalProgressRef.current.delete(task.id)
@@ -699,6 +762,37 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       })
     }
   }, [])
+
+  useEffect(() => {
+    if (!orderedFailedTasksRef.current.length) return
+    const interval = window.setInterval(() => {
+      const failedTasks = orderedFailedTasksRef.current
+      if (!failedTasks.length) return
+      const pollCount = Math.min(MAX_TASK_EVENT_STREAMS, failedTasks.length)
+      const offset = failedTaskPollOffsetRef.current % failedTasks.length
+      const tasksToPoll = Array.from(
+        { length: pollCount },
+        (_, index) => failedTasks[(offset + index) % failedTasks.length]!,
+      )
+      failedTaskPollOffsetRef.current += MAX_TASK_EVENT_STREAMS
+      void Promise.allSettled(
+        tasksToPoll.map(async (task) => {
+          const snapshot =
+            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId(
+              {
+                params: {
+                  documentId: task.documentId,
+                  id: knowledgeSpaceId,
+                  taskId: task.id,
+                },
+              },
+            )
+          handleTaskUpdated(snapshot)
+        }),
+      )
+    }, 5000)
+    return () => window.clearInterval(interval)
+  }, [failedTaskPollSignature, handleTaskUpdated, knowledgeSpaceId])
 
   const toggleDocument = useCallback(
     (documentId: string) => {
@@ -738,7 +832,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           key={`${task.id}:${taskObserverGenerations[task.id] ?? 0}`}
           documentId={task.documentId}
           knowledgeSpaceId={knowledgeSpaceId}
-          onError={refreshDocumentsAndTasks}
           onEvent={handleTaskEvent}
           taskId={task.id}
           taskVersion={baseTaskUpdatedAt.get(task.id) ?? task.updatedAt}
