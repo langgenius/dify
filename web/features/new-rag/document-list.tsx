@@ -512,7 +512,12 @@ export function DocumentsList({
           <span className="system-xs-regular text-text-destructive">
             {t(($) => $['newKnowledge.documentsErrorDescription'])}
           </span>
-          <Button onClick={onLoadMore}>{tCommon(($) => $['operation.retry'])}</Button>
+          <Button
+            aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+            onClick={onLoadMore}
+          >
+            {tCommon(($) => $['operation.retry'])}
+          </Button>
         </div>
       ) : hasNextPage && (!filterActive || !completingResults) ? (
         <div className="mt-5 flex justify-center">

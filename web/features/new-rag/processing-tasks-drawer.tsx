@@ -34,6 +34,10 @@ function taskTime(task: DocumentProcessingTask) {
   return task.completedAt ?? task.updatedAt
 }
 
+function taskLifecycle(task: DocumentProcessingTask) {
+  return `${task.updatedAt}:${task.state}`
+}
+
 function compareTaskRecency(left: DocumentProcessingTask, right: DocumentProcessingTask) {
   if (taskVersionIsAfter(left.updatedAt, right.updatedAt)) return -1
   if (taskVersionIsAfter(right.updatedAt, left.updatedAt)) return 1
@@ -118,6 +122,10 @@ export function ProcessingTasksDrawer({
   )
   const pendingActionsRef = useRef(new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const loadMoreRequestedRef = useRef(false)
+  const openCycleRef = useRef(0)
+  const openRef = useRef(open)
+  openRef.current = open
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
   const [visibleTaskLimit, setVisibleTaskLimit] = useState(TASK_DRAWER_LIMIT)
@@ -172,8 +180,8 @@ export function ProcessingTasksDrawer({
   })
   const activeActionCount = orderedTasks.filter(taskIsActive).length
   const retryActionCount = orderedTasks.filter(taskCanRetry).length
-  const taskVersions = useMemo(
-    () => new Map(tasks.map((task) => [task.id, task.updatedAt])),
+  const taskLifecycles = useMemo(
+    () => new Map(tasks.map((task) => [task.id, taskLifecycle(task)])),
     [tasks],
   )
 
@@ -181,14 +189,26 @@ export function ProcessingTasksDrawer({
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Task lifecycle changes retire action errors from older task versions.
     setActionErrors((current) => {
       const staleTaskIds = Object.keys(current).filter(
-        (taskId) => taskVersions.get(taskId) !== current[taskId],
+        (taskId) => taskLifecycles.get(taskId) !== current[taskId],
       )
       if (!staleTaskIds.length) return current
       const next = { ...current }
       for (const taskId of staleTaskIds) delete next[taskId]
       return next
     })
-  }, [taskVersions])
+  }, [taskLifecycles])
+
+  useEffect(() => {
+    if (!open) return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A newly opened drawer starts a fresh action-error cycle.
+    setActionErrors({})
+  }, [open])
+
+  useEffect(() => {
+    if (!open || hasMoreTasks || !loadMoreRequestedRef.current) return
+    loadMoreRequestedRef.current = false
+    drawerCloseButtonRef.current?.focus()
+  }, [hasMoreTasks, open])
 
   const refreshDocumentsAndTasks = () =>
     Promise.allSettled([
@@ -203,6 +223,7 @@ export function ProcessingTasksDrawer({
   const performAction = async (task: DocumentProcessingTask, action: TaskAction) => {
     if (!canEdit || pendingActionsRef.current.has(task.id)) return
     pendingActionsRef.current.add(task.id)
+    const actionOpenCycle = openCycleRef.current
     setPendingActions((current) => new Set(current).add(task.id))
     setActionErrors((current) => {
       const next = { ...current }
@@ -229,7 +250,8 @@ export function ProcessingTasksDrawer({
       })
       drawerCloseButtonRef.current?.focus()
     } catch {
-      setActionErrors((current) => ({ ...current, [task.id]: task.updatedAt }))
+      if (openRef.current && openCycleRef.current === actionOpenCycle)
+        setActionErrors((current) => ({ ...current, [task.id]: taskLifecycle(task) }))
     } finally {
       await refreshDocumentsAndTasks()
       pendingActionsRef.current.delete(task.id)
@@ -247,8 +269,13 @@ export function ProcessingTasksDrawer({
       modal
       swipeDirection="right"
       onOpenChange={(nextOpen) => {
-        if (!nextOpen) setVisibleTaskLimit(TASK_DRAWER_LIMIT)
-        if (!nextOpen) setActionErrors({})
+        openRef.current = nextOpen
+        if (!nextOpen) {
+          openCycleRef.current += 1
+          loadMoreRequestedRef.current = false
+          setVisibleTaskLimit(TASK_DRAWER_LIMIT)
+          setActionErrors({})
+        }
         onOpenChange(nextOpen)
       }}
     >
@@ -354,7 +381,7 @@ export function ProcessingTasksDrawer({
                                 {taskError}
                               </p>
                             )}
-                            {actionErrors[task.id] === task.updatedAt && (
+                            {actionErrors[task.id] === taskLifecycle(task) && (
                               <p
                                 className="mt-1 system-2xs-regular text-text-destructive"
                                 role="alert"
@@ -406,6 +433,7 @@ export function ProcessingTasksDrawer({
                     <Button
                       loading={isFetchingNextTaskPage || isFetchingNextDocumentPage}
                       onClick={() => {
+                        loadMoreRequestedRef.current = true
                         if (tasks.length <= orderedBaseTasks.length && hasNextTaskPage)
                           onLoadMoreTasks()
                         if (hasUnresolvedTaskDocuments && hasNextDocumentPage) onLoadMoreDocuments()

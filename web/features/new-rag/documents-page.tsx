@@ -217,6 +217,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () => tasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [tasksQuery.data],
   )
+  for (const task of baseTasks) {
+    if (!taskIsActive(task)) taskEventCursorsRef.current.delete(task.id)
+  }
   const documentIds = useMemo(() => new Set(documents.map((document) => document.id)), [documents])
   const unresolvedTaskDocumentIds = useMemo(
     () =>
@@ -253,6 +256,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [documents, sourceNames],
   )
   const hasRelevantNextSourcePage = Boolean(hasNextSourcePage && unresolvedDocumentSourceIds.size)
+  const isFetchingNextResultsPage = Boolean(
+    isFetchingNextDocumentPage ||
+    (hasNextTaskPage && isFetchingNextTaskPage) ||
+    (hasRelevantNextSourcePage && isFetchingNextSourcePage),
+  )
   const canAutoFetchSourcePage = Boolean(
     hasRelevantNextSourcePage && (sourcesQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
   )
@@ -1208,9 +1216,36 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             <span className="system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.permissionLoadFailed'])}
             </span>
-            <Button size="small" onClick={retryWorkspacePermissionKeys}>
+            <Button
+              aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
+              size="small"
+              onClick={retryWorkspacePermissionKeys}
+            >
               {tCommon(($) => $['operation.retry'])}
             </Button>
+          </div>
+        )}
+        {documentsQuery.error && documentsQuery.data && !documentsQuery.isFetchNextPageError && (
+          <div
+            className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
+            role="alert"
+          >
+            <span className="system-xs-regular text-text-tertiary">
+              {t(($) =>
+                responseStatus(documentsQuery.error) === 403
+                  ? $['newKnowledge.documentsPermissionDescription']
+                  : $['newKnowledge.documentsErrorDescription'],
+              )}
+            </span>
+            {responseStatus(documentsQuery.error) !== 403 && (
+              <Button
+                aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+                size="small"
+                onClick={() => void documentsQuery.refetch()}
+              >
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
+            )}
           </div>
         )}
         {documentsQuery.isPending ? (
@@ -1238,7 +1273,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               )}
             </p>
             {responseStatus(documentsQuery.error) !== 403 && (
-              <Button className="mt-4" onClick={() => void documentsQuery.refetch()}>
+              <Button
+                aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+                className="mt-4"
+                onClick={() => void documentsQuery.refetch()}
+              >
                 {tCommon(($) => $['operation.retry'])}
               </Button>
             )}
@@ -1254,7 +1293,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 ? t(($) => $['newKnowledge.sourcesErrorDescription'])
                 : t(($) => $['newKnowledge.tasksErrorDescription'])}
             </p>
-            <Button className="mt-4" onClick={retryDependencyQueries}>
+            <Button
+              aria-label={`${tCommon(($) => $['operation.retry'])} · ${
+                sourcesQuery.error || sourcesQuery.isFetchNextPageError
+                  ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+                  : t(($) => $['newKnowledge.tasksErrorDescription'])
+              }`}
+              className="mt-4"
+              onClick={retryDependencyQueries}
+            >
               {tCommon(($) => $['operation.retry'])}
             </Button>
           </div>
@@ -1288,7 +1335,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                     ? t(($) => $['newKnowledge.sourcesErrorDescription'])
                     : t(($) => $['newKnowledge.tasksErrorDescription'])}
                 </span>
-                <Button size="small" onClick={retryDependencyQueries}>
+                <Button
+                  aria-label={`${tCommon(($) => $['operation.retry'])} · ${
+                    sourcesQuery.error || sourcesQuery.isFetchNextPageError
+                      ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+                      : t(($) => $['newKnowledge.tasksErrorDescription'])
+                  }`}
+                  size="small"
+                  onClick={retryDependencyQueries}
+                >
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
               </div>
@@ -1307,7 +1362,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
               hasTaskError={hasTaskError}
               isFetchNextPageError={documentsQuery.isFetchNextPageError}
-              isFetchingNextPage={documentsQuery.isFetchingNextPage}
+              isFetchingNextPage={isFetchingNextResultsPage}
               onAddDocument={() => uploadInputRef.current?.click()}
               onFilterChange={setFilter}
               onLoadMore={loadMoreResults}

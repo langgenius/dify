@@ -532,7 +532,11 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('dataset.newKnowledge.permissionLoadFailed')
     expect(screen.queryByText('dataset.newKnowledge.permissionRestricted')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.permissionLoadFailed',
+      }),
+    )
     expect(permissionStateMock.retry).toHaveBeenCalledOnce()
   })
 
@@ -638,7 +642,30 @@ describe('DocumentsPage', () => {
 
     documentsQuery.error = new Error('temporary')
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+      }),
+    )
+    expect(documentsQuery.refetch).toHaveBeenCalledOnce()
+  })
+
+  it('reports a failed background document refresh while preserving cached rows', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    documentsQuery.error = new Error('background refresh failed')
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.documentsErrorDescription',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+      }),
+    )
     expect(documentsQuery.refetch).toHaveBeenCalledOnce()
   })
 
@@ -693,7 +720,11 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.sourcesErrorDescription',
     )
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.sourcesErrorDescription',
+      }),
+    )
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
     const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
     expect(
@@ -865,7 +896,11 @@ describe('DocumentsPage', () => {
       'aria-disabled',
       'true',
     )
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+      }),
+    )
     expect(tasksQuery.refetch).toHaveBeenCalledOnce()
     await user.click(
       screen.getByRole('button', {
@@ -952,7 +987,11 @@ describe('DocumentsPage', () => {
     expect(
       screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAllDocuments' }),
     ).toHaveAttribute('aria-disabled', 'true')
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+      }),
+    )
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
@@ -1243,13 +1282,42 @@ describe('DocumentsPage', () => {
             task({
               id: 'failed',
               state: 'running',
-              updatedAt: '2026-07-20T10:02:00Z',
             }),
           ],
         },
       ],
     }
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
+  })
+
+  it('does not restore an action failure after its drawer cycle closes', async () => {
+    const user = userEvent.setup()
+    let rejectCancel: ((reason?: unknown) => void) | undefined
+    cancelMutation.mutateAsync.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectCancel = reject
+        }),
+    )
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task()] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await act(async () => rejectCancel?.(new Error('cancel failed after close')))
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
     expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
   })
 
@@ -2205,6 +2273,36 @@ describe('DocumentsPage', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(101)
   })
 
+  it('moves focus to the drawer close button when the final task batch is revealed', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: Array.from({ length: 101 }, (_, index) =>
+            task({
+              id: `history-${index}`,
+              state: 'succeeded',
+              updatedAt: new Date(Date.UTC(2026, 6, 20, 10, index)).toISOString(),
+            }),
+          ),
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'dataset.newKnowledge.loadMore',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toHaveFocus(),
+    )
+  })
+
   it('rotates a bounded task event stream pool without polling every cursor page', async () => {
     vi.useFakeTimers()
     streamProcessingTaskEvents.mockImplementation(async function* () {
@@ -2298,6 +2396,55 @@ describe('DocumentsPage', () => {
       rendered.unmount()
       vi.useRealTimers()
     }
+  })
+
+  it('drops an event cursor after the task list reports a terminal state', async () => {
+    const streamCalls: Array<{ lastEventId?: string; taskId: string }> = []
+    streamProcessingTaskEvents.mockImplementation(async function* ({
+      lastEventId,
+      taskId,
+    }: {
+      lastEventId?: string
+      taskId: string
+    }) {
+      streamCalls.push({ lastEventId, taskId })
+      if (streamCalls.length === 1) {
+        yield {
+          data: {
+            progressPercent: 60,
+            stage: 'parsed' as const,
+            state: 'running' as const,
+            updatedAt: '2026-07-20T10:02:00Z',
+          },
+          event: 'progress' as const,
+          id: 'restarted:old-cursor',
+        }
+      }
+      await new Promise<void>(() => {})
+    })
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'restarted' })] }] }
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(streamCalls).toHaveLength(1))
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ id: 'restarted', state: 'failed', updatedAt: '2026-07-20T10:03:00Z' })],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'restarted', updatedAt: '2026-07-20T10:04:00Z' })] }],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(streamCalls).toHaveLength(2))
+    expect(streamCalls).toEqual([
+      { lastEventId: undefined, taskId: 'restarted' },
+      { lastEventId: undefined, taskId: 'restarted' },
+    ])
   })
 
   it('keeps the latest event cursor when the observer effect restarts', async () => {
@@ -3136,6 +3283,22 @@ describe('DocumentsPage', () => {
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
+  it('keeps explicit result pagination busy while a dependency page is loading', () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: Array.from({ length: 20 }, () => ({ items: [], nextCursor: 'next' })),
+    }
+    tasksQuery.hasNextPage = true
+    tasksQuery.isFetchingNextPage = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('keeps known documents actionable while older task and source pages remain', () => {
