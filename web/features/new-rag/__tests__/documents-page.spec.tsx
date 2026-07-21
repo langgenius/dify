@@ -641,7 +641,9 @@ describe('DocumentsPage', () => {
     expect(
       screen.queryByText('dataset.newKnowledge.documentPermissionRestricted'),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
+    const addDocument = screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })
+    expect(addDocument).toBeDisabled()
+    expect(addDocument).toHaveAccessibleDescription('dataset.newKnowledge.permissionLoadFailed')
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
@@ -3734,6 +3736,50 @@ describe('DocumentsPage', () => {
     await act(async () => {})
 
     expect(streamCursors).toEqual([undefined, 'task-1:cursor'])
+  })
+
+  it('blocks the latest streamed task version when a reconnect loses permission', async () => {
+    vi.useFakeTimers()
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) {
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: 'running' as const,
+            updatedAt: '2026-07-20T10:02:00Z',
+          },
+          event: 'progress' as const,
+          id: 'task-1:version-2',
+        }
+        return
+      }
+      throw new Response(null, { status: 403 })
+    })
+    const onPermissionDenied = vi.fn()
+    const rendered = render(
+      <TaskEventObserver
+        documentId="document-1"
+        knowledgeSpaceId="space-1"
+        onEvent={vi.fn(() => true)}
+        onLastEventIdChange={vi.fn()}
+        onPermissionDenied={onPermissionDenied}
+        taskId="task-1"
+        taskVersion="2026-07-20T10:01:00Z"
+      />,
+    )
+
+    try {
+      await act(async () => {})
+      await act(async () => vi.advanceTimersByTime(1000))
+
+      expect(onPermissionDenied).toHaveBeenCalledWith('task-1', '2026-07-20T10:02:00Z')
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
   })
 
   it('rejects stale active progress and backs off repeated stale reconnects', async () => {

@@ -90,7 +90,7 @@ export function TaskEventObserver({
         } catch (error) {
           if (controller.signal.aborted) return
           if (responseStatus(error) === 403) {
-            onPermissionDenied(taskId, latestTaskVersionRef.current)
+            onPermissionDenied(taskId, streamTaskVersionRef.current)
             return
           }
         }

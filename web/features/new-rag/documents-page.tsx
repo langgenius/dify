@@ -1756,11 +1756,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         </header>
         {permissionQueryError && (
           <div
-            id="documents-permission-error"
             className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
             role="alert"
           >
-            <span className="system-xs-regular text-text-tertiary">
+            <span id="documents-permission-error" className="system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.permissionLoadFailed'])}
             </span>
             <Button
