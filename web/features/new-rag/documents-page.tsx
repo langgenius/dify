@@ -47,7 +47,7 @@ const MAX_AUTO_CURSOR_PAGES = 20
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
 const TERMINAL_RECONCILIATION_REQUEST_TIMEOUT = 3000
 const BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 5000
-const MAX_BLOCKED_ACTIVE_TASK_REFRESHES = 6
+const MAX_BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 30000
 const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.md,.markdown,.html,.htm,.xls,.xlsx,.txt'
 const documentFilterParser = parseAsStringLiteral([
   'all',
@@ -712,14 +712,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   useEffect(() => {
     if (permissionDenied || !blockedActiveTaskSignature) return
     let canceled = false
-    let refreshCount = 0
+    let refreshInterval = BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL
     let timeout: number | undefined
-    const refreshBlockedTasks = () => {
-      if (canceled || refreshCount >= MAX_BLOCKED_ACTIVE_TASK_REFRESHES) return
-      refreshCount += 1
-      void refetchTasksQuery({ cancelRefetch: false })
-      if (refreshCount < MAX_BLOCKED_ACTIVE_TASK_REFRESHES)
-        timeout = window.setTimeout(refreshBlockedTasks, BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL)
+    const refreshBlockedTasks = async () => {
+      if (canceled) return
+      await refetchTasksQuery({ cancelRefetch: false }).catch(() => undefined)
+      if (canceled) return
+      refreshInterval = Math.min(refreshInterval * 2, MAX_BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL)
+      timeout = window.setTimeout(refreshBlockedTasks, refreshInterval)
     }
     timeout = window.setTimeout(refreshBlockedTasks, BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL)
     return () => {

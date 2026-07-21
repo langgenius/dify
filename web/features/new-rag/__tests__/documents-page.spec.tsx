@@ -2577,9 +2577,10 @@ describe('DocumentsPage', () => {
     expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
   })
 
-  it('bounds task-list recovery polling and resumes a denied stream at a newer version', async () => {
+  it('single-flights backed-off recovery polling until a denied stream gets a newer version', async () => {
     vi.useFakeTimers()
     let resolveDocumentsRefetch!: (result: { error: null }) => void
+    let resolveTaskRefetch!: (result: { error: null }) => void
     documentsQuery.data = { pages: [{ items: [document()] }] }
     documentsQuery.refetch.mockImplementation(
       () =>
@@ -2620,9 +2621,35 @@ describe('DocumentsPage', () => {
       expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
       await act(async () => resolveDocumentsRefetch({ error: null }))
       tasksQuery.refetch.mockClear()
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [task({ id: 'recovering-stream', updatedAt: '2026-07-20T10:02:00Z' })],
+          },
+        ],
+      }
+      tasksQuery.dataUpdateCount = 2
+      act(() => notifyTaskQuerySuccess())
+      await act(async () => {})
+      tasksQuery.refetch
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveTaskRefetch = resolve
+            }),
+        )
+        .mockResolvedValue({ error: null })
 
       await act(async () => vi.advanceTimersByTime(5000))
       expect(tasksQuery.refetch).toHaveBeenCalledWith({ cancelRefetch: false })
+      expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+      await act(async () => vi.advanceTimersByTime(120000))
+      expect(tasksQuery.refetch).toHaveBeenCalledOnce()
+
+      await act(async () => resolveTaskRefetch({ error: null }))
+      for (const delay of [10000, 20000, 30000, 30000, 30000, 30000])
+        await act(async () => vi.advanceTimersByTime(delay))
+      expect(tasksQuery.refetch).toHaveBeenCalledTimes(7)
       expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
 
       tasksQuery.data = {
@@ -2632,7 +2659,7 @@ describe('DocumentsPage', () => {
           },
         ],
       }
-      tasksQuery.dataUpdateCount = 2
+      tasksQuery.dataUpdateCount = 3
       act(() => notifyTaskQuerySuccess())
       await act(async () => {})
 
