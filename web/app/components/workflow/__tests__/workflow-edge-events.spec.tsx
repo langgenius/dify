@@ -38,6 +38,7 @@ const collaborationBridge = vi.hoisted(() => ({
 }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
+const toastErrorMock = vi.hoisted(() => vi.fn())
 
 const workflowCommentState = vi.hoisted(() => ({
   comments: [] as Array<Record<string, unknown>>,
@@ -145,6 +146,13 @@ const baseEdges = [
   },
 ] as unknown as Edge[]
 
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
@@ -181,6 +189,7 @@ vi.mock('@/service/workflow', () => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
+    error: toastErrorMock,
     info: toastInfoMock,
   },
 }))
@@ -494,6 +503,14 @@ function getPane(container: HTMLElement) {
   return pane
 }
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 describe('Workflow edge event wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -589,6 +606,22 @@ describe('Workflow edge event wiring', () => {
     })
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
+  })
+
+  it('should show a persistent error toast when saving the draft on unmount fails', () => {
+    workflowHookMocks.handleSyncWorkflowDraft.mockImplementationOnce(
+      (_sync, _notRefreshWhenSyncError, callback) => {
+        callback?.onError?.()
+      },
+    )
+
+    const { unmount } = renderSubject()
+
+    unmount()
+
+    expect(toastErrorMock).toHaveBeenCalledWith('workflow.common.draftSaveFailed', {
+      timeout: 0,
+    })
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {

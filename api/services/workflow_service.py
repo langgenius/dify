@@ -322,6 +322,7 @@ class WorkflowService:
         session: Session,
         commit: bool = True,
         sync_agent_bindings: bool = True,
+        graph_only: bool = False,
     ) -> Workflow:
         """
         Sync draft workflow.
@@ -338,8 +339,10 @@ class WorkflowService:
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
 
-        # validate features structure
-        self.validate_features_structure(app_model=app_model, features=features)
+        # Collaboration persists features and variables through dedicated endpoints. A graph save
+        # must not overwrite those newer database values with another collaborator's stale cache.
+        if not graph_only or not workflow:
+            self.validate_features_structure(app_model=app_model, features=features)
 
         # validate graph structure
         self.validate_graph_structure(graph=graph)
@@ -361,11 +364,12 @@ class WorkflowService:
         # update draft workflow if found
         else:
             workflow.graph = json.dumps(graph)
-            workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = naive_utc_now()
-            workflow.environment_variables = environment_variables
-            workflow.conversation_variables = conversation_variables
+            if not graph_only:
+                workflow.features = json.dumps(features)
+                workflow.environment_variables = environment_variables
+                workflow.conversation_variables = conversation_variables
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -1039,6 +1043,7 @@ class WorkflowService:
         # Create repository and save the node execution
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
+            tenant_id=app_model.tenant_id,
             user=account,
             app_id=app_model.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -1055,6 +1060,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
@@ -1205,6 +1211,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=node_id,
                 node_type=BuiltinNodeTypes.HUMAN_INPUT,

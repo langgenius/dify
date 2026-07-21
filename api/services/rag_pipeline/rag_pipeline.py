@@ -586,6 +586,7 @@ class RagPipelineService:
 
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
+            tenant_id=pipeline.tenant_id,
             user=account,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -600,6 +601,7 @@ class RagPipelineService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
@@ -1377,6 +1379,7 @@ class RagPipelineService:
         # Create repository and save the node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=db.engine,
+            tenant_id=pipeline.tenant_id,
             user=current_user,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -1389,6 +1392,7 @@ class RagPipelineService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution_db_model.node_id,
                 node_type=workflow_node_execution_db_model.node_type,

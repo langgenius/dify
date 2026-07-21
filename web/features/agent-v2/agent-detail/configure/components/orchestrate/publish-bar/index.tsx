@@ -45,6 +45,7 @@ type AgentConfigurePublishBarProps = {
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions?: () => void
+  onVersionRestored?: () => void | Promise<void>
 }
 
 function getPublishState({
@@ -99,6 +100,7 @@ export function AgentConfigurePublishBar({
   onPublish,
   onExitVersions,
   onOpenVersions,
+  onVersionRestored,
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -154,28 +156,31 @@ export function AgentConfigurePublishBar({
         },
       },
       {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-              input: {
-                params: {
-                  agent_id: agentId,
+        onSuccess: async () => {
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+                input: {
+                  params: {
+                    agent_id: agentId,
+                  },
                 },
-              },
+              }),
             }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.composer.get.queryKey({
-              input: {
-                params: {
-                  agent_id: agentId,
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.agent.byAgentId.composer.get.queryKey({
+                input: {
+                  params: {
+                    agent_id: agentId,
+                  },
                 },
-              },
+              }),
             }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-          })
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
+            }),
+          ])
+          await onVersionRestored?.()
           onExitVersions?.()
           toast.success(tCommon(($) => $['api.actionSuccess']))
         },

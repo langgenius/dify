@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Literal
 
@@ -274,6 +274,42 @@ class PluginConfig(BaseSettings):
         description="Maximum allowed size (bytes) for plugin-generated files",
         default=50 * 1024 * 1024,
     )
+
+    NEW_USER_DEFAULT_PLUGIN_IDS: str = Field(
+        description="Comma-separated marketplace plugin IDs whose latest versions are installed for new users",
+        default="",
+    )
+
+    @property
+    def NEW_USER_DEFAULT_PLUGIN_ID_LIST(self) -> list[str]:
+        return [item.strip() for item in self.NEW_USER_DEFAULT_PLUGIN_IDS.split(",") if item.strip()]
+
+    NEW_USER_DEFAULT_MODELS: str = Field(
+        description=("Comma-separated default models for new users in 'model_type:provider:model' format"),
+        default="",
+    )
+
+    @property
+    def NEW_USER_DEFAULT_MODEL_LIST(self) -> list[tuple[str, str, str]]:
+        default_models: list[tuple[str, str, str]] = []
+        configured_model_types: set[str] = set()
+
+        for item in self.NEW_USER_DEFAULT_MODELS.split(","):
+            if not item.strip():
+                continue
+
+            parts = tuple(part.strip() for part in item.split(":", 2))
+            if len(parts) != 3 or not all(parts):
+                raise ValueError("NEW_USER_DEFAULT_MODELS entries must use 'model_type:provider:model' format")
+
+            model_type, provider, model = parts
+            if model_type in configured_model_types:
+                raise ValueError(f"NEW_USER_DEFAULT_MODELS contains duplicate model type: {model_type}")
+
+            configured_model_types.add(model_type)
+            default_models.append((model_type, provider, model))
+
+        return default_models
 
 
 class MarketplaceConfig(BaseSettings):
@@ -784,6 +820,11 @@ class WorkflowConfig(BaseSettings):
         default=500,
     )
 
+    WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS: PositiveInt = Field(
+        description="Maximum concurrent node-builder LLM calls per workflow generation request",
+        default=6,
+    )
+
     WORKFLOW_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum execution time in seconds for a single workflow",
         default=1200,
@@ -1095,6 +1136,16 @@ class HomepageConfig(BaseSettings):
     ENABLE_LEARN_APP: bool = Field(
         description="Enable Learn App",
         default=True,
+    )
+
+    ENABLE_STEP_BY_STEP_TOUR: bool = Field(
+        description="Enable account-level Step-by-step Tour eligibility checks",
+        default=False,
+    )
+
+    STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT: datetime | None = Field(
+        description="UTC timestamp after which newly initialized accounts are eligible for Step-by-step Tour",
+        default=None,
     )
 
 

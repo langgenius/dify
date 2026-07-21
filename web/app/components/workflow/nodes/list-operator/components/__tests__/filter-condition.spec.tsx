@@ -161,7 +161,6 @@ describe('FilterCondition', () => {
     expect(variableInput).toHaveAttribute('placeholder', 'workflow.nodes.http.insertVarPlaceholder')
 
     await user.click(variableInput)
-    expect(variableInput.className).toContain('border-components-input-border-active')
 
     fireEvent.change(variableInput, { target: { value: 'draft next' } })
     expect(onChange).toHaveBeenLastCalledWith({

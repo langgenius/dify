@@ -7,7 +7,7 @@ import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import NodeSelector from '../main'
-import { BlockClassificationEnum, TabsEnum } from '../types'
+import { BlockClassification, TabType } from '../types'
 
 vi.mock('reactflow', () => ({
   useStoreApi: () => ({
@@ -50,7 +50,7 @@ vi.mock('@/service/use-tools', () => ({
 
 const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
   metaData: {
-    classification: BlockClassificationEnum.Default,
+    classification: BlockClassification.Default,
     sort: 0,
     type,
     title,
@@ -151,6 +151,63 @@ describe('NodeSelector', () => {
     await user.click(screen.getByRole('button', { name: 'selector-closed' }))
 
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+  })
+
+  it('preserves the current popup session until a controlled close actually unmounts it', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+
+    renderNodeSelector(
+      <NodeSelector
+        open
+        onOpenChange={onOpenChange}
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
+        showStartTab
+        trigger={() => <button type="button">selector-open</button>}
+      />,
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'workflow.tabs.start' }))
+    const searchInput = screen.getByPlaceholderText('workflow.tabs.searchTrigger')
+    await user.type(searchInput, 'webhook')
+    await user.click(screen.getByRole('button', { name: 'selector-open' }))
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(searchInput).toHaveValue('webhook')
+  })
+
+  it('focuses the search input on open and keeps focus on a tab when it is activated', async () => {
+    const user = userEvent.setup()
+
+    renderNodeSelector(
+      <NodeSelector
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
+        showStartTab
+        trigger={(open) => (
+          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
+        )}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'selector-closed' }))
+    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toHaveFocus()
+    await waitFor(() => {
+      expect(screen.getByRole('dialog').parentElement).toHaveStyle({ position: 'fixed' })
+    })
+
+    const startTab = screen.getByRole('tab', { name: 'workflow.tabs.start' })
+    await user.click(startTab)
+
+    expect(startTab).toHaveFocus()
+    expect(screen.getByPlaceholderText('workflow.tabs.searchTrigger')).not.toHaveFocus()
   })
 
   it('does not open or emit open changes when disabled', async () => {
@@ -307,7 +364,7 @@ describe('NodeSelector', () => {
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
         showStartTab
-        defaultActiveTab={TabsEnum.Start}
+        defaultActiveTab={TabType.Start}
       />,
       {
         initialStoreState: {
@@ -328,9 +385,7 @@ describe('NodeSelector', () => {
     expect(
       await screen.findByText('workflow.tabs.unconfiguredStartDisabledTip'),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: 'workflow.tabs.startDisabledTipLearnMore' }),
-    ).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/nodes/trigger/overview')
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })
 
@@ -342,7 +397,7 @@ describe('NodeSelector', () => {
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start, BlockEnum.TriggerPlugin]}
         showStartTab
-        defaultActiveTab={TabsEnum.Start}
+        defaultActiveTab={TabType.Start}
       />,
       {
         initialStoreState: {
