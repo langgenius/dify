@@ -10,8 +10,8 @@ const useHumanInputV2Config = (id: string, payload: HumanInputV2NodeType) => {
   const sharedConfig = useHumanInputSharedConfig(id, payload)
   const { setInputs, ...config } = sharedConfig
 
-  const handleRecipientsChange = (recpients_spec: HumanInputV2Recipient[]) => {
-    setInputs({ ...config.inputs, recpients_spec })
+  const handleRecipientsChange = (recipients_spec: HumanInputV2Recipient[]) => {
+    setInputs({ ...config.inputs, recipients_spec })
   }
   const handleMessageTemplateChange = (message_template: HumanInputV2MessageTemplate) => {
     setInputs({ ...config.inputs, message_template })

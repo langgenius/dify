@@ -1,21 +1,23 @@
 import type { NodeDefault, OnSelectBlock } from '../types'
-import type { BlockClassificationEnum } from './types'
+import type { BlockClassification } from './types'
 import {
   createPreviewCardHandle,
   PreviewCard,
-  PreviewCardContent,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { groupBy } from 'es-toolkit/compat'
-import { memo, useCallback, useMemo } from 'react'
+import { Fragment, memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
 import BlockIcon from '../block-icon'
+import { useHumanInputMigration } from '../nodes/human-input-v2/migration/context'
+import { getHumanInputCreationPolicy } from '../nodes/human-input-v2/migration/policy'
 import { BlockEnum } from '../types'
 import { AgentBlockItem } from './agent-selector'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
+import { BlockSelectorPreviewCardContent } from './preview-card'
 
 type BlocksProps = {
   searchText: string
@@ -25,6 +27,7 @@ type BlocksProps = {
 }
 type BlockPreviewPayload = {
   block: NodeDefault
+  disabled: boolean
 }
 
 const Blocks = ({
@@ -37,6 +40,7 @@ const Blocks = ({
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<BlockPreviewPayload>(), [])
+  const previewDescriptionBaseId = useId()
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
   const blocks =
@@ -89,7 +93,7 @@ const Blocks = ({
   const isEmpty = Object.values(groups).every((list) => !list.length)
 
   const renderGroup = useCallback(
-    (classification: BlockClassificationEnum) => {
+    (classification: BlockClassification) => {
       const list = [...groups[classification]!].sort((a, b) => {
         if (a.metaData.type === BlockEnum.AgentV2) return -1
         if (b.metaData.type === BlockEnum.AgentV2) return 1
@@ -97,6 +101,7 @@ const Blocks = ({
       })
       const { getNodes } = store.getState()
       const nodes = getNodes()
+      const humanInputPolicy = getHumanInputCreationPolicy(nodes, true)
       const hasKnowledgeBaseNode = nodes.some((node) => node.data.type === BlockEnum.KnowledgeBase)
       const filteredList = list.filter((block) => {
         if (hasKnowledgeBaseNode) return block.metaData.type !== BlockEnum.KnowledgeBase
@@ -139,38 +144,73 @@ const Blocks = ({
               )
             }
 
+            const previewDescriptionId = block.metaData.description
+              ? `${previewDescriptionBaseId}-${block.metaData.type}`
+              : undefined
+            const isHumanInputDisabled =
+              block.metaData.type === BlockEnum.HumanInputV2 && humanInputPolicy.hasLegacyHumanInput
+            const disabledReasonId = isHumanInputDisabled
+              ? `${previewDescriptionBaseId}-${block.metaData.type}-disabled`
+              : undefined
+            const describedBy = [previewDescriptionId, disabledReasonId].filter(Boolean).join(' ')
+
             return (
-              <PreviewCardTrigger
-                key={block.metaData.type}
-                delay={150}
-                closeDelay={150}
-                handle={previewCardHandle}
-                payload={{ block }}
-                render={
-                  <button
-                    type="button"
-                    className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                    onClick={() => onSelect(block.metaData.type)}
-                  >
-                    <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
-                    <span className="min-w-0 grow truncate text-sm text-text-secondary">
-                      {block.metaData.title}
-                    </span>
-                    {block.metaData.type === BlockEnum.LoopEnd && (
-                      <Badge
-                        text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflow' })}
-                        className="ml-2 shrink-0"
-                      />
-                    )}
-                  </button>
-                }
-              />
+              <Fragment key={block.metaData.type}>
+                <PreviewCardTrigger
+                  delay={150}
+                  closeDelay={150}
+                  handle={previewCardHandle}
+                  payload={{ block, disabled: isHumanInputDisabled }}
+                  render={
+                    <button
+                      type="button"
+                      aria-label={block.metaData.title}
+                      aria-describedby={describedBy || undefined}
+                      aria-disabled={isHumanInputDisabled}
+                      data-disabled={isHumanInputDisabled || undefined}
+                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-[disabled]:cursor-not-allowed data-[disabled]:text-text-disabled data-[disabled]:hover:bg-transparent"
+                      onClick={() => {
+                        if (!isHumanInputDisabled) onSelect(block.metaData.type)
+                      }}
+                    >
+                      <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
+                      <span className="min-w-0 grow truncate text-sm text-text-secondary">
+                        {block.metaData.title}
+                      </span>
+                      {isHumanInputDisabled && (
+                        <Badge
+                          text={t(($) => $['nodes.humanInputMigration.disabledBadge'], {
+                            ns: 'workflow',
+                          })}
+                          className="ml-2 shrink-0"
+                        />
+                      )}
+                      {block.metaData.type === BlockEnum.LoopEnd && (
+                        <Badge
+                          text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflow' })}
+                          className="ml-2 shrink-0"
+                        />
+                      )}
+                    </button>
+                  }
+                />
+                {previewDescriptionId && (
+                  <span id={previewDescriptionId} className="sr-only">
+                    {block.metaData.description}
+                  </span>
+                )}
+                {disabledReasonId && (
+                  <span id={disabledReasonId} className="sr-only">
+                    {t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' })}
+                  </span>
+                )}
+              </Fragment>
             )
           })}
         </div>
       )
     },
-    [groups, onSelect, previewCardHandle, t, store],
+    [groups, onSelect, previewCardHandle, previewDescriptionBaseId, t, store],
   )
 
   return (
@@ -193,20 +233,36 @@ type BlockPreviewCardProps = {
 }
 
 function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
+  const { t } = useTranslation()
+  const migration = useHumanInputMigration()
   if (!payload) return null
 
-  const { block } = payload
+  const { block, disabled } = payload
 
   return (
-    <PreviewCardContent placement="right" popupClassName="w-[200px] border-none px-3 py-2">
-      <div>
-        <BlockIcon size="md" className="mb-2" type={block.metaData.type} />
-        <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
-        <div className="system-xs-regular wrap-break-word text-text-tertiary">
-          {block.metaData.description}
-        </div>
+    <BlockSelectorPreviewCardContent>
+      <BlockIcon size="md" className="mb-2" type={block.metaData.type} />
+      <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
+      <div className="system-xs-regular wrap-break-word text-text-tertiary">
+        {block.metaData.description}
       </div>
-    </PreviewCardContent>
+      {disabled && (
+        <div className="mt-3 rounded-lg bg-state-accent-hover px-3 py-2">
+          <div className="system-xs-regular text-text-secondary">
+            {t(($) => $['nodes.humanInputMigration.preview.description'], { ns: 'workflow' })}
+          </div>
+          {migration?.canEdit && (
+            <button
+              type="button"
+              className="mt-1 rounded-sm system-xs-medium text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              onClick={migration.openMigrationDialog}
+            >
+              {t(($) => $['nodes.humanInputMigration.action.migrateNow'], { ns: 'workflow' })} →
+            </button>
+          )}
+        </div>
+      )}
+    </BlockSelectorPreviewCardContent>
   )
 }
 

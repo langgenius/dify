@@ -1,29 +1,18 @@
 'use client'
-import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
-import type { CustomConfigValueType, SiteInfo } from '@/models/share'
+import type { LegacyHumanInputFormData } from '@/features/human-input-form/types'
 import type { HumanInputFormError } from '@/service/use-share'
-import type { HumanInputResolvedValue } from '@/types/workflow'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import FormStatusCard from '@/features/human-input-form/form-status-card'
+import LoadedFormContent from '@/features/human-input-form/loaded-form-content'
+import { normalizeLegacyHumanInputForm } from '@/features/human-input-form/normalize-legacy-definition'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm } from '@/service/use-share'
-import FormStatusCard from './form-status-card'
-import LoadedFormContent from './loaded-form-content'
 import { useFormSubmit } from './use-form-submit'
 
-export type FormData = {
-  site: {
-    site: SiteInfo
-    custom_config?: Record<string, CustomConfigValueType> | null
-  }
-  form_content: string
-  inputs: FormInputItem[]
-  resolved_default_values: Record<string, HumanInputResolvedValue>
-  user_actions: UserAction[]
-  expiration_time: number
-}
+export type FormData = LegacyHumanInputFormData
 
 const FormContent = () => {
   const { t } = useTranslation()
@@ -105,11 +94,9 @@ const FormContent = () => {
   return (
     <LoadedFormContent
       key={token}
-      formData={formData}
+      definition={normalizeLegacyHumanInputForm(formData)}
       isSubmitting={isSubmitting}
       onSubmit={submit}
-      removeWebappBrand={removeWebappBrand}
-      replaceWebappLogo={replaceWebappLogo}
     />
   )
 }

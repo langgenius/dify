@@ -22,7 +22,7 @@ export const HumanInputV2Panel = ({ id, data }: NodePanelProps<HumanInputV2NodeT
     <div className="py-2">
       <Recipients
         nodeId={id}
-        value={config.inputs.recpients_spec}
+        value={config.inputs.recipients_spec}
         onChange={config.handleRecipientsChange}
         readonly={config.readOnly}
       />

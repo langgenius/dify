@@ -15,10 +15,10 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
   const [contacts, setContacts] = useState<ContactRecipientOption[]>([])
   const contactIds = useMemo(
     () =>
-      data.recpients_spec
+      data.recipients_spec
         .filter((recipient) => recipient.type === 'contact')
         .map((recipient) => recipient.contact_id),
-    [data.recpients_spec],
+    [data.recipients_spec],
   )
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
   }, [contactIds])
 
   const summary = deriveRecipientSummary(
-    data.recpients_spec,
+    data.recipients_spec,
     new Map(contacts.map((contact) => [contact.id, contact.name])),
   )
 
@@ -79,7 +79,7 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
       })
     return t(($) => $['nodes.humanInputV2.card.configured'], {
       ns: 'workflow',
-      count: data.recpients_spec.length,
+      count: data.recipients_spec.length,
       overflow: summary.overflowCount,
     })
   })()
@@ -105,7 +105,7 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
           >
             {summary.state === 'empty' || summary.state === 'invalid' ? (
               <span className="i-ri-alert-line size-4 shrink-0" aria-hidden />
-            ) : summary.hasInitiator && data.recpients_spec.length === 1 ? (
+            ) : summary.hasInitiator && data.recipients_spec.length === 1 ? (
               <span className="i-ri-user-line size-4 shrink-0" aria-hidden />
             ) : (
               <span className="i-ri-group-line size-4 shrink-0" aria-hidden />

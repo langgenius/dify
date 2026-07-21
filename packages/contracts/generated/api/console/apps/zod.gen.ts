@@ -662,6 +662,7 @@ export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
  * SyncDraftWorkflowPayload
  */
 export const zSyncDraftWorkflowPayload = z.object({
+  _is_collaborative: z.boolean().optional().default(false),
   conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   features: z.record(z.string(), z.unknown()),

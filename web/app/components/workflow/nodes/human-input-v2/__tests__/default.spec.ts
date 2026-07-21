@@ -19,7 +19,7 @@ describe('Human Input v2 default', () => {
     expect(humanInputV2Default.defaultValue).toEqual({
       type: BlockEnum.HumanInput,
       version: '2',
-      recpients_spec: [],
+      recipients_spec: [],
       message_template: { subject: '', body: '' },
       debug_mode: { enabled: false, channels: [] },
       form_content: '',
@@ -30,9 +30,9 @@ describe('Human Input v2 default', () => {
     })
   })
 
-  it('preserves the literal typo key and nested values through a JSON round trip', () => {
+  it('preserves the recipients key and nested values through a JSON round trip', () => {
     const payload = createPayload({
-      recpients_spec: [
+      recipients_spec: [
         { type: 'initiator' },
         { type: 'contact', contact_id: 'contact-1' },
         { type: 'dynamic_email', selector: ['start', 'email'] },
@@ -46,8 +46,7 @@ describe('Human Input v2 default', () => {
 
     expect(roundTripped.type).toBe(BlockEnum.HumanInput)
     expect(roundTripped.version).toBe('2')
-    expect(roundTripped.recpients_spec).toEqual(payload.recpients_spec)
-    expect(roundTripped).not.toHaveProperty('recipients_spec')
+    expect(roundTripped.recipients_spec).toEqual(payload.recipients_spec)
     expect(roundTripped.message_template).toEqual(payload.message_template)
     expect(roundTripped.debug_mode).toEqual(payload.debug_mode)
   })
@@ -66,7 +65,7 @@ describe('Human Input v2 default', () => {
   it('accepts a complete template without the v1 request URL token', () => {
     const result = humanInputV2Default.checkValid(
       createPayload({
-        recpients_spec: [{ type: 'initiator' }],
+        recipients_spec: [{ type: 'initiator' }],
         message_template: { subject: 'Review request', body: 'Please review this request' },
         user_actions: [
           { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
@@ -81,7 +80,7 @@ describe('Human Input v2 default', () => {
   it('validates duplicate recipients and enabled Debug Mode channels', () => {
     const t = withSelectorKey((key: string) => key, 'workflow')
     const complete = {
-      recpients_spec: [{ type: 'initiator' }] as HumanInputV2NodeType['recpients_spec'],
+      recipients_spec: [{ type: 'initiator' }] as HumanInputV2NodeType['recipients_spec'],
       message_template: { subject: 'Review', body: 'Body' },
       user_actions: [
         { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
@@ -92,7 +91,7 @@ describe('Human Input v2 default', () => {
       humanInputV2Default.checkValid(
         createPayload({
           ...complete,
-          recpients_spec: [{ type: 'initiator' }, { type: 'initiator' }],
+          recipients_spec: [{ type: 'initiator' }, { type: 'initiator' }],
         }),
         t,
       ).errorMessage,

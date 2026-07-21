@@ -11,7 +11,7 @@
 - 新增 debug mode 组件，编辑 `debug_mode.enabled` 和 `debug_mode.channels`，channel 值严格使用 `email`、`feishu`、`slack`、`ding_talk`、`ms_teams`、`we_com`。
 - 新增 message template 弹窗，编辑 `message_template.subject` 与 `message_template.body`，并覆盖校验、未保存修改、提交和关闭行为。
 - v2 继续复用现有 Human Input 的 `form_content`、`inputs`、`user_actions`、`timeout` 与 `timeout_unit` 领域结构和适用 UI primitives，但不得复用 v1 的 `delivery_methods` 数据模型。
-- 前端序列化必须保留当前后端实体中的字段名 `recpients_spec`，不得在本 change 中擅自更名为 `recipients_spec`。
+- 前端序列化必须使用当前后端实体中的字段名 `recipients_spec`，不得继续生成旧拼写 `recpients_spec`。
 - 新建 v2 节点默认写入 `version: '2'`；不自动迁移、覆盖或静默改写任何 v1 节点。
 - 本 change 只修改前端和 OpenSpec，不更新 graphon、后端实体、运行时、API、数据库或 DSL migration。
 - 以用户提供的八个 Figma 节点作为布局、状态、交互和文案验收基准。

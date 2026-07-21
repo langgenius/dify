@@ -28,6 +28,7 @@ export const WorkflowHistoryEvent = {
   NoteChange: 'NoteChange',
   NoteDelete: 'NoteDelete',
   LayoutOrganize: 'LayoutOrganize',
+  HumanInputMigration: 'HumanInputMigration',
 } as const
 
 export type WorkflowHistoryEventT = keyof typeof WorkflowHistoryEvent
@@ -96,6 +97,7 @@ export const useWorkflowHistory = () => {
         case WorkflowHistoryEvent.NoteAdd:
         case WorkflowHistoryEvent.LayoutOrganize:
         case WorkflowHistoryEvent.NoteDelete:
+        case WorkflowHistoryEvent.HumanInputMigration:
           saveStateToHistoryRef.current(event, meta)
           break
         default:
@@ -139,6 +141,8 @@ export const useWorkflowHistory = () => {
           return t(($) => $['changeHistory.noteChange'], { ns: 'workflow' })
         case WorkflowHistoryEvent.NoteDelete:
           return t(($) => $['changeHistory.noteDelete'], { ns: 'workflow' })
+        case WorkflowHistoryEvent.HumanInputMigration:
+          return t(($) => $['changeHistory.humanInputMigration'], { ns: 'workflow' })
         default:
           return 'Unknown Event'
       }

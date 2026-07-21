@@ -60,8 +60,32 @@ describe('useAvailableNodesMetaData', () => {
     expect(result.current.nodesMap?.[BlockEnum.HumanInputV2]?.defaultValue).toMatchObject({
       type: BlockEnum.HumanInput,
       version: '2',
-      recpients_spec: [],
+      recipients_spec: [],
     })
+  })
+
+  it('exposes one v2-backed Human Input candidate while retaining legacy routing metadata', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const candidates = result.current.nodes.filter(
+      (node) =>
+        node.metaData.type === BlockEnum.HumanInput ||
+        node.metaData.type === BlockEnum.HumanInputV2,
+    )
+
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0]?.metaData).toMatchObject({
+      type: BlockEnum.HumanInputV2,
+      title: 'workflow.blocks.human-input',
+    })
+    expect(candidates[0]?.defaultValue).toMatchObject({
+      type: BlockEnum.HumanInput,
+      version: '2',
+    })
+    expect(result.current.nodesMap?.[BlockEnum.HumanInput]?.defaultValue).toHaveProperty(
+      'delivery_methods',
+    )
   })
 
   it('should use explicit docs pages and skip nodes without generated docs pages', () => {

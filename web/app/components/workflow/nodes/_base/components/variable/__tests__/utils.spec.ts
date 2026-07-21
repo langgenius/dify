@@ -57,7 +57,7 @@ describe('variable utils', () => {
         version: '2',
         title: 'Human Input v2',
         desc: '',
-        recpients_spec: [{ type: 'initiator' }],
+        recipients_spec: [{ type: 'initiator' }],
         message_template: { subject: 'Review', body: 'Body' },
         debug_mode: { enabled: false, channels: [] },
         form_content: '',
@@ -243,7 +243,7 @@ describe('variable utils', () => {
         version: '2',
         title: 'Human Input v2',
         desc: '',
-        recpients_spec: [
+        recipients_spec: [
           { type: 'dynamic_email', selector: ['start', 'recipient_email'] },
           { type: 'initiator' },
         ],
@@ -407,7 +407,7 @@ describe('variable utils', () => {
         version: '2',
         title: 'Human Input v2',
         desc: '',
-        recpients_spec: [{ type: 'dynamic_email', selector: ['start', 'email'] }],
+        recipients_spec: [{ type: 'dynamic_email', selector: ['start', 'email'] }],
         message_template: {
           subject: 'Subject {{#start.email#}}',
           body: 'Body {{#start.email#}}',
@@ -423,7 +423,7 @@ describe('variable utils', () => {
       const updatedNode = updateNodeVars(node, ['start', 'email'], ['start', 'owner_email'])
       const data = updatedNode.data as HumanInputV2NodeType
 
-      expect(data.recpients_spec).toEqual([
+      expect(data.recipients_spec).toEqual([
         { type: 'dynamic_email', selector: ['start', 'owner_email'] },
       ])
       expect(data.message_template).toEqual({

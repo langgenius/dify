@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useState } from 'react'
+import { createRef, useState } from 'react'
 import { SearchInput } from '..'
 
 describe('SearchInput', () => {
@@ -26,7 +26,15 @@ describe('SearchInput', () => {
       expect(screen.getByRole('searchbox', { name: 'Search providers' })).toBeInTheDocument()
     })
 
+    it('exposes the input element through its ref', () => {
+      const ref = createRef<HTMLInputElement>()
+      render(<SearchInput ref={ref} value="" onValueChange={() => {}} />)
+
+      expect(ref.current).toBe(screen.getByRole('searchbox', { name: 'common.operation.search' }))
+    })
+
     it('focuses the searchbox when autoFocus is enabled', () => {
+      // oxlint-disable-next-line jsx-a11y/no-autofocus
       render(<SearchInput value="" onValueChange={() => {}} autoFocus />)
       expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveFocus()
     })

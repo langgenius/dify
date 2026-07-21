@@ -8,7 +8,7 @@
 HumanInputNodeData
   type: human-input
   version: '2'
-  recpients_spec: RecipientConfig[]
+  recipients_spec: RecipientConfig[]
   message_template:
     subject: string
     body: string
@@ -31,7 +31,7 @@ DebugChannel
   email | feishu | slack | ding_talk | ms_teams | we_com
 ```
 
-实体当前使用 `recpients_spec` 拼写。虽然该名称看起来像 typo，但它属于现阶段 wire contract，本 change 不能改为 `recipients_spec`。graphon 尚未注册 Human Input v2 runtime；本 change 只实现前端配置与 DSL round-trip，不补后端运行能力。
+实体当前使用 `recipients_spec` 拼写。前端同步以此作为 wire contract，不得继续生成旧拼写 `recpients_spec`。graphon 尚未注册 Human Input v2 runtime；本 change 只实现前端配置与 DSL round-trip，不补后端运行能力。
 
 现有 v1 的 form content、form inputs、user actions、timeout、输出变量和 branch handles 与 v2 DSL 兼容。v2 可以复用这些领域能力，但不能让共享组件继续依赖 v1 的 `delivery_methods` 或 `HumanInputNodeType` 整体。
 
@@ -53,7 +53,7 @@ DebugChannel
 
 - 新增一套 Human Input v2 node、panel、default config 和类型系统，并与 v1 安全共存。
 - 以 `version === '2'` 精确识别 v2，确保旧 DSL、旧节点 UI 和旧测试不被静默迁移。
-- 完整编辑 `recpients_spec`、`message_template` 和 `debug_mode`，并保持与 Python entity 的字段和值一致。
+- 完整编辑 `recipients_spec`、`message_template` 和 `debug_mode`，并保持与 Python entity 的字段和值一致。
 - 复用 v1/v2 共同的 form content、inputs、user actions、timeout、outputs 和 branch behavior。
 - 为 Contact recipient 使用可替换的前端 option-provider 边界，在没有 Contact API 时以 typed mock options 验证 UI。
 - 覆盖 DSL import、前端编辑、复制粘贴、变量重命名与导出前数据的 round-trip。
@@ -123,7 +123,7 @@ InitiatorRecipient
 ```text
 type: human-input | HumanInputV2 catalog identity
 version: '2'
-recpients_spec: HumanInputV2Recipient[]
+recipients_spec: HumanInputV2Recipient[]
 message_template: { subject; body }
 debug_mode: { enabled; channels }
 form_content
@@ -133,7 +133,7 @@ timeout
 timeout_unit
 ```
 
-不得在 TypeScript model 中使用一个拼写正确、序列化时再转换的字段，因为这会增加遗漏转换和 DSL round-trip 丢失的风险。可以在 UI 局部使用语义正确的变量名 `recipients`，但 node data key 必须始终为 `recpients_spec`。
+TypeScript model 与 wire contract 必须直接使用 `recipients_spec`，不得保留旧拼写或增加序列化转换层。UI 局部可以继续使用语义化变量名 `recipients`，但 node data key 必须始终为 `recipients_spec`。
 
 ### 4. 新 v2 default 与 v1 default 完全分离
 
@@ -141,7 +141,7 @@ v2 default 以 entity 默认值为基础：
 
 ```text
 version: '2'
-recpients_spec: []
+recipients_spec: []
 message_template: { subject: '', body: '' }
 debug_mode: { enabled: false, channels: [] }
 form_content: ''
@@ -155,7 +155,7 @@ timeout_unit: hour
 
 ### 5. Recipient editor 使用一个 ordered discriminated list
 
-`recpients_spec` 的数组顺序是 node card 和配置列表的展示顺序。recipient input 负责选择类型并生成 typed draft；列表项负责编辑、删除和错误展示。
+`recipients_spec` 的数组顺序是 node card 和配置列表的展示顺序。recipient input 负责选择类型并生成 typed draft；列表项负责编辑、删除和错误展示。
 
 建议的前端去重 key：
 
@@ -185,7 +185,7 @@ Dynamic Email 使用现有 ValueSelector / variable selector primitives，只允
 
 前端变量依赖工具必须识别：
 
-- `recpients_spec[].type === dynamic_email` 的 `selector`。
+- `recipients_spec[].type === dynamic_email` 的 `selector`。
 - `message_template.subject` 与 `message_template.body` 中的 workflow variable tokens。
 - 已复用 `form_content` 和 input default 中的变量。
 
@@ -193,7 +193,7 @@ Dynamic Email 使用现有 ValueSelector / variable selector primitives，只允
 
 ### 8. Node card 使用纯派生 summary model
 
-node card 不直接遍历并临时拼装复杂 JSX。建立纯函数将 `recpients_spec` 与 Contact option state 转换为 Figma 所需的 summary model，至少能表达：
+node card 不直接遍历并临时拼装复杂 JSX。建立纯函数将 `recipients_spec` 与 Contact option state 转换为 Figma 所需的 summary model，至少能表达：
 
 - 无 recipient。
 - 每种 recipient 类型的可辨识 label。
@@ -255,7 +255,7 @@ Human Input v2 TypeScript model、routing 和 editor MUST NOT 依赖 graphon 已
 
 - [graphon 尚未支持 v2 runtime] → 使用本地前端类型和 catalog identity 完成创建与编辑，明确本 change 只保证配置和 DSL round-trip，不宣称运行可用。
 - [同一 persisted type 对应两套 UI] → 统一使用 `isHumanInputV2NodeData`，所有 metadata、component、validation 和 utility lookup 走同一 catalog resolver。
-- [`recpients_spec` typo 容易被“修复”] → 类型、fixtures、round-trip tests 和最终 diff audit 均断言保留原 key。
+- [字段更名后前后端 contract 可能继续漂移] → 类型、fixtures、round-trip tests 和最终 diff audit 均断言使用 `recipients_spec` 且不再生成 `recpients_spec`。
 - [Contact API 尚未完成] → 注入 option-provider，并以 typed mock provider 验证组件；unresolved ID 不丢数据。
 - [共享 v1 组件时带入 delivery-method 假设] → 只抽取共享字段的窄 props 和 hooks，不共享完整 `HumanInputNodeType`。
 - [变量引用工具遗漏 v2 selector/template] → 为提取、重命名、删除、复制和粘贴建立独立回归测试。

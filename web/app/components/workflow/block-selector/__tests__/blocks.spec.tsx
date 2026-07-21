@@ -9,9 +9,10 @@ import userEvent from '@testing-library/user-event'
 import { FlowType } from '@/types/common'
 import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
+import { HumanInputMigrationContext } from '../../nodes/human-input-v2/migration/context'
 import { BlockEnum } from '../../types'
 import Blocks from '../blocks'
-import { BlockClassificationEnum } from '../types'
+import { BlockClassification } from '../types'
 
 const runtimeState = vi.hoisted(() => ({
   appType: 'workflow' as string | undefined,
@@ -53,7 +54,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const createBlock = (
   type: BlockEnum,
   title: string,
-  classification = BlockClassificationEnum.Default,
+  classification: BlockClassification = BlockClassification.Default,
   sort = 0,
 ): NodeDefault => ({
   metaData: {
@@ -142,18 +143,20 @@ describe('Blocks', () => {
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.LoopEnd, BlockEnum.KnowledgeBase]}
         blocks={[
           createBlock(BlockEnum.LLM, 'LLM'),
-          createBlock(BlockEnum.LoopEnd, 'Exit Loop', BlockClassificationEnum.Logic),
+          createBlock(BlockEnum.LoopEnd, 'Exit Loop', BlockClassification.Logic),
           createBlock(BlockEnum.KnowledgeBase, 'Knowledge Retrieval'),
         ]}
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'LLM' })).toBeInTheDocument()
+    const llmButton = screen.getByRole('button', { name: 'LLM' })
+    expect(llmButton).toBeInTheDocument()
+    expect(llmButton).toHaveAccessibleDescription('LLM description')
     expect(screen.getByText('Exit Loop')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.loop.loopNode')).toBeInTheDocument()
     expect(screen.queryByText('Knowledge Retrieval')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'LLM' }))
+    await user.click(llmButton)
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.LLM)
   })
@@ -169,6 +172,101 @@ describe('Blocks', () => {
     )
 
     expect(screen.getByText('workflow.tabs.noResult')).toBeInTheDocument()
+  })
+
+  it('keeps Human Input searchable but disables it while a legacy node exists', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    const openMigrationDialog = vi.fn()
+    const contextValue = {
+      policy: { hasLegacyHumanInput: true, canAddHumanInputV2: false, candidateCount: 1 as const },
+      canEdit: true,
+      pending: false,
+      openMigrationDialog,
+    }
+    runtimeState.nodes = [
+      {
+        data: {
+          type: BlockEnum.HumanInput,
+        },
+      },
+    ]
+
+    const { rerender } = render(
+      <HumanInputMigrationContext value={contextValue}>
+        <Blocks
+          searchText="Human"
+          onSelect={onSelect}
+          availableBlocksTypes={[BlockEnum.HumanInputV2]}
+          blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+        />
+      </HumanInputMigrationContext>,
+    )
+
+    const humanInputButton = screen.getByRole('button', { name: 'Human Input' })
+    expect(humanInputButton).toHaveAttribute('aria-disabled', 'true')
+    expect(humanInputButton).toHaveAccessibleDescription(
+      expect.stringContaining('workflow.nodes.humanInputMigration.disabledReason'),
+    )
+    expect(screen.getByText('workflow.nodes.humanInputMigration.disabledBadge')).toBeInTheDocument()
+
+    await user.click(humanInputButton)
+    expect(onSelect).not.toHaveBeenCalled()
+    await user.hover(humanInputButton)
+    const migrateNow = await screen.findByRole('button', {
+      name: /workflow.nodes.humanInputMigration.action.migrateNow/,
+    })
+    await user.click(migrateNow)
+    expect(openMigrationDialog).toHaveBeenCalledTimes(1)
+
+    runtimeState.nodes = []
+    rerender(
+      <HumanInputMigrationContext value={contextValue}>
+        <Blocks
+          searchText="Human"
+          onSelect={onSelect}
+          availableBlocksTypes={[BlockEnum.HumanInputV2]}
+          blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+        />
+      </HumanInputMigrationContext>,
+    )
+    const enabledButton = screen.getByRole('button', { name: 'Human Input' })
+    expect(enabledButton).toHaveAttribute('aria-disabled', 'false')
+    await user.click(enabledButton)
+    expect(onSelect).toHaveBeenCalledWith(BlockEnum.HumanInputV2)
+  })
+
+  it('keeps migration preview guidance read-only when editing is unavailable', async () => {
+    const user = userEvent.setup()
+    runtimeState.nodes = [{ data: { type: BlockEnum.HumanInput } }]
+
+    render(
+      <HumanInputMigrationContext
+        value={{
+          policy: { hasLegacyHumanInput: true, canAddHumanInputV2: false, candidateCount: 1 },
+          canEdit: false,
+          pending: false,
+          openMigrationDialog: vi.fn(),
+        }}
+      >
+        <Blocks
+          searchText="Human"
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.HumanInputV2]}
+          blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+        />
+      </HumanInputMigrationContext>,
+    )
+
+    await user.hover(screen.getByRole('button', { name: 'Human Input' }))
+    expect(
+      await screen.findByText('workflow.nodes.humanInputMigration.preview.description'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /workflow.nodes.humanInputMigration.action.migrateNow/,
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the agent selector on Agent block hover', async () => {
@@ -245,8 +343,8 @@ describe('Blocks', () => {
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.LLM, BlockEnum.AgentV2]}
             blocks={[
-              createBlock(BlockEnum.LLM, 'LLM', BlockClassificationEnum.Default, 0),
-              createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3),
+              createBlock(BlockEnum.LLM, 'LLM', BlockClassification.Default, 0),
+              createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3),
             ]}
           />
         </HooksStoreContext>
@@ -334,7 +432,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={vi.fn()}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
@@ -392,7 +490,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
@@ -435,7 +533,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,

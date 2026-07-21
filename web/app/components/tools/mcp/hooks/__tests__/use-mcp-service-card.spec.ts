@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook } from '@testing-library/react'
-import * as React from 'react'
+import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { renderHook } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useMCPServiceCardState } from '../use-mcp-service-card'
@@ -32,6 +32,13 @@ let mockUseMCPServerDetailAppID = ''
 let mockUseMCPServerDetailEnabled: boolean | undefined
 
 // Mock service hooks
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/service/use-tools', () => ({
   useUpdateMCPServer: () => ({
     mutateAsync: mockUpdateMCPServer,
@@ -75,17 +82,17 @@ vi.mock('@/service/apps', () => ({
   }),
 }))
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 describe('useMCPServiceCardState', () => {
   const createWrapper = () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
+    return createQueryClientWrapper(createAccountProfileQueryClient())
   }
 
   const createMockAppInfo = (

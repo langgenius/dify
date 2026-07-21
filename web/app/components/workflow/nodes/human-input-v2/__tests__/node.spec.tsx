@@ -13,7 +13,7 @@ const createData = (overrides: Partial<HumanInputV2NodeType> = {}): HumanInputV2
   desc: '',
   type: BlockEnum.HumanInput,
   version: '2',
-  recpients_spec: [],
+  recipients_spec: [],
   message_template: { subject: '', body: '' },
   debug_mode: { enabled: false, channels: [] },
   form_content: '',
@@ -38,7 +38,7 @@ describe('Human Input v2 node card', () => {
     const { rerender } = render(
       <HumanInputV2Node
         id="human-input-v2"
-        data={createData({ recpients_spec: [{ type: 'initiator' }] })}
+        data={createData({ recipients_spec: [{ type: 'initiator' }] })}
       />,
     )
     expect(screen.getByText('workflow.nodes.humanInputV2.card.initiatorOnly')).toBeInTheDocument()
@@ -47,7 +47,7 @@ describe('Human Input v2 node card', () => {
       <HumanInputV2Node
         id="human-input-v2"
         data={createData({
-          recpients_spec: [{ type: 'contact', contact_id: 'contact-evan' }],
+          recipients_spec: [{ type: 'contact', contact_id: 'contact-evan' }],
         })}
       />,
     )
@@ -61,7 +61,7 @@ describe('Human Input v2 node card', () => {
       <HumanInputV2Node
         id="human-input-v2"
         data={createData({
-          recpients_spec: [{ type: 'initiator' }, { type: 'contact', contact_id: 'contact-evan' }],
+          recipients_spec: [{ type: 'initiator' }, { type: 'contact', contact_id: 'contact-evan' }],
         })}
       />,
     )
@@ -77,7 +77,7 @@ describe('Human Input v2 node card', () => {
       <HumanInputV2Node
         id="human-input-v2"
         data={createData({
-          recpients_spec: [
+          recipients_spec: [
             { type: 'onetime_email', email: 'one@example.com' },
             { type: 'onetime_email', email: 'two@example.com' },
             { type: 'onetime_email', email: 'three@example.com' },
@@ -93,7 +93,7 @@ describe('Human Input v2 node card', () => {
     rerender(
       <HumanInputV2Node
         id="human-input-v2"
-        data={createData({ recpients_spec: [{ type: 'contact', contact_id: 'unresolved' }] })}
+        data={createData({ recipients_spec: [{ type: 'contact', contact_id: 'unresolved' }] })}
       />,
     )
     expect(screen.getByText('workflow.nodes.humanInputV2.card.invalid')).toBeInTheDocument()

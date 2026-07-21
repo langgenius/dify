@@ -9,7 +9,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { CreateSubscriptionButton } from '../index'
 import { CreateButtonType, DEFAULT_METHOD } from '../types'
 
@@ -116,7 +116,7 @@ vi.mock('../oauth-client', () => ({
               id: 'test-builder',
               name: 'test',
               provider: 'test-provider',
-              credential_type: TriggerCredentialTypeEnum.Oauth2,
+              credential_type: TriggerCredentialType.Oauth2,
               credentials: {},
               endpoint: 'https://test.com',
               parameters: {},
@@ -285,7 +285,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'test-subscription',
   name: 'Test Subscription',
   provider: 'test-provider',
-  credential_type: TriggerCredentialTypeEnum.ApiKey,
+  credential_type: TriggerCredentialType.ApiKey,
   credentials: {},
   endpoint: 'https://test.com',
   parameters: {},
@@ -1133,7 +1133,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credential_type: TriggerCredentialType.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1598,7 +1598,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credential_type: TriggerCredentialType.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1770,7 +1770,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credential_type: TriggerCredentialType.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},

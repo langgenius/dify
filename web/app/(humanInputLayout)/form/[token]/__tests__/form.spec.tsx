@@ -10,6 +10,7 @@ import { useFormSubmit } from '../use-form-submit'
 
 const mockSubmitForm = vi.hoisted(() => vi.fn())
 const mockUseGetHumanInputForm = vi.hoisted(() => vi.fn())
+const mockExpirationTime = vi.hoisted(() => vi.fn())
 const mockContentItemState = vi.hoisted(() => ({
   staleAttachmentInputChange: undefined as ((name: string, value: unknown) => void) | undefined,
   uploadedFile: {
@@ -110,7 +111,10 @@ vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item
 
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/expiration-time', () => ({
   __esModule: true,
-  default: () => <div>expiration-time</div>,
+  default: ({ expirationTime }: { expirationTime: number }) => {
+    mockExpirationTime(expirationTime)
+    return <div>expiration-time</div>
+  },
 }))
 
 vi.mock('@/app/components/base/loading', () => ({
@@ -256,6 +260,8 @@ describe('Human input share form', () => {
 
     render(<FormContent />)
 
+    expect(mockExpirationTime).toHaveBeenCalledWith(60_000)
+
     await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
     await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
@@ -307,11 +313,7 @@ describe('Human input share form', () => {
     const { result } = renderHook(() => useFormSubmit('token-empty'))
 
     act(() => {
-      result.current.submit(
-        undefined as unknown as Record<string, HumanInputFieldValue>,
-        'reject',
-        [],
-      )
+      result.current.submit(undefined as unknown as Record<string, HumanInputFieldValue>, 'reject')
     })
 
     expect(mockSubmitForm).toHaveBeenCalledWith(

@@ -8,6 +8,10 @@ import { consoleQuery } from '@/service/client'
 import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
 import { useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks'
+import {
+  canInsertHumanInput,
+  isHumanInputInsertion,
+} from '../../nodes/human-input-v2/migration/policy'
 import { BlockEnum } from '../../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../../utils'
 
@@ -297,6 +301,13 @@ export const useInsertSnippet = () => {
 
         const { getNodes, setNodes, edges, setEdges } = store.getState()
         const currentNodes = getNodes()
+        const containsHumanInput = snippetNodes.some((node) =>
+          isHumanInputInsertion(node.data.type, node.data),
+        )
+        if (containsHumanInput && !canInsertHumanInput(currentNodes, BlockEnum.HumanInputV2)) {
+          toast.warning(t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' }))
+          return false
+        }
         const remappedGraph = remapSnippetGraph(
           currentNodes,
           snippetNodes,

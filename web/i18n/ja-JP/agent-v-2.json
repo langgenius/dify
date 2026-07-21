@@ -14,6 +14,7 @@
   "agentDetail.access.title": "アクセスポイント",
   "agentDetail.access.toggleSurface": "{{name}} のアクセスを切り替え",
   "agentDetail.access.webApp.accessUrl": "アクセス URL",
+  "agentDetail.access.webApp.actions.accessControl": "アクセス制御",
   "agentDetail.access.webApp.actions.customize": "カスタムフロントエンド",
   "agentDetail.access.webApp.actions.embedded": "埋め込み",
   "agentDetail.access.webApp.actions.launch": "起動",

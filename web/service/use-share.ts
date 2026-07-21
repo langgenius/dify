@@ -1,4 +1,4 @@
-import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
+import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input-form/types'
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {

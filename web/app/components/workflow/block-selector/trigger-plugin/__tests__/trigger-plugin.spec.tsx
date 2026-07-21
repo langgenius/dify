@@ -111,7 +111,10 @@ describe('trigger plugin selector components', () => {
       />,
     )
 
-    await user.click(screen.getByText('On Created'))
+    const triggerButton = screen.getByRole('button', { name: 'On Created' })
+    expect(triggerButton).toHaveAccessibleDescription('On Created description')
+
+    await user.click(triggerButton)
 
     expect(onSelect).toHaveBeenCalledWith(
       BlockEnum.TriggerPlugin,
