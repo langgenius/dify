@@ -5,7 +5,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { ENTERPRISE_LICENSE_STATUSES } from '@/features/system-features/constants'
 
 type CommunityEditionTipProps = {
   tip: string
@@ -14,9 +13,9 @@ type CommunityEditionTipProps = {
 }
 
 /**
- * Warning affordance for caveats that only apply outside an enterprise license.
- * Renders nothing when the deployment is licensed, so callers do not repeat the
- * license check.
+ * Warning affordance for caveats that only apply to community edition.
+ * Renders nothing on an enterprise deployment, so callers do not repeat the
+ * edition check.
  */
 export function CommunityEditionTip({
   tip,
@@ -25,7 +24,7 @@ export function CommunityEditionTip({
 }: CommunityEditionTipProps) {
   const { data: isEnterprise } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: (systemFeatures) => ENTERPRISE_LICENSE_STATUSES.has(systemFeatures.license.status),
+    select: (systemFeatures) => systemFeatures.enterprise_enabled,
   })
 
   if (isEnterprise)
