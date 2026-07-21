@@ -1,10 +1,10 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Buffer } from 'node:buffer'
 import { createHmac } from 'node:crypto'
 import { resolveNewRagSmokeConfig } from '../../../scripts/run-new-rag-smoke'
 import { createApiContext, expectApiResponseOK } from '../../../support/api'
 
-type DifyAccountProfile = { id: string }
-type DifyWorkspace = { id: string }
 type KnowledgeFsScope = 'knowledge-spaces:read' | 'knowledge-spaces:write'
 type DifyIdentity = { accountId: string; tenantId: string }
 type KnowledgeSpaceDeletionSnapshot = { name: string; revision: number }
@@ -50,8 +50,8 @@ const getDifyIdentity = async () => {
     ])
     await expectApiResponseOK(accountResponse, 'Read the current E2E account')
     await expectApiResponseOK(workspaceResponse, 'Read the current E2E workspace')
-    const account = (await accountResponse.json()) as DifyAccountProfile
-    const workspace = (await workspaceResponse.json()) as DifyWorkspace
+    const account = (await accountResponse.json()) as GetAccountProfileResponse
+    const workspace = (await workspaceResponse.json()) as PostWorkspacesCurrentResponse
     if (!account.id || !workspace.id)
       throw new Error('The current Dify account or workspace has no stable identifier.')
     return { accountId: account.id, tenantId: workspace.id }

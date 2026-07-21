@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildNewRagSmokeRuns, resolveNewRagSmokeConfig } from '../scripts/run-new-rag-smoke'
+import {
+  buildNewRagSmokeRuns,
+  newRagCucumberArgs,
+  resolveNewRagSmokeConfig,
+} from '../scripts/run-new-rag-smoke'
 
 const completeEnvironment = {
   E2E_NEW_RAG_CONNECTION_CREDENTIALS_JSON: JSON.stringify({
@@ -9,6 +13,8 @@ const completeEnvironment = {
   E2E_NEW_RAG_CRAWL_URL: 'https://docs.example.com',
   E2E_NEW_RAG_KNOWLEDGE_FS_BASE_URL: 'http://127.0.0.1:8788/',
   E2E_NEW_RAG_KNOWLEDGE_FS_JWT_SECRET: 'knowledge-fs-smoke-secret-at-least-32-characters',
+  E2E_CUCUMBER_TAGS: '@stale-caller-tag',
+  E2E_REUSE_WEB_SERVER: 'true',
   PATH: '/test/bin',
 } satisfies NodeJS.ProcessEnv
 
@@ -78,5 +84,23 @@ describe('buildNewRagSmokeRuns', () => {
       KNOWLEDGE_FS_JWT_SECRET: 'knowledge-fs-smoke-secret-at-least-32-characters',
     })
     expect(runs[2]?.env.PATH).toBe('/test/bin')
+    for (const run of runs) {
+      expect(run.env).not.toHaveProperty('E2E_CUCUMBER_TAGS')
+      expect(run.env).not.toHaveProperty('E2E_REUSE_WEB_SERVER')
+    }
+  })
+})
+
+describe('newRagCucumberArgs', () => {
+  it('runs every matrix entry with a fresh full E2E lifecycle', () => {
+    expect(newRagCucumberArgs('@new-rag-happy-path')).toEqual([
+      'exec',
+      'tsx',
+      './scripts/run-cucumber.ts',
+      '--full',
+      '--',
+      '--tags',
+      '@new-rag-happy-path',
+    ])
   })
 })

@@ -30,18 +30,23 @@ const readSystemFeatures = async () => {
   }
 }
 
-Given('the Firecrawl datasource plugin is installed', { timeout: 360_000 }, async () => {
-  const result = await bootstrapMarketplacePlugins(
-    { dryRun: false, resources: new Map() },
-    {
-      defaultPluginIds: ['langgenius/firecrawl_datasource'],
-      pluginIdsEnv: 'E2E_NEW_RAG_PLUGIN_IDS',
-      title: 'New RAG Firecrawl datasource plugin',
-    },
-  )
-  if (result.status === 'blocked')
-    throw new Error(result.reason ?? 'The Firecrawl datasource plugin could not be installed.')
-})
+Given(
+  'the Firecrawl datasource plugin is installed',
+  { timeout: 360_000 },
+  async function (this: DifyWorld) {
+    void this
+    const result = await bootstrapMarketplacePlugins(
+      { dryRun: false, resources: new Map() },
+      {
+        defaultPluginIds: ['langgenius/firecrawl_datasource'],
+        pluginIdsEnv: 'E2E_NEW_RAG_PLUGIN_IDS',
+        title: 'New RAG Firecrawl datasource plugin',
+      },
+    )
+    if (result.status === 'blocked')
+      throw new Error(result.reason ?? 'The Firecrawl datasource plugin could not be installed.')
+  },
+)
 
 Given('I monitor New RAG network requests', async function (this: DifyWorld) {
   const page = this.getPage()

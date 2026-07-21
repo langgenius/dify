@@ -26,6 +26,8 @@ const providerSecretEnvironmentKeys = [
   'E2E_NEW_RAG_KNOWLEDGE_FS_JWT_SECRET',
 ] as const
 
+const executionOverrideEnvironmentKeys = ['E2E_CUCUMBER_TAGS', 'E2E_REUSE_WEB_SERVER'] as const
+
 const required = (env: SmokeEnvironment, name: string) => {
   const value = env[name]?.trim()
   if (!value) throw new Error(`${name} is required for the New RAG smoke test.`)
@@ -95,9 +97,16 @@ const withoutKnowledgeFsConfiguration = (source: SmokeEnvironment) => {
   return env
 }
 
+const withoutExecutionOverrides = (source: SmokeEnvironment) => {
+  const env = { ...source }
+  for (const key of executionOverrideEnvironmentKeys) delete env[key]
+  return env
+}
+
 export const buildNewRagSmokeRuns = (source: SmokeEnvironment): NewRagSmokeRun[] => {
   const config = resolveNewRagSmokeConfig(source)
-  const disabledBase = withoutKnowledgeFsConfiguration(source)
+  const isolatedSource = withoutExecutionOverrides(source)
+  const disabledBase = withoutKnowledgeFsConfiguration(isolatedSource)
 
   return [
     {
@@ -119,7 +128,7 @@ export const buildNewRagSmokeRuns = (source: SmokeEnvironment): NewRagSmokeRun[]
     },
     {
       env: {
-        ...source,
+        ...isolatedSource,
         E2E_NEW_RAG_CRAWL_URL: config.crawlUrl,
         E2E_NEW_RAG_EXPECTED_FLAG_MODE: 'enabled',
         E2E_NEW_RAG_KNOWLEDGE_FS_BASE_URL: config.knowledgeFsBaseUrl,
@@ -132,6 +141,16 @@ export const buildNewRagSmokeRuns = (source: SmokeEnvironment): NewRagSmokeRun[]
     },
   ]
 }
+
+export const newRagCucumberArgs = (tag: NewRagSmokeRun['tag']) => [
+  'exec',
+  'tsx',
+  './scripts/run-cucumber.ts',
+  '--full',
+  '--',
+  '--tags',
+  tag,
+]
 
 const requireKnowledgeFsHealth = async (baseUrl: string) => {
   const healthUrl = new URL('/health', `${baseUrl}/`)
@@ -156,7 +175,7 @@ const main = async () => {
     console.warn(`[new-rag-smoke] start ${run.label}`)
     const result = await runCommand({
       command: 'pnpm',
-      args: ['exec', 'tsx', './scripts/run-cucumber.ts', '--', '--tags', run.tag],
+      args: newRagCucumberArgs(run.tag),
       cwd: e2eDir,
       env: run.env,
       inheritEnv: false,
