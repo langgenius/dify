@@ -727,6 +727,8 @@ describe('DocumentsPage', () => {
     expect(
       screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAllDocuments' }),
     ).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
   it('re-indexes selected documents and keeps unsupported actions unavailable', async () => {

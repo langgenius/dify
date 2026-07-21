@@ -947,12 +947,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const loadMoreResults = () => {
     const requests: Promise<unknown>[] = []
-    if (hasNextDocumentPage && !isFetchingNextDocumentPage && !isFetchNextDocumentPageError)
-      requests.push(fetchNextDocumentPage())
-    if (hasNextTaskPage && !isFetchingNextTaskPage && !isFetchNextTaskPageError)
-      requests.push(fetchNextTaskPage())
-    if (hasNextSourcePage && !isFetchingNextSourcePage && !isFetchNextSourcePageError)
-      requests.push(fetchNextSourcePage())
+    if (hasNextDocumentPage && !isFetchingNextDocumentPage) requests.push(fetchNextDocumentPage())
+    if (hasNextTaskPage && !isFetchingNextTaskPage) requests.push(fetchNextTaskPage())
+    if (hasNextSourcePage && !isFetchingNextSourcePage) requests.push(fetchNextSourcePage())
     void Promise.allSettled(requests)
   }
 
