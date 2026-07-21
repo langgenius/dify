@@ -276,11 +276,6 @@ describe('StepOneContent', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<StepOneContent {...defaultProps} />)
-      expect(container.querySelector('.flex.flex-col')).toBeInTheDocument()
-    })
-
     it('should render DataSourceOptions component', () => {
       render(<StepOneContent {...defaultProps} />)
       // DataSourceOptions renders option cards

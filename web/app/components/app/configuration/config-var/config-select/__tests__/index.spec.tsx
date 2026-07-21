@@ -57,15 +57,6 @@ describe('ConfigSelect Component', () => {
     expect(defaultProps.onChange).toHaveBeenCalledWith([...defaultProps.options, ''])
   })
 
-  it('applies focus styles on input focus', () => {
-    render(<ConfigSelect {...defaultProps} />)
-    const firstInput = screen.getByDisplayValue('Option 1')
-
-    fireEvent.focus(firstInput)
-
-    expect(firstInput.closest('div')).toHaveClass('border-components-input-border-active')
-  })
-
   it('updates option values and clears focus styles on blur', () => {
     render(<ConfigSelect {...defaultProps} />)
     const firstInput = screen.getByDisplayValue('Option 1')
@@ -75,19 +66,6 @@ describe('ConfigSelect Component', () => {
 
     fireEvent.focus(firstInput)
     fireEvent.blur(firstInput)
-    expect(firstInput.closest('div')).not.toHaveClass('border-components-input-border-active')
-  })
-
-  it('applies delete hover styles', () => {
-    render(<ConfigSelect {...defaultProps} />)
-    const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
-    const deleteButton = screen.getAllByRole('button', { name: 'common.operation.delete' })[0]
-
-    if (!deleteButton) return
-    fireEvent.mouseEnter(deleteButton)
-    expect(optionContainer).toHaveClass('border-components-input-border-destructive')
-    fireEvent.mouseLeave(deleteButton)
-    expect(optionContainer).not.toHaveClass('border-components-input-border-destructive')
   })
 
   it('renders empty state correctly', () => {

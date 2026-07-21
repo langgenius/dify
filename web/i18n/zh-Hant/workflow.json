@@ -169,6 +169,7 @@
   "common.currentWorkflow": "當前工作流程",
   "common.debugAndPreview": "預覽",
   "common.disconnect": "斷開",
+  "common.draftSaveFailed": "草稿儲存失敗",
   "common.duplicate": "複製",
   "common.editing": "編輯中",
   "common.effectVarConfirm.content": "該變數在其他節點中使用。您是否仍要刪除它？",

@@ -1,4 +1,4 @@
-import type { OffsetOptions, Placement } from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { MouseEventHandler } from 'react'
 import type {
   CommonNodeType,
@@ -7,22 +7,25 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
+import type { TabType } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useDebounce } from 'ahooks'
 import * as React from 'react'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { FlowType } from '@/types/common'
 import { BlockEnum, isTriggerNode } from '../types'
 import { useTabs } from './hooks'
-import Snippets from './snippets'
-import Tabs from './tabs'
-import { TabsEnum } from './types'
+import { SelectorContent } from './tabs'
+
+type NodeSelectorOffset =
+  | number
+  | {
+      mainAxis?: number
+      crossAxis?: number
+    }
 
 export type NodeSelectorProps = {
   open?: boolean
@@ -30,7 +33,7 @@ export type NodeSelectorProps = {
   onSelect: OnSelectBlock
   trigger?: (open: boolean) => React.ReactNode
   placement?: Placement
-  offset?: OffsetOptions
+  offset?: NodeSelectorOffset
   triggerStyle?: React.CSSProperties
   triggerClassName?: (open: boolean) => string
   triggerInnerClassName?: string
@@ -43,8 +46,7 @@ export type NodeSelectorProps = {
   noBlocks?: boolean
   noTools?: boolean
   showStartTab?: boolean
-  defaultActiveTab?: TabsEnum
-  forceShowStartContent?: boolean
+  defaultActiveTab?: TabType
   ignoreNodeIds?: string[]
   forceEnableStartTab?: boolean // Force enabling Start tab regardless of existing trigger/user input nodes (e.g., when changing Start node type).
   allowUserInputSelection?: boolean // Override user-input availability; default logic blocks it when triggers exist.
@@ -71,7 +73,6 @@ function NodeSelector({
   noTools = false,
   showStartTab = false,
   defaultActiveTab,
-  forceShowStartContent = false,
   ignoreNodeIds = [],
   forceEnableStartTab = false,
   allowUserInputSelection,
@@ -81,13 +82,8 @@ function NodeSelector({
   const { t } = useTranslation()
   const nodes = useNodes()
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const [searchText, setSearchText] = useState('')
-  const [snippetsLoading, setSnippetsLoading] = useState(
-    () => Boolean(openFromProps) && defaultActiveTab === TabsEnum.Snippets,
-  )
-  const debouncedSearchText = useDebounce(searchText, { wait: 500 })
-  const [tags, setTags] = useState<string[]>([])
   const [localOpen, setLocalOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   // Exclude nodes explicitly ignored (such as the node currently being edited) when checking canvas state.
   const filteredNodes = useMemo(() => {
     if (!ignoreNodeIds.length) return nodes
@@ -116,7 +112,7 @@ function NodeSelector({
   const canSelectUserInput = allowUserInputSelection ?? defaultAllowUserInputSelection
   const disableStartTab = flowType === FlowType.snippet
   const disableSnippetsTab = flowType === FlowType.snippet
-  const { activeTab, resetActiveTab, setActiveTab, tabs } = useTabs({
+  const { initialTab, tabs } = useTabs({
     noBlocks,
     noSources: !dataSources.length,
     noTools,
@@ -133,21 +129,15 @@ function NodeSelector({
       if (disabled) return
 
       setLocalOpen(newOpen)
-
-      if (!newOpen) {
-        setSearchText('')
-        setSnippetsLoading(false)
-        resetActiveTab()
-      } else if (activeTab === TabsEnum.Snippets) {
-        setSnippetsLoading(true)
-      }
-
       if (onOpenChange) onOpenChange(newOpen)
     },
-    [activeTab, disabled, onOpenChange, resetActiveTab],
+    [disabled, onOpenChange],
   )
   const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
     e.stopPropagation()
+  }, [])
+  const handlePopupClick = useCallback<MouseEventHandler<HTMLDivElement>>((event) => {
+    event.stopPropagation()
   }, [])
 
   const handleSelect = useCallback<OnSelectBlock>(
@@ -158,47 +148,12 @@ function NodeSelector({
     [handleOpenChange, onSelect],
   )
 
-  const handleActiveTabChange = useCallback(
-    (newActiveTab: TabsEnum) => {
-      setActiveTab(newActiveTab)
-      if (open && newActiveTab === TabsEnum.Snippets) setSnippetsLoading(true)
-    },
-    [open, setActiveTab],
-  )
   const handlePopupKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       if (isolateKeyboardEvents) event.stopPropagation()
     },
     [isolateKeyboardEvents],
   )
-
-  useEffect(() => {
-    if (!snippetsLoading) return
-
-    const timer = window.setTimeout(() => {
-      setSnippetsLoading(false)
-    }, 200)
-
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [snippetsLoading])
-  const filterSearchText =
-    activeTab === TabsEnum.Start || activeTab === TabsEnum.Tools ? debouncedSearchText : searchText
-
-  const searchPlaceholder = useMemo(() => {
-    if (activeTab === TabsEnum.Start) return t(($) => $['tabs.searchTrigger'], { ns: 'workflow' })
-
-    if (activeTab === TabsEnum.Blocks) return t(($) => $['tabs.searchBlock'], { ns: 'workflow' })
-
-    if (activeTab === TabsEnum.Tools) return t(($) => $['tabs.searchTool'], { ns: 'workflow' })
-
-    if (activeTab === TabsEnum.Sources)
-      return t(($) => $['tabs.searchDataSource'], { ns: 'workflow' })
-    if (activeTab === TabsEnum.Snippets)
-      return t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })
-    return ''
-  }, [activeTab, t])
 
   const defaultTriggerElement = (
     <PopoverTrigger
@@ -223,8 +178,7 @@ function NodeSelector({
   ) : (
     <div className={triggerInnerClassName}>{triggerElement}</div>
   )
-  const resolvedOffset =
-    typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
+  const resolvedOffset = typeof offset === 'number' ? undefined : offset
   const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
   const alignOffset = typeof offset === 'number' ? 0 : (resolvedOffset?.crossAxis ?? 0)
 
@@ -243,8 +197,13 @@ function NodeSelector({
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
+        positionerProps={{ positionMethod: 'fixed' }}
         popupClassName="border-none bg-transparent shadow-none"
-        popupProps={isolateKeyboardEvents ? { onKeyDown: handlePopupKeyDown } : undefined}
+        popupProps={{
+          initialFocus: searchInputRef,
+          onClick: handlePopupClick,
+          ...(isolateKeyboardEvents ? { onKeyDown: handlePopupKeyDown } : {}),
+        }}
       >
         <div
           className={cn(
@@ -252,84 +211,20 @@ function NodeSelector({
             popupClassName,
           )}
         >
-          <Tabs
+          <SelectorContent
             tabs={tabs}
-            activeTab={activeTab}
+            defaultTab={initialTab}
+            standalonePanel={noBlocks ? initialTab : undefined}
+            searchInputRef={searchInputRef}
             blocks={blocks}
             allowStartNodeSelection={canSelectUserInput}
             hasUserInputNode={hasUserInputNode}
             hasTriggerNode={hasTriggerNode}
-            onActiveTabChange={handleActiveTabChange}
-            filterElem={
-              activeTab === TabsEnum.Snippets ? null : (
-                <div className="relative m-2" onClick={(e) => e.stopPropagation()}>
-                  {activeTab === TabsEnum.Start && (
-                    <SearchBox
-                      autoFocus
-                      search={searchText}
-                      onSearchChange={setSearchText}
-                      tags={tags}
-                      onTagsChange={setTags}
-                      placeholder={searchPlaceholder}
-                      inputClassName="grow"
-                    />
-                  )}
-                  {activeTab === TabsEnum.Blocks && (
-                    <Input
-                      showLeftIcon
-                      showClearIcon
-                      autoFocus
-                      value={searchText}
-                      placeholder={searchPlaceholder}
-                      onChange={(e) => setSearchText(e.target.value)}
-                      onClear={() => setSearchText('')}
-                    />
-                  )}
-                  {activeTab === TabsEnum.Sources && (
-                    <Input
-                      showLeftIcon
-                      showClearIcon
-                      autoFocus
-                      value={searchText}
-                      placeholder={searchPlaceholder}
-                      onChange={(e) => setSearchText(e.target.value)}
-                      onClear={() => setSearchText('')}
-                    />
-                  )}
-                  {activeTab === TabsEnum.Tools && (
-                    <SearchBox
-                      autoFocus
-                      search={searchText}
-                      onSearchChange={setSearchText}
-                      tags={tags}
-                      onTagsChange={setTags}
-                      placeholder={t(($) => $.searchTools, { ns: 'plugin' })!}
-                      inputClassName="grow"
-                    />
-                  )}
-                </div>
-              )
-            }
             onSelect={handleSelect}
-            searchText={filterSearchText}
-            tags={tags}
+            onRequestClose={() => handleOpenChange(false)}
             availableBlocksTypes={availableBlocksTypes}
-            noBlocks={noBlocks}
             dataSources={dataSources}
-            noTools={noTools}
-            onTagsChange={setTags}
-            forceShowStartContent={forceShowStartContent}
-            snippetsElem={
-              disableSnippetsTab ? undefined : (
-                <Snippets
-                  loading={snippetsLoading}
-                  searchText={searchText}
-                  onSearchTextChange={setSearchText}
-                  insertPayload={snippetInsertPayload}
-                  onInserted={() => handleOpenChange(false)}
-                />
-              )
-            }
+            snippetInsertPayload={snippetInsertPayload}
           />
         </div>
       </PopoverContent>

@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { CopyFeedbackNew } from '../copy-feedback'
 
-export const inputVariants = cva('', {
+const inputVariants = cva('', {
   variants: {
     size: {
       regular: 'rounded-lg px-3 system-sm-regular',

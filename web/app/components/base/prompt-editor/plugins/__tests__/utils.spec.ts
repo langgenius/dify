@@ -5,11 +5,6 @@ import { createTestEditor, withEditorUpdate } from './utils'
 
 describe('Prompt Editor Test Utils', () => {
   describe('createTestEditor', () => {
-    it('should create an editor without crashing', () => {
-      const editor = createTestEditor()
-      expect(editor).toBeDefined()
-    })
-
     it('should create an editor with no nodes by default', () => {
       const editor = createTestEditor()
       expect(editor).toBeDefined()
@@ -71,15 +66,6 @@ describe('Prompt Editor Test Utils', () => {
   })
 
   describe('withEditorUpdate', () => {
-    it('should execute update function without crashing', () => {
-      const editor = createTestEditor([ParagraphNode, TextNode])
-      const updateFn = vi.fn()
-
-      withEditorUpdate(editor, updateFn)
-
-      expect(updateFn).toHaveBeenCalled()
-    })
-
     it('should pass discrete: true option to editor.update', () => {
       const editor = createTestEditor([ParagraphNode, TextNode])
       const updateSpy = vi.spyOn(editor, 'update')

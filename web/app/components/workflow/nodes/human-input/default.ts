@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault, Var } from '../../types'
 import type { DeliveryMethod, EmailConfig, FormInputItem, HumanInputNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { DeliveryMethodType } from './types'
@@ -9,7 +9,7 @@ import { DeliveryMethodType } from './types'
 const i18nPrefix = 'nodes.humanInput.errorMsg'
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Logic,
+  classification: BlockClassification.Logic,
   sort: 1,
   type: BlockEnum.HumanInput,
 })

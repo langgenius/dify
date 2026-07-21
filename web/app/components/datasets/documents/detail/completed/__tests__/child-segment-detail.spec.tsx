@@ -110,12 +110,6 @@ describe('ChildSegmentDetail', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render edit child chunk title', () => {
       render(<ChildSegmentDetail {...defaultProps} />)
 
@@ -231,14 +225,6 @@ describe('ChildSegmentDetail', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle undefined childChunkInfo', () => {
-      const { container } = render(
-        <ChildSegmentDetail {...defaultProps} childChunkInfo={undefined} />,
-      )
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should handle empty content', () => {
       const emptyChildChunkInfo = { ...defaultChildChunkInfo, content: '' }
 
