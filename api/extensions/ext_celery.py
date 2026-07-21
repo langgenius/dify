@@ -275,6 +275,7 @@ def init_app(app: DifyApp) -> Celery:
 
     if (
         dify_config.EDITION == "SELF_HOSTED"
+        and not dify_config.ENTERPRISE_ENABLED
         and not dify_config.DISABLE_TELEMETRY
         and not dify_config.DO_NOT_TRACK
         and not dify_config.CI

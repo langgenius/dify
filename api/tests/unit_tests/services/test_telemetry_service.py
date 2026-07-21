@@ -14,6 +14,7 @@ from services.telemetry_service import CommunityTelemetryService
 @pytest.fixture
 def telemetry_enabled(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(telemetry_service.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(telemetry_service.dify_config, "ENTERPRISE_ENABLED", False)
     monkeypatch.setattr(telemetry_service.dify_config, "DISABLE_TELEMETRY", False)
     monkeypatch.setattr(telemetry_service.dify_config, "DO_NOT_TRACK", False)
     monkeypatch.setattr(telemetry_service.dify_config, "CI", False)
@@ -24,6 +25,13 @@ def telemetry_enabled(monkeypatch: pytest.MonkeyPatch):
         "https://telemetry-cn.example.test/v1/events",
     )
     monkeypatch.setattr(telemetry_service.dify_config, "TELEMETRY_TIMEOUT_SECONDS", 2)
+
+
+def test_telemetry_is_disabled_for_enterprise(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(telemetry_service.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(telemetry_service.dify_config, "ENTERPRISE_ENABLED", True)
+
+    assert CommunityTelemetryService._is_enabled() is False
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)

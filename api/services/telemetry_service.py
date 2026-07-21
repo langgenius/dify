@@ -75,6 +75,7 @@ class CommunityTelemetryService:
     def _is_enabled(cls) -> bool:
         return (
             dify_config.EDITION == "SELF_HOSTED"
+            and not dify_config.ENTERPRISE_ENABLED
             and not dify_config.DISABLE_TELEMETRY
             and not dify_config.DO_NOT_TRACK
             and not dify_config.CI
