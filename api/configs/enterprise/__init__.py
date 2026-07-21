@@ -1,4 +1,4 @@
-from pydantic import Field, PositiveFloat
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -19,7 +19,6 @@ class EnterpriseFeatureConfig(BaseSettings):
         default=False,
     )
 
-    ENTERPRISE_API_TIMEOUT: PositiveFloat = Field(
-        description="Timeout in seconds for requests to the enterprise inner API.",
-        default=90.0,
+    ENTERPRISE_REQUEST_TIMEOUT: int = Field(
+        ge=1, description="Maximum timeout in seconds for enterprise requests", default=90
     )
