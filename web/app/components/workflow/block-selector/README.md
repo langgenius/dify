@@ -21,7 +21,7 @@ Standalone selectors must declare `standalonePanel`. Availability props such as 
 - `snippets`: Snippet filtering, insertion, list rows, and preview content.
 - `tool`, `trigger-plugin`, and `marketplace-plugin`: Row and list modules for installed and Marketplace integrations.
 - `featured-tools`, `featured-triggers`, and `rag-tool-recommendations`: Recommendation sections owned by this selector.
-- `hooks`, `storage`, `group-items`, and `types`: Selector-specific state and data contracts; these are not public compatibility entrypoints.
+- `hooks`, `storage`, `tool-list-data`, and `types`: Selector-specific state and data contracts; these are not public compatibility entrypoints.
 
 ## External Modules
 

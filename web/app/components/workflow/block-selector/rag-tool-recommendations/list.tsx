@@ -7,10 +7,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/preview-card'
 import { useCallback, useMemo, useRef } from 'react'
 import { useGetLanguage } from '@/context/i18n'
-import { groupItems } from '../group-items'
+import { createToolListData } from '../tool-list-data'
 import { ToolActionPreviewCard } from '../tool/action-item'
 import ToolListFlatView from '../tool/tool-list-flat-view/list'
-import ToolListTreeView from '../tool/tool-list-tree-view/list'
+import { ToolListTreeView } from '../tool/tool-list-tree-view/list'
 import { ViewType } from '../types'
 import UninstalledItem from './uninstalled-item'
 
@@ -27,38 +27,10 @@ const List = ({ onSelect, tools, viewType, unInstalledPlugins, className }: List
   const previewCardHandle = useMemo(() => createPreviewCardHandle<ToolActionPreviewPayload>(), [])
   const isFlatView = viewType === ViewType.flat
 
-  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(
-    tools,
-    (tool) => tool.label[language]![0]!,
+  const { letters, flatTools, treeGroups } = useMemo(
+    () => createToolListData(tools, (tool) => tool.label[language]![0]!),
+    [language, tools],
   )
-  const treeViewToolsData = useMemo(() => {
-    const result: Record<string, ToolWithProvider[]> = {}
-    Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
-        if (!result[groupName]) result[groupName] = []
-        result[groupName].push(...(withLetterAndGroupViewToolsData[letter]![groupName] ?? []))
-      })
-    })
-    return result
-  }, [withLetterAndGroupViewToolsData])
-
-  const listViewToolData = useMemo(() => {
-    const result: ToolWithProvider[] = []
-    letters.forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
-        result.push(
-          ...withLetterAndGroupViewToolsData[letter]![groupName]!.map((item) => {
-            return {
-              ...item,
-              letter,
-            }
-          }),
-        )
-      })
-    })
-
-    return result
-  }, [withLetterAndGroupViewToolsData, letters])
 
   const toolRefsRef = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -76,7 +48,7 @@ const List = ({ onSelect, tools, viewType, unInstalledPlugins, className }: List
           <ToolListFlatView
             toolRefs={toolRefsRef}
             letters={letters}
-            payload={listViewToolData}
+            payload={flatTools}
             previewCardHandle={previewCardHandle}
             isShowLetterIndex={false}
             hasSearchText={false}
@@ -86,7 +58,7 @@ const List = ({ onSelect, tools, viewType, unInstalledPlugins, className }: List
           />
         ) : (
           <ToolListTreeView
-            payload={treeViewToolsData}
+            payload={treeGroups}
             previewCardHandle={previewCardHandle}
             hasSearchText={false}
             onSelect={handleSelect}
