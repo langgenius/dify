@@ -135,16 +135,6 @@ jobs:
             exit 1
           fi
 
-          if [[ -d cucumber-report ]]; then
-            rm -rf cucumber-report-non-external
-            mv cucumber-report cucumber-report-non-external
-          fi
-
-          if [[ -d .logs ]]; then
-            rm -rf .logs-non-external
-            mv .logs .logs-non-external
-          fi
-
           teardown_external_runtime() {
             local run_status=$?
             trap - EXIT

@@ -11,6 +11,7 @@ from pydantic import (
     PositiveFloat,
     PositiveInt,
     computed_field,
+    field_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -279,6 +280,27 @@ class PluginConfig(BaseSettings):
         description="Comma-separated marketplace plugin IDs whose latest versions are installed for new users",
         default="",
     )
+
+    @field_validator("PLUGIN_REMOTE_INSTALL_PORT", mode="before")
+    @classmethod
+    def _reject_host_port_shaped_plugin_remote_install_port(cls, v):
+        """Reject ``host:port``-shaped values with an actionable hint.
+
+        ``EXPOSE_PLUGIN_DEBUGGING_PORT`` is overloaded: it feeds both the
+        plugin_daemon ``ports:`` mapping (where ``127.0.0.1:5003`` is valid
+        compose syntax) and this integer app setting advertised in the console.
+        Without this guard a loopback bind spec crashloops the api container
+        with an opaque ``int_parsing`` traceback. See issue #39323.
+        """
+        if isinstance(v, str) and ":" in v.strip():
+            raise ValueError(
+                "PLUGIN_REMOTE_INSTALL_PORT must be a bare port number, got "
+                f"{v!r}. A 'host:port' value usually means "
+                "EXPOSE_PLUGIN_DEBUGGING_PORT was set to a compose publish spec "
+                "like '127.0.0.1:5003'; bind loopback via a "
+                "docker-compose.override.yaml instead of overloading this var."
+            )
+        return v
 
     @property
     def NEW_USER_DEFAULT_PLUGIN_ID_LIST(self) -> list[str]:
