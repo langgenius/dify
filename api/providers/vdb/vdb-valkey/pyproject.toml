@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-valkey"
+version = "0.0.1"
+
+dependencies = [
+    "valkey-glide>=1.3.0",
+]
+description = "Dify vector store backend (dify-vdb-valkey)."
+
+[project.entry-points."dify.vector_backends"]
+valkey = "dify_vdb_valkey.valkey_vector:ValkeyVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]
