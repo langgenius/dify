@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
@@ -152,6 +153,22 @@ vi.mock('@/service/client', () => ({
             },
             ...options,
           }),
+        },
+        rbac: {
+          myPermissions: {
+            get: {
+              queryKey: () => ['workspace-permission-keys'],
+              queryOptions: (options: {
+                enabled?: boolean
+                input?: Record<string, never>
+                queryKey?: readonly unknown[]
+              }) => ({
+                queryKey: options.queryKey ?? ['workspace-permission-keys'],
+                queryFn: () => mockGetRequest('/workspaces/current/rbac/my-permissions'),
+                ...options,
+              }),
+            },
+          },
         },
       },
     },
@@ -434,6 +451,27 @@ describe('Console bootstrap', () => {
 
       expect(await screen.findByText('workspace loading:true')).toBeInTheDocument()
       expect(screen.getByText('permission loading:true')).toBeInTheDocument()
+    })
+
+    it('should not reuse permission keys while the newly selected workspace is loading', async () => {
+      const user = userEvent.setup()
+      renderConsoleBootstrap()
+
+      expect(await screen.findByText('keys:app.create_and_management')).toBeInTheDocument()
+
+      mockCurrentWorkspaceQueryState.data = {
+        ...mockCurrentWorkspaceResponse,
+        id: 'workspace-2',
+        name: 'Second Workspace',
+      }
+      mockPermissionKeysState.isPending = true
+
+      await user.click(screen.getByRole('button', { name: /refresh workspace/i }))
+
+      expect(await screen.findByText('workspace:Second Workspace')).toBeInTheDocument()
+      expect(await screen.findByText('permission loading:true')).toBeInTheDocument()
+      expect(screen.getByText('keys:')).toBeInTheDocument()
+      expect(screen.queryByText('keys:app.create_and_management')).not.toBeInTheDocument()
     })
   })
 

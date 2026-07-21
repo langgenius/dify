@@ -1,10 +1,10 @@
+import type { MyPermissionsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { PermissionKeysResponse } from '@/models/access-control'
-import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
+import { workspacePermissionKeysQueryKey } from '@/context/permission-state'
 
 const createWorkspacePermissionsFixture = (
   permissionKeys: readonly string[] = [],
-): PermissionKeysResponse => ({
+): MyPermissionsResponse => ({
   workspace: {
     permission_keys: [...permissionKeys],
   },
@@ -24,7 +24,7 @@ export const seedWorkspacePermissionsQuery = (
   permissionKeys: readonly string[] = [],
 ) => {
   const data = createWorkspacePermissionsFixture(permissionKeys)
-  queryClient.setQueryData(workspacePermissionKeysQueryOptions(workspaceId).queryKey, data)
+  queryClient.setQueryData(workspacePermissionKeysQueryKey(workspaceId), data)
   return data
 }
 
@@ -33,8 +33,8 @@ export const ensureWorkspacePermissionsQuery = (
   workspaceId = 'workspace-1',
   permissionKeys: readonly string[] = [],
 ) => {
-  const queryKey = workspacePermissionKeysQueryOptions(workspaceId).queryKey
-  const existingPermissions = queryClient.getQueryData<PermissionKeysResponse>(queryKey)
+  const queryKey = workspacePermissionKeysQueryKey(workspaceId)
+  const existingPermissions = queryClient.getQueryData<MyPermissionsResponse>(queryKey)
   if (existingPermissions === undefined)
     return seedWorkspacePermissionsQuery(queryClient, workspaceId, permissionKeys)
 
