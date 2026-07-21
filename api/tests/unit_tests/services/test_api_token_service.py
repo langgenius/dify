@@ -1,22 +1,38 @@
+"""Unit tests for API token caching and SQLite-backed token lookup."""
+
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 import services.api_token_service as api_token_service_module
+from models.engine import db
 from models.model import ApiToken
 from services.api_token_service import ApiTokenCache, CachedApiToken
 
 
+@pytest.fixture
+def api_token_db() -> Iterator[Session]:
+    """Provide the production database extension with an isolated SQLite token table."""
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        ApiToken.__table__.create(db.engine)
+        with Session(db.engine, expire_on_commit=False) as session:
+            yield session
+
+
 class TestQueryTokenFromDb:
-    def test_should_return_api_token_and_cache_when_token_exists(
-        self, flask_app_with_containers: Flask, db_session_with_containers
-    ):
+    def test_should_return_api_token_and_cache_when_token_exists(self, api_token_db: Session) -> None:
         tenant_id = str(uuid4())
         app_id = str(uuid4())
         token_value = f"app-test-{uuid4()}"
@@ -27,8 +43,8 @@ class TestQueryTokenFromDb:
         api_token.tenant_id = tenant_id
         api_token.type = "app"
         api_token.token = token_value
-        db_session_with_containers.add(api_token)
-        db_session_with_containers.commit()
+        api_token_db.add(api_token)
+        api_token_db.commit()
 
         with (
             patch.object(api_token_service_module.ApiTokenCache, "set") as mock_cache_set,
@@ -41,9 +57,7 @@ class TestQueryTokenFromDb:
         mock_cache_set.assert_called_once()
         mock_record_usage.assert_called_once_with(token_value, "app")
 
-    def test_should_cache_null_and_raise_unauthorized_when_token_not_found(
-        self, flask_app_with_containers: Flask, db_session_with_containers
-    ):
+    def test_should_cache_null_and_raise_unauthorized_when_token_not_found(self, api_token_db: Session) -> None:
         with (
             patch.object(api_token_service_module.ApiTokenCache, "set") as mock_cache_set,
             patch.object(api_token_service_module, "record_token_usage") as mock_record_usage,

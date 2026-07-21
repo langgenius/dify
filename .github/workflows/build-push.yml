@@ -173,7 +173,7 @@ jobs:
 
   create-manifest:
     needs: build
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: depot-ubuntu-24.04
     if: github.repository == 'langgenius/dify'
     strategy:
       matrix:
