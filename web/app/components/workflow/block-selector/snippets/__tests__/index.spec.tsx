@@ -23,13 +23,7 @@ vi.mock('../use-insert-snippet', () => ({
 }))
 
 vi.mock('../snippet-tags-filter', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: string[]
-    onChange: (value: string[]) => void
-  }) => (
+  default: ({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) => (
     <button type="button" onClick={() => onChange(['tag-1'])}>
       {`tag-filter:${value.join(',')}`}
     </button>
@@ -51,7 +45,16 @@ describe('Snippets', () => {
 
   describe('Rendering', () => {
     it('should render loading skeleton when loading', () => {
-      const { container } = render(<Snippets loading searchText="" />)
+      mockUseInfiniteSnippetList.mockReturnValue({
+        data: undefined,
+        isLoading: true,
+        isFetching: true,
+        isFetchingNextPage: false,
+        fetchNextPage: vi.fn(),
+        hasNextPage: undefined,
+      })
+
+      const { container } = render(<Snippets searchText="" />)
 
       expect(container.querySelectorAll('.bg-text-quaternary')).not.toHaveLength(0)
     })
@@ -60,32 +63,38 @@ describe('Snippets', () => {
       render(<Snippets searchText="" />)
 
       expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'workflow.tabs.createSnippet' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'workflow.tabs.createSnippet' }),
+      ).not.toBeInTheDocument()
     })
 
-    it('should render snippet rows from infinite list data', () => {
+    it('should keep cached snippet rows visible while refetching', () => {
       mockUseInfiniteSnippetList.mockReturnValue({
         data: {
-          pages: [{
-            data: [{
-              id: 'snippet-1',
-              name: 'Customer Review',
-              description: 'Snippet description',
-              type: 'group',
-              is_published: true,
-              version: '1.0.0',
-              use_count: 3,
-              tags: [],
-              input_fields: [],
-              created_at: 1,
-              created_by: 'user-1',
-              updated_at: 2,
-              updated_by: 'user-1',
-            }],
-          }],
+          pages: [
+            {
+              data: [
+                {
+                  id: 'snippet-1',
+                  name: 'Customer Review',
+                  description: 'Snippet description',
+                  type: 'group',
+                  is_published: true,
+                  version: '1.0.0',
+                  use_count: 3,
+                  tags: [],
+                  input_fields: [],
+                  created_at: 1,
+                  created_by: 'user-1',
+                  updated_at: 2,
+                  updated_by: 'user-1',
+                },
+              ],
+            },
+          ],
         },
         isLoading: false,
-        isFetching: false,
+        isFetching: true,
         isFetchingNextPage: false,
         fetchNextPage: vi.fn(),
         hasNextPage: false,
@@ -134,23 +143,27 @@ describe('Snippets', () => {
     it('should delegate insert action when snippet item is clicked', () => {
       mockUseInfiniteSnippetList.mockReturnValue({
         data: {
-          pages: [{
-            data: [{
-              id: 'snippet-1',
-              name: 'Customer Review',
-              description: 'Snippet description',
-              type: 'group',
-              is_published: true,
-              version: '1.0.0',
-              use_count: 3,
-              tags: [],
-              input_fields: [],
-              created_at: 1,
-              created_by: 'user-1',
-              updated_at: 2,
-              updated_by: 'user-1',
-            }],
-          }],
+          pages: [
+            {
+              data: [
+                {
+                  id: 'snippet-1',
+                  name: 'Customer Review',
+                  description: 'Snippet description',
+                  type: 'group',
+                  is_published: true,
+                  version: '1.0.0',
+                  use_count: 3,
+                  tags: [],
+                  input_fields: [],
+                  created_at: 1,
+                  created_by: 'user-1',
+                  updated_at: 2,
+                  updated_by: 'user-1',
+                },
+              ],
+            },
+          ],
         },
         isLoading: false,
         isFetching: false,

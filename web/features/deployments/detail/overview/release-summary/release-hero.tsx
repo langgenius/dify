@@ -28,8 +28,10 @@ type ReleaseMetaItemProps = {
   children: ReactNode
 }
 
-const OVERVIEW_CARD_CLASS_NAME = 'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
-const OVERVIEW_ICON_CLASS_NAME = 'flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary'
+const OVERVIEW_CARD_CLASS_NAME =
+  'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
+const OVERVIEW_ICON_CLASS_NAME =
+  'flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary'
 
 export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
   const { t } = useTranslation('deployments')
@@ -41,9 +43,13 @@ export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
       <DeploymentEmptyState
         variant="section"
         icon="i-ri-stack-line"
-        title={t($ => $['overview.hero.empty'])}
-        description={t($ => $['overview.hero.emptyDescription'])}
-        action={appInstanceId ? <CreateReleaseControl appInstanceId={appInstanceId} size="medium" /> : undefined}
+        title={t(($) => $['overview.hero.empty'])}
+        description={t(($) => $['overview.hero.emptyDescription'])}
+        action={
+          appInstanceId ? (
+            <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />
+          ) : undefined
+        }
         className="min-h-44"
       />
     )
@@ -55,7 +61,12 @@ export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
   const commit = releaseCommit(latestRelease)
 
   return (
-    <div className={cn(OVERVIEW_CARD_CLASS_NAME, 'flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6')}>
+    <div
+      className={cn(
+        OVERVIEW_CARD_CLASS_NAME,
+        'flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6',
+      )}
+    >
       <div className="flex min-w-0 items-center gap-3">
         <span aria-hidden className={OVERVIEW_ICON_CLASS_NAME}>
           <span className="i-ri-stack-fill size-4" />
@@ -66,7 +77,7 @@ export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
               {latestRelease.displayName}
             </h4>
             {commit !== '—' && (
-              <TitleTooltip content={t($ => $['versions.commitTooltip'], { commit })}>
+              <TitleTooltip content={t(($) => $['versions.commitTooltip'], { commit })}>
                 <span className="shrink-0 rounded bg-background-section-burn px-1.5 py-0.5 font-mono system-xs-regular text-text-tertiary">
                   {commit}
                 </span>
@@ -74,25 +85,23 @@ export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
             )}
           </div>
           <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 system-xs-regular text-text-tertiary">
-            <ReleaseMetaItem label={t($ => $['versions.col.sourceApp'])} showSeparator={false}>
+            <ReleaseMetaItem label={t(($) => $['versions.col.sourceApp'])} showSeparator={false}>
               <LatestReleaseSource release={latestRelease} />
             </ReleaseMetaItem>
             {author && (
               <ReleaseMetaItem>
-                {t($ => $['overview.hero.byName'], { name: author })}
+                {t(($) => $['overview.hero.byName'], { name: author })}
               </ReleaseMetaItem>
             )}
             {ago && (
               <ReleaseMetaItem>
                 <TitleTooltip content={createdAtTitle}>
-                  <span>
-                    {ago}
-                  </span>
+                  <span>{ago}</span>
                 </TitleTooltip>
               </ReleaseMetaItem>
             )}
             <ReleaseMetaItem>
-              {t($ => $['overview.latestRelease.releaseCount'], { count: releaseCount })}
+              {t(($) => $['overview.latestRelease.releaseCount'], { count: releaseCount })}
             </ReleaseMetaItem>
           </p>
         </div>
@@ -105,26 +114,26 @@ function ReleaseMetaItem({ label, showSeparator = true, children }: ReleaseMetaI
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
       {showSeparator && (
-        <span aria-hidden className="text-text-quaternary">·</span>
+        <span aria-hidden className="text-text-quaternary">
+          ·
+        </span>
       )}
-      {label && (
-        <span className="shrink-0 text-text-quaternary">{label}</span>
-      )}
+      {label && <span className="shrink-0 text-text-quaternary">{label}</span>}
       <span className="min-w-0 truncate">{children}</span>
     </span>
   )
 }
 
-function LatestReleaseSource({ release }: {
-  release: Release
-}) {
+function LatestReleaseSource({ release }: { release: Release }) {
   const { t } = useTranslation('deployments')
   const sourceAppId = release.sourceAppId
 
   if (!sourceAppId) {
     return (
       <span>
-        {release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD ? t($ => $['versions.manualDslOption']) : '—'}
+        {release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD
+          ? t(($) => $['versions.manualDslOption'])
+          : '—'}
       </span>
     )
   }
@@ -132,14 +141,14 @@ function LatestReleaseSource({ release }: {
   return <LatestReleaseSourceLink sourceAppId={sourceAppId} />
 }
 
-function LatestReleaseSourceLink({ sourceAppId }: {
-  sourceAppId: string
-}) {
-  const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
-    input: {
-      params: { app_id: sourceAppId },
-    },
-  }))
+function LatestReleaseSourceLink({ sourceAppId }: { sourceAppId: string }) {
+  const sourceAppQuery = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: {
+        params: { app_id: sourceAppId },
+      },
+    }),
+  )
   const sourceAppName = sourceAppQuery.data?.name
   const label = sourceAppName || sourceAppId
   const title = sourceAppName ? `${sourceAppName} (${sourceAppId})` : sourceAppId

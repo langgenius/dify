@@ -4,9 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { CreateDeploymentGuideLink } from '../../create-guide/link'
 
-export function CreateDeploymentButton({ className }: {
-  className?: string
-}) {
+export function CreateDeploymentButton({ className }: { className?: string }) {
   const { t } = useTranslation('deployments')
 
   return (
@@ -17,7 +15,7 @@ export function CreateDeploymentButton({ className }: {
       )}
     >
       <span className="i-ri-add-line size-4 shrink-0" aria-hidden="true" />
-      <span>{t($ => $['list.createDeployment'])}</span>
+      <span>{t(($) => $['list.createDeployment'])}</span>
     </CreateDeploymentGuideLink>
   )
 }

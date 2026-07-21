@@ -1,6 +1,12 @@
 import type { DataSourceInfo, FullDocumentDetail, IndexingStatusResponse } from '@/models/datasets'
 import { describe, expect, it } from 'vitest'
-import { createDocumentLookup, getFileType, getSourcePercent, isLegacyDataSourceInfo, isSourceEmbedding } from '../utils'
+import {
+  createDocumentLookup,
+  getFileType,
+  getSourcePercent,
+  isLegacyDataSourceInfo,
+  isSourceEmbedding,
+} from '../utils'
 
 describe('isLegacyDataSourceInfo', () => {
   it('should return true when upload_file object exists', () => {
@@ -38,19 +44,27 @@ describe('isSourceEmbedding', () => {
 
 describe('getSourcePercent', () => {
   it('should calculate correct percentage', () => {
-    expect(getSourcePercent({ completed_segments: 50, total_segments: 100 } as IndexingStatusResponse)).toBe(50)
+    expect(
+      getSourcePercent({ completed_segments: 50, total_segments: 100 } as IndexingStatusResponse),
+    ).toBe(50)
   })
 
   it('should return 0 when total is 0', () => {
-    expect(getSourcePercent({ completed_segments: 0, total_segments: 0 } as IndexingStatusResponse)).toBe(0)
+    expect(
+      getSourcePercent({ completed_segments: 0, total_segments: 0 } as IndexingStatusResponse),
+    ).toBe(0)
   })
 
   it('should cap at 100', () => {
-    expect(getSourcePercent({ completed_segments: 150, total_segments: 100 } as IndexingStatusResponse)).toBe(100)
+    expect(
+      getSourcePercent({ completed_segments: 150, total_segments: 100 } as IndexingStatusResponse),
+    ).toBe(100)
   })
 
   it('should round to nearest integer', () => {
-    expect(getSourcePercent({ completed_segments: 1, total_segments: 3 } as IndexingStatusResponse)).toBe(33)
+    expect(
+      getSourcePercent({ completed_segments: 1, total_segments: 3 } as IndexingStatusResponse),
+    ).toBe(33)
   })
 
   it('should handle undefined segments as 0', () => {
@@ -124,10 +138,12 @@ describe('createDocumentLookup', () => {
   })
 
   it('should return undefined notion icon for non-legacy info', () => {
-    const docs = [{
-      id: 'doc-3',
-      data_source_info: { some_other: 'field' },
-    }] as unknown as FullDocumentDetail[]
+    const docs = [
+      {
+        id: 'doc-3',
+        data_source_info: { some_other: 'field' },
+      },
+    ] as unknown as FullDocumentDetail[]
     const lookup = createDocumentLookup(docs)
     expect(lookup.getNotionIcon('doc-3')).toBeUndefined()
   })

@@ -3,12 +3,7 @@ import type { PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
@@ -66,8 +61,7 @@ const AddOAuthButton = ({
   const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
   const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload)
   const mergedOAuthData = useMemo<OAuthData>(() => {
-    if (oAuthData)
-      return oAuthData
+    if (oAuthData) return oAuthData
 
     return data || {}
   }, [oAuthData, data])
@@ -87,26 +81,23 @@ const AddOAuthButton = ({
     const { authorization_url } = await getPluginOAuthUrl()
 
     if (authorization_url) {
-      openOAuthPopup(
-        authorization_url,
-        () => onUpdate?.(),
-      )
+      openOAuthPopup(authorization_url, () => onUpdate?.())
     }
   }, [getPluginOAuthUrl, onUpdate])
 
-  const renderCustomLabel = useCallback((item: FormSchema) => {
-    return (
-      <div className="w-full">
-        <div className="mb-4 flex rounded-xl bg-background-section-burn p-4">
-          <div className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
-            <span className="i-ri-information-2-fill size-5 text-text-accent" />
-          </div>
-          <div className="w-0 grow">
-            <div className="mb-1.5 system-sm-regular">
-              {t($ => $['auth.clientInfo'], { ns: 'plugin' })}
+  const renderCustomLabel = useCallback(
+    (item: FormSchema) => {
+      return (
+        <div className="w-full">
+          <div className="mb-4 flex rounded-xl bg-background-section-burn p-4">
+            <div className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
+              <span className="i-ri-information-2-fill size-5 text-text-accent" />
             </div>
-            {
-              redirect_uri && (
+            <div className="w-0 grow">
+              <div className="mb-1.5 system-sm-regular">
+                {t(($) => $['auth.clientInfo'], { ns: 'plugin' })}
+              </div>
+              {redirect_uri && (
                 <div className="flex w-full py-0.5 system-sm-medium">
                   <div className="w-0 grow wrap-break-word break-all">{redirect_uri}</div>
                   <ActionButton
@@ -118,21 +109,18 @@ const AddOAuthButton = ({
                     <span className="i-ri-clipboard-line size-4" />
                   </ActionButton>
                 </div>
-              )
-            }
+              )}
+            </div>
+          </div>
+          <div className="flex h-6 items-center system-sm-medium text-text-secondary">
+            {renderI18nObject(item.label as Record<string, string>)}
+            {item.required && <span className="ml-1 text-text-destructive-secondary">*</span>}
           </div>
         </div>
-        <div className="flex h-6 items-center system-sm-medium text-text-secondary">
-          {renderI18nObject(item.label as Record<string, string>)}
-          {
-            item.required && (
-              <span className="ml-1 text-text-destructive-secondary">*</span>
-            )
-          }
-        </div>
-      </div>
-    )
-  }, [t, redirect_uri, renderI18nObject])
+      )
+    },
+    [t, redirect_uri, renderI18nObject],
+  )
   const memorizedSchemas = useMemo(() => {
     const result: FormSchema[] = (schema as FormSchema[]).map((item, index) => {
       return {
@@ -144,15 +132,15 @@ const AddOAuthButton = ({
     if (is_system_oauth_params_exists) {
       result.unshift({
         name: '__oauth_client__',
-        label: t($ => $['auth.oauthClient'], { ns: 'plugin' }),
+        label: t(($) => $['auth.oauthClient'], { ns: 'plugin' }),
         type: FormTypeEnum.radio,
         options: [
           {
-            label: t($ => $['auth.default'], { ns: 'plugin' }),
+            label: t(($) => $['auth.default'], { ns: 'plugin' }),
             value: 'default',
           },
           {
-            label: t($ => $['auth.custom'], { ns: 'plugin' }),
+            label: t(($) => $['auth.custom'], { ns: 'plugin' }),
             value: 'custom',
           },
         ],
@@ -167,122 +155,112 @@ const AddOAuthButton = ({
               value: 'custom',
             },
           ]
-          if (client_params)
-            item.default = client_params[item.name] || item.default
+          if (client_params) item.default = client_params[item.name] || item.default
         }
       })
     }
 
     return result
-  }, [schema, renderCustomLabel, t, is_system_oauth_params_exists, is_oauth_custom_client_enabled, client_params])
+  }, [
+    schema,
+    renderCustomLabel,
+    t,
+    is_system_oauth_params_exists,
+    is_oauth_custom_client_enabled,
+    client_params,
+  ])
 
   const __auth_client__ = useMemo(() => {
     if (isConfigured) {
-      if (is_oauth_custom_client_enabled)
-        return 'custom'
+      if (is_oauth_custom_client_enabled) return 'custom'
       return 'default'
-    }
-    else {
-      if (is_system_oauth_params_exists)
-        return 'default'
+    } else {
+      if (is_system_oauth_params_exists) return 'default'
       return 'custom'
     }
   }, [isConfigured, is_oauth_custom_client_enabled, is_system_oauth_params_exists])
 
   return (
     <>
-      {
-        renderTrigger?.({
-          disabled,
-          isConfigured,
-          onClick: isConfigured ? handleOAuth : openOAuthSettings,
-        })
-      }
-      {
-        !renderTrigger && isConfigured && (
-          <div className={cn('flex w-full', className)}>
-            <Button
-              variant={buttonVariant}
-              className={cn(
-                'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
-                buttonLeftClassName,
-              )}
-              disabled={disabled}
-              onClick={handleOAuth}
-            >
-              <div
-                className="truncate"
+      {renderTrigger?.({
+        disabled,
+        isConfigured,
+        onClick: isConfigured ? handleOAuth : openOAuthSettings,
+      })}
+      {!renderTrigger && isConfigured && (
+        <div className={cn('flex w-full', className)}>
+          <Button
+            variant={buttonVariant}
+            className={cn(
+              'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
+              buttonLeftClassName,
+            )}
+            disabled={disabled}
+            onClick={handleOAuth}
+          >
+            <div className="truncate">{buttonText}</div>
+            {is_oauth_custom_client_enabled && (
+              <Badge
+                className={cn(
+                  'mr-0.5 ml-1',
+                  buttonVariant === 'primary' &&
+                    'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
+                )}
               >
-                {buttonText}
-              </div>
-              {
-                is_oauth_custom_client_enabled && (
-                  <Badge
-                    className={cn(
-                      'mr-0.5 ml-1',
-                      buttonVariant === 'primary' && 'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
-                    )}
-                  >
-                    {t($ => $['auth.custom'], { ns: 'plugin' })}
-                  </Badge>
-                )
-              }
-            </Button>
-            <div className={cn(
+                {t(($) => $['auth.custom'], { ns: 'plugin' })}
+              </Badge>
+            )}
+          </Button>
+          <div
+            className={cn(
               'h-4 w-px shrink-0 self-center bg-text-primary-on-surface opacity-[0.15]',
               dividerClassName,
             )}
-            >
-            </div>
-            <Button
-              variant={buttonVariant}
-              aria-label={t($ => $['auth.oauthClientSettings'], { ns: 'plugin' })}
-              className={cn(
-                'size-8 shrink-0 rounded-l-none p-0 hover:bg-components-button-primary-bg-hover',
-                buttonRightClassName,
-              )}
-              disabled={disabled}
-              onClick={() => {
-                openOAuthSettings()
-              }}
-            >
-              <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
-            </Button>
-          </div>
-        )
-      }
-      {
-        !renderTrigger && !isConfigured && (
+          ></div>
           <Button
             variant={buttonVariant}
-            onClick={openOAuthSettings}
+            aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
+            className={cn(
+              'size-8 shrink-0 rounded-l-none p-0 hover:bg-components-button-primary-bg-hover',
+              buttonRightClassName,
+            )}
             disabled={disabled}
-            className="w-full"
-          >
-            <span className="mr-0.5 i-ri-equalizer-2-line size-4" />
-            {t($ => $['auth.setupOAuth'], { ns: 'plugin' })}
-          </Button>
-        )
-      }
-      {
-        isOAuthSettingsMounted && (
-          <OAuthClientSettings
-            open={isOAuthSettingsOpen}
-            onOpenChange={setIsOAuthSettingsOpen}
-            pluginPayload={pluginPayload}
-            onClose={() => setIsOAuthSettingsOpen(false)}
-            disabled={disabled || isLoading}
-            schemas={memorizedSchemas}
-            onAuth={handleOAuth}
-            editValues={{
-              ...client_params,
-              __oauth_client__: __auth_client__,
+            onClick={() => {
+              openOAuthSettings()
             }}
-            hasOriginalClientParams={Object.keys(client_params || {}).length > 0}
-            onUpdate={onUpdate}
-          />
-        )
-      }
+          >
+            <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
+          </Button>
+        </div>
+      )}
+      {!renderTrigger && !isConfigured && (
+        <Button
+          variant={buttonVariant}
+          onClick={openOAuthSettings}
+          disabled={disabled}
+          className="w-full"
+        >
+          <span className="mr-0.5 i-ri-equalizer-2-line size-4" />
+          {t(($) => $['auth.setupOAuth'], { ns: 'plugin' })}
+        </Button>
+      )}
+      {isOAuthSettingsMounted && (
+        <OAuthClientSettings
+          open={isOAuthSettingsOpen}
+          onOpenChange={setIsOAuthSettingsOpen}
+          pluginPayload={pluginPayload}
+          onClose={() => setIsOAuthSettingsOpen(false)}
+          disabled={disabled || isLoading}
+          schemas={memorizedSchemas}
+          onAuth={handleOAuth}
+          editValues={{
+            ...client_params,
+            __oauth_client__: __auth_client__,
+          }}
+          hasOriginalClientParams={Object.keys(client_params || {}).length > 0}
+          onUpdate={onUpdate}
+        />
+      )}
     </>
   )
 }

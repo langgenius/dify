@@ -69,6 +69,7 @@ def _make_app(mode: AppMode | str, *, max_active_requests: int = 0, is_agent: bo
     app.tenant_id = "tenant-id"
     app.max_active_requests = max_active_requests
     app.is_agent = is_agent
+    app.is_agent_with_session.return_value = is_agent
     return app
 
 
@@ -277,16 +278,42 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
         app = _make_app(AppMode.CHAT, is_agent=True)
+        session = MagicMock()
         result = AppGenerateService.generate(
             app_model=app,
             user=_make_user(),
             args={"inputs": {}},
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=False,
-            session=MagicMock(),
+            session=session,
         )
         assert result == {"result": "agent-via-flag"}
         gen_spy.assert_called_once()
+        app.is_agent_with_session.assert_called_once_with(session=session)
+
+    # -- AGENT --------------------------------------------------------------
+    def test_agent_mode_passes_session(self, mocker: MockerFixture):
+        gen_spy = mocker.patch(
+            "services.app_generate_service.AgentAppGenerator.generate",
+            return_value={"result": "agent"},
+        )
+        mocker.patch(
+            "services.app_generate_service.AgentAppGenerator.convert_to_event_stream",
+            side_effect=lambda x: x,
+        )
+        session = MagicMock()
+
+        result = AppGenerateService.generate(
+            app_model=_make_app(AppMode.AGENT),
+            user=_make_user(),
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=True,
+            session=session,
+        )
+
+        assert result == {"result": "agent"}
+        assert gen_spy.call_args.kwargs["session"] is session
 
     # -- CHAT ---------------------------------------------------------------
     def test_chat_mode(self, mocker: MockerFixture):
@@ -325,17 +352,19 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
 
+        session = MagicMock()
         result = AppGenerateService.generate(
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=False,
-            session=MagicMock(),
+            session=session,
         )
         assert result == {"result": "advanced-blocking"}
         call_kwargs = gen_spy.call_args.kwargs
         assert call_kwargs.get("streaming") is False
+        assert call_kwargs["session"] is session
         retrieve_spy.assert_not_called()
 
     # -- ADVANCED_CHAT streaming --------------------------------------------
@@ -384,13 +413,14 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
 
+        session = MagicMock()
         result = AppGenerateService.generate(
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=False,
-            session=MagicMock(),
+            session=session,
         )
         assert result == {"result": "workflow-blocking"}
         call_kwargs = gen_spy.call_args.kwargs
@@ -731,14 +761,16 @@ class TestGenerateSingleIteration:
             return_value={"event": "iteration"},
         )
         app = _make_app(AppMode.ADVANCED_CHAT)
+        session = MagicMock()
         result = AppGenerateService.generate_single_iteration(
             app_model=app,
             user=_make_user(),
             node_id="n1",
             args={"k": "v"},
-            session=MagicMock(),
+            session=session,
         )
         iter_spy.assert_called_once()
+        assert iter_spy.call_args.kwargs["session"] is session
         assert result == {"event": "iteration"}
 
     def test_workflow_mode(self, mocker: MockerFixture):
@@ -753,14 +785,16 @@ class TestGenerateSingleIteration:
             return_value={"event": "wf-iteration"},
         )
         app = _make_app(AppMode.WORKFLOW)
+        session = MagicMock()
         result = AppGenerateService.generate_single_iteration(
             app_model=app,
             user=_make_user(),
             node_id="n1",
             args={"k": "v"},
-            session=MagicMock(),
+            session=session,
         )
         iter_spy.assert_called_once()
+        assert iter_spy.call_args.kwargs["session"] is session
         assert result == {"event": "wf-iteration"}
 
     def test_invalid_mode_raises(self, mocker: MockerFixture):
@@ -787,14 +821,16 @@ class TestGenerateSingleLoop:
             return_value={"event": "loop"},
         )
         app = _make_app(AppMode.ADVANCED_CHAT)
+        session = MagicMock()
         result = AppGenerateService.generate_single_loop(
             app_model=app,
             user=_make_user(),
             node_id="n1",
             args=MagicMock(),
-            session=MagicMock(),
+            session=session,
         )
         loop_spy.assert_called_once()
+        assert loop_spy.call_args.kwargs["session"] is session
         assert result == {"event": "loop"}
 
     def test_workflow_mode(self, mocker: MockerFixture):
@@ -809,14 +845,16 @@ class TestGenerateSingleLoop:
             return_value={"event": "wf-loop"},
         )
         app = _make_app(AppMode.WORKFLOW)
+        session = MagicMock()
         result = AppGenerateService.generate_single_loop(
             app_model=app,
             user=_make_user(),
             node_id="n1",
             args=MagicMock(),
-            session=MagicMock(),
+            session=session,
         )
         loop_spy.assert_called_once()
+        assert loop_spy.call_args.kwargs["session"] is session
         assert result == {"event": "wf-loop"}
 
     def test_invalid_mode_raises(self, mocker: MockerFixture):

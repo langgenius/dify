@@ -1,8 +1,10 @@
 {
   "recommendations": [
+    "VoidZero.vite-plus-extension-pack",
     "bradlc.vscode-tailwindcss",
     "kisstkondoros.vscode-codemetrics",
     "johnsoncodehk.vscode-tsslint",
-    "dbaeumer.vscode-eslint"
+    "dbaeumer.vscode-eslint",
+    "oxc.oxc-vscode"
   ]
 }

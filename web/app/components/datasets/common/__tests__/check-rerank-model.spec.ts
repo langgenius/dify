@@ -1,7 +1,14 @@
-import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  Model,
+  ModelItem,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
 import { describe, expect, it } from 'vitest'
-import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ConfigurationMethodEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { isReRankModelSelected } from '../check-rerank-model'
@@ -35,20 +42,14 @@ const createRerankModelList = (): Model[] => [
     provider: 'openai',
     icon_small: { en_US: '', zh_Hans: '' },
     label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-    models: [
-      createModelItem('gpt-4-turbo'),
-      createModelItem('gpt-3.5-turbo'),
-    ],
+    models: [createModelItem('gpt-4-turbo'), createModelItem('gpt-3.5-turbo')],
     status: ModelStatusEnum.active,
   },
   {
     provider: 'cohere',
     icon_small: { en_US: '', zh_Hans: '' },
     label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
-    models: [
-      createModelItem('rerank-english-v2.0'),
-      createModelItem('rerank-multilingual-v2.0'),
-    ],
+    models: [createModelItem('rerank-english-v2.0'), createModelItem('rerank-multilingual-v2.0')],
     status: ModelStatusEnum.active,
   },
 ]

@@ -10,8 +10,7 @@ import { consoleQuery } from '@/service/client'
 import { downloadBlob, downloadUrl } from '@/utils/download'
 import { getDriveFileIconType } from '../files/file-icon'
 
-const isSkillFolder = (file: AgentConfigSkillFileResponse) =>
-  file.type === 'directory'
+const isSkillFolder = (file: AgentConfigSkillFileResponse) => file.type === 'directory'
 
 const toSkillFileNode = (item: AgentConfigSkillFileResponse): AgentFileNode => {
   const fileName = item.name || item.path.split('/').pop() || item.path
@@ -30,15 +29,19 @@ const toSkillFileNode = (item: AgentConfigSkillFileResponse): AgentFileNode => {
   }
 }
 
-const sortSkillFileNodes = (files: AgentFileNode[]): AgentFileNode[] => [...files].sort((first, second) => {
-  const firstIsFolder = first.icon === 'folder'
-  const secondIsFolder = second.icon === 'folder'
+const sortSkillFileNodes = (files: AgentFileNode[]): AgentFileNode[] =>
+  [...files]
+    .sort((first, second) => {
+      const firstIsFolder = first.icon === 'folder'
+      const secondIsFolder = second.icon === 'folder'
 
-  if (firstIsFolder !== secondIsFolder)
-    return firstIsFolder ? -1 : 1
+      if (firstIsFolder !== secondIsFolder) return firstIsFolder ? -1 : 1
 
-  return first.name.localeCompare(second.name)
-}).map(file => file.children ? { ...file, children: sortSkillFileNodes(file.children) } : file)
+      return first.name.localeCompare(second.name)
+    })
+    .map((file) =>
+      file.children ? { ...file, children: sortSkillFileNodes(file.children) } : file,
+    )
 
 const toSkillFileTree = (files: AgentConfigSkillFileResponse[]): AgentFileNode[] => {
   const root: AgentFileNode[] = []
@@ -46,8 +49,7 @@ const toSkillFileTree = (files: AgentConfigSkillFileResponse[]): AgentFileNode[]
 
   for (const file of files) {
     const relativePath = file.path.split('/').filter(Boolean).join('/')
-    if (!relativePath)
-      continue
+    if (!relativePath) continue
 
     const segments = relativePath.split('/').filter(Boolean)
     let siblings = root
@@ -91,12 +93,10 @@ const countSkillPackageFiles = (files: AgentConfigSkillFileResponse[] | undefine
   const filePaths = new Set<string>()
 
   for (const file of files ?? []) {
-    if (isSkillFolder(file))
-      continue
+    if (isSkillFolder(file)) continue
 
     const relativePath = file.path.split('/').filter(Boolean).join('/')
-    if (!relativePath)
-      continue
+    if (!relativePath) continue
 
     filePaths.add(relativePath)
   }
@@ -106,37 +106,30 @@ const countSkillPackageFiles = (files: AgentConfigSkillFileResponse[] | undefine
 
 const getSkillMdFileId = (files: AgentFileNode[]): string | undefined => {
   for (const file of files) {
-    if (file.icon !== 'folder' && file.name === 'SKILL.md')
-      return file.id
+    if (file.icon !== 'folder' && file.name === 'SKILL.md') return file.id
 
     const childFileId = file.children ? getSkillMdFileId(file.children) : undefined
-    if (childFileId)
-      return childFileId
+    if (childFileId) return childFileId
   }
 }
 
 const getFirstSkillFileId = (files: AgentFileNode[]): string | undefined => {
   for (const file of files) {
-    if (file.icon !== 'folder')
-      return file.id
+    if (file.icon !== 'folder') return file.id
 
     const childFileId = file.children ? getFirstSkillFileId(file.children) : undefined
-    if (childFileId)
-      return childFileId
+    if (childFileId) return childFileId
   }
 }
 
 const findSkillFileById = (files: AgentFileNode[], fileId?: string): AgentFileNode | undefined => {
-  if (!fileId)
-    return undefined
+  if (!fileId) return undefined
 
   for (const file of files) {
-    if (file.id === fileId)
-      return file
+    if (file.id === fileId) return file
 
     const childFile = file.children ? findSkillFileById(file.children, fileId) : undefined
-    if (childFile)
-      return childFile
+    if (childFile) return childFile
   }
 }
 
@@ -189,12 +182,18 @@ export function useAgentSkillDetail({
     () => toSkillFileTree(inspectQuery.data?.files ?? []),
     [inspectQuery.data?.files],
   )
-  const previewFileId = selectedFileId
-    ?? inspectQuery.data?.skill_md.path
-    ?? (inspectQuery.isSuccess ? getSkillMdFileId(detailFiles) ?? getFirstSkillFileId(detailFiles) : undefined)
+  const previewFileId =
+    selectedFileId ??
+    inspectQuery.data?.skill_md.path ??
+    (inspectQuery.isSuccess
+      ? (getSkillMdFileId(detailFiles) ?? getFirstSkillFileId(detailFiles))
+      : undefined)
   const selectedFile = findSkillFileById(detailFiles, previewFileId)
-  const isSkillMdSelected = previewFileId === inspectQuery.data?.skill_md.path || selectedFile?.name === 'SKILL.md'
-  const selectedPreviewPath = isSkillMdSelected ? undefined : selectedFile?.configName ?? selectedFile?.id
+  const isSkillMdSelected =
+    previewFileId === inspectQuery.data?.skill_md.path || selectedFile?.name === 'SKILL.md'
+  const selectedPreviewPath = isSkillMdSelected
+    ? undefined
+    : (selectedFile?.configName ?? selectedFile?.id)
   const agentPreviewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.skills.byName.files.preview.get.queryOptions({
       input: {
@@ -230,7 +229,8 @@ export function useAgentSkillDetail({
   })
   const previewQuery = apiContext.workflow ? workflowPreviewQuery : agentPreviewQuery
   const isImagePreviewFile = selectedFile?.icon === 'image'
-  const shouldDownloadPreviewFile = isOpen && !!selectedPreviewPath && (isImagePreviewFile || !!previewQuery.data?.binary)
+  const shouldDownloadPreviewFile =
+    isOpen && !!selectedPreviewPath && (isImagePreviewFile || !!previewQuery.data?.binary)
   const agentDownloadQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
       input: {
@@ -266,8 +266,7 @@ export function useAgentSkillDetail({
   })
   const downloadQuery = apiContext.workflow ? workflowDownloadQuery : agentDownloadQuery
   const handleDownloadFile = useCallback(async () => {
-    if (!selectedFile)
-      return
+    if (!selectedFile) return
 
     const file = selectedFile
     const path = file.configName ?? file.id
@@ -282,39 +281,50 @@ export function useAgentSkillDetail({
     }
 
     if (apiContext.workflow) {
-      const result = await queryClient.fetchQuery(consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
+      const result = await queryClient.fetchQuery(
+        consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
+          input: {
+            params: {
+              app_id: apiContext.workflow.appId,
+              name: skill.name,
+            },
+            query: {
+              node_id: apiContext.workflow.nodeId,
+              path,
+              draft_type: apiContext.draftType,
+              version_id: apiContext.versionId,
+            },
+          },
+        }),
+      )
+      downloadUrl({ url: result.url, fileName: file.name })
+      return
+    }
+
+    const result = await queryClient.fetchQuery(
+      consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
         input: {
           params: {
-            app_id: apiContext.workflow.appId,
+            agent_id: apiContext.agentId,
             name: skill.name,
           },
           query: {
-            node_id: apiContext.workflow.nodeId,
             path,
             draft_type: apiContext.draftType,
             version_id: apiContext.versionId,
           },
         },
-      }))
-      downloadUrl({ url: result.url, fileName: file.name })
-      return
-    }
-
-    const result = await queryClient.fetchQuery(consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
-      input: {
-        params: {
-          agent_id: apiContext.agentId,
-          name: skill.name,
-        },
-        query: {
-          path,
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
-    }))
+      }),
+    )
     downloadUrl({ url: result.url, fileName: file.name })
-  }, [apiContext, inspectQuery.data?.skill_md.path, inspectQuery.data?.skill_md.text, queryClient, selectedFile, skill.name])
+  }, [
+    apiContext,
+    inspectQuery.data?.skill_md.path,
+    inspectQuery.data?.skill_md.text,
+    queryClient,
+    selectedFile,
+    skill.name,
+  ])
 
   return {
     description,
@@ -322,17 +332,23 @@ export function useAgentSkillDetail({
     files: detailFiles,
     filePreview: {
       binary: isSkillMdSelected ? inspectQuery.data?.skill_md.binary : previewQuery.data?.binary,
-      content: isSkillMdSelected ? inspectQuery.data?.skill_md.text ?? undefined : previewQuery.data?.text ?? undefined,
+      content: isSkillMdSelected
+        ? (inspectQuery.data?.skill_md.text ?? undefined)
+        : (previewQuery.data?.text ?? undefined),
       downloadUrl: downloadQuery.data?.url,
       fileName: selectedFile?.name,
       isDownloadError: downloadQuery.isError,
       isDownloadLoading: shouldDownloadPreviewFile && downloadQuery.isPending,
-      isError: isSkillMdSelected ? inspectQuery.isError : !!selectedPreviewPath && previewQuery.isError,
+      isError: isSkillMdSelected
+        ? inspectQuery.isError
+        : !!selectedPreviewPath && previewQuery.isError,
       isImage: isImagePreviewFile,
-      isLoading: isSkillMdSelected ? inspectQuery.isPending : !!selectedPreviewPath && previewQuery.isPending,
+      isLoading: isSkillMdSelected
+        ? inspectQuery.isPending
+        : !!selectedPreviewPath && previewQuery.isPending,
     },
     onDownloadFile: handleDownloadFile,
-    onSelectFile: file => setSelectedFileId(file.id),
+    onSelectFile: (file) => setSelectedFileId(file.id),
     selectedFileId: previewFileId,
     sections: [],
   }

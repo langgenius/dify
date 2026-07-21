@@ -19,6 +19,12 @@ export const accessSettingsQueryAtom = atomWithQuery((get) => {
   })
 })
 
-export const accessSettingsAtom = selectAtom(accessSettingsQueryAtom, query => query.data)
-export const accessSettingsIsLoadingAtom = selectAtom(accessSettingsQueryAtom, query => query.isLoading)
-export const accessSettingsIsErrorAtom = selectAtom(accessSettingsQueryAtom, query => query.isError)
+export const accessSettingsAtom = selectAtom(accessSettingsQueryAtom, (query) => query.data)
+export const accessSettingsIsLoadingAtom = selectAtom(
+  accessSettingsQueryAtom,
+  (query) => query.isLoading,
+)
+export const accessSettingsIsErrorAtom = selectAtom(
+  accessSettingsQueryAtom,
+  (query) => query.isError,
+)

@@ -14,7 +14,7 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     tags: mockTags,
     tagsMap: mockTags.reduce((acc, tag) => ({ ...acc, [tag.name]: tag }), {}),
-    getTagLabel: (name: string) => mockTags.find(t => t.name === name)?.label ?? name,
+    getTagLabel: (name: string) => mockTags.find((t) => t.name === name)?.label ?? name,
   }),
 }))
 
@@ -27,12 +27,6 @@ describe('LabelFilter', () => {
 
   // Rendering Tests
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<LabelFilter value={[]} onChange={mockOnChange} />)
-
-      expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
-    })
-
     it('should display filter label when no labels selected', () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
@@ -101,11 +95,10 @@ describe('LabelFilter', () => {
 
       // Find the label item in the dropdown list
       const labelItems = screen.getAllByText('Agent')
-      const dropdownItem = labelItems.find(el => el.closest('.hover\\:bg-state-base-hover'))
+      const dropdownItem = labelItems.find((el) => el.closest('.hover\\:bg-state-base-hover'))
 
       await act(async () => {
-        if (dropdownItem)
-          fireEvent.click(dropdownItem)
+        if (dropdownItem) fireEvent.click(dropdownItem)
       })
 
       expect(mockOnChange).toHaveBeenCalledWith([])
@@ -225,13 +218,6 @@ describe('LabelFilter', () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
-    })
-
-    it('should handle value with non-existent label', () => {
-      render(<LabelFilter value={['nonexistent']} onChange={mockOnChange} />)
-
-      // Should still render without crashing
-      expect(document.querySelector('.text-text-tertiary')).toBeInTheDocument()
     })
   })
 

@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Оновіть, щоб завантажувати кілька документів одночасно",
   "upgrade.workflowRestore.description": "Відновлення версій робочого процесу недоступне у вашому поточному плані.",
   "upgrade.workflowRestore.title": "Оновіть план, щоб відновлювати версії робочого процесу",
+  "upgrade.workflowVersionRun.description": "Запуск певної версії робочого процесу за його ідентифікатором недоступний у вашому поточному плані.",
+  "upgrade.workflowVersionRun.title": "Оновіть план, щоб запускати певні версії робочого процесу",
   "upgradeBtn.encourage": "Оновити зараз",
   "upgradeBtn.encourageShort": "Оновити",
   "upgradeBtn.plain": "Оновити план",

@@ -213,10 +213,13 @@ export type WorkflowToolProviderOutputParameter = {
 
 export type WorkflowToolProviderOutputSchema = {
   type: string
-  properties: Record<string, {
-    type: string
-    description: string
-  }>
+  properties: Record<
+    string,
+    {
+      type: string
+      description: string
+    }
+  >
 }
 
 export type WorkflowToolProviderRequest = {

@@ -9,12 +9,13 @@ import { AppModeEnum } from '@/types/app'
 import MCPServiceCard from '../mcp-service-card'
 
 vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
-  default: ({ show, onHide }: { show: boolean, onHide: () => void }) => {
-    if (!show)
-      return null
+  default: ({ show, onHide }: { show: boolean; onHide: () => void }) => {
+    if (!show) return null
     return (
       <div data-testid="mcp-server-modal">
-        <button data-testid="close-modal-btn" onClick={onHide}>Close</button>
+        <button data-testid="close-modal-btn" onClick={onHide}>
+          Close
+        </button>
       </div>
     )
   },
@@ -50,13 +51,15 @@ type MockHookState = {
   serverPublished: boolean
   serverActivated: boolean
   serverURL: string
-  detail: {
-    id: string
-    status: string
-    server_code: string
-    description: string
-    parameters: Record<string, unknown>
-  } | undefined
+  detail:
+    | {
+        id: string
+        status: string
+        server_code: string
+        description: string
+        parameters: Record<string, unknown>
+      }
+    | undefined
   canManageMCP: boolean
   toggleDisabled: boolean
   isMinimalState: boolean
@@ -114,12 +117,15 @@ describe('MCPServiceCard', () => {
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
 
-  const createMockAppInfo = (mode: AppModeEnum = AppModeEnum.CHAT): AppDetailResponse & Partial<AppSSO> => ({
-    id: 'app-123',
-    name: 'Test App',
-    mode,
-    api_base_url: 'https://api.example.com/v1',
-  } as AppDetailResponse & Partial<AppSSO>)
+  const createMockAppInfo = (
+    mode: AppModeEnum = AppModeEnum.CHAT,
+  ): AppDetailResponse & Partial<AppSSO> =>
+    ({
+      id: 'app-123',
+      name: 'Test App',
+      mode,
+      api_base_url: 'https://api.example.com/v1',
+    }) as AppDetailResponse & Partial<AppSSO>
 
   beforeEach(() => {
     mockHookState = createDefaultHookState()
@@ -161,7 +167,9 @@ describe('MCPServiceCard', () => {
       const editButton = screen.getByRole('button', { name: /tools\.mcp\.server\.edit/i })
       expect(editButton).toBeDisabled()
 
-      const regenerateButton = screen.getByRole('button', { name: /appOverview\.overview\.appInfo\.regenerate/i })
+      const regenerateButton = screen.getByRole('button', {
+        name: /appOverview\.overview\.appInfo\.regenerate/i,
+      })
       expect(regenerateButton).toBeDisabled()
     })
 
@@ -175,7 +183,9 @@ describe('MCPServiceCard', () => {
     it('should return null when isLoading is true', () => {
       mockHookState = createDefaultHookState({ isLoading: true })
 
-      const { container } = render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      const { container } = render(<MCPServiceCard appInfo={createMockAppInfo()} />, {
+        wrapper: createWrapper(),
+      })
       expect(container.firstChild).toBeNull()
     })
 
@@ -274,7 +284,9 @@ describe('MCPServiceCard', () => {
       render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
       expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /tools\.mcp\.server\.edit/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /tools\.mcp\.server\.edit/i }),
+      ).not.toBeInTheDocument()
     })
 
     it('should open modal when enabling unpublished server', async () => {
@@ -408,7 +420,9 @@ describe('MCPServiceCard', () => {
         toggleDisabled: true,
       })
 
-      render(<MCPServiceCard appInfo={createMockAppInfo(AppModeEnum.WORKFLOW)} />, { wrapper: createWrapper() })
+      render(<MCPServiceCard appInfo={createMockAppInfo(AppModeEnum.WORKFLOW)} />, {
+        wrapper: createWrapper(),
+      })
 
       const switchElement = screen.getByRole('switch')
       expect(switchElement.className).toContain('cursor-not-allowed')

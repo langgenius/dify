@@ -14,15 +14,11 @@ describe('env runtime transport', () => {
   })
 
   afterAll(() => {
-    if (originalAgentV2Env === undefined)
-      delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
-    else
-      process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 = originalAgentV2Env
+    if (originalAgentV2Env === undefined) delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
+    else process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 = originalAgentV2Env
 
-    if (originalRbacEnv === undefined)
-      delete process.env.NEXT_PUBLIC_RBAC_ENABLED
-    else
-      process.env.NEXT_PUBLIC_RBAC_ENABLED = originalRbacEnv
+    if (originalRbacEnv === undefined) delete process.env.NEXT_PUBLIC_RBAC_ENABLED
+    else process.env.NEXT_PUBLIC_RBAC_ENABLED = originalRbacEnv
   })
 
   it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {

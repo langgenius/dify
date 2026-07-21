@@ -34,23 +34,29 @@ const DatasetList: FC<Props> = ({
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const handleRemove = useCallback((index: number) => {
-    return () => {
-      const newList = produce(list, (draft) => {
-        draft.splice(index, 1)
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleRemove = useCallback(
+    (index: number) => {
+      return () => {
+        const newList = produce(list, (draft) => {
+          draft.splice(index, 1)
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
-  const handleChange = useCallback((index: number) => {
-    return (value: DataSet) => {
-      const newList = produce(list, (draft) => {
-        draft[index] = value
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleChange = useCallback(
+    (index: number) => {
+      return (value: DataSet) => {
+        const newList = produce(list, (draft) => {
+          draft[index] = value
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
   const formattedList = useMemo(() => {
     return list.map((item) => {
@@ -68,29 +74,28 @@ const DatasetList: FC<Props> = ({
 
   return (
     <div className="space-y-1">
-      {formattedList.length
-        ? formattedList.map((item, index) => {
-            return (
-              <Item
-                key={index}
-                payload={item}
-                onRemove={handleRemove(index)}
-                onChange={handleChange(index)}
-                readonly={readonly}
-                editable={item.editable}
-                settingsDrawerBackdropClassName={settingsDrawerBackdropClassName}
-                settingsDrawerBackdropForceRender={settingsDrawerBackdropForceRender}
-                settingsDrawerPopupClassName={settingsDrawerPopupClassName}
-                settingsModalHeight={settingsModalHeight}
-              />
-            )
-          })
-        : (
-            <div className="cursor-default rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary select-none">
-              {t($ => $['datasetConfig.knowledgeTip'], { ns: 'appDebug' })}
-            </div>
-          )}
-
+      {formattedList.length ? (
+        formattedList.map((item, index) => {
+          return (
+            <Item
+              key={index}
+              payload={item}
+              onRemove={handleRemove(index)}
+              onChange={handleChange(index)}
+              readonly={readonly}
+              editable={item.editable}
+              settingsDrawerBackdropClassName={settingsDrawerBackdropClassName}
+              settingsDrawerBackdropForceRender={settingsDrawerBackdropForceRender}
+              settingsDrawerPopupClassName={settingsDrawerPopupClassName}
+              settingsModalHeight={settingsModalHeight}
+            />
+          )
+        })
+      ) : (
+        <div className="cursor-default rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary select-none">
+          {t(($) => $['datasetConfig.knowledgeTip'], { ns: 'appDebug' })}
+        </div>
+      )}
     </div>
   )
 }

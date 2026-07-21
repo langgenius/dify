@@ -14,6 +14,7 @@ from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgen
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import (
     query_params_from_model,
@@ -21,6 +22,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
@@ -153,8 +155,9 @@ class AgentAppSandboxInfoResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxInfoQuery)
         try:
             result = AgentAppSandboxService().get_info(
@@ -177,8 +180,9 @@ class AgentAppSandboxListResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxListQuery)
         try:
             result = AgentAppSandboxService().list_files(
@@ -202,8 +206,9 @@ class AgentAppSandboxReadResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
             result = AgentAppSandboxService().read_file(
@@ -227,8 +232,9 @@ class AgentAppSandboxUploadResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def post(self, session: Session, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
         try:
             result = AgentAppSandboxService().upload_file(

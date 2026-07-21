@@ -17,75 +17,87 @@ type FormProps = {
   inputClassName?: string
 }
 
-const Form: FC<FormProps> = React.memo(({
-  className,
-  itemClassName,
-  fieldLabelClassName,
-  value,
-  onChange,
-  formSchemas,
-  inputClassName,
-}) => {
-  const { t, i18n } = useTranslation()
-  const docLink = useDocLink()
+const Form: FC<FormProps> = React.memo(
+  ({
+    className,
+    itemClassName,
+    fieldLabelClassName,
+    value,
+    onChange,
+    formSchemas,
+    inputClassName,
+  }) => {
+    const { t, i18n } = useTranslation()
+    const docLink = useDocLink()
 
-  const handleFormChange = (key: string, val: string) => {
-    if (key === 'name') {
-      onChange({ ...value, [key]: val })
+    const handleFormChange = (key: string, val: string) => {
+      if (key === 'name') {
+        onChange({ ...value, [key]: val })
+      } else {
+        onChange({
+          ...value,
+          settings: {
+            ...value.settings,
+            [key]: val,
+          },
+        })
+      }
     }
-    else {
-      onChange({
-        ...value,
-        settings: {
-          ...value.settings,
-          [key]: val,
-        },
-      })
-    }
-  }
 
-  const renderField = (formSchema: FormSchema) => {
-    const { variable, type, label, required } = formSchema
-    const fieldValue = variable === 'name' ? value[variable] : (value.settings[variable as keyof typeof value.settings] || '')
+    const renderField = (formSchema: FormSchema) => {
+      const { variable, type, label, required } = formSchema
+      const fieldValue =
+        variable === 'name'
+          ? value[variable]
+          : value.settings[variable as keyof typeof value.settings] || ''
+
+      return (
+        <div
+          key={variable}
+          className={cn(itemClassName, 'flex flex-col items-start gap-1 self-stretch')}
+        >
+          <div className="flex w-full items-center justify-between">
+            <label
+              className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary')}
+              htmlFor={variable}
+            >
+              {label[i18n.language] || label.en_US}
+              {required && <span className="ml-1 text-red-500">*</span>}
+            </label>
+            {variable === 'endpoint' && (
+              <a
+                href={docLink('/use-dify/knowledge/external-knowledge-api') || '/'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center body-xs-regular text-text-accent"
+              >
+                <RiBookOpenLine className="mr-1 size-3 text-text-accent" />
+                {t(($) => $.externalAPIPanelDocumentation, { ns: 'dataset' })}
+              </a>
+            )}
+          </div>
+          <Input
+            type={type === 'secret' ? 'password' : 'text'}
+            id={variable}
+            name={variable}
+            value={fieldValue}
+            onChange={(val) => handleFormChange(variable, val.target.value)}
+            required={required}
+            className={cn(inputClassName)}
+          />
+        </div>
+      )
+    }
 
     return (
-      <div key={variable} className={cn(itemClassName, 'flex flex-col items-start gap-1 self-stretch')}>
-        <div className="flex w-full items-center justify-between">
-          <label className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary')} htmlFor={variable}>
-            {label[i18n.language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
-          </label>
-          {variable === 'endpoint' && (
-            <a
-              href={docLink('/use-dify/knowledge/external-knowledge-api') || '/'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center body-xs-regular text-text-accent"
-            >
-              <RiBookOpenLine className="mr-1 size-3 text-text-accent" />
-              {t($ => $.externalAPIPanelDocumentation, { ns: 'dataset' })}
-            </a>
-          )}
-        </div>
-        <Input
-          type={type === 'secret' ? 'password' : 'text'}
-          id={variable}
-          name={variable}
-          value={fieldValue}
-          onChange={val => handleFormChange(variable, val.target.value)}
-          required={required}
-          className={cn(inputClassName)}
-        />
-      </div>
+      <form
+        className={cn('flex flex-col items-start justify-center gap-4 self-stretch', className)}
+      >
+        {formSchemas.map((formSchema) => renderField(formSchema))}
+      </form>
     )
-  }
-
-  return (
-    <form className={cn('flex flex-col items-start justify-center gap-4 self-stretch', className)}>
-      {formSchemas.map(formSchema => renderField(formSchema))}
-    </form>
-  )
-})
+  },
+)
 
 Form.displayName = 'Form'
 

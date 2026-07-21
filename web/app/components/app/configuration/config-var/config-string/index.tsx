@@ -11,14 +11,9 @@ export type IConfigStringProps = {
   onChange: (value: number | undefined) => void
 }
 
-const ConfigString: FC<IConfigStringProps> = ({
-  value,
-  onChange,
-  maxLength,
-}) => {
+const ConfigString: FC<IConfigStringProps> = ({ value, onChange, maxLength }) => {
   useEffect(() => {
-    if (value && value > maxLength)
-      onChange(maxLength)
+    if (value && value > maxLength) onChange(maxLength)
   }, [value, maxLength, onChange])
 
   return (
@@ -30,11 +25,8 @@ const ConfigString: FC<IConfigStringProps> = ({
         value={value || ''}
         onChange={(e) => {
           let value = Number.parseInt(e.target.value, 10)
-          if (value > maxLength)
-            value = maxLength
-
-          else if (value < 1)
-            value = 1
+          if (value > maxLength) value = maxLength
+          else if (value < 1) value = 1
 
           onChange(value)
         }}

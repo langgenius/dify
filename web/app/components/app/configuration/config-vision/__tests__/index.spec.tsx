@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { Mock } from 'vitest'
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import type { FileUpload } from '@/app/components/base/features/types'
@@ -64,12 +64,14 @@ const setupFeatureStore = (fileOverrides: Partial<FileUpload> = {}) => {
   mockUseFeaturesStore.mockReturnValue({
     getState: () => featureStoreState,
   })
-  mockUseFeatures.mockImplementation(selector => selector(featureStoreState))
+  mockUseFeatures.mockImplementation((selector) => selector(featureStoreState))
 }
 
 const getLatestFileConfig = () => {
   expect(setFeaturesMock).toHaveBeenCalled()
-  const latestFeatures = setFeaturesMock.mock.calls[setFeaturesMock.mock.calls.length - 1]![0] as { file: FileUpload }
+  const latestFeatures = setFeaturesMock.mock.calls[setFeaturesMock.mock.calls.length - 1]![0] as {
+    file: FileUpload
+  }
   return latestFeatures.file
 }
 
@@ -116,7 +118,10 @@ describe('ConfigVision', () => {
     await user.click(screen.getByRole('switch'))
 
     const updatedFile = getLatestFileConfig()
-    expect(updatedFile.allowed_file_types).toEqual([SupportUploadFileTypes.image, SupportUploadFileTypes.video])
+    expect(updatedFile.allowed_file_types).toEqual([
+      SupportUploadFileTypes.image,
+      SupportUploadFileTypes.video,
+    ])
     expect(updatedFile.image?.enabled).toBe(true)
     expect(updatedFile.enabled).toBe(true)
   })
