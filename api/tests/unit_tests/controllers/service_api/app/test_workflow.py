@@ -26,7 +26,7 @@ from flask import Flask
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.service_api.app.error import NotWorkflowAppError
+from controllers.service_api.app.error import NotWorkflowAppError, WorkflowVersionExecutionNotAllowedError
 from controllers.service_api.app.workflow import (
     AppQueueManager,
     DifyAPIRepositoryFactory,
@@ -42,11 +42,13 @@ from controllers.service_api.app.workflow import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.cloud_plan import CloudPlan
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from services.app_generate_service import AppGenerateService
+from services.billing_service import BillingService
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import LogView, LogViewDetails, WorkflowAppService
@@ -570,9 +572,117 @@ class TestWorkflowRunApi:
             with pytest.raises(InvokeRateLimitHttpError):
                 handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
+    def test_sandbox_billing_does_not_gate_default_workflow_run(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", True)
+
+        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
+        generate = Mock(return_value={"result": "ok"})
+        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
+
+        api = WorkflowRunApi()
+        handler = unwrap(api.post)
+
+        with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
+            response = handler(
+                api,
+                session=Mock(),
+                app_model=_make_app_model(),
+                end_user=_make_end_user(),
+            )
+
+        assert response.get_json() == {"result": "ok"}
+        billing_get_info.assert_not_called()
+        generate.assert_called_once()
+
 
 class TestWorkflowRunByIdApi:
+    def test_rejects_sandbox_plan_with_upgrade_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", True)
+
+        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
+        generate = Mock()
+        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
+
+        api = WorkflowRunByIdApi()
+        handler = unwrap(api.post)
+        app_model = _make_app_model()
+
+        with app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}):
+            with pytest.raises(WorkflowVersionExecutionNotAllowedError) as exc_info:
+                handler(
+                    api,
+                    session=Mock(),
+                    app_model=app_model,
+                    end_user=_make_end_user(),
+                    workflow_id="w1",
+                )
+
+        billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
+        generate.assert_not_called()
+        assert exc_info.value.code == 403
+        assert exc_info.value.error_code == "workflow_version_execution_not_allowed"
+        assert exc_info.value.description == (
+            "Workflow version execution is not available on your current plan. Please upgrade to a paid plan."
+        )
+        assert exc_info.value.data == {
+            "code": "workflow_version_execution_not_allowed",
+            "message": exc_info.value.description,
+            "status": 403,
+        }
+
+    @pytest.mark.parametrize(
+        ("billing_config_enabled", "billing_enabled", "plan"),
+        [
+            (False, True, CloudPlan.SANDBOX),
+            (True, False, CloudPlan.SANDBOX),
+            (True, True, CloudPlan.PROFESSIONAL),
+        ],
+    )
+    def test_allows_execution_outside_enabled_sandbox_plan(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        billing_config_enabled: bool,
+        billing_enabled: bool,
+        plan: CloudPlan,
+    ) -> None:
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", billing_config_enabled)
+
+        billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
+        generate = Mock(return_value={"result": "ok"})
+        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
+
+        api = WorkflowRunByIdApi()
+        handler = unwrap(api.post)
+        app_model = _make_app_model()
+
+        with app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}):
+            response = handler(
+                api,
+                session=Mock(),
+                app_model=app_model,
+                end_user=_make_end_user(),
+                workflow_id="w1",
+            )
+
+        assert response.get_json() == {"result": "ok"}
+        generate.assert_called_once()
+        if billing_config_enabled:
+            billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
+        else:
+            billing_get_info.assert_not_called()
+
     def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", False)
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -589,6 +699,8 @@ class TestWorkflowRunByIdApi:
                 handler(api, session=Mock(), app_model=app_model, end_user=end_user, workflow_id="w1")
 
     def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", False)
         monkeypatch.setattr(
             AppGenerateService,
             "generate",

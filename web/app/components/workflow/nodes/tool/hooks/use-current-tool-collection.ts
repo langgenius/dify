@@ -35,7 +35,7 @@ const useCurrentToolCollection = (
   }, [buildInTools, customTools, mcpTools, providerType, workflowTools])
 
   const currCollection = useMemo(() => {
-    return currentTools.find(item => canFindTool(item.id, providerId))
+    return currentTools.find((item) => canFindTool(item.id, providerId))
   }, [currentTools, providerId])
 
   return {

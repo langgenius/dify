@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Upgrade to upload multiple documents at once",
   "upgrade.workflowRestore.description": "Workflow version restoration is not available on your current plan.",
   "upgrade.workflowRestore.title": "Upgrade to restore workflow versions",
+  "upgrade.workflowVersionRun.description": "Running a specific workflow version by workflow ID is not available on your current plan.",
+  "upgrade.workflowVersionRun.title": "Upgrade to run specific workflow versions",
   "upgradeBtn.encourage": "Upgrade Now",
   "upgradeBtn.encourageShort": "Upgrade",
   "upgradeBtn.plain": "View Plan",

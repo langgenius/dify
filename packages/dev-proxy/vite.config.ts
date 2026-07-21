@@ -4,16 +4,9 @@ export default defineConfig({
   pack: {
     clean: true,
     deps: {
-      neverBundle: [
-        '@hono/node-server',
-        'c12',
-        'hono',
-      ],
+      neverBundle: ['@hono/node-server', 'c12', 'hono'],
     },
-    entry: [
-      'src/index.ts',
-      'src/cli.ts',
-    ],
+    entry: ['src/index.ts', 'src/cli.ts'],
     format: ['esm'],
     outDir: 'dist',
     platform: 'node',

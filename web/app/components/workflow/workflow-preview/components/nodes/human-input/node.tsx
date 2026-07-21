@@ -8,9 +8,11 @@ function HumanInputNode(props: NodeProps<HumanInputNodeType>) {
 
   return (
     <div className="space-y-0.5 px-3 py-1">
-      {data.user_actions.map(userAction => (
+      {data.user_actions.map((userAction) => (
         <div key={userAction.id} className="relative flex h-6 flex-row-reverse items-center px-1">
-          <span className="truncate system-xs-semibold-uppercase text-text-secondary">{userAction.id}</span>
+          <span className="truncate system-xs-semibold-uppercase text-text-secondary">
+            {userAction.id}
+          </span>
           <NodeSourceHandle
             {...props}
             handleId={userAction.id}

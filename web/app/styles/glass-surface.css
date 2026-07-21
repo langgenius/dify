@@ -15,32 +15,43 @@
     0 8px 16px -4px var(--color-components-main-nav-glass-shadow-reflection);
 
   &::before {
-    content: "";
+    content: '';
     pointer-events: none;
     position: absolute;
     inset: 0;
     border-radius: inherit;
     border: 1px solid transparent;
     background: linear-gradient(
-      0deg,
-      var(--color-components-main-nav-glass-edge-reflection-first, rgb(0 51 255 / 0)) 0%,
-      var(--color-components-main-nav-glass-edge-reflection-middle, rgb(0 51 255 / 0.6)) 50%,
-      var(--color-components-main-nav-glass-edge-reflection-end, rgb(0 51 255 / 0)) 100%
-    ) border-box;
-    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+        0deg,
+        var(--color-components-main-nav-glass-edge-reflection-first, rgb(0 51 255 / 0)) 0%,
+        var(--color-components-main-nav-glass-edge-reflection-middle, rgb(0 51 255 / 0.6)) 50%,
+        var(--color-components-main-nav-glass-edge-reflection-end, rgb(0 51 255 / 0)) 100%
+      )
+      border-box;
+    -webkit-mask:
+      linear-gradient(#fff 0 0) padding-box,
+      linear-gradient(#fff 0 0);
     -webkit-mask-composite: destination-out;
     mask-composite: exclude;
   }
 
   &::after {
-    content: "";
+    content: '';
     pointer-events: none;
     position: absolute;
     inset: 0;
     border-radius: inherit;
     border: 1px solid transparent;
-    background: linear-gradient(180deg, var(--color-components-main-nav-glass-edge-highlight-first, rgb(255 255 255 / 0.98)) 0%, var(--color-components-main-nav-glass-edge-highlight-middle, rgb(255 255 255 / 0)) 18%, var(--color-components-main-nav-glass-edge-highlight-end, rgb(255 255 255 / 0.42)) 100%) border-box;
-    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    background: linear-gradient(
+        180deg,
+        var(--color-components-main-nav-glass-edge-highlight-first, rgb(255 255 255 / 0.98)) 0%,
+        var(--color-components-main-nav-glass-edge-highlight-middle, rgb(255 255 255 / 0)) 18%,
+        var(--color-components-main-nav-glass-edge-highlight-end, rgb(255 255 255 / 0.42)) 100%
+      )
+      border-box;
+    -webkit-mask:
+      linear-gradient(#fff 0 0) padding-box,
+      linear-gradient(#fff 0 0);
     -webkit-mask-composite: destination-out;
     mask-composite: exclude;
     box-shadow: inset 0 0 8px 0 var(--color-components-main-nav-glass-inner-glow);

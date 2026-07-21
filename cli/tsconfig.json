@@ -3,12 +3,8 @@
   "compilerOptions": {
     "moduleResolution": "bundler",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@test/*": [
-        "./test/*"
-      ]
+      "@/*": ["./src/*"],
+      "@test/*": ["./test/*"]
     },
     "types": ["node"],
     "noEmit": true, // we already have bundlers to handle this.

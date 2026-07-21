@@ -5,45 +5,54 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
 import { VarInInspectType } from '@/types/workflow'
-import {
-  isConversationVar,
-  isENV,
-  isGlobalVar,
-  isRagVariableVar,
-  isSystemVar,
-} from '../utils'
+import { isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '../utils'
 
 export const useVarIcon = (variables: string[], variableCategory?: VarInInspectType | string) => {
-  if (variableCategory === 'loop')
-    return Loop
+  if (variableCategory === 'loop') return Loop
 
-  if (variableCategory === 'rag' || isRagVariableVar(variables))
-    return InputField
+  if (variableCategory === 'rag' || isRagVariableVar(variables)) return InputField
 
-  if (isENV(variables) || variableCategory === VarInInspectType.environment || variableCategory === 'environment')
+  if (
+    isENV(variables) ||
+    variableCategory === VarInInspectType.environment ||
+    variableCategory === 'environment'
+  )
     return Env
 
-  if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
+  if (
+    isConversationVar(variables) ||
+    variableCategory === VarInInspectType.conversation ||
+    variableCategory === 'conversation'
+  )
     return BubbleX
 
-  if (isGlobalVar(variables) || variableCategory === VarInInspectType.system)
-    return GlobalVariable
+  if (isGlobalVar(variables) || variableCategory === VarInInspectType.system) return GlobalVariable
 
   return Variable02
 }
 
-export const useVarColor = (variables: string[], isExceptionVariable?: boolean, variableCategory?: VarInInspectType | string) => {
+export const useVarColor = (
+  variables: string[],
+  isExceptionVariable?: boolean,
+  variableCategory?: VarInInspectType | string,
+) => {
   return useMemo(() => {
-    if (isExceptionVariable)
-      return 'text-text-warning'
+    if (isExceptionVariable) return 'text-text-warning'
 
-    if (variableCategory === 'loop')
-      return 'text-util-colors-cyan-cyan-500'
+    if (variableCategory === 'loop') return 'text-util-colors-cyan-cyan-500'
 
-    if (isENV(variables) || variableCategory === VarInInspectType.environment || variableCategory === 'environment')
+    if (
+      isENV(variables) ||
+      variableCategory === VarInInspectType.environment ||
+      variableCategory === 'environment'
+    )
       return 'text-util-colors-violet-violet-600'
 
-    if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
+    if (
+      isConversationVar(variables) ||
+      variableCategory === VarInInspectType.conversation ||
+      variableCategory === 'conversation'
+    )
       return 'text-util-colors-teal-teal-700'
 
     if (isGlobalVar(variables) || variableCategory === VarInInspectType.system)
@@ -57,14 +66,12 @@ export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
   const showName = VAR_SHOW_NAME_MAP[variables.join('.')]
   let variableFullPathName = variables.slice(1).join('.')
 
-  if (isRagVariableVar(variables))
-    variableFullPathName = variables.slice(2).join('.')
+  if (isRagVariableVar(variables)) variableFullPathName = variables.slice(2).join('.')
 
   const varName = useMemo(() => {
     variableFullPathName = variables.slice(1).join('.')
 
-    if (isRagVariableVar(variables))
-      variableFullPathName = variables.slice(2).join('.')
+    if (isRagVariableVar(variables)) variableFullPathName = variables.slice(2).join('.')
 
     const variablesLength = variables.length
     const isSystem = isSystemVar(variables)
@@ -72,8 +79,7 @@ export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
     return `${isSystem ? 'sys.' : ''}${varName}`
   }, [variables, notShowFullPath])
 
-  if (showName)
-    return showName
+  if (showName) return showName
   return varName
 }
 

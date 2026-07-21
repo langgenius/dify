@@ -3,12 +3,13 @@ import type { ComponentProps, FC } from 'react'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { Event } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
+import { BlockSelectorPreviewCardContent } from '../preview-card'
 
 type Props = Readonly<{
   provider: TriggerWithProvider
@@ -38,19 +39,20 @@ const TriggerPluginActionItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const previewDescriptionId = React.useId()
+  const previewDescription = payload.description[language]
 
   const row = (
     <button
       type="button"
+      aria-describedby={previewDescription ? previewDescriptionId : undefined}
       disabled={disabled}
-      key={payload.name}
       className={cn(
         'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-[21px] text-left focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
         disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
       )}
       onClick={() => {
-        if (disabled)
-          return
+        if (disabled) return
         const params: Record<string, string> = {}
         if (payload.parameters) {
           payload.parameters.forEach((item) => {
@@ -75,28 +77,32 @@ const TriggerPluginActionItem: FC<Props> = ({
         })
       }}
     >
-      <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary')}>
+      <div className="truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary">
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (
-        <div className="mr-4 system-xs-regular text-text-tertiary">{t($ => $['addToolModal.added'], { ns: 'tools' })}</div>
+        <div className="mr-4 system-xs-regular text-text-tertiary">
+          {t(($) => $['addToolModal.added'], { ns: 'tools' })}
+        </div>
       )}
     </button>
   )
 
   return (
-    // Preview is supplementary: provider icon, event label and description are all
-    // reachable from the node inspector after the row is clicked to add the trigger,
-    // so hover/focus-only activation is a11y-safe. See
-    // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-    <PreviewCardTrigger
-      key={payload.name}
-      delay={150}
-      closeDelay={150}
-      handle={previewCardHandle}
-      payload={{ provider, payload, language }}
-      render={row}
-    />
+    <>
+      <PreviewCardTrigger
+        delay={150}
+        closeDelay={150}
+        handle={previewCardHandle}
+        payload={{ provider, payload, language }}
+        render={row}
+      />
+      {previewDescription && (
+        <span id={previewDescriptionId} className="sr-only">
+          {previewDescription}
+        </span>
+      )}
+    </>
   )
 }
 
@@ -104,25 +110,24 @@ type TriggerPluginActionPreviewCardProps = {
   payload?: TriggerPluginActionPreviewPayload
 }
 
-export function TriggerPluginActionPreviewCard({
-  payload,
-}: TriggerPluginActionPreviewCardProps) {
-  if (!payload)
-    return null
+export function TriggerPluginActionPreviewCard({ payload }: TriggerPluginActionPreviewCardProps) {
+  if (!payload) return null
 
   return (
-    <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
-      <div>
-        <BlockIcon
-          size="md"
-          className="mb-2"
-          type={BlockEnum.TriggerPlugin}
-          toolIcon={payload.provider.icon}
-        />
-        <div className="mb-1 text-sm/5 text-text-primary">{payload.payload.label[payload.language]}</div>
-        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.payload.description[payload.language]}</div>
+    <BlockSelectorPreviewCardContent>
+      <BlockIcon
+        size="md"
+        className="mb-2"
+        type={BlockEnum.TriggerPlugin}
+        toolIcon={payload.provider.icon}
+      />
+      <div className="mb-1 text-sm/5 text-text-primary">
+        {payload.payload.label[payload.language]}
       </div>
-    </PreviewCardContent>
+      <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+        {payload.payload.description[payload.language]}
+      </div>
+    </BlockSelectorPreviewCardContent>
   )
 }
 

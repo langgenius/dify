@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -30,9 +30,24 @@ type Props = Readonly<{
   onSwitchChange?: (key: string, enable: boolean) => void
 }>
 
-const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, disabled = false, hasSwitch, onSwitchChange }) => {
+const ParamItem: FC<Props> = ({
+  className,
+  id,
+  name,
+  noTooltip,
+  tip,
+  step = 0.1,
+  min = 0,
+  max,
+  value,
+  enable,
+  onChange,
+  disabled = false,
+  hasSwitch,
+  onSwitchChange,
+}) => {
   return (
-    <FieldsetRoot className={className}>
+    <Fieldset className={className}>
       <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
       <div className="flex items-center justify-between">
         <div className="flex h-6 items-center">
@@ -63,7 +78,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             max={max}
             step={step}
             value={value}
-            onValueChange={nextValue => onChange(id, nextValue ?? min)}
+            onValueChange={(nextValue) => onChange(id, nextValue ?? min)}
           >
             <NumberFieldGroup>
               <NumberFieldInput aria-label={name} className="w-18" />
@@ -81,12 +96,12 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
-            onValueChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
+            onValueChange={(value) => onChange(id, value / (max < 5 ? 100 : 1))}
             aria-label={name}
           />
         </div>
       </div>
-    </FieldsetRoot>
+    </Fieldset>
   )
 }
 export default ParamItem

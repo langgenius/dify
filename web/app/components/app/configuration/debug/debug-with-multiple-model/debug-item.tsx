@@ -24,39 +24,32 @@ type DebugItemProps = {
   className?: string
   style?: CSSProperties
 }
-const DebugItem: FC<DebugItemProps> = ({
-  modelAndParameter,
-  className,
-  style,
-}) => {
+const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) => {
   const { t } = useTranslation()
   const { mode } = useDebugConfigurationContext()
-  const {
-    multipleModelConfigs,
-    onMultipleModelConfigsChange,
-    onDebugWithMultipleModelChange,
-  } = useDebugWithMultipleModelContext()
+  const { multipleModelConfigs, onMultipleModelConfigsChange, onDebugWithMultipleModelChange } =
+    useDebugWithMultipleModelContext()
   const { textGenerationModelList } = useProviderContext()
 
-  const index = multipleModelConfigs.findIndex(v => v.id === modelAndParameter.id)
-  const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
-  const currentModel = currentProvider?.models.find(item => item.model === modelAndParameter.model)
+  const index = multipleModelConfigs.findIndex((v) => v.id === modelAndParameter.id)
+  const currentProvider = textGenerationModelList.find(
+    (item) => item.provider === modelAndParameter.provider,
+  )
+  const currentModel = currentProvider?.models.find(
+    (item) => item.model === modelAndParameter.model,
+  )
 
   const handleDuplicate = () => {
-    if (multipleModelConfigs.length >= 4)
-      return
+    if (multipleModelConfigs.length >= 4) return
 
-    onMultipleModelConfigsChange(
-      true,
-      [
-        ...multipleModelConfigs.slice(0, index + 1),
-        {
-          ...modelAndParameter,
-          id: `${Date.now()}`,
-        },
-        ...multipleModelConfigs.slice(index + 1),
-      ],
-    )
+    onMultipleModelConfigsChange(true, [
+      ...multipleModelConfigs.slice(0, index + 1),
+      {
+        ...modelAndParameter,
+        id: `${Date.now()}`,
+      },
+      ...multipleModelConfigs.slice(index + 1),
+    ])
   }
 
   const handleDebugAsSingleModel = () => {
@@ -66,7 +59,7 @@ const DebugItem: FC<DebugItemProps> = ({
   const handleRemove = () => {
     onMultipleModelConfigsChange(
       true,
-      multipleModelConfigs.filter(item => item.id !== modelAndParameter.id),
+      multipleModelConfigs.filter((item) => item.id !== modelAndParameter.id),
     )
   }
 
@@ -81,43 +74,40 @@ const DebugItem: FC<DebugItemProps> = ({
     >
       <div className="flex h-10 shrink-0 items-center justify-between border-b-[0.5px] border-divider-regular px-3">
         <div className="flex h-5 w-6 items-center justify-center font-medium text-text-tertiary italic">
-          #
-          {index + 1}
+          #{index + 1}
         </div>
-        <ModelParameterTrigger
-          modelAndParameter={modelAndParameter}
-        />
+        <ModelParameterTrigger modelAndParameter={modelAndParameter} />
         <DropdownMenu>
           <DropdownMenuTrigger
-            render={(
+            render={
               <ActionButton
                 className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
-                aria-label={t($ => $['operation.more'], { ns: 'common' })}
+                aria-label={t(($) => $['operation.more'], { ns: 'common' })}
               >
                 <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
               </ActionButton>
-            )}
+            }
           />
-          <DropdownMenuContent
-            placement="bottom-end"
-            sideOffset={4}
-            popupClassName="min-w-[160px]"
-          >
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
             {showDuplicate && (
               <DropdownMenuItem className="system-md-regular" onClick={handleDuplicate}>
-                {t($ => $.duplicateModel, { ns: 'appDebug' })}
+                {t(($) => $.duplicateModel, { ns: 'appDebug' })}
               </DropdownMenuItem>
             )}
             {showDebugAsSingleModel && (
               <DropdownMenuItem className="system-md-regular" onClick={handleDebugAsSingleModel}>
-                {t($ => $.debugAsSingleModel, { ns: 'appDebug' })}
+                {t(($) => $.debugAsSingleModel, { ns: 'appDebug' })}
               </DropdownMenuItem>
             )}
             {showRemove && (
               <>
                 {(showDuplicate || showDebugAsSingleModel) && <DropdownMenuSeparator />}
-                <DropdownMenuItem variant="destructive" className="system-md-regular" onClick={handleRemove}>
-                  {t($ => $['operation.remove'], { ns: 'common' })}
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="system-md-regular"
+                  onClick={handleRemove}
+                >
+                  {t(($) => $['operation.remove'], { ns: 'common' })}
                 </DropdownMenuItem>
               </>
             )}
@@ -125,16 +115,18 @@ const DebugItem: FC<DebugItemProps> = ({
         </DropdownMenu>
       </div>
       <div style={{ height: 'calc(100% - 40px)' }}>
-        {
-          (mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT) && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
+        {(mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT) &&
+          currentProvider &&
+          currentModel &&
+          currentModel.status === ModelStatusEnum.active && (
             <ChatItem modelAndParameter={modelAndParameter} />
-          )
-        }
-        {
-          mode === AppModeEnum.COMPLETION && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
+          )}
+        {mode === AppModeEnum.COMPLETION &&
+          currentProvider &&
+          currentModel &&
+          currentModel.status === ModelStatusEnum.active && (
             <TextGenerationItem modelAndParameter={modelAndParameter} />
-          )
-        }
+          )}
       </div>
     </div>
   )

@@ -2,11 +2,8 @@ import type { DifyWorld } from '../../support/world'
 import type { AccessSurfaceName } from './access-point-helpers'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  setAgentApiAccess,
-  setAgentSiteAccessAndGetURL,
-} from '../../agent-v2/support/access-point'
-import { getAgentAccessPath, publishAgentWithPublishableDraft } from '../../agent-v2/support/agent'
+import { setAgentApiAccess, setAgentSiteAccessAndGetURL } from '../../agent-v2/support/access-point'
+import { publishAgentWithPublishableDraft } from '../../agent-v2/support/agent'
 import {
   getAccessRegion,
   getAccessSurfaceCard,
@@ -33,10 +30,6 @@ Given(
     this.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
   },
 )
-
-When('I open the Agent v2 Access Point page', async function (this: DifyWorld) {
-  await this.getPage().goto(getAgentAccessPath(getCurrentAgentId(this)))
-})
 
 When(
   'I open the preseeded Agent v2 Access Point page for {string} from the Agent Roster',
@@ -101,8 +94,7 @@ When(
     if (surface === 'Web app') {
       const launchLink = accessSurfaceCard.getByRole('link', { name: 'Launch' })
       const href = await launchLink.getAttribute('href')
-      if (!href)
-        throw new Error('Agent v2 Web app Launch link does not expose an href.')
+      if (!href) throw new Error('Agent v2 Web app Launch link does not expose an href.')
 
       this.agentBuilder.accessPoint.webAppURL = href
     }

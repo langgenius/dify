@@ -18,8 +18,7 @@ const Footer = () => {
   const invalidDatasetList = useInvalidDatasetList()
 
   const activeTab = useMemo(() => {
-    if (dslUrl)
-      return CreateFromDSLModalTab.FROM_URL
+    if (dslUrl) return CreateFromDSLModalTab.FROM_URL
 
     return undefined
   }, [dslUrl])
@@ -30,8 +29,7 @@ const Footer = () => {
 
   const onCloseImportModal = useCallback(() => {
     setShowImportModal(false)
-    if (dslUrl)
-      replace('/datasets/create-from-pipeline')
+    if (dslUrl) replace('/datasets/create-from-pipeline')
   }, [dslUrl, replace])
 
   const onImportFromDSLSuccess = useCallback(() => {
@@ -47,7 +45,7 @@ const Footer = () => {
         onClick={openImportFromDSL}
       >
         <RiFileUploadLine className="size-5" />
-        <span>{t($ => $['creation.importDSL'], { ns: 'datasetPipeline' })}</span>
+        <span>{t(($) => $['creation.importDSL'], { ns: 'datasetPipeline' })}</span>
       </button>
       <CreateFromDSLModal
         show={showImportModal}

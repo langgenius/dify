@@ -1,4 +1,7 @@
-import type { AgentKnowledgeDatasetConfig, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentKnowledgeDatasetConfig,
+  AgentSoulConfig,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type {
   ConsoleSegmentListResponse,
   DatasetListItemResponse,
@@ -8,6 +11,7 @@ import type {
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type {
   AvailableModelListResponse,
+  DefaultModelDataResponse,
   ModelProviderListResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SeedContext, SeedResource, SeedTask } from '../../../support/seed'
@@ -22,23 +26,8 @@ import {
 } from '../../../support/api'
 import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins'
 import { sleep } from '../../../support/process'
-import {
-  blocked,
-  created,
-  skipped,
-  updated,
-  verified,
-} from '../../../support/seed'
-import {
-  createAgentApiKey,
-  setAgentApiAccess,
-  setAgentSiteAccessAndGetURL,
-} from './access-point'
-import {
-  createTestAgent,
-  publishAgent,
-  saveAgentComposerDraft,
-} from './agent'
+import { blocked, created, skipped, updated, verified } from '../../../support/seed'
+import { createTestAgent, publishAgent, saveAgentComposerDraft } from './agent'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
@@ -60,12 +49,9 @@ import {
   findConsoleResourceByName,
   isRecord,
   matchesNameOrLabel,
-} from './preflight/common'
-import { splitToolDisplayName } from './preflight/tools'
-import {
-  agentBuilderTestMaterials,
-  getAgentBuilderTestMaterialPath,
-} from './test-materials'
+} from './fixtures/common'
+import { splitToolDisplayName } from './fixtures/tools'
+import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from './test-materials'
 
 type StableModel = {
   name: string
@@ -79,11 +65,9 @@ type ToolResource = SeedResource & {
 }
 
 const modelCredentialEnv = 'E2E_MODEL_PROVIDER_CREDENTIALS_JSON'
+const speechToTextModelProviderEnv = 'E2E_SPEECH_TO_TEXT_MODEL_PROVIDER'
+const speechToTextModelNameEnv = 'E2E_SPEECH_TO_TEXT_MODEL_NAME'
 const marketplacePluginIdsEnv = 'E2E_MARKETPLACE_PLUGIN_IDS'
-const marketplacePluginUniqueIdentifiersEnv = 'E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS'
-const oauthToolCredentialIdEnv = 'E2E_OAUTH_TOOL_CREDENTIAL_ID'
-const oauthToolProviderEnv = 'E2E_OAUTH_TOOL_PROVIDER'
-const oauthToolNameEnv = 'E2E_OAUTH_TOOL_NAME'
 const activeModelStatus = 'active'
 const stableModelCredentialName = 'E2E Stable Model'
 const agentV2MarketplacePluginIds = [
@@ -92,15 +76,19 @@ const agentV2MarketplacePluginIds = [
   'langgenius/tavily',
 ]
 
-const getProviderAlias = (provider: string) => provider.split('/').filter(Boolean).at(-1) ?? provider
+const getProviderAlias = (provider: string) =>
+  provider.split('/').filter(Boolean).at(-1) ?? provider
 
 const matchesProvider = (actual: string, expected: string) =>
   actual === expected || getProviderAlias(actual) === getProviderAlias(expected)
 
-const matchesProviderLabel = (provider: { label?: { en_US?: string | null, zh_Hans?: string | null } | null, provider: string }, expected: string) =>
-  matchesProvider(provider.provider, expected)
-  || provider.label?.en_US === expected
-  || provider.label?.zh_Hans === expected
+const matchesProviderLabel = (
+  provider: { label?: { en_US?: string | null; zh_Hans?: string | null } | null; provider: string },
+  expected: string,
+) =>
+  matchesProvider(provider.provider, expected) ||
+  provider.label?.en_US === expected ||
+  provider.label?.zh_Hans === expected
 
 const stableModelConfig = (): StableModel => ({
   name: process.env.E2E_STABLE_MODEL_NAME?.trim() || 'gpt-5-nano',
@@ -114,19 +102,22 @@ const agentDecisionModelConfig = (): StableModel => ({
   type: process.env.E2E_AGENT_DECISION_MODEL_TYPE?.trim() || 'llm',
 })
 
+const speechToTextModelConfig = (): StableModel => ({
+  name: process.env[speechToTextModelNameEnv]?.trim() || 'gpt-4o-mini-transcribe',
+  provider: process.env[speechToTextModelProviderEnv]?.trim() || 'openai',
+  type: 'speech2text',
+})
+
 const parseJsonEnv = (envName: string) => {
   const raw = process.env[envName]?.trim()
-  if (!raw)
-    return { ok: false as const, reason: `${envName} is required.` }
+  if (!raw) return { ok: false as const, reason: `${envName} is required.` }
 
   try {
     const value = JSON.parse(raw) as unknown
-    if (!isRecord(value))
-      return { ok: false as const, reason: `${envName} must be a JSON object.` }
+    if (!isRecord(value)) return { ok: false as const, reason: `${envName} must be a JSON object.` }
 
     return { ok: true as const, value }
-  }
-  catch (error) {
+  } catch (error) {
     return {
       ok: false as const,
       reason: `${envName} must be valid JSON: ${error instanceof Error ? error.message : String(error)}`,
@@ -134,22 +125,23 @@ const parseJsonEnv = (envName: string) => {
   }
 }
 
-const findChatModel = async (config: StableModel, title: string) => {
+const findModel = async (config: StableModel, title: string) => {
   const ctx = await createApiContext()
   try {
-    const response = await ctx.get(`/console/api/workspaces/current/models/model-types/${config.type}`)
+    const response = await ctx.get(
+      `/console/api/workspaces/current/models/model-types/${config.type}`,
+    )
     await expectApiResponseOK(response, `Check ${title}`)
     const body = (await response.json()) as AvailableModelListResponse
-    const provider = body.data.find(item => matchesProvider(item.provider, config.provider))
+    const provider = body.data.find((item) => matchesProvider(item.provider, config.provider))
     const model = provider?.models.find(
-      item =>
-        item.model === config.name
-        || item.label?.en_US === config.name
-        || item.label?.zh_Hans === config.name,
+      (item) =>
+        item.model === config.name ||
+        item.label?.en_US === config.name ||
+        item.label?.zh_Hans === config.name,
     )
 
-    if (!provider || !model)
-      return undefined
+    if (!provider || !model) return undefined
 
     return {
       name: model.model,
@@ -157,8 +149,7 @@ const findChatModel = async (config: StableModel, title: string) => {
       status: model.status,
       type: config.type,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -166,20 +157,21 @@ const findChatModel = async (config: StableModel, title: string) => {
 const resolveProvider = async (config: StableModel) => {
   const ctx = await createApiContext()
   try {
-    const response = await ctx.get(`/console/api/workspaces/current/model-providers?${buildQuery({ model_type: config.type })}`)
+    const response = await ctx.get(
+      `/console/api/workspaces/current/model-providers?${buildQuery({ model_type: config.type })}`,
+    )
     await expectApiResponseOK(response, `Resolve model provider ${config.provider}`)
     const body = (await response.json()) as ModelProviderListResponse
-    const provider = body.data.find(item => matchesProviderLabel(item, config.provider))
+    const provider = body.data.find((item) => matchesProviderLabel(item, config.provider))
 
     return {
-      availableProviders: body.data.map(provider => provider.provider),
+      availableProviders: body.data.map((provider) => provider.provider),
       credential: provider?.custom_configuration.available_credentials?.find(
-        credential => credential.credential_name === stableModelCredentialName,
+        (credential) => credential.credential_name === stableModelCredentialName,
       ),
       provider: provider?.provider,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -203,9 +195,11 @@ const selectCustomProviderCredential = async (provider: string, credentialId?: s
         data: { preferred_provider_type: 'custom' },
       },
     )
-    await expectApiResponseOK(preferredResponse, `Select custom provider credential for ${provider}`)
-  }
-  finally {
+    await expectApiResponseOK(
+      preferredResponse,
+      `Select custom provider credential for ${provider}`,
+    )
+  } finally {
     await ctx.dispose()
   }
 }
@@ -242,31 +236,35 @@ const upsertStableProviderCredential = async (
       },
     )
     await expectApiResponseOK(createResponse, `Create model provider credential for ${provider}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
 
-const seedChatModel = async (context: SeedContext, {
-  config,
-  title,
-}: {
-  config: StableModel
-  title: string
-}) => {
-  const existing = await findChatModel(config, title)
+const seedModel = async (
+  context: SeedContext,
+  {
+    config,
+    title,
+  }: {
+    config: StableModel
+    title: string
+  },
+) => {
+  const existing = await findModel(config, title)
   const resource = {
     id: `${existing?.provider ?? config.provider}/${existing?.name ?? config.name}`,
     kind: 'model',
     name: title,
   }
 
-  if (existing?.status === activeModelStatus)
-    return verified(title, resource)
+  if (existing?.status === activeModelStatus) return verified(title, resource)
 
   if (context.dryRun)
-    return skipped(title, `Would configure ${config.provider}/${config.name} using ${modelCredentialEnv}.`)
+    return skipped(
+      title,
+      `Would configure ${config.provider}/${config.name} using ${modelCredentialEnv}.`,
+    )
 
   const credentials = parseJsonEnv(modelCredentialEnv)
   if (!credentials.ok)
@@ -274,9 +272,7 @@ const seedChatModel = async (context: SeedContext, {
 
   const { availableProviders, credential, provider } = await resolveProvider(config)
   if (!provider) {
-    const available = availableProviders.length > 0
-      ? availableProviders.join(', ')
-      : 'none'
+    const available = availableProviders.length > 0 ? availableProviders.join(', ') : 'none'
     return blocked(
       title,
       `Provider ${config.provider} was not found in available model providers for ${config.type}. Available providers: ${available}.`,
@@ -286,8 +282,7 @@ const seedChatModel = async (context: SeedContext, {
   try {
     await upsertStableProviderCredential(provider, credentials.value, credential?.credential_id)
     await selectCustomProviderCredential(provider, credential?.credential_id)
-  }
-  catch (error) {
+  } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (!message.includes(`Credential with name '${stableModelCredentialName}' already exists.`))
       return blocked(title, message)
@@ -307,13 +302,12 @@ const seedChatModel = async (context: SeedContext, {
         refreshed.credential.credential_id,
       )
       await selectCustomProviderCredential(refreshed.provider, refreshed.credential.credential_id)
-    }
-    catch (retryError) {
+    } catch (retryError) {
       return blocked(title, retryError instanceof Error ? retryError.message : String(retryError))
     }
   }
 
-  const seeded = await findChatModel(config, title)
+  const seeded = await findModel(config, title)
   if (seeded?.status !== activeModelStatus) {
     return blocked(
       title,
@@ -328,39 +322,125 @@ const seedChatModel = async (context: SeedContext, {
   })
 }
 
-const seedStableModel = async (context: SeedContext) => seedChatModel(context, {
-  config: stableModelConfig(),
-  title: agentBuilderPreseededResources.stableChatModel,
-})
+const seedStableModel = async (context: SeedContext) =>
+  seedModel(context, {
+    config: stableModelConfig(),
+    title: agentBuilderPreseededResources.stableChatModel,
+  })
 
-const seedAgentDecisionModel = async (context: SeedContext) => seedChatModel(context, {
-  config: agentDecisionModelConfig(),
-  title: agentBuilderPreseededResources.agentDecisionChatModel,
-})
+const seedAgentDecisionModel = async (context: SeedContext) =>
+  seedModel(context, {
+    config: agentDecisionModelConfig(),
+    title: agentBuilderPreseededResources.agentDecisionChatModel,
+  })
+
+const getDefaultModel = async (modelType: string) => {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(
+      `/console/api/workspaces/current/default-model?${buildQuery({ model_type: modelType })}`,
+    )
+    await expectApiResponseOK(response, `Get default ${modelType} model`)
+    const body = (await response.json()) as DefaultModelDataResponse
+    return body.data
+  } finally {
+    await ctx.dispose()
+  }
+}
+
+const setDefaultModel = async (model: StableModel) => {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.post('/console/api/workspaces/current/default-model', {
+      data: {
+        model_settings: [
+          {
+            model: model.name,
+            model_type: model.type,
+            provider: model.provider,
+          },
+        ],
+      },
+    })
+    await expectApiResponseOK(response, `Set default ${model.type} model`)
+  } finally {
+    await ctx.dispose()
+  }
+}
+
+const seedSpeechToTextModel = async (context: SeedContext) => {
+  const config = speechToTextModelConfig()
+  const title = agentBuilderPreseededResources.speechToTextModel
+  const modelResult = await seedModel(context, { config, title })
+  if (modelResult.status === 'blocked' || modelResult.status === 'skipped') return modelResult
+
+  const model = await findModel(config, title)
+  if (!model || model.status !== activeModelStatus)
+    return blocked(title, `${config.provider}/${config.name} is not active after model setup.`)
+
+  const resource = {
+    id: `${model.provider}/${model.name}`,
+    kind: 'model',
+    name: title,
+  }
+  const defaultModel = await getDefaultModel(config.type)
+  const isExpectedDefault =
+    defaultModel?.model === model.name &&
+    matchesProvider(defaultModel.provider.provider, model.provider)
+
+  if (isExpectedDefault)
+    return modelResult.status === 'updated' ? modelResult : verified(title, resource)
+
+  if (context.dryRun)
+    return skipped(
+      title,
+      `Would set ${model.provider}/${model.name} as the workspace default Speech-to-Text model.`,
+    )
+
+  await setDefaultModel({
+    name: model.name,
+    provider: model.provider,
+    type: config.type,
+  })
+
+  const updatedDefaultModel = await getDefaultModel(config.type)
+  if (
+    updatedDefaultModel?.model !== model.name ||
+    !matchesProvider(updatedDefaultModel.provider.provider, model.provider)
+  ) {
+    return blocked(
+      title,
+      `${model.provider}/${model.name} was not selected as the workspace default Speech-to-Text model.`,
+    )
+  }
+
+  return updated(title, resource)
+}
 
 type BuiltinToolProvider = {
-  label?: { en_US?: string, zh_Hans?: string }
+  label?: { en_US?: string; zh_Hans?: string }
   name: string
   tools: Array<{
-    label?: { en_US?: string, zh_Hans?: string }
+    label?: { en_US?: string; zh_Hans?: string }
     name: string
   }>
 }
 
 const findBuiltinTool = async (displayName: string) => {
   const parsed = splitToolDisplayName(displayName)
-  if (!parsed.ok)
-    return { ok: false as const, reason: parsed.reason }
+  if (!parsed.ok) return { ok: false as const, reason: parsed.reason }
 
   const ctx = await createApiContext()
   try {
     const response = await ctx.get('/console/api/workspaces/current/tools/builtin')
     await expectApiResponseOK(response, `Check built-in tool ${displayName}`)
     const providers = (await response.json()) as BuiltinToolProvider[]
-    const provider = providers.find(item =>
-      matchesNameOrLabel(parsed.providerName, item.name, item.label))
-    const tool = provider?.tools.find(item =>
-      matchesNameOrLabel(parsed.toolName, item.name, item.label))
+    const provider = providers.find((item) =>
+      matchesNameOrLabel(parsed.providerName, item.name, item.label),
+    )
+    const tool = provider?.tools.find((item) =>
+      matchesNameOrLabel(parsed.toolName, item.name, item.label),
+    )
 
     if (!provider || !tool)
       return { ok: false as const, reason: `Built-in tool "${displayName}" was not found.` }
@@ -375,8 +455,7 @@ const findBuiltinTool = async (displayName: string) => {
         toolName: tool.name,
       } satisfies ToolResource,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -386,14 +465,16 @@ const seedTool = (displayName: string): SeedTask => ({
   title: displayName,
   async run() {
     const result = await findBuiltinTool(displayName)
-    if (!result.ok)
-      return blocked(displayName, result.reason)
+    if (!result.ok) return blocked(displayName, result.reason)
 
     return verified(displayName, result.resource)
   },
 })
 
-const uploadConsoleFile = async (fileName: string, filePath: string): Promise<UploadedConsoleFile> => {
+const uploadConsoleFile = async (
+  fileName: string,
+  filePath: string,
+): Promise<UploadedConsoleFile> => {
   const ctx = await createApiContext()
   try {
     const response = await ctx.post('/console/api/files/upload', {
@@ -407,8 +488,7 @@ const uploadConsoleFile = async (fileName: string, filePath: string): Promise<Up
     })
     await expectApiResponseOK(response, `Upload seed file ${fileName}`)
     return (await response.json()) as UploadedConsoleFile
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -425,12 +505,13 @@ const findDataset = (name: string) => {
 const getDatasetDocuments = async (datasetId: string) => {
   const ctx = await createApiContext()
   try {
-    const response = await ctx.get(`/console/api/datasets/${datasetId}/documents?${buildQuery({ limit: '100', page: '1' })}`)
+    const response = await ctx.get(
+      `/console/api/datasets/${datasetId}/documents?${buildQuery({ limit: '100', page: '1' })}`,
+    )
     await expectApiResponseOK(response, `List dataset documents ${datasetId}`)
     const body = (await response.json()) as DocumentWithSegmentsListResponse
     return body.data
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -454,19 +535,24 @@ const datasetHasKnowledgeSegment = async (datasetId: string) => {
           page: '1',
         })}`,
       )
-      await expectApiResponseOK(response, `Check dataset knowledge segment ${agentBuilderExpectedTokens.knowledgeReply}`)
+      await expectApiResponseOK(
+        response,
+        `Check dataset knowledge segment ${agentBuilderExpectedTokens.knowledgeReply}`,
+      )
       const body = (await response.json()) as ConsoleSegmentListResponse
-      if (body.data.some(segment =>
-        segment.enabled
-        && requiredKnowledgeSegmentTokens.every(token => segment.content.includes(token)),
-      )) {
+      if (
+        body.data.some(
+          (segment) =>
+            segment.enabled &&
+            requiredKnowledgeSegmentTokens.every((token) => segment.content.includes(token)),
+        )
+      ) {
         return true
       }
     }
 
     return false
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -481,16 +567,15 @@ const waitForDatasetCompleted = async (datasetId: string) => {
       const response = await ctx.get(`/console/api/datasets/${datasetId}/indexing-status`)
       await expectApiResponseOK(response, `Check dataset indexing ${datasetId}`)
       const body = (await response.json()) as DocumentStatusListResponse
-      status = body.data.length < 1
-        ? 'missing'
-        : body.data.every(item => item.indexing_status === 'completed')
-          ? 'completed'
-          : body.data.map(item => item.indexing_status ?? 'missing').join(',')
+      status =
+        body.data.length < 1
+          ? 'missing'
+          : body.data.every((item) => item.indexing_status === 'completed')
+            ? 'completed'
+            : body.data.map((item) => item.indexing_status ?? 'missing').join(',')
 
-      if (status === 'completed')
-        return { ok: true as const }
-    }
-    finally {
+      if (status === 'completed') return { ok: true as const }
+    } finally {
       await ctx.dispose()
     }
 
@@ -532,8 +617,7 @@ const addKnowledgeDocument = async (datasetId: string) => {
   try {
     const response = await ctx.post(`/console/api/datasets/${datasetId}/documents`, { data: body })
     await expectApiResponseOK(response, `Seed knowledge document ${datasetId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -551,8 +635,7 @@ const createDataset = async (name: string) => {
     })
     await expectApiResponseOK(response, `Create dataset ${name}`)
     return (await response.json()) as DatasetListItemResponse
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -571,8 +654,7 @@ const seedReadyKnowledge = async (context: SeedContext) => {
   dataset ??= await createDataset(title)
 
   const hasKnowledgeSegment = await datasetHasKnowledgeSegment(dataset.id)
-  if (!hasKnowledgeSegment)
-    await addKnowledgeDocument(dataset.id)
+  if (!hasKnowledgeSegment) await addKnowledgeDocument(dataset.id)
 
   const indexing = await waitForDatasetCompleted(dataset.id)
   if (!indexing.ok) {
@@ -582,18 +664,17 @@ const seedReadyKnowledge = async (context: SeedContext) => {
     )
   }
 
-  return datasetHasKnowledgeSegment(dataset.id)
-    .then((ready) => {
-      if (!ready) {
-        return blocked(
-          title,
-          `Dataset "${title}" does not expose an indexed segment containing ${requiredKnowledgeSegmentTokens.join(' and ')} after indexing.`,
-        )
-      }
+  return datasetHasKnowledgeSegment(dataset.id).then((ready) => {
+    if (!ready) {
+      return blocked(
+        title,
+        `Dataset "${title}" does not expose an indexed segment containing ${requiredKnowledgeSegmentTokens.join(' and ')} after indexing.`,
+      )
+    }
 
-      const resource = { id: dataset.id, kind: 'dataset', name: title }
-      return wasCreated ? created(title, resource) : verified(title, resource)
-    })
+    const resource = { id: dataset.id, kind: 'dataset', name: title }
+    return wasCreated ? created(title, resource) : verified(title, resource)
+  })
 }
 
 const ensureAgent = async (name: string) => {
@@ -604,8 +685,7 @@ const ensureAgent = async (name: string) => {
     resourceName: name,
   })
 
-  if (existing)
-    return { agent: existing, created: false }
+  if (existing) return { agent: existing, created: false }
 
   const agent = await createTestAgent({
     description: 'Created by Dify E2E seed.',
@@ -618,12 +698,10 @@ const ensureAgent = async (name: string) => {
 
 const getStableModelResource = (context: SeedContext): StableModel | undefined => {
   const resource = context.resources.get('stable-model')
-  if (!resource?.id)
-    return undefined
+  if (!resource?.id) return undefined
 
   const separatorIndex = resource.id.lastIndexOf('/')
-  if (separatorIndex === -1)
-    return undefined
+  if (separatorIndex === -1) return undefined
 
   return {
     name: resource.id.slice(separatorIndex + 1),
@@ -654,14 +732,12 @@ const saveSeededAgentComposer = async ({
   shouldPublish?: boolean
 }) => {
   await saveAgentComposerDraft(agentId, config)
-  if (shouldPublish)
-    await publishAgent(agentId, 'E2E seed')
+  if (shouldPublish) await publishAgent(agentId, 'E2E seed')
 }
 
 const ensureDriveSkill = async (agentId: string) => {
   const skills = await getAgentDriveSkills(agentId)
-  if (skills.some(skill => skill.name === agentBuilderPreseededResources.summarySkill))
-    return
+  if (skills.some((skill) => skill.name === agentBuilderPreseededResources.summarySkill)) return
 
   await uploadAgentDriveSkill({
     agentId,
@@ -682,8 +758,7 @@ const seedFullConfigAgent = async (context: SeedContext) => {
   if (!dataset?.id)
     return blocked(title, `${agentBuilderPreseededResources.agentKnowledgeBase} is not ready.`)
 
-  if (context.dryRun)
-    return skipped(title, `Would create or update Agent "${title}".`)
+  if (context.dryRun) return skipped(title, `Would create or update Agent "${title}".`)
 
   const { agent, created: wasCreated } = await ensureAgent(title)
   const agentId = agent.id
@@ -707,14 +782,17 @@ const seedFullConfigAgent = async (context: SeedContext) => {
   await saveSeededAgentComposer({
     agentId,
     config: createAgentSoulConfigWithKnowledgeDataset(
-      createAgentSoulConfigWithModel({
-        ...normalAgentSoulConfig,
-        config_files: [smallFile, specialFile],
-        config_skills: [summarySkill],
-        tools: {
-          dify_tools: [toolConfig(jsonTool)],
+      createAgentSoulConfigWithModel(
+        {
+          ...normalAgentSoulConfig,
+          config_files: [smallFile, specialFile],
+          config_skills: [summarySkill],
+          tools: {
+            dify_tools: [toolConfig(jsonTool)],
+          },
         },
-      }, model),
+        model,
+      ),
       {
         id: dataset.id,
         name: dataset.name,
@@ -734,8 +812,7 @@ const seedToolStatesAgent = async (context: SeedContext) => {
     return blocked(title, `${agentBuilderPreseededResources.jsonReplaceTool} is not ready.`)
   if (!tavilyTool)
     return blocked(title, `${agentBuilderPreseededResources.tavilySearchTool} is not ready.`)
-  if (context.dryRun)
-    return skipped(title, `Would create or update Agent "${title}".`)
+  if (context.dryRun) return skipped(title, `Would create or update Agent "${title}".`)
 
   const { agent, created: wasCreated } = await ensureAgent(title)
   const summarySkill = await uploadAgentConfigSkillToDraft({
@@ -764,8 +841,7 @@ const seedDualRetrievalAgent = async (context: SeedContext) => {
   const dataset = context.resources.get('ready-knowledge')
   if (!dataset?.id)
     return blocked(title, `${agentBuilderPreseededResources.agentKnowledgeBase} is not ready.`)
-  if (context.dryRun)
-    return skipped(title, `Would create or update Agent "${title}".`)
+  if (context.dryRun) return skipped(title, `Would create or update Agent "${title}".`)
 
   const { agent, created: wasCreated } = await ensureAgent(title)
   const datasetConfig = { id: dataset.id, name: dataset.name } satisfies AgentKnowledgeDatasetConfig
@@ -796,48 +872,6 @@ const seedDualRetrievalAgent = async (context: SeedContext) => {
       },
     },
   })
-
-  const resource = { id: agent.id, kind: 'agent', name: title }
-  return wasCreated ? created(title, resource) : updated(title, resource)
-}
-
-const seedPublishedWebAppAgent = async (context: SeedContext) => {
-  const title = agentBuilderPreseededResources.publishedWebAppAgent
-  const model = getStableModelResource(context)
-  if (!model)
-    return blocked(title, `${agentBuilderPreseededResources.stableChatModel} is not ready.`)
-  if (context.dryRun)
-    return skipped(title, `Would create or update Agent "${title}".`)
-
-  const { agent, created: wasCreated } = await ensureAgent(title)
-  await saveSeededAgentComposer({
-    agentId: agent.id,
-    config: createAgentSoulConfigWithModel(normalAgentSoulConfig, model),
-    shouldPublish: true,
-  })
-  await setAgentSiteAccessAndGetURL(agent.id, true)
-
-  const resource = { id: agent.id, kind: 'agent', name: title }
-  return wasCreated ? created(title, resource) : updated(title, resource)
-}
-
-const seedBackendApiAgent = async (context: SeedContext) => {
-  const title = agentBuilderPreseededResources.backendApiEnabledAgent
-  const model = getStableModelResource(context)
-  if (!model)
-    return blocked(title, `${agentBuilderPreseededResources.stableChatModel} is not ready.`)
-  if (context.dryRun)
-    return skipped(title, `Would create or update Agent "${title}".`)
-
-  const { agent, created: wasCreated } = await ensureAgent(title)
-  await saveSeededAgentComposer({
-    agentId: agent.id,
-    config: createAgentSoulConfigWithModel(normalAgentSoulConfig, model),
-    shouldPublish: true,
-  })
-  const access = await setAgentApiAccess(agent.id, true)
-  if (access.api_key_count < 1)
-    await createAgentApiKey(agent.id)
 
   const resource = { id: agent.id, kind: 'agent', name: title }
   return wasCreated ? created(title, resource) : updated(title, resource)
@@ -883,59 +917,16 @@ const seedWorkflowReference = async (context: SeedContext) => {
     : updated(`${title} / ${workflowName}`, resource)
 }
 
-const seedOAuthToolAgent = async (context: SeedContext) => {
-  const title = agentBuilderPreseededResources.oauthToolAgent
-  const credentialId = process.env[oauthToolCredentialIdEnv]?.trim()
-  const providerName = process.env[oauthToolProviderEnv]?.trim()
-  const toolName = process.env[oauthToolNameEnv]?.trim()
-  if (!credentialId || !providerName || !toolName) {
-    return blocked(
-      title,
-      `${oauthToolCredentialIdEnv}, ${oauthToolProviderEnv}, and ${oauthToolNameEnv} are required for OAuth2 tool seed.`,
-    )
-  }
-  if (context.dryRun)
-    return skipped(title, `Would create or update Agent "${title}" with OAuth2 tool ${providerName}/${toolName}.`)
-
-  const { agent, created: wasCreated } = await ensureAgent(title)
-  await saveSeededAgentComposer({
-    agentId: agent.id,
-    config: {
-      ...normalAgentSoulConfig,
-      tools: {
-        dify_tools: [
-          {
-            credential_ref: {
-              id: credentialId,
-              provider: providerName,
-              type: 'provider',
-            },
-            credential_type: 'oauth2',
-            enabled: true,
-            provider_id: providerName,
-            provider_type: 'builtin',
-            runtime_parameters: {},
-            tool_name: toolName,
-          },
-        ],
-      },
-    },
-  })
-
-  const resource = { id: agent.id, kind: 'agent', name: title }
-  return wasCreated ? created(title, resource) : updated(title, resource)
-}
-
 const agentV2BaseSeedTasks = (): SeedTask[] => [
   {
     id: 'marketplace-plugins',
     title: 'Agent V2 marketplace plugins',
-    run: context => bootstrapMarketplacePlugins(context, {
-      defaultPluginIds: agentV2MarketplacePluginIds,
-      pluginIdsEnv: marketplacePluginIdsEnv,
-      pluginUniqueIdentifiersEnv: marketplacePluginUniqueIdentifiersEnv,
-      title: 'Agent V2 marketplace plugins',
-    }),
+    run: (context) =>
+      bootstrapMarketplacePlugins(context, {
+        defaultPluginIds: agentV2MarketplacePluginIds,
+        pluginIdsEnv: marketplacePluginIdsEnv,
+        title: 'Agent V2 marketplace plugins',
+      }),
   },
   {
     id: 'stable-model',
@@ -956,24 +947,7 @@ const agentV2BaseSeedTasks = (): SeedTask[] => [
   },
 ]
 
-const agentV2FullSeedTasks = (): SeedTask[] => [
-  ...agentV2BaseSeedTasks(),
-  {
-    id: 'indexing-knowledge',
-    title: agentBuilderPreseededResources.indexingKnowledgeBase,
-    run: async () => blocked(
-      agentBuilderPreseededResources.indexingKnowledgeBase,
-      'A deterministic long-lived "currently indexing" dataset seed is not implemented yet.',
-    ),
-  },
-  {
-    id: 'broken-model',
-    title: agentBuilderPreseededResources.brokenModelProvider,
-    run: async () => blocked(
-      agentBuilderPreseededResources.brokenModelProvider,
-      'Broken model fixture is validation-only for now; provide E2E_BROKEN_MODEL_PROVIDER and keep the model entry externally.',
-    ),
-  },
+const agentV2PreparedFixtureSeedTasks = (): SeedTask[] => [
   {
     id: 'full-config-agent',
     title: agentBuilderPreseededResources.fullConfigAgent,
@@ -985,24 +959,9 @@ const agentV2FullSeedTasks = (): SeedTask[] => [
     run: seedToolStatesAgent,
   },
   {
-    id: 'oauth-tool-agent',
-    title: agentBuilderPreseededResources.oauthToolAgent,
-    run: seedOAuthToolAgent,
-  },
-  {
     id: 'dual-retrieval-agent',
     title: agentBuilderPreseededResources.dualRetrievalAgent,
     run: seedDualRetrievalAgent,
-  },
-  {
-    id: 'published-web-app-agent',
-    title: agentBuilderPreseededResources.publishedWebAppAgent,
-    run: seedPublishedWebAppAgent,
-  },
-  {
-    id: 'backend-api-agent',
-    title: agentBuilderPreseededResources.backendApiEnabledAgent,
-    run: seedBackendApiAgent,
   },
   {
     id: 'workflow-reference',
@@ -1011,12 +970,31 @@ const agentV2FullSeedTasks = (): SeedTask[] => [
   },
 ]
 
-export const createAgentV2SeedTasks = (profile: string = 'full'): SeedTask[] => {
-  if (profile === 'full')
-    return agentV2FullSeedTasks()
+const agentV2PreparedSeedTasks = (): SeedTask[] => [
+  ...agentV2BaseSeedTasks(),
+  ...agentV2PreparedFixtureSeedTasks(),
+]
 
-  if (profile === 'external-runtime')
-    return agentV2BaseSeedTasks()
+const agentV2ExternalRuntimeSeedTasks = (): SeedTask[] => [
+  ...agentV2BaseSeedTasks(),
+  {
+    id: 'speech-to-text-model',
+    title: agentBuilderPreseededResources.speechToTextModel,
+    run: seedSpeechToTextModel,
+  },
+]
+
+const agentV2PostMergeSeedTasks = (): SeedTask[] => [
+  ...agentV2ExternalRuntimeSeedTasks(),
+  ...agentV2PreparedFixtureSeedTasks(),
+]
+
+export const createAgentV2SeedTasks = (profile: string = 'post-merge'): SeedTask[] => {
+  if (profile === 'post-merge') return agentV2PostMergeSeedTasks()
+
+  if (profile === 'prepared') return agentV2PreparedSeedTasks()
+
+  if (profile === 'external-runtime') return agentV2ExternalRuntimeSeedTasks()
 
   throw new Error(`Unknown Agent V2 seed profile "${profile}".`)
 }

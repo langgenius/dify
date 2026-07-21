@@ -1,6 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { usePipelineInit } from '../use-pipeline-init'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -57,16 +56,18 @@ describe('usePipelineInit', () => {
       setRagPipelineVariables: mockSetRagPipelineVariables,
     })
 
-    mockUseDatasetDetailContextWithSelector.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-      const state = {
-        dataset: {
-          pipeline_id: 'test-pipeline-id',
-          name: 'Test Knowledge',
-          icon_info: { icon: 'test-icon' },
-        },
-      }
-      return selector(state)
-    })
+    mockUseDatasetDetailContextWithSelector.mockImplementation(
+      (selector: (state: Record<string, unknown>) => unknown) => {
+        const state = {
+          dataset: {
+            pipeline_id: 'test-pipeline-id',
+            name: 'Test Knowledge',
+            icon_info: { icon: 'test-icon' },
+          },
+        }
+        return selector(state)
+      },
+    )
 
     mockFetchWorkflowDraft.mockResolvedValue({
       graph: {
@@ -110,7 +111,9 @@ describe('usePipelineInit', () => {
       renderHook(() => usePipelineInit())
 
       await waitFor(() => {
-        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/rag/pipelines/test-pipeline-id/workflows/draft')
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
+          '/rag/pipelines/test-pipeline-id/workflows/draft',
+        )
       })
     })
 
@@ -226,9 +229,7 @@ describe('usePipelineInit', () => {
         updated_at: '2024-01-01T00:00:00Z',
         tool_published: false,
         environment_variables: [],
-        rag_pipeline_variables: [
-          { variable: 'query', type: 'text-input' },
-        ],
+        rag_pipeline_variables: [{ variable: 'query', type: 'text-input' }],
       })
 
       renderHook(() => usePipelineInit())
@@ -313,10 +314,12 @@ describe('usePipelineInit', () => {
 
   describe('missing datasetId', () => {
     it('should not fetch when datasetId is missing', async () => {
-      mockUseDatasetDetailContextWithSelector.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-        const state = { dataset: undefined }
-        return selector(state)
-      })
+      mockUseDatasetDetailContextWithSelector.mockImplementation(
+        (selector: (state: Record<string, unknown>) => unknown) => {
+          const state = { dataset: undefined }
+          return selector(state)
+        },
+      )
 
       renderHook(() => usePipelineInit())
 

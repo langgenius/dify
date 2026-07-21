@@ -29,8 +29,7 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
       toast.error(error)
       return
     }
-    if (!node)
-      return
+    if (!node) return
 
     onHide()
     handleCurlImport(node)
@@ -45,29 +44,30 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
     <Dialog
       open={isShow}
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
       <DialogContent className="w-[400px]! max-w-[400px]! overflow-hidden! border-none p-4! text-left align-middle">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t($ => $['nodes.http.curl.title'], { ns: 'workflow' })}
+          {t(($) => $['nodes.http.curl.title'], { ns: 'workflow' })}
         </DialogTitle>
 
         <div>
           <Textarea
-            aria-label={t($ => $['nodes.http.curl.title'], { ns: 'workflow' })}
+            aria-label={t(($) => $['nodes.http.curl.title'], { ns: 'workflow' })}
             value={inputString}
             className="my-3 h-40 w-full grow"
-            onValueChange={value => setInputString(value)}
-            placeholder={t($ => $['nodes.http.curl.placeholder'], { ns: 'workflow' })!}
+            onValueChange={(value) => setInputString(value)}
+            placeholder={t(($) => $['nodes.http.curl.placeholder'], { ns: 'workflow' })!}
           />
         </div>
         <div className="mt-4 flex justify-end space-x-2">
-          <Button className="w-[95px]!" onClick={onHide}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button className="w-[95px]!" onClick={onHide}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
           <Button className="w-[95px]!" variant="primary" onClick={handleSave}>
             {' '}
-            {t($ => $['operation.save'], { ns: 'common' })}
+            {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
       </DialogContent>

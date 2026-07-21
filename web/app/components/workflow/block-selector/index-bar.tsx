@@ -23,40 +23,33 @@ export const AGENT_GROUP_NAME = '@@@agent@@@'
   }
 }
 */
-export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolWithProvider) => string) => {
+export const groupItems = (
+  items: ToolWithProvider[],
+  getFirstChar: (item: ToolWithProvider) => string,
+) => {
   const groups = items.reduce((acc: Record<string, Record<string, ToolWithProvider[]>>, item) => {
     const firstChar = getFirstChar(item)
-    if (!firstChar || firstChar.length === 0)
-      return acc
+    if (!firstChar || firstChar.length === 0) return acc
 
     let letter
 
     // transform Chinese to pinyin
     if (/[\u4E00-\u9FA5]/.test(firstChar))
       letter = pinyin(firstChar, { pattern: 'first', toneType: 'none' })[0]!.toUpperCase()
-    else
-      letter = firstChar.toUpperCase()
+    else letter = firstChar.toUpperCase()
 
-    if (!/[A-Z]/.test(letter))
-      letter = '#'
+    if (!/[A-Z]/.test(letter)) letter = '#'
 
-    if (!acc[letter])
-      acc[letter] = {}
+    if (!acc[letter]) acc[letter] = {}
 
     let groupName: string = ''
-    if (item.type === CollectionType.builtIn)
-      groupName = item.author
-    else if (item.type === CollectionType.custom)
-      groupName = CUSTOM_GROUP_NAME
-    else if (item.type === CollectionType.workflow)
-      groupName = WORKFLOW_GROUP_NAME
-    else if (item.type === CollectionType.datasource)
-      groupName = DATA_SOURCE_GROUP_NAME
-    else
-      groupName = AGENT_GROUP_NAME
+    if (item.type === CollectionType.builtIn) groupName = item.author
+    else if (item.type === CollectionType.custom) groupName = CUSTOM_GROUP_NAME
+    else if (item.type === CollectionType.workflow) groupName = WORKFLOW_GROUP_NAME
+    else if (item.type === CollectionType.datasource) groupName = DATA_SOURCE_GROUP_NAME
+    else groupName = AGENT_GROUP_NAME
 
-    if (!acc[letter]![groupName])
-      acc[letter]![groupName] = []
+    if (!acc[letter]![groupName]) acc[letter]![groupName] = []
 
     acc[letter]![groupName]!.push(item)
 
@@ -82,13 +75,21 @@ type IndexBarProps = {
 const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className }) => {
   const handleIndexClick = (letter: string) => {
     const element = itemRefs.current?.[letter]
-    if (element)
-      element.scrollIntoView({ behavior: 'smooth' })
+    if (element) element.scrollIntoView({ behavior: 'smooth' })
   }
   return (
-    <div className={cn('index-bar sticky top-[20px] flex h-full w-6 flex-col items-center justify-center text-xs font-medium text-text-quaternary', className)}>
-      <div className={cn('absolute top-0 left-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]')}></div>
-      {letters.map(letter => (
+    <div
+      className={cn(
+        'index-bar sticky top-[20px] flex h-full w-6 flex-col items-center justify-center text-xs font-medium text-text-quaternary',
+        className,
+      )}
+    >
+      <div
+        className={cn(
+          'absolute top-0 left-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]',
+        )}
+      ></div>
+      {letters.map((letter) => (
         <button
           type="button"
           className="cursor-pointer border-none bg-transparent p-0 text-left hover:text-text-secondary"

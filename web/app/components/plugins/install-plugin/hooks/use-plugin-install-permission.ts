@@ -13,7 +13,8 @@ type PluginInstallPermissionAction = {
   setPluginInstallPermission: (state: PluginInstallPermissionState) => void
 }
 
-export type PluginInstallPermissionStoreState = PluginInstallPermissionState & PluginInstallPermissionAction
+export type PluginInstallPermissionStoreState = PluginInstallPermissionState &
+  PluginInstallPermissionAction
 
 export type PluginInstallPermissionStore = StoreApi<PluginInstallPermissionStoreState>
 
@@ -22,33 +23,39 @@ const defaultPluginInstallPermissionState: PluginInstallPermissionState = {
   canUpdatePlugin: true,
 }
 
-export const createPluginInstallPermissionStore = (initProps?: Partial<PluginInstallPermissionState>) => {
-  const canInstallPlugin = initProps?.canInstallPlugin ?? defaultPluginInstallPermissionState.canInstallPlugin
+export const createPluginInstallPermissionStore = (
+  initProps?: Partial<PluginInstallPermissionState>,
+) => {
+  const canInstallPlugin =
+    initProps?.canInstallPlugin ?? defaultPluginInstallPermissionState.canInstallPlugin
 
-  return createStore<PluginInstallPermissionStoreState>()(set => ({
+  return createStore<PluginInstallPermissionStoreState>()((set) => ({
     ...defaultPluginInstallPermissionState,
     ...initProps,
     canUpdatePlugin: initProps?.canUpdatePlugin ?? canInstallPlugin,
-    setPluginInstallPermission: state => set(() => state),
+    setPluginInstallPermission: (state) => set(() => state),
   }))
 }
 
 const fallbackPluginInstallPermissionStore = createPluginInstallPermissionStore()
 
-export const PluginInstallPermissionContext = createContext<PluginInstallPermissionStore | null>(null)
+export const PluginInstallPermissionContext = createContext<PluginInstallPermissionStore | null>(
+  null,
+)
 
-export const usePluginInstallPermissionStore = <T>(selector: (state: PluginInstallPermissionStoreState) => T): T => {
+export const usePluginInstallPermissionStore = <T>(
+  selector: (state: PluginInstallPermissionStoreState) => T,
+): T => {
   const store = use(PluginInstallPermissionContext)
-  if (!store)
-    throw new Error('Missing PluginInstallPermissionProvider in the tree')
+  if (!store) throw new Error('Missing PluginInstallPermissionProvider in the tree')
 
   return useStore(store, selector)
 }
 
 const usePluginInstallPermission = () => {
-  const canInstallPlugin = usePluginInstallPermissionStore(state => state.canInstallPlugin)
-  const canUpdatePlugin = usePluginInstallPermissionStore(state => state.canUpdatePlugin)
-  const currentDifyVersion = usePluginInstallPermissionStore(state => state.currentDifyVersion)
+  const canInstallPlugin = usePluginInstallPermissionStore((state) => state.canInstallPlugin)
+  const canUpdatePlugin = usePluginInstallPermissionStore((state) => state.canUpdatePlugin)
+  const currentDifyVersion = usePluginInstallPermissionStore((state) => state.currentDifyVersion)
 
   return {
     canInstallPlugin,
@@ -59,9 +66,9 @@ const usePluginInstallPermission = () => {
 
 export const useOptionalPluginInstallPermission = () => {
   const store = use(PluginInstallPermissionContext) ?? fallbackPluginInstallPermissionStore
-  const canInstallPlugin = useStore(store, state => state.canInstallPlugin)
-  const canUpdatePlugin = useStore(store, state => state.canUpdatePlugin)
-  const currentDifyVersion = useStore(store, state => state.currentDifyVersion)
+  const canInstallPlugin = useStore(store, (state) => state.canInstallPlugin)
+  const canUpdatePlugin = useStore(store, (state) => state.canUpdatePlugin)
+  const currentDifyVersion = useStore(store, (state) => state.currentDifyVersion)
 
   return {
     canInstallPlugin,

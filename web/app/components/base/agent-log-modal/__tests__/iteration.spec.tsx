@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import Iteration from '../iteration'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
+  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
       <div data-testid="code-editor-title">{title}</div>
       <div data-testid="code-editor-value">{JSON.stringify(value)}</div>
@@ -24,7 +24,7 @@ const mockIterationInfo: AgentIteration = {
     {
       status: 'success',
       tool_name: 'test_tool',
-      tool_label: { en: 'Test Tool' },
+      tool_label: { en: 'Test Tool', 'en-US': 'Test Tool' },
       tool_icon: null,
     },
   ],

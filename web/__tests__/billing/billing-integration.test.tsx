@@ -1,5 +1,5 @@
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import AnnotationFull from '@/app/components/billing/annotation-full'
@@ -14,9 +14,10 @@ import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-lim
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
+import { render } from '@/test/console/render'
 
 let mockProviderCtx: Record<string, unknown> = {}
-let mockAppCtx: Record<string, unknown> = {}
+let mockConsoleState: Record<string, unknown> = {}
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 
@@ -32,30 +33,21 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/context/modal-context', () => ({
@@ -133,7 +125,10 @@ const createPlanData = (overrides: PlanOverrides = {}) => ({
   reset: { ...defaultPlan.reset, ...overrides.reset },
 })
 
-const setupProviderContext = (planOverrides: PlanOverrides = {}, extra: Record<string, unknown> = {}) => {
+const setupProviderContext = (
+  planOverrides: PlanOverrides = {},
+  extra: Record<string, unknown> = {},
+) => {
   mockProviderCtx = {
     plan: createPlanData(planOverrides),
     enableBilling: true,
@@ -145,14 +140,10 @@ const setupProviderContext = (planOverrides: PlanOverrides = {}, extra: Record<s
   }
 }
 
-const setupAppContext = (overrides: Record<string, unknown> = {}) => {
-  mockAppCtx = {
+const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
+  mockConsoleState = {
     isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: [
-      'billing.view',
-      'billing.manage',
-      'billing.subscription.manage',
-    ],
+    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...overrides,
@@ -168,7 +159,7 @@ const setupAppContext = (overrides: Record<string, unknown> = {}) => {
 describe('Billing Page + Plan Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupAppContext()
+    setupConsoleState()
   })
 
   // Verify that the billing page renders PlanComp with all 7 usage items
@@ -256,7 +247,7 @@ describe('Billing Page + Plan Integration', () => {
   describe('Billing URL button', () => {
     it('should show billing button when manager has subscription management permission', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({
+      setupConsoleState({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: ['billing.subscription.manage'],
       })
@@ -269,7 +260,7 @@ describe('Billing Page + Plan Integration', () => {
 
     it('should hide billing button when subscription management permission is granted without manager role', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({
+      setupConsoleState({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.subscription.manage'],
       })
@@ -281,7 +272,7 @@ describe('Billing Page + Plan Integration', () => {
 
     it('should hide billing button when subscription management permission is missing', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({
+      setupConsoleState({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: ['billing.view', 'billing.manage'],
       })
@@ -301,7 +292,7 @@ describe('Billing Page + Plan Integration', () => {
 
     it('should hide billing button when no billing permissions are granted', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({
+      setupConsoleState({
         workspacePermissionKeys: [],
       })
 
@@ -319,7 +310,7 @@ describe('Billing Page + Plan Integration', () => {
 describe('Plan Type Display Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupAppContext()
+    setupConsoleState()
   })
 
   it('should render sandbox plan with upgrade button (premium badge)', () => {
@@ -363,10 +354,13 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should show education verify button when enableEducationPlan is true and not yet verified', () => {
-    setupProviderContext({ type: Plan.sandbox }, {
-      enableEducationPlan: true,
-      isEducationAccount: false,
-    })
+    setupProviderContext(
+      { type: Plan.sandbox },
+      {
+        enableEducationPlan: true,
+        isEducationAccount: false,
+      },
+    )
 
     render(<PlanComp loc="test" />)
 
@@ -382,7 +376,7 @@ describe('Plan Type Display Integration', () => {
 describe('Upgrade Flow Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupAppContext()
+    setupConsoleState()
     setupProviderContext({ type: Plan.sandbox })
   })
 
@@ -495,14 +489,7 @@ describe('Upgrade Flow Integration', () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
 
-      render(
-        <PlanUpgradeModal
-          show={true}
-          onClose={onClose}
-          title="Test"
-          description="Test"
-        />,
-      )
+      render(<PlanUpgradeModal show={true} onClose={onClose} title="Test" description="Test" />)
 
       const dismissBtn = screen.getByText(/triggerLimitModal\.dismiss/i)
       await user.click(dismissBtn)
@@ -536,7 +523,7 @@ describe('Upgrade Flow Integration', () => {
 describe('Capacity Full Components Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupAppContext()
+    setupConsoleState()
   })
 
   // AppsFull renders with correct messaging and components
@@ -735,7 +722,7 @@ describe('Capacity Full Components Integration', () => {
 describe('PriorityLabel Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupAppContext()
+    setupConsoleState()
   })
 
   it('should display "standard" priority for sandbox plan', () => {
@@ -781,7 +768,7 @@ describe('PriorityLabel Integration', () => {
 describe('Usage Display Edge Cases', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupAppContext()
+    setupConsoleState()
   })
 
   // Vector space storage mode behavior
@@ -838,7 +825,9 @@ describe('Usage Display Edge Cases', () => {
       const { container } = render(<PlanComp loc="test" />)
 
       // 20% usage — at least one Meter indicator should carry the neutral tone
-      expect(container.querySelector('.bg-components-progress-bar-progress-solid')).toBeInTheDocument()
+      expect(
+        container.querySelector('.bg-components-progress-bar-progress-solid'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -883,7 +872,7 @@ describe('Usage Display Edge Cases', () => {
 describe('Cross-Component Upgrade Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupAppContext()
+    setupConsoleState()
   })
 
   it('should trigger pricing from AppsFull upgrade button', async () => {

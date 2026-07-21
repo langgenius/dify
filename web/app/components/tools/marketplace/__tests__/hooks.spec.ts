@@ -19,7 +19,8 @@ const mockFetchNextPage = vi.fn()
 const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
 const mockUseMarketplacePlugins = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) => mockUseMarketplaceCollectionsAndPlugins(...args),
+  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) =>
+    mockUseMarketplaceCollectionsAndPlugins(...args),
   useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
 }))
 

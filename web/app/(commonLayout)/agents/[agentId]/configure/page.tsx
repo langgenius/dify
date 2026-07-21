@@ -4,9 +4,7 @@ type PageProps = {
   params: Promise<{ agentId: string }>
 }
 
-export default async function Page({
-  params,
-}: PageProps) {
+export default async function Page({ params }: PageProps) {
   const { agentId } = await params
 
   return <AgentDetailPage agentId={agentId} section="configure" />

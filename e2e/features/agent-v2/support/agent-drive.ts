@@ -22,29 +22,21 @@ export type UploadedConsoleFile = {
 const crc32Table = new Uint32Array(256)
 for (let i = 0; i < crc32Table.length; i++) {
   let c = i
-  for (let k = 0; k < 8; k++)
-    c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
   crc32Table[i] = c >>> 0
 }
 
 const crc32 = (buffer: Buffer) => {
-  let crc = 0xFFFFFFFF
-  for (const byte of buffer)
-    crc = crc32Table[(crc ^ byte) & 0xFF]! ^ (crc >>> 8)
-  return (crc ^ 0xFFFFFFFF) >>> 0
+  let crc = 0xffffffff
+  for (const byte of buffer) crc = crc32Table[(crc ^ byte) & 0xff]! ^ (crc >>> 8)
+  return (crc ^ 0xffffffff) >>> 0
 }
 
-const createSingleFileZip = ({
-  content,
-  entryName,
-}: {
-  content: Buffer
-  entryName: string
-}) => {
+const createSingleFileZip = ({ content, entryName }: { content: Buffer; entryName: string }) => {
   const entryNameBuffer = Buffer.from(entryName)
   const checksum = crc32(content)
   const localHeader = Buffer.alloc(30)
-  localHeader.writeUInt32LE(0x04034B50, 0)
+  localHeader.writeUInt32LE(0x04034b50, 0)
   localHeader.writeUInt16LE(20, 4)
   localHeader.writeUInt16LE(0, 6)
   localHeader.writeUInt16LE(0, 8)
@@ -58,7 +50,7 @@ const createSingleFileZip = ({
 
   const centralDirectoryOffset = localHeader.length + entryNameBuffer.length + content.length
   const centralDirectoryHeader = Buffer.alloc(46)
-  centralDirectoryHeader.writeUInt32LE(0x02014B50, 0)
+  centralDirectoryHeader.writeUInt32LE(0x02014b50, 0)
   centralDirectoryHeader.writeUInt16LE(20, 4)
   centralDirectoryHeader.writeUInt16LE(20, 6)
   centralDirectoryHeader.writeUInt16LE(0, 8)
@@ -78,7 +70,7 @@ const createSingleFileZip = ({
 
   const centralDirectorySize = centralDirectoryHeader.length + entryNameBuffer.length
   const endOfCentralDirectory = Buffer.alloc(22)
-  endOfCentralDirectory.writeUInt32LE(0x06054B50, 0)
+  endOfCentralDirectory.writeUInt32LE(0x06054b50, 0)
   endOfCentralDirectory.writeUInt16LE(0, 4)
   endOfCentralDirectory.writeUInt16LE(0, 6)
   endOfCentralDirectory.writeUInt16LE(1, 8)
@@ -111,9 +103,10 @@ const toSkillArchiveUpload = async ({
     }
   }
   const sourceDirName = path.basename(path.dirname(fileName))
-  const archiveBaseName = sourceDirName && sourceDirName !== '.'
-    ? sourceDirName
-    : path.basename(fileName, path.extname(fileName))
+  const archiveBaseName =
+    sourceDirName && sourceDirName !== '.'
+      ? sourceDirName
+      : path.basename(fileName, path.extname(fileName))
 
   return {
     buffer: createSingleFileZip({
@@ -147,8 +140,7 @@ export async function uploadAgentDriveSkill({
     })
     await expectApiResponseOK(response, `Upload Agent v2 drive skill ${fileName} for ${agentId}`)
     return (await response.json()) as AgentSkillUploadResponse
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -181,11 +173,13 @@ export async function uploadAgentConfigFileToDraft({
         upload_file_id: uploadedFile.id,
       },
     })
-    await expectApiResponseOK(commitResponse, `Commit Agent v2 config file ${fileName} for ${agentId}`)
+    await expectApiResponseOK(
+      commitResponse,
+      `Commit Agent v2 config file ${fileName} for ${agentId}`,
+    )
     const body = (await commitResponse.json()) as AgentConfigFileUploadResponse
     const file = body.file
-    if (!file.file_id)
-      throw new Error(`Agent v2 config file ${fileName} did not return a file_id.`)
+    if (!file.file_id) throw new Error(`Agent v2 config file ${fileName} did not return a file_id.`)
 
     return {
       file_id: file.file_id,
@@ -195,8 +189,7 @@ export async function uploadAgentConfigFileToDraft({
       name: file.name,
       size: file.size,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -237,8 +230,7 @@ export async function uploadAgentConfigSkillToDraft({
       name: skill.name,
       size: skill.size,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -250,8 +242,7 @@ export async function getAgentDriveSkills(agentId: string): Promise<AgentDriveSk
     await expectApiResponseOK(response, `Get Agent v2 drive skills for ${agentId}`)
     const body = (await response.json()) as AgentDriveSkillListResponse
     return body.items ?? []
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -259,10 +250,11 @@ export async function getAgentDriveSkills(agentId: string): Promise<AgentDriveSk
 export async function deleteAgentConfigFile(agentId: string, name: string): Promise<void> {
   const ctx = await createApiContext()
   try {
-    const response = await ctx.delete(`/console/api/agent/${agentId}/config/files/${encodeURIComponent(name)}`)
+    const response = await ctx.delete(
+      `/console/api/agent/${agentId}/config/files/${encodeURIComponent(name)}`,
+    )
     await expectApiResponseOK(response, `Delete Agent v2 config file ${name} for ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -270,10 +262,11 @@ export async function deleteAgentConfigFile(agentId: string, name: string): Prom
 export async function deleteAgentConfigSkill(agentId: string, name: string): Promise<void> {
   const ctx = await createApiContext()
   try {
-    const response = await ctx.delete(`/console/api/agent/${agentId}/config/skills/${encodeURIComponent(name)}`)
+    const response = await ctx.delete(
+      `/console/api/agent/${agentId}/config/skills/${encodeURIComponent(name)}`,
+    )
     await expectApiResponseOK(response, `Delete Agent v2 config skill ${name} for ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -284,8 +277,7 @@ export async function deleteAgentDriveFile(agentId: string, key: string): Promis
     const searchParams = new URLSearchParams({ key })
     const response = await ctx.delete(`/console/api/agent/${agentId}/files?${searchParams}`)
     await expectApiResponseOK(response, `Delete Agent v2 drive file ${key} for ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }

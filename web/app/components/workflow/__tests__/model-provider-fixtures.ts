@@ -82,7 +82,9 @@ export function createProviderMeta(overrides: Partial<ModelProvider> = {}): Mode
   }
 }
 
-export function createCredentialState(overrides: Partial<CredentialPanelState> = {}): CredentialPanelState {
+export function createCredentialState(
+  overrides: Partial<CredentialPanelState> = {},
+): CredentialPanelState {
   return {
     variant: 'api-active',
     priority: 'apiKeyOnly',

@@ -8,7 +8,6 @@ import * as React from 'react'
 import { vi } from 'vitest'
 import DebugConfigurationContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
-
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from '../index'
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
@@ -58,7 +57,9 @@ vi.mock('react-sortablejs', () => ({
   },
 }))
 
-type DebugConfigurationState = React.ComponentProps<typeof DebugConfigurationContext.Provider>['value']
+type DebugConfigurationState = React.ComponentProps<
+  typeof DebugConfigurationContext.Provider
+>['value']
 
 const defaultDebugConfigValue = {
   mode: AppModeEnum.CHAT,
@@ -68,10 +69,13 @@ const defaultDebugConfigValue = {
   },
 } as unknown as DebugConfigurationState
 
-const createDebugConfigValue = (overrides: Partial<DebugConfigurationState> = {}): DebugConfigurationState => ({
-  ...defaultDebugConfigValue,
-  ...overrides,
-} as unknown as DebugConfigurationState)
+const createDebugConfigValue = (
+  overrides: Partial<DebugConfigurationState> = {},
+): DebugConfigurationState =>
+  ({
+    ...defaultDebugConfigValue,
+    ...overrides,
+  }) as unknown as DebugConfigurationState
 
 let variableIndex = 0
 const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVariable => {
@@ -85,7 +89,10 @@ const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVa
   }
 }
 
-const renderConfigVar = (props: Partial<IConfigVarProps> = {}, debugOverrides: Partial<DebugConfigurationState> = {}) => {
+const renderConfigVar = (
+  props: Partial<IConfigVarProps> = {},
+  debugOverrides: Partial<DebugConfigurationState> = {},
+) => {
   const defaultProps: IConfigVarProps = {
     promptVariables: [],
     readonly: false,
@@ -233,7 +240,9 @@ describe('ConfigVar', () => {
       const item = screen.getByTitle('name · Name')
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
       const editDialog = await screen.findByRole('dialog')
       const saveButton = within(editDialog).getByRole('button', { name: 'common.operation.save' })
@@ -257,9 +266,13 @@ describe('ConfigVar', () => {
       const item = screen.getByTitle('first · First')
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
-      const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
+      const inputs = await screen.findAllByPlaceholderText(
+        'appDebug.variableConfig.inputPlaceholder',
+      )
       fireEvent.change(inputs[0]!, { target: { value: 'second' } })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -281,9 +294,13 @@ describe('ConfigVar', () => {
       const item = screen.getByTitle('first · First')
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
-      const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
+      const inputs = await screen.findAllByPlaceholderText(
+        'appDebug.variableConfig.inputPlaceholder',
+      )
       fireEvent.change(inputs[1]!, { target: { value: 'Second' } })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -405,7 +422,9 @@ describe('ConfigVar', () => {
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
 
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
       const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
 
@@ -453,7 +472,9 @@ describe('ConfigVar', () => {
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
 
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
       const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
 

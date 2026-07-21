@@ -2,31 +2,25 @@ import type { StartNodeType } from './nodes/start/types'
 import type { CommonNodeType, InputVar, Node } from './types'
 import type { PromptVariable } from '@/models/debug'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { memo, useCallback } from 'react'
 import { useNodes } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { updateFeatures } from '@/service/workflow'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-} from './hooks'
+import { useIsChatMode, useNodesReadOnly } from './hooks'
 import useConfig from './nodes/start/use-config'
 import { useStore } from './store'
 import { InputVarType } from './types'
 
 const Features = () => {
-  const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
-  const appId = useStore(s => s.appId)
+  const setShowFeaturesPanel = useStore((s) => s.setShowFeaturesPanel)
+  const appId = useStore((s) => s.appId)
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const featuresStore = useFeaturesStore()
   const nodes = useNodes<CommonNodeType>()
-  const startNode = nodes.find(node => node.data.type === 'start')
+  const startNode = nodes.find((node) => node.data.type === 'start')
   const { id, data } = startNode as Node<StartNodeType>
   const { handleAddVariable } = useConfig(id, data)
 
@@ -44,16 +38,19 @@ const Features = () => {
   }
 
   const handleFeaturesChange = useCallback(async () => {
-    if (!appId || !featuresStore)
-      return
+    if (!appId || !featuresStore) return
 
     try {
       const currentFeatures = featuresStore.getState().features
 
       // Transform features to match the expected server format (same as doSyncWorkflowDraft)
       const transformedFeatures: WorkflowDraftFeaturesPayload = {
-        opening_statement: currentFeatures.opening?.enabled ? (currentFeatures.opening?.opening_statement || '') : '',
-        suggested_questions: currentFeatures.opening?.enabled ? (currentFeatures.opening?.suggested_questions || []) : [],
+        opening_statement: currentFeatures.opening?.enabled
+          ? currentFeatures.opening?.opening_statement || ''
+          : '',
+        suggested_questions: currentFeatures.opening?.enabled
+          ? currentFeatures.opening?.suggested_questions || []
+          : [],
         suggested_questions_after_answer: currentFeatures.suggested,
         text_to_speech: currentFeatures.text2speech,
         speech_to_text: currentFeatures.speech2text,
@@ -74,8 +71,7 @@ const Features = () => {
           type: 'vars_and_features_update',
         })
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Failed to update features:', error)
     }
 
