@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "งานพื้นหลัง {{count}} จำเป็นต้องได้รับการดูแล",
   "newKnowledge.taskAttentionErrorCount": "งานเบื้องหลัง {{count}} ต้องการความสนใจ รวมถึงงานที่ล้มเหลวด้วย",
   "newKnowledge.taskFailedNotification": "การประมวลผลเอกสารล้มเหลว — ลองอีกครั้งจากงาน",
+  "newKnowledge.taskHistoryIncomplete": "มีประวัติงานเพิ่มเติม จำนวนงานที่ต้องตรวจสอบยังไม่ครบถ้วน",
   "newKnowledge.tasks": "งาน",
   "newKnowledge.tasksErrorDescription": "เราไม่สามารถโหลดงานพื้นหลังได้ ลองอีกครั้ง",
   "newKnowledge.tasksWithAttention": "งาน {{count}} ต้องการความสนใจ",

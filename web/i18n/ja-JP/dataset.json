@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "{{count}} バックグラウンド タスクには注意が必要です。",
   "newKnowledge.taskAttentionErrorCount": "{{count}} バックグラウンド タスク (失敗したタスクも含む) には注意が必要です。",
   "newKnowledge.taskFailedNotification": "ドキュメントの処理に失敗しました —「タスク」から再試行してください",
+  "newKnowledge.taskHistoryIncomplete": "さらにタスク履歴があります。対応が必要なタスク数は確定していません。",
   "newKnowledge.tasks": "タスク",
   "newKnowledge.tasksErrorDescription": "バックグラウンドタスクをロードできませんでした。もう一度やり直してください。",
   "newKnowledge.tasksWithAttention": "タスク、{{count}} は注意が必要です",

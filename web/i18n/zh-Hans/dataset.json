@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "{{count}} 个后台任务需要关注。",
   "newKnowledge.taskAttentionErrorCount": "{{count}} 个后台任务需要关注，其中包含失败的任务。",
   "newKnowledge.taskFailedNotification": "文档处理失败，请在“任务”中重试",
+  "newKnowledge.taskHistoryIncomplete": "还有更多任务记录，需关注的任务数量尚未完整。",
   "newKnowledge.tasks": "任务",
   "newKnowledge.tasksErrorDescription": "无法加载后台任务，请重试。",
   "newKnowledge.tasksWithAttention": "任务，{{count}} 个需要关注",

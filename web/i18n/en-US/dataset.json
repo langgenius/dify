@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "{{count}} background tasks need attention.",
   "newKnowledge.taskAttentionErrorCount": "{{count}} background tasks need attention, including failed tasks.",
   "newKnowledge.taskFailedNotification": "Document processing failed — retry from Tasks",
+  "newKnowledge.taskHistoryIncomplete": "More task history is available; the attention count is incomplete.",
   "newKnowledge.tasks": "Tasks",
   "newKnowledge.tasksErrorDescription": "We couldn't load background tasks. Try again.",
   "newKnowledge.tasksWithAttention": "Tasks, {{count}} need attention",

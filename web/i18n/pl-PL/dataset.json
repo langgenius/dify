@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "Zadania w tle {{count}} wymagają uwagi.",
   "newKnowledge.taskAttentionErrorCount": "Zadania w tle {{count}} wymagają uwagi, w tym zadania zakończone niepowodzeniem.",
   "newKnowledge.taskFailedNotification": "Przetwarzanie dokumentu nie powiodło się — spróbuj ponownie w Zadaniach",
+  "newKnowledge.taskHistoryIncomplete": "Dostępna jest dalsza historia zadań; liczba zadań wymagających uwagi jest niepełna.",
   "newKnowledge.tasks": "Zadania",
   "newKnowledge.tasksErrorDescription": "Nie udało się wczytać zadań w tle. Spróbuj ponownie.",
   "newKnowledge.tasksWithAttention": "Zadania, {{count}} wymagają uwagi",

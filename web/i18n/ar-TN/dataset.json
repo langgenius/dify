@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "مهام الخلفية {{count}} تحتاج إلى الاهتمام.",
   "newKnowledge.taskAttentionErrorCount": "تحتاج مهام الخلفية {{count}} إلى الاهتمام، بما في ذلك المهام الفاشلة.",
   "newKnowledge.taskFailedNotification": "فشلت معالجة المستند — أعد المحاولة من المهام",
+  "newKnowledge.taskHistoryIncomplete": "يتوفر المزيد من سجل المهام؛ عدد المهام التي تتطلب الانتباه غير مكتمل.",
   "newKnowledge.tasks": "المهام",
   "newKnowledge.tasksErrorDescription": "لم نتمكن من تحميل مهام الخلفية. حاول ثانية.",
   "newKnowledge.tasksWithAttention": "المهام، {{count}} تحتاج إلى الاهتمام",

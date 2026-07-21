@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "Les tâches en arrière-plan {{count}} nécessitent une attention particulière.",
   "newKnowledge.taskAttentionErrorCount": "Les tâches en arrière-plan {{count}} nécessitent une attention particulière, y compris les tâches ayant échoué.",
   "newKnowledge.taskFailedNotification": "Échec du traitement du document — réessayez depuis Tâches",
+  "newKnowledge.taskHistoryIncomplete": "D’autres tâches sont disponibles ; le nombre de tâches nécessitant une attention est incomplet.",
   "newKnowledge.tasks": "Tâches",
   "newKnowledge.tasksErrorDescription": "Nous ne pouvions pas charger les tâches en arrière-plan. Essayer à nouveau.",
   "newKnowledge.tasksWithAttention": "Tâches, {{count}} nécessitent une attention particulière",

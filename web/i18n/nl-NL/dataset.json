@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "{{count}}-achtergrondtaken vereisen aandacht.",
   "newKnowledge.taskAttentionErrorCount": "{{count}}-achtergrondtaken hebben aandacht nodig, inclusief mislukte taken.",
   "newKnowledge.taskFailedNotification": "Documentverwerking mislukt — probeer opnieuw via Taken",
+  "newKnowledge.taskHistoryIncomplete": "Er is meer taakgeschiedenis beschikbaar; het aantal taken dat aandacht vereist is onvolledig.",
   "newKnowledge.tasks": "Taken",
   "newKnowledge.tasksErrorDescription": "We konden achtergrondtaken niet laden. Probeer het opnieuw.",
   "newKnowledge.tasksWithAttention": "Taken, {{count}} hebben aandacht nodig",

@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "Фонові завдання {{count}} потребують уваги.",
   "newKnowledge.taskAttentionErrorCount": "Фонові завдання {{count}} потребують уваги, включаючи невдалі завдання.",
   "newKnowledge.taskFailedNotification": "Не вдалося обробити документ — повторіть спробу в розділі «Завдання»",
+  "newKnowledge.taskHistoryIncomplete": "Доступна додаткова історія завдань; кількість завдань, що потребують уваги, поки неповна.",
   "newKnowledge.tasks": "завдання",
   "newKnowledge.tasksErrorDescription": "Не вдалося завантажити фонові завдання. Спробуйте знову.",
   "newKnowledge.tasksWithAttention": "Завдання, {{count}} потребують уваги",

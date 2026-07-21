@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "وظایف پس زمینه {{count}} نیاز به توجه دارند.",
   "newKnowledge.taskAttentionErrorCount": "وظایف پس زمینه {{count}} نیاز به توجه دارند، از جمله وظایف ناموفق.",
   "newKnowledge.taskFailedNotification": "پردازش سند ناموفق بود — از بخش وظایف دوباره امتحان کنید",
+  "newKnowledge.taskHistoryIncomplete": "تاریخچه وظایف بیشتری موجود است؛ تعداد وظایف نیازمند توجه کامل نیست.",
   "newKnowledge.tasks": "وظایف",
   "newKnowledge.tasksErrorDescription": "نمی‌توانیم وظایف پس‌زمینه را بارگیری کنیم. دوباره امتحان کنید.",
   "newKnowledge.tasksWithAttention": "وظایف، {{count}} نیاز به توجه دارد",

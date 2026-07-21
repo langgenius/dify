@@ -475,6 +475,23 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
   })
 
+  it('keeps processing tasks reachable while the document list is empty', async () => {
+    const user = userEvent.setup()
+    tasksQuery.data = { pages: [{ items: [task({ id: 'orphaned-running-task' })] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).toBeInTheDocument()
+  })
+
   it('keeps every write action unavailable for read-only users', async () => {
     const user = userEvent.setup()
     permissionStateMock.datasetKeys = ['dataset.acl.readonly']
@@ -712,11 +729,11 @@ describe('DocumentsPage', () => {
     tasksQuery.hasNextPage = true
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":0} · dataset.newKnowledge.loadMore',
-      }),
-    )
+    const taskTrigger = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.tasksWithAttention:{"count":0} · dataset.newKnowledge.taskHistoryIncomplete',
+    })
+    expect(taskTrigger).toHaveTextContent('0+')
+    await user.click(taskTrigger)
     expect(
       within(screen.getByRole('dialog')).queryByText('dataset.newKnowledge.noBackgroundTasks'),
     ).not.toBeInTheDocument()
@@ -757,6 +774,53 @@ describe('DocumentsPage', () => {
       ),
     ).toBeInTheDocument()
     await user.click(within(panel).getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
+  it('defers task title pagination until the task drawer is opened', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document()], nextCursor: 'next' }],
+    }
+    documentsQuery.hasNextPage = true
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ documentId: 'later-document', id: 'later-task', state: 'succeeded' })],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await waitFor(() => expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce())
+  })
+
+  it('reports and retries task title pagination failures inside the drawer', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document()], nextCursor: 'next' }],
+    }
+    documentsQuery.hasNextPage = true
+    documentsQuery.isFetchNextPageError = true
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ documentId: 'later-document', id: 'later-task', state: 'succeeded' })],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+
+    const panel = screen.getByRole('dialog')
+    expect(within(panel).getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.documentsErrorDescription',
+    )
+    await user.click(within(panel).getByRole('button', { name: 'common.operation.retry' }))
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
@@ -1025,6 +1089,48 @@ describe('DocumentsPage', () => {
           element.textContent.includes('·'),
         ),
       ),
+    ).toBeInTheDocument()
+  })
+
+  it('gives duplicate task actions distinct accessible names', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'document-a', title: 'Alpha.pdf' }),
+            document({ id: 'document-b', title: 'Beta.pdf' }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({ documentId: 'document-a', id: 'task-a' }),
+            task({ documentId: 'document-b', id: 'task-b' }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
+      }),
+    )
+
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.interruptTask · Alpha.pdf · task-a',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.interruptTask · Beta.pdf · task-b',
+      }),
     ).toBeInTheDocument()
   })
 
@@ -2115,6 +2221,63 @@ describe('DocumentsPage', () => {
     }
   })
 
+  it('resumes a task event stream from its cursor after rotation', async () => {
+    vi.useFakeTimers()
+    const resumeCalls: Array<{ lastEventId?: string; taskId: string }> = []
+    streamProcessingTaskEvents.mockImplementation(async function* ({
+      lastEventId,
+      taskId,
+    }: {
+      lastEventId?: string
+      taskId: string
+    }) {
+      resumeCalls.push({ lastEventId, taskId })
+      if (taskId === 'active-0' && !lastEventId) {
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: 'running' as const,
+            updatedAt: '2026-07-20T10:30:00Z',
+          },
+          event: 'progress' as const,
+          id: 'active-0:cursor',
+        }
+      }
+      await new Promise<void>(() => {})
+    })
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: Array.from({ length: 20 }, (_, index) =>
+            task({
+              id: `active-${index}`,
+              updatedAt: new Date(Date.UTC(2026, 6, 20, 10, index)).toISOString(),
+            }),
+          ),
+        },
+      ],
+    }
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => {})
+      for (let index = 0; index < 3; index += 1) {
+        await act(async () => vi.advanceTimersByTime(5000))
+        await act(async () => {})
+      }
+
+      expect(resumeCalls.filter(({ taskId }) => taskId === 'active-0')).toEqual([
+        { lastEventId: undefined, taskId: 'active-0' },
+        { lastEventId: 'active-0:cursor', taskId: 'active-0' },
+      ])
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('rejects stale active progress and backs off repeated stale reconnects', async () => {
     vi.useFakeTimers()
     documentsQuery.data = { pages: [{ items: [document()] }] }
@@ -2815,6 +2978,45 @@ describe('DocumentsPage', () => {
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
+  it('keeps filtered results partial while task-dependent statuses have more pages', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: Array.from({ length: 20 }, () => ({ items: [], nextCursor: 'next' })),
+    }
+    tasksQuery.hasNextPage = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.selectOptions(screen.getByRole('combobox'), 'failed')
+
+    expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
+  })
+
+  it('keeps source-name searches partial while unresolved sources have more pages', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [document({ sourceId: 'later-source', userMetadata: {} })],
+        },
+      ],
+    }
+    sourcesQuery.data = {
+      pages: Array.from({ length: 20 }, () => ({ items: [], nextCursor: 'next' })),
+    }
+    sourcesQuery.hasNextPage = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      'source title from next page',
+    )
+
+    expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
+  })
+
   it('bounds automatic cursor exhaustion and leaves all further loading explicit', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
@@ -2843,6 +3045,11 @@ describe('DocumentsPage', () => {
     )
 
     expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+      'aria-describedby',
+      'partial-document-results',
+    )
     const loadMore = screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' })
     expect(loadMore).toBeInTheDocument()
     await user.clear(screen.getByRole('searchbox'))

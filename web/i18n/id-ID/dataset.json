@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "Tugas latar belakang {{count}} perlu diperhatikan.",
   "newKnowledge.taskAttentionErrorCount": "Tugas latar belakang {{count}} memerlukan perhatian, termasuk tugas yang gagal.",
   "newKnowledge.taskFailedNotification": "Pemrosesan dokumen gagal — coba lagi dari Tugas",
+  "newKnowledge.taskHistoryIncomplete": "Riwayat tugas lainnya tersedia; jumlah tugas yang perlu diperhatikan belum lengkap.",
   "newKnowledge.tasks": "Tugas",
   "newKnowledge.tasksErrorDescription": "Kami tidak dapat memuat tugas latar belakang. Coba lagi.",
   "newKnowledge.tasksWithAttention": "Tugas, {{count}} perlu perhatian",

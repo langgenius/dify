@@ -14,6 +14,7 @@ import { sourceName } from './document-model'
 export type DocumentFilter = DocumentDisplayStatus | 'all'
 
 const DOCUMENT_RENDER_BATCH_SIZE = 100
+const PARTIAL_RESULTS_DESCRIPTION_ID = 'partial-document-results'
 
 const statusIconClass: Record<DocumentDisplayStatus, string> = {
   ready: 'i-ri-check-line text-text-success',
@@ -21,6 +22,55 @@ const statusIconClass: Record<DocumentDisplayStatus, string> = {
   processing: 'i-ri-loader-2-line animate-spin text-text-accent motion-reduce:animate-none',
   failed: 'i-ri-error-warning-fill text-text-destructive',
   disabled: 'i-ri-indeterminate-circle-line text-text-tertiary',
+}
+
+function TaskTrigger({
+  activeTaskCount,
+  attentionTaskBadge,
+  hasTaskError,
+  onOpenTasks,
+  tasksButtonLabel,
+  tasksLiveStatus,
+}: {
+  activeTaskCount: number
+  attentionTaskBadge?: string
+  hasTaskError: boolean
+  onOpenTasks: () => void
+  tasksButtonLabel: string
+  tasksLiveStatus: string
+}) {
+  const { t } = useTranslation('dataset')
+  return (
+    <>
+      <Button aria-label={tasksButtonLabel} data-has-error={hasTaskError} onClick={onOpenTasks}>
+        <span
+          aria-hidden
+          className={cn(
+            'size-4',
+            activeTaskCount ? 'i-ri-loader-2-line animate-spin' : 'i-ri-task-line',
+            activeTaskCount && 'motion-reduce:animate-none',
+          )}
+        />
+        {t(($) => $['newKnowledge.tasks'])}
+        {attentionTaskBadge && (
+          <span
+            aria-hidden
+            className={cn(
+              'flex min-w-4 items-center justify-center rounded px-1 system-2xs-medium',
+              hasTaskError
+                ? 'bg-state-destructive-hover text-text-destructive'
+                : 'bg-state-accent-hover text-text-accent',
+            )}
+          >
+            {attentionTaskBadge}
+          </span>
+        )}
+      </Button>
+      <span className="sr-only" role="status" aria-live="polite">
+        {tasksLiveStatus}
+      </span>
+    </>
+  )
 }
 
 const DocumentRow = memo(
@@ -141,16 +191,28 @@ const DocumentRow = memo(
 )
 
 export function DocumentsEmpty({
+  activeTaskCount,
+  attentionTaskBadge,
   canEdit,
+  hasTaskError,
   onAddDocument,
   onDropFiles,
+  onOpenTasks,
   readOnlyReasonId,
+  tasksButtonLabel,
+  tasksLiveStatus,
   uploading,
 }: {
+  activeTaskCount: number
+  attentionTaskBadge?: string
   canEdit: boolean
+  hasTaskError: boolean
   onAddDocument: () => void
   onDropFiles: (files: File[]) => void
+  onOpenTasks: () => void
   readOnlyReasonId?: string
+  tasksButtonLabel: string
+  tasksLiveStatus: string
   uploading: boolean
 }) {
   const { t } = useTranslation('dataset')
@@ -186,6 +248,16 @@ export function DocumentsEmpty({
       <p className="mt-2 system-2xs-regular text-text-quaternary">
         {t(($) => $['newKnowledge.documentsDropHint'])}
       </p>
+      <div className="mt-4">
+        <TaskTrigger
+          activeTaskCount={activeTaskCount}
+          attentionTaskBadge={attentionTaskBadge}
+          hasTaskError={hasTaskError}
+          onOpenTasks={onOpenTasks}
+          tasksButtonLabel={tasksButtonLabel}
+          tasksLiveStatus={tasksLiveStatus}
+        />
+      </div>
     </div>
   )
 }
@@ -193,7 +265,7 @@ export function DocumentsEmpty({
 export function DocumentsList({
   activeTaskCount,
   allSelected,
-  attentionTaskCount,
+  attentionTaskBadge,
   canEdit,
   completingResults,
   documents,
@@ -227,7 +299,7 @@ export function DocumentsList({
 }: {
   activeTaskCount: number
   allSelected: boolean
-  attentionTaskCount: number
+  attentionTaskBadge?: string
   canEdit: boolean
   completingResults: boolean
   documents: LogicalDocument[]
@@ -308,33 +380,14 @@ export function DocumentsList({
           />
         </label>
         <span className="min-w-0 flex-1" />
-        <Button aria-label={tasksButtonLabel} data-has-error={hasTaskError} onClick={onOpenTasks}>
-          <span
-            aria-hidden
-            className={cn(
-              'size-4',
-              activeTaskCount ? 'i-ri-loader-2-line animate-spin' : 'i-ri-task-line',
-              activeTaskCount && 'motion-reduce:animate-none',
-            )}
-          />
-          {t(($) => $['newKnowledge.tasks'])}
-          {!!attentionTaskCount && (
-            <span
-              aria-hidden
-              className={cn(
-                'flex min-w-4 items-center justify-center rounded px-1 system-2xs-medium',
-                hasTaskError
-                  ? 'bg-state-destructive-hover text-text-destructive'
-                  : 'bg-state-accent-hover text-text-accent',
-              )}
-            >
-              {attentionTaskCount}
-            </span>
-          )}
-        </Button>
-        <span className="sr-only" role="status" aria-live="polite">
-          {tasksLiveStatus}
-        </span>
+        <TaskTrigger
+          activeTaskCount={activeTaskCount}
+          attentionTaskBadge={attentionTaskBadge}
+          hasTaskError={hasTaskError}
+          onOpenTasks={onOpenTasks}
+          tasksButtonLabel={tasksButtonLabel}
+          tasksLiveStatus={tasksLiveStatus}
+        />
         <Button disabled title={t(($) => $['newKnowledge.documentActionsUnavailable'])}>
           <span aria-hidden className="i-ri-price-tag-3-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
@@ -359,7 +412,13 @@ export function DocumentsList({
                   checked={allSelected}
                   indeterminate={someSelected && !allSelected}
                   disabled={!canEdit || selectionDisabled || !hasSelectableDocuments}
-                  aria-describedby={!canEdit ? readOnlyReasonId : undefined}
+                  aria-describedby={
+                    !canEdit
+                      ? readOnlyReasonId
+                      : selectionDisabled && resultsIncomplete
+                        ? PARTIAL_RESULTS_DESCRIPTION_ID
+                        : undefined
+                  }
                   aria-label={t(($) => $['newKnowledge.selectAllDocuments'])}
                   onCheckedChange={onSelectAll}
                 />
@@ -378,7 +437,13 @@ export function DocumentsList({
                 document={document}
                 formatTimeFromNow={formatTimeFromNow}
                 onSelectedChange={onSelectDocument}
-                readOnlyReasonId={!canEdit ? readOnlyReasonId : undefined}
+                readOnlyReasonId={
+                  !canEdit
+                    ? readOnlyReasonId
+                    : selectionDisabled && resultsIncomplete
+                      ? PARTIAL_RESULTS_DESCRIPTION_ID
+                      : undefined
+                }
                 selected={selectedDocumentIds.has(document.id)}
                 selectionDisabled={!canEdit || selectionDisabled}
                 source={
@@ -405,10 +470,14 @@ export function DocumentsList({
             {t(($) => $['newKnowledge.noMatchingDocuments'])}
           </p>
         )}
-        {!documents.length && !completingResults && !isFetchNextPageError && resultsIncomplete && (
+        {!completingResults && !isFetchNextPageError && resultsIncomplete && (
           <p
+            id={PARTIAL_RESULTS_DESCRIPTION_ID}
             aria-live="polite"
-            className="py-16 text-center body-sm-regular text-text-tertiary"
+            className={cn(
+              'text-center body-sm-regular text-text-tertiary',
+              documents.length ? 'py-4' : 'py-16',
+            )}
             role="status"
           >
             {t(($) => $['newKnowledge.partialDocumentResults'])}

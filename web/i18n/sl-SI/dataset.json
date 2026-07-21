@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "Opravila v ozadju {{count}} zahtevajo pozornost.",
   "newKnowledge.taskAttentionErrorCount": "Opravila v ozadju {{count}} zahtevajo pozornost, vključno z neuspešnimi opravili.",
   "newKnowledge.taskFailedNotification": "Obdelava dokumenta ni uspela — poskusite znova v opravilih",
+  "newKnowledge.taskHistoryIncomplete": "Na voljo je več zgodovine opravil; število opravil, ki zahtevajo pozornost, ni popolno.",
   "newKnowledge.tasks": "Naloge",
   "newKnowledge.tasksErrorDescription": "Opravil v ozadju nismo mogli naložiti. poskusi ponovno",
   "newKnowledge.tasksWithAttention": "Naloge, {{count}} potrebujejo pozornost",

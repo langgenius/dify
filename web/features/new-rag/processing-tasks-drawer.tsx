@@ -63,6 +63,7 @@ function newestTasks(
 
 export function ProcessingTasksDrawer({
   canEdit,
+  documentQueryError,
   documents,
   documentsPending,
   hasNextDocumentPage,
@@ -81,8 +82,10 @@ export function ProcessingTasksDrawer({
   tasks,
   taskProgressStore,
   onRetryTaskQuery,
+  onRetryDocumentQuery,
 }: {
   canEdit: boolean
+  documentQueryError: boolean
   documents: LogicalDocument[]
   documentsPending: boolean
   hasNextDocumentPage: boolean
@@ -100,6 +103,7 @@ export function ProcessingTasksDrawer({
   taskQueryPending: boolean
   tasks: DocumentProcessingTask[]
   taskProgressStore: TaskProgressStore
+  onRetryDocumentQuery: () => void
   onRetryTaskQuery: () => void
 }) {
   const { t } = useTranslation('dataset')
@@ -166,6 +170,8 @@ export function ProcessingTasksDrawer({
       ...progress,
     }
   })
+  const activeActionCount = orderedTasks.filter(taskIsActive).length
+  const retryActionCount = orderedTasks.filter(taskCanRetry).length
 
   const refreshDocumentsAndTasks = () =>
     Promise.allSettled([
@@ -250,6 +256,16 @@ export function ProcessingTasksDrawer({
                     </Button>
                   </div>
                 )}
+                {documentQueryError && hasUnresolvedTaskDocuments && (
+                  <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
+                    <p className="system-xs-regular text-text-destructive">
+                      {t(($) => $['newKnowledge.documentsErrorDescription'])}
+                    </p>
+                    <Button className="mt-3" size="small" onClick={onRetryDocumentQuery}>
+                      {tCommon(($) => $['operation.retry'])}
+                    </Button>
+                  </div>
+                )}
                 {taskQueryPending && !orderedTasks.length ? (
                   <div className="flex min-h-40 items-center justify-center">
                     <Loading />
@@ -266,6 +282,7 @@ export function ProcessingTasksDrawer({
                         taskIsActive(task) ? task.createdAt : taskTime(task),
                       )
                       const taskError = task.errorMessage ?? task.errorCode
+                      const actionTarget = `${documentTitles.get(task.documentId) ?? task.documentId} · ${task.id}`
                       return (
                         <li key={task.id} className="flex min-h-[62px] items-center gap-2.5 py-3.5">
                           <span
@@ -311,6 +328,11 @@ export function ProcessingTasksDrawer({
                           </div>
                           {canEdit && taskIsActive(task) ? (
                             <Button
+                              aria-label={
+                                activeActionCount > 1
+                                  ? `${t(($) => $['newKnowledge.interruptTask'])} · ${actionTarget}`
+                                  : undefined
+                              }
                               size="small"
                               disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}
@@ -320,6 +342,11 @@ export function ProcessingTasksDrawer({
                             </Button>
                           ) : canEdit && taskCanRetry(task) ? (
                             <Button
+                              aria-label={
+                                retryActionCount > 1
+                                  ? `${t(($) => $['newKnowledge.retryTask'])} · ${actionTarget}`
+                                  : undefined
+                              }
                               size="small"
                               disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}

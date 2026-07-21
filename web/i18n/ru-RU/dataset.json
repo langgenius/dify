@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "Фоновые задачи {{count}} требуют внимания.",
   "newKnowledge.taskAttentionErrorCount": "{{count}} фоновые задачи требуют внимания, включая невыполненные задачи.",
   "newKnowledge.taskFailedNotification": "Не удалось обработать документ — повторите попытку в разделе «Задачи».",
+  "newKnowledge.taskHistoryIncomplete": "Доступна дополнительная история задач; число задач, требующих внимания, пока неполное.",
   "newKnowledge.tasks": "Задачи",
   "newKnowledge.tasksErrorDescription": "Не удалось загрузить фоновые задачи. Попробуйте еще раз.",
   "newKnowledge.tasksWithAttention": "Задачи, {{count}} требуют внимания",

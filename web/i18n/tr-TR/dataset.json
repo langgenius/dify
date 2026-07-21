@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "{{count}} arka plan görevlerine dikkat edilmesi gerekiyor.",
   "newKnowledge.taskAttentionErrorCount": "{{count}} Başarısız görevler de dahil olmak üzere arka plan görevlerine dikkat edilmesi gerekir.",
   "newKnowledge.taskFailedNotification": "Belge işleme başarısız oldu — Görevler'den yeniden deneyin",
+  "newKnowledge.taskHistoryIncomplete": "Daha fazla görev geçmişi mevcut; ilgilenilmesi gereken görev sayısı henüz tamamlanmadı.",
   "newKnowledge.tasks": "Görevler",
   "newKnowledge.tasksErrorDescription": "Arka plan görevlerini yükleyemedik. Tekrar deneyin.",
   "newKnowledge.tasksWithAttention": "Görevler, {{count}} tanesiyle ilgilenilmesi gerekiyor",

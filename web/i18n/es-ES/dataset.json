@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "Las tareas en segundo plano {{count}} necesitan atención.",
   "newKnowledge.taskAttentionErrorCount": "Las tareas en segundo plano de {{count}} necesitan atención, incluidas las tareas fallidas.",
   "newKnowledge.taskFailedNotification": "Error al procesar el documento: vuelva a intentarlo desde Tareas",
+  "newKnowledge.taskHistoryIncomplete": "Hay más historial de tareas disponible; el recuento de tareas que requieren atención está incompleto.",
   "newKnowledge.tasks": "Tareas",
   "newKnowledge.tasksErrorDescription": "No pudimos cargar tareas en segundo plano. Intentar otra vez.",
   "newKnowledge.tasksWithAttention": "Tareas, {{count}} necesitan atención",

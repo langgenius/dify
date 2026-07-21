@@ -348,6 +348,7 @@
   "newKnowledge.taskAttentionCount": "Các tác vụ chạy nền {{count}} cần được chú ý.",
   "newKnowledge.taskAttentionErrorCount": "Các tác vụ chạy nền {{count}} cần được chú ý, kể cả những tác vụ bị lỗi.",
   "newKnowledge.taskFailedNotification": "Xử lý tài liệu không thành công — thử lại trong Tác vụ",
+  "newKnowledge.taskHistoryIncomplete": "Còn lịch sử tác vụ khác; số tác vụ cần chú ý chưa đầy đủ.",
   "newKnowledge.tasks": "Nhiệm vụ",
   "newKnowledge.tasksErrorDescription": "Chúng tôi không thể tải tác vụ nền. Hãy thử lại.",
   "newKnowledge.tasksWithAttention": "Nhiệm vụ, {{count}} cần chú ý",
