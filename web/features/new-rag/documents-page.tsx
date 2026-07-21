@@ -919,6 +919,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       setTaskOverrides((current) => ({ ...current, [task.id]: normalizedTaskSnapshot(task) }))
       if (taskIsActive(task)) {
         blockedFailedTaskPollsRef.current.delete(task.id)
+        terminalReconciliationControllersRef.current.get(task.id)?.abort()
+        terminalReconciliationControllersRef.current.delete(task.id)
         const timeout = terminalReconciliationTimeoutsRef.current.get(task.id)
         if (timeout !== undefined) window.clearTimeout(timeout)
         terminalReconciliationTimeoutsRef.current.delete(task.id)

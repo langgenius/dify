@@ -1412,12 +1412,15 @@ describe('DocumentsPage', () => {
   it('ignores a terminal reconciliation that resolves after a local retry', async () => {
     const user = userEvent.setup()
     let resolveSnapshot: ((snapshot: DocumentProcessingTask) => void) | undefined
+    let reconciliationSignal: AbortSignal | undefined
     documentsQuery.data = { pages: [{ items: [document({})] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'local-retry-race' })] }] }
-    getTaskSnapshot.mockReturnValue(
-      new Promise<DocumentProcessingTask>((resolve) => {
-        resolveSnapshot = resolve
-      }),
+    getTaskSnapshot.mockImplementation(
+      (_input: unknown, options: { signal: AbortSignal }) =>
+        new Promise<DocumentProcessingTask>((resolve) => {
+          reconciliationSignal = options.signal
+          resolveSnapshot = resolve
+        }),
     )
     retryMutation.mutateAsync.mockResolvedValue(
       task({
@@ -1438,6 +1441,7 @@ describe('DocumentsPage', () => {
     expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    expect(reconciliationSignal?.aborted).toBe(true)
     expect(
       await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()
