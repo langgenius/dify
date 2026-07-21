@@ -182,7 +182,7 @@ See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay b
 ### Tooltip, preview card, infotip, and popover semantics
 
 - Use `Tooltip` only for short, non-interactive visual labels. The trigger must already have visible text or an `aria-label`; the tooltip is not the accessible name and must not contain links, buttons, forms, or structured prose.
-- Use `PreviewCard` for a read-only supplemental preview attached to a link or clickable item whose primary action is unrelated to opening the preview. The trigger must remain identifiable and keyboard-focusable. Supplemental metadata may appear only in the preview, but independent interactions must not.
+- Use `PreviewCard` as a visual enhancement for a link that previews its destination. Its popup must remain non-interactive and must not contain unique or essential information unless that information is also available at the linked destination. Use `Popover` when opening the popup is the trigger's purpose or when users need to access its content on touch or with assistive technology.
 - Use `Popover` for explanatory content, long text, rich layout, or anything users may need to reach on touch or with assistive technology. In `web/`, the `Infotip` wrapper is the preferred pattern for a `?` help glyph backed by `Popover`.
 - Pick a `placement` and let the primitive own spacing. Avoid per-call-site offsets unless the component API explicitly needs a measured layout exception.
 - When passing a Base UI trigger `render` prop, render a real `<button type="button">` for button-like triggers. If a Popover trigger must render a `div`, `span`, or another non-button element, pass `nativeButton={false}`.

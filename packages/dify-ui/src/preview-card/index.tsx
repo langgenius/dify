@@ -10,17 +10,16 @@ import { parsePlacement } from '../placement'
 export type { Placement }
 
 /**
- * PreviewCard is a hover/focus-triggered rich preview intended to supplement a
- * trigger whose primary action is unrelated to opening the preview.
+ * PreviewCard follows Base UI's canonical semantics: a hover/focus-triggered
+ * visual enhancement for a link that previews its destination.
  *
  * Contract:
- * - The trigger remains identifiable, keyboard-focusable, and responsible for
- *   its primary action.
- * - The popup may contain supplemental read-only metadata that is not repeated
- *   on the trigger or its destination.
- * - The popup must not contain independent links, buttons, forms, or other
- *   interactions. Use Popover when opening or interacting with the popup is
- *   itself a user task.
+ * - Prefer the canonical anchor trigger and keep the popup non-interactive.
+ * - Do not place unique or essential information or actions in the popup unless
+ *   they are also available at the linked destination.
+ * - Touch and screen reader users cannot access the preview. Use Popover when
+ *   opening the popup is itself the trigger's purpose or its content must be
+ *   accessible across input modes.
  */
 export const PreviewCard = BasePreviewCard.Root
 export const PreviewCardTrigger = BasePreviewCard.Trigger

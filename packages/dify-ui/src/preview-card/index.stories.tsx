@@ -17,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Hover- and focus-activated rich preview built on Base UI PreviewCard. The trigger keeps its primary action and accessible identity. The popup may add read-only supplemental metadata, but it must not contain independent interactions. Use Popover when opening or interacting with the popup is itself a user task.',
+          "A visual enhancement for a link that previews its destination, built on Base UI PreviewCard. The popup is unavailable to touch and screen-reader users, so it must remain non-interactive and must not contain unique or essential information unless that information is also available at the linked destination. Use Popover when opening the popup is the trigger's purpose or when its content must be accessible across input modes.",
       },
     },
   },

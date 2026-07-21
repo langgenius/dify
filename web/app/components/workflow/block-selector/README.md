@@ -56,7 +56,9 @@ Rows use one of three DOM structures:
 
 List controls use the shared two-pixel accent focus indicator. Use an inset ring inside clipped or scrollable surfaces so the ring follows the row boundary.
 
-Each preview-enabled list owns one `PreviewCard` root and one detached handle. Rows provide focusable `PreviewCardTrigger` payloads with `delay={150}` and `closeDelay={150}`, and preview content uses `BlockSelectorPreviewCardContent`. Preview availability must not depend on an optional description; a card may still show the item name, icon, author, or other available metadata. Preview cards are read-only supplemental hover and focus content, contain no independent interactions, and never add a second action to a row.
+Each preview-enabled list owns one `PreviewCard` root and one detached handle. Rows provide focusable `PreviewCardTrigger` payloads with `delay={150}` and `closeDelay={150}`, and preview content uses `BlockSelectorPreviewCardContent`.
+
+Block Selector deliberately composes those triggers with native row buttons rather than links. This is a feature-owned visual enhancement, not an extension of the shared Dify UI primitive contract. The row retains the complete selection or insertion action. Preview availability must not depend on an optional description; a card may show nonessential read-only context such as the item name, icon, author, or block types, but that context must not affect whether users can identify or activate the row. Preview content contains no independent interactions and never adds a second action. If any preview-only context becomes necessary for choosing an item, surface it in the row or replace this feature-level composition with an accessible disclosure.
 
 ## Testing
 
