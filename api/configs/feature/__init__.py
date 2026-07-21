@@ -809,11 +809,11 @@ class CommunityTelemetryConfig(BaseSettings):
     )
     TELEMETRY_ENDPOINT: str = Field(
         description="Endpoint for anonymous community telemetry events",
-        default="https://telemetry.langgenius.app/v1/events",
+        default="https://otel.dify.ai/v1/events",
     )
     TELEMETRY_FALLBACK_ENDPOINT: str = Field(
         description="Fallback endpoint for anonymous community telemetry events",
-        default="https://telemetry.langgenius.app/v1/events",
+        default="https://otel.dify.cn/v1/events",
     )
     TELEMETRY_TIMEOUT_SECONDS: PositiveInt = Field(
         description="HTTP timeout in seconds for anonymous community telemetry requests",
