@@ -3055,7 +3055,7 @@ export const zPluginParameterAutoGenerate = z.object({
 /**
  * ToolParameter
  *
- * Overrides type
+ * Tool-specific parameter declaration and invocation-value normalization.
  */
 export const zToolParameter = z.object({
   auto_generate: zPluginParameterAutoGenerate.nullish(),

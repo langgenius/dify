@@ -22310,7 +22310,7 @@ Tool label
 
 #### ToolParameter
 
-Overrides type
+Tool-specific parameter declaration and invocation-value normalization.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
