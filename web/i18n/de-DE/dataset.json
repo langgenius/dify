@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Für diese Wissensdatenbank sind noch keine Dokumentaktionen verfügbar.",
   "newKnowledge.documentColumn": "Dokument",
   "newKnowledge.documentFilterLabel": "Dokumente nach Status filtern",
+  "newKnowledge.documentPermissionRestricted": "Ihre Workspace-Berechtigungen erlauben keine Dokument- oder Aufgabenaktionen.",
   "newKnowledge.documentStatus.disabled": "Deaktiviert",
   "newKnowledge.documentStatus.failed": "Fehlgeschlagen",
   "newKnowledge.documentStatus.processing": "Verarbeitung",

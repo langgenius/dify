@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "اقدامات سند هنوز برای این پایگاه دانش در دسترس نیست.",
   "newKnowledge.documentColumn": "سند",
   "newKnowledge.documentFilterLabel": "اسناد را بر اساس وضعیت فیلتر کنید",
+  "newKnowledge.documentPermissionRestricted": "مجوزهای فضای کاری شما اجازه انجام عملیات روی اسناد یا وظایف را نمی‌دهد.",
   "newKnowledge.documentStatus.disabled": "غیرفعال",
   "newKnowledge.documentStatus.failed": "شکست خورد",
   "newKnowledge.documentStatus.processing": "در حال پردازش",

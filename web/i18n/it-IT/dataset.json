@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Le azioni del documento non sono ancora disponibili per questa knowledge base.",
   "newKnowledge.documentColumn": "Documento",
   "newKnowledge.documentFilterLabel": "Filtra i documenti per stato",
+  "newKnowledge.documentPermissionRestricted": "Le autorizzazioni del workspace non consentono azioni su documenti o attività.",
   "newKnowledge.documentStatus.disabled": "Disattivato",
   "newKnowledge.documentStatus.failed": "Fallito",
   "newKnowledge.documentStatus.processing": "Elaborazione",

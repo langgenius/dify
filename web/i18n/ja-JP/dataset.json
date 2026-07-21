@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "ドキュメント アクションは、このナレッジ ベースではまだ利用できません。",
   "newKnowledge.documentColumn": "文書",
   "newKnowledge.documentFilterLabel": "ドキュメントをステータスでフィルタリングする",
+  "newKnowledge.documentPermissionRestricted": "ワークスペースの権限では、ドキュメントまたはタスクの操作を実行できません。",
   "newKnowledge.documentStatus.disabled": "無効",
   "newKnowledge.documentStatus.failed": "失敗しました",
   "newKnowledge.documentStatus.processing": "処理中",

@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "การดำเนินการกับเอกสารยังไม่พร้อมใช้งานสำหรับฐานความรู้นี้",
   "newKnowledge.documentColumn": "เอกสาร",
   "newKnowledge.documentFilterLabel": "กรองเอกสารตามสถานะ",
+  "newKnowledge.documentPermissionRestricted": "สิทธิ์ของพื้นที่ทำงานไม่อนุญาตให้ดำเนินการกับเอกสารหรืองาน",
   "newKnowledge.documentStatus.disabled": "ปิดการใช้งาน",
   "newKnowledge.documentStatus.failed": "ล้มเหลว",
   "newKnowledge.documentStatus.processing": "กำลังประมวลผล",

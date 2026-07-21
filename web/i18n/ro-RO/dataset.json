@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Acțiunile documentului nu sunt încă disponibile pentru această bază de cunoștințe.",
   "newKnowledge.documentColumn": "Fișier",
   "newKnowledge.documentFilterLabel": "Filtrați documentele după stare",
+  "newKnowledge.documentPermissionRestricted": "Permisiunile spațiului de lucru nu permit acțiuni asupra documentelor sau sarcinilor.",
   "newKnowledge.documentStatus.disabled": "Dezactivat",
   "newKnowledge.documentStatus.failed": "A eșuat",
   "newKnowledge.documentStatus.processing": "Prelucrare",

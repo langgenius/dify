@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Działania dotyczące dokumentów nie są jeszcze dostępne dla tej bazy wiedzy.",
   "newKnowledge.documentColumn": "Dokument",
   "newKnowledge.documentFilterLabel": "Filtruj dokumenty według statusu",
+  "newKnowledge.documentPermissionRestricted": "Uprawnienia Twojego obszaru roboczego nie pozwalają na działania na dokumentach ani zadaniach.",
   "newKnowledge.documentStatus.disabled": "Wyłączony",
   "newKnowledge.documentStatus.failed": "Nie udało się",
   "newKnowledge.documentStatus.processing": "Przetwarzanie",

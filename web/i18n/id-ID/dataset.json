@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Tindakan dokumen belum tersedia untuk basis pengetahuan ini.",
   "newKnowledge.documentColumn": "Dokumen",
   "newKnowledge.documentFilterLabel": "Filter dokumen berdasarkan status",
+  "newKnowledge.documentPermissionRestricted": "Izin ruang kerja Anda tidak mengizinkan tindakan pada dokumen atau tugas.",
   "newKnowledge.documentStatus.disabled": "Dinonaktifkan",
   "newKnowledge.documentStatus.failed": "Gagal",
   "newKnowledge.documentStatus.processing": "Pemrosesan",

@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Дії з документами поки що недоступні для цієї бази знань.",
   "newKnowledge.documentColumn": "документ",
   "newKnowledge.documentFilterLabel": "Фільтр документів за статусом",
+  "newKnowledge.documentPermissionRestricted": "Дозволи вашого робочого простору не дозволяють виконувати дії з документами або завданнями.",
   "newKnowledge.documentStatus.disabled": "Вимкнено",
   "newKnowledge.documentStatus.failed": "Не вдалося",
   "newKnowledge.documentStatus.processing": "Обробка",

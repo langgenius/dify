@@ -596,27 +596,6 @@ export function DocumentBulkActions({
         <span className="shrink-0 px-1 system-xs-medium text-text-primary">
           {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
         </span>
-        <span
-          id="document-actions-unavailable"
-          className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
-        >
-          {t(($) => $['newKnowledge.downloadDocuments'])}
-          {' / '}
-          {t(($) => $['newKnowledge.deleteDocuments'])}
-          {' · '}
-          {t(($) => $['cornerLabel.unavailable'])}
-        </span>
-        {disabled && disabledReason && (
-          <span
-            id="document-reindex-unavailable"
-            className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
-            role="status"
-          >
-            {t(($) => $['newKnowledge.reindexDocuments'])}
-            {' · '}
-            {disabledReason}
-          </span>
-        )}
         <Button
           aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
           aria-busy={reindexing}
@@ -628,6 +607,35 @@ export function DocumentBulkActions({
         >
           {t(($) => $['newKnowledge.reindexDocuments'])}
         </Button>
+        <button
+          type="button"
+          aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
+          className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          onClick={onClear}
+        >
+          <span aria-hidden className="i-ri-close-line size-4" />
+        </button>
+        {disabled && disabledReason && (
+          <span
+            id="document-reindex-unavailable"
+            className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
+            role="status"
+          >
+            {t(($) => $['newKnowledge.reindexDocuments'])}
+            {' · '}
+            {disabledReason}
+          </span>
+        )}
+        <span
+          id="document-actions-unavailable"
+          className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
+        >
+          {t(($) => $['newKnowledge.downloadDocuments'])}
+          {' / '}
+          {t(($) => $['newKnowledge.deleteDocuments'])}
+          {' · '}
+          {t(($) => $['cornerLabel.unavailable'])}
+        </span>
         <Button
           aria-describedby="document-actions-unavailable"
           className="shrink-0"
@@ -644,14 +652,6 @@ export function DocumentBulkActions({
         >
           {t(($) => $['newKnowledge.deleteDocuments'])}
         </Button>
-        <button
-          type="button"
-          aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
-          className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={onClear}
-        >
-          <span aria-hidden className="i-ri-close-line size-4" />
-        </button>
       </div>
     </div>
   )

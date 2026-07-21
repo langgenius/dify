@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "此知識庫暫不支援文件操作。",
   "newKnowledge.documentColumn": "文件",
   "newKnowledge.documentFilterLabel": "依狀態篩選文件",
+  "newKnowledge.documentPermissionRestricted": "你的工作區權限不允許執行文件或任務操作。",
   "newKnowledge.documentStatus.disabled": "已停用",
   "newKnowledge.documentStatus.failed": "失敗",
   "newKnowledge.documentStatus.processing": "處理中",

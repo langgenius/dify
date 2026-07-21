@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Document actions aren't available for this knowledge base yet.",
   "newKnowledge.documentColumn": "Document",
   "newKnowledge.documentFilterLabel": "Filter documents by status",
+  "newKnowledge.documentPermissionRestricted": "Your workspace permissions don't allow document or task actions.",
   "newKnowledge.documentStatus.disabled": "Disabled",
   "newKnowledge.documentStatus.failed": "Failed",
   "newKnowledge.documentStatus.processing": "Processing",

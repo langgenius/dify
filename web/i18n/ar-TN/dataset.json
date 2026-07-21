@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "إجراءات المستند غير متاحة لقاعدة المعرفة هذه حتى الآن.",
   "newKnowledge.documentColumn": "وثيقة",
   "newKnowledge.documentFilterLabel": "تصفية المستندات حسب الحالة",
+  "newKnowledge.documentPermissionRestricted": "لا تسمح أذونات مساحة العمل الخاصة بك بإجراءات المستندات أو المهام.",
   "newKnowledge.documentStatus.disabled": "معطل",
   "newKnowledge.documentStatus.failed": "فشل",
   "newKnowledge.documentStatus.processing": "قيد المعالجة",

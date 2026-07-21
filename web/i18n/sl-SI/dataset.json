@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Dejanja dokumentov še niso na voljo za to bazo znanja.",
   "newKnowledge.documentColumn": "Dokument",
   "newKnowledge.documentFilterLabel": "Filtrirajte dokumente po statusu",
+  "newKnowledge.documentPermissionRestricted": "Dovoljenja vašega delovnega prostora ne omogočajo dejanj dokumentov ali opravil.",
   "newKnowledge.documentStatus.disabled": "Onemogočeno",
   "newKnowledge.documentStatus.failed": "Ni uspelo",
   "newKnowledge.documentStatus.processing": "Obdelava",

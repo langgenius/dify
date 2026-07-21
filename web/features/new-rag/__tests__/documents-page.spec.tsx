@@ -577,7 +577,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('dataset.newKnowledge.permissionRestricted')).toBeVisible()
+    expect(screen.getByText('dataset.newKnowledge.documentPermissionRestricted')).toBeVisible()
     expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
@@ -597,7 +597,9 @@ describe('DocumentsPage', () => {
       screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).not.toBeInTheDocument()
     expect(
-      within(screen.getByRole('dialog')).getByText('dataset.newKnowledge.permissionRestricted'),
+      within(screen.getByRole('dialog')).getByText(
+        'dataset.newKnowledge.documentPermissionRestricted',
+      ),
     ).toBeInTheDocument()
   })
 
@@ -610,7 +612,9 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('alert')).toHaveTextContent('dataset.newKnowledge.permissionLoadFailed')
-    expect(screen.queryByText('dataset.newKnowledge.permissionRestricted')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.documentPermissionRestricted'),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
     await user.click(
       screen.getByRole('button', {
@@ -1540,6 +1544,9 @@ describe('DocumentsPage', () => {
       name: 'dataset.newKnowledge.reindexDocuments',
     })
     expect(reindex).toBeEnabled()
+    const orderedActions = within(actions).getAllByRole('button')
+    expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
+    expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
     expect(
       within(actions).getByText(
         'dataset.newKnowledge.downloadDocuments / dataset.newKnowledge.deleteDocuments · dataset.cornerLabel.unavailable',
@@ -1578,6 +1585,18 @@ describe('DocumentsPage', () => {
     ).toHaveAttribute('aria-describedby', 'document-reindex-unavailable')
     expect(
       within(actions).getByText('dataset.newKnowledge.reindexDocuments · common.loading'),
+    ).toBeVisible()
+
+    tasksQuery.data = { pages: [{ items: [] }] }
+    tasksQuery.isPending = false
+    sourcesQuery.data = { pages: [{ items: [] }] }
+    sourcesQuery.error = new Error('source refresh failed')
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      within(actions).getByText(
+        'dataset.newKnowledge.reindexDocuments · dataset.newKnowledge.sourcesErrorDescription',
+      ),
     ).toBeVisible()
   })
 
@@ -4558,7 +4577,9 @@ describe('DocumentsPage', () => {
     )
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
-    expect(screen.getByText('dataset.newKnowledge.permissionRestricted')).toBeInTheDocument()
+    const restriction = screen.getByText('dataset.newKnowledge.documentPermissionRestricted')
+    expect(restriction).toBeInTheDocument()
+    expect(restriction).toHaveAttribute('role', 'status')
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
 
     permissionStateMock.datasetKeys = ['dataset.acl.readonly']
@@ -4568,19 +4589,10 @@ describe('DocumentsPage', () => {
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
 
-    permissionStateMock.error = new Error('permission service unavailable')
     permissionStateMock.datasetKeys = ['dataset.acl.edit']
-    permissionStateMock.retry.mockResolvedValueOnce({
-      data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
-      error: null,
-    })
+    permissionStateMock.fetching = true
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.permissionLoadFailed',
-      }),
-    )
-    permissionStateMock.error = null
+    permissionStateMock.fetching = false
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(
@@ -4631,7 +4643,9 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
     expect(
-      within(screen.getByRole('dialog')).getByText('dataset.newKnowledge.permissionRestricted'),
+      within(screen.getByRole('dialog')).getByText(
+        'dataset.newKnowledge.documentPermissionRestricted',
+      ),
     ).toBeInTheDocument()
     expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
     expect(
@@ -4643,7 +4657,7 @@ describe('DocumentsPage', () => {
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     const dialog = screen.getByRole('dialog')
     expect(
-      within(dialog).getByText('dataset.newKnowledge.permissionRestricted'),
+      within(dialog).getByText('dataset.newKnowledge.documentPermissionRestricted'),
     ).toBeInTheDocument()
     expect(within(dialog).getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.permissionLoadFailed',

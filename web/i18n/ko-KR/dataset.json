@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "이 기술 자료에는 아직 문서 작업을 사용할 수 없습니다.",
   "newKnowledge.documentColumn": "문서",
   "newKnowledge.documentFilterLabel": "상태별로 문서 필터링",
+  "newKnowledge.documentPermissionRestricted": "워크스페이스 권한으로는 문서 또는 작업 동작을 수행할 수 없습니다.",
   "newKnowledge.documentStatus.disabled": "비활성화",
   "newKnowledge.documentStatus.failed": "실패",
   "newKnowledge.documentStatus.processing": "처리 중",

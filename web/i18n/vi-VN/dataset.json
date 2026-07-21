@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Hành động tài liệu chưa có sẵn cho cơ sở kiến thức này.",
   "newKnowledge.documentColumn": "tài liệu",
   "newKnowledge.documentFilterLabel": "Lọc tài liệu theo trạng thái",
+  "newKnowledge.documentPermissionRestricted": "Quyền trong không gian làm việc của bạn không cho phép thao tác với tài liệu hoặc tác vụ.",
   "newKnowledge.documentStatus.disabled": "Đã tắt",
   "newKnowledge.documentStatus.failed": "thất bại",
   "newKnowledge.documentStatus.processing": "Đang xử lý",

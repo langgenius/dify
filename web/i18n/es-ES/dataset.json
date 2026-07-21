@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Las acciones de documentos aún no están disponibles para esta base de conocimientos.",
   "newKnowledge.documentColumn": "Documento",
   "newKnowledge.documentFilterLabel": "Filtrar documentos por estado",
+  "newKnowledge.documentPermissionRestricted": "Los permisos de tu espacio de trabajo no permiten acciones sobre documentos o tareas.",
   "newKnowledge.documentStatus.disabled": "Desactivado",
   "newKnowledge.documentStatus.failed": "Fallido",
   "newKnowledge.documentStatus.processing": "Procesamiento",

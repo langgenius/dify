@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Documentacties zijn nog niet beschikbaar voor deze kennisbank.",
   "newKnowledge.documentColumn": "Document",
   "newKnowledge.documentFilterLabel": "Documenten filteren op status",
+  "newKnowledge.documentPermissionRestricted": "Uw werkruimtemachtigingen staan geen document- of taakacties toe.",
   "newKnowledge.documentStatus.disabled": "Uitgeschakeld",
   "newKnowledge.documentStatus.failed": "Mislukt",
   "newKnowledge.documentStatus.processing": "Verwerking",

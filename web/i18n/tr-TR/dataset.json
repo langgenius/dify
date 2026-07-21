@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Belge eylemleri henüz bu bilgi tabanında kullanılamıyor.",
   "newKnowledge.documentColumn": "Belge",
   "newKnowledge.documentFilterLabel": "Belgeleri duruma göre filtreleyin",
+  "newKnowledge.documentPermissionRestricted": "Çalışma alanı izinleriniz belge veya görev işlemlerine izin vermiyor.",
   "newKnowledge.documentStatus.disabled": "Devre dışı",
   "newKnowledge.documentStatus.failed": "Başarısız",
   "newKnowledge.documentStatus.processing": "İşleme",

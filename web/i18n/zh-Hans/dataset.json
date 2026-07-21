@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "此知识库暂不支持文档操作。",
   "newKnowledge.documentColumn": "文档",
   "newKnowledge.documentFilterLabel": "按状态筛选文档",
+  "newKnowledge.documentPermissionRestricted": "你的工作区权限不允许执行文档或任务操作。",
   "newKnowledge.documentStatus.disabled": "已禁用",
   "newKnowledge.documentStatus.failed": "失败",
   "newKnowledge.documentStatus.processing": "处理中",

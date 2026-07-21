@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "इस ज्ञानकोष के लिए दस्तावेज़ क्रियाएँ अभी तक उपलब्ध नहीं हैं।",
   "newKnowledge.documentColumn": "दस्तावेज़",
   "newKnowledge.documentFilterLabel": "स्थिति के अनुसार दस्तावेज़ फ़िल्टर करें",
+  "newKnowledge.documentPermissionRestricted": "आपके कार्यस्थान की अनुमतियाँ दस्तावेज़ या कार्य संबंधी कार्रवाइयों की अनुमति नहीं देती हैं।",
   "newKnowledge.documentStatus.disabled": "निष्क्रिय",
   "newKnowledge.documentStatus.failed": "असफल",
   "newKnowledge.documentStatus.processing": "प्रोसेस हो रहा है",

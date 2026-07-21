@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Действия с документами пока недоступны для этой базы знаний.",
   "newKnowledge.documentColumn": "Документ",
   "newKnowledge.documentFilterLabel": "Фильтровать документы по статусу",
+  "newKnowledge.documentPermissionRestricted": "Разрешения вашего рабочего пространства не позволяют выполнять действия с документами или задачами.",
   "newKnowledge.documentStatus.disabled": "Отключено",
   "newKnowledge.documentStatus.failed": "Не удалось",
   "newKnowledge.documentStatus.processing": "Обработка",

@@ -195,6 +195,7 @@
   "newKnowledge.documentActionsUnavailable": "Les actions sur les documents ne sont pas encore disponibles pour cette base de connaissances.",
   "newKnowledge.documentColumn": "Document",
   "newKnowledge.documentFilterLabel": "Filtrer les documents par statut",
+  "newKnowledge.documentPermissionRestricted": "Les autorisations de votre espace de travail ne permettent pas les actions sur les documents ou les tâches.",
   "newKnowledge.documentStatus.disabled": "Désactivé",
   "newKnowledge.documentStatus.failed": "Échec",
   "newKnowledge.documentStatus.processing": "Traitement",

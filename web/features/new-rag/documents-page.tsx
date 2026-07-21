@@ -1,25 +1,16 @@
 'use client'
 
 import type { DocumentProcessingTask } from '@dify/contracts/knowledge-fs/types.gen'
-import type { QueryClient, QueryKey } from '@tanstack/react-query'
 import type {
   ProcessingTaskEvent,
   ProcessingTaskProgressEvent,
 } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { hashKey, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import {
@@ -45,6 +36,7 @@ import {
 import { ProcessingTasksDrawer } from './processing-tasks-drawer'
 import { TaskEventObserver } from './task-event-observer'
 import { createTaskProgressStore } from './task-progress-store'
+import { useQueryDataUpdateCount } from './use-query-data-update-count'
 
 const DOCUMENT_PAGE_SIZE = 50
 const TASK_PAGE_SIZE = 100
@@ -130,27 +122,6 @@ function queryKeyMatchesKnowledgeSpace(queryKey: readonly unknown[], knowledgeSp
   )
 }
 
-function useQueryDataUpdateCount(queryClient: QueryClient, queryKey: QueryKey) {
-  const queryHash = hashKey(queryKey)
-  const subscribe = useCallback(
-    (onStoreChange: () => void) =>
-      queryClient.getQueryCache().subscribe((event) => {
-        if (
-          event.type === 'updated' &&
-          event.action.type === 'success' &&
-          event.query.queryHash === queryHash
-        )
-          onStoreChange()
-      }),
-    [queryClient, queryHash],
-  )
-  const getSnapshot = useCallback(
-    () => queryClient.getQueryState(queryKey)?.dataUpdateCount ?? 0,
-    [queryClient, queryKey],
-  )
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
-}
-
 function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessingTask {
   return {
     ...task,
@@ -184,7 +155,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
   const [tasksOpen, setTasksOpen] = useState(false)
   const [writePermissionRevoked, setWritePermissionRevoked] = useState(false)
+  const [writePermissionRecoveryGeneration, setWritePermissionRecoveryGeneration] = useState<
+    number | undefined
+  >()
   const writePermissionDenialGenerationRef = useRef(0)
+  const writePermissionRecoveryFetchSeenRef = useRef(false)
   const [blockingDependencyRetries, setBlockingDependencyRetries] = useState({
     sources: false,
     tasks: false,
@@ -571,15 +546,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     taskQueryWarning ||
     (sourceQueryWarning && unresolvedDocumentSourceIds.size > 0) ||
     filteredResultsIncomplete
-  const reindexUnavailableReason = dependencyResultsIncomplete
-    ? tCommon(($) => $.loading)
-    : taskQueryWarning
+  const reindexUnavailableReason =
+    tasksQuery.error || tasksQuery.isFetchNextPageError
       ? t(($) => $['newKnowledge.tasksErrorDescription'])
-      : sourceQueryWarning && unresolvedDocumentSourceIds.size > 0
+      : (sourcesQuery.error || sourcesQuery.isFetchNextPageError) &&
+          unresolvedDocumentSourceIds.size > 0
         ? t(($) => $['newKnowledge.sourcesErrorDescription'])
-        : filteredResultsIncomplete
-          ? t(($) => $['newKnowledge.partialDocumentResults'])
-          : undefined
+        : documentsQuery.isFetchNextPageError
+          ? t(($) => $['newKnowledge.documentsErrorDescription'])
+          : dependencyResultsIncomplete
+            ? tCommon(($) => $.loading)
+            : filteredResultsIncomplete
+              ? t(($) => $['newKnowledge.partialDocumentResults'])
+              : undefined
   const selectableFilteredDocuments = filteredDocuments.filter(
     (document) => documentStatuses.get(document.id) !== 'disabled',
   )
@@ -711,6 +690,39 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [permissionDenialMask, permissionDenied, refetchSourcesQuery, refetchTasksQuery, tasksOpen])
 
   useEffect(() => {
+    if (
+      !writePermissionRevoked ||
+      writePermissionRecoveryGeneration !== writePermissionDenialGenerationRef.current
+    ) {
+      writePermissionRecoveryFetchSeenRef.current = false
+      return
+    }
+    if (workspacePermissionKeysFetching) {
+      writePermissionRecoveryFetchSeenRef.current = true
+      return
+    }
+    if (
+      !writePermissionRecoveryFetchSeenRef.current ||
+      permissionPending ||
+      permissionQueryError ||
+      !canEdit
+    )
+      return
+    writePermissionRecoveryFetchSeenRef.current = false
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A post-denial permission request is the authoritative event that retires the local mutation lock.
+    setWritePermissionRevoked(false)
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The completed recovery generation is retired with its write lock.
+    setWritePermissionRecoveryGeneration(undefined)
+  }, [
+    canEdit,
+    permissionPending,
+    permissionQueryError,
+    workspacePermissionKeysFetching,
+    writePermissionRecoveryGeneration,
+    writePermissionRevoked,
+  ])
+
+  useEffect(() => {
     if (!mainRetryFocusRequestedRef.current) return
     if (mainRecoveryVisible) {
       if (permissionQueryError) permissionRetryButtonRef.current?.focus()
@@ -828,7 +840,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         refreshedPermissionKeys &&
         hasPermission(refreshedPermissionKeys, DatasetACLPermission.Edit)
       ) {
+        writePermissionRecoveryFetchSeenRef.current = false
         setWritePermissionRevoked(false)
+        setWritePermissionRecoveryGeneration(undefined)
       }
     },
     [
@@ -841,16 +855,23 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const handleWritePermissionDenied = useCallback(() => {
     const denialGeneration = writePermissionDenialGenerationRef.current + 1
     writePermissionDenialGenerationRef.current = denialGeneration
+    writePermissionRecoveryFetchSeenRef.current = false
+    setWritePermissionRecoveryGeneration(undefined)
     setWritePermissionRevoked(true)
     void refreshWorkspacePermissionKeysAfterMutationDenial().then((result) => {
       const refreshedPermissionKeys = result.data?.dataset?.default_permission_keys
+      if (writePermissionDenialGenerationRef.current !== denialGeneration) return
       if (
-        writePermissionDenialGenerationRef.current === denialGeneration &&
         !result.error &&
         refreshedPermissionKeys &&
         hasPermission(refreshedPermissionKeys, DatasetACLPermission.Edit)
-      )
+      ) {
+        writePermissionRecoveryFetchSeenRef.current = false
         setWritePermissionRevoked(false)
+        setWritePermissionRecoveryGeneration(undefined)
+        return
+      }
+      setWritePermissionRecoveryGeneration(denialGeneration)
     })
   }, [refreshWorkspacePermissionKeysAfterMutationDenial])
 
@@ -1632,9 +1653,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             <p
               id="documents-readonly-reason"
               className="mt-2 inline-flex items-center gap-1.5 system-xs-regular text-text-warning"
+              role="status"
             >
               <span aria-hidden className="i-ri-lock-line size-3.5" />
-              {t(($) => $['newKnowledge.permissionRestricted'])}
+              {t(($) => $['newKnowledge.documentPermissionRestricted'])}
             </p>
           )}
         </header>
@@ -1922,7 +1944,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         permissionQueryPending={permissionPending}
         readOnlyReason={
           writePermissionRevoked || (!permissionPending && !permissionQueryError && !canEdit)
-            ? t(($) => $['newKnowledge.permissionRestricted'])
+            ? t(($) => $['newKnowledge.documentPermissionRestricted'])
             : undefined
         }
         taskQueryPending={tasksQuery.isPending}
