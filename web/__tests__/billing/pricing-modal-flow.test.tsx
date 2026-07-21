@@ -8,7 +8,7 @@
  * Validates cross-component state propagation when the user switches between
  * cloud / self-hosted categories and monthly / yearly plan ranges.
  */
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
@@ -19,6 +19,7 @@ import { render } from '@/test/console/render'
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
+const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
@@ -33,10 +34,6 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/version-state', async () => {
   const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
   return createVersionStateModuleMock(() => mockConsoleState)
@@ -49,7 +46,7 @@ vi.mock('@/context/i18n', () => ({
 
 // ─── Service mocks ───────────────────────────────────────────────────────────
 vi.mock('@/service/billing', () => ({
-  fetchSubscriptionUrls: vi.fn().mockResolvedValue({ url: 'https://pay.example.com' }),
+  fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -131,7 +128,6 @@ const setupContexts = (
   }
   mockConsoleState = {
     isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...appOverrides,
@@ -145,6 +141,7 @@ describe('Pricing Modal Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
+    mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://pay.example.com' })
     setupContexts()
   })
 
@@ -266,6 +263,54 @@ describe('Pricing Modal Flow', () => {
 
   // ─── 4. Cloud Plan Button States ─────────────────────────────────────────
   describe('Cloud plan button states', () => {
+    it('should allow managers without billing permission keys to change plans', async () => {
+      const user = userEvent.setup()
+      render(<Pricing onCancel={onCancel} />)
+
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
+      })
+    })
+
+    it('should default education account managers to yearly checkout', async () => {
+      setupContexts()
+      mockProviderCtx = {
+        ...mockProviderCtx,
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      }
+      const user = userEvent.setup()
+      render(<Pricing onCancel={onCancel} />)
+
+      expect(screen.getByRole('switch')).toBeChecked()
+
+      await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'year')
+      })
+    })
+
+    it('should block non-manager members even when billing permission keys are present', async () => {
+      setupContexts(
+        {},
+        {
+          isCurrentWorkspaceManager: false,
+          workspacePermissionKeys: ['billing.manage', 'billing.subscription.manage'],
+        },
+      )
+      const user = userEvent.setup()
+      render(<Pricing onCancel={onCancel} />)
+
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+      })
+    })
+
     it('should show "Current Plan" for the current plan (sandbox)', () => {
       setupContexts({ type: Plan.sandbox })
       render(<Pricing onCancel={onCancel} />)
