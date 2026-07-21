@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.auth_client import MCPClientWithAuthRetry
-from core.mcp.error import MCPAuthError, MCPConnectionError
+from core.mcp.error import MCPAuthError
 from core.mcp.mcp_client import MCPClient
 from core.mcp.types import CallToolResult, ListToolsResult, OAuthTokens, TextContent, Tool, ToolAnnotations
 
@@ -158,37 +158,10 @@ class TestMCPClient:
     @patch("core.mcp.mcp_client.sse_client")
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")
-    def test_initialize_with_unknown_method_fallback_to_sse(
+    def test_initialize_with_unknown_method_defaults_to_mcp(
         self, mock_client_session, mock_streamable_client, mock_sse_client
     ):
-        """Test initialization with unknown method falls back to SSE."""
-        # Setup mocks
-        mock_read_stream = Mock()
-        mock_write_stream = Mock()
-        mock_sse_client.return_value.__enter__.return_value = (mock_read_stream, mock_write_stream)
-
-        mock_session = Mock()
-        mock_client_session.return_value.__enter__.return_value = mock_session
-
-        client = MCPClient(server_url="http://test.example.com/unknown")
-        client._initialize()
-
-        # Verify SSE client was tried
-        mock_sse_client.assert_called_once()
-        mock_streamable_client.assert_not_called()
-
-        # Verify session was created
-        assert client._session == mock_session
-
-    @patch("core.mcp.mcp_client.sse_client")
-    @patch("core.mcp.mcp_client.streamablehttp_client")
-    @patch("core.mcp.mcp_client.ClientSession")
-    def test_initialize_fallback_from_sse_to_mcp(self, mock_client_session, mock_streamable_client, mock_sse_client):
-        """Test initialization falls back from SSE to MCP on connection error."""
-        # Setup SSE to fail
-        mock_sse_client.side_effect = MCPConnectionError("SSE connection failed")
-
-        # Setup MCP to succeed
+        """Test initialization with unknown method defaults to streamable HTTP."""
         mock_read_stream = Mock()
         mock_write_stream = Mock()
         mock_client_context = Mock()
@@ -204,12 +177,46 @@ class TestMCPClient:
         client = MCPClient(server_url="http://test.example.com/unknown")
         client._initialize()
 
-        # Verify both were tried
-        mock_sse_client.assert_called_once()
         mock_streamable_client.assert_called_once()
+        mock_sse_client.assert_not_called()
 
-        # Verify session was created with MCP
         assert client._session == mock_session
+
+    @patch("core.mcp.mcp_client.sse_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_from_mcp_to_sse(self, mock_client_session, mock_streamable_client, mock_sse_client):
+        """Test initialization falls back from streamable HTTP to SSE on connection error."""
+        mock_streamable_client.side_effect = TimeoutError("MCP connection timed out")
+
+        mock_read_stream = Mock()
+        mock_write_stream = Mock()
+        mock_sse_client.return_value.__enter__.return_value = (mock_read_stream, mock_write_stream)
+
+        mock_session = Mock()
+        mock_client_session.return_value.__enter__.return_value = mock_session
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        mock_streamable_client.assert_called_once()
+        mock_sse_client.assert_called_once()
+
+        assert client._session == mock_session
+
+    @patch("core.mcp.mcp_client.sse_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    def test_initialize_unknown_method_reraises_mcp_auth_error(self, mock_streamable_client, mock_sse_client):
+        """Test authentication failures are not retried with a different transport."""
+        mock_streamable_client.side_effect = MCPAuthError("unauthorized")
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+
+        with pytest.raises(MCPAuthError, match="unauthorized"):
+            client._initialize()
+
+        mock_streamable_client.assert_called_once()
+        mock_sse_client.assert_not_called()
 
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")

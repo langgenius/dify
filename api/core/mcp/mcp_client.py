@@ -10,7 +10,7 @@ from flask import has_request_context, request
 
 from core.mcp.client.sse_client import sse_client
 from core.mcp.client.streamable_client import streamablehttp_client
-from core.mcp.error import MCPConnectionError
+from core.mcp.error import MCPAuthError
 from core.mcp.session.client_session import ClientSession
 from core.mcp.types import CallToolResult, Tool
 
@@ -73,10 +73,12 @@ class MCPClient:
         else:
             try:
                 logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
-                self.connect_server(sse_client, "sse")
-            except (MCPConnectionError, ValueError):
-                logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
                 self.connect_server(streamablehttp_client, "mcp")
+            except MCPAuthError:
+                raise
+            except Exception:
+                logger.debug("MCP connection failed with 'mcp', falling back to 'sse' method.", exc_info=True)
+                self.connect_server(sse_client, "sse")
 
     def connect_server(self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str) -> None:
         """
