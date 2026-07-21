@@ -7,6 +7,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { DocumentsPage } from '../documents-page'
+import { TaskEventObserver } from '../task-event-observer'
 
 type InfiniteOptions = {
   getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
@@ -657,6 +658,7 @@ describe('DocumentsPage', () => {
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
   })
 
   it('blocks selection until filtered cursor pages are complete', async () => {
@@ -709,7 +711,7 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'common.operation.retry',
+        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
       }),
     )
 
@@ -820,7 +822,11 @@ describe('DocumentsPage', () => {
     expect(within(panel).getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.documentsErrorDescription',
     )
-    await user.click(within(panel).getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(
+      within(panel).getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+      }),
+    )
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
@@ -1217,7 +1223,7 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document({})] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'failed', state: 'failed' })] }] }
 
-    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
@@ -1229,6 +1235,22 @@ describe('DocumentsPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.taskActionFailed',
     )
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'failed',
+              state: 'running',
+              updatedAt: '2026-07-20T10:02:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
   })
 
   it('does not offer retry for a canceled task', async () => {
@@ -2276,6 +2298,60 @@ describe('DocumentsPage', () => {
       rendered.unmount()
       vi.useRealTimers()
     }
+  })
+
+  it('keeps the latest event cursor when the observer effect restarts', async () => {
+    const streamCursors: Array<string | undefined> = []
+    streamProcessingTaskEvents.mockImplementation(async function* ({
+      lastEventId,
+    }: {
+      lastEventId?: string
+    }) {
+      streamCursors.push(lastEventId)
+      if (streamCursors.length === 1) {
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: 'running' as const,
+            updatedAt: '2026-07-20T10:02:00Z',
+          },
+          event: 'progress' as const,
+          id: 'task-1:cursor',
+        }
+      }
+      await new Promise<void>(() => {})
+    })
+    const onLastEventIdChange = vi.fn()
+    const firstOnEvent = vi.fn(() => true)
+    const rendered = render(
+      <TaskEventObserver
+        documentId="document-1"
+        knowledgeSpaceId="space-1"
+        onEvent={firstOnEvent}
+        onLastEventIdChange={onLastEventIdChange}
+        taskId="task-1"
+        taskVersion="2026-07-20T10:01:00Z"
+      />,
+    )
+
+    await act(async () => {})
+    expect(onLastEventIdChange).toHaveBeenCalledWith('task-1', 'task-1:cursor')
+
+    rendered.rerender(
+      <TaskEventObserver
+        documentId="document-1"
+        knowledgeSpaceId="space-1"
+        lastEventId="task-1:cursor"
+        onEvent={vi.fn(() => true)}
+        onLastEventIdChange={onLastEventIdChange}
+        taskId="task-1"
+        taskVersion="2026-07-20T10:01:00Z"
+      />,
+    )
+    await act(async () => {})
+
+    expect(streamCursors).toEqual([undefined, 'task-1:cursor'])
   })
 
   it('rejects stale active progress and backs off repeated stale reconnects', async () => {

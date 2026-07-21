@@ -470,13 +470,17 @@ export function DocumentsList({
             {t(($) => $['newKnowledge.noMatchingDocuments'])}
           </p>
         )}
-        {!completingResults && !isFetchNextPageError && resultsIncomplete && (
+        {resultsIncomplete && (
           <p
             id={PARTIAL_RESULTS_DESCRIPTION_ID}
             aria-live="polite"
             className={cn(
               'text-center body-sm-regular text-text-tertiary',
-              documents.length ? 'py-4' : 'py-16',
+              completingResults || isFetchNextPageError
+                ? 'sr-only'
+                : documents.length
+                  ? 'py-4'
+                  : 'py-16',
             )}
             role="status"
           >

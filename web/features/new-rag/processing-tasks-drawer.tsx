@@ -18,7 +18,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -119,7 +119,7 @@ export function ProcessingTasksDrawer({
   const pendingActionsRef = useRef(new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
-  const [actionErrors, setActionErrors] = useState<Record<string, boolean>>({})
+  const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
   const [visibleTaskLimit, setVisibleTaskLimit] = useState(TASK_DRAWER_LIMIT)
   useSyncExternalStore(
     open ? taskProgressStore.subscribe : noopSubscribe,
@@ -172,6 +172,23 @@ export function ProcessingTasksDrawer({
   })
   const activeActionCount = orderedTasks.filter(taskIsActive).length
   const retryActionCount = orderedTasks.filter(taskCanRetry).length
+  const taskVersions = useMemo(
+    () => new Map(tasks.map((task) => [task.id, task.updatedAt])),
+    [tasks],
+  )
+
+  useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Task lifecycle changes retire action errors from older task versions.
+    setActionErrors((current) => {
+      const staleTaskIds = Object.keys(current).filter(
+        (taskId) => taskVersions.get(taskId) !== current[taskId],
+      )
+      if (!staleTaskIds.length) return current
+      const next = { ...current }
+      for (const taskId of staleTaskIds) delete next[taskId]
+      return next
+    })
+  }, [taskVersions])
 
   const refreshDocumentsAndTasks = () =>
     Promise.allSettled([
@@ -187,7 +204,11 @@ export function ProcessingTasksDrawer({
     if (!canEdit || pendingActionsRef.current.has(task.id)) return
     pendingActionsRef.current.add(task.id)
     setPendingActions((current) => new Set(current).add(task.id))
-    setActionErrors((current) => ({ ...current, [task.id]: false }))
+    setActionErrors((current) => {
+      const next = { ...current }
+      delete next[task.id]
+      return next
+    })
     try {
       const input = {
         params: {
@@ -201,9 +222,14 @@ export function ProcessingTasksDrawer({
           ? await cancelTask.mutateAsync(input)
           : await retryTask.mutateAsync(input)
       onTaskUpdated(updated)
+      setActionErrors((current) => {
+        const next = { ...current }
+        delete next[task.id]
+        return next
+      })
       drawerCloseButtonRef.current?.focus()
     } catch {
-      setActionErrors((current) => ({ ...current, [task.id]: true }))
+      setActionErrors((current) => ({ ...current, [task.id]: task.updatedAt }))
     } finally {
       await refreshDocumentsAndTasks()
       pendingActionsRef.current.delete(task.id)
@@ -222,6 +248,7 @@ export function ProcessingTasksDrawer({
       swipeDirection="right"
       onOpenChange={(nextOpen) => {
         if (!nextOpen) setVisibleTaskLimit(TASK_DRAWER_LIMIT)
+        if (!nextOpen) setActionErrors({})
         onOpenChange(nextOpen)
       }}
     >
@@ -251,7 +278,12 @@ export function ProcessingTasksDrawer({
                     <p className="system-xs-regular text-text-destructive">
                       {t(($) => $['newKnowledge.tasksErrorDescription'])}
                     </p>
-                    <Button className="mt-3" size="small" onClick={onRetryTaskQuery}>
+                    <Button
+                      aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.tasksErrorDescription'])}`}
+                      className="mt-3"
+                      size="small"
+                      onClick={onRetryTaskQuery}
+                    >
                       {tCommon(($) => $['operation.retry'])}
                     </Button>
                   </div>
@@ -261,7 +293,12 @@ export function ProcessingTasksDrawer({
                     <p className="system-xs-regular text-text-destructive">
                       {t(($) => $['newKnowledge.documentsErrorDescription'])}
                     </p>
-                    <Button className="mt-3" size="small" onClick={onRetryDocumentQuery}>
+                    <Button
+                      aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+                      className="mt-3"
+                      size="small"
+                      onClick={onRetryDocumentQuery}
+                    >
                       {tCommon(($) => $['operation.retry'])}
                     </Button>
                   </div>
@@ -317,7 +354,7 @@ export function ProcessingTasksDrawer({
                                 {taskError}
                               </p>
                             )}
-                            {actionErrors[task.id] && (
+                            {actionErrors[task.id] === task.updatedAt && (
                               <p
                                 className="mt-1 system-2xs-regular text-text-destructive"
                                 role="alert"

@@ -37,14 +37,14 @@ export function TaskEventObserver({
   taskId: string
   taskVersion: string
 }) {
-  const initialLastEventIdRef = useRef(lastEventId)
+  const resumeEventIdRef = useRef(lastEventId)
+  resumeEventIdRef.current = lastEventId
   const latestTaskVersionRef = useRef(taskVersion)
   const streamTaskVersionRef = useRef(taskVersion)
   latestTaskVersionRef.current = taskVersion
 
   useEffect(() => {
     const controller = new AbortController()
-    let resumeEventId = initialLastEventIdRef.current
     void (async () => {
       let reconnectDelay = TASK_EVENT_RECONNECT_DELAY
       while (!controller.signal.aborted) {
@@ -52,23 +52,24 @@ export function TaskEventObserver({
           for await (const event of streamProcessingTaskEvents({
             documentId,
             knowledgeSpaceId,
-            lastEventId: resumeEventId,
+            lastEventId: resumeEventIdRef.current,
             signal: controller.signal,
             taskId,
           })) {
             if (controller.signal.aborted) return
-            resumeEventId = event.id
+            resumeEventIdRef.current = event.id
             onLastEventIdChange(taskId, event.id)
             if (event.event === 'progress') streamTaskVersionRef.current = event.data.updatedAt
             const accepted = onEvent(taskId, streamTaskVersionRef.current, event)
             if (!accepted) {
-              resumeEventId = undefined
+              resumeEventIdRef.current = undefined
               onLastEventIdChange(taskId)
               streamTaskVersionRef.current = latestTaskVersionRef.current
               break
             }
             reconnectDelay = TASK_EVENT_RECONNECT_DELAY
             if (event.event === 'terminal') {
+              resumeEventIdRef.current = undefined
               onLastEventIdChange(taskId)
               return
             }
