@@ -2,8 +2,8 @@
 import type { Plugin } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useBoolean } from 'ahooks'
-import Link from 'next/link'
 import { useTheme } from 'next-themes'
+import Link from 'next/link'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useLocale, useTranslation } from '#i18n'
@@ -122,8 +122,7 @@ const CardWrapperComponent = ({
     </div>
   )
 
-  if (!linkToMarketplaceDetail)
-    return card
+  if (!linkToMarketplaceDetail) return card
 
   return (
     <Link
