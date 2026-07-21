@@ -108,7 +108,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const canEdit = hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
   const permissionPending = workspacePermissionKeysLoading
   const permissionQueryError = Boolean(workspacePermissionKeysError)
-  const canWrite = canEdit && !permissionPending && !permissionQueryError
+  const hasWorkspaceWritePermission = canEdit && !permissionPending && !permissionQueryError
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const uploadPendingRef = useRef(false)
   const reindexPendingRef = useRef(false)
@@ -159,6 +159,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       initialPageParam: null as string | null,
     }),
   )
+  const documentPermissionDenied = responseStatus(documentsQuery.error) === 403
+  const canWrite = hasWorkspaceWritePermission && !documentPermissionDenied
   const tasksQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
       input: (pageParam) => ({
@@ -217,9 +219,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () => tasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [tasksQuery.data],
   )
-  for (const task of baseTasks) {
-    if (!taskIsActive(task)) taskEventCursorsRef.current.delete(task.id)
-  }
   const documentIds = useMemo(() => new Set(documents.map((document) => document.id)), [documents])
   const unresolvedTaskDocumentIds = useMemo(
     () =>
@@ -293,6 +292,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
     [baseTasks, taskOverrides, terminalTaskPins],
   )
+  for (const task of tasks) {
+    if (!taskIsActive(task)) taskEventCursorsRef.current.delete(task.id)
+  }
   const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
   currentTaskStateRef.current = new Map(tasks.map((task) => [task.id, task.state]))
   const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
@@ -433,6 +435,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [activeTasks],
   )
   const streamedActiveTasks = useMemo(() => {
+    if (documentPermissionDenied) return []
     const streamCount = Math.min(MAX_TASK_EVENT_STREAMS, orderedActiveTasks.length)
     if (!streamCount) return []
     const offset = taskStreamOffset % orderedActiveTasks.length
@@ -440,7 +443,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       { length: streamCount },
       (_, index) => orderedActiveTasks[(offset + index) % orderedActiveTasks.length]!,
     )
-  }, [orderedActiveTasks, taskStreamOffset])
+  }, [documentPermissionDenied, orderedActiveTasks, taskStreamOffset])
   const orderedFailedTasks = useMemo(
     () =>
       tasks
@@ -1225,34 +1228,62 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             </Button>
           </div>
         )}
-        {documentsQuery.error && documentsQuery.data && !documentsQuery.isFetchNextPageError && (
+        {documentsQuery.error &&
+          documentsQuery.data &&
+          !documentPermissionDenied &&
+          !documentsQuery.isFetchNextPageError && (
+            <div
+              className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
+              role="alert"
+            >
+              <span className="system-xs-regular text-text-tertiary">
+                {t(($) =>
+                  responseStatus(documentsQuery.error) === 403
+                    ? $['newKnowledge.documentsPermissionDescription']
+                    : $['newKnowledge.documentsErrorDescription'],
+                )}
+              </span>
+              {responseStatus(documentsQuery.error) !== 403 && (
+                <Button
+                  aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+                  loading={documentsQuery.isRefetching}
+                  size="small"
+                  onClick={() => void documentsQuery.refetch()}
+                >
+                  {tCommon(($) => $['operation.retry'])}
+                </Button>
+              )}
+            </div>
+          )}
+        {!documentPermissionDenied && dependencyQueryWarning && (
           <div
             className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
             role="alert"
           >
             <span className="system-xs-regular text-text-tertiary">
-              {t(($) =>
-                responseStatus(documentsQuery.error) === 403
-                  ? $['newKnowledge.documentsPermissionDescription']
-                  : $['newKnowledge.documentsErrorDescription'],
-              )}
+              {sourcesQuery.error || sourcesQuery.isFetchNextPageError
+                ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+                : t(($) => $['newKnowledge.tasksErrorDescription'])}
             </span>
-            {responseStatus(documentsQuery.error) !== 403 && (
-              <Button
-                aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-                size="small"
-                onClick={() => void documentsQuery.refetch()}
-              >
-                {tCommon(($) => $['operation.retry'])}
-              </Button>
-            )}
+            <Button
+              aria-label={`${tCommon(($) => $['operation.retry'])} · ${
+                sourcesQuery.error || sourcesQuery.isFetchNextPageError
+                  ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+                  : t(($) => $['newKnowledge.tasksErrorDescription'])
+              }`}
+              loading={tasksQuery.isFetching || sourcesQuery.isFetching}
+              size="small"
+              onClick={retryDependencyQueries}
+            >
+              {tCommon(($) => $['operation.retry'])}
+            </Button>
           </div>
         )}
         {documentsQuery.isPending ? (
           <div className="flex min-h-64 flex-1 items-center justify-center">
             <Loading />
           </div>
-        ) : documentsQuery.error && !documentsQuery.data ? (
+        ) : documentsQuery.error && (documentPermissionDenied || !documentsQuery.data) ? (
           <div
             className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
             role="alert"
@@ -1276,6 +1307,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               <Button
                 aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
                 className="mt-4"
+                loading={documentsQuery.isFetching}
                 onClick={() => void documentsQuery.refetch()}
               >
                 {tCommon(($) => $['operation.retry'])}
@@ -1300,6 +1332,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   : t(($) => $['newKnowledge.tasksErrorDescription'])
               }`}
               className="mt-4"
+              loading={tasksQuery.isFetching || sourcesQuery.isFetching}
               onClick={retryDependencyQueries}
             >
               {tCommon(($) => $['operation.retry'])}
@@ -1324,72 +1357,47 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             uploading={uploading}
           />
         ) : (
-          <>
-            {dependencyQueryWarning && (
-              <div
-                className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
-                role="alert"
-              >
-                <span className="system-xs-regular text-text-tertiary">
-                  {sourcesQuery.error || sourcesQuery.isFetchNextPageError
-                    ? t(($) => $['newKnowledge.sourcesErrorDescription'])
-                    : t(($) => $['newKnowledge.tasksErrorDescription'])}
-                </span>
-                <Button
-                  aria-label={`${tCommon(($) => $['operation.retry'])} · ${
-                    sourcesQuery.error || sourcesQuery.isFetchNextPageError
-                      ? t(($) => $['newKnowledge.sourcesErrorDescription'])
-                      : t(($) => $['newKnowledge.tasksErrorDescription'])
-                  }`}
-                  size="small"
-                  onClick={retryDependencyQueries}
-                >
-                  {tCommon(($) => $['operation.retry'])}
-                </Button>
-              </div>
+          <DocumentsList
+            activeTaskCount={activeTasks.length}
+            allSelected={allFilteredSelected}
+            attentionTaskBadge={attentionTaskBadge}
+            canEdit={canWrite}
+            completingResults={completingFilteredResults}
+            documents={filteredDocuments}
+            filter={filter}
+            hasNextPage={Boolean(
+              hasNextDocumentPage || hasNextTaskPage || hasRelevantNextSourcePage,
             )}
-            <DocumentsList
-              activeTaskCount={activeTasks.length}
-              allSelected={allFilteredSelected}
-              attentionTaskBadge={attentionTaskBadge}
-              canEdit={canWrite}
-              completingResults={completingFilteredResults}
-              documents={filteredDocuments}
-              filter={filter}
-              hasNextPage={Boolean(
-                hasNextDocumentPage || hasNextTaskPage || hasRelevantNextSourcePage,
-              )}
-              hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
-              hasTaskError={hasTaskError}
-              isFetchNextPageError={documentsQuery.isFetchNextPageError}
-              isFetchingNextPage={isFetchingNextResultsPage}
-              onAddDocument={() => uploadInputRef.current?.click()}
-              onFilterChange={setFilter}
-              onLoadMore={loadMoreResults}
-              onOpenTasks={() => setTasksOpen(true)}
-              onSearchChange={setSearch}
-              onSelectAll={toggleAllFiltered}
-              onSelectDocument={toggleDocument}
-              readOnlyReasonId={
-                !permissionPending && !permissionQueryError && !canEdit
-                  ? 'documents-readonly-reason'
-                  : undefined
-              }
-              resultsIncomplete={filteredResultsIncomplete}
-              search={search}
-              selectionDisabled={selectionDisabled}
-              selectedDocumentIds={validSelectedDocumentIds}
-              someSelected={someFilteredSelected}
-              sourcesPending={sourceResultsIncomplete}
-              sourceNames={sourceNames}
-              statusPending={dependencyResultsIncomplete}
-              statuses={documentStatuses}
-              tasksPending={taskResultsIncomplete}
-              tasksButtonLabel={tasksButtonLabel}
-              tasksLiveStatus={tasksLiveStatus}
-              uploading={uploading}
-            />
-          </>
+            hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
+            hasTaskError={hasTaskError}
+            isFetchNextPageError={documentsQuery.isFetchNextPageError}
+            isFetchingNextPage={isFetchingNextResultsPage}
+            onAddDocument={() => uploadInputRef.current?.click()}
+            onFilterChange={setFilter}
+            onLoadMore={loadMoreResults}
+            onOpenTasks={() => setTasksOpen(true)}
+            onSearchChange={setSearch}
+            onSelectAll={toggleAllFiltered}
+            onSelectDocument={toggleDocument}
+            readOnlyReasonId={
+              !permissionPending && !permissionQueryError && !canEdit
+                ? 'documents-readonly-reason'
+                : undefined
+            }
+            resultsIncomplete={filteredResultsIncomplete}
+            search={search}
+            selectionDisabled={selectionDisabled}
+            selectedDocumentIds={validSelectedDocumentIds}
+            someSelected={someFilteredSelected}
+            sourcesPending={sourceResultsIncomplete}
+            sourceNames={sourceNames}
+            statusPending={dependencyResultsIncomplete}
+            statuses={documentStatuses}
+            tasksPending={taskResultsIncomplete}
+            tasksButtonLabel={tasksButtonLabel}
+            tasksLiveStatus={tasksLiveStatus}
+            uploading={uploading}
+          />
         )}
       </section>
       {canWrite && !!validSelectedDocumentIds.size && (
@@ -1404,6 +1412,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       <ProcessingTasksDrawer
         canEdit={canWrite}
         documentQueryError={Boolean(documentsQuery.error || documentsQuery.isFetchNextPageError)}
+        documentQueryFetching={documentsQuery.isFetching}
         documents={documents}
         documentsPending={Boolean(hasNextDocumentPage || documentsQuery.isFetchingNextPage)}
         hasNextDocumentPage={Boolean(hasNextDocumentPage)}
@@ -1424,9 +1433,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           else void tasksQuery.refetch()
         }}
         onTaskUpdated={handleTaskUpdated}
-        open={tasksOpen}
+        open={tasksOpen && !documentPermissionDenied}
         taskQueryPending={tasksQuery.isPending}
         taskQueryError={Boolean(tasksQuery.error || tasksQuery.isFetchNextPageError)}
+        taskQueryFetching={tasksQuery.isFetching}
         taskProgressStore={taskProgressStore}
         tasks={tasks}
       />

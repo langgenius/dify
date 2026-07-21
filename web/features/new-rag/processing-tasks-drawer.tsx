@@ -68,6 +68,7 @@ function newestTasks(
 export function ProcessingTasksDrawer({
   canEdit,
   documentQueryError,
+  documentQueryFetching,
   documents,
   documentsPending,
   hasNextDocumentPage,
@@ -82,6 +83,7 @@ export function ProcessingTasksDrawer({
   onTaskUpdated,
   open,
   taskQueryError,
+  taskQueryFetching,
   taskQueryPending,
   tasks,
   taskProgressStore,
@@ -90,6 +92,7 @@ export function ProcessingTasksDrawer({
 }: {
   canEdit: boolean
   documentQueryError: boolean
+  documentQueryFetching: boolean
   documents: LogicalDocument[]
   documentsPending: boolean
   hasNextDocumentPage: boolean
@@ -104,6 +107,7 @@ export function ProcessingTasksDrawer({
   onTaskUpdated: (task: DocumentProcessingTask) => void
   open: boolean
   taskQueryError: boolean
+  taskQueryFetching: boolean
   taskQueryPending: boolean
   tasks: DocumentProcessingTask[]
   taskProgressStore: TaskProgressStore
@@ -123,6 +127,7 @@ export function ProcessingTasksDrawer({
   const pendingActionsRef = useRef(new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const loadMoreRequestedRef = useRef(false)
+  const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
   const openCycleRef = useRef(0)
   const openRef = useRef(open)
   openRef.current = open
@@ -184,6 +189,22 @@ export function ProcessingTasksDrawer({
     () => new Map(tasks.map((task) => [task.id, taskLifecycle(task)])),
     [tasks],
   )
+  const taskLifecycleGenerationsRef = useRef(
+    new Map<string, { generation: number; lifecycle: string }>(),
+  )
+  const currentTaskIds = new Set(tasks.map((task) => task.id))
+  for (const task of tasks) {
+    const lifecycle = taskLifecycle(task)
+    const previous = taskLifecycleGenerationsRef.current.get(task.id)
+    if (previous?.lifecycle === lifecycle) continue
+    taskLifecycleGenerationsRef.current.set(task.id, {
+      generation: (previous?.generation ?? 0) + 1,
+      lifecycle,
+    })
+  }
+  for (const taskId of taskLifecycleGenerationsRef.current.keys()) {
+    if (!currentTaskIds.has(taskId)) taskLifecycleGenerationsRef.current.delete(taskId)
+  }
 
   useEffect(() => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Task lifecycle changes retire action errors from older task versions.
@@ -224,6 +245,7 @@ export function ProcessingTasksDrawer({
     if (!canEdit || pendingActionsRef.current.has(task.id)) return
     pendingActionsRef.current.add(task.id)
     const actionOpenCycle = openCycleRef.current
+    const actionLifecycleGeneration = taskLifecycleGenerationsRef.current.get(task.id)?.generation
     setPendingActions((current) => new Set(current).add(task.id))
     setActionErrors((current) => {
       const next = { ...current }
@@ -248,9 +270,14 @@ export function ProcessingTasksDrawer({
         delete next[task.id]
         return next
       })
-      drawerCloseButtonRef.current?.focus()
-    } catch {
       if (openRef.current && openCycleRef.current === actionOpenCycle)
+        drawerCloseButtonRef.current?.focus()
+    } catch {
+      if (
+        openRef.current &&
+        openCycleRef.current === actionOpenCycle &&
+        taskLifecycleGenerationsRef.current.get(task.id)?.generation === actionLifecycleGeneration
+      )
         setActionErrors((current) => ({ ...current, [task.id]: taskLifecycle(task) }))
     } finally {
       await refreshDocumentsAndTasks()
@@ -308,6 +335,7 @@ export function ProcessingTasksDrawer({
                     <Button
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.tasksErrorDescription'])}`}
                       className="mt-3"
+                      loading={taskQueryFetching}
                       size="small"
                       onClick={onRetryTaskQuery}
                     >
@@ -323,6 +351,7 @@ export function ProcessingTasksDrawer({
                     <Button
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
                       className="mt-3"
+                      loading={documentQueryFetching}
                       size="small"
                       onClick={onRetryDocumentQuery}
                     >
@@ -431,9 +460,14 @@ export function ProcessingTasksDrawer({
                 {hasMoreTasks && (
                   <div className="mt-4 flex justify-center">
                     <Button
+                      ref={loadMoreButtonRef}
                       loading={isFetchingNextTaskPage || isFetchingNextDocumentPage}
+                      onBlur={() => {
+                        loadMoreRequestedRef.current = false
+                      }}
                       onClick={() => {
-                        loadMoreRequestedRef.current = true
+                        loadMoreRequestedRef.current =
+                          document.activeElement === loadMoreButtonRef.current
                         if (tasks.length <= orderedBaseTasks.length && hasNextTaskPage)
                           onLoadMoreTasks()
                         if (hasUnresolvedTaskDocuments && hasNextDocumentPage) onLoadMoreDocuments()
