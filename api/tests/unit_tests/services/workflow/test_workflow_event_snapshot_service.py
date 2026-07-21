@@ -359,13 +359,13 @@ class _PauseEntity(WorkflowPauseEntity):
         return []
 
 
-def test_get_message_context_should_return_none_when_no_message() -> None:
+def test_get_message_context_by_conversation_should_return_none_when_no_message() -> None:
     # Arrange
     session = SimpleNamespace(scalar=MagicMock(return_value=None))
     session_maker = _SessionMaker(session)
 
     # Act
-    result = service_module._get_message_context(
+    result = service_module._get_message_context_by_conversation(
         cast(sessionmaker[Session], session_maker),
         conversation_id="conv-1",
         workflow_run_id="run-1",
@@ -375,13 +375,13 @@ def test_get_message_context_should_return_none_when_no_message() -> None:
     assert result is None
 
 
-def test_get_message_context_should_scope_and_bound_message_lookup() -> None:
+def test_get_message_context_by_conversation_should_scope_and_bound_message_lookup() -> None:
     # Arrange
     session = SimpleNamespace(scalar=MagicMock(return_value=None))
     session_maker = _SessionMaker(session)
 
     # Act
-    service_module._get_message_context(
+    service_module._get_message_context_by_conversation(
         cast(sessionmaker[Session], session_maker),
         conversation_id="conv-1",
         workflow_run_id="run-1",
@@ -421,7 +421,7 @@ def test_get_message_context_by_app_should_scope_and_bound_compatibility_lookup(
     assert compiled.endswith("LIMIT 1")
 
 
-def test_get_message_context_should_default_created_at_to_zero_when_message_has_no_timestamp() -> None:
+def test_get_message_context_by_conversation_should_default_created_at_to_zero_when_message_has_no_timestamp() -> None:
     # Arrange
     message = SimpleNamespace(
         id="msg-1",
@@ -433,7 +433,7 @@ def test_get_message_context_should_default_created_at_to_zero_when_message_has_
     session_maker = _SessionMaker(session)
 
     # Act
-    result = service_module._get_message_context(
+    result = service_module._get_message_context_by_conversation(
         cast(sessionmaker[Session], session_maker),
         conversation_id="conv-1",
         workflow_run_id="run-1",
@@ -660,12 +660,14 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
-    message_context_lookup = MagicMock(
-        side_effect=lambda *_args, **_kwargs: (
-            call_order.append("message") or MessageContext("conv-1", "msg-1", 1700000000)
-        )
+    message_context_lookup = MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("message") or None)
+    app_lookup = MagicMock(return_value=None)
+    monkeypatch.setattr(
+        service_module,
+        "_get_message_context_by_conversation",
+        message_context_lookup,
     )
-    monkeypatch.setattr(service_module, "_get_message_context", message_context_lookup)
+    monkeypatch.setattr(service_module, "_get_message_context_by_app", app_lookup)
     monkeypatch.setattr(
         service_module,
         "_load_resumption_context",
@@ -712,6 +714,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
         conversation_id="conv-1",
         workflow_run_id="run-1",
     )
+    app_lookup.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -752,8 +755,14 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock())
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=resumption_context))
-    message_context_lookup = MagicMock(return_value=None)
-    monkeypatch.setattr(service_module, "_get_message_context", message_context_lookup)
+    conversation_lookup = MagicMock(return_value=None)
+    app_lookup = MagicMock(return_value=None)
+    monkeypatch.setattr(
+        service_module,
+        "_get_message_context_by_conversation",
+        conversation_lookup,
+    )
+    monkeypatch.setattr(service_module, "_get_message_context_by_app", app_lookup)
 
     # Act / Assert
     with pytest.raises(AssertionError, match=expected_error):
@@ -764,7 +773,8 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
             app_id="app-1",
             session_maker=MagicMock(),
         )
-    message_context_lookup.assert_not_called()
+    conversation_lookup.assert_not_called()
+    app_lookup.assert_not_called()
 
 
 def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
@@ -784,7 +794,11 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
     monkeypatch.setattr(service_module, "_load_resumption_context", load_resumption_context)
     conversation_lookup = MagicMock(return_value=None)
     app_lookup = MagicMock(return_value=MessageContext("conv-1", "msg-1", 1700000000))
-    monkeypatch.setattr(service_module, "_get_message_context", conversation_lookup)
+    monkeypatch.setattr(
+        service_module,
+        "_get_message_context_by_conversation",
+        conversation_lookup,
+    )
     monkeypatch.setattr(service_module, "_get_message_context_by_app", app_lookup)
     session_maker = MagicMock()
 

@@ -113,7 +113,7 @@ def build_workflow_event_stream(
                 raise AssertionError(
                     f"conversation_id is required for advanced-chat snapshot replay, workflow_run_id={workflow_run.id}"
                 )
-            message_context = _get_message_context(
+            message_context = _get_message_context_by_conversation(
                 session_maker,
                 conversation_id=generate_entity.conversation_id,
                 workflow_run_id=workflow_run.id,
@@ -205,16 +205,16 @@ def build_workflow_event_stream(
     return _generate()
 
 
-def _get_message_context(
+def _get_message_context_by_conversation(
     session_maker: sessionmaker[Session],
     *,
     conversation_id: str,
     workflow_run_id: str,
 ) -> MessageContext | None:
-    """Return the latest message context for a workflow run within its conversation.
+    """Look up a paused or suspended Advanced Chat snapshot message by conversation and workflow run.
 
-    The conversation and workflow-run predicates match ``message_workflow_run_id_idx``. The explicit limit prevents
-    loading more than the single context used by snapshot replay.
+    Use this exact lookup after recovering ``conversation_id`` from persisted resumption context. Its predicates match
+    ``message_workflow_run_id_idx``.
     """
     with session_maker() as session:
         stmt = (
@@ -238,7 +238,11 @@ def _get_message_context_by_app(
     app_id: str,
     workflow_run_id: str,
 ) -> MessageContext | None:
-    """Return the latest message context using the non-suspension compatibility scope."""
+    """Look up a non-suspended or running Advanced Chat reconnect snapshot by app and workflow run.
+
+    This compatibility path applies only when no resumption context is expected. The app-scoped query is not optimal;
+    a dedicated index or stronger lookup key would be preferable.
+    """
     with session_maker() as session:
         stmt = (
             select(Message)

@@ -150,11 +150,11 @@ class _PauseEntity(WorkflowPauseEntity):
 
 
 class TestWorkflowEventSnapshotHelpers:
-    def test_get_message_context_should_return_none_when_no_message(self) -> None:
+    def test_get_message_context_by_conversation_should_return_none_when_no_message(self) -> None:
         session = SimpleNamespace(scalar=MagicMock(return_value=None))
         session_maker = _SessionMaker(session)
 
-        result = service_module._get_message_context(
+        result = service_module._get_message_context_by_conversation(
             cast(sessionmaker[Session], session_maker),
             conversation_id="conv-1",
             workflow_run_id="run-1",
@@ -162,7 +162,9 @@ class TestWorkflowEventSnapshotHelpers:
 
         assert result is None
 
-    def test_get_message_context_should_default_created_at_to_zero_when_message_has_no_timestamp(self) -> None:
+    def test_get_message_context_by_conversation_should_default_created_at_to_zero_when_message_has_no_timestamp(
+        self,
+    ) -> None:
         message = SimpleNamespace(
             id="msg-1",
             conversation_id="conv-1",
@@ -172,7 +174,7 @@ class TestWorkflowEventSnapshotHelpers:
         session = SimpleNamespace(scalar=MagicMock(return_value=message))
         session_maker = _SessionMaker(session)
 
-        result = service_module._get_message_context(
+        result = service_module._get_message_context_by_conversation(
             cast(sessionmaker[Session], session_maker),
             conversation_id="conv-1",
             workflow_run_id="run-1",
@@ -348,7 +350,7 @@ class TestBuildWorkflowEventStream:
         monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
         monkeypatch.setattr(
             service_module,
-            "_get_message_context",
+            "_get_message_context_by_conversation",
             MagicMock(return_value=MessageContext("conv-1", "msg-1", 1700000000)),
         )
         generate_entity = AdvancedChatAppGenerateEntity.model_construct(conversation_id="conv-1")
