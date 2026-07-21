@@ -7,10 +7,11 @@ const currentPlanVectorSpaceQueryKey = ['billing', 'current-plan-vector-space'] 
 export const useBindPartnerStackInfo = () => {
   return useMutation({
     mutationKey: consoleQuery.billing.partners.byPartnerKey.tenants.put.mutationKey(),
-    mutationFn: (data: { partnerKey: string, clickId: string }) => consoleClient.billing.partners.byPartnerKey.tenants.put({
-      params: { partner_key: data.partnerKey },
-      body: { click_id: data.clickId },
-    }),
+    mutationFn: (data: { partnerKey: string; clickId: string }) =>
+      consoleClient.billing.partners.byPartnerKey.tenants.put({
+        params: { partner_key: data.partnerKey },
+        body: { click_id: data.clickId },
+      }),
   })
 }
 

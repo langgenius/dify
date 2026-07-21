@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "گروه‌ها و اعضا را جستجو کنید",
   "accessControlDialog.title": "کنترل دسترسی به وب اپلیکیشن",
   "accessControlDialog.updateSuccess": "به‌روز رسانی با موفقیت انجام شد",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "دسترسی عمومی توسط مدیر شما غیرفعال شده است.",
   "accessControlDialog.webAppSSONotEnabledTip": "لطفاً با مدیر شرکت تماس بگیرید تا روش احراز هویت برنامه وب را پیکربندی کند.",
   "accessItemsDescription.anyone": "هر کسی می‌تواند به وب‌اپلیکیشن دسترسی پیدا کند",
   "accessItemsDescription.external": "تنها کاربران خارجی تأیید شده می‌توانند به برنامه وب دسترسی پیدا کنند.",

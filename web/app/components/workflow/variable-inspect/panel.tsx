@@ -2,9 +2,7 @@ import type { FC } from 'react'
 import type { NodeProps } from '../types'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiCloseLine,
-} from '@remixicon/react'
+import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -13,7 +11,6 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VarInInspectType } from '@/types/workflow'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
-
 import { useStore } from '../store'
 import Empty from './empty'
 import Left from './left'
@@ -32,33 +29,33 @@ export type currentVarType = {
 const Panel: FC = () => {
   const { t } = useTranslation()
 
-  const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
-  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+  const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
+  const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const [showLeftPanel, setShowLeftPanel] = useState(true)
-  const isListening = useStore(s => s.isListening)
+  const isListening = useStore((s) => s.isListening)
 
-  const environmentVariables = useStore(s => s.environmentVariables)
-  const currentFocusNodeId = useStore(s => s.currentFocusNodeId)
-  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const environmentVariables = useStore((s) => s.environmentVariables)
+  const currentFocusNodeId = useStore((s) => s.currentFocusNodeId)
+  const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
   const [currentVarId, setCurrentVarId] = useState('')
 
-  const {
-    conversationVars,
-    systemVars,
-    nodesWithInspectVars,
-    fetchInspectVarValue,
-  } = useCurrentVars()
+  const { conversationVars, systemVars, nodesWithInspectVars, fetchInspectVarValue } =
+    useCurrentVars()
 
   const isEmpty = useMemo(() => {
-    const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
+    const allVars = [
+      ...environmentVariables,
+      ...conversationVars,
+      ...systemVars,
+      ...nodesWithInspectVars,
+    ]
     return allVars.length === 0
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   const currentNodeInfo = useMemo(() => {
-    if (!currentFocusNodeId)
-      return
+    if (!currentFocusNodeId) return
     if (currentFocusNodeId === VarInInspectType.environment) {
-      const currentVar = environmentVariables.find(v => v.id === currentVarId)
+      const currentVar = environmentVariables.find((v) => v.id === currentVarId)
       const res = {
         nodeId: VarInInspectType.environment,
         title: VarInInspectType.environment,
@@ -78,7 +75,7 @@ const Panel: FC = () => {
       return res
     }
     if (currentFocusNodeId === VarInInspectType.conversation) {
-      const currentVar = conversationVars.find(v => v.id === currentVarId)
+      const currentVar = conversationVars.find((v) => v.id === currentVarId)
       const res = {
         nodeId: VarInInspectType.conversation,
         title: VarInInspectType.conversation,
@@ -96,7 +93,7 @@ const Panel: FC = () => {
       return res
     }
     if (currentFocusNodeId === VarInInspectType.system) {
-      const currentVar = systemVars.find(v => v.id === currentVarId)
+      const currentVar = systemVars.find((v) => v.id === currentVarId)
       const res = {
         nodeId: VarInInspectType.system,
         title: VarInInspectType.system,
@@ -113,10 +110,9 @@ const Panel: FC = () => {
       }
       return res
     }
-    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-    if (!targetNode)
-      return
-    const currentVar = targetNode.vars.find(v => v.id === currentVarId)
+    const targetNode = nodesWithInspectVars.find((node) => node.nodeId === currentFocusNodeId)
+    if (!targetNode) return
+    const currentVar = targetNode.vars.find((v) => v.id === currentVarId)
     return {
       nodeId: targetNode.nodeId,
       nodeType: targetNode.nodeType,
@@ -126,21 +122,29 @@ const Panel: FC = () => {
       nodeData: targetNode.nodePayload,
       ...(currentVar ? { var: currentVar } : {}),
     }
-  }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
+  }, [
+    currentFocusNodeId,
+    currentVarId,
+    environmentVariables,
+    conversationVars,
+    systemVars,
+    nodesWithInspectVars,
+  ])
 
   const isCurrentNodeVarValueFetching = useMemo(() => {
-    if (!currentNodeInfo)
-      return false
-    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentNodeInfo.nodeId)
-    if (!targetNode)
-      return false
+    if (!currentNodeInfo) return false
+    const targetNode = nodesWithInspectVars.find((node) => node.nodeId === currentNodeInfo.nodeId)
+    if (!targetNode) return false
     return !targetNode.isValueFetched
   }, [currentNodeInfo, nodesWithInspectVars])
 
-  const handleNodeVarSelect = useCallback((node: currentVarType) => {
-    setCurrentFocusNodeId(node.nodeId)
-    setCurrentVarId(node.var.id)
-  }, [setCurrentFocusNodeId, setCurrentVarId])
+  const handleNodeVarSelect = useCallback(
+    (node: currentVarType) => {
+      setCurrentFocusNodeId(node.nodeId)
+      setCurrentVarId(node.var.id)
+    },
+    [setCurrentFocusNodeId, setCurrentVarId],
+  )
 
   const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -151,25 +155,32 @@ const Panel: FC = () => {
 
   useEffect(() => {
     if (currentFocusNodeId && currentVarId && !isLoading) {
-      const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+      const targetNode = nodesWithInspectVars.find((node) => node.nodeId === currentFocusNodeId)
       if (targetNode && !targetNode.isValueFetched)
         fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!)
     }
-  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
+  }, [
+    currentFocusNodeId,
+    currentVarId,
+    nodesWithInspectVars,
+    fetchInspectVarValue,
+    schemaTypeDefinitions,
+    isLoading,
+  ])
 
   if (isListening) {
     return (
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t($ => $['debug.variableInspect.title'], { ns: 'workflow' })}</div>
+          <div className="system-sm-semibold-uppercase text-text-primary">
+            {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+          </div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
             <RiCloseLine className="size-4" />
           </ActionButton>
         </div>
         <div className="grow p-2">
-          <Listening
-            onStop={handleStopListening}
-          />
+          <Listening onStop={handleStopListening} />
         </div>
       </div>
     )
@@ -179,7 +190,9 @@ const Panel: FC = () => {
     return (
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t($ => $['debug.variableInspect.title'], { ns: 'workflow' })}</div>
+          <div className="system-sm-semibold-uppercase text-text-primary">
+            {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+          </div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
             <RiCloseLine className="size-4" />
           </ActionButton>
@@ -194,7 +207,12 @@ const Panel: FC = () => {
   return (
     <div className={cn('relative flex h-full')}>
       {/* left */}
-      {bottomPanelWidth < 488 && showLeftPanel && <div className="absolute top-0 left-0 size-full" onClick={() => setShowLeftPanel(false)}></div>}
+      {bottomPanelWidth < 488 && showLeftPanel && (
+        <div
+          className="absolute top-0 left-0 size-full"
+          onClick={() => setShowLeftPanel(false)}
+        ></div>
+      )}
       <div
         className={cn(
           'w-60 shrink-0 border-r border-divider-burn',

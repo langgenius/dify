@@ -24,14 +24,11 @@ const renderVariableModal = (props?: Partial<React.ComponentProps<typeof Variabl
   const onSave = vi.fn()
 
   const result = renderWorkflowComponent(
-    React.createElement(
-      VariableModal,
-      {
-        onClose,
-        onSave,
-        ...props,
-      },
-    ),
+    React.createElement(VariableModal, {
+      onClose,
+      onSave,
+      ...props,
+    }),
   )
 
   return { ...result, onClose, onSave }
@@ -48,9 +45,18 @@ describe('variable-modal', () => {
     const user = userEvent.setup()
     const { onClose, onSave } = renderVariableModal()
 
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'greeting')
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'), 'hello')
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.descriptionPlaceholder'), 'demo variable')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      'greeting',
+    )
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'),
+      'hello',
+    )
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.descriptionPlaceholder'),
+      'demo variable',
+    )
     await user.click(screen.getByText('common.operation.save'))
 
     expect(onSave).toHaveBeenCalledWith({
@@ -68,19 +74,26 @@ describe('variable-modal', () => {
     const { onSave, store } = renderVariableModal()
 
     store.setState({
-      conversationVariables: [{
-        id: 'var-1',
-        name: 'existing_name',
-        description: '',
-        value_type: ChatVarType.String,
-        value: '',
-      }],
+      conversationVariables: [
+        {
+          id: 'var-1',
+          name: 'existing_name',
+          description: '',
+          value_type: ChatVarType.String,
+          value: '',
+        },
+      ],
     })
 
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'existing_name')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      'existing_name',
+    )
     await user.click(screen.getByText('common.operation.save'))
 
-    expect(mockToastError.mock.calls.at(-1)?.[0]).toBe('appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.chatVariable.modal.name"}')
+    expect(mockToastError.mock.calls.at(-1)?.[0]).toBe(
+      'appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.chatVariable.modal.name"}',
+    )
     expect(onSave).not.toHaveBeenCalled()
   })
 
@@ -122,7 +135,10 @@ describe('variable-modal', () => {
     const user = userEvent.setup()
     const { onSave } = renderVariableModal()
 
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'flags')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      'flags',
+    )
     await user.click(screen.getByText('string'))
     await user.click(screen.getByText('array[boolean]'))
     await user.click(screen.getByText('common.operation.save'))
@@ -169,7 +185,9 @@ describe('variable-modal', () => {
 
   it('should stop invalid variable names before they are stored in local state', async () => {
     const { onSave } = renderVariableModal()
-    const input = screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder') as HTMLInputElement
+    const input = screen.getByPlaceholderText(
+      'workflow.chatVariable.modal.namePlaceholder',
+    ) as HTMLInputElement
 
     fireEvent.change(input, { target: { value: '1bad' } })
     await userEvent.click(screen.getByText('common.operation.save'))
@@ -183,10 +201,16 @@ describe('variable-modal', () => {
     const user = userEvent.setup()
     const { onSave } = renderVariableModal()
 
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'timeout')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      'timeout',
+    )
     await user.click(screen.getByText('string'))
     await user.click(screen.getByText('number'))
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'), '3')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'),
+      '3',
+    )
     await user.click(screen.getByText('common.operation.save'))
 
     expect(onSave).toHaveBeenCalledWith({

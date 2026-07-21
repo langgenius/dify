@@ -376,7 +376,8 @@ class SnippetGenerateService:
         node_id: str,
         args: Mapping[str, Any],
         streaming: bool = True,
-        session_maker: sessionmaker[Session] | None = None,
+        *,
+        session_maker: sessionmaker[Session],
     ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a single iteration node in a snippet's draft workflow.
@@ -390,6 +391,7 @@ class SnippetGenerateService:
         :param node_id: ID of the iteration node to run
         :param args: Dict containing 'inputs' key with iteration input data
         :param streaming: Whether to stream the response (should be True)
+        :param session_maker: Factory for the synchronous database work before worker startup
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
@@ -400,16 +402,18 @@ class SnippetGenerateService:
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        return WorkflowAppGenerator.convert_to_event_stream(
-            WorkflowAppGenerator().single_iteration_generate(
-                app_model=app_proxy,
-                workflow=workflow,
-                node_id=node_id,
-                user=user,
-                args=args,
-                streaming=streaming,
+        with session_maker() as session:
+            return WorkflowAppGenerator.convert_to_event_stream(
+                WorkflowAppGenerator().single_iteration_generate(
+                    app_model=app_proxy,
+                    workflow=workflow,
+                    node_id=node_id,
+                    user=user,
+                    args=args,
+                    streaming=streaming,
+                    session=session,
+                )
             )
-        )
 
     @classmethod
     def generate_single_loop(
@@ -419,7 +423,8 @@ class SnippetGenerateService:
         node_id: str,
         args: Any,
         streaming: bool = True,
-        session_maker: sessionmaker[Session] | None = None,
+        *,
+        session_maker: sessionmaker[Session],
     ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a single loop node in a snippet's draft workflow.
@@ -433,6 +438,7 @@ class SnippetGenerateService:
         :param node_id: ID of the loop node to run
         :param args: Pydantic model with 'inputs' attribute containing loop input data
         :param streaming: Whether to stream the response (should be True)
+        :param session_maker: Factory for the synchronous database work before worker startup
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
@@ -443,16 +449,18 @@ class SnippetGenerateService:
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        return WorkflowAppGenerator.convert_to_event_stream(
-            WorkflowAppGenerator().single_loop_generate(
-                app_model=app_proxy,
-                workflow=workflow,
-                node_id=node_id,
-                user=user,
-                args=args,  # type: ignore[arg-type]
-                streaming=streaming,
+        with session_maker() as session:
+            return WorkflowAppGenerator.convert_to_event_stream(
+                WorkflowAppGenerator().single_loop_generate(
+                    app_model=app_proxy,
+                    workflow=workflow,
+                    node_id=node_id,
+                    user=user,
+                    args=args,  # type: ignore[arg-type]
+                    streaming=streaming,
+                    session=session,
+                )
             )
-        )
 
     @staticmethod
     def parse_files(workflow: Workflow, files: list[dict] | None = None) -> Sequence[File]:

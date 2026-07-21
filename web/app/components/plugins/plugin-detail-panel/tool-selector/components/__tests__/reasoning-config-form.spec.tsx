@@ -9,8 +9,21 @@ import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/typ
 import ReasoningConfigForm from '../reasoning-config-form'
 
 vi.mock('@/app/components/base/input', () => ({
-  default: ({ value, onChange, placeholder }: { value?: string, onChange: (e: { target: { value: string } }) => void, placeholder?: string }) => (
-    <input data-testid="number-input" placeholder={placeholder} value={value} onChange={e => onChange({ target: { value: e.target.value } })} />
+  default: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value?: string
+    onChange: (e: { target: { value: string } }) => void
+    placeholder?: string
+  }) => (
+    <input
+      data-testid="number-input"
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange({ target: { value: e.target.value } })}
+    />
   ),
 }))
 
@@ -21,7 +34,10 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   }>({})
 
   return {
-    Select: ({ children, onValueChange }: {
+    Select: ({
+      children,
+      onValueChange,
+    }: {
       children: React.ReactNode
       onValueChange?: (value: string) => void
     }) => (
@@ -33,10 +49,15 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       <button type="button">{children}</button>
     ),
     SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
       const context = React.useContext(SelectContext)
       return (
-        <button key={value} data-testid={`select-${value}`} type="button" onClick={() => context.onValueChange?.(value)}>
+        <button
+          key={value}
+          data-testid={`select-${value}`}
+          type="button"
+          onClick={() => context.onValueChange?.(value)}
+        >
           {children}
         </button>
       )
@@ -47,7 +68,13 @@ vi.mock('@langgenius/dify-ui/select', async () => {
 })
 
 vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (checked: boolean) => void }) => (
+  Switch: ({
+    checked,
+    onCheckedChange,
+  }: {
+    checked: boolean
+    onCheckedChange: (checked: boolean) => void
+  }) => (
     <button data-testid="auto-switch" onClick={() => onCheckedChange(!checked)}>
       {checked ? 'on' : 'off'}
     </button>
@@ -59,7 +86,13 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
-  AppSelector: ({ onSelect, scope }: { onSelect: (value: AppSelectorValue) => void, scope?: string }) => (
+  AppSelector: ({
+    onSelect,
+    scope,
+  }: {
+    onSelect: (value: AppSelectorValue) => void
+    scope?: string
+  }) => (
     <button
       data-testid="app-selector"
       data-scope={scope}
@@ -79,7 +112,13 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ onChange, placeholder }: { onChange: (value: string) => void, placeholder?: ReactNode }) => (
+  default: ({
+    onChange,
+    placeholder,
+  }: {
+    onChange: (value: string) => void
+    placeholder?: ReactNode
+  }) => (
     <div>
       <div data-testid="code-editor-placeholder">{placeholder}</div>
       <button data-testid="code-editor" onClick={() => onChange('{"foo":"bar"}')}>
@@ -106,8 +145,18 @@ vi.mock('@/app/components/workflow/nodes/_base/components/form-input-type-switch
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ onChange, value }: { onChange: (value: string) => void, value: string | string[] }) => (
-    <button data-testid="var-picker" data-value={JSON.stringify(value)} onClick={() => onChange(['node', 'field'] as unknown as string)}>
+  default: ({
+    onChange,
+    value,
+  }: {
+    onChange: (value: string) => void
+    value: string | string[]
+  }) => (
+    <button
+      data-testid="var-picker"
+      data-value={JSON.stringify(value)}
+      onClick={() => onChange(['node', 'field'] as unknown as string)}
+    >
       Pick Variable
     </button>
   ),
@@ -122,32 +171,40 @@ vi.mock('@/app/components/workflow/nodes/tool/components/mixed-variable-text-inp
 }))
 
 vi.mock('../schema-modal', () => ({
-  default: ({ isShow, rootName, onClose }: { isShow: boolean, rootName: string, onClose: () => void }) => (
-    isShow
-      ? (
-          <div data-testid="schema-modal">
-            <span>{rootName}</span>
-            <button data-testid="close-schema" onClick={onClose}>Close</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({
+    isShow,
+    rootName,
+    onClose,
+  }: {
+    isShow: boolean
+    rootName: string
+    onClose: () => void
+  }) =>
+    isShow ? (
+      <div data-testid="schema-modal">
+        <span>{rootName}</span>
+        <button data-testid="close-schema" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    ) : null,
 }))
 
-const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema => ({
-  variable: 'field',
-  type: FormTypeEnum.textInput,
-  default: '',
-  required: false,
-  label: { en_US: 'Field', zh_Hans: '字段' },
-  tooltip: { en_US: 'Tooltip', zh_Hans: '提示' },
-  scope: 'all',
-  url: '',
-  input_schema: {},
-  placeholder: { en_US: 'Placeholder', zh_Hans: '占位符' },
-  options: [],
-  ...overrides,
-} as ToolFormSchema)
+const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema =>
+  ({
+    variable: 'field',
+    type: FormTypeEnum.textInput,
+    default: '',
+    required: false,
+    label: { en_US: 'Field', zh_Hans: '字段' },
+    tooltip: { en_US: 'Tooltip', zh_Hans: '提示' },
+    scope: 'all',
+    url: '',
+    input_schema: {},
+    placeholder: { en_US: 'Placeholder', zh_Hans: '占位符' },
+    options: [],
+    ...overrides,
+  }) as ToolFormSchema
 
 describe('ReasoningConfigForm', () => {
   beforeEach(() => {
@@ -201,7 +258,12 @@ describe('ReasoningConfigForm', () => {
         onChange={onChange}
         schemas={[
           createSchema({ variable: 'field', type: FormTypeEnum.textInput }),
-          createSchema({ variable: 'count', type: FormTypeEnum.textNumber, default: '5', label: { en_US: 'Count', zh_Hans: '数量' } }),
+          createSchema({
+            variable: 'count',
+            type: FormTypeEnum.textNumber,
+            default: '5',
+            label: { en_US: 'Count', zh_Hans: '数量' },
+          }),
         ]}
         nodeOutputVars={[]}
         availableNodes={[]}
@@ -212,18 +274,24 @@ describe('ReasoningConfigForm', () => {
     fireEvent.click(screen.getByTestId('mixed-input'))
     fireEvent.click(screen.getByTestId('type-switch'))
 
-    expect(onChange).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      field: {
-        auto: 0,
-        value: { type: VarKindType.mixed, value: 'updated-text' },
-      },
-    }))
-    expect(onChange).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      count: {
-        auto: 0,
-        value: { type: VarKindType.variable, value: '' },
-      },
-    }))
+    expect(onChange).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        field: {
+          auto: 0,
+          value: { type: VarKindType.mixed, value: 'updated-text' },
+        },
+      }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        count: {
+          auto: 0,
+          value: { type: VarKindType.variable, value: '' },
+        },
+      }),
+    )
   })
 
   it('should open schema modal for object fields and support app selection', () => {
@@ -261,21 +329,25 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.clickToViewParameterSchema' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.nodes.agent.clickToViewParameterSchema' }),
+    )
     expect(screen.getByTestId('schema-modal')).toHaveTextContent('Config')
     fireEvent.click(screen.getByTestId('close-schema'))
 
     fireEvent.click(screen.getByTestId('app-selector'))
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-      app: {
-        auto: 0,
-        value: {
-          type: undefined,
-          value: { app_id: 'app-1', inputs: { topic: 'hello' }, files: [] },
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        app: {
+          auto: 0,
+          value: {
+            type: undefined,
+            value: { app_id: 'app-1', inputs: { topic: 'hello' }, files: [] },
+          },
         },
-      },
-    }))
+      }),
+    )
   })
 
   it('should merge model selector values into the current field value', () => {
@@ -418,24 +490,33 @@ describe('ReasoningConfigForm', () => {
     fireEvent.click(screen.getByTestId('boolean-input'))
     fireEvent.click(screen.getByTestId('select-beta'))
 
-    expect(onChange).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      count: {
-        auto: 0,
-        value: { type: VarKindType.constant, value: '7' },
-      },
-    }))
-    expect(onChange).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      enabled: {
-        auto: 0,
-        value: { type: VarKindType.constant, value: true },
-      },
-    }))
-    expect(onChange).toHaveBeenNthCalledWith(3, expect.objectContaining({
-      choice: {
-        auto: 0,
-        value: { type: VarKindType.constant, value: 'beta' },
-      },
-    }))
+    expect(onChange).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        count: {
+          auto: 0,
+          value: { type: VarKindType.constant, value: '7' },
+        },
+      }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        enabled: {
+          auto: 0,
+          value: { type: VarKindType.constant, value: true },
+        },
+      }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        choice: {
+          auto: 0,
+          value: { type: VarKindType.constant, value: 'beta' },
+        },
+      }),
+    )
   })
 
   it('should render selected select values and update object json fields', () => {
@@ -490,12 +571,14 @@ describe('ReasoningConfigForm', () => {
 
     fireEvent.click(screen.getByTestId('code-editor'))
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-      config: {
-        auto: 0,
-        value: { type: VarKindType.constant, value: '{"foo":"bar"}' },
-      },
-    }))
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: {
+          auto: 0,
+          value: { type: VarKindType.constant, value: '{"foo":"bar"}' },
+        },
+      }),
+    )
   })
 
   it('should render json placeholders, default app scope, variable links, and helper urls', () => {
@@ -545,6 +628,9 @@ describe('ReasoningConfigForm', () => {
     expect(screen.getByTestId('code-editor-placeholder')).toHaveTextContent('"foo": "bar"')
     expect(screen.getByTestId('app-selector')).toHaveAttribute('data-scope', 'all')
     expect(screen.getByTestId('var-picker')).toHaveAttribute('data-value', '[]')
-    expect(screen.getByRole('link', { name: 'tools.howToGet' })).toHaveAttribute('href', 'https://example.com/help')
+    expect(screen.getByRole('link', { name: 'tools.howToGet' })).toHaveAttribute(
+      'href',
+      'https://example.com/help',
+    )
   })
 })

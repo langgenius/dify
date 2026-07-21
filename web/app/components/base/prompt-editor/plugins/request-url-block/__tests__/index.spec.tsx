@@ -1,14 +1,14 @@
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import { REQUEST_URL_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readRootTextContent,
   renderLexicalEditor,
   selectRootEnd,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import {
   DELETE_REQUEST_URL_BLOCK_COMMAND,
   INSERT_REQUEST_URL_BLOCK_COMMAND,
@@ -16,16 +16,16 @@ import {
   RequestURLBlockNode,
 } from '../index'
 
-const renderRequestURLBlock = (props: {
-  onInsert?: () => void
-  onDelete?: () => void
-} = {}) => {
+const renderRequestURLBlock = (
+  props: {
+    onInsert?: () => void
+    onDelete?: () => void
+  } = {},
+) => {
   return renderLexicalEditor({
     namespace: 'request-url-block-plugin-test',
     nodes: [CustomTextNode, RequestURLBlockNode],
-    children: (
-      <RequestURLBlock {...props} />
-    ),
+    children: <RequestURLBlock {...props} />,
   })
 }
 

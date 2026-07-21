@@ -53,7 +53,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
 
             try:
                 if annotations_exists:
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                     vector.delete()
             except Exception:
                 logger.exception("Delete annotation index failed when annotation deleted.")

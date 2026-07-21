@@ -13,7 +13,7 @@ const parseEnvValue = (rawValue: string) => {
   const value = rawValue.trim()
   const quote = value[0]
 
-  if ((quote === '"' || quote === '\'') && value.endsWith(quote)) {
+  if ((quote === '"' || quote === "'") && value.endsWith(quote)) {
     const unquotedValue = value.slice(1, -1)
 
     if (quote === '"') {
@@ -25,21 +25,20 @@ const parseEnvValue = (rawValue: string) => {
         .replaceAll('\\\\', '\\')
     }
 
-    return unquotedValue.replaceAll('\\\'', '\'')
+    return unquotedValue.replaceAll("\\'", "'")
   }
 
   return stripInlineComment(value).trim()
 }
 
 export const parseEnvImport = (content: string) => {
-  const variables: Array<{ key: string, value: string }> = []
+  const variables: Array<{ key: string; value: string }> = []
   let invalidLineCount = 0
 
   for (const line of content.split(/\r?\n/)) {
     const trimmedLine = line.trim()
 
-    if (!trimmedLine || trimmedLine.startsWith('#'))
-      continue
+    if (!trimmedLine || trimmedLine.startsWith('#')) continue
 
     const envLine = trimmedLine.startsWith('export ')
       ? trimmedLine.slice('export '.length).trimStart()
@@ -82,8 +81,7 @@ export const getEnvImportPlatform = ({
   const normalizedPlatform = platform?.toLowerCase() ?? ''
   const normalizedUserAgent = userAgent?.toLowerCase() ?? ''
 
-  if (normalizedPlatform.includes('mac') || normalizedUserAgent.includes('mac os'))
-    return 'mac'
+  if (normalizedPlatform.includes('mac') || normalizedUserAgent.includes('mac os')) return 'mac'
 
   if (normalizedPlatform.includes('win') || normalizedUserAgent.includes('windows'))
     return 'windows'

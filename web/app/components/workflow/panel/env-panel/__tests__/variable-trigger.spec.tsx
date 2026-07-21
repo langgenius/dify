@@ -25,14 +25,9 @@ const renderWithProviders = (
 ) => {
   const store = createWorkflowStore({})
 
-  if (options.storeState)
-    store.setState(options.storeState)
+  if (options.storeState) store.setState(options.storeState)
 
-  const result = render(
-    <WorkflowContext value={store}>
-      {ui}
-    </WorkflowContext>,
-  )
+  const result = render(<WorkflowContext value={store}>{ui}</WorkflowContext>)
 
   return {
     ...result,
@@ -52,14 +47,7 @@ describe('VariableTrigger', () => {
     const TriggerHarness = () => {
       const [open, setOpen] = React.useState(false)
 
-      return (
-        <VariableTrigger
-          open={open}
-          setOpen={setOpen}
-          onClose={onClose}
-          onSave={vi.fn()}
-        />
-      )
+      return <VariableTrigger open={open} setOpen={setOpen} onClose={onClose} onSave={vi.fn()} />
     }
 
     renderWithProviders(<TriggerHarness />)

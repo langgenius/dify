@@ -44,17 +44,17 @@ type InfotipIconSize = keyof typeof iconSizeClassNames
 
 type InfotipProps = {
   /** Popup content. Rich nodes are allowed. */
-  'children': ReactNode
+  children: ReactNode
   /** Accessible name for the icon-only trigger. */
   'aria-label': string
   /** Extra classes on the trigger for contextual layout and color. */
-  'className'?: string
+  className?: string
   /** Icon glyph. Defaults to `question`. */
-  'iconVariant'?: InfotipIconVariant
+  iconVariant?: InfotipIconVariant
   /** Icon size. Defaults to `medium` (14px). */
-  'iconSize'?: InfotipIconSize
+  iconSize?: InfotipIconSize
   /** Extra classes on the popup body (width / padding / whitespace overrides). */
-  'popupClassName'?: string
+  popupClassName?: string
 }
 
 export function Infotip({
@@ -82,11 +82,17 @@ export function Infotip({
           className,
         )}
       >
-        <span aria-hidden className={cn(iconClassNames[iconVariant], iconSizeClassNames[iconSize])} />
+        <span
+          aria-hidden
+          className={cn(iconClassNames[iconVariant], iconSizeClassNames[iconSize])}
+        />
       </PopoverTrigger>
       <PopoverContent
         placement="top"
-        popupClassName={cn('max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
+        popupClassName={cn(
+          'max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary',
+          popupClassName,
+        )}
       >
         {children}
       </PopoverContent>

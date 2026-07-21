@@ -27,7 +27,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Updated audio playback trigger styled with `ActionButton`. Behaves like the legacy audio button but adopts the new button design system.',
+        component:
+          'Updated audio playback trigger styled with `ActionButton`. Behaves like the legacy audio button but adopts the new button design system.',
       },
     },
     nextjs: {
@@ -58,7 +59,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  render: args => <StoryWrapper {...args} />,
+  render: (args) => <StoryWrapper {...args} />,
   args: {
     id: 'message-1',
     value: 'Listen to the latest assistant message.',

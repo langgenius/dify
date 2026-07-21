@@ -9,12 +9,13 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import Field
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_response_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from services.agent.roster_service import AgentRosterService
@@ -55,9 +56,10 @@ class AgentAppReferencingWorkflowsResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        workflows = AgentRosterService(db.session).list_workflows_referencing_app_agent(
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        workflows = AgentRosterService(session).list_workflows_referencing_app_agent(
             tenant_id=tenant_id, app_id=app_model.id
         )
         return AgentReferencingWorkflowsResponse(

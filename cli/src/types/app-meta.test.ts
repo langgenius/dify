@@ -1,6 +1,13 @@
 import type { AppDescribeResponse } from '@dify/contracts/api/openapi/types.gen'
 import { describe, expect, it } from 'vitest'
-import { covers, FieldInfo, FieldInputSchema, FieldParameters, fromDescribe, mergeMeta } from './app-meta'
+import {
+  covers,
+  FieldInfo,
+  FieldInputSchema,
+  FieldParameters,
+  fromDescribe,
+  mergeMeta,
+} from './app-meta'
 
 function describeResp(): AppDescribeResponse {
   return {

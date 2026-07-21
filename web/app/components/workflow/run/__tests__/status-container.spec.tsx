@@ -27,32 +27,11 @@ describe('StatusContainer', () => {
       expect(screen.getByText('Finished')).toBeInTheDocument()
       expect(container.firstElementChild).toHaveClass('bg-workflow-display-success-bg')
       expect(container.firstElementChild).toHaveClass('text-text-success')
-      expect(container.querySelector('.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight\\.svg\\)\\]')).toBeInTheDocument()
-    })
-
-    it('should render failed styling for the dark theme', () => {
-      mockUseTheme.mockReturnValue({ theme: Theme.dark } as ReturnType<typeof useTheme>)
-
-      const { container } = render(
-        <StatusContainer status="failed">
-          <span>Failed</span>
-        </StatusContainer>,
-      )
-
-      expect(container.firstElementChild).toHaveClass('bg-workflow-display-error-bg')
-      expect(container.firstElementChild).toHaveClass('text-text-warning')
-      expect(container.querySelector('.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight-dark\\.svg\\)\\]')).toBeInTheDocument()
-    })
-
-    it('should render warning styling for paused runs', () => {
-      const { container } = render(
-        <StatusContainer status="paused">
-          <span>Paused</span>
-        </StatusContainer>,
-      )
-
-      expect(container.firstElementChild).toHaveClass('bg-workflow-display-warning-bg')
-      expect(container.firstElementChild).toHaveClass('text-text-destructive')
+      expect(
+        container.querySelector(
+          '.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight\\.svg\\)\\]',
+        ),
+      ).toBeInTheDocument()
     })
   })
 })

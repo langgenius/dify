@@ -4,8 +4,7 @@ export class EventEmitter {
   private events: Map<string, Set<EventHandler<unknown>>> = new Map()
 
   on<T = unknown>(event: string, handler: EventHandler<T>): () => void {
-    if (!this.events.has(event))
-      this.events.set(event, new Set())
+    if (!this.events.has(event)) this.events.set(event, new Set())
 
     this.events.get(event)!.add(handler as EventHandler<unknown>)
 
@@ -13,29 +12,23 @@ export class EventEmitter {
   }
 
   off<T = unknown>(event: string, handler?: EventHandler<T>): void {
-    if (!this.events.has(event))
-      return
+    if (!this.events.has(event)) return
 
     const handlers = this.events.get(event)!
-    if (handler)
-      handlers.delete(handler as EventHandler<unknown>)
-    else
-      handlers.clear()
+    if (handler) handlers.delete(handler as EventHandler<unknown>)
+    else handlers.clear()
 
-    if (handlers.size === 0)
-      this.events.delete(event)
+    if (handlers.size === 0) this.events.delete(event)
   }
 
   emit<T = unknown>(event: string, data: T): void {
-    if (!this.events.has(event))
-      return
+    if (!this.events.has(event)) return
 
     const handlers = this.events.get(event)!
     handlers.forEach((handler) => {
       try {
         handler(data)
-      }
-      catch (error) {
+      } catch (error) {
         console.error(`Error in event handler for ${event}:`, error)
       }
     })

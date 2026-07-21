@@ -33,14 +33,36 @@ vi.mock('@langgenius/dify-ui/textarea', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/select', () => ({
-  Select: ({ children, onValueChange }: { children: React.ReactNode, onValueChange: (value: string | null) => void }) => (
+  Select: ({
+    children,
+    onValueChange,
+  }: {
+    children: React.ReactNode
+    onValueChange: (value: string | null) => void
+  }) => (
     <div>
-      <button type="button" data-testid="content-item-select-root" onClick={() => onValueChange('alice')}>select alice</button>
-      <button type="button" data-testid="content-item-select-null" onClick={() => onValueChange(null)}>select null</button>
+      <button
+        type="button"
+        data-testid="content-item-select-root"
+        onClick={() => onValueChange('alice')}
+      >
+        select alice
+      </button>
+      <button
+        type="button"
+        data-testid="content-item-select-null"
+        onClick={() => onValueChange(null)}
+      >
+        select null
+      </button>
       {children}
     </div>
   ),
-  SelectTrigger: ({ children }: { children: React.ReactNode }) => <button type="button" data-testid="content-item-select">{children}</button>,
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+    <button type="button" data-testid="content-item-select">
+      {children}
+    </button>
+  ),
   SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
@@ -48,7 +70,11 @@ vi.mock('@langgenius/dify-ui/select', () => ({
 }))
 
 vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({ value, onChange, fileConfig }: {
+  FileUploaderInAttachmentWrapper: ({
+    value,
+    onChange,
+    fileConfig,
+  }: {
     value?: FileEntity[]
     onChange: (files: FileEntity[]) => void
     fileConfig: { number_limits?: number }
@@ -57,9 +83,21 @@ vi.mock('@/app/components/base/file-uploader', () => ({
       <button
         type="button"
         data-testid={`content-item-file-${fileConfig.number_limits ?? 0}`}
-        onClick={() => onChange([{ id: 'file-1', name: 'report.pdf', size: 1, type: 'document', progress: 100, transferMethod: TransferMethod.local_file, supportFileType: 'document' }])}
+        onClick={() =>
+          onChange([
+            {
+              id: 'file-1',
+              name: 'report.pdf',
+              size: 1,
+              type: 'document',
+              progress: 100,
+              transferMethod: TransferMethod.local_file,
+              supportFileType: 'document',
+            },
+          ])
+        }
       >
-        {(value || []).map(file => file.name).join(',')}
+        {(value || []).map((file) => file.name).join(',')}
       </button>
       <button
         type="button"
@@ -207,7 +245,15 @@ describe('HumanInputFieldRenderer', () => {
           allowed_file_types: [SupportUploadFileTypes.document],
           allowed_file_upload_methods: [TransferMethod.local_file],
         }}
-        value={{ id: 'file-2', name: 'existing.pdf', size: 1, type: 'document', progress: 100, transferMethod: TransferMethod.local_file, supportFileType: 'document' }}
+        value={{
+          id: 'file-2',
+          name: 'existing.pdf',
+          size: 1,
+          type: 'document',
+          progress: 100,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: 'document',
+        }}
         onChange={onChange}
       />,
     )
@@ -264,10 +310,12 @@ describe('HumanInputFieldRenderer', () => {
   it('renders nothing for unsupported input types', () => {
     const { container } = render(
       <HumanInputFieldRenderer
-        field={{
-          type: 'unsupported',
-          output_variable_name: 'unknown',
-        } as unknown as Parameters<typeof HumanInputFieldRenderer>[0]['field']}
+        field={
+          {
+            type: 'unsupported',
+            output_variable_name: 'unknown',
+          } as unknown as Parameters<typeof HumanInputFieldRenderer>[0]['field']
+        }
         value=""
         onChange={vi.fn()}
       />,

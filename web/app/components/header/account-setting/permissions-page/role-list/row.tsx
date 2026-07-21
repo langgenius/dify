@@ -14,15 +14,7 @@ type RowProps = {
   onEdit?: (role: Role) => void
 }
 
-const Row = ({
-  className,
-  name,
-  description,
-  roleCategory,
-  role,
-  onView,
-  onEdit,
-}: RowProps) => {
+const Row = ({ className, name, description, roleCategory, role, onView, onEdit }: RowProps) => {
   const { t } = useTranslation()
 
   return (
@@ -33,19 +25,12 @@ const Row = ({
       )}
     >
       <div className="min-w-0 flex-1 space-y-1">
-        <div className="truncate system-sm-semibold text-text-primary">
-          {name}
-        </div>
+        <div className="truncate system-sm-semibold text-text-primary">{name}</div>
         <p className="truncate system-xs-regular text-text-secondary">
-          {description || t($ => $['role.noDescription'], { ns: 'permission' })}
+          {description || t(($) => $['role.noDescription'], { ns: 'permission' })}
         </p>
       </div>
-      <RowMenu
-        roleCategory={roleCategory}
-        role={role}
-        onView={onView}
-        onEdit={onEdit}
-      />
+      <RowMenu roleCategory={roleCategory} role={role} onView={onView} onEdit={onEdit} />
     </div>
   )
 }

@@ -17,12 +17,10 @@ export const parsePluginErrorMessage = async (error: any): Promise<string> => {
     try {
       const body = await error.clone().json()
       rawMessage = body?.message || error.statusText || 'Unknown error'
-    }
-    catch {
+    } catch {
       rawMessage = error.statusText || 'Unknown error'
     }
-  }
-  else {
+  } else {
     rawMessage = error?.message || error?.toString() || 'Unknown error'
   }
 
@@ -37,13 +35,10 @@ export const parsePluginErrorMessage = async (error: any): Promise<string> => {
     try {
       const errorData = JSON.parse(match[1]!)
       // Return the inner message if exists
-      if (errorData.message)
-        return errorData.message
+      if (errorData.message) return errorData.message
       // Fallback to error_type if message not available
-      if (errorData.error_type)
-        return errorData.error_type
-    }
-    catch (parseError) {
+      if (errorData.error_type) return errorData.error_type
+    } catch (parseError) {
       console.warn('Failed to parse plugin error JSON:', parseError)
     }
   }

@@ -25,12 +25,11 @@ type PermissionSetModalState = {
 
 const RULES_PER_PAGE = 20
 
-const DatasetAccessRuleSection = ({
-  className,
-}: DatasetAccessRuleSectionProps) => {
+const DatasetAccessRuleSection = ({ className }: DatasetAccessRuleSectionProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const [permissionSetModalState, setPermissionSetModalState] = useState<PermissionSetModalState | null>(null)
+  const [permissionSetModalState, setPermissionSetModalState] =
+    useState<PermissionSetModalState | null>(null)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const {
@@ -48,7 +47,10 @@ const DatasetAccessRuleSection = ({
   const { mutateAsync: createAccessRule } = useCreateAccessRule()
   const { mutateAsync: updateAccessRule } = useUpdateAccessRule()
 
-  const datasetAccessRules = useMemo(() => datasetAccessRulesResponse?.pages.flatMap(page => page.items) || [], [datasetAccessRulesResponse?.pages])
+  const datasetAccessRules = useMemo(
+    () => datasetAccessRulesResponse?.pages.flatMap((page) => page.items) || [],
+    [datasetAccessRulesResponse?.pages],
+  )
   const totalCount = datasetAccessRulesResponse?.pages[0]?.pagination.total_count || 0
 
   const closePermissionSetModal = useCallback(() => {
@@ -84,44 +86,51 @@ const DatasetAccessRuleSection = ({
     })
   }, [])
 
-  const handlePermissionSetSubmit = useCallback((values: PermissionSetFormValues) => {
-    if (!permissionSetModalState)
-      return
+  const handlePermissionSetSubmit = useCallback(
+    (values: PermissionSetFormValues) => {
+      if (!permissionSetModalState) return
 
-    const { name, description, permissionKeys } = values
-    if (permissionSetModalState.mode === 'create') {
-      createAccessRule({
-        name,
-        description,
-        permission_keys: permissionKeys,
-        resourceType: 'dataset',
-      }, {
-        onSuccess: () => {
-          toast.success(t($ => $['accessRule.created'], { ns: 'permission' }))
-          closePermissionSetModal()
-        },
-      })
-    }
-    else if (permissionSetModalState.mode === 'edit') {
-      updateAccessRule({
-        id: permissionSetModalState.ruleId!,
-        name,
-        description,
-        permission_keys: permissionKeys,
-        resourceType: 'dataset',
-      }, {
-        onSuccess: () => {
-          toast.success(t($ => $['accessRule.updated'], { ns: 'permission' }))
-          closePermissionSetModal()
-        },
-      })
-    }
-  }, [closePermissionSetModal, createAccessRule, permissionSetModalState, t, updateAccessRule])
+      const { name, description, permissionKeys } = values
+      if (permissionSetModalState.mode === 'create') {
+        createAccessRule(
+          {
+            name,
+            description,
+            permission_keys: permissionKeys,
+            resourceType: 'dataset',
+          },
+          {
+            onSuccess: () => {
+              toast.success(t(($) => $['accessRule.created'], { ns: 'permission' }))
+              closePermissionSetModal()
+            },
+          },
+        )
+      } else if (permissionSetModalState.mode === 'edit') {
+        updateAccessRule(
+          {
+            id: permissionSetModalState.ruleId!,
+            name,
+            description,
+            permission_keys: permissionKeys,
+            resourceType: 'dataset',
+          },
+          {
+            onSuccess: () => {
+              toast.success(t(($) => $['accessRule.updated'], { ns: 'permission' }))
+              closePermissionSetModal()
+            },
+          },
+        )
+      }
+    },
+    [closePermissionSetModal, createAccessRule, permissionSetModalState, t, updateAccessRule],
+  )
 
   return (
     <>
       <AccessRuleSection
-        title={t($ => $['accessRule.datasetTitle'], { ns: 'permission' })}
+        title={t(($) => $['accessRule.datasetTitle'], { ns: 'permission' })}
         rules={datasetAccessRules}
         totalCount={totalCount}
         isLoadingRules={isLoading}

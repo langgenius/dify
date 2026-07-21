@@ -1,7 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 
-const Tag = ({ text, className }: { text: string, className?: string }) => {
+const Tag = ({ text, className }: { text: string; className?: string }) => {
   return (
     <div className={cn('inline-flex items-center gap-x-0.5', className)}>
       <span className="text-xs font-medium text-text-quaternary">#</span>

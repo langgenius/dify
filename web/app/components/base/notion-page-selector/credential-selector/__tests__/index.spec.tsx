@@ -25,7 +25,7 @@ describe('CredentialSelector', () => {
   it('should render current workspace name', () => {
     render(<CredentialSelector value="1" items={mockItems} onSelect={vi.fn()} />)
 
-    expect(screen.getByTestId('notion-credential-selector-name')).toHaveTextContent('Notion Workspace 1')
+    expect(screen.getByRole('combobox', { name: 'Notion Workspace 1' })).toBeInTheDocument()
   })
 
   it('should show all workspaces when menu is clicked', async () => {
@@ -35,8 +35,8 @@ describe('CredentialSelector', () => {
     const btn = screen.getByRole('combobox', { name: /Notion Workspace 1/ })
     await user.click(btn)
 
-    expect(screen.getByTestId('notion-credential-item-1')).toBeInTheDocument()
-    expect(screen.getByTestId('notion-credential-item-2')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Notion Workspace 1/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Notion Workspace 2/ })).toBeInTheDocument()
   })
 
   it('should call onSelect when a workspace is clicked', async () => {
@@ -47,7 +47,7 @@ describe('CredentialSelector', () => {
     const btn = screen.getByRole('combobox', { name: /Notion Workspace 1/ })
     await user.click(btn)
 
-    const item2 = screen.getByTestId('notion-credential-item-2')
+    const item2 = screen.getByRole('option', { name: /Notion Workspace 2/ })
     await user.click(item2)
 
     expect(handleSelect).toHaveBeenCalledWith('2')
@@ -62,6 +62,6 @@ describe('CredentialSelector', () => {
     ]
     render(<CredentialSelector value="1" items={itemsWithoutWorkspaceName} onSelect={vi.fn()} />)
 
-    expect(screen.getByTestId('notion-credential-selector-name')).toHaveTextContent('Credential Name 1')
+    expect(screen.getByRole('combobox', { name: 'Credential Name 1' })).toBeInTheDocument()
   })
 })

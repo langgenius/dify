@@ -94,8 +94,14 @@ vi.mock('@/app/components/base/message-log-modal', () => ({
     defaultTab?: string
     onCancel: () => void
   }) => (
-    <div data-testid="message-log-modal" data-current-log-id={currentLogItem?.id ?? ''} data-default-tab={defaultTab ?? ''}>
-      <button type="button" onClick={onCancel}>close-message-log</button>
+    <div
+      data-testid="message-log-modal"
+      data-current-log-id={currentLogItem?.id ?? ''}
+      data-default-tab={defaultTab ?? ''}
+    >
+      <button type="button" onClick={onCancel}>
+        close-message-log
+      </button>
     </div>
   ),
 }))
@@ -159,7 +165,10 @@ describe('WorkflowPanel', () => {
     const panel = await screen.findByTestId('panel')
     expect(panel).toHaveAttribute('data-version-list-url', '/apps/app-123/workflows')
     expect(panel).toHaveAttribute('data-delete-version-url', '/apps/app-123/workflows/version-1')
-    expect(panel).toHaveAttribute('data-restore-version-url', '/apps/app-123/workflows/version-1/restore')
+    expect(panel).toHaveAttribute(
+      'data-restore-version-url',
+      '/apps/app-123/workflows/version-1/restore',
+    )
     expect(panel).toHaveAttribute('data-update-version-url', '/apps/app-123/workflows/version-1')
     expect(panel).toHaveAttribute('data-latest-version-id', 'workflow-version-id')
   })
@@ -173,7 +182,10 @@ describe('WorkflowPanel', () => {
 
     render(<WorkflowPanel />)
 
-    expect(await screen.findByTestId('message-log-modal')).toHaveAttribute('data-current-log-id', 'log-1')
+    expect(await screen.findByTestId('message-log-modal')).toHaveAttribute(
+      'data-current-log-id',
+      'log-1',
+    )
     expect(screen.getByTestId('message-log-modal')).toHaveAttribute('data-default-tab', 'detail')
 
     await user.click(screen.getByRole('button', { name: /close-message-log/i }))

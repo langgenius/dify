@@ -3,20 +3,14 @@ import ViewTypeSelect, { ViewType } from '../view-type-select'
 
 const getViewOptions = (container: HTMLElement) => {
   const options = container.firstElementChild?.children
-  if (!options || options.length !== 2)
-    throw new Error('Expected two view options')
+  if (!options || options.length !== 2) throw new Error('Expected two view options')
   return [options[0] as HTMLDivElement, options[1] as HTMLDivElement]
 }
 
 describe('ViewTypeSelect', () => {
   it('should highlight the active view type', () => {
     const onChange = vi.fn()
-    const { container } = render(
-      <ViewTypeSelect
-        viewType={ViewType.flat}
-        onChange={onChange}
-      />,
-    )
+    const { container } = render(<ViewTypeSelect viewType={ViewType.flat} onChange={onChange} />)
 
     const [flatOption, treeOption] = getViewOptions(container)
 
@@ -26,12 +20,7 @@ describe('ViewTypeSelect', () => {
 
   it('should call onChange when switching to a different view type', () => {
     const onChange = vi.fn()
-    const { container } = render(
-      <ViewTypeSelect
-        viewType={ViewType.flat}
-        onChange={onChange}
-      />,
-    )
+    const { container } = render(<ViewTypeSelect viewType={ViewType.flat} onChange={onChange} />)
 
     const [, treeOption] = getViewOptions(container)
     fireEvent.click(treeOption!)
@@ -42,12 +31,7 @@ describe('ViewTypeSelect', () => {
 
   it('should ignore clicks on the current view type', () => {
     const onChange = vi.fn()
-    const { container } = render(
-      <ViewTypeSelect
-        viewType={ViewType.tree}
-        onChange={onChange}
-      />,
-    )
+    const { container } = render(<ViewTypeSelect viewType={ViewType.tree} onChange={onChange} />)
 
     const [, treeOption] = getViewOptions(container)
     fireEvent.click(treeOption!)

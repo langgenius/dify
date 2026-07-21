@@ -27,7 +27,7 @@ vi.mock('@/app/components/share/text-generation/run-batch', () => ({
 }))
 
 vi.mock('@/app/components/app/text-generate/saved-items', () => ({
-  default: (props: { onStartCreateContent: () => void, list: Array<{ id: string }> }) => {
+  default: (props: { onStartCreateContent: () => void; list: Array<{ id: string }> }) => {
     savedItemsPropsSpy(props)
     return (
       <div data-testid="saved-items-mock">
@@ -44,9 +44,7 @@ vi.mock('@/app/components/share/text-generation/menu-dropdown', () => ({
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',
-  prompt_variables: [
-    { key: 'name', name: 'Name', type: 'string', required: true },
-  ],
+  prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
 }
 
 const savedMessages: SavedMessage[] = [
@@ -115,12 +113,14 @@ describe('TextGenerationSidebar', () => {
     expect(screen.getByText('Share description')).toBeInTheDocument()
     expect(screen.getByRole('tablist')).toHaveClass('w-full')
     expect(screen.getByTestId('run-once-mock')).toBeInTheDocument()
-    expect(runOncePropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      inputs: { name: 'Alice' },
-      promptConfig,
-      runControl: null,
-      visionConfig,
-    }))
+    expect(runOncePropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputs: { name: 'Alice' },
+        promptConfig,
+        runControl: null,
+        visionConfig,
+      }),
+    )
     expect(screen.queryByTestId('saved-items-mock')).not.toBeInTheDocument()
   })
 
@@ -131,11 +131,15 @@ describe('TextGenerationSidebar', () => {
     })
 
     expect(screen.getByTestId('run-batch-mock')).toBeInTheDocument()
-    expect(runBatchPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      vars: promptConfig.prompt_variables,
-      isAllFinished: true,
-    }))
-    expect(screen.queryByRole('tab', { name: /^share\.generation\.tabs\.saved/ })).not.toBeInTheDocument()
+    expect(runBatchPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vars: promptConfig.prompt_variables,
+        isAllFinished: true,
+      }),
+    )
+    expect(
+      screen.queryByRole('tab', { name: /^share\.generation\.tabs\.saved/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('should render saved items and allow switching back to create tab', () => {
@@ -147,10 +151,12 @@ describe('TextGenerationSidebar', () => {
     })
 
     expect(screen.getByTestId('saved-items-mock')).toBeInTheDocument()
-    expect(savedItemsPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      list: baseProps.savedMessages,
-      isShowTextToSpeech: true,
-    }))
+    expect(savedItemsPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        list: baseProps.savedMessages,
+        isShowTextToSpeech: true,
+      }),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'back-to-create' }))
     expect(onTabChange).toHaveBeenCalledWith('create')
@@ -225,10 +231,12 @@ describe('TextGenerationSidebar', () => {
     expect(root).toHaveClass('h-[calc(100%-64px)]')
     expect(body).toHaveClass('px-4')
     expect(footer).toHaveClass('px-4', 'rounded-b-2xl')
-    expect(savedItemsPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      className: expect.stringContaining('mt-4'),
-      isShowTextToSpeech: undefined,
-    }))
+    expect(savedItemsPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        className: expect.stringContaining('mt-4'),
+        isShowTextToSpeech: undefined,
+      }),
+    )
   })
 
   it('should round the mobile panel body and hide branding when the webapp brand is removed', () => {

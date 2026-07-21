@@ -25,26 +25,25 @@ export async function runLogout(opts: LogoutOptions): Promise<void> {
   let bearer = ''
   try {
     bearer = await store.read(active.host, active.email)
+  } catch {
+    /* keyring locked — skip remote revocation, local cleanup still runs */
   }
-  catch { /* keyring locked — skip remote revocation, local cleanup still runs */ }
 
   let revokeWarning = ''
   if (bearer !== '' && revokeAllowed(bearer) && opts.http !== undefined) {
     try {
       await new AccountSessionsClient(opts.http).revokeSelf()
-    }
-    catch (err) {
+    } catch (err) {
       revokeWarning = `${cs.warningIcon()} server revoke failed (${(err as Error).message}); local credentials cleared anyway\n`
     }
   }
 
   await reg.forget(active, store)
 
-  if (revokeWarning !== '')
-    opts.io.err.write(revokeWarning)
+  if (revokeWarning !== '') opts.io.err.write(revokeWarning)
   opts.io.out.write(`${cs.successIcon()} Logged out of ${active.host}\n`)
 }
 
 function revokeAllowed(bearer: string): boolean {
-  return REVOCABLE_PREFIXES.some(p => bearer.startsWith(p))
+  return REVOCABLE_PREFIXES.some((p) => bearer.startsWith(p))
 }

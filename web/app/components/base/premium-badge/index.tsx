@@ -4,33 +4,30 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import { Highlight } from '@/app/components/base/icons/src/public/common'
 
-const PremiumBadgeVariants = cva(
-  'premium-badge',
-  {
-    variants: {
-      size: {
-        s: 'premium-badge-s',
-        m: 'premium-badge-m',
-        custom: '',
-      },
-      color: {
-        blue: 'premium-badge-blue',
-        indigo: 'premium-badge-indigo',
-        gray: 'premium-badge-gray',
-        orange: 'premium-badge-orange',
-      },
-      allowHover: {
-        true: 'pb-allow-hover',
-        false: '',
-      },
+const PremiumBadgeVariants = cva('premium-badge', {
+  variants: {
+    size: {
+      s: 'premium-badge-s',
+      m: 'premium-badge-m',
+      custom: '',
     },
-    defaultVariants: {
-      size: 'm',
-      color: 'blue',
-      allowHover: false,
+    color: {
+      blue: 'premium-badge-blue',
+      indigo: 'premium-badge-indigo',
+      gray: 'premium-badge-gray',
+      orange: 'premium-badge-orange',
+    },
+    allowHover: {
+      true: 'pb-allow-hover',
+      false: '',
     },
   },
-)
+  defaultVariants: {
+    size: 'm',
+    color: 'blue',
+    allowHover: false,
+  },
+})
 
 type PremiumBadgeProps = {
   size?: 's' | 'm' | 'custom'
@@ -41,15 +38,19 @@ type PremiumBadgeProps = {
   children?: ReactNode
 } & VariantProps<typeof PremiumBadgeVariants>
 
-type PremiumBadgeButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color'> & Omit<PremiumBadgeProps, 'styleCss'> & {
-  style?: CSSProperties
-}
+type PremiumBadgeButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color'> &
+  Omit<PremiumBadgeProps, 'styleCss'> & {
+    style?: CSSProperties
+  }
 
 function BadgeHighlight({ size }: { size?: PremiumBadgeProps['size'] }) {
   return (
     <Highlight
       aria-hidden="true"
-      className={cn('absolute top-0 right-1/2 translate-x-[20%] opacity-50 transition-[opacity,transform] duration-100 ease-out hover:translate-x-[30%] hover:opacity-80 motion-reduce:transition-none', size === 's' ? 'h-[18px] w-12' : 'h-6 w-12')}
+      className={cn(
+        'absolute top-0 right-1/2 translate-x-[20%] opacity-50 transition-[opacity,transform] duration-100 ease-out hover:translate-x-[30%] hover:opacity-80 motion-reduce:transition-none',
+        size === 's' ? 'h-[18px] w-12' : 'h-6 w-12',
+      )}
     />
   )
 }
@@ -64,7 +65,10 @@ function PremiumBadge({
 }: PremiumBadgeProps) {
   return (
     <span
-      className={cn(PremiumBadgeVariants({ size, color, allowHover, className }), 'relative text-nowrap')}
+      className={cn(
+        PremiumBadgeVariants({ size, color, allowHover, className }),
+        'relative text-nowrap',
+      )}
       style={styleCss}
     >
       {children}

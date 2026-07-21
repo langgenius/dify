@@ -54,8 +54,7 @@ describe('registration tracking', () => {
 
       try {
         expect(() => rememberRegistrationSuccess({ method: 'email' })).not.toThrow()
-      }
-      finally {
+      } finally {
         vi.unstubAllGlobals()
       }
     })
@@ -126,8 +125,7 @@ describe('registration tracking', () => {
       try {
         expect(() => flushRegistrationSuccess()).not.toThrow()
         expect(mockTrackEvent).not.toHaveBeenCalled()
-      }
-      finally {
+      } finally {
         vi.unstubAllGlobals()
       }
     })
@@ -147,9 +145,10 @@ describe('registration tracking', () => {
       try {
         flushRegistrationSuccess()
 
-        expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success', { method: 'email' })
-      }
-      finally {
+        expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success', {
+          method: 'email',
+        })
+      } finally {
         vi.unstubAllGlobals()
       }
     })
@@ -165,8 +164,7 @@ describe('registration tracking', () => {
         expect(() => rememberRegistrationSuccess({ method: 'email' })).not.toThrow()
         expect(() => flushRegistrationSuccess()).not.toThrow()
         expect(mockTrackEvent).not.toHaveBeenCalled()
-      }
-      finally {
+      } finally {
         vi.unstubAllGlobals()
       }
     })
@@ -182,8 +180,7 @@ describe('registration tracking', () => {
         expect(() => rememberRegistrationSuccess({ method: 'oauth' })).not.toThrow()
         expect(() => flushRegistrationSuccess()).not.toThrow()
         expect(mockTrackEvent).not.toHaveBeenCalled()
-      }
-      finally {
+      } finally {
         vi.unstubAllGlobals()
       }
     })

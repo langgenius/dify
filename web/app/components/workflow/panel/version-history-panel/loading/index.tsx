@@ -13,7 +13,9 @@ const Loading = () => {
   return (
     <div className="relative w-full overflow-y-hidden">
       <div className="absolute top-0 left-0 z-10 size-full bg-dataset-chunk-list-mask-bg" />
-      {itemConfig.map((config, index) => <Item key={index} {...config} />)}
+      {itemConfig.map((config, index) => (
+        <Item key={index} {...config} />
+      ))}
     </div>
   )
 }

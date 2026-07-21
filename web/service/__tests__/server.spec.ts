@@ -32,7 +32,9 @@ describe('server console oRPC client', () => {
     vi.clearAllMocks()
     vi.unstubAllGlobals()
     mocks.serverConsoleApiPrefix = undefined
-    mocks.headers.mockResolvedValue(new Headers({ cookie: 'access_token=abc; csrf_token=csrf-token' }))
+    mocks.headers.mockResolvedValue(
+      new Headers({ cookie: 'access_token=abc; csrf_token=csrf-token' }),
+    )
     mocks.cookies.mockResolvedValue({
       get: vi.fn(() => ({ value: 'csrf-token' })),
     })
@@ -44,10 +46,18 @@ describe('server console oRPC client', () => {
     expect(resolveServerConsoleApiPrefix(undefined, '/console/api')).toBeNull()
     expect(resolveServerConsoleApiUrl('/account/profile', undefined, '/console/api')).toBeNull()
     expect(
-      resolveServerConsoleApiUrl('/account/profile', 'https://api.example.com/console/api', '/console/api'),
+      resolveServerConsoleApiUrl(
+        '/account/profile',
+        'https://api.example.com/console/api',
+        '/console/api',
+      ),
     ).toBe('https://api.example.com/console/api/account/profile')
     expect(
-      resolveServerConsoleApiUrl('/account/profile', undefined, 'https://public.example.com/console/api'),
+      resolveServerConsoleApiUrl(
+        '/account/profile',
+        undefined,
+        'https://public.example.com/console/api',
+      ),
     ).toBe('https://public.example.com/console/api/account/profile')
   })
 
@@ -62,12 +72,14 @@ describe('server console oRPC client', () => {
 
   it('should call contracts with forwarded cookies, csrf header, and no-store cache', async () => {
     const { defaultSystemFeatures } = await import('@/features/system-features/config')
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(defaultSystemFeatures), {
-      status: 200,
-      headers: {
-        'content-type': 'application/json',
-      },
-    }))
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(defaultSystemFeatures), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
     vi.stubGlobal('fetch', fetchMock)
     const { getServerConsoleClientContext, serverConsoleClient } = await import('../server')
 
