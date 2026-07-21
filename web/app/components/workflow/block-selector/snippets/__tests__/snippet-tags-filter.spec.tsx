@@ -50,7 +50,9 @@ describe('SnippetTagsFilter', () => {
 
     render(<SnippetTagsFilter value={[]} onChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'common.tag.placeholder' }))
+    const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
+    trigger.focus()
+    await user.keyboard('{Enter}')
     await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'sup')
 
     expect(screen.getByText('Support')).toBeInTheDocument()
@@ -60,5 +62,23 @@ describe('SnippetTagsFilter', () => {
     await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'missing')
 
     expect(screen.getByText('common.tag.noTag')).toBeInTheDocument()
+  })
+
+  it('resets the transient tag search after the popover closes', async () => {
+    const user = userEvent.setup()
+
+    render(<SnippetTagsFilter value={[]} onChange={vi.fn()} />)
+
+    const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
+    await user.click(trigger)
+    expect(screen.getByRole('dialog', { name: 'common.tag.placeholder' })).toBeInTheDocument()
+    await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'sup')
+    expect(screen.queryByText('Sales')).not.toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    await user.click(trigger)
+
+    expect(screen.getByText('Sales')).toBeInTheDocument()
+    expect(screen.getByText('Support')).toBeInTheDocument()
   })
 })

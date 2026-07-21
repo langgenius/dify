@@ -12,10 +12,8 @@ type BlockSelectorMockProps = {
   disabled: boolean
   onSelect: (type: BlockEnum, pluginDefaultValue?: Record<string, unknown>) => void
   placement: string
-  offset: {
-    mainAxis: number
-    crossAxis: number
-  }
+  sideOffset: number
+  alignOffset: number
   trigger: (open: boolean) => ReactNode
   popupClassName: string
   availableBlocksTypes: BlockEnum[]
@@ -152,14 +150,12 @@ describe('AddBlock', () => {
         availableBlocksTypes: mockAvailableNextBlocks,
         showStartTab: true,
         placement: 'right-start',
+        sideOffset: 4,
+        alignOffset: -8,
         popupClassName: 'min-w-[256px]!',
         isolateKeyboardEvents: undefined,
       })
       expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
-      expect(latestBlockSelectorProps?.offset).toEqual({
-        mainAxis: 4,
-        crossAxis: -8,
-      })
     })
 
     it('should hide the start tab for chat mode and rag pipeline flows', async () => {

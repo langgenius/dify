@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { SnippetListItem } from '@/types/snippet'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +12,7 @@ type SnippetDetailCardProps = {
   snippet: PublishedSnippetListItem
 }
 
-const SnippetDetailCard: FC<SnippetDetailCardProps> = ({ snippet }) => {
+function SnippetDetailCard({ snippet }: SnippetDetailCardProps) {
   const { description, name } = snippet
   const { t } = useTranslation('snippet')
   const { data: membersData } = useMembers()
@@ -52,7 +51,7 @@ const SnippetDetailCard: FC<SnippetDetailCardProps> = ({ snippet }) => {
   }, [workflow?.graph])
 
   return (
-    <div className="w-56 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 pt-3 pb-4 shadow-lg backdrop-blur-[5px]">
+    <div>
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-2">
           <div className="system-md-medium text-text-primary">{name}</div>

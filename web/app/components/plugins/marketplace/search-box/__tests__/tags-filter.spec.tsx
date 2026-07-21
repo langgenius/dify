@@ -32,49 +32,46 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/input', () => ({
-  default: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value: string
-    onChange: (event: { target: { value: string } }) => void
-    placeholder: string
-  }) => (
-    <input
-      aria-label="tags-search"
-      value={value}
-      placeholder={placeholder}
-      onChange={(event) => onChange({ target: { value: event.target.value } })}
-    />
-  ),
-}))
-
 vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
-vi.mock('../trigger/marketplace', () => ({
-  default: ({ selectedTagsLength }: { selectedTagsLength: number }) => (
-    <div data-testid="marketplace-trigger">
-      marketplace:
-      {selectedTagsLength}
-    </div>
-  ),
-}))
+vi.mock('../trigger/marketplace', async () => {
+  const { PopoverTrigger } = await import('@langgenius/dify-ui/popover')
 
-vi.mock('../trigger/tool-selector', () => ({
-  default: ({ selectedTagsLength }: { selectedTagsLength: number }) => (
-    <div data-testid="tool-trigger">
-      tool:
-      {selectedTagsLength}
-    </div>
-  ),
-}))
+  return {
+    default: ({ selectedTagsLength }: { selectedTagsLength: number }) => (
+      <PopoverTrigger
+        render={
+          <button type="button" data-testid="marketplace-trigger">
+            marketplace:
+            {selectedTagsLength}
+          </button>
+        }
+      />
+    ),
+  }
+})
+
+vi.mock('../trigger/tool-selector', async () => {
+  const { PopoverTrigger } = await import('@langgenius/dify-ui/popover')
+
+  return {
+    default: ({ selectedTagsLength }: { selectedTagsLength: number }) => (
+      <PopoverTrigger
+        render={
+          <button type="button" data-testid="tool-trigger">
+            tool:
+            {selectedTagsLength}
+          </button>
+        }
+      />
+    ),
+  }
+})
 
 describe('TagsFilter', () => {
   const ensurePopoverOpen = () => {
     if (!screen.queryByTestId('popover-content'))
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      fireEvent.click(screen.getByTestId('tool-trigger'))
 
     return screen.getByTestId('popover-content')
   }
@@ -102,13 +99,15 @@ describe('TagsFilter', () => {
 
   it('filters tag options by search text', () => {
     render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
-    fireEvent.click(screen.getByTestId('popover-trigger'))
+    fireEvent.click(screen.getByTestId('tool-trigger'))
 
     expect(screen.getByText('Agent')).toBeInTheDocument()
     expect(screen.getByText('RAG')).toBeInTheDocument()
     expect(screen.getByText('Search')).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('tags-search'), { target: { value: 'ra' } })
+    fireEvent.change(screen.getByRole('searchbox', { name: 'pluginTags.searchTags' }), {
+      target: { value: 'ra' },
+    })
 
     expect(screen.queryByText('Agent')).not.toBeInTheDocument()
     expect(screen.getByText('RAG')).toBeInTheDocument()
@@ -131,8 +130,8 @@ describe('TagsFilter', () => {
     mockTranslate.mockImplementation(() => undefined as unknown as string)
 
     render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
-    fireEvent.click(screen.getByTestId('popover-trigger'))
+    fireEvent.click(screen.getByTestId('tool-trigger'))
 
-    expect(screen.getByLabelText('tags-search')).toHaveAttribute('placeholder', '')
+    expect(screen.getByRole('searchbox')).toHaveAttribute('placeholder', '')
   })
 })

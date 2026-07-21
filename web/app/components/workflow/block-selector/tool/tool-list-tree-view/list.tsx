@@ -6,7 +6,7 @@ import type { ToolActionPreviewCardHandle } from '../action-item'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../index-bar'
+import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../group-items'
 import Item from './item'
 
 type Props = Readonly<{

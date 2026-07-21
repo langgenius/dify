@@ -32,8 +32,14 @@ describe('SearchBox', () => {
     await user.type(input, 'agent')
     expect(input).toHaveValue('agent')
 
-    await user.click(screen.getByRole('button'))
+    await user.tab()
+    const clearButton = screen.getByRole('button', {
+      name: /^plugin\.clearSearch/,
+    })
+    expect(clearButton).toHaveFocus()
+    await user.keyboard('{Enter}')
     expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
   })
 
   it('opens the custom tool flow from the add button', async () => {
@@ -52,7 +58,9 @@ describe('SearchBox', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button'))
+    const addButton = screen.getByRole('button', { name: 'tools.addToolModal.custom.tip' })
+    addButton.focus()
+    await user.keyboard('{Enter}')
     expect(onShowAddCustomCollectionModal).toHaveBeenCalledOnce()
   })
 

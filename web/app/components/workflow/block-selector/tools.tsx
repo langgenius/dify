@@ -6,11 +6,12 @@ import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/previe
 import { memo, useMemo, useRef } from 'react'
 import Empty from '@/app/components/tools/provider/empty'
 import { useGetLanguage } from '@/context/i18n'
-import IndexBar, { groupItems } from './index-bar'
+import { groupItems } from './group-items'
+import IndexBar from './index-bar'
 import { ToolActionPreviewCard } from './tool/action-item'
 import ToolListFlatView from './tool/tool-list-flat-view/list'
 import ToolListTreeView from './tool/tool-list-tree-view/list'
-import { ViewType } from './view-type-select'
+import { ViewType } from './types'
 
 type ToolsProps = {
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
@@ -43,25 +44,9 @@ const Tools = ({
   const isFlatView = viewType === ViewType.flat
   const isShowLetterIndex = isFlatView && tools.length > 10
 
-  /*
-  treeViewToolsData:
-  {
-    A: {
-      'google': [ // plugin organize name
-        ...tools
-      ],
-      'custom': [ // custom tools
-        ...tools
-      ],
-      'workflow': [ // workflow as tools
-        ...tools
-      ]
-    }
-  }
-  */
   const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(
     tools,
-    (tool) => tool.label[language]![0]!,
+    (tool) => (tool.label[language] || tool.label['en-US'] || tool.name)[0] || '#',
   )
   const treeViewToolsData = useMemo(() => {
     const result: Record<string, ToolWithProvider[]> = {}
@@ -98,7 +83,7 @@ const Tools = ({
     <div className={cn('max-w-full p-1', className)}>
       {!tools.length && !hasSearchText && (
         <div className="py-10">
-          <Empty type={toolType!} isAgent={isAgent} />
+          <Empty type={toolType} isAgent={isAgent} />
         </div>
       )}
       {!!tools.length &&

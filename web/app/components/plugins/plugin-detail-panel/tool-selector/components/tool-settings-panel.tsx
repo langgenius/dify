@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Node } from 'reactflow'
-import type { TabType } from '../hooks/use-tool-selector-state'
+import type { TabType } from '../hooks/use-tool-selector'
 import type { ReasoningConfigValue } from './reasoning-config-form'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'

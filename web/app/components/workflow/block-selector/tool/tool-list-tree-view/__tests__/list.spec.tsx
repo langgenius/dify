@@ -4,7 +4,7 @@ import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { createToolProvider } from '../../../__tests__/factories'
-import { CUSTOM_GROUP_NAME } from '../../../index-bar'
+import { CUSTOM_GROUP_NAME } from '../../../group-items'
 import List from '../list'
 
 vi.mock('@/context/i18n', () => ({

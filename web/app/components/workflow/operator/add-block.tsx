@@ -1,7 +1,8 @@
-import type { NodeSelectorProps } from '@/app/components/workflow/block-selector/main'
+import type { ReactElement } from 'react'
+import type { BlockSelectorProps } from '@/app/components/workflow/block-selector'
 import type { Node, OnSelectBlock } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiAddCircleFill } from '@remixicon/react'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
@@ -22,19 +23,18 @@ import {
   getNodeCustomTypeByNodeDataType,
   getNodesWithSameDefaultDataType,
 } from '../utils'
-import TipPopup from './tip-popup'
 
 type AddBlockProps = {
-  renderTrigger?: (open: boolean) => React.ReactNode
-  renderTriggerAsButtonRoot?: boolean
-  offset?: NodeSelectorProps['offset']
+  renderTrigger?: (open: boolean) => ReactElement
+  sideOffset?: BlockSelectorProps['sideOffset']
+  alignOffset?: BlockSelectorProps['alignOffset']
   onClose?: () => void
   isolateKeyboardEvents?: boolean
 }
 const AddBlock = ({
   renderTrigger,
-  renderTriggerAsButtonRoot,
-  offset,
+  sideOffset,
+  alignOffset,
   onClose,
   isolateKeyboardEvents,
 }: AddBlockProps) => {
@@ -90,20 +90,20 @@ const AddBlock = ({
   const renderTriggerElement = useCallback(
     (open: boolean) => {
       return (
-        <TipPopup title={t(($) => $['common.addBlock'], { ns: 'workflow' })}>
-          <div
-            className={cn(
-              'flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-              `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-              open && 'bg-state-accent-active text-text-accent',
-            )}
-          >
-            <RiAddCircleFill className="size-4" />
-          </div>
-        </TipPopup>
+        <Button
+          variant="ghost"
+          size="small"
+          className={cn(
+            'size-8 p-0 text-text-tertiary hover:text-text-secondary',
+            nodesReadOnly && 'text-text-disabled hover:bg-transparent hover:text-text-disabled',
+            open && 'bg-state-accent-active text-text-accent',
+          )}
+        >
+          <span aria-hidden className="i-ri-add-circle-fill size-4" />
+        </Button>
       )
     },
-    [nodesReadOnly, t],
+    [nodesReadOnly],
   )
 
   return (
@@ -113,14 +113,11 @@ const AddBlock = ({
       disabled={nodesReadOnly}
       onSelect={handleSelect}
       placement="right-start"
-      offset={
-        offset ?? {
-          mainAxis: 4,
-          crossAxis: -8,
-        }
-      }
+      sideOffset={sideOffset ?? 4}
+      alignOffset={alignOffset ?? -8}
       trigger={renderTrigger || renderTriggerElement}
-      renderTriggerAsButtonRoot={renderTriggerAsButtonRoot}
+      triggerAriaLabel={t(($) => $['common.addBlock'], { ns: 'workflow' })}
+      triggerTooltip={t(($) => $['common.addBlock'], { ns: 'workflow' })}
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}

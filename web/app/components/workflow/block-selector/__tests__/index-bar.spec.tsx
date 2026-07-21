@@ -2,12 +2,13 @@ import type { ToolWithProvider } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '../../../tools/types'
-import IndexBar, {
+import {
   CUSTOM_GROUP_NAME,
   DATA_SOURCE_GROUP_NAME,
   groupItems,
   WORKFLOW_GROUP_NAME,
-} from '../index-bar'
+} from '../group-items'
+import IndexBar from '../index-bar'
 
 const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
   id: 'provider-1',

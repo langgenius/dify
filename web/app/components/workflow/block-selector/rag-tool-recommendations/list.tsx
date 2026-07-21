@@ -7,11 +7,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/preview-card'
 import { useCallback, useMemo, useRef } from 'react'
 import { useGetLanguage } from '@/context/i18n'
-import { groupItems } from '../index-bar'
+import { groupItems } from '../group-items'
 import { ToolActionPreviewCard } from '../tool/action-item'
 import ToolListFlatView from '../tool/tool-list-flat-view/list'
 import ToolListTreeView from '../tool/tool-list-tree-view/list'
-import { ViewType } from '../view-type-select'
+import { ViewType } from '../types'
 import UninstalledItem from './uninstalled-item'
 
 type ListProps = {

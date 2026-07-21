@@ -1,13 +1,11 @@
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import { Infotip } from '@/app/components/base/infotip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
@@ -128,9 +126,10 @@ const MultipleToolSelector = ({
             </Infotip>
           ) : null}
           {supportCollapse && (
-            <ArrowDownRoundFill
+            <span
+              aria-hidden
               className={cn(
-                'size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+                'i-custom-vender-solid-general-arrow-down-round-fill size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
                 collapse && 'rotate-270',
               )}
             />
@@ -146,16 +145,35 @@ const MultipleToolSelector = ({
           </>
         )}
         {!disabled && (
-          <ActionButton
-            className="mx-1"
-            onClick={() => {
-              setCollapse(false)
-              setOpen(!open)
-              setPanelShowState(true)
-            }}
-          >
-            <RiAddLine className="size-4" />
-          </ActionButton>
+          <ToolSelector
+            nodeId={nodeId}
+            nodeOutputVars={nodeOutputVars}
+            availableNodes={availableNodes}
+            scope={scope}
+            value={undefined}
+            selectedTools={value}
+            onSelect={handleAdd}
+            controlledState={open}
+            onControlledStateChange={setOpen}
+            trigger={
+              <Button
+                variant="ghost"
+                size="small"
+                aria-label={t(($) => $['detailPanel.toolSelector.title'], { ns: 'plugin' })}
+                className="mx-1 size-6 min-h-0 p-0"
+                onClick={() => {
+                  setCollapse(false)
+                  setPanelShowState(true)
+                }}
+              >
+                <span className="i-ri-add-line size-4" aria-hidden />
+              </Button>
+            }
+            panelShowState={panelShowState}
+            onPanelShowStateChange={setPanelShowState}
+            isEdit={false}
+            onSelectMultiple={handleAddMultiple}
+          />
         )}
       </div>
       {!collapse && (
@@ -167,7 +185,7 @@ const MultipleToolSelector = ({
           )}
           {value.length > 0 &&
             value.map((item, index) => (
-              <div className="mb-1" key={index}>
+              <div className="mb-1" key={`${item.provider_name}:${item.tool_name}`}>
                 <ToolSelector
                   nodeId={nodeId}
                   nodeOutputVars={nodeOutputVars}
@@ -185,22 +203,6 @@ const MultipleToolSelector = ({
             ))}
         </>
       )}
-      <ToolSelector
-        nodeId={nodeId}
-        nodeOutputVars={nodeOutputVars}
-        availableNodes={availableNodes}
-        scope={scope}
-        value={undefined}
-        selectedTools={value}
-        onSelect={handleAdd}
-        controlledState={open}
-        onControlledStateChange={setOpen}
-        trigger={<div className=""></div>}
-        panelShowState={panelShowState}
-        onPanelShowStateChange={setPanelShowState}
-        isEdit={false}
-        onSelectMultiple={handleAddMultiple}
-      />
     </>
   )
 }
