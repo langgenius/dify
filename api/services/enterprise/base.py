@@ -4,6 +4,8 @@ from typing import Any
 
 import httpx
 
+from configs import dify_config
+
 
 class BaseRequest:
     proxies: Mapping[str, str] | None = {
@@ -39,7 +41,14 @@ class BaseRequest:
         url = f"{cls.base_url}{endpoint}"
         mounts = cls._build_mounts()
         with httpx.Client(mounts=mounts) as client:
-            response = client.request(method, url, json=json, params=params, headers=headers)
+            response = client.request(
+                method,
+                url,
+                json=json,
+                params=params,
+                headers=headers,
+                timeout=dify_config.ENTERPRISE_API_TIMEOUT,
+            )
         return response.json()
 
 
