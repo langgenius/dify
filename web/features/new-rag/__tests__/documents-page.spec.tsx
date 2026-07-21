@@ -2078,6 +2078,70 @@ describe('DocumentsPage', () => {
     }
   })
 
+  it('preserves the latest progress version when a rotated stream returns terminal-only', async () => {
+    vi.useFakeTimers()
+    const streamCounts = new Map<string, number>()
+    streamProcessingTaskEvents.mockImplementation(async function* ({ taskId }: { taskId: string }) {
+      const streamCount = (streamCounts.get(taskId) ?? 0) + 1
+      streamCounts.set(taskId, streamCount)
+      if (taskId === 'rotated-terminal' && streamCount === 1) {
+        yield {
+          data: {
+            progressPercent: 70,
+            stage: 'nodes_generated' as const,
+            state: 'running' as const,
+            updatedAt: '2026-07-20T10:05:00Z',
+          },
+          event: 'progress' as const,
+          id: 'rotated-terminal:progress',
+        }
+      } else if (taskId === 'rotated-terminal') {
+        yield {
+          data: { errorCode: 'ROTATED_FAILURE', state: 'failed' as const },
+          event: 'terminal' as const,
+          id: 'rotated-terminal:terminal',
+        }
+        return
+      }
+      await new Promise<void>(() => {})
+    })
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({ id: 'rotated-terminal', updatedAt: '2026-07-20T10:01:00Z' }),
+            ...Array.from({ length: 12 }, (_, index) =>
+              task({ id: `rotation-peer-${index}`, updatedAt: '2026-07-20T10:01:00Z' }),
+            ),
+          ],
+        },
+      ],
+    }
+    getTaskSnapshot.mockResolvedValue(
+      task({
+        errorCode: 'ROTATED_FAILURE',
+        id: 'rotated-terminal',
+        state: 'failed',
+        updatedAt: '2026-07-20T10:05:00Z',
+      }),
+    )
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => {})
+      await act(async () => vi.advanceTimersByTime(5000))
+      await act(async () => vi.advanceTimersByTime(5000))
+      await act(async () => {})
+
+      expect(streamCounts.get('rotated-terminal')).toBe(2)
+      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.taskFailedNotification')
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('relies on bounded reconnect backoff instead of invalidating queries on stream closure', async () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'closed-stream' })] }] }

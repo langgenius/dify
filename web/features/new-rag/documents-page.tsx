@@ -1050,16 +1050,23 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   return (
     <>
-      {streamedActiveTasks.map((task) => (
-        <TaskEventObserver
-          key={`${task.id}:${taskObserverGenerations[task.id] ?? 0}`}
-          documentId={task.documentId}
-          knowledgeSpaceId={knowledgeSpaceId}
-          onEvent={handleTaskEvent}
-          taskId={task.id}
-          taskVersion={task.updatedAt}
-        />
-      ))}
+      {streamedActiveTasks.map((task) => {
+        const progressVersion = taskProgressStore.get(task.id)?.updatedAt
+        return (
+          <TaskEventObserver
+            key={`${task.id}:${taskObserverGenerations[task.id] ?? 0}`}
+            documentId={task.documentId}
+            knowledgeSpaceId={knowledgeSpaceId}
+            onEvent={handleTaskEvent}
+            taskId={task.id}
+            taskVersion={
+              progressVersion && taskVersionIsAfter(progressVersion, task.updatedAt)
+                ? progressVersion
+                : task.updatedAt
+            }
+          />
+        )
+      })}
       {canWrite && (
         <input
           ref={uploadInputRef}
