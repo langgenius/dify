@@ -683,6 +683,24 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('combobox')).toBeEnabled()
   })
 
+  it('keeps an unresolved source pending when a background source refresh fails', () => {
+    documentsQuery.data = {
+      pages: [{ items: [document({ sourceId: 'unresolved-source' })] }],
+    }
+    sourcesQuery.error = new Error('source refresh failed')
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
+    expect(
+      within(documentRow).queryByText('dataset.newKnowledge.documentStatus.disabled'),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
   it('keeps cached documents visible when a background task refresh fails', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }

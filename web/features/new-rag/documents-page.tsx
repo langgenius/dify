@@ -315,12 +315,23 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             Boolean(
               document.sourceId &&
               (disabledSourceIds.has(document.sourceId) ||
-                (!hasNextSourcePage && !sourceNames.has(document.sourceId))),
+                (!hasNextSourcePage &&
+                  !sourcesQuery.error &&
+                  !sourcesQuery.isFetchNextPageError &&
+                  !sourceNames.has(document.sourceId))),
             ),
           ),
         ]),
       ),
-    [disabledSourceIds, documents, hasNextSourcePage, sourceNames, taskByDocument],
+    [
+      disabledSourceIds,
+      documents,
+      hasNextSourcePage,
+      sourceNames,
+      sourcesQuery.error,
+      sourcesQuery.isFetchNextPageError,
+      taskByDocument,
+    ],
   )
   const filterActive = filter !== 'all' || Boolean(search.trim())
   const availableDocumentIds = useMemo(
@@ -376,7 +387,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     !sourcesQuery.data ||
     sourcesQuery.isPending ||
     (unresolvedDocumentSourceIds.size &&
-      (hasNextSourcePage || sourcesQuery.isFetchingNextPage || sourcesQuery.isFetchNextPageError)),
+      (hasNextSourcePage ||
+        sourcesQuery.error ||
+        sourcesQuery.isFetchingNextPage ||
+        sourcesQuery.isFetchNextPageError)),
   )
   const sourceQueryWarning = Boolean(
     (sourcesQuery.error && sourcesQuery.data) || sourcesQuery.isFetchNextPageError,
