@@ -217,12 +217,12 @@ class TestDraftVariableSaver:
             # Should not have large variable metadata
             assert draft_var.file_id == mock_draft_var_file.id
 
-    def test_try_offload_large_variable_uses_resource_tenant(self, mock_session):
+    def test_try_offload_large_variable_uses_resource_tenant(self, sqlite_session: Session):
         mock_user = MagicMock(spec=Account)
         mock_user.id = "test-user-id"
         mock_user.current_tenant_id = ""
         saver = DraftVariableSaver(
-            session=mock_session,
+            session=sqlite_session,
             tenant_id="app-tenant-id",
             app_id="test-app-id",
             node_id="test-node-id",
