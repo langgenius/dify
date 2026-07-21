@@ -7,7 +7,7 @@ import { cloneElement, memo, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { useNodesReadOnly, useToolIcon } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
@@ -271,7 +271,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         {hasRetryNode(data.type) && <RetryOnNode id={id} data={data} />}
         {hasErrorHandleNode(data.type) && <ErrorHandleOnNode id={id} data={data} />}
         <NodeDescription data={data} />
-        {data.type === BlockEnum.Tool && data.provider_type === ToolTypeEnum.MCP && (
+        {data.type === BlockEnum.Tool && data.provider_type === ToolType.MCP && (
           <div className="px-3 pb-2">
             <CopyID content={data.provider_id || ''} />
           </div>

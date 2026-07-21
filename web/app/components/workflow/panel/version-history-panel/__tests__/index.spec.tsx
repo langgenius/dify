@@ -1,8 +1,9 @@
 import type { Shape } from '../../../store'
 import type { VersionHistory } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import { Plan } from '@/app/components/billing/type'
+import { render } from '@/test/console/render'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -18,7 +19,7 @@ const mockEmitRestoreComplete = vi.fn()
 const mockEmitWorkflowUpdate = vi.fn()
 let mockPlanType = Plan.professional
 let mockEnableBilling = true
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'test-user-id',
     name: 'Test User',
@@ -68,31 +69,9 @@ type MockVersionHistoryItemProps = {
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/context/provider-context', () => ({

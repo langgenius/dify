@@ -1,6 +1,7 @@
-@apps @authenticated @core
+@apps @core
 Feature: Share app publicly
 
+  @authenticated
   Scenario: Enable public share for a published workflow app
     Given I am signed in as the default E2E admin
     And a "workflow" app has been created via API

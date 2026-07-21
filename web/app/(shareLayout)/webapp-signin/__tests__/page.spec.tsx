@@ -1,6 +1,6 @@
 import { waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import WebSSOForm from '../page'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -35,7 +35,7 @@ describe('WebSSOForm redirect security', () => {
   })
 
   it('should use the login fallback when the redirect target is external', async () => {
-    renderWithSystemFeatures(<WebSSOForm />, {
+    renderWithConsoleQuery(<WebSSOForm />, {
       systemFeatures: { webapp_auth: { enabled: true } },
     })
 

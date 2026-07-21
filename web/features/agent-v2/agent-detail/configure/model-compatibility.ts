@@ -64,6 +64,7 @@ const agentSuggestedModelPatterns: RegExp[] = [
   // openai
   /^gpt[ .-]5\.5$/i,
   /^gpt[ .-]5\.5[ .-]pro$/i,
+  /^gpt[ .-]5\.6(?:[ .-](?:sol|terra|luna))?$/i,
 
   // anthropic
   /^(?:claude[ .-])?opus[ .-]4\.8$/i,

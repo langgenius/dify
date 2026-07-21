@@ -1,6 +1,6 @@
 import type { NodeDefault } from '../../types'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import { useAvailableBlocks } from '../use-available-blocks'
 
@@ -29,7 +29,7 @@ const mockNodeTypes = [
 function createNodeDefault(type: BlockEnum): NodeDefault {
   return {
     metaData: {
-      classification: BlockClassificationEnum.Default,
+      classification: BlockClassification.Default,
       sort: 0,
       type,
       title: type,

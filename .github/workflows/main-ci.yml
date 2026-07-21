@@ -27,7 +27,7 @@ jobs:
     steps:
       - id: skip_check
         continue-on-error: true
-        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
+        uses: fkirc/skip-duplicate-actions@b974a9395958c231af965b70070979a577efa578 # v5.3.2
         with:
           cancel_others: 'true'
           concurrent_skipping: same_content_newer
@@ -72,6 +72,7 @@ jobs:
               - 'docker/volumes/sandbox/conf/**'
             cli:
               - 'cli/**'
+              - 'packages/contracts/**'
               - 'packages/tsconfig/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
@@ -80,7 +81,6 @@ jobs:
               - '.npmrc'
               - '.nvmrc'
               - '.github/workflows/cli-tests.yml'
-              - '.github/workflows/cli-docker-build.yml'
               - '.github/actions/setup-web/**'
             web:
               - 'web/**'
@@ -105,6 +105,7 @@ jobs:
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/envs/middleware.env.example'
               - '.github/workflows/web-e2e.yml'
+              - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
             vdb:
               - 'api/core/rag/datasource/**'

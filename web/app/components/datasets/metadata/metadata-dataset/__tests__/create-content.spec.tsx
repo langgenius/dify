@@ -15,12 +15,6 @@ const renderCreateContent = (props: CreateContentProps) => {
 
 describe('CreateContent', () => {
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const handleSave = vi.fn()
-      renderCreateContent({ onSave: handleSave })
-      expect(screen.getByText('dataset.metadata.createMetadata.title')).toBeInTheDocument()
-    })
-
     it('should render modal title', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })

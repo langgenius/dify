@@ -43,6 +43,7 @@ const ToolItem = ({ disabled, collection, tool, isBuiltIn, isModel }: Props) => 
           collection={collection}
           toolName={tool.name}
           readonly
+          showReadOnlySettingDetails
           onHide={() => {
             setShowDetail(false)
           }}

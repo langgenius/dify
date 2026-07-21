@@ -31,12 +31,6 @@ describe('ChunkContent', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<ChunkContent {...defaultProps} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render textarea in edit mode with text docForm', () => {
       render(<ChunkContent {...defaultProps} isEditMode={true} />)
 
@@ -302,14 +296,6 @@ describe('ChunkContent', () => {
 
       const textareas = screen.getAllByRole('textbox')
       expect(textareas[1])!.toHaveValue('')
-    })
-
-    it('should handle undefined answer in QA mode', () => {
-      render(<ChunkContent {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
-
-      // Assert - should render without crashing
-      // Assert - should render without crashing
-      expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
     })
 
     it('should maintain structure when rerendered', () => {

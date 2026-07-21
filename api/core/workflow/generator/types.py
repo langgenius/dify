@@ -1,10 +1,10 @@
 """
 Typed payloads for workflow generation.
 
-These TypedDicts describe the shape that the planner and builder LLM calls are
-required to return after ``json_repair`` parsing. They mirror the runtime
-``graph`` shape consumed by ``WorkflowService.sync_draft_workflow`` so the output
-can be written straight into a draft workflow without further translation.
+These TypedDicts describe the planner payload and the runtime graph assembled
+from builder LLM responses after ``json_repair`` parsing. The graph types mirror
+the shape consumed by ``WorkflowService.sync_draft_workflow`` so the output can
+be written straight into a draft workflow.
 """
 
 from enum import StrEnum
@@ -12,11 +12,10 @@ from typing import Literal, NotRequired, TypedDict
 
 WorkflowGenerationMode = Literal["workflow", "advanced-chat"]
 
-# The mode accepted at the API boundary. ``auto`` is a sentinel that asks the
-# service to classify the instruction into a concrete ``WorkflowGenerationMode``
-# (one tiny LLM call) BEFORE planning — see
-# ``WorkflowGeneratorService._resolve_mode`` and
-# ``LLMGenerator.classify_workflow_mode``.
+# The mode accepted at the API boundary. ``auto`` is a sentinel that delegates
+# the choice to the planner: it echoes a concrete mode in its ``mode`` output
+# field (falling back to terminal-node inference, then ``advanced-chat``) —
+# see ``runner._resolve_generation_mode``. No extra LLM call is involved.
 WorkflowGenerationModeRequest = Literal["workflow", "advanced-chat", "auto"]
 
 
@@ -58,9 +57,21 @@ class WorkflowGenerateErrorDict(TypedDict):
 class PlannerNodeDict(TypedDict):
     """One node from the planner's high-level plan."""
 
+    id: NotRequired[str]
     label: str
     node_type: str
     purpose: str
+    parent: NotRequired[str]
+    action: NotRequired[Literal["keep", "update", "add"]]
+
+
+class PlannerEdgeDict(TypedDict):
+    """Compact topology emitted by the planner for parallel node building."""
+
+    source: str
+    target: str
+    source_handle: NotRequired[str]
+    target_handle: NotRequired[str]
 
 
 class PlannerStartInputDict(TypedDict):
@@ -82,10 +93,15 @@ class PlannerResultDict(TypedDict):
 
     title: str
     description: str
+    # Concrete mode the planner chose ("workflow" / "advanced-chat"). Parsed
+    # leniently — an ``auto`` request infers the mode from the terminal node
+    # when this is missing or invalid, so a bad value never fails the plan.
+    mode: NotRequired[str]
     app_name: NotRequired[str]
     icon: NotRequired[str]
     start_inputs: NotRequired[list[PlannerStartInputDict]]
     nodes: list[PlannerNodeDict]
+    edges: NotRequired[list[PlannerEdgeDict]]
 
 
 class GraphNodePositionDict(TypedDict):

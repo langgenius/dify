@@ -87,7 +87,6 @@ const NotionPageRow = ({
       <div
         className="grow truncate text-[13px] leading-4 font-medium text-text-secondary"
         title={row.page.page_name}
-        data-testid={`notion-page-name-${pageId}`}
       >
         {row.page.page_name}
       </div>

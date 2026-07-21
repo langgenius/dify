@@ -209,7 +209,6 @@ function VoiceInput({
           <div
             className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700"
             aria-hidden="true"
-            data-testid="voice-input-loader"
           />
         )}
         <div className="grow">
@@ -224,11 +223,7 @@ function VoiceInput({
             </div>
           )}
           {isConverting && (
-            <div
-              className={cn(s.convert, 'text-sm')}
-              role="status"
-              data-testid="voice-input-converting-text"
-            >
+            <div className={cn(s.convert, 'text-sm')} role="status">
               {t(($) => $['voiceInput.converting'], { ns: 'common' })}
             </div>
           )}
