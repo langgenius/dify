@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import { Suspense } from 'react'
 import { defaultSystemFeatures } from '@/features/system-features/config'
 import { LicenseStatus } from '@/features/system-features/constants'
-import { AgentOrchestrateHeader } from '../header'
+import { CommunityEditionTip } from '../community-edition-tip'
 
 // Literal rather than LicenseStatus.NONE: vi.hoisted runs before imports resolve.
 const licenseStatus = vi.hoisted(() => ({
@@ -21,9 +21,9 @@ vi.mock('@/features/system-features/client', () => ({
   }),
 }))
 
-const isolationTipLabel = 'agentV2.agentDetail.configure.communityEditionIsolationTip'
+const tip = 'sandbox runs as a non-root user'
 
-const renderHeader = async () => {
+const renderTip = async () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -31,44 +31,55 @@ const renderHeader = async () => {
   render(
     <QueryClientProvider client={queryClient}>
       <Suspense fallback={<div>loading</div>}>
-        <AgentOrchestrateHeader headingId="heading-1" />
+        <CommunityEditionTip tip={tip} />
+        {/* Sibling marker: the component renders null when licensed, so there is
+            nothing of its own to wait on once the suspense boundary resolves. */}
+        <div>resolved</div>
       </Suspense>
     </QueryClientProvider>,
   )
 
-  await screen.findByRole('heading')
+  await screen.findByText('resolved')
 }
 
-describe('AgentOrchestrateHeader', () => {
-  it('shows the sandbox isolation disclaimer without an enterprise license', async () => {
+describe('CommunityEditionTip', () => {
+  it('shows the warning without an enterprise license', async () => {
     licenseStatus.current = LicenseStatus.NONE
 
-    await renderHeader()
+    await renderTip()
 
-    expect(screen.getByLabelText(isolationTipLabel)).toBeInTheDocument()
+    expect(screen.getByLabelText(tip)).toBeInTheDocument()
   })
 
-  it('hides the disclaimer under an active enterprise license', async () => {
+  it('renders nothing under an active enterprise license', async () => {
     licenseStatus.current = LicenseStatus.ACTIVE
 
-    await renderHeader()
+    await renderTip()
 
-    expect(screen.queryByLabelText(isolationTipLabel)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(tip)).not.toBeInTheDocument()
   })
 
-  it('hides the disclaimer while an enterprise license is expiring', async () => {
+  it('renders nothing while an enterprise license is expiring', async () => {
     licenseStatus.current = LicenseStatus.EXPIRING
 
-    await renderHeader()
+    await renderTip()
 
-    expect(screen.queryByLabelText(isolationTipLabel)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(tip)).not.toBeInTheDocument()
   })
 
-  it('keeps the disclaimer when an enterprise license has lapsed', async () => {
+  it('keeps the warning when an enterprise license has lapsed', async () => {
     licenseStatus.current = LicenseStatus.EXPIRED
 
-    await renderHeader()
+    await renderTip()
 
-    expect(screen.getByLabelText(isolationTipLabel)).toBeInTheDocument()
+    expect(screen.getByLabelText(tip)).toBeInTheDocument()
+  })
+
+  it('keeps the warning when the license status is unrecognized', async () => {
+    licenseStatus.current = 'some-future-status' as GetSystemFeaturesResponse['license']['status']
+
+    await renderTip()
+
+    expect(screen.getByLabelText(tip)).toBeInTheDocument()
   })
 })

@@ -1,11 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { ENTERPRISE_LICENSE_STATUSES } from '@/features/system-features/constants'
+import { CommunityEditionTip } from '../community-edition-tip'
 
 type AgentOrchestrateHeaderProps = {
   headingId: string
@@ -22,10 +19,6 @@ export function AgentOrchestrateHeader({
   const communityEditionIsolationTip = t(
     ($) => $['agentDetail.configure.communityEditionIsolationTip'],
   )
-  const { data: isEnterprise } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (systemFeatures) => ENTERPRISE_LICENSE_STATUSES.has(systemFeatures.license.status),
-  })
 
   return (
     <div className="shrink-0 px-4 py-3">
@@ -34,33 +27,10 @@ export function AgentOrchestrateHeader({
           <h2 id={headingId} className="truncate title-xl-semi-bold text-text-primary">
             {t(($) => $['agentDetail.configure.title'])}
           </h2>
-          {!isEnterprise && (
-            <Popover>
-              <PopoverTrigger
-                openOnHover
-                delay={300}
-                closeDelay={200}
-                aria-label={communityEditionIsolationTip}
-                render={
-                  <button
-                    type="button"
-                    className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  >
-                    <span
-                      aria-hidden
-                      className="i-custom-vender-line-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary"
-                    />
-                  </button>
-                }
-              />
-              <PopoverContent
-                placement="bottom"
-                popupClassName="max-w-[320px] px-3 py-2 system-xs-regular text-text-tertiary"
-              >
-                {communityEditionIsolationTip}
-              </PopoverContent>
-            </Popover>
-          )}
+          <CommunityEditionTip
+            tip={communityEditionIsolationTip}
+            popupClassName="max-w-[320px]"
+          />
           {isBuildDraftActive && (
             <span className="flex min-w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $['agentDetail.configure.buildDraft.modeBadge'])}
