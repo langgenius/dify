@@ -17,6 +17,7 @@ import {
   datasetDefaultPermissionKeysAtom,
   retryWorkspacePermissionKeysAtom,
   workspacePermissionKeysErrorAtom,
+  workspacePermissionKeysFetchingAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -103,6 +104,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const queryClient = useQueryClient()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeysFetching = useAtomValue(workspacePermissionKeysFetchingAtom)
   const workspacePermissionKeysError = useAtomValue(workspacePermissionKeysErrorAtom)
   const retryWorkspacePermissionKeys = useSetAtom(retryWorkspacePermissionKeysAtom)
   const canEdit = hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
@@ -110,6 +112,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const permissionQueryError = Boolean(workspacePermissionKeysError)
   const hasWorkspaceWritePermission = canEdit && !permissionPending && !permissionQueryError
   const uploadInputRef = useRef<HTMLInputElement>(null)
+  const documentPermissionAlertRef = useRef<HTMLDivElement>(null)
   const uploadPendingRef = useRef(false)
   const reindexPendingRef = useRef(false)
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
@@ -292,9 +295,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
     [baseTasks, taskOverrides, terminalTaskPins],
   )
-  for (const task of tasks) {
-    if (!taskIsActive(task)) taskEventCursorsRef.current.delete(task.id)
-  }
+  useEffect(() => {
+    for (const task of tasks) {
+      if (!taskIsActive(task)) taskEventCursorsRef.current.delete(task.id)
+    }
+  }, [tasks])
   const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
   currentTaskStateRef.current = new Map(tasks.map((task) => [task.id, task.state]))
   const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
@@ -411,6 +416,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const taskQueryWarning = Boolean(
     (tasksQuery.error && tasksQuery.data) || tasksQuery.isFetchNextPageError,
   )
+  const dependencyRetryFetching = Boolean(
+    (taskQueryWarning && tasksQuery.isFetching) || (sourceQueryWarning && sourcesQuery.isFetching),
+  )
   const dependencyResultsIncomplete = taskResultsIncomplete || sourceResultsIncomplete
   const selectionDisabled =
     !canWrite ||
@@ -487,16 +495,24 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
 
   useEffect(() => {
-    if (orderedActiveTasks.length <= MAX_TASK_EVENT_STREAMS) return
+    if (documentPermissionDenied || orderedActiveTasks.length <= MAX_TASK_EVENT_STREAMS) return
     const interval = window.setInterval(
       () => setTaskStreamOffset((current) => current + MAX_TASK_EVENT_STREAMS),
       5000,
     )
     return () => window.clearInterval(interval)
-  }, [orderedActiveTasks.length])
+  }, [documentPermissionDenied, orderedActiveTasks.length])
+
+  useEffect(() => {
+    if (!documentPermissionDenied || !tasksOpen) return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission revocation permanently closes the controlled task drawer.
+    setTasksOpen(false)
+    documentPermissionAlertRef.current?.focus()
+  }, [documentPermissionDenied, tasksOpen])
 
   useEffect(() => {
     if (
+      !documentPermissionDenied &&
       (filterActive || (tasksOpen && unresolvedTaskDocumentIds.size > 0)) &&
       canAutoFetchDocumentPage &&
       !isFetchingNextDocumentPage &&
@@ -509,20 +525,38 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     tasksOpen,
     unresolvedTaskDocumentIds,
     canAutoFetchDocumentPage,
+    documentPermissionDenied,
     isFetchNextDocumentPageError,
     isFetchingNextDocumentPage,
   ])
 
   useEffect(() => {
-    if (canAutoFetchTaskPage && !isFetchingNextTaskPage && !isFetchNextTaskPageError)
+    if (
+      !documentPermissionDenied &&
+      canAutoFetchTaskPage &&
+      !isFetchingNextTaskPage &&
+      !isFetchNextTaskPageError
+    )
       void fetchNextTaskPage()
-  }, [canAutoFetchTaskPage, fetchNextTaskPage, isFetchNextTaskPageError, isFetchingNextTaskPage])
+  }, [
+    canAutoFetchTaskPage,
+    documentPermissionDenied,
+    fetchNextTaskPage,
+    isFetchNextTaskPageError,
+    isFetchingNextTaskPage,
+  ])
 
   useEffect(() => {
-    if (canAutoFetchSourcePage && !isFetchingNextSourcePage && !isFetchNextSourcePageError)
+    if (
+      !documentPermissionDenied &&
+      canAutoFetchSourcePage &&
+      !isFetchingNextSourcePage &&
+      !isFetchNextSourcePageError
+    )
       void fetchNextSourcePage()
   }, [
     canAutoFetchSourcePage,
+    documentPermissionDenied,
     fetchNextSourcePage,
     isFetchNextSourcePageError,
     isFetchingNextSourcePage,
@@ -647,6 +681,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
 
   useEffect(() => {
+    if (!documentPermissionDenied) return
+    for (const [taskId, controller] of terminalReconciliationControllersRef.current) {
+      controller.abort()
+      terminalReconciliationControllersRef.current.delete(taskId)
+      const generation = terminalReconciliationGenerationsRef.current.get(taskId) ?? 0
+      terminalReconciliationGenerationsRef.current.set(taskId, generation + 1)
+    }
+    for (const timeout of terminalReconciliationTimeoutsRef.current.values())
+      window.clearTimeout(timeout)
+    terminalReconciliationTimeoutsRef.current.clear()
+  }, [documentPermissionDenied])
+
+  useEffect(() => {
     const taskIds = new Set(baseTasks.map((task) => task.id))
     const pruneMap = (map: Map<string, unknown>) => {
       for (const taskId of map.keys()) {
@@ -688,6 +735,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [baseTasks, taskProgressStore])
 
   useEffect(() => {
+    if (documentPermissionDenied) return
     const strictRetries = new Map<string, DocumentProcessingTask>()
     const equalTimestampRetries = new Map<string, TerminalTaskPin>()
     const confirmedTerminals = new Map<string, DocumentProcessingTask>()
@@ -776,7 +824,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       terminalReconciliationGenerationsRef.current.set(taskId, reconciliationGeneration)
       void reconcileTerminalTask(taskId, pin.observedAt, reconciliationGeneration)
     }
-  }, [baseTasks, reconcileTerminalTask, taskListGeneration, taskProgressStore, terminalTaskPins])
+  }, [
+    baseTasks,
+    documentPermissionDenied,
+    reconcileTerminalTask,
+    taskListGeneration,
+    taskProgressStore,
+    terminalTaskPins,
+  ])
 
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
@@ -1026,7 +1081,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [activeTasks])
 
   useEffect(() => {
-    if (!orderedFailedTasksRef.current.length) return
+    if (documentPermissionDenied || !orderedFailedTasksRef.current.length) return
     let canceled = false
     let timeout: number | undefined
     const cancelRequests = new Set<() => void>()
@@ -1107,7 +1162,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       cancelRequests.clear()
       if (timeout !== undefined) window.clearTimeout(timeout)
     }
-  }, [failedTaskPollSignature, handleTaskUpdated, knowledgeSpaceId])
+  }, [documentPermissionDenied, failedTaskPollSignature, handleTaskUpdated, knowledgeSpaceId])
 
   const toggleDocument = useCallback(
     (documentId: string) => {
@@ -1221,6 +1276,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             </span>
             <Button
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
+              loading={workspacePermissionKeysFetching}
               size="small"
               onClick={retryWorkspacePermissionKeys}
             >
@@ -1271,7 +1327,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   ? t(($) => $['newKnowledge.sourcesErrorDescription'])
                   : t(($) => $['newKnowledge.tasksErrorDescription'])
               }`}
-              loading={tasksQuery.isFetching || sourcesQuery.isFetching}
+              loading={dependencyRetryFetching}
               size="small"
               onClick={retryDependencyQueries}
             >
@@ -1285,8 +1341,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           </div>
         ) : documentsQuery.error && (documentPermissionDenied || !documentsQuery.data) ? (
           <div
+            ref={documentPermissionAlertRef}
             className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
             role="alert"
+            tabIndex={documentPermissionDenied ? -1 : undefined}
           >
             <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
             <h2 className="mt-3 title-xl-semi-bold text-text-primary">
@@ -1332,7 +1390,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   : t(($) => $['newKnowledge.tasksErrorDescription'])
               }`}
               className="mt-4"
-              loading={tasksQuery.isFetching || sourcesQuery.isFetching}
+              loading={dependencyRetryFetching}
               onClick={retryDependencyQueries}
             >
               {tCommon(($) => $['operation.retry'])}

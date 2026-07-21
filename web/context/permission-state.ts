@@ -27,6 +27,10 @@ export const workspacePermissionKeysLoadingAtom = atom((get) => {
   return get(workspacePermissionKeysQueryAtom).isPending
 })
 
+export const workspacePermissionKeysFetchingAtom = atom((get) => {
+  return get(workspacePermissionKeysQueryAtom).isFetching
+})
+
 export const workspacePermissionKeysErrorAtom = atom((get) => {
   return get(workspacePermissionKeysQueryAtom).error
 })

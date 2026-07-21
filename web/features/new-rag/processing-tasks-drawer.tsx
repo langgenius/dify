@@ -130,7 +130,7 @@ export function ProcessingTasksDrawer({
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
   const openCycleRef = useRef(0)
   const openRef = useRef(open)
-  openRef.current = open
+  const previousOpenRef = useRef(open)
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
   const [visibleTaskLimit, setVisibleTaskLimit] = useState(TASK_DRAWER_LIMIT)
@@ -192,19 +192,34 @@ export function ProcessingTasksDrawer({
   const taskLifecycleGenerationsRef = useRef(
     new Map<string, { generation: number; lifecycle: string }>(),
   )
-  const currentTaskIds = new Set(tasks.map((task) => task.id))
-  for (const task of tasks) {
-    const lifecycle = taskLifecycle(task)
-    const previous = taskLifecycleGenerationsRef.current.get(task.id)
-    if (previous?.lifecycle === lifecycle) continue
-    taskLifecycleGenerationsRef.current.set(task.id, {
-      generation: (previous?.generation ?? 0) + 1,
-      lifecycle,
-    })
-  }
-  for (const taskId of taskLifecycleGenerationsRef.current.keys()) {
-    if (!currentTaskIds.has(taskId)) taskLifecycleGenerationsRef.current.delete(taskId)
-  }
+  useEffect(() => {
+    const currentTaskIds = new Set(tasks.map((task) => task.id))
+    for (const task of tasks) {
+      const lifecycle = taskLifecycle(task)
+      const previous = taskLifecycleGenerationsRef.current.get(task.id)
+      if (previous?.lifecycle === lifecycle) continue
+      taskLifecycleGenerationsRef.current.set(task.id, {
+        generation: (previous?.generation ?? 0) + 1,
+        lifecycle,
+      })
+    }
+    for (const taskId of taskLifecycleGenerationsRef.current.keys()) {
+      if (!currentTaskIds.has(taskId)) taskLifecycleGenerationsRef.current.delete(taskId)
+    }
+  }, [tasks])
+
+  useEffect(() => {
+    openRef.current = open
+    const wasOpen = previousOpenRef.current
+    previousOpenRef.current = open
+    if (!wasOpen || open) return
+    openCycleRef.current += 1
+    loadMoreRequestedRef.current = false
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Every committed controlled close resets drawer-local pagination and errors.
+    setVisibleTaskLimit(TASK_DRAWER_LIMIT)
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Every committed controlled close starts a fresh action-error cycle.
+    setActionErrors({})
+  }, [open])
 
   useEffect(() => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Task lifecycle changes retire action errors from older task versions.
@@ -246,6 +261,7 @@ export function ProcessingTasksDrawer({
     pendingActionsRef.current.add(task.id)
     const actionOpenCycle = openCycleRef.current
     const actionLifecycleGeneration = taskLifecycleGenerationsRef.current.get(task.id)?.generation
+    const actionFocusTarget = document.activeElement
     setPendingActions((current) => new Set(current).add(task.id))
     setActionErrors((current) => {
       const next = { ...current }
@@ -264,13 +280,21 @@ export function ProcessingTasksDrawer({
         action === 'cancel'
           ? await cancelTask.mutateAsync(input)
           : await retryTask.mutateAsync(input)
+      if (
+        taskLifecycleGenerationsRef.current.get(task.id)?.generation !== actionLifecycleGeneration
+      )
+        return
       onTaskUpdated(updated)
       setActionErrors((current) => {
         const next = { ...current }
         delete next[task.id]
         return next
       })
-      if (openRef.current && openCycleRef.current === actionOpenCycle)
+      if (
+        openRef.current &&
+        openCycleRef.current === actionOpenCycle &&
+        document.activeElement === actionFocusTarget
+      )
         drawerCloseButtonRef.current?.focus()
     } catch {
       if (
@@ -297,12 +321,6 @@ export function ProcessingTasksDrawer({
       swipeDirection="right"
       onOpenChange={(nextOpen) => {
         openRef.current = nextOpen
-        if (!nextOpen) {
-          openCycleRef.current += 1
-          loadMoreRequestedRef.current = false
-          setVisibleTaskLimit(TASK_DRAWER_LIMIT)
-          setActionErrors({})
-        }
         onOpenChange(nextOpen)
       }}
     >

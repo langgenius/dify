@@ -514,6 +514,7 @@ export function DocumentsList({
           </span>
           <Button
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+            loading={isFetchingNextPage}
             onClick={onLoadMore}
           >
             {tCommon(($) => $['operation.retry'])}

@@ -71,6 +71,8 @@ const permissionStateMock = vi.hoisted(() => ({
   datasetKeys: ['dataset.acl.edit'],
   error: null as unknown,
   errorAtom: Symbol('workspacePermissionKeysErrorAtom'),
+  fetching: false,
+  fetchingAtom: Symbol('workspacePermissionKeysFetchingAtom'),
   loading: false,
   loadingAtom: Symbol('workspacePermissionKeysLoadingAtom'),
   retry: vi.fn(),
@@ -86,6 +88,7 @@ vi.mock('@/context/permission-state', () => ({
   datasetDefaultPermissionKeysAtom: permissionStateMock.datasetAtom,
   retryWorkspacePermissionKeysAtom: permissionStateMock.retryAtom,
   workspacePermissionKeysErrorAtom: permissionStateMock.errorAtom,
+  workspacePermissionKeysFetchingAtom: permissionStateMock.fetchingAtom,
   workspacePermissionKeysLoadingAtom: permissionStateMock.loadingAtom,
 }))
 
@@ -96,6 +99,7 @@ vi.mock('jotai', async (importOriginal) => {
     useAtomValue: (atom: unknown) => {
       if (atom === permissionStateMock.datasetAtom) return permissionStateMock.datasetKeys
       if (atom === permissionStateMock.errorAtom) return permissionStateMock.error
+      if (atom === permissionStateMock.fetchingAtom) return permissionStateMock.fetching
       if (atom === permissionStateMock.loadingAtom) return permissionStateMock.loading
       return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
     },
@@ -286,6 +290,7 @@ describe('DocumentsPage', () => {
     sourcesQuery.isPending = false
     permissionStateMock.datasetKeys = ['dataset.acl.edit']
     permissionStateMock.error = null
+    permissionStateMock.fetching = false
     permissionStateMock.loading = false
     getTaskSnapshot.mockResolvedValue(task({ state: 'succeeded' }))
     cancelMutation.mutateAsync.mockResolvedValue(task({ state: 'canceled' }))
@@ -714,6 +719,87 @@ describe('DocumentsPage', () => {
     ).toHaveAttribute('aria-disabled', 'true')
   })
 
+  it('keeps permission retries busy while permission keys are refetching', () => {
+    permissionStateMock.error = new Error('permission refresh failed')
+    permissionStateMock.fetching = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.permissionLoadFailed',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('does not disable a failed dependency retry for an unrelated background refresh', () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.error = new Error('task refresh failed')
+    sourcesQuery.isFetching = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+      }),
+    ).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('closes a task drawer permanently and restores focus when document permission is revoked', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task()] }] }
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    documentsQuery.error = { status: 403 }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const permissionAlert = screen.getByRole('alert')
+    expect(permissionAlert).toHaveFocus()
+
+    documentsQuery.error = null
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('stops background pagination and failed-task polling while document permission is denied', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = {
+      pages: [{ items: [document({ sourceId: 'unresolved-source' })], nextCursor: 'next' }],
+    }
+    documentsQuery.error = { status: 403 }
+    documentsQuery.hasNextPage = true
+    tasksQuery.data = {
+      pages: [{ items: [task({ state: 'failed' })], nextCursor: 'task-next' }],
+    }
+    tasksQuery.hasNextPage = true
+    sourcesQuery.data = { pages: [{ items: [], nextCursor: 'source-next' }] }
+    sourcesQuery.hasNextPage = true
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />, {
+      searchParams: '?query=sso',
+    })
+    try {
+      await act(async () => vi.advanceTimersByTime(10_000))
+
+      expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
+      expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
+      expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
+      expect(getTaskSnapshot).not.toHaveBeenCalled()
+      expect(streamProcessingTaskEvents).not.toHaveBeenCalled()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('filters and searches documents while continuing through cursor pages', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
@@ -1055,6 +1141,28 @@ describe('DocumentsPage', () => {
       }),
     )
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
+  it('keeps a failed document page retry busy while the next page is fetching', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document()], nextCursor: 'next' }],
+    }
+    documentsQuery.hasNextPage = true
+    documentsQuery.isFetchNextPageError = true
+    documentsQuery.isFetchingNextPage = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      'sso',
+    )
+
+    expect(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('re-indexes selected documents and keeps unsupported actions unavailable', async () => {
@@ -1421,6 +1529,71 @@ describe('DocumentsPage', () => {
 
     await act(async () => resolveCancel?.(task({ id: 'old-action', state: 'canceled' })))
     expect(nextAction).toHaveFocus()
+  })
+
+  it('does not move focus when the user leaves a pending task action', async () => {
+    const user = userEvent.setup()
+    let resolveCancel: ((value: DocumentProcessingTask) => void) | undefined
+    cancelMutation.mutateAsync.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCancel = resolve
+        }),
+    )
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'pending-action' }), task({ id: 'focus-target' })] }],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.interruptTask · sso-enterprise.pdf · pending-action',
+      }),
+    )
+    const nextAction = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.interruptTask · sso-enterprise.pdf · focus-target',
+    })
+    act(() => nextAction.focus())
+
+    await act(async () => resolveCancel?.(task({ id: 'pending-action', state: 'canceled' })))
+    expect(nextAction).toHaveFocus()
+  })
+
+  it('ignores a delayed action success after the task lifecycle advances', async () => {
+    const user = userEvent.setup()
+    let resolveRetry: ((value: DocumentProcessingTask) => void) | undefined
+    retryMutation.mutateAsync.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRetry = resolve
+        }),
+    )
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'advanced-success', state: 'failed' })] }] }
+
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'advanced-success', state: 'running' })] }],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await act(async () => resolveRetry?.(task({ id: 'advanced-success', state: 'queued' })))
+
+    expect(
+      screen.getByText(/dataset\.newKnowledge\.processingTaskState\.running/),
+    ).toBeInTheDocument()
   })
 
   it('drops a delayed action failure after the task lifecycle advances', async () => {
