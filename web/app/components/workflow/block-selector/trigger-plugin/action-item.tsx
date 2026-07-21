@@ -48,7 +48,7 @@ const TriggerPluginActionItem: FC<Props> = ({
       aria-describedby={previewDescription ? previewDescriptionId : undefined}
       disabled={disabled}
       className={cn(
-        'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-[21px] text-left focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+        'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-[21px] text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
         disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
       )}
       onClick={() => {

@@ -17,7 +17,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
-import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
+import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
 import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -190,7 +190,7 @@ const AgentTools: FC = () => {
               <>
                 <div className="mr-1 ml-3 h-3.5 w-px bg-divider-regular"></div>
                 <ToolPicker
-                  trigger={<OperationBtn type="add" />}
+                  trigger={<OperationButton operation="add" />}
                   isShow={isShowChooseTool}
                   onShowChange={setIsShowChooseTool}
                   disabled={false}

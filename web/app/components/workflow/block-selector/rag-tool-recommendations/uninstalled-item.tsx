@@ -1,5 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +15,7 @@ type UninstalledItemProps = {
   payload: Plugin
 }
 
-const UninstalledItem = ({ payload }: UninstalledItemProps) => {
+function UninstalledItem({ payload }: UninstalledItemProps) {
   const { t } = useTranslation()
   const locale = useLocale()
 
@@ -35,12 +36,14 @@ const UninstalledItem = ({ payload }: UninstalledItemProps) => {
           <span className="system-xs-regular text-text-quaternary">{payload.org}</span>
         </div>
         {canInstallPlugin && (
-          <div
-            className="cursor-pointer pl-1.5 system-xs-medium text-components-button-secondary-accent-text"
+          <Button
+            variant="ghost"
+            size="small"
+            className="h-6 px-1.5 text-components-button-secondary-accent-text focus-visible:ring-inset"
             onClick={showInstallModal}
           >
             {t(($) => $.installAction, { ns: 'plugin' })}
-          </div>
+          </Button>
         )}
         {isShowInstallModal && canInstallPlugin && (
           <PluginInstallPermissionProvider
