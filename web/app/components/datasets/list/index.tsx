@@ -91,11 +91,7 @@ const List = () => {
     keywords.trim().length > 0 ||
     searchKeywords.trim().length > 0 ||
     includeAll
-  const showEmptyDataList =
-    !hasAnyDataset &&
-    (canCreateDataset || canConnectExternalDataset) &&
-    hasResolvedFirstPage &&
-    !hasActiveFilters
+  const showEmptyDataList = !hasAnyDataset && hasResolvedFirstPage && !hasActiveFilters
   const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
   const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
