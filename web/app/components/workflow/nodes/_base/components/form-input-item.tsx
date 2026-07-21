@@ -382,7 +382,7 @@ const FormInputItem: FC<Props> = ({
           selectedLabel={selectedLabels}
         />
       )}
-      {isDynamicSelect && !isMultipleSelect && (
+      {isDynamicSelect && isConstant && !isMultipleSelect && (
         <Select
           value={selectedDynamicOption?.value ?? null}
           disabled={readOnly || isLoadingOptions}
@@ -403,7 +403,7 @@ const FormInputItem: FC<Props> = ({
           </SelectContent>
         </Select>
       )}
-      {isDynamicSelect && isMultipleSelect && (
+      {isDynamicSelect && isConstant && isMultipleSelect && (
         <MultiSelectField
           disabled={readOnly || isLoadingOptions}
           isLoading={isLoadingOptions}

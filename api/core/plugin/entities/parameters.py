@@ -78,6 +78,10 @@ class PluginParameter(BaseModel):
     template: PluginParameterTemplate | None = None
     required: bool = False
     default: Union[float, int, str, bool, list, dict] | None = None
+    multiple: bool = Field(
+        default=False,
+        description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
+    )
     min: Union[float, int] | None = None
     max: Union[float, int] | None = None
     precision: int | None = None
@@ -113,8 +117,9 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
             ):
                 if value is None:
                     return ""
-                else:
-                    return value if isinstance(value, str) else str(value)
+                if isinstance(value, list):
+                    return value
+                return value if isinstance(value, str) else str(value)
 
             case PluginParameterType.BOOLEAN:
                 match value:
@@ -211,7 +216,8 @@ def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     if type == PluginParameterType.SELECT:
         # check if tool_parameter_config in options
         options = [x.value for x in rule.options]
-        if parameter_value is not None and parameter_value not in options:
+        values = parameter_value if isinstance(parameter_value, list) else [parameter_value]
+        if any(value is not None and value not in options for value in values):
             raise ValueError(f"tool parameter {rule.name} value {parameter_value} not in options {options}")
 
     return cast_parameter_value(type, parameter_value)

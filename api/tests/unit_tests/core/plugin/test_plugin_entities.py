@@ -125,6 +125,13 @@ class TestPluginParameterEntities:
         parameter = PluginParameter(name="p", label=self._label(), options="invalid")  # type: ignore[arg-type]
         assert parameter.options == []
 
+    def test_plugin_parameter_preserves_multiple_select_declaration(self):
+        parameter = PluginParameter(name="p", label=self._label(), multiple=True, default=["a", "b"])
+        assert parameter.model_dump(include={"multiple", "default"}) == {
+            "multiple": True,
+            "default": ["a", "b"],
+        }
+
     @pytest.mark.parametrize(
         ("parameter_type", "expected"),
         [
@@ -143,6 +150,10 @@ class TestPluginParameterEntities:
     )
     def test_cast_parameter_value_string_like(self, value, expected):
         assert cast_parameter_value(PluginParameterType.STRING, value) == expected
+
+    @pytest.mark.parametrize("parameter_type", [PluginParameterType.SELECT, PluginParameterType.DYNAMIC_SELECT])
+    def test_cast_parameter_value_multiple_select(self, parameter_type):
+        assert cast_parameter_value(parameter_type, ["a", "b"]) == ["a", "b"]
 
     @pytest.mark.parametrize(
         ("value", "expected"),
@@ -257,6 +268,11 @@ class TestPluginParameterEntities:
         assert init_frontend_parameter(rule, PluginParameterType.NUMBER, 0) == 0
         with pytest.raises(ValueError, match="not in options"):
             init_frontend_parameter(rule, PluginParameterType.SELECT, "b")
+
+        multiple_rule = rule.model_copy(update={"multiple": True, "default": ["a"]})
+        assert init_frontend_parameter(multiple_rule, PluginParameterType.SELECT, None) == ["a"]
+        with pytest.raises(ValueError, match="not in options"):
+            init_frontend_parameter(multiple_rule, PluginParameterType.SELECT, ["a", "b"])
 
         required_rule = PluginParameter(name="required", label=self._label(), required=True, default=None)
         with pytest.raises(ValueError, match="not found in tool config"):

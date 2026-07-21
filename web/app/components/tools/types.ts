@@ -105,7 +105,7 @@ export type ToolParameter = {
   llm_description: string
   required: boolean
   multiple: boolean
-  default: string
+  default: string | string[]
   options?: {
     label: LocalizedText
     value: string

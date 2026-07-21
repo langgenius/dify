@@ -104,7 +104,8 @@ export type CredentialFormSchemaBase = {
   label: TypeWithI18N
   type: FormTypeEnum
   required: boolean
-  default?: string
+  multiple?: boolean
+  default?: string | string[]
   tooltip?: TypeWithI18N
   show_on: FormShowOnObject[]
   url?: string
