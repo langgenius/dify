@@ -36,6 +36,7 @@ import {
   taskVersionIsAfter,
 } from './document-model'
 import { ProcessingTasksDrawer } from './processing-tasks-drawer'
+import { newKnowledgeDocumentDetailPath } from './routes'
 import { TaskEventObserver } from './task-event-observer'
 import { createTaskProgressStore } from './task-progress-store'
 import { useQueryDataUpdateCount } from './use-query-data-update-count'
@@ -2092,6 +2093,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             completingResults={completingFilteredResults}
             documents={filteredDocuments}
             filter={filter}
+            getDocumentHref={(documentId) =>
+              newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId)
+            }
             hasNextPage={Boolean(
               hasNextDocumentPage || hasNextTaskPage || hasRelevantNextSourcePage,
             )}

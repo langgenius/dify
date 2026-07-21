@@ -10,6 +10,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
 import { sourceName } from './document-model'
 
 export type DocumentFilter = DocumentDisplayStatus | 'all'
@@ -77,6 +78,7 @@ function TaskTrigger({
 const DocumentRow = memo(
   ({
     document,
+    documentHref,
     formatTimeFromNow,
     onSelectedChange,
     readOnlyReasonId,
@@ -88,6 +90,7 @@ const DocumentRow = memo(
     statusPending,
   }: {
     document: LogicalDocument
+    documentHref: string
     formatTimeFromNow: (time: number) => string
     onSelectedChange: (documentId: string) => void
     readOnlyReasonId?: string
@@ -126,9 +129,13 @@ const DocumentRow = memo(
               aria-hidden
               className="i-ri-file-text-line size-[18px] shrink-0 text-text-tertiary"
             />
-            <span id={titleId} className="truncate system-xs-medium text-text-primary">
+            <Link
+              id={titleId}
+              className="truncate rounded system-xs-medium text-text-primary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              href={documentHref}
+            >
               {document.title}
-            </span>
+            </Link>
             {revision !== undefined && (
               <span className="shrink-0 rounded border border-divider-regular px-1 system-2xs-medium text-text-tertiary">
                 v{revision}
@@ -266,6 +273,7 @@ export function DocumentsList({
   completingResults,
   documents,
   filter,
+  getDocumentHref,
   hasNextPage,
   hasSelectableDocuments,
   hasTaskError,
@@ -301,6 +309,7 @@ export function DocumentsList({
   completingResults: boolean
   documents: LogicalDocument[]
   filter: DocumentFilter
+  getDocumentHref: (documentId: string) => string
   hasNextPage: boolean
   hasSelectableDocuments: boolean
   hasTaskError: boolean
@@ -449,6 +458,7 @@ export function DocumentsList({
               <DocumentRow
                 key={document.id}
                 document={document}
+                documentHref={getDocumentHref(document.id)}
                 formatTimeFromNow={formatTimeFromNow}
                 onSelectedChange={onSelectDocument}
                 readOnlyReasonId={

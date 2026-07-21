@@ -12,6 +12,14 @@ tasks.
 - `crawl-selection-form`
 - `create-knowledge-page`
 - `document-list`
+- `document-chunk-detail`
+- `document-chunk-tree`
+- `document-detail-header`
+- `document-detail-model`
+- `document-detail-queries`
+- `document-detail-page`
+- `document-detail-status`
+- `document-revision-content`
 - `document-model`
 - `documents-page`
 - `knowledge-route-guard`
@@ -24,6 +32,8 @@ tasks.
 - `sources-page`
 - `storage`
 - `task-event-observer`
+- `use-document-task-status`
+- `use-document-reindex`
 - `website-crawl-preview`
 
 ## External Modules
