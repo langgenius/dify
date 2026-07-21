@@ -4,7 +4,7 @@ import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
 
 export const agentComposerPromptAtom = atom(
-  get => get(agentComposerDraftAtom).prompt,
+  (get) => get(agentComposerDraftAtom).prompt,
   (get, set, promptUpdate: DraftFieldUpdate<string>) => {
     const draft = get(agentComposerDraftAtom)
 

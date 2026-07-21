@@ -51,22 +51,14 @@ describe('document-extractor/node', () => {
 
   it('renders nothing when no input variable is configured', () => {
     const { container } = render(
-      <Node
-        id="doc-node"
-        data={createData({ variable_selector: [] })}
-      />,
+      <Node id="doc-node" data={createData({ variable_selector: [] })} />,
     )
 
     expect(container).toBeEmptyDOMElement()
   })
 
   it('renders the selected input variable label', () => {
-    render(
-      <Node
-        id="doc-node"
-        data={createData()}
-      />,
-    )
+    render(<Node id="doc-node" data={createData()} />)
 
     expect(screen.getByText('workflow.nodes.docExtractor.inputVar')).toBeInTheDocument()
     expect(screen.getByText('Input Files:start:node-1.files')).toBeInTheDocument()

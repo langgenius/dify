@@ -12,7 +12,8 @@ const mockToastNotify = vi.fn()
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
-    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    (message: string, options?: { type?: string }) =>
+      mockToastNotify({ type: options?.type, message }),
     {
       success: (message: string) => mockToastNotify({ type: 'success', message }),
       error: (message: string) => mockToastNotify({ type: 'error', message }),
@@ -34,46 +35,40 @@ const failureFlags = {
 }
 
 vi.mock('@/service/use-endpoints', () => ({
-  useEnableEndpoint: ({ onSuccess, onError }: { onSuccess: () => void, onError: () => void }) => ({
+  useEnableEndpoint: ({ onSuccess, onError }: { onSuccess: () => void; onError: () => void }) => ({
     mutate: (id: string) => {
       mockEnableEndpoint(id)
-      if (failureFlags.enable)
-        onError()
-      else
-        onSuccess()
+      if (failureFlags.enable) onError()
+      else onSuccess()
     },
   }),
-  useDisableEndpoint: ({ onSuccess, onError }: { onSuccess: () => void, onError: () => void }) => ({
+  useDisableEndpoint: ({ onSuccess, onError }: { onSuccess: () => void; onError: () => void }) => ({
     mutate: (id: string) => {
       mockDisableEndpoint(id)
-      if (failureFlags.disable)
-        onError()
-      else
-        onSuccess()
+      if (failureFlags.disable) onError()
+      else onSuccess()
     },
   }),
-  useDeleteEndpoint: ({ onSuccess, onError }: { onSuccess: () => void, onError: () => void }) => ({
+  useDeleteEndpoint: ({ onSuccess, onError }: { onSuccess: () => void; onError: () => void }) => ({
     mutate: (id: string) => {
       mockDeleteEndpoint(id)
-      if (failureFlags.delete)
-        onError()
-      else
-        onSuccess()
+      if (failureFlags.delete) onError()
+      else onSuccess()
     },
   }),
-  useUpdateEndpoint: ({ onSuccess, onError }: { onSuccess: () => void, onError: () => void }) => ({
+  useUpdateEndpoint: ({ onSuccess, onError }: { onSuccess: () => void; onError: () => void }) => ({
     mutate: (data: unknown) => {
       mockUpdateEndpoint(data)
-      if (failureFlags.update)
-        onError()
-      else
-        onSuccess()
+      if (failureFlags.update) onError()
+      else onSuccess()
     },
   }),
 }))
 
 vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status: string }) => <span data-testid="indicator" data-status={status} />,
+  StatusDot: ({ status }: { status: string }) => (
+    <span data-testid="indicator" data-status={status} />
+  ),
 }))
 
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
@@ -82,10 +77,14 @@ vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
 }))
 
 vi.mock('../endpoint-modal', () => ({
-  default: ({ onCancel, onSaved }: { onCancel: () => void, onSaved: (state: unknown) => void }) => (
+  default: ({ onCancel, onSaved }: { onCancel: () => void; onSaved: (state: unknown) => void }) => (
     <div data-testid="endpoint-modal">
-      <button data-testid="modal-cancel" onClick={onCancel}>Cancel</button>
-      <button data-testid="modal-save" onClick={() => onSaved({ name: 'Updated' })}>Save</button>
+      <button data-testid="modal-cancel" onClick={onCancel}>
+        Cancel
+      </button>
+      <button data-testid="modal-save" onClick={() => onSaved({ name: 'Updated' })}>
+        Save
+      </button>
     </div>
   ),
 }))
@@ -159,13 +158,25 @@ describe('EndpointCard', () => {
 
   describe('Rendering', () => {
     it('should render endpoint name', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       expect(screen.getByText('Test Endpoint'))!.toBeInTheDocument()
     })
 
     it('should render visible endpoints only', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       expect(screen.getByText('GET'))!.toBeInTheDocument()
       expect(screen.getByText('https://api.example.com/api/test'))!.toBeInTheDocument()
@@ -173,7 +184,13 @@ describe('EndpointCard', () => {
     })
 
     it('should show active status when enabled', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       expect(screen.getByText('plugin.detailPanel.serviceOk'))!.toBeInTheDocument()
       expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-status', 'success')
@@ -181,7 +198,13 @@ describe('EndpointCard', () => {
 
     it('should show disabled status when not enabled', () => {
       const disabledData = { ...mockEndpointData, enabled: false }
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={disabledData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={disabledData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       expect(screen.getByText('plugin.detailPanel.disabled'))!.toBeInTheDocument()
       expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-status', 'disabled')
@@ -190,7 +213,13 @@ describe('EndpointCard', () => {
 
   describe('User Interactions', () => {
     it('should show disable confirm when switching off', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       fireEvent.click(screen.getByRole('switch'))
 
@@ -198,7 +227,13 @@ describe('EndpointCard', () => {
     })
 
     it('should call disableEndpoint when confirm disable', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       fireEvent.click(screen.getByRole('switch'))
       // Click confirm button in the Confirm dialog
@@ -208,7 +243,13 @@ describe('EndpointCard', () => {
     })
 
     it('should show delete confirm when delete clicked', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       const allButtons = screen.getAllByRole('button')
       fireEvent.click(allButtons[1]!)
@@ -217,7 +258,13 @@ describe('EndpointCard', () => {
     })
 
     it('should call deleteEndpoint when confirm delete', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       const allButtons = screen.getAllByRole('button')
       fireEvent.click(allButtons[1]!)
@@ -227,7 +274,13 @@ describe('EndpointCard', () => {
     })
 
     it('should show edit modal when edit clicked', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       const allButtons = screen.getAllByRole('button')
       fireEvent.click(allButtons[0]!)
@@ -236,7 +289,13 @@ describe('EndpointCard', () => {
     })
 
     it('should call updateEndpoint when save in modal', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       const allButtons = screen.getAllByRole('button')
       fireEvent.click(allButtons[0]!)
@@ -249,7 +308,13 @@ describe('EndpointCard', () => {
   describe('Copy Functionality', () => {
     it('should reset copy state after timeout', async () => {
       vi.useFakeTimers()
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       const allButtons = screen.getAllByRole('button')
       fireEvent.click(allButtons[2]!)
@@ -268,14 +333,26 @@ describe('EndpointCard', () => {
         ...mockEndpointData,
         declaration: { settings: [], endpoints: [] },
       }
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={dataWithNoEndpoints} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={dataWithNoEndpoints}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       expect(screen.getByText('Test Endpoint'))!.toBeInTheDocument()
     })
 
     it('should call handleChange after enable', () => {
       const disabledData = { ...mockEndpointData, enabled: false }
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={disabledData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={disabledData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       fireEvent.click(screen.getByRole('switch'))
 
@@ -283,7 +360,13 @@ describe('EndpointCard', () => {
     })
 
     it('should hide disable confirm and revert state when cancel clicked', async () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       fireEvent.click(screen.getByRole('switch'))
       expect(screen.getByText('plugin.detailPanel.endpointDisableTip'))!.toBeInTheDocument()
@@ -295,7 +378,13 @@ describe('EndpointCard', () => {
     })
 
     it('should hide delete confirm when cancel clicked', async () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       const allButtons = screen.getAllByRole('button')
       fireEvent.click(allButtons[1]!)
@@ -306,7 +395,13 @@ describe('EndpointCard', () => {
     })
 
     it('should hide edit modal when cancel clicked', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       const allButtons = screen.getAllByRole('button')
       fireEvent.click(allButtons[0]!)
@@ -322,7 +417,13 @@ describe('EndpointCard', () => {
     it('should show error toast when enable fails', () => {
       failureFlags.enable = true
       const disabledData = { ...mockEndpointData, enabled: false }
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={disabledData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={disabledData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       fireEvent.click(screen.getByRole('switch'))
 
@@ -331,7 +432,13 @@ describe('EndpointCard', () => {
 
     it('should show error toast when disable fails', () => {
       failureFlags.disable = true
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       fireEvent.click(screen.getByRole('switch'))
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
@@ -341,7 +448,13 @@ describe('EndpointCard', () => {
 
     it('should show error toast when delete fails', () => {
       failureFlags.delete = true
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       const allButtons = screen.getAllByRole('button')
       fireEvent.click(allButtons[1]!)
@@ -351,7 +464,13 @@ describe('EndpointCard', () => {
     })
 
     it('should show error toast when update fails', () => {
-      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
 
       const allButtons = screen.getAllByRole('button')
       fireEvent.click(allButtons[0]!)

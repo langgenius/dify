@@ -1,3 +1,4 @@
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
@@ -523,24 +524,36 @@ def test_success_output_adapter_maps_backend_usage_to_llm_usage_and_metadata():
             source_event_id="2-0",
             output={"summary": "ok"},
             session_snapshot=CompositorSessionSnapshot(layers=[]),
+            usage={
+                "prompt_tokens": 10,
+                "prompt_unit_price": "5",
+                "prompt_price_unit": "0.000001",
+                "prompt_price": "0.000050",
+                "completion_tokens": 5,
+                "completion_unit_price": "30",
+                "completion_price_unit": "0.000001",
+                "completion_price": "0.000150",
+                "total_tokens": 15,
+                "total_price": "0.000200",
+                "currency": "USD",
+                "latency": 0.5,
+            },
         ),
         inputs={},
         process_data={},
-        metadata={
-            "agent_backend": {
-                "usage": {
-                    "prompt_tokens": 10,
-                    "completion_tokens": 5,
-                    "total_tokens": 15,
-                }
-            }
-        },
+        metadata={},
     )
 
     assert result.llm_usage.prompt_tokens == 10
     assert result.llm_usage.completion_tokens == 5
     assert result.llm_usage.total_tokens == 15
+    assert result.llm_usage.prompt_price == Decimal("0.000050")
+    assert result.llm_usage.completion_price == Decimal("0.000150")
+    assert result.llm_usage.total_price == Decimal("0.000200")
+    assert result.llm_usage.currency == "USD"
     assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 15
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == Decimal("0.000200")
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] == "USD"
 
 
 def test_failure_output_adapter_maps_cancelled_to_failure_code():

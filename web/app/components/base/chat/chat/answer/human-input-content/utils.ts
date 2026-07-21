@@ -25,40 +25,40 @@ dayjs.extend(relativeTime)
 dayjs.extend(isSameOrAfter)
 
 export const getButtonStyle = (style: UserActionButtonType) => {
-  if (style === UserActionButtonType.Primary)
-    return 'primary'
-  if (style === UserActionButtonType.Default)
-    return 'secondary'
-  if (style === UserActionButtonType.Accent)
-    return 'secondary-accent'
-  if (style === UserActionButtonType.Ghost)
-    return 'ghost'
+  if (style === UserActionButtonType.Primary) return 'primary'
+  if (style === UserActionButtonType.Default) return 'secondary'
+  if (style === UserActionButtonType.Accent) return 'secondary-accent'
+  if (style === UserActionButtonType.Ghost) return 'ghost'
 }
 
 export const splitByOutputVar = (content: string): string[] => {
   const outputVarRegex = /(\{\{#\$output\.[^#]+#\}\})/g
   const parts = content.split(outputVarRegex)
-  return parts.filter(part => part.length > 0)
+  return parts.filter((part) => part.length > 0)
 }
 
 export const getFormContentInputNames = (content: string) => {
   const outputVarRegex = /\{\{#\$output\.([^#]+)#\}\}/g
-  return [...content.matchAll(outputVarRegex)].map(match => match[1]!)
+  return [...content.matchAll(outputVarRegex)].map((match) => match[1]!)
 }
 
 export const getRenderedFormInputs = (formInputs: FormInputItem[], content: string) => {
   const inputNames = new Set(getFormContentInputNames(content))
-  return formInputs.filter(input => inputNames.has(input.output_variable_name))
+  return formInputs.filter((input) => inputNames.has(input.output_variable_name))
 }
 
-export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Record<string, HumanInputResolvedValue> = {}) => {
+export const initializeInputs = (
+  formInputs: FormInputItem[],
+  defaultValues: Record<string, HumanInputResolvedValue> = {},
+) => {
   const initialInputs: Record<string, HumanInputFieldValue> = {}
   formInputs.forEach((item) => {
     if (isParagraphFormInput(item)) {
       const resolvedValue = defaultValues[item.output_variable_name]
-      initialInputs[item.output_variable_name] = item.default.type === 'variable' && typeof resolvedValue === 'string'
-        ? resolvedValue
-        : item.default.value
+      initialInputs[item.output_variable_name] =
+        item.default.type === 'variable' && typeof resolvedValue === 'string'
+          ? resolvedValue
+          : item.default.value
       return
     }
 
@@ -80,16 +80,16 @@ export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Rec
 }
 
 const isHumanInputFileUploaded = (value: HumanInputFieldValue | undefined) => {
-  return !!value
-    && !Array.isArray(value)
-    && typeof value !== 'string'
-    && !!fileIsUploaded(value as FileEntity)
+  return (
+    !!value &&
+    !Array.isArray(value) &&
+    typeof value !== 'string' &&
+    !!fileIsUploaded(value as FileEntity)
+  )
 }
 
 const hasUploadedHumanInputFiles = (value: HumanInputFieldValue | undefined) => {
-  return Array.isArray(value)
-    && value.length > 0
-    && value.every(file => !!fileIsUploaded(file))
+  return Array.isArray(value) && value.length > 0 && value.every((file) => !!fileIsUploaded(file))
 }
 
 export const hasInvalidSelectOrFileInput = (
@@ -97,19 +97,18 @@ export const hasInvalidSelectOrFileInput = (
   values: Record<string, HumanInputFieldValue>,
 ) => {
   return formInputs.some((input) => {
-    if (!(input.output_variable_name in values))
-      return false
+    if (!(input.output_variable_name in values)) return false
 
     const value = values[input.output_variable_name]
 
-    if (isSelectFormInput(input))
-      return typeof value !== 'string' || value.length === 0
+    if (isSelectFormInput(input)) return typeof value !== 'string' || value.length === 0
 
     if (isFileFormInput(input))
-      return Array.isArray(value) ? !hasUploadedHumanInputFiles(value) : !isHumanInputFileUploaded(value)
+      return Array.isArray(value)
+        ? !hasUploadedHumanInputFiles(value)
+        : !isHumanInputFileUploaded(value)
 
-    if (isFileListFormInput(input))
-      return !hasUploadedHumanInputFiles(value)
+    if (isFileListFormInput(input)) return !hasUploadedHumanInputFiles(value)
 
     return false
   })
@@ -120,22 +119,20 @@ export const hasInvalidRequiredHumanInput = (
   values: Record<string, HumanInputFieldValue>,
 ) => {
   return formInputs.some((input) => {
-    if (!(input.output_variable_name in values))
-      return false
+    if (!(input.output_variable_name in values)) return false
 
     const value = values[input.output_variable_name]
 
-    if (isParagraphFormInput(input))
-      return typeof value !== 'string' || value.trim().length === 0
+    if (isParagraphFormInput(input)) return typeof value !== 'string' || value.trim().length === 0
 
-    if (isSelectFormInput(input))
-      return typeof value !== 'string' || value.length === 0
+    if (isSelectFormInput(input)) return typeof value !== 'string' || value.length === 0
 
     if (isFileFormInput(input))
-      return Array.isArray(value) ? !hasUploadedHumanInputFiles(value) : !isHumanInputFileUploaded(value)
+      return Array.isArray(value)
+        ? !hasUploadedHumanInputFiles(value)
+        : !isHumanInputFileUploaded(value)
 
-    if (isFileListFormInput(input))
-      return !hasUploadedHumanInputFiles(value)
+    if (isFileListFormInput(input)) return !hasUploadedHumanInputFiles(value)
 
     return false
   })
@@ -145,8 +142,7 @@ export const getProcessedHumanInputFormInputs = (
   formInputs: FormInputItem[],
   values: Record<string, HumanInputFieldValue> | undefined,
 ) => {
-  if (!values)
-    return undefined
+  if (!values) return undefined
 
   const processedInputs: Record<string, unknown> = { ...values }
 
@@ -166,9 +162,8 @@ export const getProcessedHumanInputFormInputs = (
         return
       }
 
-      processedInputs[input.output_variable_name] = value && typeof value !== 'string'
-        ? getProcessedFiles([value as FileEntity])[0]
-        : undefined
+      processedInputs[input.output_variable_name] =
+        value && typeof value !== 'string' ? getProcessedFiles([value as FileEntity])[0] : undefined
     }
   })
 
@@ -182,16 +177,10 @@ const localeMap: Record<string, string> = {
   'nl-NL': 'nl',
 }
 
-export const getRelativeTime = (
-  utcTimestamp: string | number,
-  locale: Locale = 'en-US',
-) => {
+export const getRelativeTime = (utcTimestamp: string | number, locale: Locale = 'en-US') => {
   const dayjsLocale = localeMap[locale] ?? 'en'
 
-  return dayjs
-    .utc(utcTimestamp)
-    .locale(dayjsLocale)
-    .fromNow()
+  return dayjs.utc(utcTimestamp).locale(dayjsLocale).fromNow()
 }
 
 export const isRelativeTimeSameOrAfter = (utcTimestamp: string | number) => {

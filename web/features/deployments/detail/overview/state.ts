@@ -19,6 +19,12 @@ export const deploymentOverviewQueryAtom = atomWithQuery((get) => {
   })
 })
 
-export const deploymentOverviewAtom = selectAtom(deploymentOverviewQueryAtom, query => query.data)
-export const deploymentOverviewIsLoadingAtom = selectAtom(deploymentOverviewQueryAtom, query => query.isLoading)
-export const deploymentOverviewIsErrorAtom = selectAtom(deploymentOverviewQueryAtom, query => query.isError)
+export const deploymentOverviewAtom = selectAtom(deploymentOverviewQueryAtom, (query) => query.data)
+export const deploymentOverviewIsLoadingAtom = selectAtom(
+  deploymentOverviewQueryAtom,
+  (query) => query.isLoading,
+)
+export const deploymentOverviewIsErrorAtom = selectAtom(
+  deploymentOverviewQueryAtom,
+  (query) => query.isError,
+)

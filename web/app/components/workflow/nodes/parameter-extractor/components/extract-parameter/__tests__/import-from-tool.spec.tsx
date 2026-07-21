@@ -2,10 +2,13 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { createTool, createToolProvider } from '@/app/components/workflow/block-selector/__tests__/factories'
+import {
+  createTool,
+  createToolProvider,
+} from '@/app/components/workflow/block-selector/__tests__/factories'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import ImportFromTool from '../import-from-tool'
 
 vi.mock('reactflow', () => ({
@@ -41,11 +44,17 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useLanguage: () => 'en_US',
 }))
 
-const createProviderWithTool = (type: CollectionType, providerId: string, toolName: string, toolLabel: string) => createToolProvider({
-  id: providerId,
-  type,
-  tools: [createTool(toolName, toolLabel)],
-})
+const createProviderWithTool = (
+  type: CollectionType,
+  providerId: string,
+  toolName: string,
+  toolLabel: string,
+) =>
+  createToolProvider({
+    id: providerId,
+    type,
+    tools: [createTool(toolName, toolLabel)],
+  })
 
 const createToolParameter = (overrides: Partial<ToolParameter> = {}): ToolParameter => ({
   name: 'field',
@@ -61,17 +70,14 @@ const createToolParameter = (overrides: Partial<ToolParameter> = {}): ToolParame
 })
 
 const renderImportFromTool = (ui: React.ReactElement) => {
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: false },
   })
-  return renderWorkflowComponent(
-    <SystemFeaturesWrapper>{ui}</SystemFeaturesWrapper>,
-    {
-      hooksStoreProps: {
-        availableNodesMetaData: { nodes: [] },
-      },
+  return renderWorkflowComponent(<ConsoleQueryWrapper>{ui}</ConsoleQueryWrapper>, {
+    hooksStoreProps: {
+      availableNodesMetaData: { nodes: [] },
     },
-  )
+  })
 }
 
 describe('parameter-extractor/extract-parameter/import-from-tool', () => {
@@ -85,7 +91,12 @@ describe('parameter-extractor/extract-parameter/import-from-tool', () => {
   it('imports llm parameters from a built-in tool through the real block selector', async () => {
     const user = userEvent.setup()
     const handleImport = vi.fn()
-    const provider = createProviderWithTool(CollectionType.builtIn, 'provider-1', 'search', 'Search Tool')
+    const provider = createProviderWithTool(
+      CollectionType.builtIn,
+      'provider-1',
+      'search',
+      'Search Tool',
+    )
     const builtInParameters = [
       createToolParameter({
         name: 'city',
@@ -113,20 +124,27 @@ describe('parameter-extractor/extract-parameter/import-from-tool', () => {
     await user.click(await screen.findByText('Search Tool'))
 
     await waitFor(() => {
-      expect(handleImport).toHaveBeenCalledWith([{
-        name: 'city',
-        type: 'string',
-        required: true,
-        description: 'City name',
-        options: ['Draft'],
-      }])
+      expect(handleImport).toHaveBeenCalledWith([
+        {
+          name: 'city',
+          type: 'string',
+          required: true,
+          description: 'City name',
+          options: ['Draft'],
+        },
+      ])
     })
   })
 
   it('imports llm parameters from workflow tool collections', async () => {
     const user = userEvent.setup()
     const handleImport = vi.fn()
-    const provider = createProviderWithTool(CollectionType.workflow, 'workflow-1', 'transform', 'Workflow Tool')
+    const provider = createProviderWithTool(
+      CollectionType.workflow,
+      'workflow-1',
+      'transform',
+      'Workflow Tool',
+    )
     const workflowParameters = [
       createToolParameter({
         name: 'summary',
@@ -144,13 +162,15 @@ describe('parameter-extractor/extract-parameter/import-from-tool', () => {
     await user.click(await screen.findByText('Workflow Tool'))
 
     await waitFor(() => {
-      expect(handleImport).toHaveBeenCalledWith([{
-        name: 'summary',
-        type: 'string',
-        required: false,
-        description: 'Summary text',
-        options: [],
-      }])
+      expect(handleImport).toHaveBeenCalledWith([
+        {
+          name: 'summary',
+          type: 'string',
+          required: false,
+          description: 'Summary text',
+          options: [],
+        },
+      ])
     })
   })
 })

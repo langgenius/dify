@@ -5,7 +5,7 @@ export const SubjectType = {
   ACCOUNT: 'account',
 } as const
 
-export type SubjectType = typeof SubjectType[keyof typeof SubjectType]
+export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType]
 
 export const AccessMode = {
   PUBLIC: 'public',
@@ -14,7 +14,13 @@ export const AccessMode = {
   EXTERNAL_MEMBERS: 'sso_verified',
 } as const
 
-export type AccessMode = typeof AccessMode[keyof typeof AccessMode]
+export type AccessMode = (typeof AccessMode)[keyof typeof AccessMode]
+
+const accessModes = new Set<string>(Object.values(AccessMode))
+
+export function isAccessMode(accessMode: string | null | undefined): accessMode is AccessMode {
+  return !!accessMode && accessModes.has(accessMode)
+}
 
 export type AccessControlGroup = {
   id: string
@@ -30,8 +36,16 @@ export type AccessControlAccount = {
   avatarUrl: string
 }
 
-export type SubjectGroup = { subjectId: string, subjectType: SubjectType, groupData: AccessControlGroup }
-export type SubjectAccount = { subjectId: string, subjectType: SubjectType, accountData: AccessControlAccount }
+export type SubjectGroup = {
+  subjectId: string
+  subjectType: SubjectType
+  groupData: AccessControlGroup
+}
+export type SubjectAccount = {
+  subjectId: string
+  subjectType: SubjectType
+  accountData: AccessControlAccount
+}
 
 export type Subject = SubjectGroup | SubjectAccount
 
@@ -259,8 +273,10 @@ type RemoveResourceAccessPolicyMemberBindingsRequest = {
   accountIds: string[]
 }
 
-export type RemoveAppAccessPolicyMemberBindingsRequest = RemoveResourceAccessPolicyMemberBindingsRequest
+export type RemoveAppAccessPolicyMemberBindingsRequest =
+  RemoveResourceAccessPolicyMemberBindingsRequest
 
-export type RemoveDatasetAccessPolicyMemberBindingsRequest = RemoveResourceAccessPolicyMemberBindingsRequest
+export type RemoveDatasetAccessPolicyMemberBindingsRequest =
+  RemoveResourceAccessPolicyMemberBindingsRequest
 
 export type ResourceOpenScope = 'all' | 'only_me' | 'specific'

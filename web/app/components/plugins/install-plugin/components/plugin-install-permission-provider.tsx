@@ -54,8 +54,7 @@ export const PluginInstallPermissionProviderGuard = ({
 }: PluginInstallPermissionProviderProps) => {
   const store = use(PluginInstallPermissionContext)
 
-  if (store)
-    return children
+  if (store) return children
 
   return (
     <PluginInstallPermissionProvider

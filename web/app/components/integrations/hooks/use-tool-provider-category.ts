@@ -8,8 +8,8 @@ const isToolProviderCategory = (value: string): value is ToolCategory => {
   return toolProviderCategorySet.has(value)
 }
 
-const parseAsToolProviderCategory = parseAsStringLiteral(TOOL_CATEGORY_VALUES)
-  .withDefault('builtin')
+const parseAsToolProviderCategory =
+  parseAsStringLiteral(TOOL_CATEGORY_VALUES).withDefault('builtin')
 
 export function useToolProviderCategory(category?: ToolCategory) {
   const [categoryParam, setCategoryParam] = useQueryState('category', parseAsToolProviderCategory)
@@ -17,13 +17,11 @@ export function useToolProviderCategory(category?: ToolCategory) {
   const isRouteCategory = !!category
 
   const handleCategoryChange = (state: string, onCategoryChanged?: () => void) => {
-    if (!isToolProviderCategory(state))
-      return
+    if (!isToolProviderCategory(state)) return
 
     setCategoryParam(state)
 
-    if (state !== activeTab)
-      onCategoryChanged?.()
+    if (state !== activeTab) onCategoryChanged?.()
   }
 
   return {

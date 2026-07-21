@@ -14,9 +14,12 @@ import {
 
 describe('workflow-panel helpers', () => {
   const asToolList = (tools: Array<Partial<ToolWithProvider>>) => tools as ToolWithProvider[]
-  const asTriggerList = (triggers: Array<Partial<TriggerWithProvider>>) => triggers as TriggerWithProvider[]
+  const asTriggerList = (triggers: Array<Partial<TriggerWithProvider>>) =>
+    triggers as TriggerWithProvider[]
   const asNodeData = (data: Partial<Node['data']>) => data as Node['data']
-  const createCustomRunFormProps = (payload: Partial<CustomRunFormProps['payload']>): CustomRunFormProps => ({
+  const createCustomRunFormProps = (
+    payload: Partial<CustomRunFormProps['payload']>,
+  ): CustomRunFormProps => ({
     nodeId: 'node-1',
     flowId: 'flow-1',
     flowType: 'app' as CustomRunFormProps['flowType'],
@@ -52,25 +55,42 @@ describe('workflow-panel helpers', () => {
       const storeTools = [{ id: 'legacy/tool', allow_delete: false }]
       const queryTools = [{ id: 'provider/tool', allow_delete: true }]
 
-      expect(getCurrentToolCollection(asToolList(queryTools), asToolList(storeTools), 'provider/tool')).toEqual(queryTools[0])
+      expect(
+        getCurrentToolCollection(asToolList(queryTools), asToolList(storeTools), 'provider/tool'),
+      ).toEqual(queryTools[0])
     })
 
     it('should fall back to store data when query data is unavailable', () => {
       const storeTools = [{ id: 'provider/tool', allow_delete: false }]
 
-      expect(getCurrentToolCollection(undefined, asToolList(storeTools), 'provider/tool')).toEqual(storeTools[0])
+      expect(getCurrentToolCollection(undefined, asToolList(storeTools), 'provider/tool')).toEqual(
+        storeTools[0],
+      )
     })
 
     it('should resolve the current trigger plugin and datasource only for matching node types', () => {
       const triggerData = asNodeData({ type: BlockEnum.TriggerPlugin, plugin_id: 'trigger-1' })
-      const dataSourceData = asNodeData({ type: BlockEnum.DataSource, plugin_id: 'source-1', provider_type: 'remote' })
+      const dataSourceData = asNodeData({
+        type: BlockEnum.DataSource,
+        plugin_id: 'source-1',
+        provider_type: 'remote',
+      })
       const triggerPlugins = [{ plugin_id: 'trigger-1', id: '1' }]
       const dataSources = [{ plugin_id: 'source-1' }]
 
-      expect(getCurrentTriggerPlugin(triggerData, asTriggerList(triggerPlugins))).toEqual(triggerPlugins[0])
+      expect(getCurrentTriggerPlugin(triggerData, asTriggerList(triggerPlugins))).toEqual(
+        triggerPlugins[0],
+      )
       expect(getCurrentDataSource(dataSourceData, dataSources)).toEqual(dataSources[0])
-      expect(getCurrentTriggerPlugin(asNodeData({ type: BlockEnum.Tool }), asTriggerList(triggerPlugins))).toBeUndefined()
-      expect(getCurrentDataSource(asNodeData({ type: BlockEnum.Tool }), dataSources)).toBeUndefined()
+      expect(
+        getCurrentTriggerPlugin(
+          asNodeData({ type: BlockEnum.Tool }),
+          asTriggerList(triggerPlugins),
+        ),
+      ).toBeUndefined()
+      expect(
+        getCurrentDataSource(asNodeData({ type: BlockEnum.Tool }), dataSources),
+      ).toBeUndefined()
     })
   })
 

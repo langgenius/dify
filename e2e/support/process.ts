@@ -64,14 +64,11 @@ export const waitForUrl = async (
         const response = await fetch(url, {
           signal: controller.signal,
         })
-        if (response.ok)
-          return
-      }
-      finally {
+        if (response.ok) return
+      } finally {
         clearTimeout(timeout)
       }
-    }
-    catch {
+    } catch {
       // Keep polling until timeout.
     }
 
@@ -144,8 +141,7 @@ const waitForProcessExit = (childProcess: ChildProcess, timeoutMs: number) =>
 
 const signalManagedProcess = (childProcess: ChildProcess, signal: NodeJS.Signals) => {
   const { pid } = childProcess
-  if (!pid)
-    return
+  if (!pid) return
 
   try {
     if (process.platform !== 'win32') {
@@ -154,15 +150,13 @@ const signalManagedProcess = (childProcess: ChildProcess, signal: NodeJS.Signals
     }
 
     childProcess.kill(signal)
-  }
-  catch {
+  } catch {
     // Best-effort shutdown. Cleanup continues even when the process is already gone.
   }
 }
 
 export const stopManagedProcess = async (managedProcess?: ManagedProcess) => {
-  if (!managedProcess)
-    return
+  if (!managedProcess) return
 
   const { childProcess, logStream } = managedProcess
 

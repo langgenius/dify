@@ -16,7 +16,8 @@ const expectedAppACLPermissionKeys = [
   'app.acl.access_config',
 ]
 
-const getPermissionKeyMatcher = (permissionKey: string) => new RegExp(permissionKey.replaceAll('.', '\\.'))
+const getPermissionKeyMatcher = (permissionKey: string) =>
+  new RegExp(permissionKey.replaceAll('.', '\\.'))
 
 const mockCatalogs = vi.hoisted(() => ({
   app: {
@@ -40,7 +41,7 @@ const createPermissionGroup = (overrides: Partial<PermissionGroup> = {}): Permis
   group_key: 'app_management',
   group_name: 'App management',
   description: '',
-  permissions: expectedAppACLPermissionKeys.map(permissionKey => ({
+  permissions: expectedAppACLPermissionKeys.map((permissionKey) => ({
     key: permissionKey,
     name: permissionKey,
     description: '',
@@ -80,10 +81,15 @@ describe('PermissionSetModal', () => {
         />,
       )
 
-      expect(screen.getByText('permission.permissionSet.modal.create.app.title')).toBeInTheDocument()
+      expect(
+        screen.getByText('permission.permissionSet.modal.create.app.title'),
+      ).toBeInTheDocument()
       expect(screen.getByLabelText(/permission\.permissionSet\.nameLabel/)).toBeInTheDocument()
       expect(screen.getByLabelText('permission.permissionSet.descriptionLabel')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /App management/ })).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByRole('button', { name: /App management/ })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
       expect(screen.getByText(/app\.acl\.edit/)).toBeInTheDocument()
     })
 
@@ -113,7 +119,9 @@ describe('PermissionSetModal', () => {
         />,
       )
 
-      expect(screen.getByText('permission.permissionSet.modal.create.dataset.title')).toBeInTheDocument()
+      expect(
+        screen.getByText('permission.permissionSet.modal.create.dataset.title'),
+      ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Dataset management/ })).toBeInTheDocument()
       expect(screen.getByText(/dataset\.acl\.edit/)).toBeInTheDocument()
     })
@@ -136,8 +144,14 @@ describe('PermissionSetModal', () => {
         />,
       )
 
-      await user.type(screen.getByLabelText(/permission\.permissionSet\.nameLabel/), '  Custom app rule  ')
-      await user.type(screen.getByLabelText('permission.permissionSet.descriptionLabel'), '  Can edit apps  ')
+      await user.type(
+        screen.getByLabelText(/permission\.permissionSet\.nameLabel/),
+        '  Custom app rule  ',
+      )
+      await user.type(
+        screen.getByLabelText('permission.permissionSet.descriptionLabel'),
+        '  Can edit apps  ',
+      )
       await user.click(screen.getByText(/app\.acl\.release_and_version/))
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
@@ -203,9 +217,13 @@ describe('PermissionSetModal', () => {
 
       expect(screen.getByLabelText(/permission\.permissionSet\.nameLabel/)).toBeDisabled()
       expect(screen.getByLabelText('permission.permissionSet.descriptionLabel')).toBeDisabled()
-      expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.confirm' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'permission.permissionList.clearAll' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'permission.permissionList.clearAll' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

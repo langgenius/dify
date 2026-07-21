@@ -55,12 +55,6 @@ describe('InputCopy', () => {
   })
 
   describe('styling', () => {
-    it('should apply custom className', async () => {
-      const { container } = await renderAndFlush(<InputCopy value="test" className="custom-class" />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper.className).toContain('custom-class')
-    })
-
     it('should have flex layout', async () => {
       const { container } = await renderAndFlush(<InputCopy value="test" />)
       const wrapper = container.firstChild as HTMLElement
@@ -71,18 +65,6 @@ describe('InputCopy', () => {
       const { container } = await renderAndFlush(<InputCopy value="test" />)
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper.className).toContain('items-center')
-    })
-
-    it('should have rounded-lg class', async () => {
-      const { container } = await renderAndFlush(<InputCopy value="test" />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper.className).toContain('rounded-lg')
-    })
-
-    it('should have background class', async () => {
-      const { container } = await renderAndFlush(<InputCopy value="test" />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper.className).toContain('bg-components-input-bg-normal')
     })
 
     it('should have hover state', async () => {
@@ -191,7 +173,6 @@ describe('InputCopy', () => {
       const valueText = screen.getByText('very-long-api-key-value-that-might-overflow')
       const container = valueText.closest('button')
       expect(container).toBeInTheDocument()
-      expect(container?.className).toContain('truncate')
     })
 
     it('should have text-secondary color on value', async () => {

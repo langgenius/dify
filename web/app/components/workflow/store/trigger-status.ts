@@ -19,7 +19,7 @@ export const useTriggerStatusStore = create<TriggerStatusState>()(
     triggerStatuses: {},
 
     setTriggerStatus: (nodeId: string, status: EntryNodeStatus) => {
-      set(state => ({
+      set((state) => ({
         triggerStatuses: {
           ...state.triggerStatuses,
           [nodeId]: status,

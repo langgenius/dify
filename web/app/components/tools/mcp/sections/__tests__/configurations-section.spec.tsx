@@ -12,20 +12,13 @@ describe('ConfigurationsSection', () => {
   const getVisibleNumberInputs = () => screen.getAllByRole('textbox')
   const getVisibleNumberInput = (index: number) => {
     const input = getVisibleNumberInputs()[index]
-    if (!input)
-      throw new Error(`Expected number input at index ${index}`)
+    if (!input) throw new Error(`Expected number input at index ${index}`)
     return input
   }
   const getTimeoutInput = () => getVisibleNumberInput(0)
   const getSseReadTimeoutInput = () => getVisibleNumberInput(1)
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ConfigurationsSection {...defaultProps} />)
-      expect(getTimeoutInput()).toHaveValue('30')
-      expect(getSseReadTimeoutInput()).toHaveValue('300')
-    })
-
     it('should render timeout input with correct value', () => {
       render(<ConfigurationsSection {...defaultProps} />)
       expect(getTimeoutInput()).toHaveValue('30')
@@ -69,7 +62,9 @@ describe('ConfigurationsSection', () => {
 
     it('should call onSseReadTimeoutChange when SSE timeout input changes', () => {
       const onSseReadTimeoutChange = vi.fn()
-      render(<ConfigurationsSection {...defaultProps} onSseReadTimeoutChange={onSseReadTimeoutChange} />)
+      render(
+        <ConfigurationsSection {...defaultProps} onSseReadTimeoutChange={onSseReadTimeoutChange} />,
+      )
 
       const sseInput = getSseReadTimeoutInput()
       fireEvent.change(sseInput, { target: { value: '500' } })

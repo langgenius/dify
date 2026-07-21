@@ -1,12 +1,12 @@
 import type { PermissionKeysResponse } from '@/models/access-control'
 import { queryOptions } from '@tanstack/react-query'
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { get } from '../base'
 
 const NAME_SPACE = 'workspace-permission-keys'
 
 const workspacePermissionKeysQueryKey = (workspaceId?: string) => {
-  return workspaceId ? [NAME_SPACE, workspaceId] as const : [NAME_SPACE] as const
+  return workspaceId ? ([NAME_SPACE, workspaceId] as const) : ([NAME_SPACE] as const)
 }
 
 export const workspacePermissionKeysQueryOptions = (workspaceId?: string) => {

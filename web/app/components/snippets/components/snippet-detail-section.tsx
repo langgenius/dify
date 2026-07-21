@@ -11,18 +11,24 @@ type SnippetDetailSectionProps = {
 }
 
 export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
-  const snippetNavigation = useSnippetDetailStore(useShallow(state => ({
-    onFieldsChange: state.onFieldsChange,
-    readonly: state.readonly,
-    snippet: state.snippet,
-  })))
-  const snippetInputFields = useSnippetDraftStore(state => state.inputFields)
+  const snippetNavigation = useSnippetDetailStore(
+    useShallow((state) => ({
+      onFieldsChange: state.onFieldsChange,
+      readonly: state.readonly,
+      snippet: state.snippet,
+    })),
+  )
+  const snippetInputFields = useSnippetDraftStore((state) => state.inputFields)
 
   if (!expand)
-    return <SnippetCollapsedPreview inputFieldCount={snippetInputFields.length} snippetId={snippetNavigation.snippet?.id} />
+    return (
+      <SnippetCollapsedPreview
+        inputFieldCount={snippetInputFields.length}
+        snippetId={snippetNavigation.snippet?.id}
+      />
+    )
 
-  if (!snippetNavigation.snippet || !snippetNavigation.onFieldsChange)
-    return null
+  if (!snippetNavigation.snippet || !snippetNavigation.onFieldsChange) return null
 
   return (
     <SnippetSidebarContent

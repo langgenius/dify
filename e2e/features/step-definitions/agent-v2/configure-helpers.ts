@@ -12,17 +12,16 @@ import {
 
 export const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)
-  if (!agentId)
-    throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
+  if (!agentId) throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
 
   return agentId
 }
 
 export const getPreseededAgent = (world: DifyWorld, name: string) => {
-  const resource = world.agentBuilder.preflight.preseededResources[name]
+  const resource = world.agentBuilder.fixtures.preseededResources[name]
   if (!resource || resource.kind !== 'agent') {
     throw new Error(
-      `Preseeded Agent "${name}" is not available. Run the matching preflight step first.`,
+      `Preseeded Agent "${name}" is not available. Run the matching fixture setup step first.`,
     )
   }
 
@@ -40,10 +39,8 @@ const getPreseededToolDisplayParts = (displayName: string) => {
 export const getEnvVariableKey = (variable: AgentComposerEnvVariable) =>
   variable.key ?? variable.name ?? variable.variable
 
-export const getAgentEnvVariableValue = (
-  variables: AgentComposerEnvVariable[],
-  key: string,
-) => variables.find(variable => getEnvVariableKey(variable) === key)?.value
+export const getAgentEnvVariableValue = (variables: AgentComposerEnvVariable[], key: string) =>
+  variables.find((variable) => getEnvVariableKey(variable) === key)?.value
 
 export const getAgentEnvVariables = async (agentId: string) =>
   (await getAgentComposerDraft(agentId)).agent_soul?.env?.variables ?? []
@@ -66,14 +63,15 @@ export const uploadAgentConfigFile = async (
   await (await fileChooserPromise).setFiles(filePath)
   await expect(dialog.getByText(fileName)).toBeVisible()
 
-  const commitResponsePromise = page.waitForResponse(response => (
-    response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/config/files`)
-  ))
+  const commitResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/config/files`),
+  )
   await dialog.getByRole('button', { name: 'Upload' }).click()
   const commitResponse = await commitResponsePromise
   expect(commitResponse.status()).toBe(201)
-  const committed = await commitResponse.json() as { file?: { name?: string } }
+  const committed = (await commitResponse.json()) as { file?: { name?: string } }
   await expect(dialog).not.toBeVisible({ timeout: 30_000 })
 
   const committedName = committed.file?.name
@@ -118,20 +116,23 @@ export const expectAgentConfigFileSaved = async (
   const fileName = agentBuilderTestMaterials[material]
 
   await expect
-    .poll(async () => {
-      const file = (await getAgentComposerDraft(agentId)).agent_soul?.config_files?.find(
-        file => file.name === fileName,
-      )
+    .poll(
+      async () => {
+        const file = (await getAgentComposerDraft(agentId)).agent_soul?.config_files?.find(
+          (file) => file.name === fileName,
+        )
 
-      return file
-        ? {
-            name: file.name,
-            size: file.size,
-          }
-        : undefined
-    }, {
-      timeout: 30_000,
-    })
+        return file
+          ? {
+              name: file.name,
+              size: file.size,
+            }
+          : undefined
+      },
+      {
+        timeout: 30_000,
+      },
+    )
     .toEqual({
       name: fileName,
       size: options?.size ?? expect.anything(),
@@ -160,14 +161,66 @@ export const uploadSummaryConfigSkillForBuildDraft = async (world: DifyWorld) =>
 
 export const openAgentAdvancedSettings = async (page: ReturnType<DifyWorld['getPage']>) => {
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+  const trigger = advancedSettings
+    .getByRole('heading', { name: 'Advanced Settings' })
+    .getByRole('button')
   const envEditorHeading = advancedSettings.getByRole('heading', { name: 'Env Editor' })
 
-  if (!await envEditorHeading.isVisible().catch(() => false))
-    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
-
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await trigger.click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await expect(envEditorHeading).toBeVisible()
 
   return advancedSettings
+}
+
+const findAgentEnvVariableRows = async (advancedSettings: Locator, key: string) => {
+  const matchingRows: Locator[] = []
+
+  for (const row of await advancedSettings.getByRole('row').all()) {
+    const keyInput = row.getByRole('textbox', { name: 'Key' })
+    if ((await keyInput.count()) === 1 && (await keyInput.inputValue()) === key)
+      matchingRows.push(row)
+  }
+
+  return matchingRows
+}
+
+export const getAgentEnvVariableRow = async (advancedSettings: Locator, key: string) => {
+  let matchingRows: Locator[] = []
+
+  await expect
+    .poll(
+      async () => {
+        matchingRows = await findAgentEnvVariableRows(advancedSettings, key)
+        return matchingRows.length
+      },
+      { timeout: 30_000 },
+    )
+    .toBeGreaterThan(0)
+
+  return matchingRows[0]!
+}
+
+export const expectAgentEnvVariableAbsent = async (advancedSettings: Locator, key: string) => {
+  await expect
+    .poll(async () => (await findAgentEnvVariableRows(advancedSettings, key)).length)
+    .toBe(0)
+}
+
+export const expectAgentEnvVariableRows = async (
+  advancedSettings: Locator,
+  key: string,
+  value: string,
+) => {
+  await getAgentEnvVariableRow(advancedSettings, key)
+  const variableRows = await findAgentEnvVariableRows(advancedSettings, key)
+
+  for (const variableRow of variableRows) {
+    await expect(variableRow.getByRole('textbox', { name: 'Key' })).toHaveValue(key)
+    await expect(variableRow.getByRole('textbox', { name: 'Value' })).toHaveValue(value)
+    await expect(variableRow.getByText('Plain', { exact: true })).toBeVisible()
+  }
 }
 
 export const expectAgentEnvVariableVisible = async (
@@ -177,50 +230,21 @@ export const expectAgentEnvVariableVisible = async (
 ) => {
   const advancedSettings = await openAgentAdvancedSettings(world.getPage())
 
-  await expect.poll(
-    async () => {
-      const text = await advancedSettings.textContent()
-      const inputValues = await advancedSettings.getByRole('textbox').evaluateAll(inputs =>
-        inputs.map(input => (input as HTMLInputElement).value),
-      )
-
-      return {
-        hasKey: inputValues.includes(key) || !!text?.includes(key),
-        hasValue: inputValues.includes(value) || !!text?.includes(value),
-      }
-    },
-    { timeout: 30_000 },
-  ).toEqual({
-    hasKey: true,
-    hasValue: true,
-  })
-  await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
+  await expectAgentEnvVariableRows(advancedSettings, key, value)
 }
 
-export const expectAgentEnvVariableHidden = async (
-  world: DifyWorld,
-  key: string,
-) => {
+export const expectAgentEnvVariableHidden = async (world: DifyWorld, key: string) => {
   const advancedSettings = await openAgentAdvancedSettings(world.getPage())
 
-  await expect.poll(
-    async () => {
-      const text = await advancedSettings.textContent()
-      const inputValues = await advancedSettings.getByRole('textbox').evaluateAll(inputs =>
-        inputs.map(input => (input as HTMLInputElement).value),
-      )
-
-      return inputValues.includes(key) || !!text?.includes(key)
-    },
-    { timeout: 30_000 },
-  ).toBe(false)
+  await expectAgentEnvVariableAbsent(advancedSettings, key)
 }
 
 export const expectNormalAgentPromptDraft = async (world: DifyWorld) => {
-  await expect.poll(
-    async () => (await getAgentComposerDraft(getCurrentAgentId(world))).agent_soul?.prompt,
-    { timeout: 30_000 },
-  ).toEqual({ system_prompt: normalAgentPrompt })
+  await expect
+    .poll(async () => (await getAgentComposerDraft(getCurrentAgentId(world))).agent_soul?.prompt, {
+      timeout: 30_000,
+    })
+    .toEqual({ system_prompt: normalAgentPrompt })
 }
 
 export const expectProviderToolActionVisible = async (
@@ -233,21 +257,27 @@ export const expectProviderToolActionVisible = async (
     name: tool.providerName,
   })
   await expect(provider).toBeVisible()
+  await expect(provider).toHaveAttribute('aria-expanded', 'false')
+  await provider.click()
+  await expect(provider).toHaveAttribute('aria-expanded', 'true')
 
   const action = toolsSection.getByText(tool.actionName, { exact: true })
-  if (!await action.isVisible())
-    await provider.click()
   await expect(action).toBeVisible()
 
   return { action, tool }
 }
 
-export const openAgentKnowledgeRetrievalDialog = async (knowledgeSection: Locator, name: string) => {
+export const openAgentKnowledgeRetrievalDialog = async (
+  knowledgeSection: Locator,
+  name: string,
+) => {
   await knowledgeSection.getByText(name, { exact: true }).hover()
-  await knowledgeSection.getByRole('button', {
-    exact: true,
-    name: `Edit ${name}`,
-  }).click()
+  await knowledgeSection
+    .getByRole('button', {
+      exact: true,
+      name: `Edit ${name}`,
+    })
+    .click()
 
   const dialog = knowledgeSection.page().getByRole('dialog', {
     name: 'Knowledge Retrieval · Agent decide',

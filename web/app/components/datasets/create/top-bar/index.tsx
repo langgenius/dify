@@ -27,19 +27,30 @@ export const TopBar: FC<TopBarProps> = (props) => {
   }, [datasetId])
 
   return (
-    <div className={cn('relative flex h-[52px] shrink-0 items-center justify-between border-b border-b-divider-subtle', className)}>
-      <Link href={fallbackRoute} replace className="inline-flex h-12 items-center justify-start gap-1 py-2 pr-6 pl-2">
+    <div
+      className={cn(
+        'relative flex h-[52px] shrink-0 items-center justify-between border-b border-b-divider-subtle',
+        className,
+      )}
+    >
+      <Link
+        href={fallbackRoute}
+        replace
+        className="inline-flex h-12 items-center justify-start gap-1 py-2 pr-6 pl-2"
+      >
         <div className="p-2">
           <RiArrowLeftLine className="size-4 text-text-primary" />
         </div>
         <p className="system-sm-semibold-uppercase text-text-primary">
-          {t($ => $['steps.header.fallbackRoute'], { ns: 'datasetCreation' })}
+          {t(($) => $['steps.header.fallbackRoute'], { ns: 'datasetCreation' })}
         </p>
       </Link>
       <div className="absolute top-1/2 left-1/2 -translate-1/2">
         <Stepper
           steps={Array.from({ length: 3 }, (_, i) => ({
-            name: t($ => $[STEP_T_MAP[(i + 1) as keyof typeof STEP_T_MAP]], { ns: 'datasetCreation' }),
+            name: t(($) => $[STEP_T_MAP[(i + 1) as keyof typeof STEP_T_MAP]], {
+              ns: 'datasetCreation',
+            }),
           }))}
           {...rest}
         />

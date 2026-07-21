@@ -1,4 +1,5 @@
 import json
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -24,6 +25,10 @@ def _workflow(graph: dict) -> Workflow:
         conversation_variables=[],
         rag_pipeline_variables=[],
     )
+
+
+def _session_maker(session: object | None = None) -> Mock:
+    return Mock(return_value=nullcontext(session or Mock()))
 
 
 def test_filter_virtual_start_events_keeps_blocking_response_unchanged():
@@ -287,11 +292,13 @@ def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch):
     )
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
 
+    session = Mock()
     result = SnippetGenerateService.generate_single_iteration(
         snippet=snippet,
         user=user,
         node_id="iteration-1",
         args={"inputs": {"items": [1]}},
+        session_maker=_session_maker(session),
     )
 
     assert list(result) == ["event"]
@@ -302,6 +309,7 @@ def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch):
     assert kwargs["node_id"] == "iteration-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
+    assert kwargs["session"] is session
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 
@@ -317,6 +325,7 @@ def test_generate_single_iteration_raises_when_draft_workflow_missing(monkeypatc
             user=SimpleNamespace(id="user-1"),
             node_id="iteration-1",
             args={"inputs": {}},
+            session_maker=_session_maker(),
         )
 
 
@@ -335,11 +344,13 @@ def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch):
     )
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
 
+    session = Mock()
     result = SnippetGenerateService.generate_single_loop(
         snippet=snippet,
         user=user,
         node_id="loop-1",
         args=SimpleNamespace(inputs={"items": [1]}),
+        session_maker=_session_maker(session),
     )
 
     assert list(result) == ["event"]
@@ -350,6 +361,7 @@ def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch):
     assert kwargs["node_id"] == "loop-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
+    assert kwargs["session"] is session
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 
@@ -365,6 +377,7 @@ def test_generate_single_loop_raises_when_draft_workflow_missing(monkeypatch):
             user=SimpleNamespace(id="user-1"),
             node_id="loop-1",
             args=SimpleNamespace(inputs={}),
+            session_maker=_session_maker(),
         )
 
 

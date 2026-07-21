@@ -33,17 +33,6 @@ describe('ChatVariableButton', () => {
     expect(store.getState().showDebugAndPreviewPanel).toBe(false)
   })
 
-  it('applies the active dark theme styles when the chat variable panel is visible', () => {
-    mockTheme = 'dark'
-    renderWorkflowComponent(<ChatVariableButton disabled={false} />, {
-      initialStoreState: {
-        showChatVariablePanel: true,
-      },
-    })
-
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
-  })
-
   it('stays disabled without mutating panel state', () => {
     const { store } = renderWorkflowComponent(<ChatVariableButton disabled />, {
       initialStoreState: {

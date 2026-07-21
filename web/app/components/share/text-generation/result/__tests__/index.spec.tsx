@@ -1,4 +1,3 @@
-import type { Namespace, SelectorParam } from 'i18next'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { IOtherOptions } from '@/service/base'
@@ -12,12 +11,14 @@ const {
   notifyMock,
   sendCompletionMessageMock,
   sendWorkflowMessageMock,
+  sleepMock,
   stopChatMessageRespondingMock,
   textGenerationResPropsSpy,
 } = vi.hoisted(() => ({
   notifyMock: vi.fn(),
   sendCompletionMessageMock: vi.fn(),
   sendWorkflowMessageMock: vi.fn(),
+  sleepMock: vi.fn(),
   stopChatMessageRespondingMock: vi.fn(),
   textGenerationResPropsSpy: vi.fn(),
 }))
@@ -27,21 +28,32 @@ vi.mock('i18next', async (importOriginal) => {
 
   return {
     ...actual,
-    t: <Ns extends Namespace>(selector: SelectorParam<Ns>) => actual.keyFromSelector(selector),
+    t: () => '',
+  }
+})
+
+vi.mock('react-i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-i18next')>()
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+
+  return {
+    ...actual,
+    ...createReactI18nextMock({
+      'operation.stopResponding': 'operation.stopResponding',
+      'warningMessage.timeoutExceeded': 'Translated timeout warning',
+    }),
   }
 })
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  default: {
-    notify: notifyMock,
-  },
+  toast: (...args: unknown[]) => notifyMock(...args),
 }))
 
 vi.mock('@/utils', async () => {
   const actual = await vi.importActual<typeof import('@/utils')>('@/utils')
   return {
     ...actual,
-    sleep: () => new Promise<void>(() => {}),
+    sleep: (...args: Parameters<typeof actual.sleep>) => sleepMock(...args),
   }
 })
 
@@ -49,9 +61,12 @@ vi.mock('@/service/share', async () => {
   const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
   return {
     ...actual,
-    sendCompletionMessage: (...args: Parameters<typeof actual.sendCompletionMessage>) => sendCompletionMessageMock(...args),
-    sendWorkflowMessage: (...args: Parameters<typeof actual.sendWorkflowMessage>) => sendWorkflowMessageMock(...args),
-    stopChatMessageResponding: (...args: Parameters<typeof actual.stopChatMessageResponding>) => stopChatMessageRespondingMock(...args),
+    sendCompletionMessage: (...args: Parameters<typeof actual.sendCompletionMessage>) =>
+      sendCompletionMessageMock(...args),
+    sendWorkflowMessage: (...args: Parameters<typeof actual.sendWorkflowMessage>) =>
+      sendWorkflowMessageMock(...args),
+    stopChatMessageResponding: (...args: Parameters<typeof actual.stopChatMessageResponding>) =>
+      stopChatMessageRespondingMock(...args),
   }
 })
 
@@ -72,9 +87,7 @@ vi.mock('@/app/components/share/text-generation/no-data', () => ({
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',
-  prompt_variables: [
-    { key: 'name', name: 'Name', type: 'string', required: true },
-  ],
+  prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
 }
 
 const siteInfo: SiteInfo = {
@@ -119,6 +132,7 @@ const baseProps = {
 describe('Result', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sleepMock.mockImplementation(() => new Promise<void>(() => {}))
     stopChatMessageRespondingMock.mockResolvedValue(undefined)
   })
 
@@ -132,7 +146,11 @@ describe('Result', () => {
   it('should stream completion results and stop the current task', async () => {
     let completionHandlers: {
       onCompleted: () => void
-      onData: (chunk: string, isFirstMessage: boolean, info: { messageId: string, taskId?: string }) => void
+      onData: (
+        chunk: string,
+        isFirstMessage: boolean,
+        info: { messageId: string; taskId?: string },
+      ) => void
       onError: () => void
       onMessageReplace: (messageReplace: { answer: string }) => void
     } | null = null
@@ -144,11 +162,7 @@ describe('Result', () => {
     const onCompleted = vi.fn()
     const onRunControlChange = vi.fn()
     const { rerender } = render(
-      <Result
-        {...baseProps}
-        onCompleted={onCompleted}
-        onRunControlChange={onRunControlChange}
-      />,
+      <Result {...baseProps} onCompleted={onCompleted} onRunControlChange={onRunControlChange} />,
     )
 
     rerender(
@@ -173,14 +187,21 @@ describe('Result', () => {
     expect(screen.getByTestId('text-generation-res').textContent).toContain('Hello')
 
     await waitFor(() => {
-      expect(onRunControlChange).toHaveBeenLastCalledWith(expect.objectContaining({
-        isStopping: false,
-      }))
+      expect(onRunControlChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          isStopping: false,
+        }),
+      )
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'operation.stopResponding' }))
     await waitFor(() => {
-      expect(stopChatMessageRespondingMock).toHaveBeenCalledWith('app-1', 'task-1', AppSourceType.webApp, 'app-1')
+      expect(stopChatMessageRespondingMock).toHaveBeenCalledWith(
+        'app-1',
+        'task-1',
+        AppSourceType.webApp,
+        'app-1',
+      )
     })
 
     await act(async () => {
@@ -188,9 +209,11 @@ describe('Result', () => {
     })
 
     expect(onCompleted).toHaveBeenCalledWith('Hello', undefined, true)
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      messageId: 'message-1',
-    }))
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        messageId: 'message-1',
+      }),
+    )
   })
 
   it('should render workflow results after workflow completion', async () => {
@@ -200,22 +223,9 @@ describe('Result', () => {
     })
 
     const onCompleted = vi.fn()
-    const { rerender } = render(
-      <Result
-        {...baseProps}
-        isWorkflow
-        onCompleted={onCompleted}
-      />,
-    )
+    const { rerender } = render(<Result {...baseProps} isWorkflow onCompleted={onCompleted} />)
 
-    rerender(
-      <Result
-        {...baseProps}
-        isWorkflow
-        controlSend={1}
-        onCompleted={onCompleted}
-      />,
-    )
+    rerender(<Result {...baseProps} isWorkflow controlSend={1} onCompleted={onCompleted} />)
 
     await act(async () => {
       workflowHandlers?.onWorkflowStarted?.({
@@ -263,44 +273,113 @@ describe('Result', () => {
     })
 
     expect(screen.getByTestId('text-generation-res').textContent).toContain('{"answer":"Hello"}')
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      workflowProcessData: expect.objectContaining({
-        resultText: 'Hello',
-        status: 'succeeded',
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        workflowProcessData: expect.objectContaining({
+          resultText: 'Hello',
+          status: 'succeeded',
+        }),
       }),
-    }))
+    )
     expect(onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', undefined, true)
   })
 
+  it('should finish a timed-out workflow and show a translated warning', async () => {
+    let resolveTimeout!: () => void
+    let workflowHandlers: IOtherOptions | null = null
+    sleepMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveTimeout = resolve
+        }),
+    )
+    sendWorkflowMessageMock.mockImplementation(async (_data, handlers) => {
+      workflowHandlers = handlers
+    })
+
+    const onCompleted = vi.fn()
+    const { rerender } = render(<Result {...baseProps} isWorkflow onCompleted={onCompleted} />)
+
+    rerender(<Result {...baseProps} isWorkflow controlSend={1} onCompleted={onCompleted} />)
+
+    await act(async () => {
+      workflowHandlers?.onWorkflowStarted?.({
+        workflow_run_id: 'run-timeout',
+        task_id: 'task-timeout',
+        event: 'workflow_started',
+        data: {
+          id: 'run-timeout',
+          workflow_id: 'wf-1',
+          created_at: 0,
+        },
+      })
+      resolveTimeout()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      workflowHandlers?.onWorkflowFinished?.({
+        task_id: 'task-timeout',
+        workflow_run_id: 'run-timeout',
+        event: 'workflow_finished',
+        data: {
+          id: 'run-timeout',
+          workflow_id: 'wf-1',
+          status: 'succeeded',
+          outputs: { answer: 'Late result' },
+          error: '',
+          elapsed_time: 61,
+          total_tokens: 0,
+          total_steps: 0,
+          created_at: 0,
+          created_by: {
+            id: 'user-1',
+            name: 'User',
+            email: 'user@example.com',
+          },
+          finished_at: 61,
+        },
+      })
+    })
+
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        workflowProcessData: expect.objectContaining({
+          resultText: '',
+          status: 'succeeded',
+        }),
+      }),
+    )
+    expect(notifyMock).toHaveBeenCalledWith('Translated timeout warning', { type: 'warning' })
+    expect(onCompleted).toHaveBeenCalledWith('', undefined, false)
+    expect(onCompleted).toHaveBeenCalledTimes(1)
+  })
+
   it('should render batch task ids for both short and long indexes', () => {
-    const { rerender } = render(
-      <Result
-        {...baseProps}
-        isCallBatchAPI
-        taskId={3}
-      />,
+    const { rerender } = render(<Result {...baseProps} isCallBatchAPI taskId={3} />)
+
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        taskId: '03',
+      }),
     )
 
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      taskId: '03',
-    }))
+    rerender(<Result {...baseProps} isCallBatchAPI taskId={12} />)
 
-    rerender(
-      <Result
-        {...baseProps}
-        isCallBatchAPI
-        taskId={12}
-      />,
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        taskId: '12',
+      }),
     )
-
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      taskId: '12',
-    }))
   })
 
   it('should render the mobile stop button layout while a batch run is responding', async () => {
     let completionHandlers: {
-      onData: (chunk: string, isFirstMessage: boolean, info: { messageId: string, taskId?: string }) => void
+      onData: (
+        chunk: string,
+        isFirstMessage: boolean,
+        info: { messageId: string; taskId?: string },
+      ) => void
     } | null = null
 
     sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
@@ -308,24 +387,11 @@ describe('Result', () => {
     })
 
     const { rerender } = render(
-      <Result
-        {...baseProps}
-        isCallBatchAPI
-        isMobile
-        isPC={false}
-        taskId={2}
-      />,
+      <Result {...baseProps} isCallBatchAPI isMobile isPC={false} taskId={2} />,
     )
 
     rerender(
-      <Result
-        {...baseProps}
-        controlSend={1}
-        isCallBatchAPI
-        isMobile
-        isPC={false}
-        taskId={2}
-      />,
+      <Result {...baseProps} controlSend={1} isCallBatchAPI isMobile isPC={false} taskId={2} />,
     )
 
     await act(async () => {
@@ -335,6 +401,8 @@ describe('Result', () => {
       })
     })
 
-    expect(screen.getByRole('button', { name: 'operation.stopResponding' }).parentElement?.className).toContain('justify-center')
+    expect(
+      screen.getByRole('button', { name: 'operation.stopResponding' }).parentElement?.className,
+    ).toContain('justify-center')
   })
 })
