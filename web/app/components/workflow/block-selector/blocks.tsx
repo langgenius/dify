@@ -155,7 +155,7 @@ const Blocks = ({
                     <button
                       type="button"
                       aria-describedby={previewDescriptionId}
-                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
                       onClick={() => onSelect(block.metaData.type)}
                     >
                       <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />

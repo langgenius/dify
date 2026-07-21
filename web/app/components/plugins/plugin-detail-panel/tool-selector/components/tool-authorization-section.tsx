@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import Divider from '@/app/components/base/divider'
 import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin-auth'
@@ -11,11 +10,11 @@ type ToolAuthorizationSectionProps = {
   onAuthorizationItemClick: (id: string) => void
 }
 
-const ToolAuthorizationSection: FC<ToolAuthorizationSectionProps> = ({
+export function ToolAuthorizationSection({
   currentProvider,
   credentialId,
   onAuthorizationItemClick,
-}) => {
+}: ToolAuthorizationSectionProps) {
   // Only show for built-in providers that allow deletion
   const shouldShow =
     currentProvider &&
@@ -41,5 +40,3 @@ const ToolAuthorizationSection: FC<ToolAuthorizationSectionProps> = ({
     </>
   )
 }
-
-export default ToolAuthorizationSection
