@@ -1079,9 +1079,64 @@ describe('DocumentsPage', () => {
       ).toHaveTextContent('1'),
     )
     await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
-    expect(getTaskSnapshot).toHaveBeenCalledWith({
-      params: { documentId: 'document-1', id: 'space-1', taskId: 'same-time-retry' },
-    })
+    expect(getTaskSnapshot).toHaveBeenCalledWith(
+      {
+        params: { documentId: 'document-1', id: 'space-1', taskId: 'same-time-retry' },
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+  })
+
+  it('replaces an in-flight terminal reconciliation and aborts it on unmount', async () => {
+    vi.useFakeTimers()
+    const signals: AbortSignal[] = []
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'coalesced-reconciliation' })] }] }
+    getTaskSnapshot.mockImplementation(
+      (_input: unknown, options: { signal: AbortSignal }) =>
+        new Promise<DocumentProcessingTask>((_resolve, reject) => {
+          signals.push(options.signal)
+          options.signal.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true },
+          )
+        }),
+    )
+    streamFailedTaskThenWait('coalesced-reconciliation')
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => {})
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [
+              task({
+                id: 'coalesced-reconciliation',
+                state: 'dispatch_pending',
+                updatedAt: '2026-07-20T10:03:00Z',
+              }),
+            ],
+          },
+        ],
+      }
+      rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await act(async () => {})
+
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
+      expect(signals[0]?.aborted).toBe(true)
+      expect(signals[1]?.aborted).toBe(false)
+      rendered.unmount()
+      expect(signals[1]?.aborted).toBe(true)
+      await act(async () => vi.advanceTimersByTime(60000))
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
   })
 
   it('accepts a later active list snapshot after exact reconciliation saw the terminal state', async () => {
@@ -1616,6 +1671,10 @@ describe('DocumentsPage', () => {
         screen.getByText(/dataset\.newKnowledge\.processingTaskState\.running.*"progress":80/),
       ).toBeInTheDocument(),
     )
+    await act(async () => {})
+    expect(
+      screen.queryByText(/dataset\.newKnowledge\.processingTaskState\.running.*"progress":20/),
+    ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     tasksQuery.data = {
@@ -1677,6 +1736,42 @@ describe('DocumentsPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('keeps a failed task actionable when one hundred active tasks fill the drawer', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            ...Array.from({ length: 100 }, (_, index) =>
+              task({
+                id: `active-${index}`,
+                updatedAt: new Date(Date.UTC(2026, 6, 20, 10, index)).toISOString(),
+              }),
+            ),
+            task({
+              id: 'failed-outside-active-limit',
+              state: 'failed',
+              updatedAt: '2026-07-01T10:00:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":101}',
+      }),
+    )
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(100)
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
+    ).toBeInTheDocument()
+  })
+
   it('rotates a bounded task event stream pool without polling every cursor page', async () => {
     vi.useFakeTimers()
     streamProcessingTaskEvents.mockImplementation(async function* () {
@@ -1709,6 +1804,52 @@ describe('DocumentsPage', () => {
           name: 'dataset.newKnowledge.tasksWithAttention:{"count":20}',
         }),
       ).toBeInTheDocument()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps rotation membership stable when progress updates task timestamps', async () => {
+    vi.useFakeTimers()
+    const callsByTask = new Map<string, number>()
+    streamProcessingTaskEvents.mockImplementation(async function* ({ taskId }: { taskId: string }) {
+      callsByTask.set(taskId, (callsByTask.get(taskId) ?? 0) + 1)
+      yield {
+        data: {
+          progressPercent: 50,
+          stage: 'parsed' as const,
+          state: 'running' as const,
+          updatedAt: '2026-07-20T12:00:00Z',
+        },
+        event: 'progress' as const,
+        id: `${taskId}:progress`,
+      }
+      await new Promise<void>(() => {})
+    })
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: Array.from({ length: 12 }, (_, index) =>
+            task({
+              createdAt: new Date(Date.UTC(2026, 6, 20, 9, index)).toISOString(),
+              id: `stable-${index}`,
+              updatedAt: new Date(Date.UTC(2026, 6, 20, 10, index)).toISOString(),
+            }),
+          ),
+        },
+      ],
+    }
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => {})
+      await act(async () => vi.advanceTimersByTime(5000))
+      await act(async () => {})
+
+      expect(callsByTask).toHaveLength(12)
+      expect([...callsByTask.values()]).toEqual(Array.from({ length: 12 }, () => 1))
     } finally {
       rendered.unmount()
       vi.useRealTimers()
@@ -1810,6 +1951,72 @@ describe('DocumentsPage', () => {
     }
   })
 
+  it('ignores a delayed permanent poll rejection after a local retry', async () => {
+    vi.useFakeTimers()
+    let rejectPoll: ((error: unknown) => void) | undefined
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'rejected-failed-poll', state: 'failed' })] }],
+    }
+    getTaskSnapshot
+      .mockReturnValueOnce(
+        new Promise<DocumentProcessingTask>((_resolve, reject) => {
+          rejectPoll = reject
+        }),
+      )
+      .mockResolvedValueOnce(
+        task({
+          id: 'rejected-failed-poll',
+          progressPercent: 0,
+          state: 'dispatch_pending',
+          updatedAt: '2026-07-20T10:05:00Z',
+        }),
+      )
+    retryMutation.mutateAsync.mockResolvedValue(
+      task({
+        id: 'rejected-failed-poll',
+        progressPercent: 0,
+        state: 'dispatch_pending',
+        updatedAt: '2026-07-20T10:03:00Z',
+      }),
+    )
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        }),
+      )
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+      await act(async () => {})
+      await act(async () => rejectPoll?.(new Response(null, { status: 403 })))
+
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [
+              task({
+                id: 'rejected-failed-poll',
+                state: 'failed',
+                updatedAt: '2026-07-20T10:04:00Z',
+              }),
+            ],
+          },
+        ],
+      }
+      rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await act(async () => vi.advanceTimersByTime(5000))
+
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('stops polling a failed task after a permanent snapshot error', async () => {
     vi.useFakeTimers()
     documentsQuery.data = { pages: [{ items: [document()] }] }
@@ -1861,7 +2068,7 @@ describe('DocumentsPage', () => {
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('bounds automatic cursor exhaustion and leaves further document loading explicit', async () => {
+  it('bounds automatic cursor exhaustion and leaves all further loading explicit', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: Array.from({ length: 20 }, (_, index) => ({
@@ -1889,10 +2096,11 @@ describe('DocumentsPage', () => {
     )
 
     expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
-    expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
-    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
-    ).toBeInTheDocument()
+    const loadMore = screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' })
+    expect(loadMore).toBeInTheDocument()
+    await user.click(loadMore)
+    expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 })

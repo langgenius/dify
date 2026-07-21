@@ -4,6 +4,7 @@ import type {
   DocumentProcessingTask,
   LogicalDocument,
 } from '@dify/contracts/knowledge-fs/types.gen'
+import type { TaskProgressStore } from './task-progress-store'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Drawer,
@@ -17,7 +18,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -27,6 +28,7 @@ import { taskCanRetry, taskIsActive } from './document-model'
 type TaskAction = 'cancel' | 'retry'
 
 const TASK_DRAWER_LIMIT = 100
+const noopSubscribe = () => () => undefined
 
 function taskTime(task: DocumentProcessingTask) {
   return task.completedAt ?? task.updatedAt
@@ -67,6 +69,7 @@ export function ProcessingTasksDrawer({
   taskQueryError,
   taskQueryPending,
   tasks,
+  taskProgressStore,
   onRetryTaskQuery,
 }: {
   canEdit: boolean
@@ -78,6 +81,7 @@ export function ProcessingTasksDrawer({
   taskQueryError: boolean
   taskQueryPending: boolean
   tasks: DocumentProcessingTask[]
+  taskProgressStore: TaskProgressStore
   onRetryTaskQuery: () => void
 }) {
   const { t } = useTranslation('dataset')
@@ -93,20 +97,42 @@ export function ProcessingTasksDrawer({
   const pendingActionsRef = useRef(new Set<string>())
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
   const [actionErrors, setActionErrors] = useState<Record<string, boolean>>({})
+  useSyncExternalStore(
+    open ? taskProgressStore.subscribe : noopSubscribe,
+    taskProgressStore.getSnapshot,
+    taskProgressStore.getSnapshot,
+  )
   const documentTitles = useMemo(
     () => new Map(documents.map((document) => [document.id, document.title])),
     [documents],
   )
-  const orderedTasks = useMemo(() => {
+  const orderedBaseTasks = useMemo(() => {
     if (!open) return []
-    const activeTasks = newestTasks(tasks, TASK_DRAWER_LIMIT, taskIsActive)
+    const retryableTasks = newestTasks(tasks, TASK_DRAWER_LIMIT, taskCanRetry)
+    const retryableTaskIds = new Set(retryableTasks.map((task) => task.id))
+    const activeTasks = newestTasks(
+      tasks,
+      TASK_DRAWER_LIMIT - retryableTasks.length,
+      (task) => taskIsActive(task) && !retryableTaskIds.has(task.id),
+    )
+    const attentionTaskIds = new Set([...retryableTaskIds, ...activeTasks.map((task) => task.id)])
     const terminalTasks = newestTasks(
       tasks,
-      TASK_DRAWER_LIMIT - activeTasks.length,
-      (task) => !taskIsActive(task),
+      TASK_DRAWER_LIMIT - retryableTasks.length - activeTasks.length,
+      (task) => !attentionTaskIds.has(task.id),
     )
-    return [...activeTasks, ...terminalTasks].sort(compareTaskRecency)
+    return [...retryableTasks, ...activeTasks, ...terminalTasks].sort(compareTaskRecency)
   }, [open, tasks])
+  const orderedTasks = orderedBaseTasks.map((task) => {
+    const progress = taskProgressStore.get(task.id)
+    if (!progress || !taskIsActive(task) || task.updatedAt > progress.updatedAt) return task
+    return {
+      ...task,
+      errorCode: undefined,
+      errorMessage: undefined,
+      ...progress,
+    }
+  })
 
   const refreshDocumentsAndTasks = () =>
     Promise.allSettled([
