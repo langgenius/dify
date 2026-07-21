@@ -14,17 +14,19 @@ type RunOptions = {
   forwardArgs: string[]
   full: boolean
   headed: boolean
+  preserveState: boolean
 }
 
 const parseArgs = (argv: string[]): RunOptions => {
   let full = false
   let headed = false
+  let preserveState = false
   const forwardArgs: string[] = []
 
   for (const [index, arg] of argv.entries()) {
     if (arg === '--') {
       forwardArgs.push(...argv.slice(index + 1))
-      return { forwardArgs, full, headed }
+      return { forwardArgs, full, headed, preserveState }
     }
 
     if (arg === '--full') {
@@ -37,10 +39,15 @@ const parseArgs = (argv: string[]): RunOptions => {
       continue
     }
 
+    if (arg === '--preserve-state') {
+      preserveState = true
+      continue
+    }
+
     forwardArgs.push(arg)
   }
 
-  return { forwardArgs, full, headed }
+  return { forwardArgs, full, headed, preserveState }
 }
 
 const hasCustomTags = (forwardArgs: string[]) =>
@@ -89,9 +96,10 @@ const waitForUnexpectedProcessExit = async (
 }
 
 const main = async () => {
-  const { forwardArgs, full, headed } = parseArgs(process.argv.slice(2))
+  const { forwardArgs, full, headed, preserveState } = parseArgs(process.argv.slice(2))
+  if (preserveState && !full) throw new Error('--preserve-state requires --full.')
   const startMiddlewareForRun = full
-  const resetStateForRun = full
+  const resetStateForRun = full && !preserveState
   const startAgentBackendForRun = shouldStartAgentBackend()
 
   if (resetStateForRun) await resetState()

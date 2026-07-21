@@ -54,7 +54,7 @@ Feature: New RAG release smoke
     Then the same ready document should remain available
     When I reopen the ready document
     Then the same document detail should be restored
+    And the New RAG requests should be proxied with diagnostics
     When I return to Legacy Knowledge
     Then the Legacy Knowledge dataset should remain available
     And the KnowledgeFS tenant and read-only boundaries should hold
-    And the New RAG requests should be proxied with diagnostics

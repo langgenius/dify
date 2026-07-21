@@ -13,6 +13,8 @@ const completeEnvironment = {
   E2E_NEW_RAG_CRAWL_URL: 'https://docs.example.com',
   E2E_NEW_RAG_KNOWLEDGE_FS_BASE_URL: 'http://127.0.0.1:8788/',
   E2E_NEW_RAG_KNOWLEDGE_FS_JWT_SECRET: 'knowledge-fs-smoke-secret-at-least-32-characters',
+  E2E_NEW_RAG_LEGACY_DATASET_NAME: 'Legacy flag preservation fixture',
+  E2E_NEW_RAG_LEGACY_DATASET_STATE_PATH: '/tmp/new-rag-legacy-dataset.json',
   E2E_CUCUMBER_TAGS: '@stale-caller-tag',
   E2E_REUSE_WEB_SERVER: 'true',
   PATH: '/test/bin',
@@ -67,10 +69,10 @@ describe('buildNewRagSmokeRuns', () => {
   it('builds an isolated default, explicit-off, and enabled matrix in order', () => {
     const runs = buildNewRagSmokeRuns(completeEnvironment)
 
-    expect(runs.map(({ label, tag }) => ({ label, tag }))).toEqual([
-      { label: 'default-disabled', tag: '@new-rag-flag-default' },
-      { label: 'explicit-disabled', tag: '@new-rag-flag-disabled' },
-      { label: 'enabled-happy-path', tag: '@new-rag-happy-path' },
+    expect(runs.map(({ label, preserveState, tag }) => ({ label, preserveState, tag }))).toEqual([
+      { label: 'default-disabled', preserveState: false, tag: '@new-rag-flag-default' },
+      { label: 'explicit-disabled', preserveState: true, tag: '@new-rag-flag-disabled' },
+      { label: 'enabled-happy-path', preserveState: true, tag: '@new-rag-happy-path' },
     ])
 
     expect(runs[0]?.env).not.toHaveProperty('KNOWLEDGE_FS_ENABLED')
@@ -85,6 +87,8 @@ describe('buildNewRagSmokeRuns', () => {
     })
     expect(runs[2]?.env.PATH).toBe('/test/bin')
     for (const run of runs) {
+      expect(run.env.E2E_NEW_RAG_LEGACY_DATASET_NAME).toBe('Legacy flag preservation fixture')
+      expect(run.env.E2E_NEW_RAG_LEGACY_DATASET_STATE_PATH).toBe('/tmp/new-rag-legacy-dataset.json')
       expect(run.env).not.toHaveProperty('E2E_CUCUMBER_TAGS')
       expect(run.env).not.toHaveProperty('E2E_REUSE_WEB_SERVER')
     }
@@ -92,12 +96,22 @@ describe('buildNewRagSmokeRuns', () => {
 })
 
 describe('newRagCucumberArgs', () => {
-  it('runs every matrix entry with a fresh full E2E lifecycle', () => {
-    expect(newRagCucumberArgs('@new-rag-happy-path')).toEqual([
+  it('resets the first matrix entry and preserves its data across later service restarts', () => {
+    expect(newRagCucumberArgs('@new-rag-flag-default', false)).toEqual([
       'exec',
       'tsx',
       './scripts/run-cucumber.ts',
       '--full',
+      '--',
+      '--tags',
+      '@new-rag-flag-default',
+    ])
+    expect(newRagCucumberArgs('@new-rag-happy-path', true)).toEqual([
+      'exec',
+      'tsx',
+      './scripts/run-cucumber.ts',
+      '--full',
+      '--preserve-state',
       '--',
       '--tags',
       '@new-rag-happy-path',

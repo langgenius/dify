@@ -1,4 +1,8 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { e2eDir, isMainModule, runCommand } from './common'
+import { resetState } from './setup'
 
 type SmokeEnvironment = NodeJS.ProcessEnv
 
@@ -12,6 +16,7 @@ export type NewRagSmokeConfig = {
 export type NewRagSmokeRun = {
   env: SmokeEnvironment
   label: 'default-disabled' | 'explicit-disabled' | 'enabled-happy-path'
+  preserveState: boolean
   tag: '@new-rag-flag-default' | '@new-rag-flag-disabled' | '@new-rag-happy-path'
 }
 
@@ -115,6 +120,7 @@ export const buildNewRagSmokeRuns = (source: SmokeEnvironment): NewRagSmokeRun[]
         E2E_NEW_RAG_EXPECTED_FLAG_MODE: 'default-disabled',
       },
       label: 'default-disabled',
+      preserveState: false,
       tag: '@new-rag-flag-default',
     },
     {
@@ -124,6 +130,7 @@ export const buildNewRagSmokeRuns = (source: SmokeEnvironment): NewRagSmokeRun[]
         KNOWLEDGE_FS_ENABLED: 'false',
       },
       label: 'explicit-disabled',
+      preserveState: true,
       tag: '@new-rag-flag-disabled',
     },
     {
@@ -137,16 +144,18 @@ export const buildNewRagSmokeRuns = (source: SmokeEnvironment): NewRagSmokeRun[]
         KNOWLEDGE_FS_JWT_SECRET: config.knowledgeFsJwtSecret,
       },
       label: 'enabled-happy-path',
+      preserveState: true,
       tag: '@new-rag-happy-path',
     },
   ]
 }
 
-export const newRagCucumberArgs = (tag: NewRagSmokeRun['tag']) => [
+export const newRagCucumberArgs = (tag: NewRagSmokeRun['tag'], preserveState: boolean) => [
   'exec',
   'tsx',
   './scripts/run-cucumber.ts',
   '--full',
+  ...(preserveState ? ['--preserve-state'] : []),
   '--',
   '--tags',
   tag,
@@ -170,18 +179,32 @@ const requireKnowledgeFsHealth = async (baseUrl: string) => {
 const main = async () => {
   const config = resolveNewRagSmokeConfig(process.env)
   await requireKnowledgeFsHealth(config.knowledgeFsBaseUrl)
+  const stateDirectory = await mkdtemp(path.join(tmpdir(), 'dify-new-rag-smoke-'))
+  const smokeEnvironment = {
+    ...process.env,
+    E2E_NEW_RAG_LEGACY_DATASET_NAME: `Legacy flag ${Date.now().toString(36)}`,
+    E2E_NEW_RAG_LEGACY_DATASET_STATE_PATH: path.join(stateDirectory, 'legacy-dataset.json'),
+  }
 
-  for (const run of buildNewRagSmokeRuns(process.env)) {
-    console.warn(`[new-rag-smoke] start ${run.label}`)
-    const result = await runCommand({
-      command: 'pnpm',
-      args: newRagCucumberArgs(run.tag),
-      cwd: e2eDir,
-      env: run.env,
-      inheritEnv: false,
-    })
-    if (result.exitCode !== 0)
-      throw new Error(`New RAG smoke run ${run.label} failed with exit code ${result.exitCode}.`)
+  try {
+    for (const run of buildNewRagSmokeRuns(smokeEnvironment)) {
+      console.warn(`[new-rag-smoke] start ${run.label}`)
+      const result = await runCommand({
+        command: 'pnpm',
+        args: newRagCucumberArgs(run.tag, run.preserveState),
+        cwd: e2eDir,
+        env: run.env,
+        inheritEnv: false,
+      })
+      if (result.exitCode !== 0)
+        throw new Error(`New RAG smoke run ${run.label} failed with exit code ${result.exitCode}.`)
+    }
+  } finally {
+    try {
+      await resetState({ preserveArtifacts: true })
+    } finally {
+      await rm(stateDirectory, { force: true, recursive: true })
+    }
   }
 }
 

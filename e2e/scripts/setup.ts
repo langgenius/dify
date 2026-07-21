@@ -52,8 +52,9 @@ const middlewareDataPaths = [
   path.join(dockerDir, 'volumes', 'weaviate'),
 ]
 
-const e2eStatePaths = [
-  path.join(e2eDir, '.auth'),
+const e2eAuthStatePaths = [path.join(e2eDir, '.auth')]
+
+const e2eArtifactPaths = [
   path.join(e2eDir, 'cucumber-report'),
   path.join(e2eDir, 'cucumber-report-non-external'),
   path.join(e2eDir, 'cucumber-report-webkit'),
@@ -64,6 +65,8 @@ const e2eStatePaths = [
   path.join(e2eDir, 'seed-report'),
   path.join(e2eDir, 'test-results'),
 ]
+
+const e2eStatePaths = [...e2eAuthStatePaths, ...e2eArtifactPaths]
 
 const composeArgs = [
   'compose',
@@ -466,7 +469,7 @@ export const stopMiddleware = async () => {
   })
 }
 
-export const resetState = async () => {
+export const resetState = async ({ preserveArtifacts = false } = {}) => {
   console.log('Stopping middleware services...')
   try {
     await stopMiddleware()
@@ -483,8 +486,9 @@ export const resetState = async () => {
   )
 
   console.log('Removing E2E local state...')
+  const localStatePaths = preserveArtifacts ? e2eAuthStatePaths : e2eStatePaths
   await Promise.all(
-    e2eStatePaths.map((targetPath) => rm(targetPath, { force: true, recursive: true })),
+    localStatePaths.map((targetPath) => rm(targetPath, { force: true, recursive: true })),
   )
 
   console.log('E2E state reset complete.')

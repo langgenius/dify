@@ -1,10 +1,12 @@
+import type { DatasetDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { DifyWorld } from '../../support/world'
+import { readFile, writeFile } from 'node:fs/promises'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { resolveNewRagSmokeConfig } from '../../../scripts/run-new-rag-smoke'
 import { createApiContext, expectApiResponseOK } from '../../../support/api'
-import { createTestDataset } from '../../../support/datasets'
+import { createTestDataset, getTestDataset } from '../../../support/datasets'
 import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins'
 import { createE2EResourceName } from '../../../support/naming'
 import {
@@ -13,6 +15,50 @@ import {
 } from '../../new-rag/support/runtime'
 
 const knowledgeFsProxyPath = '/console/api/knowledge-fs/'
+
+type LegacyDatasetSnapshot = Pick<
+  DatasetDetailResponse,
+  'created_at' | 'created_by' | 'description' | 'id' | 'name' | 'permission' | 'updated_at'
+>
+
+const legacyDatasetEnvironment = () => {
+  const name = process.env.E2E_NEW_RAG_LEGACY_DATASET_NAME?.trim()
+  const statePath = process.env.E2E_NEW_RAG_LEGACY_DATASET_STATE_PATH?.trim()
+  if (!name || !statePath)
+    throw new Error('The shared Legacy Knowledge dataset configuration is missing.')
+  return { name, statePath }
+}
+
+const legacyDatasetSnapshot = (dataset: DatasetDetailResponse): LegacyDatasetSnapshot => ({
+  created_at: dataset.created_at,
+  created_by: dataset.created_by,
+  description: dataset.description,
+  id: dataset.id,
+  name: dataset.name,
+  permission: dataset.permission,
+  updated_at: dataset.updated_at,
+})
+
+const isLegacyDatasetSnapshot = (value: unknown): value is LegacyDatasetSnapshot => {
+  if (!value || typeof value !== 'object') return false
+  const snapshot = value as Record<string, unknown>
+  return (
+    typeof snapshot.created_at === 'number' &&
+    typeof snapshot.created_by === 'string' &&
+    (snapshot.description === null || typeof snapshot.description === 'string') &&
+    typeof snapshot.id === 'string' &&
+    typeof snapshot.name === 'string' &&
+    typeof snapshot.permission === 'string' &&
+    typeof snapshot.updated_at === 'number'
+  )
+}
+
+const readLegacyDatasetSnapshot = async (statePath: string) => {
+  const snapshot = JSON.parse(await readFile(statePath, 'utf8')) as unknown
+  if (!isLegacyDatasetSnapshot(snapshot))
+    throw new Error('The shared Legacy Knowledge dataset snapshot is invalid.')
+  return snapshot
+}
 
 const humanizeFieldName = (name: string) =>
   name
@@ -32,10 +78,20 @@ const readSystemFeatures = async () => {
 }
 
 Given('a Legacy Knowledge dataset exists', async function (this: DifyWorld) {
-  const name = createE2EResourceName('Legacy KB')
-  const dataset = await createTestDataset(name)
-  this.createdDatasetIds.push(dataset.id)
-  this.newRag.legacyDatasetName = name
+  const { name, statePath } = legacyDatasetEnvironment()
+  const mode = process.env.E2E_NEW_RAG_EXPECTED_FLAG_MODE
+  if (mode === 'default-disabled') {
+    const dataset = await createTestDataset(name)
+    await writeFile(statePath, JSON.stringify(legacyDatasetSnapshot(dataset)), 'utf8')
+    this.newRag.legacyDatasetName = name
+    return
+  }
+
+  const expectedSnapshot = await readLegacyDatasetSnapshot(statePath)
+  if (mode === 'enabled') this.createdDatasetIds.push(expectedSnapshot.id)
+  const dataset = await getTestDataset(expectedSnapshot.id)
+  expect(legacyDatasetSnapshot(dataset)).toEqual(expectedSnapshot)
+  this.newRag.legacyDatasetName = expectedSnapshot.name
 })
 
 Given(
@@ -197,15 +253,23 @@ When('I crawl the configured website', { timeout: 210_000 }, async function (thi
   this.newRag.sourceName = sourceName
   await page.getByLabel('Root URL').fill(config.crawlUrl)
   await page.getByLabel('Source name').fill(sourceName)
+  const responseStart = this.newRag.knowledgeFsResponses.length
+  const failureStart = this.newRag.knowledgeFsRequestFailures.length
   await page.getByRole('button', { name: 'Crawl & preview' }).click()
   const selectAll = page.getByRole('checkbox', { name: 'Select all' })
   const crawlFailure = page.getByRole('alert').filter({ hasText: "Couldn't crawl" })
   await selectAll.or(crawlFailure).waitFor({ state: 'visible', timeout: 180_000 })
   if (await crawlFailure.isVisible()) {
-    const failure = this.newRag.knowledgeFsRequestFailures.at(-1)
-    const requestDiagnostic = failure
-      ? `${failure.method} ${new URL(failure.url).pathname}: ${failure.error}`
-      : 'No failed KnowledgeFS browser request was captured.'
+    const errorResponse = this.newRag.knowledgeFsResponses
+      .slice(responseStart)
+      .filter((response) => response.status >= 400)
+      .at(-1)
+    const failure = this.newRag.knowledgeFsRequestFailures.slice(failureStart).at(-1)
+    const requestDiagnostic = errorResponse
+      ? `${errorResponse.method} ${new URL(errorResponse.url).pathname}: HTTP ${errorResponse.status}${errorResponse.traceId ? ` (trace ${errorResponse.traceId})` : ''}`
+      : failure
+        ? `${failure.method} ${new URL(failure.url).pathname}: ${failure.error}`
+        : 'No failed KnowledgeFS browser request or error response was captured.'
     const failureText = (await crawlFailure.textContent()) ?? 'Crawl preview failed.'
     const message = failureText.replaceAll(/\s+/g, ' ').trim()
     throw new Error(`${message} ${requestDiagnostic}`)
@@ -279,7 +343,12 @@ Then('the same document detail should be restored', async function (this: DifyWo
 
 When('I return to the source Documents', async function (this: DifyWorld) {
   const page = this.getPage()
-  await page.getByRole('link', { name: 'Documents' }).click()
+  const knowledgeSpaceName = this.newRag.knowledgeSpaceName
+  if (!knowledgeSpaceName) throw new Error('The New RAG smoke Knowledge name is missing.')
+  await page
+    .getByRole('navigation', { name: knowledgeSpaceName })
+    .getByRole('link', { name: 'Documents' })
+    .click()
   await expect(page.getByRole('heading', { name: 'Documents' })).toBeVisible()
 })
 

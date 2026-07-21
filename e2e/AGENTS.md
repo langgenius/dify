@@ -116,7 +116,7 @@ Behavior depends on instance state:
 
 The `pnpm -C e2e e2e:full*` flows prove reset and authentication bootstrap by failing setup when initialization cannot complete; they do not model bootstrap state as a Gherkin scenario. Deterministic runs exclude `@prepared`, `@external-model`, `@external-tool`, and `@new-rag-smoke`. Post-merge first seeds required fixtures, then runs prepared and external scenarios.
 
-The New RAG release smoke is an opt-in live integration matrix. Each matrix entry resets E2E state and starts a fresh middleware, API, Celery, and web lifecycle for the default-disabled, explicit-disabled, and enabled configurations, while reusing a running KnowledgeFS service and a real website-source provider. Run it with:
+The New RAG release smoke is an opt-in live integration matrix. The first matrix entry resets E2E state; later entries restart middleware, API, Celery, and web without resetting persisted data. The default-disabled, explicit-disabled, and enabled configurations therefore verify the same Legacy dataset snapshot while reusing a running KnowledgeFS service and a real website-source provider. Run it with:
 
 ```bash
 E2E_NEW_RAG_KNOWLEDGE_FS_BASE_URL=http://127.0.0.1:8788 \
