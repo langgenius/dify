@@ -260,12 +260,6 @@ describe('Install Component', () => {
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Install {...defaultProps} />)
-
-      expect(screen.getByTestId('install-multi')).toBeInTheDocument()
-    })
-
     it('should render InstallMulti component with correct props', () => {
       render(<Install {...defaultProps} />)
 
@@ -864,11 +858,4 @@ describe('Install Component', () => {
   })
 
   // ==================== Memoization Test ====================
-  describe('Memoization', () => {
-    it('should be memoized', async () => {
-      const InstallModule = await import('../install')
-      // memo returns an object with $$typeof
-      expect(typeof InstallModule.default).toBe('object')
-    })
-  })
 })

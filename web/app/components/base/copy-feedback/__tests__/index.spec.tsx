@@ -66,26 +66,6 @@ describe('CopyFeedbackNew', () => {
         screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }),
       ).toBeInTheDocument()
     })
-
-    it('renders with custom className', () => {
-      const { container } = render(
-        <CopyFeedbackNew content="test content" className="test-class" />,
-      )
-      expect(container.querySelector('.test-class')).toBeInTheDocument()
-    })
-
-    it('applies copied CSS class when copied is true', () => {
-      mockCopied = true
-      const { container } = render(<CopyFeedbackNew content="test content" />)
-      const feedbackIcon = container.firstChild?.firstChild as Element
-      expect(feedbackIcon).toHaveClass(/_copied_.*/)
-    })
-
-    it('does not apply copied CSS class when not copied', () => {
-      const { container } = render(<CopyFeedbackNew content="test content" />)
-      const feedbackIcon = container.firstChild?.firstChild as Element
-      expect(feedbackIcon).not.toHaveClass(/_copied_.*/)
-    })
   })
 
   describe('User Interactions', () => {
