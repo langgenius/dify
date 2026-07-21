@@ -67,6 +67,7 @@ function newestTasks(
 
 export function ProcessingTasksDrawer({
   canEdit,
+  actionResultsValid,
   documentQueryError,
   documentQueryFetching,
   documents,
@@ -91,6 +92,7 @@ export function ProcessingTasksDrawer({
   onRetryDocumentQuery,
 }: {
   canEdit: boolean
+  actionResultsValid: boolean
   documentQueryError: boolean
   documentQueryFetching: boolean
   documents: LogicalDocument[]
@@ -126,12 +128,15 @@ export function ProcessingTasksDrawer({
   )
   const pendingActionsRef = useRef(new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const taskQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
+  const documentQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
+  const focusedTaskActionRef = useRef<HTMLButtonElement | null>(null)
   const loadMoreRequestedRef = useRef(false)
   const queryRetryFocusRequestedRef = useRef(false)
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
   const openCycleRef = useRef(0)
   const openRef = useRef(open)
-  const canEditRef = useRef(canEdit)
+  const actionResultsValidRef = useRef(actionResultsValid)
   const previousOpenRef = useRef(open)
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
@@ -195,7 +200,7 @@ export function ProcessingTasksDrawer({
     new Map<string, { generation: number; lifecycle: string }>(),
   )
   useLayoutEffect(() => {
-    canEditRef.current = canEdit
+    actionResultsValidRef.current = actionResultsValid
     const currentTaskIds = new Set(tasks.map((task) => task.id))
     for (const task of tasks) {
       const lifecycle = taskLifecycle(task)
@@ -209,7 +214,7 @@ export function ProcessingTasksDrawer({
     for (const taskId of taskLifecycleGenerationsRef.current.keys()) {
       if (!currentTaskIds.has(taskId)) taskLifecycleGenerationsRef.current.delete(taskId)
     }
-  }, [canEdit, tasks])
+  }, [actionResultsValid, tasks])
 
   useEffect(() => {
     openRef.current = open
@@ -251,10 +256,22 @@ export function ProcessingTasksDrawer({
 
   useEffect(() => {
     const queryRetryVisible = taskQueryError || (documentQueryError && hasUnresolvedTaskDocuments)
-    if (!open || queryRetryVisible || !queryRetryFocusRequestedRef.current) return
+    if (!open || !queryRetryFocusRequestedRef.current) return
+    if (queryRetryVisible) {
+      if (taskQueryError) taskQueryRetryButtonRef.current?.focus()
+      else documentQueryRetryButtonRef.current?.focus()
+      return
+    }
     queryRetryFocusRequestedRef.current = false
     drawerCloseButtonRef.current?.focus()
   }, [documentQueryError, hasUnresolvedTaskDocuments, open, taskQueryError])
+
+  useEffect(() => {
+    const focusedAction = focusedTaskActionRef.current
+    if (!open || !focusedAction || focusedAction.isConnected) return
+    focusedTaskActionRef.current = null
+    drawerCloseButtonRef.current?.focus()
+  }, [open, orderedTasks])
 
   const refreshDocumentsAndTasks = () =>
     Promise.allSettled([
@@ -291,7 +308,7 @@ export function ProcessingTasksDrawer({
           ? await cancelTask.mutateAsync(input)
           : await retryTask.mutateAsync(input)
       if (
-        !canEditRef.current ||
+        !actionResultsValidRef.current ||
         taskLifecycleGenerationsRef.current.get(task.id)?.generation !== actionLifecycleGeneration
       )
         return
@@ -302,7 +319,7 @@ export function ProcessingTasksDrawer({
         return next
       })
       if (
-        canEditRef.current &&
+        actionResultsValidRef.current &&
         openRef.current &&
         openCycleRef.current === actionOpenCycle &&
         document.activeElement === actionFocusTarget
@@ -310,14 +327,14 @@ export function ProcessingTasksDrawer({
         drawerCloseButtonRef.current?.focus()
     } catch {
       if (
-        canEditRef.current &&
+        actionResultsValidRef.current &&
         openRef.current &&
         openCycleRef.current === actionOpenCycle &&
         taskLifecycleGenerationsRef.current.get(task.id)?.generation === actionLifecycleGeneration
       )
         setActionErrors((current) => ({ ...current, [task.id]: taskLifecycle(task) }))
     } finally {
-      if (canEditRef.current) await refreshDocumentsAndTasks()
+      if (actionResultsValidRef.current) await refreshDocumentsAndTasks()
       pendingActionsRef.current.delete(task.id)
       setPendingActions((current) => {
         const next = new Set(current)
@@ -364,6 +381,7 @@ export function ProcessingTasksDrawer({
                       {t(($) => $['newKnowledge.tasksErrorDescription'])}
                     </p>
                     <Button
+                      ref={taskQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.tasksErrorDescription'])}`}
                       aria-busy={taskQueryFetching}
                       className="mt-3"
@@ -387,6 +405,7 @@ export function ProcessingTasksDrawer({
                       {t(($) => $['newKnowledge.documentsErrorDescription'])}
                     </p>
                     <Button
+                      ref={documentQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
                       aria-busy={documentQueryFetching}
                       className="mt-3"
@@ -475,6 +494,12 @@ export function ProcessingTasksDrawer({
                               aria-busy={pendingActions.has(task.id)}
                               disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}
+                              onBlur={(event) => {
+                                if (event.relatedTarget) focusedTaskActionRef.current = null
+                              }}
+                              onFocus={(event) => {
+                                focusedTaskActionRef.current = event.currentTarget
+                              }}
                               onClick={() => void performAction(task, 'cancel')}
                             >
                               {t(($) => $['newKnowledge.interruptTask'])}
@@ -490,6 +515,12 @@ export function ProcessingTasksDrawer({
                               aria-busy={pendingActions.has(task.id)}
                               disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}
+                              onBlur={(event) => {
+                                if (event.relatedTarget) focusedTaskActionRef.current = null
+                              }}
+                              onFocus={(event) => {
+                                focusedTaskActionRef.current = event.currentTarget
+                              }}
                               onClick={() => void performAction(task, 'retry')}
                             >
                               {t(($) => $['newKnowledge.retryTask'])}

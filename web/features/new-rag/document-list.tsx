@@ -1,6 +1,7 @@
 'use client'
 
 import type { LogicalDocument } from '@dify/contracts/knowledge-fs/types.gen'
+import type { FocusEventHandler } from 'react'
 import type { DocumentDisplayStatus } from './document-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -420,8 +421,10 @@ export function DocumentsList({
       </div>
       <div
         ref={resultsContainerRef}
+        aria-labelledby="new-knowledge-documents-title"
         aria-busy={completingResults || isFetchingNextPage}
-        className="mt-4 overflow-x-auto"
+        className="mt-4 overflow-x-auto rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        role="region"
         tabIndex={-1}
       >
         <table className="w-full min-w-[900px] border-collapse text-left">
@@ -578,12 +581,16 @@ export function DocumentsList({
 export function DocumentBulkActions({
   disabled,
   onClear,
+  onBlurCapture,
+  onFocusCapture,
   onReindex,
   reindexing,
   selectedCount,
 }: {
   disabled: boolean
   onClear: () => void
+  onBlurCapture: FocusEventHandler<HTMLDivElement>
+  onFocusCapture: FocusEventHandler<HTMLDivElement>
   onReindex: () => void
   reindexing: boolean
   selectedCount: number
@@ -594,6 +601,8 @@ export function DocumentBulkActions({
       aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
       className="fixed bottom-7 left-1/2 z-20 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg px-3 py-2.5 shadow-xl"
       role="toolbar"
+      onBlurCapture={onBlurCapture}
+      onFocusCapture={onFocusCapture}
     >
       <span className="shrink-0 px-1 system-xs-medium text-text-primary">
         {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}

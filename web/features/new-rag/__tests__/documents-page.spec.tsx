@@ -839,6 +839,28 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveFocus())
+
+    documentsQuery.error = null
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
+    )
+  })
+
+  it('moves focus from bulk actions to the permission alert after dynamic revocation', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
+    const reindex = within(
+      screen.getByRole('toolbar', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+    ).getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' })
+    act(() => reindex.focus())
+
+    documentsQuery.error = { status: 403 }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveFocus())
   })
 
   it('stops background pagination and failed-task polling while document permission is denied', async () => {
@@ -969,6 +991,45 @@ describe('DocumentsPage', () => {
     tasksQuery.error = null
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
+    await waitFor(() =>
+      expect(within(panel).getByRole('button', { name: 'common.operation.close' })).toHaveFocus(),
+    )
+  })
+
+  it('moves focus between drawer query retries as each error recovers', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document()], nextCursor: 'document-next' }],
+    }
+    documentsQuery.hasNextPage = true
+    documentsQuery.isFetchNextPageError = true
+    tasksQuery.data = {
+      pages: [{ items: [task({ documentId: 'missing-document' })] }],
+    }
+    tasksQuery.error = new Error('task refresh failed')
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    const panel = screen.getByRole('dialog')
+    await user.click(
+      within(panel).getByRole('button', {
+        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+      }),
+    )
+
+    tasksQuery.error = null
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const documentRetry = within(panel).getByRole('button', {
+      name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+    })
+    await waitFor(() => expect(documentRetry).toHaveFocus())
+    await user.click(documentRetry)
+
+    documentsQuery.isFetchNextPageError = false
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(within(panel).getByRole('button', { name: 'common.operation.close' })).toHaveFocus(),
     )
@@ -1767,6 +1828,38 @@ describe('DocumentsPage', () => {
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps a successful task action across a transient permission query failure', async () => {
+    const user = userEvent.setup()
+    let resolveCancel: ((value: DocumentProcessingTask) => void) | undefined
+    cancelMutation.mutateAsync.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCancel = resolve
+        }),
+    )
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'permission-query-action' })] }] }
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+
+    permissionStateMock.error = new Error('permission query unavailable')
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    queryClient.invalidateQueries.mockClear()
+    await act(async () =>
+      resolveCancel?.(task({ id: 'permission-query-action', state: 'canceled' })),
+    )
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalled()
+    expect(
+      screen.getByText(/dataset\.newKnowledge\.processingTaskState\.canceled/),
     ).toBeInTheDocument()
   })
 
@@ -2702,6 +2795,42 @@ describe('DocumentsPage', () => {
     )
 
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' })).toBeEnabled()
+  })
+
+  it('moves focus to the drawer close button when an external update removes a task action', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'external-terminal' })] }] }
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      await new Promise<void>(() => {})
+    })
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    const action = screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' })
+    act(() => action.focus())
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'external-terminal',
+              state: 'succeeded',
+              updatedAt: '2026-07-20T10:02:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toHaveFocus(),
+    )
   })
 
   it('limits rendered task history while retaining an active retry for an old document', async () => {

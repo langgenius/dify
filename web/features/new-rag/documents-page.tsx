@@ -173,8 +173,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const documentsSectionRef = useRef<HTMLElement>(null)
   const documentsTitleRef = useRef<HTMLHeadingElement>(null)
   const documentSurfaceHadFocusRef = useRef(false)
+  const bulkActionsHadFocusRef = useRef(false)
   const mainRetryFocusRequestedRef = useRef(false)
-  const mainRetryButtonRef = useRef<HTMLButtonElement>(null)
+  const permissionRetryButtonRef = useRef<HTMLButtonElement>(null)
+  const documentsRetryButtonRef = useRef<HTMLButtonElement>(null)
+  const dependencyRetryButtonRef = useRef<HTMLButtonElement>(null)
   const tasksQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
       enabled: !documentPermissionDenied,
@@ -557,6 +560,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     if (wasDenied && !documentPermissionDenied) {
       void refetchTasksQuery()
       void refetchSourcesQuery()
+      if (documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current)
+        documentsTitleRef.current?.focus()
       return
     }
     if (wasDenied || !documentPermissionDenied) return
@@ -564,18 +569,28 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission revocation permanently closes the controlled task drawer.
       setTasksOpen(false)
     }
-    if (tasksOpen || documentSurfaceHadFocusRef.current) documentPermissionAlertRef.current?.focus()
+    if (tasksOpen || documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current)
+      documentPermissionAlertRef.current?.focus()
   }, [documentPermissionDenied, refetchSourcesQuery, refetchTasksQuery, tasksOpen])
 
   useEffect(() => {
     if (!mainRetryFocusRequestedRef.current) return
     if (mainRecoveryVisible) {
-      mainRetryButtonRef.current?.focus()
+      if (permissionQueryError) permissionRetryButtonRef.current?.focus()
+      else if (documentsQuery.error && !documentPermissionDenied)
+        documentsRetryButtonRef.current?.focus()
+      else dependencyRetryButtonRef.current?.focus()
       return
     }
     mainRetryFocusRequestedRef.current = false
     documentsTitleRef.current?.focus()
-  }, [mainRecoveryIdentity, mainRecoveryVisible])
+  }, [
+    documentPermissionDenied,
+    documentsQuery.error,
+    mainRecoveryIdentity,
+    mainRecoveryVisible,
+    permissionQueryError,
+  ])
 
   useEffect(() => {
     if (!blockingDependencyRetries.tasks && !blockingDependencyRetries.sources) return
@@ -1389,7 +1404,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               {t(($) => $['newKnowledge.permissionLoadFailed'])}
             </span>
             <Button
-              ref={mainRetryButtonRef}
+              ref={permissionRetryButtonRef}
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
               aria-busy={workspacePermissionKeysFetching}
               loading={workspacePermissionKeysFetching}
@@ -1423,7 +1438,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               </span>
               {responseStatus(documentsQuery.error) !== 403 && (
                 <Button
-                  ref={mainRetryButtonRef}
+                  ref={documentsRetryButtonRef}
                   aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
                   aria-busy={documentsQuery.isRefetching}
                   loading={documentsQuery.isRefetching}
@@ -1452,7 +1467,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 : t(($) => $['newKnowledge.tasksErrorDescription'])}
             </span>
             <Button
-              ref={mainRetryButtonRef}
+              ref={dependencyRetryButtonRef}
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${
                 sourcesQuery.error || sourcesQuery.isFetchNextPageError
                   ? t(($) => $['newKnowledge.sourcesErrorDescription'])
@@ -1501,7 +1516,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             </p>
             {responseStatus(documentsQuery.error) !== 403 && (
               <Button
-                ref={mainRetryButtonRef}
+                ref={documentsRetryButtonRef}
                 aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
                 aria-busy={documentsQuery.isFetching}
                 className="mt-4"
@@ -1530,7 +1545,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 : t(($) => $['newKnowledge.sourcesErrorDescription'])}
             </p>
             <Button
-              ref={mainRetryButtonRef}
+              ref={dependencyRetryButtonRef}
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${
                 taskQueryBlockingError
                   ? t(($) => $['newKnowledge.tasksErrorDescription'])
@@ -1617,12 +1632,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         <DocumentBulkActions
           disabled={selectionDisabled}
           onClear={() => setSelectedDocumentIds(new Set())}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+              bulkActionsHadFocusRef.current = false
+          }}
+          onFocusCapture={() => {
+            bulkActionsHadFocusRef.current = true
+          }}
           onReindex={() => void handleReindexDocuments()}
           reindexing={reindexing}
           selectedCount={validSelectedDocumentIds.size}
         />
       )}
       <ProcessingTasksDrawer
+        actionResultsValid={!documentPermissionDenied}
         canEdit={canWrite}
         documentQueryError={Boolean(documentsQuery.error || documentsQuery.isFetchNextPageError)}
         documentQueryFetching={documentsQuery.isFetching}
