@@ -54,7 +54,7 @@
   "debugAsMultipleModel": "Отладка нескольких моделей",
   "debugAsSingleModel": "Отладка одной модели",
   "duplicateModel": "Дублировать",
-  "errorMessage.nameOfKeyRequired": "значение ключа: {{key}} обязательно",
+  "errorMessage.nameOfKeyRequired": "имя ключа: {{key}} обязательно",
   "errorMessage.notSelectModel": "Пожалуйста, выберите модель",
   "errorMessage.queryRequired": "Требуется текст запроса.",
   "errorMessage.valueOfVarRequired": "значение {{key}} не может быть пустым",

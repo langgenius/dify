@@ -113,7 +113,7 @@
   "plansCommon.startBuilding": "Начать создание",
   "plansCommon.startForFree": "Начать бесплатно",
   "plansCommon.startNodes.limited": "До {{count}} триггеров/Workflow",
-  "plansCommon.startNodes.unlimited": "Неограниченные триггеры/воркфлоу",
+  "plansCommon.startNodes.unlimited": "Неограниченные триггеры/Workflow",
   "plansCommon.support": "Поддержка",
   "plansCommon.supportItems.SSOAuthentication": "SSO аутентификация",
   "plansCommon.supportItems.agentMode": "Режим агента",

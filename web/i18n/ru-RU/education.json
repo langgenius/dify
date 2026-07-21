@@ -31,7 +31,7 @@
   "notice.alreadyGraduated.expired": "Вы можете обновить подписку в любое время, чтобы получить полный доступ к платным функциям.",
   "notice.alreadyGraduated.isAboutToExpire": "Ваша текущая подписка останется активной. Когда она закончится, вы перейдете на план Sandbox, или вы можете в любое время обновить подписку, чтобы восстановить полный доступ к платным функциям.",
   "notice.alreadyGraduated.title": "Уже окончили?",
-  "notice.dateFormat": "MM/DD/YYYY",
+  "notice.dateFormat": "DD.MM.YYYY",
   "notice.expired.summary.line1": "Вы по-прежнему можете использовать Dify. ",
   "notice.expired.summary.line2": "Однако вы больше не можете получить новые купоны на образовательную скидку.",
   "notice.expired.title": "Срок действия вашего образовательного статуса истёк",

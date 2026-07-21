@@ -107,7 +107,7 @@
   "overview.appInfo.settings.workflow.hide": "Скрыть",
   "overview.appInfo.settings.workflow.show": "Показать",
   "overview.appInfo.settings.workflow.showDesc": "Показать или скрыть подробности Workflow в веб-приложении",
-  "overview.appInfo.settings.workflow.subTitle": "Workflow Details",
+  "overview.appInfo.settings.workflow.subTitle": "Детали Workflow",
   "overview.appInfo.settings.workflow.title": "Workflow",
   "overview.appInfo.title": "Веб-приложение",
   "overview.appInfo.workflowLaunchHiddenInputs.description": "Введите значения для скрытых полей, затем нажмите <bold>Запустить</bold>, чтобы открыть WebApp с указанными значениями.",

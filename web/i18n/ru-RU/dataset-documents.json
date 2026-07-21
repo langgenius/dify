@@ -226,7 +226,7 @@
   "segment.collapseChunks": "Свернуть фрагменты",
   "segment.contentEmpty": "Содержимое не может быть пустым",
   "segment.contentPlaceholder": "добавьте содержимое здесь",
-  "segment.dateTimeFormat": "MM/DD/YYYY HH:mm",
+  "segment.dateTimeFormat": "DD.MM.YYYY HH:mm",
   "segment.delete": "Удалить этот фрагмент?",
   "segment.editChildChunk": "Редактирование дочернего фрагмента",
   "segment.editChunk": "Редактировать фрагмент",

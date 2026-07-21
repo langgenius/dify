@@ -1357,7 +1357,7 @@
   "workflowGenerator.modelRequired": "Пожалуйста, выберите модель перед созданием.",
   "workflowGenerator.modes.chatflow": "Chatflow",
   "workflowGenerator.modes.workflow": "Workflow",
-  "workflowGenerator.overwriteMessage": "Применение этого Workflow заменит текущий черновой черновик схемы. Это невозможно отменить.",
+  "workflowGenerator.overwriteMessage": "Применение этого Workflow заменит текущий черновик схемы. Это невозможно отменить.",
   "workflowGenerator.overwriteTitle": "Перезаписать текущий черновик?",
   "workflowGenerator.phases.building": "Построение узлов…",
   "workflowGenerator.phases.planning": "Планирование Workflow…",
