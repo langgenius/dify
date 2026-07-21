@@ -2577,6 +2577,84 @@ describe('DocumentsPage', () => {
     expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
   })
 
+  it('observes a same-version retry after the task list confirms a denied stream terminal', async () => {
+    let resolveDocumentsRefetch!: (result: { error: null }) => void
+    const deniedVersion = '2026-07-20T10:02:00Z'
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    documentsQuery.refetch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDocumentsRefetch = resolve
+        }),
+    )
+    tasksQuery.dataUpdateCount = 1
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ id: 'same-version-terminal-retry' })],
+        },
+      ],
+    }
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) {
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: 'running' as const,
+            updatedAt: deniedVersion,
+          },
+          event: 'progress' as const,
+          id: 'same-version-terminal-retry:version-2',
+        }
+        throw new Response(null, { status: 403 })
+      }
+      await new Promise<void>(() => {})
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(documentsQuery.refetch).toHaveBeenCalled())
+    await act(async () => resolveDocumentsRefetch({ error: null }))
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'same-version-terminal-retry',
+              state: 'failed',
+              updatedAt: deniedVersion,
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.dataUpdateCount = 2
+    act(() => notifyTaskQuerySuccess())
+    await act(async () => {})
+    expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'same-version-terminal-retry',
+              state: 'running',
+              updatedAt: deniedVersion,
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.dataUpdateCount = 3
+    act(() => notifyTaskQuerySuccess())
+
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
+  })
+
   it('single-flights backed-off recovery polling until a denied stream gets a newer version', async () => {
     vi.useFakeTimers()
     let resolveDocumentsRefetch!: (result: { error: null }) => void

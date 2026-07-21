@@ -20,6 +20,12 @@ export function createAuxiliaryTaskReadGuard() {
     clearTask(taskId: string) {
       blockedVersions.delete(taskId)
     },
+    clearThrough(taskId: string, authoritativeVersion: string) {
+      const blockedVersion = blockedVersions.get(taskId)
+      if (!blockedVersion || taskVersionIsAfter(blockedVersion, authoritativeVersion)) return false
+      blockedVersions.delete(taskId)
+      return true
+    },
     isBlocked(taskId: string, taskVersion: string) {
       const blockedVersion = blockedVersions.get(taskId)
       return Boolean(blockedVersion && !taskVersionIsAfter(taskVersion, blockedVersion))

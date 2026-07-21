@@ -435,6 +435,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }
     }
   }, [tasks])
+
+  useEffect(() => {
+    for (const task of baseTasks) {
+      if (!taskIsActive(task)) auxiliaryTaskReadGuard.clearThrough(task.id, task.updatedAt)
+    }
+  }, [auxiliaryTaskReadGuard, baseTasks])
   const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
   const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
   useLayoutEffect(() => {

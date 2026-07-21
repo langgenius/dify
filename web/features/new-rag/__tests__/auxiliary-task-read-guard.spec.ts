@@ -40,6 +40,17 @@ describe('createAuxiliaryTaskReadGuard', () => {
     expect(guard.isBlocked('task-1', 'version-2')).toBe(false)
   })
 
+  it('retires a block only after an authoritative version catches up', () => {
+    const guard = createAuxiliaryTaskReadGuard()
+    guard.block('task-1', '2026-07-20T10:02:00Z')
+
+    expect(guard.clearThrough('task-1', '2026-07-20T10:01:00Z')).toBe(false)
+    expect(guard.isBlocked('task-1', '2026-07-20T10:02:00Z')).toBe(true)
+
+    expect(guard.clearThrough('task-1', '2026-07-20T10:02:00Z')).toBe(true)
+    expect(guard.isBlocked('task-1', '2026-07-20T10:02:00Z')).toBe(false)
+  })
+
   it('restores the page after authoritative document verification without retrying the task version', async () => {
     let resolveRefetch!: (result: { error: null }) => void
     const refetchDocuments = vi.fn(
