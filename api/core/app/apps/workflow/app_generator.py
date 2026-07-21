@@ -398,7 +398,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
             worker_thread.start()
 
-            draft_var_saver_factory = self._get_draft_var_saver_factory(invoke_from, user)
+            draft_var_saver_factory = self._get_draft_var_saver_factory(
+                invoke_from,
+                user,
+                tenant_id=app_model.tenant_id,
+            )
 
             # return response or stream generator
             response = self._handle_response(

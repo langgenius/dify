@@ -598,7 +598,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 message=message_snapshot,
                 user=user,
                 stream=stream,
-                draft_var_saver_factory=self._get_draft_var_saver_factory(invoke_from, account=user),
+                draft_var_saver_factory=self._get_draft_var_saver_factory(
+                    invoke_from,
+                    account=user,
+                    tenant_id=application_generate_entity.app_config.tenant_id,
+                ),
             )
 
             return AdvancedChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
