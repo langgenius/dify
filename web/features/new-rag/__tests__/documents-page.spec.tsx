@@ -569,7 +569,13 @@ describe('DocumentsPage', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
     ).toHaveAttribute('aria-describedby', 'documents-readonly-reason')
-    expect(fireEvent.dragOver(emptyState!)).toBe(true)
+    expect(fireEvent.dragOver(emptyState!)).toBe(false)
+    expect(
+      fireEvent.drop(emptyState!, {
+        dataTransfer: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
+      }),
+    ).toBe(false)
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
   })
 
   it('keeps processing tasks reachable while the document list is empty', async () => {
@@ -2446,6 +2452,26 @@ describe('DocumentsPage', () => {
     await act(async () => resolveDocumentsRefetch({ error: null }))
     expect(await screen.findByText('sso-enterprise.pdf')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('blocks failed polling for a task version denied during terminal reconciliation', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'denied-terminal-version' })] }] }
+    getTaskSnapshot.mockRejectedValue(new Response(null, { status: 403 }))
+    streamFailedTaskThenWait('denied-terminal-version')
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => {})
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
   })
 
   it('hides cached documents and closes tasks when the task event stream loses read access', async () => {
@@ -4709,6 +4735,9 @@ describe('DocumentsPage', () => {
       error: null,
     })
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const addDocument = screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })
+    await user.click(addDocument)
+    expect(addDocument).toHaveFocus()
 
     await user.upload(
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
@@ -4721,6 +4750,7 @@ describe('DocumentsPage', () => {
     expect(restriction).toBeInTheDocument()
     expect(restriction).toHaveAttribute('role', 'status')
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
+    expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus()
 
     permissionStateMock.datasetKeys = ['dataset.acl.readonly']
     permissionStateMock.fetching = true
@@ -4739,6 +4769,36 @@ describe('DocumentsPage', () => {
         screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
       ).toBeEnabled(),
     )
+  })
+
+  it('preserves a newer focus target when an upload later loses write permission', async () => {
+    const user = userEvent.setup()
+    let rejectUpload!: (error: unknown) => void
+    uploadMutation.mutateAsync.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectUpload = reject
+        }),
+    )
+    permissionStateMock.refreshAfterDenial.mockResolvedValueOnce({
+      data: { dataset: { default_permission_keys: ['dataset.acl.readonly'] } },
+      error: null,
+    })
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      new File(['one'], 'one.md', { type: 'text/markdown' }),
+    )
+    const tasksButton = screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' })
+    tasksButton.focus()
+    expect(tasksButton).toHaveFocus()
+
+    await act(async () => rejectUpload(new Response(null, { status: 403 })))
+    await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
+
+    expect(tasksButton).toHaveFocus()
   })
 
   it('locks re-indexing after a write mutation reveals revoked permission', async () => {

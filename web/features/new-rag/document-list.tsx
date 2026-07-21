@@ -209,15 +209,11 @@ export function DocumentsEmpty({
   return (
     <div
       className="flex min-h-96 flex-1 flex-col items-center justify-center px-6 text-center"
-      onDragOver={canEdit ? (event) => event.preventDefault() : undefined}
-      onDrop={
-        canEdit
-          ? (event) => {
-              event.preventDefault()
-              onDropFiles([...event.dataTransfer.files])
-            }
-          : undefined
-      }
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault()
+        if (canEdit) onDropFiles([...event.dataTransfer.files])
+      }}
     >
       <span className="flex size-12 items-center justify-center rounded-xl bg-background-section text-text-accent">
         <span aria-hidden className="i-ri-file-text-fill size-6" />
