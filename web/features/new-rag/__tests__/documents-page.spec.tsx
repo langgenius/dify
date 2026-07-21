@@ -1157,6 +1157,69 @@ describe('DocumentsPage', () => {
     expect(await screen.findByText('NEW_PARSER_ERROR')).toBeInTheDocument()
   })
 
+  it('ignores a delayed retry response older than the current failed list snapshot', async () => {
+    const user = userEvent.setup()
+    let resolveRetry: ((snapshot: DocumentProcessingTask) => void) | undefined
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              errorCode: 'OLD_FAILURE',
+              id: 'delayed-local-retry',
+              state: 'failed',
+              updatedAt: '2026-07-20T10:01:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    retryMutation.mutateAsync.mockReturnValue(
+      new Promise<DocumentProcessingTask>((resolve) => {
+        resolveRetry = resolve
+      }),
+    )
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              errorCode: 'NEWER_FAILURE',
+              id: 'delayed-local-retry',
+              state: 'failed',
+              updatedAt: '2026-07-20T10:03:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await act(async () =>
+      resolveRetry?.(
+        task({
+          id: 'delayed-local-retry',
+          state: 'dispatch_pending',
+          updatedAt: '2026-07-20T10:02:00Z',
+        }),
+      ),
+    )
+
+    expect(await screen.findByText('NEWER_FAILURE')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('accepts an exact active retry snapshot with the terminal timestamp', async () => {
     documentsQuery.data = { pages: [{ items: [document({})] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'same-time-retry' })] }] }
@@ -2514,6 +2577,60 @@ describe('DocumentsPage', () => {
                 id: 'list-retry-after-block',
                 state: 'failed',
                 updatedAt: '2026-07-20T10:04:00Z',
+              }),
+            ],
+          },
+        ],
+      }
+      rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await act(async () => vi.advanceTimersByTime(5000))
+
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('retries exact polling when a permanently blocked failed task advances version', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'new-failed-generation',
+              state: 'failed',
+              updatedAt: '2026-07-20T10:01:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    getTaskSnapshot
+      .mockRejectedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(
+        task({
+          id: 'new-failed-generation',
+          state: 'dispatch_pending',
+          updatedAt: '2026-07-20T10:03:00Z',
+        }),
+      )
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [
+              task({
+                id: 'new-failed-generation',
+                state: 'failed',
+                updatedAt: '2026-07-20T10:02:00Z',
               }),
             ],
           },

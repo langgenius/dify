@@ -132,7 +132,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [taskObserverGenerations, setTaskObserverGenerations] = useState<Record<string, number>>({})
   const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
   const failedTaskPollGenerationsRef = useRef(new Map<string, number>())
-  const blockedFailedTaskPollsRef = useRef(new Set<string>())
+  const blockedFailedTaskPollVersionsRef = useRef(new Map<string, string>())
   const equalRetryListGenerationsRef = useRef(new Map<string, number>())
   const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
   const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
@@ -557,7 +557,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           return { ...current, [taskId]: normalizedSnapshot }
         })
         if (taskIsActive(snapshot)) {
-          blockedFailedTaskPollsRef.current.delete(taskId)
+          blockedFailedTaskPollVersionsRef.current.delete(taskId)
           const pollGeneration = failedTaskPollGenerationsRef.current.get(taskId) ?? 0
           failedTaskPollGenerationsRef.current.set(taskId, pollGeneration + 1)
           setTerminalTaskPins((current) => {
@@ -662,7 +662,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
     for (const taskId of strictRetries.keys()) {
       taskProgressStore.delete(taskId)
-      blockedFailedTaskPollsRef.current.delete(taskId)
+      blockedFailedTaskPollVersionsRef.current.delete(taskId)
       const pollGeneration = failedTaskPollGenerationsRef.current.get(taskId) ?? 0
       failedTaskPollGenerationsRef.current.set(taskId, pollGeneration + 1)
       const generation = terminalReconciliationGenerationsRef.current.get(taskId) ?? 0
@@ -915,12 +915,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const handleTaskUpdated = useCallback(
     (task: DocumentProcessingTask) => {
+      const currentVersion = currentTaskVersionRef.current.get(task.id)
+      if (currentVersion && taskVersionIsAfter(currentVersion, task.updatedAt)) return
       taskProgressStore.delete(task.id)
       currentTaskStateRef.current.set(task.id, task.state)
       currentTaskVersionRef.current.set(task.id, task.updatedAt)
       setTaskOverrides((current) => ({ ...current, [task.id]: normalizedTaskSnapshot(task) }))
       if (taskIsActive(task)) {
-        blockedFailedTaskPollsRef.current.delete(task.id)
+        blockedFailedTaskPollVersionsRef.current.delete(task.id)
         terminalReconciliationControllersRef.current.get(task.id)?.abort()
         terminalReconciliationControllersRef.current.delete(task.id)
         const timeout = terminalReconciliationTimeoutsRef.current.get(task.id)
@@ -943,7 +945,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   useEffect(() => {
     for (const task of activeTasks) {
-      if (!blockedFailedTaskPollsRef.current.delete(task.id)) continue
+      if (!blockedFailedTaskPollVersionsRef.current.delete(task.id)) continue
       const generation = failedTaskPollGenerationsRef.current.get(task.id) ?? 0
       failedTaskPollGenerationsRef.current.set(task.id, generation + 1)
     }
@@ -957,7 +959,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     const pollNextBatch = async () => {
       const failedTasks = orderedFailedTasksRef.current
       const pollableTasks = failedTasks.filter(
-        (task) => !blockedFailedTaskPollsRef.current.has(task.id),
+        (task) => blockedFailedTaskPollVersionsRef.current.get(task.id) !== task.updatedAt,
       )
       if (pollableTasks.length) {
         const pollCount = Math.min(MAX_TASK_EVENT_STREAMS, pollableTasks.length)
@@ -998,7 +1000,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               )
                 return
               if (!taskSnapshotErrorIsTransient(error))
-                blockedFailedTaskPollsRef.current.add(task.id)
+                blockedFailedTaskPollVersionsRef.current.set(task.id, task.updatedAt)
             }
           }),
         )
