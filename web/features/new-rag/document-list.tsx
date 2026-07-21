@@ -209,11 +209,15 @@ export function DocumentsEmpty({
   return (
     <div
       className="flex min-h-96 flex-1 flex-col items-center justify-center px-6 text-center"
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
-        event.preventDefault()
-        if (canEdit) onDropFiles([...event.dataTransfer.files])
-      }}
+      onDragOver={canEdit ? (event) => event.preventDefault() : undefined}
+      onDrop={
+        canEdit
+          ? (event) => {
+              event.preventDefault()
+              onDropFiles([...event.dataTransfer.files])
+            }
+          : undefined
+      }
     >
       <span className="flex size-12 items-center justify-center rounded-xl bg-background-section text-text-accent">
         <span aria-hidden className="i-ri-file-text-fill size-6" />
@@ -236,9 +240,11 @@ export function DocumentsEmpty({
         <span aria-hidden className="i-ri-add-line size-4" />
         {t(($) => $['newKnowledge.addDocument'])}
       </Button>
-      <p className="mt-2 system-2xs-regular text-text-quaternary">
-        {t(($) => $['newKnowledge.documentsDropHint'])}
-      </p>
+      {canEdit && (
+        <p className="mt-2 system-2xs-regular text-text-quaternary">
+          {t(($) => $['newKnowledge.documentsDropHint'])}
+        </p>
+      )}
       <div className="mt-4">
         <TaskTrigger
           activeTaskCount={activeTaskCount}
@@ -593,9 +599,6 @@ export function DocumentBulkActions({
         onBlurCapture={onBlurCapture}
         onFocusCapture={onFocusCapture}
       >
-        <span className="shrink-0 px-1 system-xs-medium text-text-primary">
-          {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
-        </span>
         <Button
           aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
           aria-busy={reindexing}
@@ -615,6 +618,9 @@ export function DocumentBulkActions({
         >
           <span aria-hidden className="i-ri-close-line size-4" />
         </button>
+        <span className="shrink-0 px-1 system-xs-medium text-text-primary">
+          {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
+        </span>
         {disabled && disabledReason && (
           <span
             id="document-reindex-unavailable"

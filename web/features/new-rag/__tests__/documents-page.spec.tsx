@@ -323,6 +323,7 @@ describe('DocumentsPage', () => {
     documentsQuery.isFetchingNextPage = false
     documentsQuery.isPending = false
     documentsQuery.isRefetching = false
+    documentsQuery.refetch.mockResolvedValue({ error: null })
     tasksQuery.data = { pages: [{ items: [] }] }
     tasksQuery.dataUpdatedAt = 0
     tasksQuery.dataUpdateCount = 0
@@ -332,6 +333,7 @@ describe('DocumentsPage', () => {
     tasksQuery.isFetching = false
     tasksQuery.isFetchingNextPage = false
     tasksQuery.isPending = false
+    tasksQuery.refetch.mockResolvedValue({ error: null })
     sourcesQuery.data = { pages: [{ items: [source()] }] }
     sourcesQuery.error = null
     sourcesQuery.hasNextPage = false
@@ -339,6 +341,7 @@ describe('DocumentsPage', () => {
     sourcesQuery.isFetching = false
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
+    sourcesQuery.refetch.mockResolvedValue({ error: null })
     permissionStateMock.datasetKeys = ['dataset.acl.edit']
     permissionStateMock.error = null
     permissionStateMock.fetching = false
@@ -547,9 +550,26 @@ describe('DocumentsPage', () => {
   it('renders the designed empty state with an available upload action', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('dataset.newKnowledge.documentsEmptyTitle')).toBeInTheDocument()
+    const emptyState = screen.getByText('dataset.newKnowledge.documentsEmptyTitle').parentElement
+    expect(emptyState).not.toBeNull()
     expect(screen.getByText('dataset.newKnowledge.documentsEmptyDescription')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.documentsDropHint')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+    expect(fireEvent.dragOver(emptyState!)).toBe(false)
+  })
+
+  it('removes the empty-state drop affordance when uploads are unavailable', () => {
+    permissionStateMock.datasetKeys = ['dataset.acl.readonly']
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    const emptyState = screen.getByText('dataset.newKnowledge.documentsEmptyTitle').parentElement
+    expect(emptyState).not.toBeNull()
+    expect(screen.queryByText('dataset.newKnowledge.documentsDropHint')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
+    ).toHaveAttribute('aria-describedby', 'documents-readonly-reason')
+    expect(fireEvent.dragOver(emptyState!)).toBe(true)
   })
 
   it('keeps processing tasks reachable while the document list is empty', async () => {
@@ -639,6 +659,16 @@ describe('DocumentsPage', () => {
     tasksQuery.data = { pages: [{ items: [task()] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const pendingPermission = screen.getByText('dataset.newKnowledge.permission · common.loading')
+    expect(pendingPermission).toHaveTextContent('dataset.newKnowledge.permission · common.loading')
+    expect(pendingPermission).toHaveAttribute('role', 'status')
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
+    ).toHaveAttribute('aria-describedby', 'documents-permission-pending')
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+      'aria-describedby',
+      'documents-permission-pending',
+    )
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
@@ -1547,6 +1577,10 @@ describe('DocumentsPage', () => {
     const orderedActions = within(actions).getAllByRole('button')
     expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
     expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
+    expect(actions.firstElementChild).toBe(orderedActions[0])
+    expect(orderedActions[1]!.nextElementSibling).toHaveTextContent(
+      'dataset.newKnowledge.documentsSelected:{"count":1}',
+    )
     expect(
       within(actions).getByText(
         'dataset.newKnowledge.downloadDocuments / dataset.newKnowledge.deleteDocuments · dataset.cornerLabel.unavailable',
@@ -2352,6 +2386,109 @@ describe('DocumentsPage', () => {
     const error = await screen.findByText('Parser failed at line 400 with complete server context')
     expect(error).toHaveClass('whitespace-pre-wrap', 'break-words')
     expect(error).not.toHaveClass('truncate')
+  })
+
+  it('hides cached documents and closes tasks when terminal reconciliation loses read access', async () => {
+    const user = userEvent.setup()
+    let releaseStream!: () => void
+    const streamGate = new Promise<void>((resolve) => {
+      releaseStream = resolve
+    })
+    let resolveDocumentsRefetch!: (result: { error: null }) => void
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    documentsQuery.refetch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDocumentsRefetch = resolve
+        }),
+    )
+    tasksQuery.data = { pages: [{ items: [task({ id: 'forbidden-reconciliation' })] }] }
+    getTaskSnapshot.mockRejectedValue(new Response(null, { status: 403 }))
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      await streamGate
+      yield {
+        data: {
+          progressPercent: 80,
+          stage: 'parsed' as const,
+          state: 'failed' as const,
+          updatedAt: '2026-07-20T10:03:00Z',
+        },
+        event: 'progress' as const,
+        id: 'forbidden-reconciliation:progress',
+      }
+      yield {
+        data: { errorCode: 'PARSER_FAILED', state: 'failed' as const },
+        event: 'terminal' as const,
+        id: 'forbidden-reconciliation:terminal',
+      }
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    await act(async () => releaseStream())
+
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'dataset.newKnowledge.documentsPermissionDescription',
+      ),
+    )
+    expect(screen.queryByText('sso-enterprise.pdf')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(documentsQuery.refetch).toHaveBeenCalledWith({ cancelRefetch: true })
+
+    await act(async () => resolveDocumentsRefetch({ error: null }))
+    expect(await screen.findByText('sso-enterprise.pdf')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('hides cached documents and closes tasks when the task event stream loses read access', async () => {
+    const user = userEvent.setup()
+    let rejectStream!: () => void
+    const streamGate = new Promise<void>((_resolve, reject) => {
+      rejectStream = () => reject(new Response(null, { status: 403 }))
+    })
+    let resolveDocumentsRefetch!: (result: { error: null }) => void
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    documentsQuery.refetch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDocumentsRefetch = resolve
+        }),
+    )
+    tasksQuery.data = { pages: [{ items: [task({ id: 'forbidden-stream' })] }] }
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      await streamGate
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    await act(async () => rejectStream())
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'dataset.newKnowledge.documentsPermissionDescription',
+      ),
+    )
+    expect(screen.queryByText('sso-enterprise.pdf')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(documentsQuery.refetch).toHaveBeenCalledWith({ cancelRefetch: true })
+
+    await act(async () => resolveDocumentsRefetch({ error: null }))
+    expect(await screen.findByText('sso-enterprise.pdf')).toBeInTheDocument()
+    expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
   })
 
   it('replaces an in-flight terminal reconciliation and aborts it on unmount', async () => {
@@ -3547,6 +3684,7 @@ describe('DocumentsPage', () => {
         knowledgeSpaceId="space-1"
         onEvent={firstOnEvent}
         onLastEventIdChange={onLastEventIdChange}
+        onPermissionDenied={vi.fn()}
         taskId="task-1"
         taskVersion="2026-07-20T10:01:00Z"
       />,
@@ -3562,6 +3700,7 @@ describe('DocumentsPage', () => {
         lastEventId="task-1:cursor"
         onEvent={vi.fn(() => true)}
         onLastEventIdChange={onLastEventIdChange}
+        onPermissionDenied={vi.fn()}
         taskId="task-1"
         taskVersion="2026-07-20T10:01:00Z"
       />,
@@ -3901,7 +4040,7 @@ describe('DocumentsPage', () => {
     }
   })
 
-  it('stops polling a failed task after a permanent snapshot error', async () => {
+  it('does not repoll the same failed snapshot after document read recovery', async () => {
     vi.useFakeTimers()
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = {
@@ -4577,6 +4716,7 @@ describe('DocumentsPage', () => {
     )
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
+    expect(toastMock.error).not.toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
     const restriction = screen.getByText('dataset.newKnowledge.documentPermissionRestricted')
     expect(restriction).toBeInTheDocument()
     expect(restriction).toHaveAttribute('role', 'status')
@@ -4614,6 +4754,7 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
+    expect(toastMock.error).not.toHaveBeenCalledWith('dataset.newKnowledge.documentsReindexFailed')
     expect(
       screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
     ).not.toBeInTheDocument()

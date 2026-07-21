@@ -20,12 +20,24 @@ function waitForTaskEventReconnect(signal: AbortSignal, delay: number) {
   })
 }
 
+function responseStatus(error: unknown): number | undefined {
+  if (error instanceof Response) return error.status
+  if (error && typeof error === 'object' && 'status' in error)
+    return typeof error.status === 'number' ? error.status : undefined
+  if (error && typeof error === 'object' && 'data' in error) {
+    const data = error.data
+    if (data && typeof data === 'object' && 'status' in data)
+      return typeof data.status === 'number' ? data.status : undefined
+  }
+}
+
 export function TaskEventObserver({
   documentId,
   knowledgeSpaceId,
   lastEventId,
   onEvent,
   onLastEventIdChange,
+  onPermissionDenied,
   taskId,
   taskVersion,
 }: {
@@ -34,6 +46,7 @@ export function TaskEventObserver({
   lastEventId?: string
   onEvent: (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => boolean
   onLastEventIdChange: (taskId: string, eventId?: string) => void
+  onPermissionDenied: (taskId: string, taskVersion: string) => void
   taskId: string
   taskVersion: string
 }) {
@@ -74,15 +87,19 @@ export function TaskEventObserver({
               return
             }
           }
-        } catch {
+        } catch (error) {
           if (controller.signal.aborted) return
+          if (responseStatus(error) === 403) {
+            onPermissionDenied(taskId, latestTaskVersionRef.current)
+            return
+          }
         }
         await waitForTaskEventReconnect(controller.signal, reconnectDelay)
         reconnectDelay = Math.min(reconnectDelay * 2, TASK_EVENT_MAX_RECONNECT_DELAY)
       }
     })()
     return () => controller.abort()
-  }, [documentId, knowledgeSpaceId, onEvent, onLastEventIdChange, taskId])
+  }, [documentId, knowledgeSpaceId, onEvent, onLastEventIdChange, onPermissionDenied, taskId])
 
   return null
 }
