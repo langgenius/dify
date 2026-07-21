@@ -13,6 +13,10 @@ describe('createAuxiliaryTaskReadGuard', () => {
     expect(guard.isBlocked('task-1', 'version-1')).toBe(true)
     expect(guard.isBlocked('task-1', 'version-2')).toBe(false)
     expect(guard.isBlocked('task-2', 'version-1')).toBe(false)
+
+    guard.block('task-1', 'version-0')
+    expect(guard.isBlocked('task-1', 'version-1')).toBe(true)
+    expect(guard.isBlocked('task-1', 'version-0')).toBe(false)
   })
 
   it('retires blocks after task or document authority changes', () => {

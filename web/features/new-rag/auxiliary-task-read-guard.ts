@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { taskVersionIsAfter } from './document-model'
 
 export type AuxiliaryTaskReadGuard = ReturnType<typeof createAuxiliaryTaskReadGuard>
 
@@ -9,6 +10,8 @@ export function createAuxiliaryTaskReadGuard() {
 
   return {
     block(taskId: string, taskVersion: string) {
+      const blockedVersion = blockedVersions.get(taskId)
+      if (blockedVersion && taskVersionIsAfter(blockedVersion, taskVersion)) return
       blockedVersions.set(taskId, taskVersion)
     },
     clear() {

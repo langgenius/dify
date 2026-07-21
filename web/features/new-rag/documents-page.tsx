@@ -599,10 +599,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ),
     [activeTasks],
   )
+  const taskObserverVersion = (task: DocumentProcessingTask) => {
+    let latestVersion = task.updatedAt
+    for (const candidate of [
+      currentTaskVersionRef.current.get(task.id),
+      taskProgressStore.get(task.id)?.updatedAt,
+    ]) {
+      if (candidate && taskVersionIsAfter(candidate, latestVersion)) latestVersion = candidate
+    }
+    return latestVersion
+  }
   const streamedActiveTasks = (() => {
     if (permissionDenied) return []
     const streamableActiveTasks = orderedActiveTasks.filter(
-      (task) => !auxiliaryTaskReadGuard.isBlocked(task.id, task.updatedAt),
+      (task) => !auxiliaryTaskReadGuard.isBlocked(task.id, taskObserverVersion(task)),
     )
     const streamCount = Math.min(MAX_TASK_EVENT_STREAMS, streamableActiveTasks.length)
     if (!streamCount) return []
@@ -1212,6 +1222,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     for (const [taskId, pin] of equalTimestampRetries) {
       if (equalRetryListGenerationsRef.current.get(taskId) === taskListGeneration) continue
       equalRetryListGenerationsRef.current.set(taskId, taskListGeneration)
+      auxiliaryTaskReadGuard.clearTask(taskId)
       const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
       if (timeout !== undefined) window.clearTimeout(timeout)
       terminalReconciliationTimeoutsRef.current.delete(taskId)
@@ -1667,7 +1678,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   return (
     <>
       {streamedActiveTasks.map((task) => {
-        const progressVersion = taskProgressStore.get(task.id)?.updatedAt
+        const observerVersion = taskObserverVersion(task)
         return (
           <TaskEventObserver
             key={`${task.id}:${taskObserverGenerations[task.id] ?? 0}`}
@@ -1678,11 +1689,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onLastEventIdChange={handleTaskEventCursor}
             onPermissionDenied={handleTaskStreamPermissionDenied}
             taskId={task.id}
-            taskVersion={
-              progressVersion && taskVersionIsAfter(progressVersion, task.updatedAt)
-                ? progressVersion
-                : task.updatedAt
-            }
+            taskVersion={observerVersion}
           />
         )
       })}

@@ -55,7 +55,8 @@ export function TaskEventObserver({
   resumeEventIdRef.current = lastEventId
   const latestTaskVersionRef = useRef(taskVersion)
   const streamTaskVersionRef = useRef(taskVersion)
-  latestTaskVersionRef.current = taskVersion
+  if (taskVersionIsAfter(taskVersion, latestTaskVersionRef.current))
+    latestTaskVersionRef.current = taskVersion
 
   useEffect(() => {
     const controller = new AbortController()

@@ -555,7 +555,11 @@ describe('DocumentsPage', () => {
     expect(screen.getByText('dataset.newKnowledge.documentsEmptyDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.documentsDropHint')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
-    expect(fireEvent.dragOver(emptyState!)).toBe(false)
+    const dataTransfer = { dropEffect: 'none' }
+    const dragOver = new Event('dragover', { bubbles: true, cancelable: true })
+    Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })
+    expect(fireEvent(emptyState!, dragOver)).toBe(false)
+    expect(dataTransfer.dropEffect).toBe('copy')
   })
 
   it('removes the empty-state drop affordance when uploads are unavailable', () => {
@@ -569,10 +573,17 @@ describe('DocumentsPage', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
     ).toHaveAttribute('aria-describedby', 'documents-readonly-reason')
-    expect(fireEvent.dragOver(emptyState!)).toBe(false)
+    const dataTransfer = {
+      dropEffect: 'copy',
+      files: [new File(['one'], 'one.md', { type: 'text/markdown' })],
+    }
+    const dragOver = new Event('dragover', { bubbles: true, cancelable: true })
+    Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })
+    expect(fireEvent(emptyState!, dragOver)).toBe(false)
+    expect(dataTransfer.dropEffect).toBe('none')
     expect(
       fireEvent.drop(emptyState!, {
-        dataTransfer: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
+        dataTransfer,
       }),
     ).toBe(false)
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
@@ -2522,6 +2533,50 @@ describe('DocumentsPage', () => {
     expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
   })
 
+  it('does not restart a denied stream version while the task list lags behind progress', async () => {
+    let resolveDocumentsRefetch!: (result: { error: null }) => void
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    documentsQuery.refetch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDocumentsRefetch = resolve
+        }),
+    )
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ id: 'lagging-denied-stream', updatedAt: '2026-07-20T10:01:00Z' })],
+        },
+      ],
+    }
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      yield {
+        data: {
+          progressPercent: 50,
+          stage: 'parsed' as const,
+          state: 'running' as const,
+          updatedAt: '2026-07-20T10:02:00Z',
+        },
+        event: 'progress' as const,
+        id: 'lagging-denied-stream:version-2',
+      }
+      throw new Response(null, { status: 403 })
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'dataset.newKnowledge.documentsPermissionDescription',
+      ),
+    )
+    expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+
+    await act(async () => resolveDocumentsRefetch({ error: null }))
+    expect(await screen.findByText('sso-enterprise.pdf')).toBeInTheDocument()
+    await act(async () => {})
+    expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+  })
+
   it('focuses the permission alert when an auxiliary retry becomes a document denial', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
@@ -3886,12 +3941,23 @@ describe('DocumentsPage', () => {
           onLastEventIdChange={vi.fn()}
           onPermissionDenied={onPermissionDenied}
           taskId="task-1"
+          taskVersion="2026-07-20T10:03:00Z"
+        />,
+      )
+      rendered.rerender(
+        <TaskEventObserver
+          documentId="document-1"
+          knowledgeSpaceId="space-1"
+          onEvent={vi.fn(() => true)}
+          onLastEventIdChange={vi.fn()}
+          onPermissionDenied={onPermissionDenied}
+          taskId="task-1"
           taskVersion="2026-07-20T10:02:00Z"
         />,
       )
       await act(async () => vi.advanceTimersByTime(1000))
 
-      expect(onPermissionDenied).toHaveBeenCalledWith('task-1', '2026-07-20T10:02:00Z')
+      expect(onPermissionDenied).toHaveBeenCalledWith('task-1', '2026-07-20T10:03:00Z')
     } finally {
       rendered.unmount()
       vi.useRealTimers()
@@ -3933,6 +3999,17 @@ describe('DocumentsPage', () => {
           onLastEventIdChange={vi.fn()}
           onPermissionDenied={vi.fn()}
           taskId="task-1"
+          taskVersion="2026-07-20T10:03:00Z"
+        />,
+      )
+      rendered.rerender(
+        <TaskEventObserver
+          documentId="document-1"
+          knowledgeSpaceId="space-1"
+          onEvent={onEvent}
+          onLastEventIdChange={vi.fn()}
+          onPermissionDenied={vi.fn()}
+          taskId="task-1"
           taskVersion="2026-07-20T10:02:00Z"
         />,
       )
@@ -3940,7 +4017,7 @@ describe('DocumentsPage', () => {
 
       expect(onEvent).toHaveBeenCalledWith(
         'task-1',
-        '2026-07-20T10:02:00Z',
+        '2026-07-20T10:03:00Z',
         expect.objectContaining({ event: 'terminal' }),
       )
     } finally {
@@ -5181,6 +5258,41 @@ describe('DocumentsPage', () => {
     act(() => notifyTaskQuerySuccess())
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
+    expect(
+      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).toBeInTheDocument()
+  })
+
+  it('rechecks a same-version active lifecycle after a denied terminal snapshot', async () => {
+    const user = userEvent.setup()
+    const taskVersion = '2026-07-20T10:03:00Z'
+    const sharedTaskData = {
+      pages: [{ items: [task({ id: 'denied-active-retry', updatedAt: taskVersion })] }],
+    }
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = sharedTaskData
+    tasksQuery.dataUpdatedAt = 100
+    tasksQuery.dataUpdateCount = 1
+    getTaskSnapshot
+      .mockRejectedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(
+        task({ id: 'denied-active-retry', state: 'running', updatedAt: taskVersion }),
+      )
+    streamFailedTaskThenWait('denied-active-retry')
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
+
+    tasksQuery.data = sharedTaskData
+    tasksQuery.dataUpdatedAt = 100
+    tasksQuery.dataUpdateCount = 2
+    act(() => notifyTaskQuerySuccess())
+
+    await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
     expect(
       await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()

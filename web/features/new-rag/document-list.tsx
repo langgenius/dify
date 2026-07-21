@@ -209,7 +209,10 @@ export function DocumentsEmpty({
   return (
     <div
       className="flex min-h-96 flex-1 flex-col items-center justify-center px-6 text-center"
-      onDragOver={(event) => event.preventDefault()}
+      onDragOver={(event) => {
+        event.preventDefault()
+        event.dataTransfer.dropEffect = canEdit ? 'copy' : 'none'
+      }}
       onDrop={(event) => {
         event.preventDefault()
         if (canEdit) onDropFiles([...event.dataTransfer.files])
